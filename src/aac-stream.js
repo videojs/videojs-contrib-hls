@@ -1,5 +1,5 @@
 /*
- * video-js-hls
+ * aac-stream
  * 
  *
  * Copyright (c) 2013 Brightcove
@@ -8,6 +8,8 @@
 
 (function(window) {
 
-window.videojs.hls = {};
+window.videojs.hls.AacStream = function(){
+  this.tags = [];
+};
 
 })(this);

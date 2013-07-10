@@ -1,5 +1,5 @@
 /*
- * video-js-hls
+ * h264-stream
  * 
  *
  * Copyright (c) 2013 Brightcove
@@ -8,6 +8,8 @@
 
 (function(window) {
 
-window.videojs.hls = {};
+window.videojs.hls.H264Stream = function(){
+  this.tags = [];
+};
 
 })(this);

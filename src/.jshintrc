@@ -1,6 +1,9 @@
 {
   "curly": true,
   "eqeqeq": true,
+  "globals": {
+    "console": true
+  },
   "immed": true,
   "latedef": true,
   "newcap": true,
