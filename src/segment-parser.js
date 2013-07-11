@@ -187,7 +187,7 @@
         }
 
         // attempt to parse a m2ts packet
-        if (parseTSPacket(data.subarray(dataPosition, m2tsPacketSize))) {
+        if (parseTSPacket(data.subarray(dataPosition, dataPosition + m2tsPacketSize))) {
           dataPosition += m2tsPacketSize;
         } else {
           // If there was an error parsing a TS packet. it could be
@@ -203,7 +203,7 @@
     // packet!
     parseTSPacket = function(data) { // :ByteArray):Boolean {
       var
-        s = data.position, //:uint
+        s = 0, //:uint
         o = s, // :uint
         e = o + m2tsPacketSize, // :uint
       
@@ -211,10 +211,10 @@
         // parseSegmentBinaryData()
 
         // Payload Unit Start Indicator
-        pusi = !!(data[o+1] & 0x40), 
+        pusi = !!(data[o + 1] & 0x40), // mask: 0100 0000
 
         // PacketId
-        pid = (data[o + 1] & 0x1F) << 8 | data[o+2],
+        pid = (data[o + 1] & 0x1F) << 8 | data[o + 2], // mask: 0001 1111
         afflag = (data[o + 3] & 0x30 ) >>> 4,
 
         aflen, // :uint
@@ -259,7 +259,7 @@
 
         console.assert(0x00 === patTableId, 'patTableId should be 0x00');
 
-        patCurrentNextIndicator = !!(data[o+5] & 0x01);
+        patCurrentNextIndicator = !!(data[o + 5] & 0x01);
         if (patCurrentNextIndicator) {
           patSectionLength =  (data[o + 1] & 0x0F) << 8 | data[o + 2];
           o += 8; // skip past PSI header
@@ -280,10 +280,10 @@
       } else if (videoPid === pid || audioPid === pid) {
         if (pusi) {
           // comment out for speed
-          // if( 0x00 != data[o+0] || 0x00 != data[o+1] || 0x01 != data[o+2] )
-          // {// look for PES start code
-          //    throw new Error("PES did not begin with start code");
-          // }
+          if (0x00 !== data[o + 0] || 0x00 !== data[o + 1] || 0x01 !== data[o + 2]) {
+            // look for PES start code
+             throw new Error("PES did not begin with start code");
+           }
 
           // var sid:int  = data[o+3]; // StreamID
           pesPacketSize = (data[o + 4] << 8) | data[o + 5];
@@ -334,14 +334,14 @@
         }
 
         if (audioPid === pid) {
-          aacStream.writeBytes(data,o,e-o);
+          aacStream.writeBytes(data, o, e - o);
         } else if (videoPid === pid) {
-          h264Stream.writeBytes(data,o,e-o);
+          h264Stream.writeBytes(data, o, e - o);
         }
       } else if (pmtPid === pid) {
         // TODO sanity check data[o]
         // if pusi is set we must skip X bytes (PSI pointer field)
-        o += ( pusi ? 1 + data[o] : 0 );
+        o += (pusi ? 1 + data[o] : 0);
         pmtTableId = data[o];
 
         console.assert(0x02 === pmtTableId);
@@ -349,7 +349,7 @@
         pmtCurrentNextIndicator = !!(data[o + 5] & 0x01);
         if (pmtCurrentNextIndicator) {
           audioPid = videoPid = 0;
-          pmtSectionLength  = (data[o + 1] & 0x0F ) << 8 | data[o + 2];
+          pmtSectionLength  = (data[o + 1] & 0x0F) << 8 | data[o + 2];
           // skip CRC and PSI data we dont care about
           pmtSectionLength -= 13; 
 
@@ -357,7 +357,7 @@
           while (0 < pmtSectionLength) {
             streamType = data[o + 0];
             elementaryPID = (data[o + 1] & 0x1F) << 8 | data[o + 2];
-            ESInfolength = (data[o + 3] & 0x0F ) << 8 | data[o + 4];
+            ESInfolength = (data[o + 3] & 0x0F) << 8 | data[o + 4];
             o += 5 + ESInfolength;
             pmtSectionLength -=  5 + ESInfolength;
 

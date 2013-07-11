@@ -1,0 +1,94 @@
+/<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>video.js HLS Plugin Example</title>
+
+  <link href="http://vjs.zencdn.net/4.0/video-js.css" rel="stylesheet">
+  
+  <!-- video.js -->
+  <script src="libs/video-js/src/js/core.js"></script>
+  <script src="libs/video-js/src/js/core-object.js"></script>
+  <script src="libs/video-js/src/js/events.js"></script>
+  <script src="libs/video-js/src/js/lib.js"></script>
+  <script src="libs/video-js/src/js/component.js"></script>
+  <script src="libs/video-js/src/js/button.js"></script>
+  <script src="libs/video-js/src/js/slider.js"></script>
+  <script src="libs/video-js/src/js/menu.js"></script>
+  <script src="libs/video-js/src/js/player.js"></script>
+  <script src="libs/video-js/src/js/control-bar/control-bar.js"></script>
+  <script src="libs/video-js/src/js/control-bar/play-toggle.js"></script>
+  <script src="libs/video-js/src/js/control-bar/time-display.js"></script>
+  <script src="libs/video-js/src/js/control-bar/fullscreen-toggle.js"></script>
+  <script src="libs/video-js/src/js/control-bar/progress-control.js"></script>
+  <script src="libs/video-js/src/js/control-bar/volume-control.js"></script>
+  <script src="libs/video-js/src/js/control-bar/mute-toggle.js"></script>
+  <script src="libs/video-js/src/js/control-bar/volume-menu-button.js"></script>
+  <script src="libs/video-js/src/js/poster.js"></script>
+  <script src="libs/video-js/src/js/loading-spinner.js"></script>
+  <script src="libs/video-js/src/js/big-play-button.js"></script>
+  <script src="libs/video-js/src/js/media/media.js"></script>
+  <script src="libs/video-js/src/js/media/html5.js"></script>
+  <script src="libs/video-js/src/js/media/flash.js"></script>
+  <script src="libs/video-js/src/js/media/loader.js"></script>
+  <script src="libs/video-js/src/js/tracks.js"></script>
+  <script src="libs/video-js/src/js/json.js"></script>
+  <script src="libs/video-js/src/js/setup.js"></script>
+  <script src="libs/video-js/src/js/plugins.js"></script>
+
+  <!-- Media Sources plugin -->
+  <script src="libs/videojs-media-sources.js"></script>
+  <!-- HLS plugin -->
+  <script src="src/video-js-hls.js"></script>
+  <script src="src/flv-tag.js"></script>
+  <script src="src/exp-golomb.js"></script>
+  <script src="src/h264-stream.js"></script>
+  <script src="src/aac-stream.js"></script>
+  <script src="src/segment-parser.js"></script>
+  <!-- an example MPEG2-TS segment -->
+  <script src="test/tsSegment.js"></script>
+
+</head>
+<body>
+  <video id='video'
+         class="video-js vjs-default-skin"
+         height="300"
+         width="600"
+         controls>
+  </video>
+  <script>
+    var video, mediaSource;
+
+    // initialize the player
+    videojs.options.flash.swf = "libs/video-js.swf";
+    video = videojs('video');
+
+    // create a media source
+    mediaSource = new videojs.MediaSource();
+
+    mediaSource.addEventListener('sourceopen', function(event){
+      var tag, bytes, parser;
+
+      // feed parsed bytes into the player
+      var sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
+      parser = new videojs.hls.SegmentParser();
+      var header = parser.getFlvHeader();
+      sourceBuffer.appendBuffer(header);
+
+      parser.parseSegmentBinaryData(window.testSegment);
+      while (parser.tagsAvailable()) {
+        tag = parser.getNextTag();
+        console.log('sending bytes', tag.length);
+        sourceBuffer.appendBuffer(tag.bytes.subarray(0, tag.length), video);
+      }
+    }, false);
+
+    url = videojs.URL.createObjectURL(mediaSource);
+  
+    video.src({ 
+      src: url, 
+      type: "video/flv"
+    });
+  </script>
+</body>
+</html>

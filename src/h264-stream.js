@@ -8,27 +8,31 @@
 
 (function(window) {
   var
+
     ExpGolomb = window.videojs.hls.ExpGolomb,
     FlvTag = window.videojs.hls.FlvTag,
-    H264ExtraData = function() {
-      var
-        sps = [], // :Array
-        pps = []; // :Array
 
-      this.addSPS = function() { // :ByteArray
-        var tmp = new Uint8Array(); // :ByteArray
-        sps.push(tmp);
+    H264ExtraData = function() {
+      this.sps = []; // :Array
+      this.pps = []; // :Array
+
+      this.addSPS = function(size) { // :ByteArray
+        console.log('come on, you fucker');
+        console.assert(size > 0);
+        var tmp = new Uint8Array(size); // :ByteArray
+        this.sps.push(tmp);
         return tmp;
       };
 
-      this.addPPS = function() { // :ByteArray
-        var tmp = new Uint8Array(); // :ByteArray
-        pps.push(tmp);
+      this.addPPS = function(size) { // :ByteArray
+        console.assert(size);
+        var tmp = new Uint8Array(size); // :ByteArray
+        this.pps.push(tmp);
         return tmp;
       };
 
       this.extraDataExists = function() { // :Boolean
-        return 0 < sps.length;
+        return 0 < this.sps.length;
       };
 
       // (sizeOfScalingList:int, expGolomb:ExpGolomb):void
@@ -53,18 +57,20 @@
       };
 
       this.getSps0Rbsp = function() { // :ByteArray
-        // remove emulation bytes. Is this nesessary? is there ever emulation bytes in the SPS?
+        // remove emulation bytes. Is this nesessary? is there ever emulation
+        // bytes in the SPS?
         var
-          sps0 = sps[0],// :ByteArray = sps[0];
+          spsCount = 0,
+          sps0 = this.sps[0], // :ByteArray
+          rbspCount = 0,
           s, // :uint
           e, // :uint
           rbsp, // :ByteArray
           o; // :uint
 
-        sps0.position      = 1;
-        s = sps0.position;
-        e = sps0.bytesAvailable - 2;
-        rbsp = new Uint8Array(); // new ByteArray();
+        s = 1;
+        e = sps0.byteLength - 2;
+        rbsp = new Uint8Array(sps0.byteLength); // new ByteArray();
 
         for (o = s ; o < e ;) {
           if (3 !== sps0[o + 2]) {
@@ -73,27 +79,32 @@
             o += 2;
           } else if (0 !== sps0[o + 0]) {
             o += 1;
-          } else { // found emulation bytess
-            rbsp.writeShort(0x0000);
+          } else {
+            console.log('found emulation bytes');
 
-            if ( o > s ) {
+            rbsp.set([0x00, 0x00], rbspCount);
+            spsCount += 2;
+            rbspCount += 2;
+
+            if (o > s) {
               // If there are bytes to write, write them
-              sps0.readBytes( rbsp, rbsp.length, o-s );
+              rbsp.set(sps0.subarray(0, o - s), rbspCount);
+              spsCount += o - s;
+              rbspCount += o - s;
             }
 
             // skip the emulation bytes
-            sps0.position += 3;
-            o = s = sps0.position;
+            o += 3;
+            s = o;
           }
         }
 
         // copy any remaining bytes
-        sps0.readBytes(rbsp, rbsp.length);
-        sps0.position = 0;
+        rbsp.set(sps0.subarray(spsCount), rbspCount); // sps0.readBytes(rbsp, rbsp.length);
         return rbsp;
       };
 
-      //(pts:uint):FlvTag
+      // (pts:uint):FlvTag
       this.metaDataTag = function(pts) {
         var
           tag = new FlvTag(FlvTag.METADATA_TAG), // :FlvTag
@@ -144,7 +155,7 @@
           expGolomb.skipUnsignedExpGolomb(); // bit_depth_luma_minus8
           expGolomb.skipUnsignedExpGolomb(); // bit_depth_chroma_minus8
           expGolomb.skipBits(1); // qpprime_y_zero_transform_bypass_flag
-          if ( expGolomb.readBoolean() ) { // seq_scaling_matrix_present_flag
+          if (expGolomb.readBoolean()) { // seq_scaling_matrix_present_flag
             imax = (chroma_format_idc !== 3) ? 8 : 12;
             for (i = 0 ; i < imax ; ++i) {
               if (expGolomb.readBoolean()) { // seq_scaling_list_present_flag[ i ]
@@ -214,22 +225,38 @@
         tag.pts = pts;
 
         tag.writeByte(0x01);// version
-        tag.writeByte(sps[0][1]);// profile
-        tag.writeByte(sps[0][2]);// compatibility
-        tag.writeByte(sps[0][3]);// level
+        tag.writeByte(this.sps[0][1]);// profile
+        tag.writeByte(this.sps[0][2]);// compatibility
+        tag.writeByte(this.sps[0][3]);// level
         tag.writeByte(0xFC | 0x03); // reserved (6 bits), NULA length size - 1 (2 bits)
         tag.writeByte(0xE0 | 0x01 ); // reserved (3 bits), num of SPS (5 bits)
-        tag.writeShort( sps[0].length ); // data of SPS
-        tag.writeBytes( sps[0] ); // SPS
+        tag.writeShort( this.sps[0].length ); // data of SPS
+        tag.writeBytes( this.sps[0] ); // SPS
 
-        tag.writeByte( pps.length ); // num of PPS (will there ever be more that 1 PPS?)
-        for (i = 0 ; i < pps.length ; ++i) {
-          tag.writeShort(pps[i].length); // 2 bytes for length of PPS
-          tag.writeBytes(pps[i]); // data of PPS
+        tag.writeByte( this.pps.length ); // num of PPS (will there ever be more that 1 PPS?)
+        for (i = 0 ; i < this.pps.length ; ++i) {
+          tag.writeShort(this.pps[i].length); // 2 bytes for length of PPS
+          tag.writeBytes(this.pps[i]); // data of PPS
         }
 
         return tag;
       };
+    },
+
+    // incomplete, see Table 7.1 of ITU-T H.264 for 12-32
+    NALUnitType = {
+      unspecified: 0,
+      slice_layer_without_partitioning_rbsp_non_idr: 1,
+      slice_data_partition_a_layer_rbsp: 2,
+      slice_data_partition_b_layer_rbsp: 3,
+      slice_data_partition_c_layer_rbsp: 4,
+      slice_layer_without_partitioning_rbsp_idr: 5,
+      sei_rbsp: 6,
+      seq_parameter_set_rbsp: 7,
+      pic_parameter_set_rbsp: 8,
+      access_unit_delimiter_rbsp: 9,
+      end_of_seq_rbsp: 10,
+      end_of_stream_rbsp: 11
     };
 
   window.videojs.hls.H264Stream = function() {
@@ -270,17 +297,18 @@
     };
 
     this.finishFrame = function() {
-      if (null !== h264Frame) {
+      console.log('finish frame');
+      if (h264Frame) {
         // Push SPS before EVERY IDR frame fo seeking
         if (newExtraData.extraDataExists()) {
           oldExtraData = newExtraData;
           newExtraData = new H264ExtraData();
         }
 
-        if(true === h264Frame.keyFrame) {
+        if (h264Frame.keyFrame) {
           // Push extra data on every IDR frame in case we did a stream change + seek
-          tags.push( oldExtraData.metaDataTag (h264Frame.pts) );
-          tags.push( oldExtraData.extraDataTag(h264Frame.pts) );
+          tags.push(oldExtraData.metaDataTag(h264Frame.pts));
+          tags.push(oldExtraData.extraDataTag(h264Frame.pts));
         }
 
         h264Frame.endNalUnit();
@@ -292,31 +320,35 @@
       state = 0;
     };
 
-    // (pData:ByteArray, o:int, l:int):void
-    this.writeBytes = function(pData, o, l) {
+    // (data:ByteArray, o:int, l:int):void
+    this.writeBytes = function(data, o, l) {
       var
         nalUnitSize, // :uint
         s, // :uint
         e, // :uint
         t; // :int
 
-      if (0 >= l) {
+      if (l <= 0) {
+        // data is empty so there's nothing to write
         return;
       }
+
+      // scan through the bytes until we find the start code (0x000001) for a
+      // NAL unit and then begin writing it out
       switch (state) {
       default:
-        state = 1;
-        break;
+        /* falls through */
       case 0:
         state = 1;
-        break;
-        /*--------------------------------------------------------------------------------------------------------------------*/
-      case 1: // We are looking for overlaping start codes
-        if (1 >= pData[o]) {
-          nalUnitSize = (null === h264Frame) ? 0 : h264Frame.nalUnitSize();
-          if (1 <= nalUnitSize && 0 === h264Frame.negIndex(1)) {
+        /* falls through */
+      case 1:
+        // A NAL unit may be split across two TS packets. Look back a bit to
+        // make sure the prefix of the start code wasn't already written out.
+        if (data[o] <= 1) {
+          nalUnitSize = h264Frame ? h264Frame.nalUnitSize() : 0; 
+          if (nalUnitSize >= 1 && h264Frame.negIndex(1) === 0) {
             // ?? ?? 00 | O[01] ?? ??
-            if (1 === pData[o] && 2 <= nalUnitSize && 0 === h264Frame.negIndex(2) ) {
+            if (1 === data[o] && 2 <= nalUnitSize && 0 === h264Frame.negIndex(2)) {
               // ?? 00 00 : 01
               if (3 <= nalUnitSize && 0 === h264Frame.negIndex(3)) {
                 h264Frame.length -= 3; // 00 00 00 : 01
@@ -325,10 +357,10 @@
               }
               
               state = 3;
-              return this.writeBytes(pData, o + 1, l - 1);
+              return this.writeBytes(data, o + 1, l - 1);
             }
 
-            if (1 < l && 0 === pData[o] && 1 === pData[o + 1]) {
+            if (1 < l && 0 === data[o] && 1 === data[o + 1]) {
               // ?? 00 | 00 01
               if (2 <= nalUnitSize && 0 === h264Frame.negIndex(2)) {
                 h264Frame.length -= 2; // 00 00 : 00 01
@@ -337,71 +369,77 @@
               }
               
               state = 3;
-              return this.writeBytes(pData, o + 2, l - 2);
+              return this.writeBytes(data, o + 2, l - 2);
             }
 
-            if (2 < l && 0 === pData[o] && 0 === pData[o + 1]  && 1 === pData[o + 2]) {
+            if (2 < l && 0 === data[o] && 0 === data[o + 1]  && 1 === data[o + 2]) {
               // 00 | 00 00 01
               h264Frame.length -= 1;
               state = 3;
-              return this.writeBytes(pData, o + 3, l - 3);
+              return this.writeBytes(data, o + 3, l - 3);
             }
           }
         }
         // allow fall through if the above fails, we may end up checking a few
         // bytes a second time. But that case will be VERY rare
         state = 2;
-        break;
-      case 2: // Look for start codes in pData
+        /* falls through */
+      case 2: // Look for start codes in data
         s = o; // s = Start
         e = s + l; // e = End
         for (t = e - 3 ; o < t ;) {
-          if (1 < pData[o + 2]) {
-            o += 3; // if pData[o+2] is greater than 1, there is no way a start code can begin before o+3
-          } else if (0 !== pData[o + 1]) {
+          if (1 < data[o + 2]) {
+            o += 3; // if data[o + 2] is greater than 1, there is no way a start code can begin before o+3
+          } else if (0 !== data[o + 1]) {
               o += 2;
-          } else if (0 !== pData[o]) {
+          } else if (0 !== data[o]) {
               o += 1;
           } else {
             // If we get here we have 00 00 00 or 00 00 01
-            if (1 === pData[o + 2]) {
+            if (1 === data[o + 2]) {
               if (o > s) {
-                h264Frame.writeBytes(pData, s, o - s);
+                h264Frame.writeBytes(data, s, o - s);
               }
-              state = 3; o += 3;
-              return this.writeBytes(pData, o, e - o);
+              state = 3;
+              o += 3;
+              return this.writeBytes(data, o, e - o);
             }
 
-            if (4 <= e-o && 0 === pData[o + 2] && 1 === pData[o + 3]) {
+            if (e - o >= 4 && 0 === data[o + 2] && 1 === data[o + 3]) {
               if (o > s) {
-                h264Frame.writeBytes(pData, s, o - s);
+                h264Frame.writeBytes(data, s, o - s);
               }
               state = 3;
               o += 4;
-              return this.writeBytes(pData, o, e - o);
+              return this.writeBytes(data, o, e - o);
             }
 
-            // We are at the end of the buffer, or we have 3 NULLS followed by something that is not a 1, eaither way we can step forward by at least 3
+            // We are at the end of the buffer, or we have 3 NULLS followed by
+            // something that is not a 1, either way we can step forward by at
+            // least 3
             o += 3;
           }
         }
 
         // We did not find any start codes. Try again next packet
         state = 1;
-        h264Frame.writeBytes( pData, s, l );
+        h264Frame.writeBytes(data, s, l);
         return;
-        /*--------------------------------------------------------------------------------------------------------------------*/
-      case 3: // The next byte is the first byte of a NAL Unit
-        if (null !== h264Frame) {
+      case 3:
+        // The next byte is the first byte of a NAL Unit
+
+        if (h264Frame) {
+          // we've come to a new NAL unit so finish up the one we've been
+          // working on
+
           switch (nalUnitType) {
-            // We are still operating on the previous NAL Unit
-          case  7:
-            h264Frame.endNalUnit(newExtraData.addSPS());
+          case NALUnitType.seq_parameter_set_rbsp:
+            h264Frame.endNalUnit(newExtraData.sps);
             break;
-          case  8:
-            h264Frame.endNalUnit(newExtraData.addPPS());
+          case NALUnitType.pic_parameter_set_rbsp:
+            h264Frame.endNalUnit(newExtraData.pps);
             break;
-          case  5:
+          case NALUnitType.slice_layer_without_partitioning_rbsp_idr:
             h264Frame.keyFrame = true;
             h264Frame.endNalUnit();
             break;
@@ -411,14 +449,14 @@
           }
         }
 
-        nalUnitType = pData[o] & 0x1F;
-        if ( null != h264Frame && 9 === nalUnitType ) {
+        // setup to begin processing the new NAL unit
+        nalUnitType = data[o] & 0x1F;
+        if (h264Frame && 9 === nalUnitType) {
           this.finishFrame(); // We are starting a new access unit. Flush the previous one
         }
 
         // finishFrame may render h264Frame null, so we must test again
-        if ( null === h264Frame )
-        {
+        if (!h264Frame) {
           h264Frame = new FlvTag(FlvTag.VIDEO_TAG);
           h264Frame.pts = next_pts;
           h264Frame.dts = next_dts;
@@ -426,7 +464,7 @@
 
         h264Frame.startNalUnit();
         state = 2; // We know there will not be an overlapping start code, so we can skip that test
-        return this.writeBytes(pData, o, l);
+        return this.writeBytes(data, o, l);
         /*--------------------------------------------------------------------------------------------------------------------*/
       } // switch
     };
