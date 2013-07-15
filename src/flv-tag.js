@@ -136,7 +136,8 @@ hls.FlvTag = function(type, extraData) {
     this.view.setUint8(this.position, 0x00);
     this.position++;
     this.view.setFloat64(this.position, val);
-    this.position += 2;
+    this.position += 8;
+    this.length = Math.max(this.length, this.position);
     ++adHoc;
   };
 
@@ -154,6 +155,7 @@ hls.FlvTag = function(type, extraData) {
     this.position++;
     this.view.setUint8(this.position, val ? 0x01 : 0x00);
     this.position++;
+    this.length = Math.max(this.length, this.position);
     ++adHoc;
   };
 
@@ -176,7 +178,7 @@ hls.FlvTag = function(type, extraData) {
       break;
 
     case hls.FlvTag.AUDIO_TAG:
-      this.bytes[11] = 0xAF;
+      this.bytes[11] = 0xAF; // 44 kHz, 16-bit stereo
       this.bytes[12] = extraData ? 0x00 : 0x01;
       break;
 
@@ -191,26 +193,27 @@ hls.FlvTag = function(type, extraData) {
                       0x74, 0x61, 0x44, 0x61,
                       0x74, 0x61], this.position);
       this.position += 10;
-      this.view.setUint8(this.position,
-                         this.bytes[this.position] | 0x08); // Array type
+      this.bytes[this.position] = 0x08; // Array type
       this.position++;
       this.view.setUint32(this.position, adHoc);
       this.position = this.length;
-      this.view.setUint32(this.position, 0x09); // End Data Tag
-      this.position += 4;
+      this.bytes.set([0, 0, 9], this.position);
+      this.position += 3;
+      // this.view.setUint32(this.position, 0x09); // End Data Tag
+      // this.position += 4;
       this.length = this.position;
       break;
     }
 
     len = this.length - 11;
 
-    this.bytes[ 1] = ( len & 0x00FF0000 ) >>> 16;
-    this.bytes[ 2] = ( len & 0x0000FF00 ) >>>  8;
-    this.bytes[ 3] = ( len & 0x000000FF ) >>>  0;
-    this.bytes[ 4] = ( this.pts & 0x00FF0000 ) >>> 16;
-    this.bytes[ 5] = ( this.pts & 0x0000FF00 ) >>>  8;
-    this.bytes[ 6] = ( this.pts & 0x000000FF ) >>>  0;
-    this.bytes[ 7] = ( this.pts & 0xFF000000 ) >>> 24;
+    this.bytes[ 1] = (len & 0x00FF0000) >>> 16;
+    this.bytes[ 2] = (len & 0x0000FF00) >>>  8;
+    this.bytes[ 3] = (len & 0x000000FF) >>>  0;
+    this.bytes[ 4] = (this.pts & 0x00FF0000) >>> 16;
+    this.bytes[ 5] = (this.pts & 0x0000FF00) >>>  8;
+    this.bytes[ 6] = (this.pts & 0x000000FF) >>>  0;
+    this.bytes[ 7] = (this.pts & 0xFF000000) >>> 24;
     this.bytes[ 8] = 0;
     this.bytes[ 9] = 0;
     this.bytes[10] = 0;
@@ -218,6 +221,11 @@ hls.FlvTag = function(type, extraData) {
     this.view.setUint32(this.length, this.length);
     this.length += 4;
     this.position += 4;
+
+    // trim down the byte buffer to what is actually being used
+    this.bytes = this.bytes.subarray(0, this.length);
+    console.assert(this.bytes.byteLength === this.length);
+
     return this;
   };
 };

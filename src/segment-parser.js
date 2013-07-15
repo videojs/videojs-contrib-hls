@@ -386,5 +386,14 @@
 
       return true;
     };
+
+    self.stats = {
+      h264Tags: function() {
+        return h264Stream.tags.length;
+      },
+      aacTags: function() {
+        return aacStream.tags.length;
+      }
+    };
   };
 })(this);

@@ -17,7 +17,6 @@
       this.pps = []; // :Array
 
       this.addSPS = function(size) { // :ByteArray
-        console.log('come on, you fucker');
         console.assert(size > 0);
         var tmp = new Uint8Array(size); // :ByteArray
         this.sps.push(tmp);
@@ -261,8 +260,6 @@
 
   window.videojs.hls.H264Stream = function() {
     var
-      tags = [],
-
       next_pts, // :uint;
       next_dts, // :uint;
       pts_delta = -1, // :int
@@ -307,12 +304,12 @@
 
         if (h264Frame.keyFrame) {
           // Push extra data on every IDR frame in case we did a stream change + seek
-          tags.push(oldExtraData.metaDataTag(h264Frame.pts));
-          tags.push(oldExtraData.extraDataTag(h264Frame.pts));
+          this.tags.push(oldExtraData.metaDataTag(h264Frame.pts));
+          this.tags.push(oldExtraData.extraDataTag(h264Frame.pts));
         }
 
         h264Frame.endNalUnit();
-        tags.push(h264Frame);
+        this.tags.push(h264Frame);
       }
 
       h264Frame = null;

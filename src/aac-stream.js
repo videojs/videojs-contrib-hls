@@ -53,8 +53,8 @@ window.videojs.hls.AacStream = function() {
     }
   };
 
-  // (pData:ByteArray, o:int = 0, l:int = 0):void
-  this.writeBytes = function(pData, o, l) {
+  // (data:ByteArray, o:int = 0, l:int = 0):void
+  this.writeBytes = function(data, o, l) {
     var
       e, // :int
       newExtraData, // :uint
@@ -64,11 +64,11 @@ window.videojs.hls.AacStream = function() {
     o = o || 0;
     l = l || 0;
 
-    // Do not allow more that 'pes_length' bytes to be written
+    // Do not allow more than 'pes_length' bytes to be written
     l = (pes_length < l ? pes_length : l);
     pes_length -= l;
     e = o + l;
-    while(o < e) {
+    while (o < e) {
       switch (state) {
       default:
         state = 0;
@@ -77,8 +77,8 @@ window.videojs.hls.AacStream = function() {
         if (o >= e) {
           return;
         }
-        if (0xFF !== pData[o]) {
-          console.log("Error no ATDS header found");
+        if (0xFF !== data[o]) {
+          console.assert(false, 'Error no ATDS header found');
           o += 1;
           state = 0;
           return;
@@ -91,14 +91,14 @@ window.videojs.hls.AacStream = function() {
         if (o >= e) {
           return;
         }
-        if (0xF0 !== (pData[o] & 0xF0)) {
-          console.log("Error no ATDS header found");
+        if (0xF0 !== (data[o] & 0xF0)) {
+          console.assert(false, 'Error no ATDS header found');
           o +=1;
           state = 0;
           return;
         }
 
-        adtsProtectionAbsent = !!(pData[o] & 0x01);
+        adtsProtectionAbsent = !!(data[o] & 0x01);
 
         o += 1;
         state = 2;
@@ -107,9 +107,9 @@ window.videojs.hls.AacStream = function() {
         if (o >= e) {
           return;
         }
-        adtsObjectType = ((pData[o] & 0xC0) >>> 6) + 1;
-        adtsSampleingIndex = ((pData[o] & 0x3C) >>> 2);
-        adtsChanelConfig = ((pData[o] & 0x01) << 2);
+        adtsObjectType = ((data[o] & 0xC0) >>> 6) + 1;
+        adtsSampleingIndex = ((data[o] & 0x3C) >>> 2);
+        adtsChanelConfig = ((data[o] & 0x01) << 2);
 
         o += 1;
         state = 3;
@@ -118,8 +118,8 @@ window.videojs.hls.AacStream = function() {
         if (o >= e) {
           return;
         }
-        adtsChanelConfig |= ((pData[o] & 0xC0) >>> 6);
-        adtsFrameSize = ((pData[o] & 0x03) << 11);
+        adtsChanelConfig |= ((data[o] & 0xC0) >>> 6);
+        adtsFrameSize = ((data[o] & 0x03) << 11);
 
         o += 1;
         state = 4;
@@ -128,7 +128,7 @@ window.videojs.hls.AacStream = function() {
         if (o >= e) {
           return;
         }
-        adtsFrameSize |= (pData[o] << 3);
+        adtsFrameSize |= (data[o] << 3);
 
         o += 1;
         state = 5;
@@ -137,7 +137,7 @@ window.videojs.hls.AacStream = function() {
         if(o >= e) {
           return;
         }
-        adtsFrameSize |= ((pData[o] & 0xE0) >>> 5);
+        adtsFrameSize |= ((data[o] & 0xE0) >>> 5);
         adtsFrameSize -= (adtsProtectionAbsent ? 7 : 9);
 
         o += 1;
@@ -147,7 +147,7 @@ window.videojs.hls.AacStream = function() {
         if (o >= e) {
           return;
         }
-        adtsSampleCount = ((pData[o] & 0x03) + 1) * 1024;
+        adtsSampleCount = ((data[o] & 0x03) + 1) * 1024;
         adtsDuration = (adtsSampleCount * 1000) / adtsSampleingRates[adtsSampleingIndex];
 
         newExtraData = (adtsObjectType << 11) |
@@ -176,6 +176,7 @@ window.videojs.hls.AacStream = function() {
           aacFrame.pts = next_pts; 
           aacFrame.view.setUint16(aacFrame.position, newExtraData);
           aacFrame.position += 2;
+          aacFrame.length = Math.max(aacFrame.length, aacFrame.position);
 
           this.tags.push(aacFrame);
         }
@@ -204,7 +205,7 @@ window.videojs.hls.AacStream = function() {
             return;
           }
           bytesToCopy = (e - o) < adtsFrameSize ? (e - o) : adtsFrameSize;
-          aacFrame.writeBytes( pData, o, bytesToCopy );
+          aacFrame.writeBytes(data, o, bytesToCopy);
           o += bytesToCopy;
           adtsFrameSize -= bytesToCopy;
         }

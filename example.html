@@ -45,8 +45,12 @@
   <script src="src/h264-stream.js"></script>
   <script src="src/aac-stream.js"></script>
   <script src="src/segment-parser.js"></script>
-  <!-- an example MPEG2-TS segment -->
-  <script src="test/tsSegment.js"></script>
+  
+  <!-- example MPEG2-TS segments -->
+  <!-- bipbop -->
+  <!-- <script src="test/tsSegment.js"></script> -->
+  <!-- bunnies -->
+  <script src="test/tsSegment-bc.js"></script>
 
 </head>
 <body>
@@ -67,20 +71,31 @@
     mediaSource = new videojs.MediaSource();
 
     mediaSource.addEventListener('sourceopen', function(event){
-      var tag, bytes, parser;
+      var tag, bytes, parser, i, feedBytes, everything, old;
 
       // feed parsed bytes into the player
       var sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
       parser = new videojs.hls.SegmentParser();
-      var header = parser.getFlvHeader();
-      sourceBuffer.appendBuffer(header);
+      // var header = parser.getFlvHeader();
+      everything = parser.getFlvHeader();
+      // sourceBuffer.appendBuffer(header);
 
-      parser.parseSegmentBinaryData(window.testSegment);
+      parser.parseSegmentBinaryData(window.bcSegment);
+
       while (parser.tagsAvailable()) {
         tag = parser.getNextTag();
-        console.log('sending bytes', tag.length);
-        sourceBuffer.appendBuffer(tag.bytes.subarray(0, tag.length), video);
+        old = everything;
+        everything = new Uint8Array(old.byteLength + tag.bytes.byteLength);
+        everything.set(old);
+        everything.set(tag.bytes, old.byteLength);
       }
+      console.log('sending ' + everything.byteLength + 'B');
+      var iframe = document.createElement('iframe');
+      iframe.src = 'data:video/x-flv;base64,' + window.btoa((Array.prototype.map.call(everything, function(byte) {
+        return String.fromCharCode(byte);
+      })).join(''));
+      document.body.appendChild(iframe);
+      // sourceBuffer.appendBuffer(everything, video);
     }, false);
 
     url = videojs.URL.createObjectURL(mediaSource);
