@@ -27,10 +27,21 @@ test('writeBytes with zero length writes the entire array', function() {
   var
     tag = new FlvTag(FlvTag.VIDEO_TAG),
     headerLength = tag.length;
-  
   tag.writeBytes(new Uint8Array([0x1, 0x2, 0x3]));
 
   equal(3 + headerLength, tag.length, '3 payload bytes are written');
+});
+
+test('writeShort writes a two byte sequence', function() {
+  var
+    tag = new FlvTag(FlvTag.VIDEO_TAG),
+    headerLength = tag.length;
+  tag.writeShort(0x0102);
+
+  equal(2 + headerLength, tag.length, '2 bytes are written');
+  equal(0x0102,
+        new DataView(tag.bytes.buffer).getUint16(tag.length - 2),
+        'the value is written');
 });
 
 })(this);  

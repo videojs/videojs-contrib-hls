@@ -63,7 +63,7 @@ hls.FlvTag = function(type, extraData) {
 
   // ByteArray#writeShort(value:int):void
   this.writeShort = function(short) {
-    this.view.setUint16(short, this.position);
+    this.view.setUint16(this.position, short);
     this.position += 2;
     this.length = Math.max(this.length, this.position);
   };
