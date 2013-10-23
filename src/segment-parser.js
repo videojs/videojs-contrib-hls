@@ -26,6 +26,7 @@
     // Technically, this function returns the header and a metadata FLV tag
     // if duration is greater than zero
     // duration in seconds
+    // @return {object} the bytes of the FLV header as a Uint8Array
     self.getFlvHeader = function(duration, audio, video) { // :ByteArray {
       var
         headBytes = new Uint8Array(3 + 1 + 1 + 4),

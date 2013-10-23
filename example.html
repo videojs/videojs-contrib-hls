@@ -71,31 +71,18 @@
     mediaSource = new videojs.MediaSource();
 
     mediaSource.addEventListener('sourceopen', function(event){
-      var tag, bytes, parser, i, everything, old;
+      var parser;
 
       // feed parsed bytes into the player
       var sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
       parser = new videojs.hls.SegmentParser();
-      // var header = parser.getFlvHeader();
-      everything = parser.getFlvHeader();
-      // sourceBuffer.appendBuffer(header, video);
+      sourceBuffer.appendBuffer(parser.getFlvHeader(), video);
 
       parser.parseSegmentBinaryData(window.bcSegment);
 
       while (parser.tagsAvailable()) {
-        tag = parser.getNextTag();
-        old = everything;
-        everything = new Uint8Array(old.byteLength + tag.bytes.byteLength);
-        everything.set(old);
-        everything.set(tag.bytes, old.byteLength);
+       sourceBuffer.appendBuffer(parser.getNextTag().bytes, video);
       }
-      console.log('sending ' + everything.byteLength + 'B');
-      // var iframe = document.createElement('iframe');
-      // iframe.src = 'data:video/x-flv;base64,' + window.btoa((Array.prototype.map.call(everything, function(byte) {
-        // return String.fromCharCode(byte);
-      // })).join(''));
-      //document.body.appendChild(iframe);
-      sourceBuffer.appendBuffer(everything, video);
     }, false);
 
     url = videojs.URL.createObjectURL(mediaSource);
