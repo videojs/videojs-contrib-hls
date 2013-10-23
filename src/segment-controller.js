@@ -22,13 +22,22 @@
 			self.onUpdateCallback = onUpdateCallback;
 			self.requestTimestamp = new Date().getTime();
 
-			vjs.get(segmentUrl, self.onSegmentLoadComplete, self.onSegmentLoadError);
+                        var req = new XMLHttpRequest();
+                        req.open('GET', segmentUrl, true);
+                        req.responseType = 'arraybuffer';
+                        req.onload = function(response) {
+                          self.onSegmentLoadComplete(new Uint8Array(req.response));
+                        };
+                  
+                  req.send(null);
 		};
 
 		self.parseSegment = function ( incomingData ) {
 			// Add David's code later //
 
-			self.data = {};
+			self.data = {
+                          whatever: incomingData
+                        };
 			self.data.url = self.url;
 			self.data.isCached = false;
 			self.data.requestTimestamp = self.requestTimestamp;
