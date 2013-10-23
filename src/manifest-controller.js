@@ -1,7 +1,6 @@
 (function(window) {
 	var M3U8 = window.videojs.hls.M3U8;
 	var M3U8Parser = window.videojs.hls.M3U8Parser;
-	var M3U8TagTypes = window.videojs.hls.m3u8TagType;
 
 	window.videojs.hls.ManifestController = function(){
 
@@ -50,11 +49,3 @@
 		};
 	}
 })(this);
-
-/*
-mc = new window.videojs.hls.ManifestController('myM3u8.m3u8', {
-	onData: function(){},
-	onError: function(){},
-	onUpdate: function(){}
-});
-*/

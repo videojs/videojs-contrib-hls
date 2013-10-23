@@ -21,6 +21,7 @@
   */
   var
 	  manifestController,
+	  segmentController,
 	  m3u8parser,
     parser,
 
@@ -328,16 +329,57 @@
 		manifestController.loadManifest(
 			hermesUrl,
 			function(responseData){
-				console.log('got response data');
 				ok(true);
 			},
 			function(errorData){
-				console.log('got error data')
+				console.log('got error data');
 			},
 			function(updateData){
-				console.log('got update data')
+				console.log('got update data');
 			}
 		)
+	});
+
+	module('segment controller', {
+		setup: function() {
+			segmentController = new window.videojs.hls.SegmentController();
+			this.vjsget = vjs.get;
+			vjs.get = function(url, success, error){
+				console.log('load segment url', url);
+				success(window.bcSegment);
+			};
+		},
+		teardown: function() {
+			vjs.get = this.vjsget;
+		}
+	});
+
+	test('should get a segment data', function() {
+			ok(true);
+			var hermesUrl = "http://localhost:7070/test/ts-files/brightcove/s-1.ts";
+
+			segmentController.loadSegment(
+				hermesUrl,
+				function(responseData){
+					console.log('got response from segment controller');
+					ok(true);
+
+				},
+				function(errorData){
+					console.log('got error data');
+				},
+				function(updateData){
+					console.log('got update data');
+				}
+			)
+		}
+	)
+
+	test('bandwidth calulation test', function() {
+		var multiSecondData = segmentController.calculateThroughput(10000,1000,2000);
+		var subSecondData = segmentController.calculateThroughput(10000,1000,1500);
+		equal(multiSecondData, 80000, 'MULTI-Second bits per second calculation');
+		equal(subSecondData, 160000, 'SUB-Second bits per second calculation');
 
 	})
 
