@@ -55,6 +55,19 @@
         }
       };
 
+      /**
+       *              NAL unit
+       * |- NAL header -|------ RBSP ------|
+       *
+       * NAL unit: Network abstraction layer unit. The combination of a NAL
+       * header and an RBSP.
+       * NAL header: the encapsulation unit for transport-specific metadata in
+       * an h264 stream.
+       * RBSP: raw bit-stream payload. The actual encoded video data.
+       *
+       * SPS: sequence parameter set. Part of the RBSP. Metadata to be applied
+       * to a complete video sequence, like width and height.
+       */
       this.getSps0Rbsp = function() { // :ByteArray
         // remove emulation bytes. Is this nesessary? is there ever emulation
         // bytes in the SPS?
@@ -62,22 +75,20 @@
           spsCount = 0,
           sps0 = this.sps[0], // :ByteArray
           rbspCount = 0,
-          s, // :uint
-          e, // :uint
-          rbsp, // :ByteArray
-          o; // :uint
+          start = 1, // :uint
+          end = sps0.byteLength - 2, // :uint
+          rbsp = new Uint8Array(sps0.byteLength), // :ByteArray
+          offset = 0; // :uint
 
-        s = 1;
-        e = sps0.byteLength - 2;
-        rbsp = new Uint8Array(sps0.byteLength); // new ByteArray();
-
-        for (o = s ; o < e ;) {
-          if (3 !== sps0[o + 2]) {
-            o += 3;
-          } else if (0 !== sps0[o + 1]) {
-            o += 2;
-          } else if (0 !== sps0[o + 0]) {
-            o += 1;
+        // H264 requires emulation bytes (0x03) be dropped to interpret NAL
+        // units. For instance, 0x8a03b4 should be read as 0x8ab4.
+        for (offset = start ; offset < end ;) {
+          if (3 !== sps0[offset + 2]) {
+            offset += 3;
+          } else if (0 !== sps0[offset + 1]) {
+            offset += 2;
+          } else if (0 !== sps0[offset + 0]) {
+            offset += 1;
           } else {
             console.log('found emulation bytes');
 
@@ -85,21 +96,22 @@
             spsCount += 2;
             rbspCount += 2;
 
-            if (o > s) {
+            if (offset > start) {
               // If there are bytes to write, write them
-              rbsp.set(sps0.subarray(0, o - s), rbspCount);
-              spsCount += o - s;
-              rbspCount += o - s;
+              rbsp.set(sps0.subarray(start, offset - start), rbspCount);
+              spsCount += offset - start;
+              rbspCount += offset - start;
             }
 
             // skip the emulation bytes
-            o += 3;
-            s = o;
+            offset += 3;
+            start = offset;
           }
         }
 
         // copy any remaining bytes
         rbsp.set(sps0.subarray(spsCount), rbspCount); // sps0.readBytes(rbsp, rbsp.length);
+
         return rbsp;
       };
 
@@ -122,10 +134,10 @@
           frame_mbs_only_flag, // :int
           frame_cropping_flag, // :Boolean
 
-          frame_crop_left_offset, // :int
-          frame_crop_right_offset, // :int
-          frame_crop_top_offset, // :int
-          frame_crop_bottom_offset, // :int
+          frame_crop_left_offset = 0, // :int
+          frame_crop_right_offset = 0, // :int
+          frame_crop_top_offset = 0, // :int
+          frame_crop_bottom_offset = 0, // :int
 
           width,
           height;
@@ -202,8 +214,8 @@
           frame_crop_bottom_offset = expGolomb.readUnsignedExpGolomb();
         }
 
-        width = ((pic_width_in_mbs_minus1 +1)*16) - frame_crop_left_offset*2 - frame_crop_right_offset*2;
-        height = ((2 - frame_mbs_only_flag)* (pic_height_in_map_units_minus1 +1) * 16) - (frame_crop_top_offset * 2) - (frame_crop_bottom_offset * 2);
+        width = ((pic_width_in_mbs_minus1 + 1) * 16) - frame_crop_left_offset * 2 - frame_crop_right_offset * 2;
+        height = ((2 - frame_mbs_only_flag) * (pic_height_in_map_units_minus1 + 1) * 16) - (frame_crop_top_offset * 2) - (frame_crop_bottom_offset * 2);
 
         tag.writeMetaDataDouble("videocodecid", 7);
         tag.writeMetaDataDouble("width", width);
@@ -318,20 +330,25 @@
     };
 
     // (data:ByteArray, o:int, l:int):void
-    this.writeBytes = function(data, o, l) {
+    this.writeBytes = function(data, offset, length) {
       var
         nalUnitSize, // :uint
-        s, // :uint
-        e, // :uint
+        start, // :uint
+        end, // :uint
         t; // :int
 
-      if (l <= 0) {
+      // default argument values
+      offset = offset || 0;
+      length = length || 0;
+
+      if (length <= 0) {
         // data is empty so there's nothing to write
         return;
       }
 
       // scan through the bytes until we find the start code (0x000001) for a
       // NAL unit and then begin writing it out
+      // strip NAL start codes as we go
       switch (state) {
       default:
         /* falls through */
@@ -341,11 +358,11 @@
       case 1:
         // A NAL unit may be split across two TS packets. Look back a bit to
         // make sure the prefix of the start code wasn't already written out.
-        if (data[o] <= 1) {
+        if (data[offset] <= 1) {
           nalUnitSize = h264Frame ? h264Frame.nalUnitSize() : 0; 
           if (nalUnitSize >= 1 && h264Frame.negIndex(1) === 0) {
             // ?? ?? 00 | O[01] ?? ??
-            if (1 === data[o] && 2 <= nalUnitSize && 0 === h264Frame.negIndex(2)) {
+            if (1 === data[offset] && 2 <= nalUnitSize && 0 === h264Frame.negIndex(2)) {
               // ?? 00 00 : 01
               if (3 <= nalUnitSize && 0 === h264Frame.negIndex(3)) {
                 h264Frame.length -= 3; // 00 00 00 : 01
@@ -354,10 +371,10 @@
               }
               
               state = 3;
-              return this.writeBytes(data, o + 1, l - 1);
+              return this.writeBytes(data, offset + 1, length - 1);
             }
 
-            if (1 < l && 0 === data[o] && 1 === data[o + 1]) {
+            if (1 < length && 0 === data[offset] && 1 === data[offset + 1]) {
               // ?? 00 | 00 01
               if (2 <= nalUnitSize && 0 === h264Frame.negIndex(2)) {
                 h264Frame.length -= 2; // 00 00 : 00 01
@@ -366,14 +383,17 @@
               }
               
               state = 3;
-              return this.writeBytes(data, o + 2, l - 2);
+              return this.writeBytes(data, offset + 2, length - 2);
             }
 
-            if (2 < l && 0 === data[o] && 0 === data[o + 1]  && 1 === data[o + 2]) {
+            if (2 < length
+                && 0 === data[offset]
+                && 0 === data[offset + 1]
+                && 1 === data[offset + 2]) {
               // 00 | 00 00 01
               h264Frame.length -= 1;
               state = 3;
-              return this.writeBytes(data, o + 3, l - 3);
+              return this.writeBytes(data, offset + 3, length - 3);
             }
           }
         }
@@ -382,45 +402,45 @@
         state = 2;
         /* falls through */
       case 2: // Look for start codes in data
-        s = o; // s = Start
-        e = s + l; // e = End
-        for (t = e - 3 ; o < t ;) {
-          if (1 < data[o + 2]) {
-            o += 3; // if data[o + 2] is greater than 1, there is no way a start code can begin before o+3
-          } else if (0 !== data[o + 1]) {
-              o += 2;
-          } else if (0 !== data[o]) {
-              o += 1;
+        start = offset;
+        end = start + length;
+        for (t = end - 3 ; offset < t ;) {
+          if (1 < data[offset + 2]) {
+            offset += 3; // if data[offset + 2] is greater than 1, there is no way a start code can begin before offset+3
+          } else if (0 !== data[offset + 1]) {
+              offset += 2;
+          } else if (0 !== data[offset]) {
+              offset += 1;
           } else {
             // If we get here we have 00 00 00 or 00 00 01
-            if (1 === data[o + 2]) {
-              if (o > s) {
-                h264Frame.writeBytes(data, s, o - s);
+            if (1 === data[offset + 2]) {
+              if (offset > start) {
+                h264Frame.writeBytes(data, start, offset - start);
               }
               state = 3;
-              o += 3;
-              return this.writeBytes(data, o, e - o);
+              offset += 3;
+              return this.writeBytes(data, offset, end - offset);
             }
 
-            if (e - o >= 4 && 0 === data[o + 2] && 1 === data[o + 3]) {
-              if (o > s) {
-                h264Frame.writeBytes(data, s, o - s);
+            if (end - offset >= 4 && 0 === data[offset + 2] && 1 === data[offset + 3]) {
+              if (offset > start) {
+                h264Frame.writeBytes(data, start, offset - start);
               }
               state = 3;
-              o += 4;
-              return this.writeBytes(data, o, e - o);
+              offset += 4;
+              return this.writeBytes(data, offset, end - offset);
             }
 
             // We are at the end of the buffer, or we have 3 NULLS followed by
             // something that is not a 1, either way we can step forward by at
             // least 3
-            o += 3;
+            offset += 3;
           }
         }
 
         // We did not find any start codes. Try again next packet
         state = 1;
-        h264Frame.writeBytes(data, s, l);
+        h264Frame.writeBytes(data, start, length);
         return;
       case 3:
         // The next byte is the first byte of a NAL Unit
@@ -447,7 +467,7 @@
         }
 
         // setup to begin processing the new NAL unit
-        nalUnitType = data[o] & 0x1F;
+        nalUnitType = data[offset] & 0x1F;
         if (h264Frame && 9 === nalUnitType) {
           this.finishFrame(); // We are starting a new access unit. Flush the previous one
         }
@@ -461,7 +481,7 @@
 
         h264Frame.startNalUnit();
         state = 2; // We know there will not be an overlapping start code, so we can skip that test
-        return this.writeBytes(data, o, l);
+        return this.writeBytes(data, offset, length);
         /*--------------------------------------------------------------------------------------------------------------------*/
       } // switch
     };

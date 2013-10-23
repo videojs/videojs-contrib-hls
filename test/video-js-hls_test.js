@@ -65,16 +65,6 @@
 
     console.log('h264 tags:', parser.stats.h264Tags(),
                 'aac tags:', parser.stats.aacTags());
-
-    console.log(videojs.hls.utils.hexDump(parser.getFlvHeader()));
-    for (i = 0; i < 4; ++i) {
-      parser.getNextTag();
-    }
-    console.log(videojs.hls.utils.tagDump(parser.getNextTag()));
-    console.log('bad tag:');
-    for (i = 0; i < 3; ++i) {
-      console.log(videojs.hls.utils.tagDump(parser.getNextTag()));
-    }
   });
 
   testAudioTag = function(tag) {
@@ -100,7 +90,10 @@
       frameType = (byte & 0xF0) >>> 4,
       codecId = byte & 0x0F,
       packetType = tag.bytes[12],
-      compositionTime = (tag.view.getInt32(13) & 0xFFFFFF00) >> 8;
+      compositionTime = (tag.view.getInt32(13) & 0xFFFFFF00) >> 8,
+      nalHeader;
+
+    // payload starts at tag.bytes[16]
 
     console.log(frameType);
 
@@ -109,7 +102,7 @@
        'the frame type should be valid');
 
     equal(7, codecId, 'the codec ID is AVC for h264');
-    ok(packetType <=2 && packetType >= 0, 'the packet type is within [0, 2]');
+    ok(packetType <= 2 && packetType >= 0, 'the packet type is within [0, 2]');
     if (packetType !== 1) {
       equal(0,
             compositionTime,
@@ -117,7 +110,25 @@
     }
     
     // TODO: the rest of the bytes are an NLU unit
+    if (packetType === 0) {
+      // AVC decoder configuration record
+    } else {
+      // NAL units
+      testNalUnit(tag.bytes.subarray(16));
+    }
   };
+
+  testNalUnit = function(bytes) {
+    var
+      nalHeader = bytes[0],
+      unitType = nalHeader & 0x1F;
+
+    equal(0, (nalHeader & 0x80) >>> 7, 'the first bit is always 0');
+    // equal(90, (nalHeader & 0x60) >>> 5, 'the NAL reference indicator is something');
+    // ok(unitType > 0, 'NAL unit type ' + unitType + ' is greater than 0');
+    // ok(unitType < 22 , 'NAL unit type ' + unitType + ' is less than 22');
+  };
+  
 
   asciiFromBytes = function(bytes) {
     var
@@ -168,6 +179,7 @@
         offset++;
       } else {
         // number
+        ok(!isNaN(tag.view.getFloat64(offset)), 'the value is not NaN');
         offset += 8;
       }
     }

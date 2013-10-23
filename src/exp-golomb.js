@@ -1,15 +1,19 @@
 (function(window) {
 
+/**
+ * Parser for exponential Golomb codes, a variable-bitwidth number encoding
+ * scheme used by h264.
+ */
 window.videojs.hls.ExpGolomb = function(workingData) {
   var
     // the number of bytes left to examine in workingData
     workingBytesAvailable = workingData.byteLength,
 
     // the current word being examined
-    workingWord, // :uint
+    workingWord = 0, // :uint
 
     // the number of bits left to examine in the current word
-    workingBitsAvailable; // :uint;
+    workingBitsAvailable = 0; // :uint;
 
   // ():uint
   this.length = function() {
@@ -21,15 +25,24 @@ window.videojs.hls.ExpGolomb = function(workingData) {
     return (8 * workingBytesAvailable) + workingBitsAvailable;
   };
 
+  this.logStuff = function() {
+    console.log('bits', workingBitsAvailable, 'word', (workingWord >>> 0));
+  };
+
   // ():void
   this.loadWord = function() {
     var
+      position = workingData.byteLength - workingBytesAvailable,
       workingBytes = new Uint8Array(4),
       availableBytes = Math.min(4, workingBytesAvailable);
 
     // console.assert(availableBytes > 0);
+    if (availableBytes === 0) {
+      throw new Error('no bytes available');
+    }
 
-    workingBytes.set(workingData.subarray(0, availableBytes));
+    workingBytes.set(workingData.subarray(position,
+                                          position + availableBytes));
     workingWord = new DataView(workingBytes.buffer).getUint32(0);
 
     // track the amount of workingData that has been processed
@@ -37,23 +50,23 @@ window.videojs.hls.ExpGolomb = function(workingData) {
     workingBytesAvailable -= availableBytes;
   };
 
-  // (size:int):void
-  this.skipBits = function(size) {
+  // (count:int):void
+  this.skipBits = function(count) {
     var skipBytes; // :int
-    if (workingBitsAvailable > size) {
-      workingWord          <<= size;
-      workingBitsAvailable -= size;
+    if (workingBitsAvailable > count) {
+      workingWord          <<= count;
+      workingBitsAvailable -= count;
     } else {
-      size -= workingBitsAvailable;
-      skipBytes = size / 8;
+      count -= workingBitsAvailable;
+      skipBytes = count / 8;
 
-      size -= (skipBytes * 8);
-      workingData.position += skipBytes;
+      count -= (skipBytes * 8);
+      workingBytesAvailable -= skipBytes;
 
       this.loadWord();
 
-      workingWord <<= size;
-      workingBitsAvailable -= size;
+      workingWord <<= count;
+      workingBitsAvailable -= count;
     }
   };
 
@@ -63,17 +76,17 @@ window.videojs.hls.ExpGolomb = function(workingData) {
       bits = Math.min(workingBitsAvailable, size), // :uint
       valu = workingWord >>> (32 - bits); // :uint
 
-    console.assert(32 > size, 'Cannot read more than 32 bits at a time');
+    console.assert(size < 32, 'Cannot read more than 32 bits at a time');
 
     workingBitsAvailable -= bits;
-    if (0 < workingBitsAvailable) {
+    if (workingBitsAvailable > 0) {
       workingWord <<= bits;
-    } else {
+    } else if (workingBytesAvailable > 0) {
       this.loadWord();
     }
 
     bits = size - bits;
-    if (0 < bits) {
+    if (bits > 0) {
       return valu << bits | this.readBits(bits);
     } else {
       return valu;
@@ -82,18 +95,19 @@ window.videojs.hls.ExpGolomb = function(workingData) {
 
   // ():uint
   this.skipLeadingZeros = function() {
-    var clz; // :uint
-    for (clz = 0 ; clz < workingBitsAvailable ; ++clz) {
-      if (0 !== (workingWord & (0x80000000 >>> clz))) {
-        workingWord <<= clz;
-        workingBitsAvailable -= clz;
-        return clz;
+    var leadingZeroCount; // :uint
+    for (leadingZeroCount = 0 ; leadingZeroCount < workingBitsAvailable ; ++leadingZeroCount) {
+      if (0 !== (workingWord & (0x80000000 >>> leadingZeroCount))) {
+        // the first bit of working word is 1
+        workingWord <<= leadingZeroCount;
+        workingBitsAvailable -= leadingZeroCount;
+        return leadingZeroCount;
       }
     }
 
     // we exhausted workingWord and still have not found a 1
-    this.loadWord(); 
-    return clz + this.skipLeadingZeros();
+    this.loadWord();
+    return leadingZeroCount + this.skipLeadingZeros();
   };
 
   // ():void

@@ -105,7 +105,8 @@ hls.FlvTag = function(type, extraData) {
 
     // Rewind to the marker and write the size
     if (this.length === adHoc + 4) {
-      this.length -= 4; // we started a nal unit, but didnt write one, so roll back the 4 byte size value
+      // we started a nal unit, but didnt write one, so roll back the 4 byte size value
+      this.length -= 4;
     } else if (adHoc > 0) {
       nalStart = adHoc + 4;
       nalLength = this.length - nalStart;
@@ -207,13 +208,16 @@ hls.FlvTag = function(type, extraData) {
 
     len = this.length - 11;
 
+    // write the DataSize field
     this.bytes[ 1] = (len & 0x00FF0000) >>> 16;
     this.bytes[ 2] = (len & 0x0000FF00) >>>  8;
     this.bytes[ 3] = (len & 0x000000FF) >>>  0;
+    // write the Timestamp
     this.bytes[ 4] = (this.pts & 0x00FF0000) >>> 16;
     this.bytes[ 5] = (this.pts & 0x0000FF00) >>>  8;
     this.bytes[ 6] = (this.pts & 0x000000FF) >>>  0;
     this.bytes[ 7] = (this.pts & 0xFF000000) >>> 24;
+    // write the StreamID
     this.bytes[ 8] = 0;
     this.bytes[ 9] = 0;
     this.bytes[10] = 0;
@@ -230,9 +234,9 @@ hls.FlvTag = function(type, extraData) {
   };
 };
 
-hls.FlvTag.AUDIO_TAG = 0x08; // :uint
-hls.FlvTag.VIDEO_TAG = 0x09; // :uint
-hls.FlvTag.METADATA_TAG = 0x12; // :uint
+hls.FlvTag.AUDIO_TAG = 0x08; // == 8, :uint
+hls.FlvTag.VIDEO_TAG = 0x09; // == 9, :uint
+hls.FlvTag.METADATA_TAG = 0x12; // == 18, :uint
 
 // (tag:ByteArray):Boolean {
 hls.FlvTag.isAudioFrame = function(tag) {
