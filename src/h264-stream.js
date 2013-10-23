@@ -146,9 +146,14 @@
           tag.pts = pts;
           expGolomb = new ExpGolomb(this.getSps0Rbsp());
 
-        profile_idc = expGolomb.readUnsignedByte(); // :int = expGolomb.readUnsignedByte(); // profile_idc u(8)
-        expGolomb.skipBits(16);// constraint_set[0-5]_flag, u(1), reserved_zero_2bits u(2), level_idc u(8)
-        expGolomb.skipUnsignedExpGolomb(); // seq_parameter_set_id
+        // :int = expGolomb.readUnsignedByte(); // profile_idc u(8)
+        profile_idc = expGolomb.readUnsignedByte();
+
+        // constraint_set[0-5]_flag, u(1), reserved_zero_2bits u(2), level_idc u(8)
+        expGolomb.skipBits(16);
+
+        // seq_parameter_set_id
+        expGolomb.skipUnsignedExpGolomb();
 
         if (profile_idc === 100 ||
             profile_idc === 110 ||
@@ -230,7 +235,7 @@
       this.extraDataTag = function(pts) {
         var
           i,
-          tag = new FlvTag(FlvTag.VIDEO_TAG,true);
+          tag = new FlvTag(FlvTag.VIDEO_TAG, true);
 
         tag.dts = pts;
         tag.pts = pts;

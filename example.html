@@ -71,14 +71,14 @@
     mediaSource = new videojs.MediaSource();
 
     mediaSource.addEventListener('sourceopen', function(event){
-      var tag, bytes, parser, i, feedBytes, everything, old;
+      var tag, bytes, parser, i, everything, old;
 
       // feed parsed bytes into the player
       var sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
       parser = new videojs.hls.SegmentParser();
       // var header = parser.getFlvHeader();
       everything = parser.getFlvHeader();
-      // sourceBuffer.appendBuffer(header);
+      // sourceBuffer.appendBuffer(header, video);
 
       parser.parseSegmentBinaryData(window.bcSegment);
 
@@ -90,12 +90,12 @@
         everything.set(tag.bytes, old.byteLength);
       }
       console.log('sending ' + everything.byteLength + 'B');
-      var iframe = document.createElement('iframe');
-      iframe.src = 'data:video/x-flv;base64,' + window.btoa((Array.prototype.map.call(everything, function(byte) {
-        return String.fromCharCode(byte);
-      })).join(''));
-      document.body.appendChild(iframe);
-      // sourceBuffer.appendBuffer(everything, video);
+      // var iframe = document.createElement('iframe');
+      // iframe.src = 'data:video/x-flv;base64,' + window.btoa((Array.prototype.map.call(everything, function(byte) {
+        // return String.fromCharCode(byte);
+      // })).join(''));
+      //document.body.appendChild(iframe);
+      sourceBuffer.appendBuffer(everything, video);
     }, false);
 
     url = videojs.URL.createObjectURL(mediaSource);
