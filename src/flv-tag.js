@@ -42,7 +42,7 @@ hls.FlvTag = function(type, extraData) {
   // ByteArray#writeBytes(bytes:ByteArray, offset:uint = 0, length:uint = 0)
   this.writeBytes = function(bytes, offset, length) {
     offset = offset || 0;
-    length = length || 0;
+    length = length || bytes.byteLength;
 
     try {
       this.bytes.set(bytes.subarray(offset, offset + length), this.position);
@@ -198,10 +198,10 @@ hls.FlvTag = function(type, extraData) {
       this.position++;
       this.view.setUint32(this.position, adHoc);
       this.position = this.length;
-      this.bytes.set([0, 0, 9], this.position);
-      this.position += 3;
-      // this.view.setUint32(this.position, 0x09); // End Data Tag
-      // this.position += 4;
+      // this.bytes.set([0, 0, 9], this.position);
+      // this.position += 3;
+      this.view.setUint32(this.position, 0x09); // End Data Tag
+      this.position += 4;
       this.length = this.position;
       break;
     }
