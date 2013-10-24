@@ -18,14 +18,14 @@
       self.url = manifestUrl;
 
       if (onDataCallback) {
-	self.onDataCallback = onDataCallback;
+        self.onDataCallback = onDataCallback;
       }
       if (onErrorCallback) {
-	self.onErrorCallback = onErrorCallback;
+        self.onErrorCallback = onErrorCallback;
       }
 
       if (onUpdateCallback) {
-	self.onUpdateCallback = onUpdateCallback;
+        self.onUpdateCallback = onUpdateCallback;
       }
 
       vjs.get(manifestUrl, self.onManifestLoadComplete, self.onManifestLoadError);
@@ -43,13 +43,13 @@
       var output = self.parseManifest(response);
 
       if (self.onDataCallback != undefined) {
-	self.onDataCallback(output);
+        self.onDataCallback(output);
       }
     };
 
     self.onManifestLoadError = function(err) {
       if (self.onErrorCallback != undefined) {
-	self.onErrorCallback((err != undefined) ? err : null);
+        self.onErrorCallback((err != undefined) ? err : null);
       }
     };
   }

@@ -25,43 +25,43 @@
 
     self.loadManifest = function(manifestUrl, onDataCallback, onErrorCallback, onUpdateCallback) {
       self.mediaSource.addEventListener('sourceopen', function(event) {
-	// feed parsed bytes into the player
-	self.sourceBuffer = self.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
+        // feed parsed bytes into the player
+        self.sourceBuffer = self.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
 
-	self.parser = new SegmentParser();
+        self.parser = new SegmentParser();
 
-	self.sourceBuffer.appendBuffer(self.parser.getFlvHeader(), video);
+        self.sourceBuffer.appendBuffer(self.parser.getFlvHeader(), video);
 
-	if (onDataCallback) {
-	  self.manifestLoadCompleteCallback = onDataCallback;
-	}
+        if (onDataCallback) {
+          self.manifestLoadCompleteCallback = onDataCallback;
+        }
 
-	self.manifestController = new ManifestController();
-	self.manifestController.loadManifest(manifestUrl, self.onM3U8LoadComplete, self.onM3U8LoadError, self.onM3U8Update);
+        self.manifestController = new ManifestController();
+        self.manifestController.loadManifest(manifestUrl, self.onM3U8LoadComplete, self.onM3U8LoadError, self.onM3U8Update);
 
       }, false);
 
       self.player.src({
-	src: videojs.URL.createObjectURL(self.mediaSource),
-	type: "video/flv"
+        src: videojs.URL.createObjectURL(self.mediaSource),
+        type: "video/flv"
       });
     };
 
     self.onM3U8LoadComplete = function(m3u8) {
       if (m3u8.invalidReasons.length === 0) {
-	if (m3u8.isPlaylist) {
-	  self.currentPlaylist = m3u8;
-	  self.rendition(self.currentPlaylist.playlistItems[0]);
-	} else {
-	  self.currentManifest = m3u8;
-	  self.manifestLoaded = true;
+        if (m3u8.isPlaylist) {
+          self.currentPlaylist = m3u8;
+          self.rendition(self.currentPlaylist.playlistItems[0]);
+        } else {
+          self.currentManifest = m3u8;
+          self.manifestLoaded = true;
 
-	  self.loadSegment(self.currentManifest.mediaItems[0]);
+          self.loadSegment(self.currentManifest.mediaItems[0]);
 
-	  if (self.manifestLoadCompleteCallback) {
-	    self.manifestLoadCompleteCallback(m3u8);
-	  }
-	}
+          if (self.manifestLoadCompleteCallback) {
+            self.manifestLoadCompleteCallback(m3u8);
+          }
+        }
       }
     };
 
@@ -77,11 +77,11 @@
       self.parser.parseSegmentBinaryData(segment.binaryData);
 
       while (self.parser.tagsAvailable()) {
-	self.sourceBuffer.appendBuffer(self.parser.getNextTag().bytes, self.player);
+        self.sourceBuffer.appendBuffer(self.parser.getNextTag().bytes, self.player);
       }
 
       if (self.currentSegment < self.currentManifest.mediaItems.length-1) {
-	self.loadNextSegment();
+        self.loadNextSegment();
       }
     };
 

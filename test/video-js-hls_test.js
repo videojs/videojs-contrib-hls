@@ -67,7 +67,7 @@
     ok(parser.tagsAvailable(), 'tags are available');
 
     console.log('h264 tags:', parser.stats.h264Tags(),
-		'aac tags:', parser.stats.aacTags());
+                'aac tags:', parser.stats.aacTags());
   });
 
   testAudioTag = function (tag) {
@@ -107,8 +107,8 @@
     ok(packetType <= 2 && packetType >= 0, 'the packet type is within [0, 2]');
     if (packetType !== 1) {
       equal(0,
-	    compositionTime,
-	    'the composition time is zero for non-NALU packets');
+            compositionTime,
+            'the composition time is zero for non-NALU packets');
     }
 
     // TODO: the rest of the bytes are an NLU unit
@@ -153,7 +153,7 @@
     equal(2, type, 'the script element is of string type');
     equal(stringLength, expected.length, 'the script string length is correct');
     string = asciiFromBytes(tag.bytes.subarray(offset + 3,
-			                       offset + 3 + stringLength));
+                                               offset + 3 + stringLength));
     equal(expected, string, 'the string value is "' + expected + '"');
   };
 
@@ -173,17 +173,17 @@
 
       type = tag.bytes[offset];
       ok(type === 1 || type === 0,
-	 'the ecma array property value type is number or boolean');
+         'the ecma array property value type is number or boolean');
       offset++;
       if (type) {
-	// boolean
-	ok(tag.bytes[offset] === 0 || tag.bytes[offset] === 1,
-	   'the script boolean value is 0 or 1');
-	offset++;
+        // boolean
+        ok(tag.bytes[offset] === 0 || tag.bytes[offset] === 1,
+           'the script boolean value is 0 or 1');
+        offset++;
       } else {
-	// number
-	ok(!isNaN(tag.view.getFloat64(offset)), 'the value is not NaN');
-	offset += 8;
+        // number
+        ok(!isNaN(tag.view.getFloat64(offset)), 'the value is not NaN');
+        offset += 8;
       }
     }
     equal(tag.bytes[offset], 0, 'the property array terminator is valid');
@@ -214,7 +214,7 @@
 
       // generic flv headers
       ok(type === 8 || type === 9 || type === 18,
-	 'the type field specifies audio, video or script');
+         'the type field specifies audio, video or script');
 
       byte = (tag.view.getUint32(1) & 0xFFFFFF00) >>> 8;
       equal(tag.bytes.byteLength - 11 - 4, byte, 'the size field is correct');
@@ -225,15 +225,15 @@
 
       // tag type-specific headers
       ({
-	8: testAudioTag,
-	9: testVideoTag,
-	18: testScriptTag
+        8: testAudioTag,
+        9: testVideoTag,
+        18: testScriptTag
       })[type](tag);
 
       // previous tag size
       equal(tag.bytes.byteLength - 4,
-	    tag.view.getUint32(tag.bytes.byteLength - 4),
-	    'the size of the previous tag is correct');
+            tag.view.getUint32(tag.bytes.byteLength - 4),
+            'the size of the previous tag is correct');
     }
   });
 
@@ -296,7 +296,7 @@
       manifestController = new window.videojs.hls.ManifestController();
       this.vjsget = vjs.get;
       vjs.get = function (url, success, error) {
-	success(window.brightcove_playlist_data);
+        success(window.brightcove_playlist_data);
       };
     },
     teardown: function () {
@@ -322,7 +322,7 @@
   test('should get a manifest from hermes', function () {
     manifestController.loadManifest('http://example.com/16x9-master.m3u8',
                                     function(responseData) {
-	                              ok(responseData);
+                                      ok(responseData);
                                     },
                                     function(errorData) {
                                       ok(false, 'does not error');
@@ -335,8 +335,8 @@
       segmentController = new window.videojs.hls.SegmentController();
       this.vjsget = vjs.get;
       vjs.get = function (url, success, error) {
-	console.log('load segment url', url);
-	success(window.bcSegment);
+        console.log('load segment url', url);
+        success(window.bcSegment);
       };
     },
     teardown: function () {

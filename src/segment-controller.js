@@ -15,7 +15,7 @@
       request.open('GET', segmentUrl, true);
       request.responseType = 'arraybuffer';
       request.onload = function(response) {
-	self.onSegmentLoadComplete(new Uint8Array(request.response));
+        self.onSegmentLoadComplete(new Uint8Array(request.response));
       };
 
       request.send(null);
@@ -47,17 +47,17 @@
       output = self.parseSegment(response);
 
       if (self.onDataCallback !== undefined) {
-	self.onDataCallback(output);
+        self.onDataCallback(output);
       }
     };
 
     self.onSegmentLoadError = function(error) {
       if (error) {
-	console.log(error.message);
+        console.log(error.message);
       }
 
       if (self.onErrorCallback !== undefined) {
-	onErrorCallback(error);
+        onErrorCallback(error);
       }
     };
   }
