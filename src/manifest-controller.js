@@ -1,8 +1,9 @@
 (function (window) {
-  var M3U8 = window.videojs.hls.M3U8;
-  var M3U8Parser = window.videojs.hls.M3U8Parser;
+  var
+    M3U8 = window.videojs.hls.M3U8,
+    M3U8Parser = window.videojs.hls.M3U8Parser;
 
-  window.videojs.hls.ManifestController = function () {
+  window.videojs.hls.ManifestController = function() {
     var self = this;
 
     self.parser;
@@ -13,7 +14,7 @@
     self.onErrorCallback;
     self.onUpdateCallback;
 
-    self.loadManifest = function (manifestUrl, onDataCallback, onErrorCallback, onUpdateCallback) {
+    self.loadManifest = function(manifestUrl, onDataCallback, onErrorCallback, onUpdateCallback) {
       self.url = manifestUrl;
 
       if (onDataCallback) {
@@ -30,7 +31,7 @@
       vjs.get(manifestUrl, self.onManifestLoadComplete, self.onManifestLoadError);
     };
 
-    self.parseManifest = function (dataAsString) {
+    self.parseManifest = function(dataAsString) {
       self.parser = new M3U8Parser();
       self.parser.directory = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/.exec(self.url).slice(1)[1];
       self.data = self.parser.parse(dataAsString);
@@ -38,7 +39,7 @@
       return self.data;
     };
 
-    self.onManifestLoadComplete = function (response) {
+    self.onManifestLoadComplete = function(response) {
       var output = self.parseManifest(response);
 
       if (self.onDataCallback != undefined) {
@@ -46,7 +47,7 @@
       }
     };
 
-    self.onManifestLoadError = function (err) {
+    self.onManifestLoadError = function(err) {
       if (self.onErrorCallback != undefined) {
 	self.onErrorCallback((err != undefined) ? err : null);
       }

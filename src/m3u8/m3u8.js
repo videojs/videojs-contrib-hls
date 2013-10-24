@@ -14,5 +14,5 @@
     this.playlistType = "";
     this.mediaSequence = -1;
     this.version = -1;
-  }
+  };
 })(this);

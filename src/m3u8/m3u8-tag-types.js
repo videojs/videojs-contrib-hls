@@ -1,7 +1,8 @@
 (function(window) {
   window.videojs.hls.m3u8TagType = {
     /*
-     * Derived from V8: http://tools.ietf.org/html/draft-pantos-http-live-streaming-08
+     * Derived from the HTTP Live Streaming Spec V8
+     * http://tools.ietf.org/html/draft-pantos-http-live-streaming-08
      */
 
     /**

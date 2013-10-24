@@ -249,14 +249,12 @@
 
   test('should create my parser', function () {
     ok(m3u8parser != undefined);
-  }
-      );
+  });
 
   test('should successfully parse manifest data', function () {
     var parsedData = m3u8parser.parse(window.playlistData);
     ok(parsedData);
-  }
-      );
+  });
 
   test('test for expected results', function () {
     var data = m3u8parser.parse(window.playlistData);
@@ -272,8 +270,7 @@
     equal(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
     equal(data.totalDuration, -1, "ZEN TOTAL DURATION is unknown as expected");
     equal(data.hasEndTag, true, 'should have ENDLIST tag');
-  }
-      );
+  });
 
   module('brightcove playlist', {
     setup: function () {
@@ -299,7 +296,6 @@
       manifestController = new window.videojs.hls.ManifestController();
       this.vjsget = vjs.get;
       vjs.get = function (url, success, error) {
-	console.log(url);
 	success(window.brightcove_playlist_data);
       };
     },
@@ -316,29 +312,22 @@
     var data = manifestController.parseManifest(window.brightcove_playlist_data);
 
     ok(data);
-
     equal(data.playlistItems.length, 4, 'Has correct rendition count');
     equal(data.playlistItems[0].bandwidth, 240000, 'First rendition index bandwidth is correct');
     equal(data.playlistItems[0]["program-id"], 1, 'First rendition index program-id is correct');
     equal(data.playlistItems[0].resolution.width, 396, 'First rendition index resolution width is correct');
     equal(data.playlistItems[0].resolution.height, 224, 'First rendition index resolution height is correct');
-  })
+  });
 
   test('should get a manifest from hermes', function () {
-    var hermesUrl = "http://localhost:7070/test/basic-playback/brightcove/16x9-master.m3u8";
-
-    manifestController.loadManifest(
-      hermesUrl,
-      function (responseData) {
-	ok(true);
-      },
-      function (errorData) {
-	console.log('got error data');
-      },
-      function (updateData) {
-	console.log('got update data');
-      }
-    )
+    manifestController.loadManifest('http://example.com/16x9-master.m3u8',
+                                    function(responseData) {
+	                              ok(responseData);
+                                    },
+                                    function(errorData) {
+                                      ok(false, 'does not error');
+                                    },
+                                    function(updateData) {});
   });
 
   module('segment controller', {
@@ -355,33 +344,11 @@
     }
   });
 
-  test('should get a segment data', function () {
-    ok(true);
-    var hermesUrl = "http://localhost:7070/test/ts-files/brightcove/s-1.ts";
-
-    segmentController.loadSegment(
-      hermesUrl,
-      function (responseData) {
-	console.log('got response from segment controller');
-	ok(true);
-
-      },
-      function (errorData) {
-	console.log('got error data');
-      },
-      function (updateData) {
-	console.log('got update data');
-      }
-    )
-  }
-      )
-
   test('bandwidth calulation test', function () {
-    var multiSecondData = segmentController.calculateThroughput(10000, 1000, 2000);
-    var subSecondData = segmentController.calculateThroughput(10000, 1000, 1500);
+    var
+      multiSecondData = segmentController.calculateThroughput(10000, 1000, 2000),
+      subSecondData = segmentController.calculateThroughput(10000, 1000, 1500);
     equal(multiSecondData, 80000, 'MULTI-Second bits per second calculation');
     equal(subSecondData, 160000, 'SUB-Second bits per second calculation');
-
-  })
-
+  });
 })(this);
