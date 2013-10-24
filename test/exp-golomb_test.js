@@ -21,8 +21,7 @@
   */
 var
   buffer,
-  expGolomb,
-  view;
+  expGolomb;
 
 module('Exponential Golomb coding');
 
