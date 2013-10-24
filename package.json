@@ -4,6 +4,7 @@
   "engines": {
     "node": ">= 0.8.0"
   },
+  "license": "Apache 2",
   "scripts": {
     "test": "grunt qunit"
   },
@@ -15,5 +16,9 @@
     "grunt-contrib-watch": "~0.4.0",
     "grunt-contrib-clean": "~0.4.0",
     "grunt": "~0.4.1"
+  },
+  "dependencies": {
+    "video.js": "~4.2.2",
+    "videojs-media-sources": "git+ssh://git@github.com/dmlap/videojs-media-sources.git"
   }
 }

@@ -4,40 +4,13 @@
   <meta charset="utf-8">
   <title>video.js HLS Plugin Example</title>
 
-  <link href="http://vjs.zencdn.net/4.0/video-js.css" rel="stylesheet">
+  <link href="node_modules/video.js/video-js.css" rel="stylesheet">
   
   <!-- video.js -->
-  <script src="libs/video-js/src/js/core.js"></script>
-  <script src="libs/video-js/src/js/core-object.js"></script>
-  <script src="libs/video-js/src/js/events.js"></script>
-  <script src="libs/video-js/src/js/lib.js"></script>
-  <script src="libs/video-js/src/js/component.js"></script>
-  <script src="libs/video-js/src/js/button.js"></script>
-  <script src="libs/video-js/src/js/slider.js"></script>
-  <script src="libs/video-js/src/js/menu.js"></script>
-  <script src="libs/video-js/src/js/player.js"></script>
-  <script src="libs/video-js/src/js/control-bar/control-bar.js"></script>
-  <script src="libs/video-js/src/js/control-bar/play-toggle.js"></script>
-  <script src="libs/video-js/src/js/control-bar/time-display.js"></script>
-  <script src="libs/video-js/src/js/control-bar/fullscreen-toggle.js"></script>
-  <script src="libs/video-js/src/js/control-bar/progress-control.js"></script>
-  <script src="libs/video-js/src/js/control-bar/volume-control.js"></script>
-  <script src="libs/video-js/src/js/control-bar/mute-toggle.js"></script>
-  <script src="libs/video-js/src/js/control-bar/volume-menu-button.js"></script>
-  <script src="libs/video-js/src/js/poster.js"></script>
-  <script src="libs/video-js/src/js/loading-spinner.js"></script>
-  <script src="libs/video-js/src/js/big-play-button.js"></script>
-  <script src="libs/video-js/src/js/media/media.js"></script>
-  <script src="libs/video-js/src/js/media/html5.js"></script>
-  <script src="libs/video-js/src/js/media/flash.js"></script>
-  <script src="libs/video-js/src/js/media/loader.js"></script>
-  <script src="libs/video-js/src/js/tracks.js"></script>
-  <script src="libs/video-js/src/js/json.js"></script>
-  <script src="libs/video-js/src/js/setup.js"></script>
-  <script src="libs/video-js/src/js/plugins.js"></script>
+  <script src="node_modules/video.js/video.dev.js"></script>
 
   <!-- Media Sources plugin -->
-  <script src="libs/videojs-media-sources.js"></script>
+  <script src="node_modules/videojs-media-sources/videojs-media-sources.js"></script>
 
   <!-- HLS plugin -->
   <script src="src/video-js-hls.js"></script>
@@ -64,62 +37,61 @@
 
 </head>
 <body>
-  <video id='video'
+  <video id="video"
          class="video-js vjs-default-skin"
          height="300"
          width="600"
          controls>
   </video>
   <script>
-    var video, mediaSource, manifester;
+    var video, mediaSource;
 
     // initialize the player
-    videojs.options.flash.swf = "libs/video-js.swf";
+    videojs.options.flash.swf = 'node_modules/videojs-media-sources/video-js-with-mse.swf';
     video = videojs('video');
-
-    // get the manifest
-    manifester = new videojs.hls.ManifestController();
-    manifester.loadManifest('test/fixtures/prog_index.m3u8', function(manifest) {
-      var segmenter = new videojs.hls.SegmentController();
-      segmenter.loadSegment('test/fixtures/' + manifest.mediaItems[0].url, function(response) {
-        var segment = response.whatever;
     
-        // create a media source
-        mediaSource = new videojs.MediaSource();
-        mediaSource.addEventListener('sourceopen', function(event){
-          var parser;
+    // create a media source
+    mediaSource = new videojs.MediaSource();
+    mediaSource.addEventListener('sourceopen', function(event){
+      var
+        parser = new videojs.hls.SegmentParser(),
+        sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
+        everything = [];
 
-          // feed parsed bytes into the player
-          var sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
-          parser = new videojs.hls.SegmentParser();
-          sourceBuffer.appendBuffer(parser.getFlvHeader(), video);
+      // feed parsed bytes into the player
+      everything.push(parser.getFlvHeader());
+      sourceBuffer.appendBuffer(everything[everything.length - 1], video);
 
-          parser.parseSegmentBinaryData(segment);
+      parser.parseSegmentBinaryData(window.bcSegment);
 
-          while (parser.tagsAvailable()) {
-           sourceBuffer.appendBuffer(parser.getNextTag().bytes, video);
-          }
-          
-          segmenter.loadSegment('test/fixtures/' + manifest.mediaItems[1].url, function(response) {
-            var
-              segment = response.whatever,
-              parser = new videojs.hls.SegmentParser();
-            
-            parser.parseSegmentBinaryData(segment);
+      while (parser.tagsAvailable()) {
+        everything.push(parser.getNextTag().bytes);
+        sourceBuffer.appendBuffer(everything[everything.length - 1], video);
+      }
+      parser.flushTags();
+      while (parser.tagsAvailable()) {
+        everything.push(parser.getNextTag().bytes);
+        sourceBuffer.appendBuffer(everything[everything.length - 1], video);
+      }
 
-            while (parser.tagsAvailable()) {
-              sourceBuffer.appendBuffer(parser.getNextTag().bytes, video);
-            }
-          });
-        }, false);
+      var iframe = document.createElement('iframe');
+      iframe.src = 'data:video/x-flv;base64,' + window.btoa((Array.prototype.map.call(everything.reduce(function(result, next) {
+        var array = new Uint8Array(result.byteLength + next.byteLength);
+        array.set(result);
+        array.set(next, result.length);
+        return array;
+      }), function(byte) {
+        return String.fromCharCode(byte);
+      })).join(''));
+      //console.log(iframe);
+      // document.body.appendChild(iframe);
+    }, false);
 
-        url = videojs.URL.createObjectURL(mediaSource);
+    url = videojs.URL.createObjectURL(mediaSource);
   
-        video.src({ 
-          src: url, 
-          type: "video/flv"
-        });
-      });
+    video.src({ 
+      src: url, 
+      type: "video/flv"
     });
   </script>
 </body>
