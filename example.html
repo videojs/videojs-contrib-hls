@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>video.js HLS Plugin Example</title>
+    <meta charset="utf-8">
+    <title>video.js HLS Plugin Example</title>
 
   <link href="node_modules/video.js/video-js.css" rel="stylesheet">
   
@@ -25,9 +25,11 @@
 
   <!-- m3u8 handling -->
   <script src="src/m3u8/m3u8.js"></script>
-  <script src="src/m3u8/m3u8-parser.js"></script>
   <script src="src/m3u8/m3u8-tag-types.js"></script>
+  <script src="src/m3u8/m3u8-parser.js"></script>
   <script src="src/manifest-controller.js"></script>
+  <script src="src/segment-controller.js"></script>
+  <script src="src/hls-playback-controller.js"></script>
   
   <!-- example MPEG2-TS segments -->
   <!-- bipbop -->
@@ -48,51 +50,12 @@
 
     // initialize the player
     videojs.options.flash.swf = 'node_modules/videojs-media-sources/video-js-with-mse.swf';
-    video = videojs('video');
-    
-    // create a media source
-    mediaSource = new videojs.MediaSource();
-    mediaSource.addEventListener('sourceopen', function(event){
-      var
-        parser = new videojs.hls.SegmentParser(),
-        sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
-        everything = [];
-
-      // feed parsed bytes into the player
-      everything.push(parser.getFlvHeader());
-      sourceBuffer.appendBuffer(everything[everything.length - 1], video);
-
-      parser.parseSegmentBinaryData(window.bcSegment);
-
-      while (parser.tagsAvailable()) {
-        everything.push(parser.getNextTag().bytes);
-        sourceBuffer.appendBuffer(everything[everything.length - 1], video);
-      }
-      parser.flushTags();
-      while (parser.tagsAvailable()) {
-        everything.push(parser.getNextTag().bytes);
-        sourceBuffer.appendBuffer(everything[everything.length - 1], video);
-      }
-
-      var iframe = document.createElement('iframe');
-      iframe.src = 'data:video/x-flv;base64,' + window.btoa((Array.prototype.map.call(everything.reduce(function(result, next) {
-        var array = new Uint8Array(result.byteLength + next.byteLength);
-        array.set(result);
-        array.set(next, result.length);
-        return array;
-      }), function(byte) {
-        return String.fromCharCode(byte);
-      })).join(''));
-      //console.log(iframe);
-      // document.body.appendChild(iframe);
-    }, false);
-
-    url = videojs.URL.createObjectURL(mediaSource);
-  
-    video.src({ 
-      src: url, 
-      type: "video/flv"
+    video = videojs('video',{},function(){
+      this.playbackController = new window.videojs.hls.HLSPlaybackController(this);
+      this.playbackController.loadManifest("http://localhost:7070/test/basic-playback/zencoder/gogo/manifest.m3u8",function(data){console.log(data)});
     });
   </script>
+
+
 </body>
 </html>

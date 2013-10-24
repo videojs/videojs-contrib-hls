@@ -1,19 +1,18 @@
 (function(window) {
 
-	var SegmentParser = window.videojs.hls.SegmentParser;
-
 	window.videojs.hls.SegmentController = function(){
 
 		var self = this;
-		var url;
-		var parser;
-		var requestTimestamp;
-		var responseTimestamp;
-		var data;
 
-		var onDataCallback;
-		var onErrorCallback;
-		var onUpdateCallback;
+		self.url;
+
+		self.requestTimestamp;
+		self.responseTimestamp;
+		self.data;
+
+		self.onDataCallback;
+		self.onErrorCallback;
+		self.onUpdateCallback;
 
 		self.loadSegment = function ( segmentUrl, onDataCallback, onErrorCallback, onUpdateCallback ) {
 			self.url = segmentUrl;
@@ -22,29 +21,31 @@
 			self.onUpdateCallback = onUpdateCallback;
 			self.requestTimestamp = new Date().getTime();
 
-                        var req = new XMLHttpRequest();
-                        req.open('GET', segmentUrl, true);
-                        req.responseType = 'arraybuffer';
-                        req.onload = function(response) {
-                          self.onSegmentLoadComplete(new Uint8Array(req.response));
-                        };
-                  
-                  req.send(null);
+			var req = new XMLHttpRequest();
+				req.open('GET', segmentUrl, true);
+				req.responseType = 'arraybuffer';
+				req.onload = function(response) {
+					self.onSegmentLoadComplete(new Uint8Array(req.response));
+				};
+
+			req.send(null);
+
+			//vjs.get(segmentUrl, self.onSegmentLoadComplete, self.onSegmentLoadError);
 		};
 
 		self.parseSegment = function ( incomingData ) {
 			// Add David's code later //
+			console.log('got segment data', incomingData.byteLength);
 
-			self.data = {
-                          whatever: incomingData
-                        };
+			self.data = {};
+			self.data.binaryData = incomingData;
 			self.data.url = self.url;
 			self.data.isCached = false;
 			self.data.requestTimestamp = self.requestTimestamp;
 			self.data.responseTimestamp = self.responseTimestamp;
 			self.data.byteLength = incomingData.byteLength;
 			self.data.isCached = ( parseInt(self.responseTimestamp - self.requestTimestamp) < 75 );
-			self.data.throughput = self.calculateThroughput(self.data.byteLength, self.requestTimestamp ,self.responseTimestamp)
+			self.data.throughput = self.calculateThroughput(self.data.byteLength, self.requestTimestamp ,self.responseTimestamp);
 
 			return self.data;
 		};

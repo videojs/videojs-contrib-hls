@@ -4,6 +4,8 @@
 		window.videojs.hls.M3U8Parser = function() {
 
         var self = this;
+						self.directory;
+
 	      var tagTypes = window.videojs.hls.m3u8TagType;
 	      var lines = [];
 	      var data;
@@ -30,6 +32,11 @@
 
 	      self.parse = function( rawDataString ) {
 		      data = new M3U8();
+
+		      if(self.directory)
+		      {
+			      data.directory = self.directory;
+		      }
 
 	        if( rawDataString != undefined && rawDataString.toString().length > 0 )
 		      {
@@ -70,6 +77,15 @@
 									    } else
 									    {
 										    segment.url = lines[index+1];
+									    }
+
+									    if(segment.url.indexOf("http")===-1 && self.directory)
+									    {
+										    if(data.directory[data.directory.length-1] === segment.url[0] && segment.url[0] === "/")
+										    {
+											    segment.url = segment.url.substr(1);
+											  }
+										    segment.url = self.directory + segment.url;
 									    }
 
 									    data.mediaItems.push(segment);
@@ -116,7 +132,7 @@
 									    break;
 
 								    case tagTypes.ZEN_TOTAL_DURATION:
-									    data.totalDuration = self.getTagValue(value);
+									    data.totalDuration = Number(self.getTagValue(value));
 									    break;
 
 								    case tagTypes.VERSION:

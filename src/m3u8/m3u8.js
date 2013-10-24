@@ -1,5 +1,6 @@
 (function(window) {
 	window.videojs.hls.M3U8 = function() {
+		this.directory = "";
 		this.allowCache = "NO";
 		this.playlistItems = [];
 		this.mediaItems = [];
