@@ -1,18 +1,9 @@
 (function (window) {
   var
-    M3U8 = window.videojs.hls.M3U8,
     M3U8Parser = window.videojs.hls.M3U8Parser;
 
   window.videojs.hls.ManifestController = function() {
     var self = this;
-
-    self.parser;
-    self.data;
-    self.url;
-
-    self.onDataCallback;
-    self.onErrorCallback;
-    self.onUpdateCallback;
 
     self.loadManifest = function(manifestUrl, onDataCallback, onErrorCallback, onUpdateCallback) {
       self.url = manifestUrl;
@@ -28,7 +19,7 @@
         self.onUpdateCallback = onUpdateCallback;
       }
 
-      vjs.get(manifestUrl, self.onManifestLoadComplete, self.onManifestLoadError);
+      window.vjs.get(manifestUrl, self.onManifestLoadComplete, self.onManifestLoadError);
     };
 
     self.parseManifest = function(dataAsString) {
@@ -42,15 +33,15 @@
     self.onManifestLoadComplete = function(response) {
       var output = self.parseManifest(response);
 
-      if (self.onDataCallback != undefined) {
+      if (self.onDataCallback !== undefined) {
         self.onDataCallback(output);
       }
     };
 
     self.onManifestLoadError = function(err) {
-      if (self.onErrorCallback != undefined) {
-        self.onErrorCallback((err != undefined) ? err : null);
+      if (self.onErrorCallback !== undefined) {
+        self.onErrorCallback((err !== undefined) ? err : null);
       }
     };
-  }
+  };
 })(this);

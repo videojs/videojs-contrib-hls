@@ -38,11 +38,11 @@
       lines = rawDataString.split('\n');
 
       lines.forEach(function(value,index) {
-        var segment, rendition, attribute;
+        var segment, rendition, attributes;
 
         switch (self.getTagType(value)) {
         case tagTypes.EXTM3U:
-          data.hasValidM3UTag = (index == 0);
+          data.hasValidM3UTag = (index === 0);
           if (!data.hasValidM3UTag) {
             data.invalidReasons.push("Invalid EXTM3U Tag");
           }
@@ -95,12 +95,12 @@
 
               if (rendition[attrValue.split('=')[0].toLowerCase()].split('x').length === 2) {
                 rendition.resolution = {
-                  width: parseInt(rendition[attrValue.split('=')[0].toLowerCase()].split('x')[0]),
-                  height: parseInt(rendition[attrValue.split('=')[0].toLowerCase()].split('x')[1])
-                }
+                  width: parseInt(rendition[attrValue.split('=')[0].toLowerCase()].split('x')[0],10),
+                  height: parseInt(rendition[attrValue.split('=')[0].toLowerCase()].split('x')[1],10)
+                };
               }
             } else {
-              rendition[attrValue.split('=')[0].toLowerCase()] = parseInt(attrValue.split('=')[1]);
+              rendition[attrValue.split('=')[0].toLowerCase()] = parseInt(attrValue.split('=')[1],10);
             }
           });
 
@@ -128,7 +128,7 @@
           break;
 
         case tagTypes.MEDIA_SEQUENCE:
-          data.mediaSequence = parseInt(self.getTagValue(value));
+          data.mediaSequence = parseInt(self.getTagValue(value),10);
           break;
 
         case tagTypes.ALLOW_CACHE:

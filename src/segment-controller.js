@@ -14,7 +14,7 @@
 
       request.open('GET', segmentUrl, true);
       request.responseType = 'arraybuffer';
-      request.onload = function(response) {
+      request.onload = function() {
         self.onSegmentLoadComplete(new Uint8Array(request.response));
       };
 
@@ -29,7 +29,7 @@
       self.data.requestTimestamp = self.requestTimestamp;
       self.data.responseTimestamp = self.responseTimestamp;
       self.data.byteLength = incomingData.byteLength;
-      self.data.isCached = parseInt(self.responseTimestamp - self.requestTimestamp) < 75;
+      self.data.isCached = parseInt(self.responseTimestamp - self.requestTimestamp,10) < 75;
       self.data.throughput = self.calculateThroughput(self.data.byteLength, self.requestTimestamp ,self.responseTimestamp);
 
       return self.data;
@@ -37,7 +37,7 @@
 
     self.calculateThroughput = function(dataAmount, startTime, endTime) {
       return Math.round(dataAmount / (endTime - startTime) * 1000) * 8;
-    }
+    };
 
     self.onSegmentLoadComplete = function(response) {
       var output;
@@ -57,8 +57,8 @@
       }
 
       if (self.onErrorCallback !== undefined) {
-        onErrorCallback(error);
+        self.onErrorCallback(error);
       }
     };
-  }
+  };
 })(this);
