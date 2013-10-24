@@ -4,19 +4,21 @@
       var
         bytes = Array.prototype.slice.call(data),
         step = 16,
-        hex,
-        ascii;
-      for (var j = 0; j < bytes.length / step; j++) {
-        hex = bytes.slice(j * step, j * step + step).map(function(e) {
+        formatHexString = function(e) {
           var value = e.toString(16);
           return "00".substring(0, 2 - value.length) + value;
-        }).join(' ');
-        ascii = bytes.slice(j * step, j * step + step).map(function(e) {
+        },
+        formatAsciiString = function(e) {
           if (e > 32 && e < 125) {
             return String.fromCharCode(e);
           }
           return '.';
-        }).join('');
+        },
+        hex,
+        ascii;
+      for (var j = 0; j < bytes.length / step; j++) {
+        hex = bytes.slice(j * step, j * step + step).map(formatHexString).join(' ');
+        ascii = bytes.slice(j * step, j * step + step).map(formatAsciiString).join('');
         return hex + '  ' + ascii;
       }
     },
