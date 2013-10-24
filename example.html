@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>video.js HLS Plugin Example</title>
+  <meta charset="utf-8">
+  <title>video.js HLS Plugin Example</title>
 
   <link href="node_modules/video.js/video-js.css" rel="stylesheet">
   
@@ -52,7 +52,7 @@
     videojs.options.flash.swf = 'node_modules/videojs-media-sources/video-js-with-mse.swf';
     video = videojs('video',{},function(){
       this.playbackController = new window.videojs.hls.HLSPlaybackController(this);
-      this.playbackController.loadManifest("http://localhost:7070/test/basic-playback/zencoder/gogo/manifest.m3u8",function(data){console.log(data)});
+      this.playbackController.loadManifest('http://localhost:7070/test/basic-playback/zencoder/gogo/manifest.m3u8',function(data){console.log(data)});
     });
   </script>
 
