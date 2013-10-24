@@ -391,10 +391,10 @@
               return this.writeBytes(data, offset + 2, length - 2);
             }
 
-            if (2 < length
-                && 0 === data[offset]
-                && 0 === data[offset + 1]
-                && 1 === data[offset + 2]) {
+            if (2 < length &&
+                0 === data[offset] &&
+                0 === data[offset + 1] &&
+                1 === data[offset + 2]) {
               // 00 | 00 00 01
               h264Frame.length -= 1;
               state = 3;
