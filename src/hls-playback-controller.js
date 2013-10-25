@@ -20,7 +20,15 @@
     // register external callbacks
     self.rendition = function(rendition) {
       self.currentRendition = rendition;
-      self.loadManifest(self.currentRendition.url, self.onM3U8LoadComplete, self.onM3U8LoadError, self.onM3U8Update);
+      self.loadManifestWithMediaSources(self.currentRendition.url, self.onM3U8LoadComplete, self.onM3U8LoadError, self.onM3U8Update);
+    };
+
+    self.loadManifestWithMediaSources = function(manifestUrl,onDataCallback) {
+      self.manifestController = new ManifestController();
+      self.manifestController.loadManifest(manifestUrl, self.onM3U8LoadComplete, self.onM3U8LoadError, self.onM3U8Update);
+      if (onDataCallback) {
+        self.manifestLoadCompleteCallback = onDataCallback;
+      }
     };
 
     self.loadManifest = function(manifestUrl, onDataCallback) {
