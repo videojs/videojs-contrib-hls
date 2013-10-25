@@ -55,7 +55,7 @@
           if (self.getTagValue(value) === "VOD" ||
               self.getTagValue(value) === "EVENT") {
             data.playlistType = self.getTagValue(value);
-            data.isPlaylist = true;
+
           } else {
             data.invalidReasons.push("Invalid Playlist Type Value");
           }
