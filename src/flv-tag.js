@@ -47,7 +47,6 @@ hls.FlvTag = function(type, extraData) {
     try {
       this.bytes.set(bytes.subarray(offset, offset + length), this.position);
     } catch(e) {
-      console.log(e);
       throw e;
     }
     this.position += length;

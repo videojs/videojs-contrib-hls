@@ -65,18 +65,8 @@
       }
     };
 
-    self.onM3U8LoadError = function(error) {
-      if(error)
-      {
-        console.log(error);
-      }
-    };
-    self.onM3U8Update = function(m3u8) {
-      if(m3u8)
-      {
-        console.log(m3u8);
-      }
-    };
+    self.onM3U8LoadError = function() {};
+    self.onM3U8Update = function() {};
 
     self.loadSegment = function(segment) {
       self.segmentController = new SegmentController();
@@ -100,12 +90,7 @@
       self.loadSegment(self.currentManifest.mediaItems[self.currentSegment]);
     };
 
-    self.onSegmentLoadError = function(error) {
-      if(error)
-      {
-        console.log(error);
-      }
-    };
+    self.onSegmentLoadError = function() {};
 
   };
 })(this);

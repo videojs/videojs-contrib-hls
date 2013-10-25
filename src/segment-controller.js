@@ -53,7 +53,7 @@
 
     self.onSegmentLoadError = function(error) {
       if (error) {
-        console.log(error.message);
+        throw error;
       }
 
       if (self.onErrorCallback !== undefined) {

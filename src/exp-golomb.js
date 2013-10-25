@@ -25,10 +25,6 @@ window.videojs.hls.ExpGolomb = function(workingData) {
     return (8 * workingBytesAvailable) + workingBitsAvailable;
   };
 
-  this.logStuff = function() {
-    console.log('bits', workingBitsAvailable, 'word', (workingWord >>> 0));
-  };
-
   // ():void
   this.loadWord = function() {
     var
