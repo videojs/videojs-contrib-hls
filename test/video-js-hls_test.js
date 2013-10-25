@@ -4,37 +4,38 @@
     http://api.qunitjs.com/
 
     Test methods:
-      module(name, {[setup][ ,teardown]})
-      test(name, callback)
-      expect(numberOfAssertions)
-      stop(increment)
-      start(decrement)
+    module(name, {[setup][ ,teardown]})
+    test(name, callback)
+    expect(numberOfAssertions)
+    stop(increment)
+    start(decrement)
     Test assertions:
-      ok(value, [message])
-      equal(actual, expected, [message])
-      notEqual(actual, expected, [message])
-      deepEqual(actual, expected, [message])
-      notDeepEqual(actual, expected, [message])
-      strictEqual(actual, expected, [message])
-      notStrictEqual(actual, expected, [message])
-      throws(block, [expected], [message])
+    ok(value, [message])
+    equal(actual, expected, [message])
+    notEqual(actual, expected, [message])
+    deepEqual(actual, expected, [message])
+    notDeepEqual(actual, expected, [message])
+    strictEqual(actual, expected, [message])
+    notStrictEqual(actual, expected, [message])
+    throws(block, [expected], [message])
   */
   var
-	  manifestController,
-	  segmentController,
-	  m3u8parser,
+    manifestController,
+    segmentController,
+    m3u8parser,
     parser,
 
-    expectedHeader = [
-      0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00,
-      0x09, 0x00, 0x00, 0x00, 0x00
-    ],
-    testAudioTag,
-    testVideoTag,
-    testScriptTag,
-    asciiFromBytes,
-    testScriptString,
-    testScriptEcmaArray;
+  expectedHeader = [
+    0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00,
+    0x09, 0x00, 0x00, 0x00, 0x00
+  ],
+  testAudioTag,
+  testVideoTag,
+  testScriptTag,
+  asciiFromBytes,
+  testScriptString,
+  testScriptEcmaArray,
+  testNalUnit;
 
   module('environment');
 
@@ -61,13 +62,9 @@
   });
 
   test('parses the first bipbop segment', function() {
-    var tag, bytes, i;
     parser.parseSegmentBinaryData(window.bcSegment);
-    
-    ok(parser.tagsAvailable(), 'tags are available');
 
-    console.log('h264 tags:', parser.stats.h264Tags(),
-                'aac tags:', parser.stats.aacTags());
+    ok(parser.tagsAvailable(), 'tags are available');
   });
 
   testAudioTag = function(tag) {
@@ -87,17 +84,15 @@
     ok(aacPacketType === 0 || aacPacketType === 1, 'aac packets should have a valid type');
   };
 
-  testVideoTag = function(tag) {
+  testVideoTag = function (tag) {
     var
       byte = tag.bytes[11],
       frameType = (byte & 0xF0) >>> 4,
       codecId = byte & 0x0F,
       packetType = tag.bytes[12],
-      compositionTime = (tag.view.getInt32(13) & 0xFFFFFF00) >> 8,
-      nalHeader;
+      compositionTime = (tag.view.getInt32(13) & 0xFFFFFF00) >> 8;
 
     // payload starts at tag.bytes[16]
-
 
     // XXX: I'm not sure that frame types 3-5 are invalid
     ok(frameType === 1 || frameType === 2,
@@ -110,7 +105,7 @@
             compositionTime,
             'the composition time is zero for non-NALU packets');
     }
-    
+
     // TODO: the rest of the bytes are an NLU unit
     if (packetType === 0) {
       // AVC decoder configuration record
@@ -122,15 +117,15 @@
 
   testNalUnit = function(bytes) {
     var
-      nalHeader = bytes[0],
-      unitType = nalHeader & 0x1F;
+      nalHeader = bytes[0];
+      // unitType = nalHeader & 0x1F;
 
     equal(0, (nalHeader & 0x80) >>> 7, 'the first bit is always 0');
     // equal(90, (nalHeader & 0x60) >>> 5, 'the NAL reference indicator is something');
     // ok(unitType > 0, 'NAL unit type ' + unitType + ' is greater than 0');
     // ok(unitType < 22 , 'NAL unit type ' + unitType + ' is less than 22');
   };
-  
+
 
   asciiFromBytes = function(bytes) {
     var
@@ -144,10 +139,10 @@
   };
 
   testScriptString = function(tag, offset, expected) {
-    var type = tag.bytes[offset],
-        stringLength = tag.view.getUint16(offset + 1),
-        string,
-        i = expected.length;
+    var
+      type = tag.bytes[offset],
+      stringLength = tag.view.getUint16(offset + 1),
+      string;
 
     equal(2, type, 'the script element is of string type');
     equal(stringLength, expected.length, 'the script string length is correct');
@@ -214,7 +209,7 @@
       // generic flv headers
       ok(type === 8 || type === 9 || type === 18,
          'the type field specifies audio, video or script');
-      
+
       byte = (tag.view.getUint32(1) & 0xFFFFFF00) >>> 8;
       equal(tag.bytes.byteLength - 11 - 4, byte, 'the size field is correct');
 
@@ -236,151 +231,117 @@
     }
   });
 
-	/*
-		M3U8 Test Suite
-	 */
+  /*
+    M3U8 Test Suite
+  */
 
   module('m3u8 parser', {
     setup: function() {
-	    m3u8parser = new window.videojs.hls.M3U8Parser();
+      m3u8parser = new window.videojs.hls.M3U8Parser();
     }
   });
 
-	test('should create my parser', function() {
-		 ok(m3u8parser != undefined);
-		}
-	);
+  test('should create my parser', function() {
+    ok(m3u8parser !== undefined);
+  });
 
-	test('should successfully parse manifest data', function() {
-			var parsedData = m3u8parser.parse(window.playlistData);
-			ok(parsedData);
-		}
-	);
+  test('should successfully parse manifest data', function() {
+    var parsedData = m3u8parser.parse(window.playlistData);
+    ok(parsedData);
+  });
 
-	test('test for expected results', function() {
-			var data = m3u8parser.parse(window.playlistData);
+  test('test for expected results', function() {
+    var data = m3u8parser.parse(window.playlistData);
 
-			notEqual(data, null, 'data is not NULL');
-			equal(data.invalidReasons.length, 0,'data has 0 invalid reasons');
-			equal(data.hasValidM3UTag, true, 'data has valid EXTM3U');
-			equal(data.targetDuration, 10, 'data has correct TARGET DURATION');
-			equal(data.allowCache, "NO", 'acceptable ALLOW CACHE');
-			equal(data.isPlaylist, true, 'data is parsed as a PLAYLIST as expected');
-			equal(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
-			equal(data.mediaItems.length, 16, 'acceptable mediaItem count');
-			equal(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
-			equal(data.totalDuration, -1, "ZEN TOTAL DURATION is unknown as expected");
-			equal(data.hasEndTag, true, 'should have ENDLIST tag');
-		}
-	);
+    notEqual(data, null, 'data is not NULL');
+    equal(data.invalidReasons.length, 0, 'data has 0 invalid reasons');
+    equal(data.hasValidM3UTag, true, 'data has valid EXTM3U');
+    equal(data.targetDuration, 10, 'data has correct TARGET DURATION');
+    equal(data.allowCache, "NO", 'acceptable ALLOW CACHE');
+    equal(data.isPlaylist, true, 'data is parsed as a PLAYLIST as expected');
+    equal(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
+    equal(data.mediaItems.length, 16, 'acceptable mediaItem count');
+    equal(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
+    equal(data.totalDuration, -1, "ZEN TOTAL DURATION is unknown as expected");
+    equal(data.hasEndTag, true, 'should have ENDLIST tag');
+  });
 
-	module('brightcove playlist', {
-		setup: function() {
-			m3u8parser = new window.videojs.hls.M3U8Parser();
-		}
-	});
+  module('brightcove playlist', {
+    setup: function() {
+      m3u8parser = new window.videojs.hls.M3U8Parser();
+    }
+  });
 
-	test('should parse a brightcove manifest data', function() {
-		  var data = m3u8parser.parse(window.brightcove_playlist_data);
+  test('should parse a brightcove manifest data', function() {
+    var data = m3u8parser.parse(window.brightcove_playlist_data);
 
-			ok(data);
-			equal(data.playlistItems.length, 4, 'Has correct rendition count');
-			equal(data.playlistItems[0].bandwidth, 240000, 'First rendition index bandwidth is correct' );
-			equal(data.playlistItems[0]["program-id"], 1, 'First rendition index program-id is correct' );
-			equal(data.playlistItems[0].resolution.width, 396, 'First rendition index resolution width is correct' );
-			equal(data.playlistItems[0].resolution.height, 224, 'First rendition index resolution height is correct' );
+    ok(data);
+    equal(data.playlistItems.length, 4, 'Has correct rendition count');
+    equal(data.playlistItems[0].bandwidth, 240000, 'First rendition index bandwidth is correct');
+    equal(data.playlistItems[0]["program-id"], 1, 'First rendition index program-id is correct');
+    equal(data.playlistItems[0].resolution.width, 396, 'First rendition index resolution width is correct');
+    equal(data.playlistItems[0].resolution.height, 224, 'First rendition index resolution height is correct');
 
-		}
-	);
+  }
+      );
 
-	module('manifest controller', {
-		setup: function() {
-			manifestController = new window.videojs.hls.ManifestController();
-			this.vjsget = vjs.get;
-			vjs.get = function(url, success, error){
-				console.log(url);
-				success(window.brightcove_playlist_data);
-			};
-		},
-		teardown: function() {
-			vjs.get = this.vjsget;
-		}
-	});
+  module('manifest controller', {
+    setup: function() {
+      manifestController = new window.videojs.hls.ManifestController();
+      this.vjsget = window.videojs.get;
+      window.videojs.get = function(url, success) {
+        success(window.brightcove_playlist_data);
+      };
+    },
+    teardown: function() {
+      window.videojs.get = this.vjsget;
+    }
+  });
 
-	test('should create', function() {
-		ok(manifestController);
-	});
+  test('should create', function() {
+    ok(manifestController);
+  });
 
-	test('should return a parsed object', function() {
-		var data = manifestController.parseManifest(window.brightcove_playlist_data);
+  test('should return a parsed object', function() {
+    var data = manifestController.parseManifest(window.brightcove_playlist_data);
 
-		ok(data);
+    ok(data);
+    equal(data.playlistItems.length, 4, 'Has correct rendition count');
+    equal(data.playlistItems[0].bandwidth, 240000, 'First rendition index bandwidth is correct');
+    equal(data.playlistItems[0]["program-id"], 1, 'First rendition index program-id is correct');
+    equal(data.playlistItems[0].resolution.width, 396, 'First rendition index resolution width is correct');
+    equal(data.playlistItems[0].resolution.height, 224, 'First rendition index resolution height is correct');
+  });
 
-		equal(data.playlistItems.length, 4, 'Has correct rendition count');
-		equal(data.playlistItems[0].bandwidth, 240000, 'First rendition index bandwidth is correct' );
-		equal(data.playlistItems[0]["program-id"], 1, 'First rendition index program-id is correct' );
-		equal(data.playlistItems[0].resolution.width, 396, 'First rendition index resolution width is correct' );
-		equal(data.playlistItems[0].resolution.height, 224, 'First rendition index resolution height is correct' );
-	})
+  test('should get a manifest from hermes', function() {
+    manifestController.loadManifest('http://example.com/16x9-master.m3u8',
+                                    function(responseData) {
+                                      ok(responseData);
+                                    },
+                                    function() {
+                                      ok(false, 'does not error');
+                                    },
+                                    function() {});
+  });
 
-	test('should get a manifest from hermes', function() {
-		var hermesUrl = "http://localhost:7070/test/basic-playback/brightcove/16x9-master.m3u8";
+  module('segment controller', {
+    setup: function() {
+      segmentController = new window.videojs.hls.SegmentController();
+      this.vjsget = window.videojs.get;
+      window.videojs.get = function(url, success) {
+        success(window.bcSegment);
+      };
+    },
+    teardown: function() {
+      window.videojs.get = this.vjsget;
+    }
+  });
 
-		manifestController.loadManifest(
-			hermesUrl,
-			function(responseData){
-				ok(true);
-			},
-			function(errorData){
-				console.log('got error data');
-			},
-			function(updateData){
-				console.log('got update data');
-			}
-		)
-	});
-
-	module('segment controller', {
-		setup: function() {
-			segmentController = new window.videojs.hls.SegmentController();
-			this.vjsget = vjs.get;
-			vjs.get = function(url, success, error){
-				console.log('load segment url', url);
-				success(window.bcSegment);
-			};
-		},
-		teardown: function() {
-			vjs.get = this.vjsget;
-		}
-	});
-
-	test('should get a segment data', function() {
-			ok(true);
-			var hermesUrl = "http://localhost:7070/test/ts-files/brightcove/s-1.ts";
-
-			segmentController.loadSegment(
-				hermesUrl,
-				function(responseData){
-					console.log('got response from segment controller');
-					ok(true);
-
-				},
-				function(errorData){
-					console.log('got error data');
-				},
-				function(updateData){
-					console.log('got update data');
-				}
-			)
-		}
-	)
-
-	test('bandwidth calulation test', function() {
-		var multiSecondData = segmentController.calculateThroughput(10000,1000,2000);
-		var subSecondData = segmentController.calculateThroughput(10000,1000,1500);
-		equal(multiSecondData, 80000, 'MULTI-Second bits per second calculation');
-		equal(subSecondData, 160000, 'SUB-Second bits per second calculation');
-
-	})
-
+  test('bandwidth calulation test', function() {
+    var
+      multiSecondData = segmentController.calculateThroughput(10000, 1000, 2000),
+      subSecondData = segmentController.calculateThroughput(10000, 1000, 1500);
+    equal(multiSecondData, 80000, 'MULTI-Second bits per second calculation');
+    equal(subSecondData, 160000, 'SUB-Second bits per second calculation');
+  });
 })(this);

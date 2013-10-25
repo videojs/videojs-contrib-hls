@@ -90,8 +90,6 @@
           } else if (0 !== sps0[offset + 0]) {
             offset += 1;
           } else {
-            console.log('found emulation bytes');
-
             rbsp.set([0x00, 0x00], rbspCount);
             spsCount += 2;
             rbspCount += 2;
@@ -311,7 +309,6 @@
     };
 
     this.finishFrame = function() {
-      console.log('finish frame');
       if (h264Frame) {
         // Push SPS before EVERY IDR frame fo seeking
         if (newExtraData.extraDataExists()) {

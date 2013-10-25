@@ -10,5 +10,11 @@
   "unused": true,
   "boss": true,
   "eqnull": true,
-  "node": true
+  "node": true,
+
+  "camelcase": true,
+  "nonew": true,
+  "quotmark": "single",
+  "trailing": true,
+  "maxlen": 80
 }

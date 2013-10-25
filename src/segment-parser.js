@@ -1,8 +1,9 @@
 (function(window) {
   var
-    FlvTag = window.videojs.hls.FlvTag,
-    H264Stream = window.videojs.hls.H264Stream,
-    AacStream = window.videojs.hls.AacStream,
+    videojs = window.videojs,
+    FlvTag = videojs.hls.FlvTag,
+    H264Stream = videojs.hls.H264Stream,
+    AacStream = videojs.hls.AacStream,
     m2tsPacketSize = 188;
 
   console.assert(H264Stream);
@@ -150,7 +151,7 @@
           // until we receive more
 
           // ?? this seems to append streamBuffer onto data and then just give up. I'm not sure why that would be interesting.
-          console.log('data.length + streamBuffer.length < m2tsPacketSize ??');
+          videojs.log('data.length + streamBuffer.length < m2tsPacketSize ??');
           streamBuffer.readBytes(data, data.length, streamBuffer.length);
           return;
         } else {
@@ -194,7 +195,7 @@
           // If there was an error parsing a TS packet. it could be
           // because we are not TS packet aligned. Step one forward by
           // one byte and allow the code above to find the next
-          console.log('error parsing m2ts packet, attempting to re-align');
+          videojs.log('error parsing m2ts packet, attempting to re-align');
           dataPosition++;
         }
       }
@@ -382,7 +383,7 @@
       } else if (0x1FFF === pid) {
         // NULL packet
       } else {
-        console.log("Unknown PID " + pid);
+        videojs.log("Unknown PID parsing TS packet: " + pid);
       }
 
       return true;

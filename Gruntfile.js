@@ -20,7 +20,19 @@ module.exports = function(grunt) {
         stripBanners: true
       },
       dist: {
-        src: ['src/*.js'],
+        src: ['src/video-js-hls.js',
+              'src/flv-tag.js',
+              'src/exp-golomb.js',
+              'src/h264-stream.js',
+              'src/aac-stream.js',
+              'src/segment-parser.js',
+              'src/segment-controller.js',
+              'src/m3u8/m3u8.js',
+              'src/m3u8/m3u8-tag-types.js',
+              'src/m3u8/m3u8-parser.js',
+              'src/manifest-controller.js',
+              'src/segment-controller.js',
+              'src/hls-playback-controller.js'],
         dest: 'dist/videojs.hls.js'
       },
     },
@@ -53,7 +65,7 @@ module.exports = function(grunt) {
         options: {
           jshintrc: 'test/.jshintrc'
         },
-        src: ['test/**/*.js', '!test/tsSegment.js']
+        src: ['test/**/*.js', '!test/tsSegment.js', '!test/fixtures/*.js']
       },
     },
     watch: {
@@ -81,6 +93,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-watch');
 
   // Default task.
-  grunt.registerTask('default', ['jshint', 'qunit', 'clean', 'concat', 'uglify']);
+  grunt.registerTask('default',
+                     ['jshint', 'qunit', 'clean', 'concat', 'uglify']);
 
 };

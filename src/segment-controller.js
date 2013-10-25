@@ -1,79 +1,64 @@
 (function(window) {
 
-	var SegmentParser = window.videojs.hls.SegmentParser;
+  window.videojs.hls.SegmentController = function() {
+    var self = this;
 
-	window.videojs.hls.SegmentController = function(){
+    self.loadSegment = function(segmentUrl, onDataCallback, onErrorCallback, onUpdateCallback) {
+      var request = new XMLHttpRequest();
 
-		var self = this;
-		var url;
-		var parser;
-		var requestTimestamp;
-		var responseTimestamp;
-		var data;
+      self.url = segmentUrl;
+      self.onDataCallback = onDataCallback;
+      self.onErrorCallback = onErrorCallback;
+      self.onUpdateCallback = onUpdateCallback;
+      self.requestTimestamp = +new Date();
 
-		var onDataCallback;
-		var onErrorCallback;
-		var onUpdateCallback;
+      request.open('GET', segmentUrl, true);
+      request.responseType = 'arraybuffer';
+      request.onload = function() {
+        self.onSegmentLoadComplete(new Uint8Array(request.response));
+      };
 
-		self.loadSegment = function ( segmentUrl, onDataCallback, onErrorCallback, onUpdateCallback ) {
-			self.url = segmentUrl;
-			self.onDataCallback = onDataCallback;
-			self.onErrorCallback = onErrorCallback;
-			self.onUpdateCallback = onUpdateCallback;
-			self.requestTimestamp = new Date().getTime();
+      request.send(null);
+    };
 
-                        var req = new XMLHttpRequest();
-                        req.open('GET', segmentUrl, true);
-                        req.responseType = 'arraybuffer';
-                        req.onload = function(response) {
-                          self.onSegmentLoadComplete(new Uint8Array(req.response));
-                        };
-                  
-                  req.send(null);
-		};
+    self.parseSegment = function(incomingData) {
+      self.data = {};
+      self.data.binaryData = incomingData;
+      self.data.url = self.url;
+      self.data.isCached = false;
+      self.data.requestTimestamp = self.requestTimestamp;
+      self.data.responseTimestamp = self.responseTimestamp;
+      self.data.byteLength = incomingData.byteLength;
+      self.data.isCached = parseInt(self.responseTimestamp - self.requestTimestamp,10) < 75;
+      self.data.throughput = self.calculateThroughput(self.data.byteLength, self.requestTimestamp ,self.responseTimestamp);
 
-		self.parseSegment = function ( incomingData ) {
-			// Add David's code later //
+      return self.data;
+    };
 
-			self.data = {
-                          whatever: incomingData
-                        };
-			self.data.url = self.url;
-			self.data.isCached = false;
-			self.data.requestTimestamp = self.requestTimestamp;
-			self.data.responseTimestamp = self.responseTimestamp;
-			self.data.byteLength = incomingData.byteLength;
-			self.data.isCached = ( parseInt(self.responseTimestamp - self.requestTimestamp) < 75 );
-			self.data.throughput = self.calculateThroughput(self.data.byteLength, self.requestTimestamp ,self.responseTimestamp)
+    self.calculateThroughput = function(dataAmount, startTime, endTime) {
+      return Math.round(dataAmount / (endTime - startTime) * 1000) * 8;
+    };
 
-			return self.data;
-		};
+    self.onSegmentLoadComplete = function(response) {
+      var output;
 
-		self.calculateThroughput = function(dataAmount, startTime, endTime) {
-			return Math.round(dataAmount/(endTime-startTime)*1000)*8;
-		}
+      self.responseTimestamp = +new Date();
 
-		self.onSegmentLoadComplete = function(response) {
-			self.responseTimestamp = new Date().getTime();
+      output = self.parseSegment(response);
 
-			var output = self.parseSegment(response);
+      if (self.onDataCallback !== undefined) {
+        self.onDataCallback(output);
+      }
+    };
 
-			if(self.onDataCallback != undefined)
-			{
-				self.onDataCallback(output);
-			}
-		};
+    self.onSegmentLoadError = function(error) {
+      if (error) {
+        throw error;
+      }
 
-		self.onSegmentLoadError = function(err) {
-			if(err)
-			{
-				console.log(err.message);
-			}
-
-			if(self.onErrorCallback != undefined)
-			{
-				onErrorCallback((err != undefined) ? err : null);
-			}
-		};
-	}
+      if (self.onErrorCallback !== undefined) {
+        self.onErrorCallback(error);
+      }
+    };
+  };
 })(this);
