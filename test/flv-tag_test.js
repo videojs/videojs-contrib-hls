@@ -44,4 +44,17 @@ test('writeShort writes a two byte sequence', function() {
         'the value is written');
 });
 
+test('writeBytes grows the internal byte array dynamically', function() {
+  var
+    tag = new FlvTag(FlvTag.VIDEO_TAG),
+    tooManyBytes = new Uint8Array(tag.bytes.byteLength + 1);
+
+  try {
+    tag.writeBytes(tooManyBytes);
+    ok(true, 'the buffer grew to fit the data');
+  } catch(e) {
+    ok(!e, 'the buffer should grow');
+  }
+});
+
 })(this);  

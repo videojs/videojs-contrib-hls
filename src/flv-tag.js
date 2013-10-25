@@ -7,7 +7,25 @@ hls.FlvTag = function(type, extraData) {
   var
     // Counter if this is a metadata tag, nal start marker if this is a video
     // tag. unused if this is an audio tag
-    adHoc = 0; // :uint
+    adHoc = 0, // :uint
+
+    // checks whether the FLV tag has enough capacity to accept the proposed
+    // write and re-allocates the internal buffers if necessary
+    prepareWrite = function(flv, count) {
+      var
+        bytes,
+        minLength = flv.position + count;
+      if (minLength < flv.bytes.byteLength) {
+        // there's enough capacity so do nothing
+        return;
+      }
+
+      // allocate a new buffer and copy over the data that will not be modified
+      bytes = new Uint8Array(minLength * 2);
+      bytes.set(flv.bytes.subarray(0, flv.position), 0);
+      flv.bytes = bytes;
+      flv.view = new DataView(flv.bytes.buffer);
+    };
 
   this.keyFrame = false; // :Boolean
 
@@ -27,7 +45,6 @@ hls.FlvTag = function(type, extraData) {
     throw("Error Unknown TagType");
   }
 
-  // XXX: I have no idea if 16k is enough to buffer arbitrary FLV tags
   this.bytes = new Uint8Array(16384);
   this.view = new DataView(this.bytes.buffer);
   this.bytes[0] = type;
@@ -41,20 +58,22 @@ hls.FlvTag = function(type, extraData) {
 
   // ByteArray#writeBytes(bytes:ByteArray, offset:uint = 0, length:uint = 0)
   this.writeBytes = function(bytes, offset, length) {
-    offset = offset || 0;
+    var
+      start = offset || 0,
+      end;
     length = length || bytes.byteLength;
+    end = start + length;
 
-    try {
-      this.bytes.set(bytes.subarray(offset, offset + length), this.position);
-    } catch(e) {
-      throw e;
-    }
+    prepareWrite(this, length);
+    this.bytes.set(bytes.subarray(start, end), this.position);
+
     this.position += length;
     this.length = Math.max(this.length, this.position);
   };
 
   // ByteArray#writeByte(value:int):void
   this.writeByte = function(byte) {
+    prepareWrite(this, 1);
     this.bytes[this.position] = byte;
     this.position++;
     this.length = Math.max(this.length, this.position);
@@ -62,6 +81,7 @@ hls.FlvTag = function(type, extraData) {
 
   // ByteArray#writeShort(value:int):void
   this.writeShort = function(short) {
+    prepareWrite(this, 2);
     this.view.setUint16(this.position, short);
     this.position += 2;
     this.length = Math.max(this.length, this.position);
@@ -126,13 +146,16 @@ hls.FlvTag = function(type, extraData) {
   // (key:String, val:Number):void
   this.writeMetaDataDouble = function(key, val) {
     var i;
+    prepareWrite(this, 2);
     this.view.setUint16(this.position, key.length);
     this.position += 2;
     for (i in key) {
       console.assert(key.charCodeAt(i) < 255);
+      prepareWrite(this, 1);
       this.bytes[this.position] = key.charCodeAt(i);
       this.position++; 
     }
+    prepareWrite(this, 9);
     this.view.setUint8(this.position, 0x00);
     this.position++;
     this.view.setFloat64(this.position, val);
@@ -144,13 +167,16 @@ hls.FlvTag = function(type, extraData) {
   // (key:String, val:Boolean):void
   this.writeMetaDataBoolean = function(key, val) {
     var i;
+    prepareWrite(this, 2);
     this.view.setUint16(this.position, key.length);
     this.position += 2;
     for (i in key) {
       console.assert(key.charCodeAt(i) < 255);
+      prepareWrite(this, 1);
       this.bytes[this.position] = key.charCodeAt(i);
       this.position++;
     }
+    prepareWrite(this, 2);
     this.view.setUint8(this.position, 0x01);
     this.position++;
     this.view.setUint8(this.position, val ? 0x01 : 0x00);
