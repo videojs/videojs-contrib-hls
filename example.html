@@ -52,7 +52,7 @@
     videojs.options.flash.swf = 'node_modules/videojs-media-sources/video-js-with-mse.swf';
     video = videojs('video',{},function(){
       this.playbackController = new window.videojs.hls.HLSPlaybackController(this);
-      this.playbackController.loadManifest('http://localhost:7070/test/basic-playback/zencoder/gogo/manifest.m3u8', function(data) {
+      this.playbackController.loadManifest('test/fixtures/prog_index.m3u8', function(data) {
         console.log(data);
       });
     });
