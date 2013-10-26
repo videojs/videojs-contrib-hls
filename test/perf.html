@@ -31,7 +31,7 @@
 </form>
 <table>
   <thead>
-    <th>Iterations</th><th>Time</th>
+    <th>Iterations</th><th>Time</th><th>kB / second</th>
   </thead>
   <tbody class="results"></tbody>
 </table>
@@ -41,16 +41,19 @@ var
   input = document.querySelector('input'),
   results = document.querySelector('.results'),
 
-  reportResults = function(label, elapsed) {
+  reportResults = function(count, elapsed) {
     var 
       row = document.createElement('tr'),
-      labelCell = document.createElement('td'),
-      elapsedCell = document.createElement('td');
+      countCell = document.createElement('td'),
+      elapsedCell = document.createElement('td'),
+      throughputCell = document.createElement('td');
 
-    labelCell.innerText = label;
-    elapsedCell.innerText = elapsed
-    row.appendChild(labelCell);
+    countCell.innerText = count;
+    elapsedCell.innerText = elapsed;
+    throughputCell.innerText = ((bcSegment.byteLength * count) / elapsed) / 1024;
+    row.appendChild(countCell);
     row.appendChild(elapsedCell);
+    row.appendChild(throughputCell);
     
     results.insertBefore(row, results.firstChild);
   };
@@ -60,7 +63,6 @@ button.addEventListener('click', function(event) {
     iterations = input.value,
     parser = new window.videojs.hls.SegmentParser(),
     start;
-  console.log(iterations);
 
   // setup
   start = +new Date();
