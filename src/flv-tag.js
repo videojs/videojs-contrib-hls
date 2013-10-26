@@ -268,10 +268,8 @@ hls.FlvTag = function(type, extraData) {
       this.position++;
       this.view.setUint32(this.position, adHoc);
       this.position = this.length;
-      // this.bytes.set([0, 0, 9], this.position);
-      // this.position += 3;
-      this.view.setUint32(this.position, 0x09); // End Data Tag
-      this.position += 4;
+      this.bytes.set([0, 0, 9], this.position);
+      this.position += 3; // End Data Tag
       this.length = this.position;
       break;
     }
