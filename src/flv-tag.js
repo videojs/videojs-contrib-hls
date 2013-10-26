@@ -1,6 +1,27 @@
 (function(window) {
 
-var hls = window.videojs.hls;
+var
+  hls = window.videojs.hls,
+
+  // commonly used metadata properties
+  widthBytes = new Uint8Array('width'.length),
+  heightBytes = new Uint8Array('height'.length),
+  videocodecidBytes = new Uint8Array('videocodecid'.length),
+  i;
+
+// calculating the bytes of common metadata names ahead of time makes the
+// corresponding writes faster because we don't have to loop over the
+// characters
+// re-test with test/perf.html if you're planning on changing this
+for (i in 'width') {
+  widthBytes[i] = 'width'.charCodeAt(i);
+}
+for (i in 'height') {
+  heightBytes[i] = 'height'.charCodeAt(i);
+}
+for (i in 'videocodecid') {
+  videocodecidBytes[i] = 'videocodecid'.charCodeAt(i);
+}
 
 // (type:uint, extraData:Boolean = false) extends ByteArray
 hls.FlvTag = function(type, extraData) {
@@ -54,7 +75,7 @@ hls.FlvTag = function(type, extraData) {
   // presentation timestamp
   this.pts = 0;
   // decoder timestamp
-  this.dts = 0; 
+  this.dts = 0;
 
   // ByteArray#writeBytes(bytes:ByteArray, offset:uint = 0, length:uint = 0)
   this.writeBytes = function(bytes, offset, length) {
@@ -100,7 +121,7 @@ hls.FlvTag = function(type, extraData) {
     if (adHoc === 0) {
       return 0;
     }
-    
+
     return this.length - (adHoc + 4);
   };
 
@@ -135,7 +156,7 @@ hls.FlvTag = function(type, extraData) {
       this.position = this.length;
 
       if (nalContainer) {
-        // Add the tag to the NAL unit 
+        // Add the tag to the NAL unit
         nalContainer.push(this.bytes.subarray(nalStart, nalStart + nalLength));
       }
     }
@@ -143,23 +164,47 @@ hls.FlvTag = function(type, extraData) {
     adHoc = 0;
   };
 
+  /**
+   * Write out a 64-bit floating point valued metadata property. This method is
+   * called frequently during a typical parse and needs to be fast.
+   */
   // (key:String, val:Number):void
   this.writeMetaDataDouble = function(key, val) {
     var i;
-    prepareWrite(this, 2);
+    prepareWrite(this, 2 + key.length + 9);
+
+    // write size of property name
     this.view.setUint16(this.position, key.length);
     this.position += 2;
-    for (i in key) {
-      console.assert(key.charCodeAt(i) < 255);
-      prepareWrite(this, 1);
-      this.bytes[this.position] = key.charCodeAt(i);
-      this.position++; 
+
+    // this next part looks terrible but it improves parser throughput by
+    // 10kB/s in my testing
+
+    // write property name
+    if (key === 'width') {
+      this.bytes.set(widthBytes, this.position);
+      this.position += 5;
+    } else if (key === 'height') {
+      this.bytes.set(heightBytes, this.position);
+      this.position += 6;
+    } else if (key === 'videocodecid') {
+      this.bytes.set(videocodecidBytes, this.position);
+      this.position += 12;
+    } else {
+      for (i in key) {
+        this.bytes[this.position] = key.charCodeAt(i);
+        this.position++;
+      }
     }
-    prepareWrite(this, 9);
-    this.view.setUint8(this.position, 0x00);
+
+    // skip null byte
     this.position++;
+
+    // write property value
     this.view.setFloat64(this.position, val);
     this.position += 8;
+
+    // update flv tag length
     this.length = Math.max(this.length, this.position);
     ++adHoc;
   };
@@ -287,7 +332,7 @@ hls.FlvTag.isKeyFrame = function(tag) {
   if (hls.FlvTag.isAudioFrame(tag)) {
     return true;
   }
-  
+
   if (hls.FlvTag.isMetaData(tag)) {
     return true;
   }
