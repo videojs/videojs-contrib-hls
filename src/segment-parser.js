@@ -39,7 +39,7 @@
       duration = duration || 0;
       audio = audio === undefined? true : audio;
       video = video === undefined? true : video;
-      
+
       // signature
       head.setUint8(0, 0x46); // 'F'
       head.setUint8(1, 0x4c); // 'L'
@@ -47,7 +47,7 @@
 
       // version
       head.setUint8(3, 0x01);
-      
+
       // flags
       head.setUint8(4, (audio ? 0x04 : 0x00) | (video ? 0x01 : 0x00));
 
@@ -74,7 +74,7 @@
 
       return result;
     };
-    
+
     self.flushTags = function() {
       h264Stream.finishFrame();
     };
@@ -161,7 +161,7 @@
           streamBuffer.set(dataSlice, streamBufferByteCount);
 
           parseTSPacket(streamBuffer);
-          
+
           // reset the buffer
           streamBuffer = new Uint8Array(m2tsPacketSize);
           streamBufferByteCount = 0;
@@ -174,7 +174,7 @@
           // If there is no sync byte skip forward until we find one
           // TODO if we find a sync byte, look 188 bytes in the future (if
           // possible). If there is not a sync byte there, keep looking
-          dataPosition++; 
+          dataPosition++;
         }
 
         // base case: not enough data to parse a m2ts packet
@@ -205,19 +205,18 @@
     // packet!
     parseTSPacket = function(data) { // :ByteArray):Boolean {
       var
-        s = 0, //:uint
-        o = s, // :uint
-        e = o + m2tsPacketSize, // :uint
-      
+        offset = 0, // :uint
+        end = offset + m2tsPacketSize, // :uint
+
         // Don't look for a sync byte. We handle that in
         // parseSegmentBinaryData()
 
         // Payload Unit Start Indicator
-        pusi = !!(data[o + 1] & 0x40), // mask: 0100 0000
+        pusi = !!(data[offset + 1] & 0x40), // mask: 0100 0000
 
         // PacketId
-        pid = (data[o + 1] & 0x1F) << 8 | data[o + 2], // mask: 0001 1111
-        afflag = (data[o + 3] & 0x30 ) >>> 4,
+        pid = (data[offset + 1] & 0x1F) << 8 | data[offset + 2], // mask: 0001 1111
+        afflag = (data[offset + 3] & 0x30 ) >>> 4,
 
         aflen, // :uint
         patTableId, // :int
@@ -242,29 +241,29 @@
 
       // Continuity Counter we could use this for sanity check, and
       // corrupt stream detection
-      // cc = (data[o + 3] & 0x0F);
+      // cc = (data[offset + 3] & 0x0F);
 
-      // Done with TS header            
-      o += 4;
-      
+      // Done with TS header
+      offset += 4;
+
       if (afflag > 0x01) {   // skip most of the adaption field
-        aflen = data[o];
-        o += aflen + 1;
+        aflen = data[offset];
+        offset += aflen + 1;
       }
 
       if (0x0000 === pid) {
         // always test for PMT first! (becuse other variables default to 0)
 
         // if pusi is set we must skip X bytes (PSI pointer field)
-        o += pusi ? 1 + data[o] : 0; 
-        patTableId = data[o];
+        offset += pusi ? 1 + data[offset] : 0;
+        patTableId = data[offset];
 
         console.assert(0x00 === patTableId, 'patTableId should be 0x00');
 
-        patCurrentNextIndicator = !!(data[o + 5] & 0x01);
+        patCurrentNextIndicator = !!(data[offset + 5] & 0x01);
         if (patCurrentNextIndicator) {
-          patSectionLength =  (data[o + 1] & 0x0F) << 8 | data[o + 2];
-          o += 8; // skip past PSI header
+          patSectionLength =  (data[offset + 1] & 0x0F) << 8 | data[offset + 2];
+          offset += 8; // skip past PSI header
 
           // We currently only support streams with 1 program
           patSectionLength = (patSectionLength - 9) / 4;
@@ -273,26 +272,26 @@
           }
 
           // if we ever support more that 1 program (unlikely) loop over them here
-          // var programNumber =   data[o + 0] << 8 | data[o + 1];
-          // var programId = (data[o+2] & 0x1F) << 8 | data[o + 3];
-          pmtPid = (data[o + 2] & 0x1F) << 8 | data[o + 3];
+          // var programNumber =   data[offset + 0] << 8 | data[offset + 1];
+          // var programId = (data[offset+2] & 0x1F) << 8 | data[offset + 3];
+          pmtPid = (data[offset + 2] & 0x1F) << 8 | data[offset + 3];
         }
 
         // We could test the CRC here to detect corruption with extra CPU cost
       } else if (videoPid === pid || audioPid === pid) {
         if (pusi) {
           // comment out for speed
-          if (0x00 !== data[o + 0] || 0x00 !== data[o + 1] || 0x01 !== data[o + 2]) {
+          if (0x00 !== data[offset + 0] || 0x00 !== data[offset + 1] || 0x01 !== data[offset + 2]) {
             // look for PES start code
              throw new Error("PES did not begin with start code");
            }
 
-          // var sid:int  = data[o+3]; // StreamID
-          pesPacketSize = (data[o + 4] << 8) | data[o + 5];
-          dataAlignmentIndicator = !!((data[o + 6] & 0x04) >>> 2);
-          ptsDtsIndicator = (data[o + 7] & 0xC0) >>> 6;
-          pesHeaderLength = data[o + 8]; // TODO sanity check header length
-          o += 9; // Skip past PES header
+          // var sid:int  = data[offset+3]; // StreamID
+          pesPacketSize = (data[offset + 4] << 8) | data[offset + 5];
+          dataAlignmentIndicator = (data[offset + 6] & 0x04) !== 0;
+          ptsDtsIndicator = (data[offset + 7] & 0xC0) >>> 6;
+          pesHeaderLength = data[offset + 8]; // TODO sanity check header length
+          offset += 9; // Skip past PES header
 
           // PTS and DTS are normially stored as a 33 bit number.
           // JavaScript does not have a integer type larger than 32 bit
@@ -301,25 +300,25 @@
           // significant bit (the same as dividing by two) then we can
           // divide by 45 (45 * 2 = 90) to get ms.
           if (ptsDtsIndicator & 0x03) {
-            pts = (data[o + 0] & 0x0E) << 28
-              | (data[o + 1] & 0xFF) << 21
-              | (data[o + 2] & 0xFE) << 13
-              | (data[o + 3] & 0xFF) <<  6
-              | (data[o + 4] & 0xFE) >>>  2;
+            pts = (data[offset + 0] & 0x0E) << 28
+              | (data[offset + 1] & 0xFF) << 21
+              | (data[offset + 2] & 0xFE) << 13
+              | (data[offset + 3] & 0xFF) <<  6
+              | (data[offset + 4] & 0xFE) >>>  2;
             pts /= 45;
             if (ptsDtsIndicator & 0x01) {// DTS
-              dts = (data[o + 5] & 0x0E ) << 28
-                | (data[o + 6] & 0xFF ) << 21
-                | (data[o + 7] & 0xFE ) << 13
-                | (data[o + 8] & 0xFF ) << 6
-                | (data[o + 9] & 0xFE ) >>> 2;
+              dts = (data[offset + 5] & 0x0E ) << 28
+                | (data[offset + 6] & 0xFF ) << 21
+                | (data[offset + 7] & 0xFE ) << 13
+                | (data[offset + 8] & 0xFF ) << 6
+                | (data[offset + 9] & 0xFE ) >>> 2;
               dts /= 45;
             } else {
               dts = pts;
             }
           }
           // Skip past "optional" portion of PTS header
-          o += pesHeaderLength;
+          offset += pesHeaderLength;
 
           if (videoPid === pid) {
             // Stash this frame for future use.
@@ -336,31 +335,31 @@
         }
 
         if (audioPid === pid) {
-          aacStream.writeBytes(data, o, e - o);
+          aacStream.writeBytes(data, offset, end - offset);
         } else if (videoPid === pid) {
-          h264Stream.writeBytes(data, o, e - o);
+          h264Stream.writeBytes(data, offset, end - offset);
         }
       } else if (pmtPid === pid) {
-        // TODO sanity check data[o]
+        // TODO sanity check data[offset]
         // if pusi is set we must skip X bytes (PSI pointer field)
-        o += (pusi ? 1 + data[o] : 0);
-        pmtTableId = data[o];
+        offset += (pusi ? 1 + data[offset] : 0);
+        pmtTableId = data[offset];
 
         console.assert(0x02 === pmtTableId);
 
-        pmtCurrentNextIndicator = !!(data[o + 5] & 0x01);
+        pmtCurrentNextIndicator = !!(data[offset + 5] & 0x01);
         if (pmtCurrentNextIndicator) {
           audioPid = videoPid = 0;
-          pmtSectionLength  = (data[o + 1] & 0x0F) << 8 | data[o + 2];
+          pmtSectionLength  = (data[offset + 1] & 0x0F) << 8 | data[offset + 2];
           // skip CRC and PSI data we dont care about
-          pmtSectionLength -= 13; 
+          pmtSectionLength -= 13;
 
-          o += 12; // skip past PSI header and some PMT data
+          offset += 12; // skip past PSI header and some PMT data
           while (0 < pmtSectionLength) {
-            streamType = data[o + 0];
-            elementaryPID = (data[o + 1] & 0x1F) << 8 | data[o + 2];
-            ESInfolength = (data[o + 3] & 0x0F) << 8 | data[o + 4];
-            o += 5 + ESInfolength;
+            streamType = data[offset + 0];
+            elementaryPID = (data[offset + 1] & 0x1F) << 8 | data[offset + 2];
+            ESInfolength = (data[offset + 3] & 0x0F) << 8 | data[offset + 4];
+            offset += 5 + ESInfolength;
             pmtSectionLength -=  5 + ESInfolength;
 
             if (0x1B === streamType) {
