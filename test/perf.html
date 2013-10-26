@@ -31,7 +31,7 @@
 </form>
 <table>
   <thead>
-    <th>Iterations</th><th>Time</th><th>kB / second</th>
+    <th>Iterations</th><th>Time</th><th>MB/second</th>
   </thead>
   <tbody class="results"></tbody>
 </table>
@@ -50,7 +50,7 @@ var
 
     countCell.innerText = count;
     elapsedCell.innerText = elapsed;
-    throughputCell.innerText = ((bcSegment.byteLength * count) / elapsed) / 1024;
+    throughputCell.innerText = (((bcSegment.byteLength * count * 1000) / elapsed) / (Math.pow(2, 20))).toFixed(3);
     row.appendChild(countCell);
     row.appendChild(elapsedCell);
     row.appendChild(throughputCell);
