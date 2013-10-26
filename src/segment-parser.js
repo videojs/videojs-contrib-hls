@@ -289,7 +289,7 @@
           // var sid:int  = data[offset+3]; // StreamID
           pesPacketSize = (data[offset + 4] << 8) | data[offset + 5];
           dataAlignmentIndicator = (data[offset + 6] & 0x04) !== 0;
-          ptsDtsIndicator = (data[offset + 7] & 0xC0) >>> 6;
+          ptsDtsIndicator = data[offset + 7];
           pesHeaderLength = data[offset + 8]; // TODO sanity check header length
           offset += 9; // Skip past PES header
 
@@ -299,22 +299,24 @@
           // so what we are going to do instead, is drop the least
           // significant bit (the same as dividing by two) then we can
           // divide by 45 (45 * 2 = 90) to get ms.
-          if (ptsDtsIndicator & 0x03) {
+          if (ptsDtsIndicator & 0xC0) {
+            // the PTS and DTS are not written out directly. For information on
+            // how they are encoded, see
+            // http://dvd.sourceforge.net/dvdinfo/pes-hdr.html
             pts = (data[offset + 0] & 0x0E) << 28
               | (data[offset + 1] & 0xFF) << 21
               | (data[offset + 2] & 0xFE) << 13
               | (data[offset + 3] & 0xFF) <<  6
               | (data[offset + 4] & 0xFE) >>>  2;
             pts /= 45;
-            if (ptsDtsIndicator & 0x01) {// DTS
+            dts = pts;
+            if (ptsDtsIndicator & 0x40) {// DTS
               dts = (data[offset + 5] & 0x0E ) << 28
                 | (data[offset + 6] & 0xFF ) << 21
                 | (data[offset + 7] & 0xFE ) << 13
                 | (data[offset + 8] & 0xFF ) << 6
                 | (data[offset + 9] & 0xFE ) >>> 2;
               dts /= 45;
-            } else {
-              dts = pts;
             }
           }
           // Skip past "optional" portion of PTS header
@@ -397,4 +399,4 @@
       }
     };
   };
-})(this);
+})(window);
