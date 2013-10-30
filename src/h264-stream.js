@@ -1,6 +1,6 @@
 /*
  * h264-stream
- * 
+ *
  *
  * Copyright (c) 2013 Brightcove
  * All rights reserved.
@@ -62,7 +62,7 @@
        * NAL unit: Network abstraction layer unit. The combination of a NAL
        * header and an RBSP.
        * NAL header: the encapsulation unit for transport-specific metadata in
-       * an h264 stream.
+       * an h264 stream. Exactly one byte.
        * RBSP: raw bit-stream payload. The actual encoded video data.
        *
        * SPS: sequence parameter set. Part of the RBSP. Metadata to be applied
@@ -128,7 +128,7 @@
 
           pic_width_in_mbs_minus1, // :int
           pic_height_in_map_units_minus1, // :int
-        
+
           frame_mbs_only_flag, // :int
           frame_cropping_flag, // :Boolean
 
@@ -283,17 +283,17 @@
 
       oldExtraData = new H264ExtraData(), // :H264ExtraData
       newExtraData = new H264ExtraData(), // :H264ExtraData
-  
+
       nalUnitType = -1, // :int
 
       state; // :uint;
-  
+
     this.tags = [];
 
     //(pts:uint, dts:uint, dataAligned:Boolean):void
     this.setNextTimeStamp = function(pts, dts, dataAligned) {
       if (0>pts_delta) {
-        // We assume the very first pts is less than 0x8FFFFFFF (max signed 
+        // We assume the very first pts is less than 0x8FFFFFFF (max signed
         // int32)
         pts_delta = pts;
       }
@@ -361,38 +361,40 @@
         // A NAL unit may be split across two TS packets. Look back a bit to
         // make sure the prefix of the start code wasn't already written out.
         if (data[offset] <= 1) {
-          nalUnitSize = h264Frame ? h264Frame.nalUnitSize() : 0; 
+          nalUnitSize = h264Frame ? h264Frame.nalUnitSize() : 0;
           if (nalUnitSize >= 1 && h264Frame.negIndex(1) === 0) {
             // ?? ?? 00 | O[01] ?? ??
-            if (1 === data[offset] && 2 <= nalUnitSize && 0 === h264Frame.negIndex(2)) {
+            if (data[offset] === 1 &&
+                nalUnitSize >= 2 &&
+                h264Frame.negIndex(2) === 0) {
               // ?? 00 00 : 01
               if (3 <= nalUnitSize && 0 === h264Frame.negIndex(3)) {
                 h264Frame.length -= 3; // 00 00 00 : 01
               } else {
                 h264Frame.length -= 2; // 00 00 : 01
               }
-              
+
               state = 3;
               return this.writeBytes(data, offset + 1, length - 1);
             }
 
-            if (1 < length && 0 === data[offset] && 1 === data[offset + 1]) {
+            if (length > 1 && data[offset] === 0 && data[offset + 1] === 1) {
               // ?? 00 | 00 01
-              if (2 <= nalUnitSize && 0 === h264Frame.negIndex(2)) {
+              if (nalUnitSize >= 2 && h264Frame.negIndex(2) === 0) {
                 h264Frame.length -= 2; // 00 00 : 00 01
               } else {
                 h264Frame.length -= 1; // 00 : 00 01
               }
-              
+
               state = 3;
               return this.writeBytes(data, offset + 2, length - 2);
             }
 
-            if (2 < length &&
-                0 === data[offset] &&
-                0 === data[offset + 1] &&
-                1 === data[offset + 2]) {
-              // 00 | 00 00 01
+            if (length > 2 &&
+                data[offset] === 0 &&
+                data[offset + 1] === 0 &&
+                data[offset + 2] === 1) {
+              // 00 : 00 00 01
               h264Frame.length -= 1;
               state = 3;
               return this.writeBytes(data, offset + 3, length - 3);
@@ -403,19 +405,22 @@
         // bytes a second time. But that case will be VERY rare
         state = 2;
         /* falls through */
-      case 2: // Look for start codes in data
+      case 2:
+        // Look for start codes in the data from the current offset forward
         start = offset;
         end = start + length;
-        for (t = end - 3 ; offset < t ;) {
-          if (1 < data[offset + 2]) {
-            offset += 3; // if data[offset + 2] is greater than 1, there is no way a start code can begin before offset+3
-          } else if (0 !== data[offset + 1]) {
+        for (t = end - 3; offset < t;) {
+          if (data[offset + 2] > 1) {
+            // if data[offset + 2] is greater than 1, there is no way a start
+            // code can begin before offset + 3
+            offset += 3;
+          } else if (data[offset + 1] !== 0) {
               offset += 2;
-          } else if (0 !== data[offset]) {
+          } else if (data[offset] !== 0) {
               offset += 1;
           } else {
             // If we get here we have 00 00 00 or 00 00 01
-            if (1 === data[offset + 2]) {
+            if (data[offset + 2] === 1) {
               if (offset > start) {
                 h264Frame.writeBytes(data, start, offset - start);
               }
@@ -424,7 +429,9 @@
               return this.writeBytes(data, offset, end - offset);
             }
 
-            if (end - offset >= 4 && 0 === data[offset + 2] && 1 === data[offset + 3]) {
+            if (end - offset >= 4 &&
+                data[offset + 2] === 0 &&
+                data[offset + 3] === 1) {
               if (offset > start) {
                 h264Frame.writeBytes(data, start, offset - start);
               }
@@ -482,9 +489,10 @@
         }
 
         h264Frame.startNalUnit();
-        state = 2; // We know there will not be an overlapping start code, so we can skip that test
+        // We know there will not be an overlapping start code, so we can skip
+        // that test
+        state = 2;
         return this.writeBytes(data, offset, length);
-        /*--------------------------------------------------------------------------------------------------------------------*/
       } // switch
     };
   };

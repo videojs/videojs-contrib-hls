@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+<title>MPEG-TS Parser Performance Workbench</title>
+<!-- video.js -->
+<script src="../node_modules/video.js/video.dev.js"></script>
+
+<!-- HLS plugin -->
+<script src="../src/video-js-hls.js"></script>
+<script src="../src/flv-tag.js"></script>
+<script src="../src/exp-golomb.js"></script>
+<script src="../src/h264-stream.js"></script>
+<script src="../src/aac-stream.js"></script>
+<script src="../src/segment-parser.js"></script>
+
+<!-- MPEG-TS segment -->
+<script src="tsSegment-bc.js"></script>
+<style>
+.desc {
+  background-color: #ddd;
+  border: thin solid #333;
+  padding: 8px;
+}
+</style>
+</head>
+<body>
+<p class="desc">Select your number of iterations and then press "Run" to begin parsing MPEG-TS packets into FLV tags. This page can be handy for identifying segment parser performance bottlenecks.</p>
+<form>
+<input name="iterations" min="1" type="number" value="1">
+<button type="sumbit">Run</button>
+</form>
+<table>
+  <thead>
+    <th>Iterations</th><th>Time</th><th>MB/second</th>
+  </thead>
+  <tbody class="results"></tbody>
+</table>
+<script>
+var 
+  button = document.querySelector('button'),
+  input = document.querySelector('input'),
+  results = document.querySelector('.results'),
+
+  reportResults = function(count, elapsed) {
+    var 
+      row = document.createElement('tr'),
+      countCell = document.createElement('td'),
+      elapsedCell = document.createElement('td'),
+      throughputCell = document.createElement('td');
+
+    countCell.innerText = count;
+    elapsedCell.innerText = elapsed;
+    throughputCell.innerText = (((bcSegment.byteLength * count * 1000) / elapsed) / (Math.pow(2, 20))).toFixed(3);
+    row.appendChild(countCell);
+    row.appendChild(elapsedCell);
+    row.appendChild(throughputCell);
+    
+    results.insertBefore(row, results.firstChild);
+  };
+
+button.addEventListener('click', function(event) {
+  var
+    iterations = input.value,
+    parser = new window.videojs.hls.SegmentParser(),
+    start;
+
+  // setup
+  start = +new Date();
+
+  while (iterations--) {
+
+    // parse the segment
+    parser.parseSegmentBinaryData(window.bcSegment);
+
+    // finalize all the FLV tags
+    while (parser.tagsAvailable()) {
+      parser.getNextTag();
+    }
+  }
+
+  // report
+  reportResults(input.value, (+new Date()) - start);
+
+  // don't actually submit the form
+  event.preventDefault();
+}, false);
+</script>
+</body>
+</html>
