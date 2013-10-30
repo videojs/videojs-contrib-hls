@@ -19,6 +19,6 @@
   },
   "dependencies": {
     "video.js": "~4.2.2",
-    "videojs-media-sources": "git+ssh://git@github.com/dmlap/videojs-media-sources.git"
+    "videojs-media-sources": "git+ssh://git@github.com/videojs/videojs-contrib-media-sources.git"
   }
 }
