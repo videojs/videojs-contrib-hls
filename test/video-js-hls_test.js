@@ -258,7 +258,7 @@
     equal(data.hasValidM3UTag, true, 'data has valid EXTM3U');
     equal(data.targetDuration, 10, 'data has correct TARGET DURATION');
     equal(data.allowCache, "NO", 'acceptable ALLOW CACHE');
-    equal(data.isPlaylist, true, 'data is parsed as a PLAYLIST as expected');
+    equal(data.isPlaylist, false, 'data is parsed as a PLAYLIST as expected');
     equal(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
     equal(data.mediaItems.length, 16, 'acceptable mediaItem count');
     equal(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
@@ -277,6 +277,7 @@
 
     ok(data);
     equal(data.playlistItems.length, 4, 'Has correct rendition count');
+    equal(data.isPlaylist, true, 'data is parsed as a PLAYLIST as expected');
     equal(data.playlistItems[0].bandwidth, 240000, 'First rendition index bandwidth is correct');
     equal(data.playlistItems[0]["program-id"], 1, 'First rendition index program-id is correct');
     equal(data.playlistItems[0].resolution.width, 396, 'First rendition index resolution width is correct');
