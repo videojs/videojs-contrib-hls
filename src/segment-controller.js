@@ -1,24 +1,19 @@
 (function(window) {
 
+  var xhrGet = window.videojs.hls.xhrGet;
+
   window.videojs.hls.SegmentController = function() {
     var self = this;
 
     self.loadSegment = function(segmentUrl, onDataCallback, onErrorCallback, onUpdateCallback) {
-      var request = new XMLHttpRequest();
-
-      self.url = segmentUrl;
       self.onDataCallback = onDataCallback;
-      self.onErrorCallback = onErrorCallback;
-      self.onUpdateCallback = onUpdateCallback;
-      self.requestTimestamp = +new Date();
 
-      request.open('GET', segmentUrl, true);
-      request.responseType = 'arraybuffer';
-      request.onload = function() {
-        self.onSegmentLoadComplete(new Uint8Array(request.response));
-      };
-
-      request.send(null);
+      xhrGet(segmentUrl, function(error, data, request) {
+        if (error) {
+          return onErrorCallback(error);
+        }
+        return self.onSegmentLoadComplete(data);
+      });
     };
 
     self.parseSegment = function(incomingData) {
@@ -48,16 +43,6 @@
 
       if (self.onDataCallback !== undefined) {
         self.onDataCallback(output);
-      }
-    };
-
-    self.onSegmentLoadError = function(error) {
-      if (error) {
-        throw error;
-      }
-
-      if (self.onErrorCallback !== undefined) {
-        self.onErrorCallback(error);
       }
     };
   };
