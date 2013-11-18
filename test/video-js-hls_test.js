@@ -20,7 +20,6 @@
     throws(block, [expected], [message])
   */
   var
-    manifestController,
     segmentController,
     parser,
 

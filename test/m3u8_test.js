@@ -1,5 +1,7 @@
 (function(window) {
-  var 
+  var
+    Handlebars = this.Handlebars,
+    manifestController = this.manifestController,
     m3u8parser;
 
   module('environment');
@@ -196,21 +198,21 @@
     equal(data.invalidReasons.length, 0, 'data has 1 invalid reasons');
 
     testData = {targetDuration: 'string'};
-    playlistData = playlistTemplate(testData),
+    playlistData = playlistTemplate(testData);
     data = m3u8parser.parse(playlistData);
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
     equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
     equal(data.invalidReasons[0], 'Invalid Target Duration Value: string');
 
     testData = {targetDuration: ''};
-    playlistData = playlistTemplate(testData),
+    playlistData = playlistTemplate(testData);
     data = m3u8parser.parse(playlistData);
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
     equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
     equal(data.invalidReasons[0], 'Invalid Target Duration Value: \'\'');
 
-    testData = {}
-    playlistData = playlistTemplate(testData),
+    testData = {};
+    playlistData = playlistTemplate(testData);
     notEqual(data, null, 'data is not NULL');
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
     equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');

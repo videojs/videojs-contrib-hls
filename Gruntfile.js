@@ -65,7 +65,10 @@ module.exports = function(grunt) {
         options: {
           jshintrc: 'test/.jshintrc'
         },
-        src: ['test/**/*.js', '!test/tsSegment.js', '!test/fixtures/*.js']
+        src: ['test/**/*.js',
+              '!test/tsSegment.js',
+              '!test/fixtures/*.js',
+              '!test/manifest/**']
       },
     },
     watch: {

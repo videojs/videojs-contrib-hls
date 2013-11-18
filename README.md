@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/bclwhitaker/videojs-contrib-hls.png)](https://travis-ci.org/bclwhitaker/videojs-contrib-hls)
+
 # video.js HLS Plugin
 
 A video.js plugin that plays HLS video on platforms that don't support it but have Flash.
