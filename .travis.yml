@@ -1,2 +1,1 @@
-language: javascript
-script: grunt
+language: node_js
