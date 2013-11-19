@@ -19,6 +19,6 @@
   },
   "dependencies": {
     "video.js": "~4.2.2",
-    "videojs-contrib-media-sources": "git+ssh://git@github.com/videojs/videojs-contrib-media-sources.git"
+    "videojs-contrib-media-sources": "0.0.0"
   }
 }
