@@ -25,6 +25,7 @@ module.exports = function(grunt) {
               'src/exp-golomb.js',
               'src/h264-stream.js',
               'src/aac-stream.js',
+              'src/mp3-stream.js',
               'src/segment-parser.js',
               'src/segment-controller.js',
               'src/m3u8/m3u8.js',

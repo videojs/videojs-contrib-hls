@@ -168,7 +168,7 @@ window.videojs.hls.AacStream = function() {
           this.tags.push(aacFrame);
 
           extraData = newExtraData;
-          aacFrame = new FlvTag(FlvTag.AUDIO_TAG, true);
+          aacFrame = new FlvTag(FlvTag.AUDIO_TAG, true, FlvTag.AAC_AUDIO);
           aacFrame.pts = aacFrame.dts;
           // For audio, DTS is always the same as PTS. We want to set the DTS
           // however so we can compare with video DTS to determine approximate
@@ -194,7 +194,7 @@ window.videojs.hls.AacStream = function() {
           }
         }
 
-        aacFrame = new FlvTag(FlvTag.AUDIO_TAG);
+        aacFrame = new FlvTag(FlvTag.AUDIO_TAG, undefined, FlvTag.AAC_AUDIO);
         aacFrame.pts = next_pts;
         aacFrame.dts = next_pts;
         state = 8;

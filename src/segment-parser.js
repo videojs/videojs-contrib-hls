@@ -4,10 +4,13 @@
     FlvTag = videojs.hls.FlvTag,
     H264Stream = videojs.hls.H264Stream,
     AacStream = videojs.hls.AacStream,
-    m2tsPacketSize = 188;
+    Mp3Stream = videojs.hls.Mp3Stream,
+    m2tsPacketSize = 188,
+    audioStreamType;
 
   console.assert(H264Stream);
   console.assert(AacStream);
+  console.assert(Mp3Stream);
 
   window.videojs.hls.SegmentParser = function() {
     var
@@ -19,6 +22,7 @@
       videoPid,
       h264Stream = new H264Stream(),
       audioPid,
+      mp3Stream = new Mp3Stream(),
       aacStream = new AacStream(),
       seekToKeyFrame = false;
 
@@ -81,12 +85,22 @@
     self.doSeek = function() {
       self.flushTags();
       aacStream.tags.length = 0;
+      mp3Stream.tags.length = 0;
       h264Stream.tags.length = 0;
       seekToKeyFrame = true;
     };
 
+    self.getAudioStream = function() {
+      if (0x03 === audioStreamType) {
+        return mp3Stream;
+      } else {
+        return aacStream;
+      }
+    };
+
     self.tagsAvailable = function() { // :int {
-      var i, pts; // :uint
+      var i, pts, // :uint
+          audioStream = self.getAudioStream();
 
       if (seekToKeyFrame) {
         for (i = 0 ; i < h264Stream.tags.length && seekToKeyFrame; ++i) {
@@ -106,34 +120,34 @@
         pts = h264Stream.tags[0].pts;
 
         // Remove any audio before the found keyframe
-        while( 0 < aacStream.tags.length && pts > aacStream.tags[0].pts ) {
-          aacStream.tags.shift();
+        
+        while( 0 < audioStream.tags.length && pts > audioStream.tags[0].pts ) {
+          audioStream.tags.shift();
         }
       }
 
-      return h264Stream.tags.length + aacStream.tags.length;
+      return h264Stream.tags.length + audioStream.tags.length;
     };
 
     self.getNextTag = function() { // :ByteArray {
-      var tag; // :FlvTag; // return tags in approximate dts order
-
+      var tag, // :FlvTag; // return tags in approximate dts order
+          audioStream = self.getAudioStream();
       if (0 === self.tagsAvailable()) {
         throw new Error("getNextTag() called when 0 == tagsAvailable()");
       }
 
       if (0 < h264Stream.tags.length) {
-        if (0 < aacStream.tags.length && aacStream.tags[0].dts < h264Stream.tags[0].dts) {
-          tag = aacStream.tags.shift();
+        if (0 < audioStream.tags.length && audioStream.tags[0].dts < h264Stream.tags[0].dts) {
+          tag = audioStream.tags.shift();
         } else {
           tag = h264Stream.tags.shift();
         }
-      } else if ( 0 < aacStream.tags.length ) {
-        tag = aacStream.tags.shift();
+      } else if ( 0 < audioStream.tags.length ) {
+        tag = audioStream.tags.shift();
       } else {
         // We dont have any tags available to return
         return new Uint8Array();
       }
-
       return tag.finalize();
     };
 
@@ -330,14 +344,14 @@
                                         dts,
                                         dataAlignmentIndicator);
           } else if (audioPid === pid) {
-            aacStream.setNextTimeStamp(pts,
+            self.getAudioStream().setNextTimeStamp(pts,
                                        pesPacketSize,
                                        dataAlignmentIndicator);
           }
         }
 
         if (audioPid === pid) {
-          aacStream.writeBytes(data, offset, end - offset);
+          self.getAudioStream().writeBytes(data, offset, end - offset);
         } else if (videoPid === pid) {
           h264Stream.writeBytes(data, offset, end - offset);
         }
@@ -369,13 +383,13 @@
                 throw new Error("Program has more than 1 video stream");
               }
               videoPid = elementaryPID;
-            } else if (0x0F === streamType) {
+            } else if (0x0F === streamType || 0x03 === streamType) {
               if (0 !== audioPid) {
                 throw new Error("Program has more than 1 audio Stream");
               }
+              audioStreamType = streamType;
               audioPid = elementaryPID;
             }
-            // TODO add support for MP3 audio
           }
         }
         // We could test the CRC here to detect corruption with extra CPU cost
@@ -395,7 +409,7 @@
         return h264Stream.tags.length;
       },
       aacTags: function() {
-        return aacStream.tags.length;
+        return self.getAudioStream().tags.length;
       }
     };
   };
