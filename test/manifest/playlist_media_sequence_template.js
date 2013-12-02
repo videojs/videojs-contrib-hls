@@ -1,7 +1,7 @@
 window.playlist_media_sequence_template = '#EXTM3U\n'+
 '#EXT-X-PLAYLIST-TYPE:VOD\n'+
 '{{#if mediaSequence}}#EXT-X-MEDIA-SEQUENCE:{{{mediaSequence}}}{{/if}}\n'+
-'{{#if mediaSequence2}}#EXT-X-MEDIA-SEQUENCE:{{{mediaSequence2}}}{{/if}}\n'+
+'{{#if mediaSequence1}}#EXT-X-MEDIA-SEQUENCE:{{{mediaSequence2}}}{{/if}}\n'+
 '#EXT-X-ALLOW-CACHE:YES\n'+
 '#EXT-X-TARGETDURATION:8\n'+
 '#EXTINF:6.640,{}\n'+

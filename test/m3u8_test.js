@@ -73,11 +73,11 @@
     ok(parsedData);
   });
 
-  test('should populate the manifest data object', function() {
+  test('valid manifest should populate the manifest data object', function() {
     var data = m3u8parser.parse(window.playlistData);
 
     notEqual(data, null, 'data is not NULL');
-    equal(data.invalidReasons.length, 0, 'data has 0 invalid reasons');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
     equal(data.hasValidM3UTag, true, 'data has valid EXTM3U');
     equal(data.targetDuration, 10, 'data has correct TARGET DURATION');
     equal(data.allowCache, "NO", 'acceptable ALLOW CACHE');
@@ -101,7 +101,8 @@
    tag.
 
    The EXT-X-PLAYLIST-TYPE tag MUST NOT appear in a Master Playlist.
-   */
+  */
+   
   test('should have parsed VOD playlist type', function() {
     var 
       playlistTemplate = Handlebars.compile(window.playlist_type_template),
@@ -110,7 +111,7 @@
       data = m3u8parser.parse(playlistData);
 
     notEqual(data, null, 'data is not NULL');
-    equal(data.invalidReasons.length, 0, 'data has 0 invalid reasons');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
     equal(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
   });
 
@@ -121,7 +122,7 @@
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
     notEqual(data, null, 'data is not NULL');
-    equal(data.invalidReasons.length, 0, 'data has 0 invalid reasons');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
     equal(data.playlistType, "EVENT", 'acceptable PLAYLIST TYPE');
   });
 
@@ -133,7 +134,8 @@
       data = m3u8parser.parse(playlistData);
 
     notEqual(data, null, 'data is not NULL');
-    equal(data.invalidReasons.length, 0, 'data has 0 invalid reasons');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    equal(data.warnings, 'EXT-X-PLAYLIST-TYPE was empty or missing.  Assuming VOD');
     equal(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
   });
 
@@ -145,18 +147,19 @@
       data = m3u8parser.parse(playlistData);
     notEqual(data, null, 'data is not NULL');
     equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    equal(data.invalidReasons[0], 'Invalid Playlist Type Value: baklsdhfajsdf');
+    equal(data.invalidReasons[0], 'Invalid Playlist Type Value: \'baklsdhfajsdf\'');
   });
 
-  test('should have an invalid reason due to invalid playlist type', function() {
+  test('should have assumed VOD playlist type is empty', function() {
     var 
       playlistTemplate = Handlebars.compile(window.playlist_type_template),
       testData = {playlistType: ''},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
     notEqual(data, null, 'data is not NULL');
-    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    equal(data.invalidReasons[0], 'Invalid Playlist Type Value: \'\'');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    equal(data.warnings, 'EXT-X-PLAYLIST-TYPE was empty or missing.  Assuming VOD');
+    equal(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
   });
 
   /*3.4.2.  EXT-X-TARGETDURATION
@@ -190,33 +193,43 @@
   test('NaN target duration', function() {
     var 
       playlistTemplate = Handlebars.compile(window.playlist_target_duration_template),
-      testData = {targetDuration: '10'},
+      testData = {targetDuration: 'string'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
+    console.log(playlistData);
+    console.log(data.targetDuration);
+    notEqual(data, null, 'data is not NULL');    
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'data has 0 invalid reasons');
+    equal(data.invalidReasons[0], 'Invalid Target Duration Value: \'NaN\'');
+  });
+
+  test('empty target duration', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_target_duration_template),
+      testData = {targetDuration: '\'\''},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+    console.log(playlistData);
+    console.log(data.targetDuration);
+    notEqual(data, null, 'data is not NULL');    
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    equal(data.invalidReasons[0], 'Invalid Target Duration Value: \'NaN\'');
+  });
+
+  test('undefined target duration', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_target_duration_template),
+      testData = {},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+    console.log(playlistData);
+    console.log(data.targetDuration);
     notEqual(data, null, 'data is not NULL');
-    equal(data.targetDuration, 10, 'data has correct TARGET DURATION');
-    equal(data.invalidReasons.length, 0, 'data has 1 invalid reasons');
-
-    testData = {targetDuration: 'string'};
-    playlistData = playlistTemplate(testData);
-    data = m3u8parser.parse(playlistData);
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
     equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    equal(data.invalidReasons[0], 'Invalid Target Duration Value: string');
-
-    testData = {targetDuration: ''};
-    playlistData = playlistTemplate(testData);
-    data = m3u8parser.parse(playlistData);
-    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    equal(data.invalidReasons[0], 'Invalid Target Duration Value: \'\'');
-
-    testData = {};
-    playlistData = playlistTemplate(testData);
-    notEqual(data, null, 'data is not NULL');
-    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    equal(data.invalidReasons[0], 'Invalid Target Duration Value: '+ undefined);
+    equal(data.invalidReasons[0], 'Invalid Target Duration Value: \'undefined\'');
 
   });
 
@@ -251,11 +264,11 @@
    MEDIA-SEQUENCE tag then the sequence number of the first segment in
    the playlist SHALL be considered to be 0.  A client MUST NOT assume
    that segments with the same sequence number in different Media
-   Playlists contain matching content.
+   Playlists contain matching content. 
   
    A media URI is not required to contain its sequence number.
   */
-
+  
   test('media sequence is valid in the playlist', function() {
     var 
       playlistTemplate = Handlebars.compile(window.playlist_media_sequence_template),
@@ -265,7 +278,7 @@
 
     notEqual(data, null, 'data is not NULL');
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    equal(data.invalidReasons.length, 0, 'data has 0 invalid reasons');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
     equal(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
   });
 
@@ -278,7 +291,7 @@
 
     notEqual(data, null, 'data is not NULL');
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    equal(data.invalidReasons.length, 0, 'data has 0 invalid reasons');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
     equal(data.mediaSequence, 0, 'MEDIA SEQUENCE tags after the first should be ignored');
   });
 
@@ -291,7 +304,7 @@
 
     notEqual(data, null, 'data is not NULL');
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    equal(data.invalidReasons.length, 0, 'data has 0 invalid reasons');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
     equal(data.mediaSequence, 0, 'MEDIA SEQUENCE should default to 0 when not present.');
   });
 
@@ -318,7 +331,7 @@
     notEqual(data, null, 'data is not NULL');
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
     equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    equal(data.invalidReasons[0], 'Invalid Media Sequence Value: 1');
+    equal(data.invalidReasons[0], 'Invalid Media Sequence Value: \'1\'');
   });
 
   test('media sequence (-1) in the playlist', function() {
@@ -331,7 +344,7 @@
     notEqual(data, null, 'data is not NULL');
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
     equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    equal(data.invalidReasons[0], 'Invalid Media Sequence Value: -1');
+    equal(data.invalidReasons[0], 'Invalid Media Sequence Value: \'-1\'');
   });
 
   test('media sequence invalid (string) in the playlist', function() {
@@ -344,7 +357,7 @@
     notEqual(data, null, 'data is not NULL');
     notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
     equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    equal(data.invalidReasons[0], 'Invalid Media Sequence Value: asdfkasdkfl');
+    equal(data.invalidReasons[0], 'Invalid Media Sequence Value: \'asdfkasdkfl\'');
   });
 
   module('brightcove playlist', {
@@ -365,4 +378,245 @@
     equal(data.playlistItems[0].resolution.height, 224, 'First rendition index resolution height is correct');
 
   });
+
+  /*3.3.2.  EXTINF
+
+   The EXTINF tag specifies the duration of a media segment.  It applies
+   only to the media segment that follows it, and MUST be followed by a
+   media segment URI.  Each media segment MUST be preceded by an EXTINF
+   tag.  Its format is:
+
+   #EXTINF:<duration>,<title>
+
+   where duration is an decimal-integer or decimal-floating-point number
+   that specifies the duration of the media segment in seconds.
+   Durations that are reported as integers SHOULD be rounded to the
+   nearest integer.  Durations MUST be integers if the protocol version
+   of the Playlist file is less than 3.  Durations SHOULD be floating-
+   point if the version is equal to or greater than 3.  The remainder of
+   the line following the comma is an optional human-readable
+   informative title of the media segment.
+
+   The EXTINF duration of each media segment in the Playlist
+   file, when rounded to the nearest integer, MUST be less than or equal
+   to the target duration.
+  */
+  
+  test('test valid extinf values in playlist', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
+      testData = {version: 4, extInf: '10', extInf1: '10', extInf2: '10', segment: 'hls_450k_video.ts'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+  });
+
+  test('test valid extinf without associated segment in playlist', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
+      testData = {version: 4, extInf: '10', extInf1: '10', extInf2: '10'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    //equal(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF missing segment\'');
+  });
+
+  //
+  test('test invalid extinf values in playlist', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
+      testData = {version: 4, extInf: 'asdf', extInf1: '10', extInf2: '10', segment: 'hls_450k_video.ts'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+  });
+
+  //its best practice that every extinf have the same value, but its not required
+  test('test inconsistent extinf values in playlist below target duration', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
+      testData = {version: 4, extInf: '10', extInf1: '7', extInf2: '10', segment: 'hls_450k_video.ts'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+  });
+
+  //extinf values must be below the target duration
+  test('test inconsistent extinf values in playlist above target duration', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
+      testData = {version: 4, extInf: '10', extInf1: '7', extInf2: '10', segment: 'hls_450k_video.ts'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    equal(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF value higher than #TARGETDURATION\'');
+  });
+
+  //extinf values must be below the target duration
+  test('test floating-point values not accepted with version 3', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
+      testData = {version: 3, extInf: '10.5', extInf1: '10.5', extInf2: '10.5', segment: 'hls_450k_video.ts'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    equal(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF value not an integer\'');
+  });
+
+  //extinf values must be below the target duration
+  test('test floating-point values accepted with version 4', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
+      testData = {version: 4, extInf: '10.5', extInf1: '10.5', extInf2: '10.5', segment: 'hls_450k_video.ts'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+  });
+
+  //extinf values must be below the target duration
+  test('test empty EXTINF values', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
+      testData = {version: 4, extInf: '', extInf1: '10.5', extInf2: '10.5', segment: 'hls_450k_video.ts'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    equal(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF value empty\'');
+  });
+
+  /*
+  3.3.6.  EXT-X-ALLOW-CACHE
+
+   The EXT-X-ALLOW-CACHE tag indicates whether the client MAY or MUST
+   NOT cache downloaded media segments for later replay.  It MAY occur
+   anywhere in the Playlist file; it MUST NOT occur more than once.  The
+   EXT-X-ALLOW-CACHE tag applies to all segments in the playlist.  Its
+   format is:
+
+   #EXT-X-ALLOW-CACHE:<YES|NO>
+  */
+  
+  test('test EXT-X-ALLOW-CACHE YES', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
+      testData = {version: 4, allowCache: 'YES'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should be YES');
+  });
+
+  test('test EXT-X-ALLOW-CACHE NO', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
+      testData = {version: 4, allowCache: 'NO'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    equal(data.allowCache, 'NO', 'EXT-X-ALLOW-CACHE should be NO');
+  });
+
+  test('test EXT-X-ALLOW-CACHE invalid, default to YES', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
+      testData = {version: 4, allowCache: 'YESTERDAYNO'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    equal(data.invalidReasons[0], 'Invalid EXT-X-ALLOW-CACHE value: \'YESTERDAYNO\'');
+    equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES.');
+  });
+
+  test('test EXT-X-ALLOW-CACHE empty, default to YES', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
+      testData = {version: 4, allowCache: ''},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    equal(data.invalidReasons[0], 'Invalid EXT-X-ALLOW-CACHE value: \'\'');
+    equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES.');
+  });
+
+  test('test EXT-X-ALLOW-CACHE missing, default to YES', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
+      testData = {version: 4},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 1, 'No EXT-X-ALLOW-CACHE specified.  Default: YES.');
+    equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES');
+  });
+  
+  test('test EXT-X-BYTERANGE valid', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_byte_range),
+      testData = {version: 4, byteRange: '522828,0', byteRange1: '587500,522828', byteRange2: '44556,8353216'},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    equal(data.invalidReasons.length, 0, 'Errors object should be empty.');
+    //TODO: Validate the byteRange info
+    equal(data.mediaItems.length, 16, '16 segments should have been parsed.');
+    equal(data.mediaItems[0].byterange, testData.byteRange, 'byteRange incorrect.');
+    equal(data.mediaItems[1].byterange, testData.byteRange1, 'byteRange1 incorrect.');
+    equal(data.mediaItems[15].byterange, testData.byteRange2, 'byteRange2 incorrect.');
+  });
+
+  test('test EXT-X-BYTERANGE used but version is < 4', function() {
+    var 
+      playlistTemplate = Handlebars.compile(window.playlist_byte_range),
+      testData = {version: 3, byteRange: ['522828,0'], byteRange1: ['587500,522828'], byteRange2: ['44556,8353216']},
+      playlistData = playlistTemplate(testData),
+      data = m3u8parser.parse(playlistData);
+
+    notEqual(data, null, 'data is not NULL');
+    equal(data.mediaItems.length, 16, '16 segments should have been parsed.');
+    notEqual(data.invalidReasons, null, 'there should be an error');
+    equal(data.invalidReasons.length, 1, 'there should be 1 error');
+    //TODO: Validate the byteRange info
+    equal(data.invalidReasons[0], 'EXT-X-BYTERANGE used but version is < 4.')
+  });
+
 })(this);
