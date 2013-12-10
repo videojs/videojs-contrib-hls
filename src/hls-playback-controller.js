@@ -62,14 +62,26 @@
           self.rendition(self.currentPlaylist.playlistItems[0]);
         } else {
           self.currentManifest = m3u8;
-          self.manifestLoaded = true;
+          self.manifestLoaded = true; // Is this actually used anywhere?
 
           self.loadSegment(self.currentManifest.mediaItems[0]);
+
+          if (!m3u8.hasEndTag) {
+            self.manifestReloadInterval = setInterval(self.reloadManifest, m3u8.targetDuration / 2 * 1000); 
+          }
 
           if (self.manifestLoadCompleteCallback) {
             self.manifestLoadCompleteCallback(m3u8);
           }
         }
+      }
+    };
+
+    self.reloadManifest = function() {
+      console.log('reloading manifest');
+      self.manifestController.reload();
+      if (self.currentSegment < self.currentManifest.mediaItems.length -1) {
+        self.loadNextSegment();
       }
     };
 
@@ -88,11 +100,11 @@
         self.sourceBuffer.appendBuffer(self.parser.getNextTag().bytes, self.player);
       }
 
-      if (self.currentSegment < self.currentManifest.mediaItems.length-1) {
+      if (self.currentSegment < self.currentManifest.mediaItems.length - 1) {
         self.loadNextSegment();
       }
     };
-
+    
     self.loadNextSegment = function() {
       self.currentSegment++;
       self.loadSegment(self.currentManifest.mediaItems[self.currentSegment]);
