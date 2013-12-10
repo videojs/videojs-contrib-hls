@@ -24,7 +24,7 @@ for (i in 'videocodecid') {
 }
 
 // (type:uint, extraData:Boolean = false) extends ByteArray
-hls.FlvTag = function(type, extraData) {
+hls.FlvTag = function(type, extraData, audioType) {
   var
     // Counter if this is a metadata tag, nal start marker if this is a video
     // tag. unused if this is an audio tag
@@ -49,13 +49,24 @@ hls.FlvTag = function(type, extraData) {
     };
 
   this.keyFrame = false; // :Boolean
+  this.audioType = audioType;
 
   switch(type) {
   case hls.FlvTag.VIDEO_TAG:
     this.length = 16;
+    this.keyFrame = extraData; // Defaults to false
     break;
   case hls.FlvTag.AUDIO_TAG:
-    this.length = 13;
+    switch (audioType) {
+      case hls.FlvTag.MP3_AUDIO:
+        this.length = 12;
+        break;
+      case hls.FlvTag.AAC_AUDIO:
+        this.length = 13;
+        break;
+      default:
+        throw("Error Unknown AudioType");
+      }
     this.keyFrame = true;
     break;
   case hls.FlvTag.METADATA_TAG:
@@ -70,7 +81,6 @@ hls.FlvTag = function(type, extraData) {
   this.view = new DataView(this.bytes.buffer);
   this.bytes[0] = type;
   this.position = this.length;
-  this.keyFrame = extraData; // Defaults to false
 
   // presentation timestamp
   this.pts = 0;
@@ -249,8 +259,17 @@ hls.FlvTag = function(type, extraData) {
       break;
 
     case hls.FlvTag.AUDIO_TAG:
-      this.bytes[11] = 0xAF; // 44 kHz, 16-bit stereo
-      this.bytes[12] = extraData ? 0x00 : 0x01;
+      switch (this.audioType) {
+        case hls.FlvTag.MP3_AUDIO:
+          this.bytes[11] = 0x2F; // MP3 44kHz, 16-bit stereo
+          break;
+        case hls.FlvTag.AAC_AUDIO:
+          this.bytes[11] = 0xAF; // AAC 44kHz, 16-bit stereo
+          this.bytes[12] = extraData ? 0x00 : 0x01;
+          break;
+        default:
+          throw("Error undefined AudioType");
+      }
       break;
 
     case hls.FlvTag.METADATA_TAG:
@@ -273,7 +292,6 @@ hls.FlvTag = function(type, extraData) {
       this.length = this.position;
       break;
     }
-
     len = this.length - 11;
 
     // write the DataSize field
@@ -305,6 +323,8 @@ hls.FlvTag = function(type, extraData) {
 hls.FlvTag.AUDIO_TAG = 0x08; // == 8, :uint
 hls.FlvTag.VIDEO_TAG = 0x09; // == 9, :uint
 hls.FlvTag.METADATA_TAG = 0x12; // == 18, :uint
+hls.FlvTag.AAC_AUDIO = 'aac';
+hls.FlvTag.MP3_AUDIO = 'mp3';
 
 // (tag:ByteArray):Boolean {
 hls.FlvTag.isAudioFrame = function(tag) {
