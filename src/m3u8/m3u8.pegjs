@@ -1,0 +1,269 @@
+/***** Start *****/
+start
+  = tags:tags+ .* {
+      var obj = {};
+      tags.forEach(function(tag) { for (var p in tag) { obj[p] = tag[p]; }});
+      return obj;
+    }
+
+tags
+  = tag:m3uTag _ { return tag; }
+  / tag:extinfTag _ { return tag; }
+  / tag:targetDurationTag _ { return tag; }
+  / tag:mediaSequenceTag _ { return tag; }
+  / tag:keyTag _ { return tag; }
+  / tag:programDateTimeTag _ { return tag; }
+  / tag:allowCacheTag _ { return tag; }
+  / tag:playlistTypeTag _ { return tag; }
+  / tag:endlistTag _ { return tag; }
+  / tag:mediaTag _ { return tag; }
+  / tag:streamInfTag _ { return tag; }
+  / tag:discontinuityTag _ { return tag; }
+  / tag:discontinuitySequenceTag _ { return tag; }
+  / tag:iframesOnlyTag _ { return tag; }
+  / tag:mapTag _ { return tag; }
+  / tag:iframeStreamInf _ { return tag; }
+  / tag:startTag _ { return tag; }
+  / tag:versionTag _ { return tag; }
+
+/***** Tags *****/
+
+m3uTag
+  = tag:"#EXTM3U" { return {openTag: true}; }
+
+extinfTag
+  = tag:'#EXTINF' ":" duration:number "," _ title:text? _ byteRange:byteRangeTag? file:mediaFile {
+      var fileObj = {};
+      fileObj[file] = {
+        byteRange: byteRange,
+        title: title,
+        duration: duration,
+        file: file
+      };
+      return fileObj;
+    }
+
+byteRangeTag
+  = tag:"EXT-X-BYTERANGE" ":" length:int ("@" offset:int)? { return {length: length, offset: offset}; }
+
+targetDurationTag
+  = tag:"#EXT-X-TARGETDURATION" ":" seconds:int { return {targetDuration: seconds}; }
+
+mediaSequenceTag
+  = tag:'#EXT-X-MEDIA-SEQUENCE' ":" sequenceNumber:int { return {mediaSequence: sequenceNumber}; }
+
+keyTag
+  = tag:'#EXT-X-KEY' ":" attrs:keyAttributes { return {key: attrs}; }
+
+programDateTimeTag
+  = tag:'#EXT-X-PROGRAM-DATE-TIME' ":" date:date
+
+allowCacheTag
+  = tag:'#EXT-X-ALLOW-CACHE' ":" answer:answer { return {allowCache: answer}; }
+
+playlistTypeTag
+  = tag:'#EXT-X-PLAYLIST-TYPE' ":" type:playlistType { return {playlistType: type}; }
+
+endlistTag
+  = tag:'#EXT-X-ENDLIST' { return {closeTag: true}; }
+
+mediaTag
+  = tag:'#EXT-MEDIA' ":" attrs:mediaAttributes { return {media: attrs}; }
+
+streamInfTag
+  = tag:'#EXT-X-STREAM-INF' ":" attrs:streamInfAttrs _ file:mediaFile {
+      var fileObj = {};
+      fileObj[file] = {
+        attributes: attrs,
+        file: file
+      };
+      return fileObj;
+    }
+
+discontinuityTag
+  = tag:'#EXT-X-DISCONTINUITY'
+
+discontinuitySequenceTag
+  = tag:'#EXT-X-DISCONTINUITY-SEQUENCE' ":" sequence:int { return {discontinuitySequence: sequence}; }
+
+iframesOnlyTag
+  = tag:'#EXT-X-I-FRAMES-ONLY'
+
+mapTag
+  = tag:'#EXT-X-MAP' ":" attrs:mapAttributes { return {map: attrs}; }
+
+iframeStreamInf
+  = tag:'#EXT-X-I-FRAME-STREAM-INF' ":" attrs:iframeStreamAttrs { return {iframeStream: attrs}; }
+
+startTag
+  = tag:'EXT-X-START' ":" attrs:startAttributes { return {start: attrs}; }
+
+versionTag
+  = tag:'#EXT-X-VERSION' ":" version:int { return {version: version}; }
+
+/***** Helpers *****/
+
+mediaFile
+  = file:[ -~]+ { return file.join(''); }
+
+keyAttributes
+  = attrs:keyAttribute+
+
+keyAttribute
+  = "METHOD" "=" method:keyMethod
+  / "URI" "=" uri:quotedString
+  / "IV" "=" iv:hexint
+  / "KEYFORMAT" "=" keyFormat:quotedString
+  / "KEYFORMATVERSIONS" "=" keyFormatVersions:quotedString
+
+keyMethod
+  = "NONE"
+  / "AES-128"
+  / "SAMPLE-AES"
+
+mediaAttributes
+  = attrs:mediaAttribute+
+
+mediaAttribute
+  = "TYPE" "=" type:enumeratedString
+  / "URI" "=" uri:quotedString
+  / "GROUP-ID" "=" groupId:quotedString
+  / "LANGUAGE" "=" langauge:quotedString
+  / "ASSOC-LANGUAGE" "=" assocLanguage:quotedString
+  / "NAME" "=" name:quotedString
+  / "DEFAULT" "=" default:answer
+  / "AUTOSELECT" "="autoselect:answer
+  / "FORCE" "=" force:answer
+  / "INSTREAM-ID" "=" instreamId:quotedString
+  / "CHARACTERISTICS" "=" characteristics:quotedString
+
+streamInfAttrs
+  = attrs:streamInfAttr+
+
+streamInfAttr
+  = streamInfSharedAttr
+  / "AUDIO" "=" audio:quotedString
+  / "SUBTITLES" "=" subtitles:quotedString
+  / "CLOSED-CAPTION" "=" captions:"NONE"
+  / "CLOSED-CAPTION" "=" captions:quotedString
+
+streamInfSharedAttr
+  = "BANDWIDTH" "=" bandwidth:int
+  / "CODECS" "=" codec:quotedString
+  / "RESOLUTION" "=" resolution:resolution
+  / "VIDEO" "=" video:quotedString
+
+mapAttributes
+  = attrs:mapAttribute+
+
+mapAttribute
+  = "URI" "=" uri:quotedString
+  / "BYTERANGE" "=" byteRange:quotedString
+
+iframeStreamAttrs
+  = iframeStreamAttr+
+
+iframeStreamAttr
+  = streamInfSharedAttr
+  / "URI" "=" uri:quotedString
+
+startAttributes
+  = attrs:startAttribute+
+
+startAttribute
+  = "TIME-OFFSET" "=" timeOffset:number
+  / "PRECISE" "=" precise:answer
+
+answer "answer"
+  = "YES"
+  / "NO"
+
+playlistType
+  = "EVENT"
+  / "VOD"
+
+/***** Date *****/
+
+date "date"
+  = year:year "-" month:month "-" day:day "T" time:time timezone:timezone
+
+year "year"
+  = digit digit digit digit
+
+month "month"
+  = [01] digit
+
+day "day"
+  = [0-3] digit
+
+time "time"
+  = [0-2] digit ":" [0-5] digit ":" [0-5] digit "." digit+
+  / [0-2] digit ":" [0-5] digit ":" [0-5] digit
+  / [0-2] digit ":" [0-5] digit
+
+timezone "timezone"
+  = [+-] [0-2] digit ":" [0-5] digit
+  / "Z"
+
+/***** Numbers *****/
+
+number "number"
+  = parts:(int frac) _ { return parseFloat(parts.join('')); }
+  / parts:(int) _ { return parts; }
+
+resolution
+  = int "x" int
+
+int
+  = first:digit19 rest:digits { return parseInt(first + rest.join(''), 10); }
+  / digit:digit { return parseInt(digit, 10); }
+  / neg:"-" first:digit19 rest:digits { return parseInt(neg + first + rest.join(''), 10); }
+  / neg:"-" digit { return parseInt(neg + digit, 10); }
+
+hexint
+  = "0x" hexDigits:hexDigit+ { return '0x' + hexDigits.join(''); }
+  / "0X" hexDigits:hexDigit+ { return '0x' + hexDigits.join(''); }
+
+frac
+  = dec:"." digits:digits { return parseFloat(dec + digits.join('')); }
+
+digits
+  = digit+
+
+digit
+  = [0-9]
+
+digit19
+  = [1-9]
+
+hexDigit
+  = [0-9a-fA-F]
+
+/***** Text *****/
+
+enumeratedString
+  = chars:enumeratedChar+ _ { return chars.join('') }
+
+quotedString
+  = '"' '"' _ { return ""; }
+  / '"' chars:quotedChar+ '"' _ { return chars.join(''); }
+
+enumeratedChar
+  = [^'" \n\t\r]
+  / [a-zA-Z0-9]
+
+quotedChar
+  = [^\r\n"]
+  / char:char
+
+text "text"
+  = text:char+ { return text.join(''); }
+
+char "char"
+  = [ -~]
+
+_ "whitespace"
+  = whitespace*
+
+whitespace
+  = [ \t\n\r]

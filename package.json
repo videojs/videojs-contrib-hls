@@ -6,7 +6,10 @@
   },
   "license": "Apache 2",
   "scripts": {
-    "test": "grunt qunit"
+    "test": "grunt qunit",
+    "prepublish": "npm run peg",
+    "peg": "pegjs src/m3u8/m3u8.pegjs src/m3u8/m3u8-generated.js",
+    "testpeg": "npm run peg && node test/pegtest.js"
   },
   "devDependencies": {
     "grunt-contrib-jshint": "~0.6.0",
@@ -15,7 +18,8 @@
     "grunt-contrib-uglify": "~0.2.0",
     "grunt-contrib-watch": "~0.4.0",
     "grunt-contrib-clean": "~0.4.0",
-    "grunt": "~0.4.1"
+    "grunt": "~0.4.1",
+    "pegjs": "~0.7.0"
   },
   "dependencies": {
     "video.js": "~4.2.2",
