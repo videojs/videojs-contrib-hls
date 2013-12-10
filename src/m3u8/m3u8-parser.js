@@ -25,7 +25,9 @@
     };
 
     self.parse = function(rawDataString) {
-      data = new M3U8();
+      if (!data) {
+        data = new M3U8();
+      }
 
       if (self.directory) {
         data.directory = self.directory;
@@ -82,7 +84,8 @@
             }
             segment.url = self.directory + segment.url;
           }
-          data.mediaItems.push(segment);
+
+          self.pushUniqueSegment(segment);
           break;
 
         case tagTypes.STREAM_INF:
@@ -146,6 +149,19 @@
       });
 
       return data;
+    };
+
+    self.pushUniqueSegment = function(segment) {
+      // This is going to be horrible for performance as the mediaItems list grows
+      if(segment.byterange === -1) {
+        for (var i = 0, l=data.mediaItems.length; i < l; i++) {
+          if (data.mediaItems[i].url === segment.url) {
+            return;
+          }
+        }
+      }
+      console.log('adding new segment');
+      data.mediaItems.push(segment);
     };
   };
 })(this);

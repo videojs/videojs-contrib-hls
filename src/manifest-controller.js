@@ -22,6 +22,14 @@
       window.vjs.get(manifestUrl, self.onManifestLoadComplete, self.onManifestLoadError);
     };
 
+    self.reload = function() {
+      window.vjs.get(self.url, self.reloadManifest, self.onManifestLoadError);
+    };
+
+    self.reloadManifest = function(dataAsString) {
+      self.parser.parse(dataAsString);
+    };
+
     self.parseManifest = function(dataAsString) {
       self.parser = new M3U8Parser();
       self.parser.directory = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/.exec(self.url).slice(1)[1];
