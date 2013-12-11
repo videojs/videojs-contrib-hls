@@ -125,7 +125,7 @@ mediaAttributes
   = attrs:mediaAttribute+
 
 mediaAttribute
-  = "TYPE" "=" type:enumeratedString
+  = "TYPE" "=" type:mediaTypes
   / "URI" "=" uri:quotedString
   / "GROUP-ID" "=" groupId:quotedString
   / "LANGUAGE" "=" langauge:quotedString
@@ -177,6 +177,12 @@ startAttribute
 answer "answer"
   = "YES"
   / "NO"
+
+mediaTypes
+  = "AUDIO"
+  / "VIDEO"
+  / "SUBTITLES"
+  / "CLOSED-CAPTIONS"
 
 playlistType
   = "EVENT"
