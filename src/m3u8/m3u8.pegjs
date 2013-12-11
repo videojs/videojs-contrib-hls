@@ -241,16 +241,9 @@ hexDigit
 
 /***** Text *****/
 
-enumeratedString
-  = chars:enumeratedChar+ _ { return chars.join('') }
-
 quotedString
   = '"' '"' _ { return ""; }
   / '"' chars:quotedChar+ '"' _ { return chars.join(''); }
-
-enumeratedChar
-  = [^'" \n\t\r]
-  / [a-zA-Z0-9]
 
 quotedChar
   = [^\r\n"]
