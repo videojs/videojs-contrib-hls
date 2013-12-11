@@ -32,7 +32,7 @@ m3uTag
   = tag:"#EXTM3U" { return {openTag: true}; }
 
 extinfTag
-  = tag:'#EXTINF' ":" duration:number "," _ title:text? _ byteRange:byteRangeTag? file:mediaFile {
+  = tag:'#EXTINF' ":" duration:number "," _ title:text? _ byteRange:byteRangeTag? _ file:mediaFile {
       var fileObj = {};
       fileObj[file] = {
         byteRange: byteRange,
