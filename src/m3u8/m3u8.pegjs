@@ -1,13 +1,18 @@
 /***** Start *****/
 start
-  = tags:tags+ .* {
+  = tags:lines+ .* {
       var obj = {};
       tags.forEach(function(tag) { for (var p in tag) { obj[p] = tag[p]; }});
       return obj;
     }
 
-tags
-  = tag:m3uTag _ { return tag; }
+lines
+  = comment:comment _ { var obj = {}; obj["comment" + line] = comment; return obj; }
+  / ! comment tag:tag _ { return tag; }
+
+tag
+  = & comment
+  / tag:m3uTag _ { return tag; }
   / tag:extinfTag _ { return tag; }
   / tag:targetDurationTag _ { return tag; }
   / tag:mediaSequenceTag _ { return tag; }
@@ -25,6 +30,9 @@ tags
   / tag:iframeStreamInf _ { return tag; }
   / tag:startTag _ { return tag; }
   / tag:versionTag _ { return tag; }
+
+comment "comment"
+  = & "#" ! "#EXT" text:text+ { return text.join(); }
 
 /***** Tags *****/
 
@@ -71,7 +79,7 @@ mediaTag
   = tag:'#EXT-MEDIA' ":" attrs:mediaAttributes { return {media: attrs}; }
 
 streamInfTag
-  = tag:'#EXT-X-STREAM-INF' ":" attrs:streamInfAttrs _ file:mediaFile {
+  = tag:'#EXT-X-STREAM-INF' ":" attrs:streamInfAttrs _ file:mediaFile? {
       var fileObj = {};
       fileObj[file] = {
         attributes: attrs,
@@ -104,7 +112,8 @@ versionTag
 /***** Helpers *****/
 
 mediaFile
-  = file:[ -~]+ { return file.join(''); }
+  = & tag
+  / ! tag file:[ -~]+ { return file.join(''); }
 
 keyAttributes
   = attrs:keyAttribute+
