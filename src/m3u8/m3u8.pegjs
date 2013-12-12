@@ -1,13 +1,30 @@
 /***** Start *****/
 start
   = tags:lines+ .* {
-      var obj = {};
-      tags.forEach(function(tag) { for (var p in tag) { obj[p] = tag[p]; }});
+      var obj = {},
+          choices = {
+            segments: 1,
+            comments: 1,
+            renditions: 1
+          };
+      tags.forEach(function(tag) {
+        for (var p in tag) {
+          if (p in choices) {
+            if (Object.prototype.toString.call(obj[p]) === '[object Array]') {
+              obj[p].push(tag[p]);
+            } else {
+              obj[p] = [tag[p]];
+            }
+          } else {
+            obj[p] = tag[p];
+          }
+        }
+      });
       return obj;
     }
 
 lines
-  = comment:comment _ { var obj = {}; obj["comment" + line] = comment; return obj; }
+  = comment:comment _ { var obj = {}; obj["comments"] = comment; return obj; }
   / ! comment tag:tag _ { return tag; }
 
 tag
@@ -41,14 +58,13 @@ m3uTag
 
 extinfTag
   = tag:'#EXTINF' ":" duration:number "," optional:extinfOptionalParts _ file:mediaFile {
-      var fileObj = {};
-      fileObj[tag + line] = {
-        byteRange: optional.byteRange,
-        title: optional.title,
-        duration: duration,
-        file: file
+      return {segments: {
+          byteRange: optional.byteRange,
+          title: optional.title,
+          duration: duration,
+          file: file
+        }
       };
-      return fileObj;
     }
 
 byteRangeTag
@@ -80,12 +96,11 @@ mediaTag
 
 streamInfTag
   = tag:'#EXT-X-STREAM-INF' ":" attrs:streamInfAttrs _ file:mediaFile? {
-      var fileObj = {};
-      fileObj[file] = {
-        attributes: attrs,
-        file: file
+      return {renditions: {
+          attributes: attrs,
+          file: file
+        }
       };
-      return fileObj;
     }
 
 discontinuityTag
