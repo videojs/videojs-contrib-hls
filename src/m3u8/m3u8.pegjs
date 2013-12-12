@@ -40,7 +40,7 @@ m3uTag
   = tag:"#EXTM3U" { return {openTag: true}; }
 
 extinfTag
-  = tag:'#EXTINF' ":" duration:number "," optional:extinfOptionalParts? _ file:mediaFile {
+  = tag:'#EXTINF' ":" duration:number "," optional:extinfOptionalParts _ file:mediaFile {
       var fileObj = {};
       fileObj[tag + line] = {
         byteRange: optional.byteRange,
@@ -52,7 +52,7 @@ extinfTag
     }
 
 byteRangeTag
-  = tag:"EXT-X-BYTERANGE" ":" length:int ("@" offset:int)? { return {length: length, offset: offset}; }
+  = tag:"#EXT-X-BYTERANGE" ":" length:int ("@" offset:int)? { return {length: length, offset: offset}; }
 
 targetDurationTag
   = tag:"#EXT-X-TARGETDURATION" ":" seconds:int { return {targetDuration: seconds}; }
@@ -112,8 +112,8 @@ versionTag
 /***** Helpers *****/
 
 extinfOptionalParts
-  = _? byteRange:byteRangeTag? { return {title: '', byteRange: byteRange}; }
-  / _? title:nonbreakingText? _? byteRange:byteRangeTag? { return {title: title, byteRange: byteRange} }
+  = nonbreakingWhitespace title:text _ byteRange:byteRangeTag? { return {title: title, byteRange: byteRange} }
+  / _ byteRange:byteRangeTag? { return {title: '', byteRange: byteRange}; }
 
 mediaFile
   = & tag
@@ -268,9 +268,6 @@ quotedChar
   = [^\r\n"]
   / char:char
 
-nonbreakingText
-  = text:quotedChar+ { return text.join(''); }
-
 text "text"
   = text:char+ { return text.join(''); }
 
@@ -282,3 +279,6 @@ _ "whitespace"
 
 whitespace
   = [ \t\n\r]
+
+nonbreakingWhitespace
+  = [ \t]*
