@@ -135,7 +135,8 @@ mediaURL
   / ! tag file:[ -~]+ { return file.join(''); }
 
 keyAttributes
-  = attrs:keyAttribute+
+  = attrs:(keyAttribute (attrSeparator streamInfAttrs)*)
+  / attrs:keyAttribute?
 
 keyAttribute
   = "METHOD" "=" method:keyMethod
@@ -150,7 +151,8 @@ keyMethod
   / "SAMPLE-AES"
 
 mediaAttributes
-  = attrs:mediaAttribute+
+  = attrs:(mediaAttribute (attrSeparator mediaAttribute)*)
+  / attrs:mediaAttribute?
 
 mediaAttribute
   = "TYPE" "=" type:mediaTypes
@@ -184,21 +186,24 @@ streamInfSharedAttr
   / "VIDEO" "=" video:quotedString
 
 mapAttributes
-  = attrs:mapAttribute+
+  = attrs:(mapAttribute (attrSeparator mapAttribute)*)
+  / attrs:mapAttribute?
 
 mapAttribute
   = "URI" "=" uri:quotedString
   / "BYTERANGE" "=" byteRange:quotedString
 
 iframeStreamAttrs
-  = iframeStreamAttr+
+  = attrs:(iframeStreamAttr (attrSeparator iframeStreamAttr)*)
+  / attrs:iframeStreamAttr?
 
 iframeStreamAttr
   = streamInfSharedAttr
   / "URI" "=" uri:quotedString
 
 startAttributes
-  = attrs:startAttribute+
+  = attrs:(startAttribute (attrSeparator startAttribute)*)
+  / attrs:startAttribute?
 
 startAttribute
   = "TIME-OFFSET" "=" timeOffset:number
