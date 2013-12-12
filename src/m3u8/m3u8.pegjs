@@ -97,7 +97,7 @@ mediaTag
 streamInfTag
   = tag:'#EXT-X-STREAM-INF' ":" attrs:streamInfAttrs _ url:mediaURL? {
       return {renditions: {
-          attributes: JSON.stringify(attrs),
+          attributes: attrs,
           url: url
         }
       };
@@ -135,8 +135,17 @@ mediaURL
   / ! tag file:[ -~]+ { return file.join(''); }
 
 keyAttributes
-  = attrs:(keyAttribute (attrSeparator streamInfAttrs)*)
-  / attrs:keyAttribute?
+  = (attr:keyAttribute rest:(attrSeparator streamInfAttrs)*) {
+      return rest.reduce(function(prev, curr) {
+        var p,
+            currentItem = curr.pop();
+        for (p in currentItem) {
+          prev[p] = currentItem[p];
+        };
+        return prev;
+      }, attr);
+    }
+  / attr:keyAttribute? { return [attr]; }
 
 keyAttribute
   = "METHOD" "=" method:keyMethod { return {keyMethod: method}; }
@@ -151,8 +160,17 @@ keyMethod
   / "SAMPLE-AES"
 
 mediaAttributes
-  = attrs:(mediaAttribute (attrSeparator mediaAttribute)*)
-  / attrs:mediaAttribute?
+  = (attr:mediaAttribute rest:(attrSeparator mediaAttribute)*) {
+      return rest.reduce(function(prev, curr) {
+        var p,
+            currentItem = curr.pop();
+        for (p in currentItem) {
+          prev[p] = currentItem[p];
+        };
+        return prev;
+      }, attr);
+    }
+  / attr:mediaAttribute? { return [attr] }
 
 mediaAttribute
   = "TYPE" "=" type:mediaTypes { return {type: type}; }
@@ -168,8 +186,17 @@ mediaAttribute
   / "CHARACTERISTICS" "=" characteristics:quotedString { return {characteristics: characteristics}; }
 
 streamInfAttrs
-  = attrs:(streamInfAttr (attrSeparator streamInfAttr)*)
-  / attrs:streamInfAttr?
+  = (attr:streamInfAttr rest:(attrSeparator streamInfAttr)*) {
+      return rest.reduce(function(prev, curr) {
+        var p,
+            currentItem = curr.pop();
+        for (p in currentItem) {
+          prev[p] = currentItem[p];
+        };
+        return prev;
+      }, attr);
+    }
+  / attr:streamInfAttr?
 
 streamInfAttr
   = streamInfSharedAttr
@@ -186,24 +213,51 @@ streamInfSharedAttr
   / "VIDEO" "=" video:quotedString { return {video: video}; }
 
 mapAttributes
-  = attrs:(mapAttribute (attrSeparator mapAttribute)*)
-  / attrs:mapAttribute?
+  = (attr:mapAttribute rest:(attrSeparator mapAttribute)*) {
+      return rest.reduce(function(prev, curr) {
+        var p,
+            currentItem = curr.pop();
+        for (p in currentItem) {
+          prev[p] = currentItem[p];
+        };
+        return prev;
+      }, attr);
+    }
+  / attr:mapAttribute?
 
 mapAttribute
   = "URI" "=" uri:quotedString { return {uri: uri}; }
   / "BYTERANGE" "=" byteRange:quotedString { return {byterange: byterange}; }
 
 iframeStreamAttrs
-  = attrs:(iframeStreamAttr (attrSeparator iframeStreamAttr)*)
-  / attrs:iframeStreamAttr?
+  = (attr:iframeStreamAttr rest:(attrSeparator iframeStreamAttr)*) {
+      return rest.reduce(function(prev, curr) {
+        var p,
+            currentItem = curr.pop();
+        for (p in currentItem) {
+          prev[p] = currentItem[p];
+        };
+        return prev;
+      }, attr);
+    }
+  / attr:iframeStreamAttr?
 
 iframeStreamAttr
   = streamInfSharedAttr
   / "URI" "=" uri:quotedString { return {uri: uri}; }
 
 startAttributes
-  = attrs:(startAttribute (attrSeparator startAttribute)*)
-  / attrs:startAttribute?
+  = (attr:startAttribute rest:(attrSeparator startAttribute)*) {
+      return rest.reduce(function(prev, curr) {
+        var p,
+            currentItem = curr.pop();
+        for (p in currentItem) {
+          prev[p] = currentItem[p];
+        };
+        return prev;
+      }, attr);
+    }
+  / attr:startAttribute?
 
 startAttribute
   = "TIME-OFFSET" "=" timeOffset:number { return {timeOffset: timeOffset}; }
@@ -224,7 +278,7 @@ playlistType
   / "VOD"
 
 attrSeparator
-  = "," nonbreakingWhitespace
+  = "," nonbreakingWhitespace { return; }
 
 /***** Date *****/
 
