@@ -5,7 +5,7 @@ start
           choices = {
             segments: 1,
             comments: 1,
-            renditions: 1
+            playlists: 1
           };
       tags.forEach(function(tag) {
         for (var p in tag) {
@@ -96,7 +96,7 @@ mediaTag
 
 streamInfTag
   = tag:'#EXT-X-STREAM-INF' ":" attrs:streamInfAttrs _ url:mediaURL? {
-      return {renditions: {
+      return {playlists: {
           attributes: attrs,
           url: url
         }
