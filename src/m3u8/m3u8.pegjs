@@ -57,12 +57,12 @@ m3uTag
   = tag:"#EXTM3U" { return {openTag: true}; }
 
 extinfTag
-  = tag:'#EXTINF' ":" duration:number "," optional:extinfOptionalParts _ file:mediaFile {
+  = tag:'#EXTINF' ":" duration:number "," optional:extinfOptionalParts _ url:mediaURL {
       return {segments: {
-          byteRange: optional.byteRange,
+          byterange: optional.byteRange || -1,
           title: optional.title,
-          duration: duration,
-          file: file
+          targetDuration: duration,
+          url: url
         }
       };
     }
@@ -95,10 +95,10 @@ mediaTag
   = tag:'#EXT-MEDIA' ":" attrs:mediaAttributes { return {media: attrs}; }
 
 streamInfTag
-  = tag:'#EXT-X-STREAM-INF' ":" attrs:streamInfAttrs _ file:mediaFile? {
+  = tag:'#EXT-X-STREAM-INF' ":" attrs:streamInfAttrs _ url:mediaURL? {
       return {renditions: {
           attributes: attrs,
-          file: file
+          url: url
         }
       };
     }
@@ -130,7 +130,7 @@ extinfOptionalParts
   = nonbreakingWhitespace title:text _ byteRange:byteRangeTag? { return {title: title, byteRange: byteRange} }
   / _ byteRange:byteRangeTag? { return {title: '', byteRange: byteRange}; }
 
-mediaFile
+mediaURL
   = & tag
   / ! tag file:[ -~]+ { return file.join(''); }
 
