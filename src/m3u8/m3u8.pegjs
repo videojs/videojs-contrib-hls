@@ -1,13 +1,12 @@
 /***** Start *****/
 start
   = tags:lines+ .* {
-      var obj = {},
-          choices = {
-            segments: 1,
-            comments: 1,
-            playlists: 1
-          };
-      tags.forEach(function(tag) {
+      var choices = {
+        segments: 1,
+        comments: 1,
+        playlists: 1
+      };
+      return tags.reduce(function(obj, tag) {
         for (var p in tag) {
           if (p in choices) {
             if (Object.prototype.toString.call(obj[p]) === '[object Array]') {
@@ -18,9 +17,10 @@ start
           } else {
             obj[p] = tag[p];
           }
+
+          return obj;
         }
-      });
-      return obj;
+      }, {});
     }
 
 lines
