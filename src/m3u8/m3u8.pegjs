@@ -176,7 +176,8 @@ streamInfAttr
   / "CLOSED-CAPTION" "=" captions:quotedString
 
 streamInfSharedAttr
-  = "BANDWIDTH" "=" bandwidth:int
+  = "PROGRAM-ID" "=" programId:int
+  / "BANDWIDTH" "=" bandwidth:int
   / "CODECS" "=" codec:quotedString
   / "RESOLUTION" "=" resolution:resolution
   / "VIDEO" "=" video:quotedString
