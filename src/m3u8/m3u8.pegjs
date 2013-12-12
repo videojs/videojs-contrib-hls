@@ -244,7 +244,7 @@ hexint
   / "0X" hexDigits:hexDigit+ { return '0x' + hexDigits.join(''); }
 
 frac
-  = dec:"." digits:digits { return parseFloat(dec + digits.join('')); }
+  = dec:"." digits:digits { return dec + digits.join(''); }
 
 digits
   = digit+
