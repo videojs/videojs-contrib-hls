@@ -166,7 +166,8 @@ mediaAttribute
   / "CHARACTERISTICS" "=" characteristics:quotedString
 
 streamInfAttrs
-  = attrs:streamInfAttr+
+  = attrs:(streamInfAttr (attrSeparator streamInfAttr)*)
+  / attrs:streamInfAttr?
 
 streamInfAttr
   = streamInfSharedAttr
@@ -216,6 +217,9 @@ mediaTypes
 playlistType
   = "EVENT"
   / "VOD"
+
+attrSeparator
+  = "," nonbreakingWhitespace
 
 /***** Date *****/
 
