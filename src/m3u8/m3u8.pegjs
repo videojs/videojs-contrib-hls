@@ -40,11 +40,11 @@ m3uTag
   = tag:"#EXTM3U" { return {openTag: true}; }
 
 extinfTag
-  = tag:'#EXTINF' ":" duration:number "," _ title:text? _ byteRange:byteRangeTag? _ file:mediaFile {
+  = tag:'#EXTINF' ":" duration:number "," optional:extinfOptionalParts? _ file:mediaFile {
       var fileObj = {};
       fileObj[tag + line] = {
-        byteRange: byteRange,
-        title: title,
+        byteRange: optional.byteRange,
+        title: optional.title,
         duration: duration,
         file: file
       };
@@ -110,6 +110,10 @@ versionTag
   = tag:'#EXT-X-VERSION' ":" version:int { return {version: version}; }
 
 /***** Helpers *****/
+
+extinfOptionalParts
+  = _? byteRange:byteRangeTag? { return {title: '', byteRange: byteRange}; }
+  / _? title:nonbreakingText? _? byteRange:byteRangeTag? { return {title: title, byteRange: byteRange} }
 
 mediaFile
   = & tag
@@ -263,6 +267,9 @@ quotedString
 quotedChar
   = [^\r\n"]
   / char:char
+
+nonbreakingText
+  = text:quotedChar+ { return text.join(''); }
 
 text "text"
   = text:char+ { return text.join(''); }
