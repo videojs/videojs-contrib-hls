@@ -97,7 +97,7 @@ mediaTag
 streamInfTag
   = tag:'#EXT-X-STREAM-INF' ":" attrs:streamInfAttrs _ url:mediaURL? {
       return {renditions: {
-          attributes: attrs,
+          attributes: JSON.stringify(attrs),
           url: url
         }
       };
@@ -139,11 +139,11 @@ keyAttributes
   / attrs:keyAttribute?
 
 keyAttribute
-  = "METHOD" "=" method:keyMethod
-  / "URI" "=" uri:quotedString
-  / "IV" "=" iv:hexint
-  / "KEYFORMAT" "=" keyFormat:quotedString
-  / "KEYFORMATVERSIONS" "=" keyFormatVersions:quotedString
+  = "METHOD" "=" method:keyMethod { return {keyMethod: method}; }
+  / "URI" "=" uri:quotedString { return {uri: uri}; }
+  / "IV" "=" iv:hexint { return {IV: iv}; }
+  / "KEYFORMAT" "=" keyFormat:quotedString { return {keyFormat: keyFormat}; }
+  / "KEYFORMATVERSIONS" "=" keyFormatVersions:quotedString { return {keyFormatVersions: keyFormatVersions}; }
 
 keyMethod
   = "NONE"
@@ -155,17 +155,17 @@ mediaAttributes
   / attrs:mediaAttribute?
 
 mediaAttribute
-  = "TYPE" "=" type:mediaTypes
-  / "URI" "=" uri:quotedString
-  / "GROUP-ID" "=" groupId:quotedString
-  / "LANGUAGE" "=" langauge:quotedString
-  / "ASSOC-LANGUAGE" "=" assocLanguage:quotedString
-  / "NAME" "=" name:quotedString
-  / "DEFAULT" "=" default:answer
-  / "AUTOSELECT" "="autoselect:answer
-  / "FORCE" "=" force:answer
-  / "INSTREAM-ID" "=" instreamId:quotedString
-  / "CHARACTERISTICS" "=" characteristics:quotedString
+  = "TYPE" "=" type:mediaTypes { return {type: type}; }
+  / "URI" "=" uri:quotedString { return {uri: uri}; }
+  / "GROUP-ID" "=" groupId:quotedString { return {groupId: groupdId}; }
+  / "LANGUAGE" "=" langauge:quotedString { return {language: language}; }
+  / "ASSOC-LANGUAGE" "=" assocLanguage:quotedString { return {assocLanguage: assocLanguage}; }
+  / "NAME" "=" name:quotedString { return {name: name}; }
+  / "DEFAULT" "=" def:answer { return {defaultAnswer: def}; }
+  / "AUTOSELECT" "=" autoselect:answer { return {autoselect: autoselect}; }
+  / "FORCE" "=" force:answer { return {force: force}; }
+  / "INSTREAM-ID" "=" instreamId:quotedString { return {instreamId: instreamId}; }
+  / "CHARACTERISTICS" "=" characteristics:quotedString { return {characteristics: characteristics}; }
 
 streamInfAttrs
   = attrs:(streamInfAttr (attrSeparator streamInfAttr)*)
@@ -173,25 +173,25 @@ streamInfAttrs
 
 streamInfAttr
   = streamInfSharedAttr
-  / "AUDIO" "=" audio:quotedString
-  / "SUBTITLES" "=" subtitles:quotedString
-  / "CLOSED-CAPTION" "=" captions:"NONE"
-  / "CLOSED-CAPTION" "=" captions:quotedString
+  / "AUDIO" "=" audio:quotedString { return {audio: audio}; }
+  / "SUBTITLES" "=" subtitles:quotedString { return {video: video}; }
+  / "CLOSED-CAPTIONS" "=" captions:"NONE" { return {closedCaptions: captions}; }
+  / "CLOSED-CAPTIONS" "=" captions:quotedString { return {closedCaptions: captions}; }
 
 streamInfSharedAttr
-  = "PROGRAM-ID" "=" programId:int
-  / "BANDWIDTH" "=" bandwidth:int
-  / "CODECS" "=" codec:quotedString
-  / "RESOLUTION" "=" resolution:resolution
-  / "VIDEO" "=" video:quotedString
+  = "PROGRAM-ID" "=" programId:int { return {programId: programId}; }
+  / "BANDWIDTH" "=" bandwidth:int { return {bandwidth: bandwidth}; }
+  / "CODECS" "=" codec:quotedString { return {codecs: codec}; }
+  / "RESOLUTION" "=" resolution:resolution { return {resolution: resolution}; }
+  / "VIDEO" "=" video:quotedString { return {video: video}; }
 
 mapAttributes
   = attrs:(mapAttribute (attrSeparator mapAttribute)*)
   / attrs:mapAttribute?
 
 mapAttribute
-  = "URI" "=" uri:quotedString
-  / "BYTERANGE" "=" byteRange:quotedString
+  = "URI" "=" uri:quotedString { return {uri: uri}; }
+  / "BYTERANGE" "=" byteRange:quotedString { return {byterange: byterange}; }
 
 iframeStreamAttrs
   = attrs:(iframeStreamAttr (attrSeparator iframeStreamAttr)*)
@@ -199,15 +199,15 @@ iframeStreamAttrs
 
 iframeStreamAttr
   = streamInfSharedAttr
-  / "URI" "=" uri:quotedString
+  / "URI" "=" uri:quotedString { return {uri: uri}; }
 
 startAttributes
   = attrs:(startAttribute (attrSeparator startAttribute)*)
   / attrs:startAttribute?
 
 startAttribute
-  = "TIME-OFFSET" "=" timeOffset:number
-  / "PRECISE" "=" precise:answer
+  = "TIME-OFFSET" "=" timeOffset:number { return {timeOffset: timeOffset}; }
+  / "PRECISE" "=" precise:answer { return {precise: precise}; }
 
 answer "answer"
   = "YES"
@@ -256,7 +256,7 @@ number "number"
   / parts:(int) _ { return parts; }
 
 resolution
-  = int "x" int
+  = width:int "x" height:int { return {resolution: {width: width, height: height}}; }
 
 int
   = first:digit19 rest:digits { return parseInt(first + rest.join(''), 10); }
