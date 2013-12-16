@@ -1,4 +1,17 @@
 /***** Start *****/
+{
+  function reduce(rest, attr) {
+    return rest.reduce(function(prev, curr) {
+      var p,
+          currentItem = curr.pop();
+      for (p in currentItem) {
+        prev[p] = currentItem[p];
+      };
+      return prev;
+    }, attr);
+  }
+}
+
 start
   = tags:lines+ .* {
       var choices = {
@@ -135,16 +148,7 @@ mediaURL
   / ! tag file:[ -~]+ { return file.join(''); }
 
 keyAttributes
-  = (attr:keyAttribute rest:(attrSeparator streamInfAttrs)*) {
-      return rest.reduce(function(prev, curr) {
-        var p,
-            currentItem = curr.pop();
-        for (p in currentItem) {
-          prev[p] = currentItem[p];
-        };
-        return prev;
-      }, attr);
-    }
+  = (attr:keyAttribute rest:(attrSeparator streamInfAttrs)*) { return reduce(rest, attr); }
   / attr:keyAttribute? { return [attr]; }
 
 keyAttribute
@@ -160,16 +164,7 @@ keyMethod
   / "SAMPLE-AES"
 
 mediaAttributes
-  = (attr:mediaAttribute rest:(attrSeparator mediaAttribute)*) {
-      return rest.reduce(function(prev, curr) {
-        var p,
-            currentItem = curr.pop();
-        for (p in currentItem) {
-          prev[p] = currentItem[p];
-        };
-        return prev;
-      }, attr);
-    }
+  = (attr:mediaAttribute rest:(attrSeparator mediaAttribute)*) { return reduce(rest, attr); }
   / attr:mediaAttribute? { return [attr] }
 
 mediaAttribute
@@ -186,16 +181,7 @@ mediaAttribute
   / "CHARACTERISTICS" "=" characteristics:quotedString { return {characteristics: characteristics}; }
 
 streamInfAttrs
-  = (attr:streamInfAttr rest:(attrSeparator streamInfAttr)*) {
-      return rest.reduce(function(prev, curr) {
-        var p,
-            currentItem = curr.pop();
-        for (p in currentItem) {
-          prev[p] = currentItem[p];
-        };
-        return prev;
-      }, attr);
-    }
+  = (attr:streamInfAttr rest:(attrSeparator streamInfAttr)*) { return reduce(rest, attr); }
   / attr:streamInfAttr?
 
 streamInfAttr
@@ -213,16 +199,7 @@ streamInfSharedAttr
   / "VIDEO" "=" video:quotedString { return {video: video}; }
 
 mapAttributes
-  = (attr:mapAttribute rest:(attrSeparator mapAttribute)*) {
-      return rest.reduce(function(prev, curr) {
-        var p,
-            currentItem = curr.pop();
-        for (p in currentItem) {
-          prev[p] = currentItem[p];
-        };
-        return prev;
-      }, attr);
-    }
+  = (attr:mapAttribute rest:(attrSeparator mapAttribute)*) { return reduce(rest, attr); }
   / attr:mapAttribute?
 
 mapAttribute
@@ -230,16 +207,7 @@ mapAttribute
   / "BYTERANGE" "=" byteRange:quotedString { return {byterange: byterange}; }
 
 iframeStreamAttrs
-  = (attr:iframeStreamAttr rest:(attrSeparator iframeStreamAttr)*) {
-      return rest.reduce(function(prev, curr) {
-        var p,
-            currentItem = curr.pop();
-        for (p in currentItem) {
-          prev[p] = currentItem[p];
-        };
-        return prev;
-      }, attr);
-    }
+  = (attr:iframeStreamAttr rest:(attrSeparator iframeStreamAttr)*) { return reduce(rest, attr); }
   / attr:iframeStreamAttr?
 
 iframeStreamAttr
@@ -247,16 +215,7 @@ iframeStreamAttr
   / "URI" "=" uri:quotedString { return {uri: uri}; }
 
 startAttributes
-  = (attr:startAttribute rest:(attrSeparator startAttribute)*) {
-      return rest.reduce(function(prev, curr) {
-        var p,
-            currentItem = curr.pop();
-        for (p in currentItem) {
-          prev[p] = currentItem[p];
-        };
-        return prev;
-      }, attr);
-    }
+  = (attr:startAttribute rest:(attrSeparator startAttribute)*) { return reduce(rest, attr); }
   / attr:startAttribute?
 
 startAttribute
