@@ -269,13 +269,13 @@ number "number"
   / parts:(int) _ { return parts; }
 
 resolution
-  = width:int "x" height:int { return {resolution: {width: width, height: height}}; }
+  = width:int "x" height:int { return {width: width, height: height}; }
 
 int
   = first:digit19 rest:digits { return parseInt(first + rest.join(''), 10); }
   / digit:digit { return parseInt(digit, 10); }
   / neg:"-" first:digit19 rest:digits { return parseInt(neg + first + rest.join(''), 10); }
-  / neg:"-" digit { return parseInt(neg + digit, 10); }
+  / neg:"-" digit:digit { return parseInt(neg + digit, 10); }
 
 hexint
   = "0x" hexDigits:hexDigit+ { return '0x' + hexDigits.join(''); }

@@ -44,7 +44,7 @@ window.playlistData = '#EXTM3U\n'+
   'hls_450k_video.ts\n' +
   '#EXTINF:10,\n' +
   '#EXT-X-BYTERANGE:468684@7108092\n' +
-  'hls_450k_video.ts' +
+  'hls_450k_video.ts\n' +
   '#EXTINF:10,\n' +
   '#EXT-X-BYTERANGE:444996@7576776\n' +
   'hls_450k_video.ts\n' +

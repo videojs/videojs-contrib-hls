@@ -1,5 +1,7 @@
 'use strict';
 
+var peg = require('pegjs');
+
 module.exports = function(grunt) {
 
   // Project configuration.
@@ -12,7 +14,7 @@ module.exports = function(grunt) {
       ' Licensed <%= _.pluck(pkg.licenses, "type").join(", ") %> */\n',
     // Task configuration.
     clean: {
-      files: ['dist']
+      files: ['build', 'dist']
     },
     concat: {
       options: {
@@ -95,8 +97,19 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
 
+  grunt.registerTask('peg', 'generate the manifest parser', function() {
+    var parser = peg.buildParser(grunt.file.read('src/m3u8/m3u8.pegjs'));
+    grunt.file.write('build/m3u8-parser.js',
+                     'window.videojs.hls.M3U8Parser = ' + parser.toSource());
+  });
+
   // Default task.
   grunt.registerTask('default',
-                     ['jshint', 'qunit', 'clean', 'concat', 'uglify']);
+                     ['peg',
+                      'jshint',
+                      'qunit',
+                      'clean',
+                      'concat',
+                      'uglify']);
 
 };

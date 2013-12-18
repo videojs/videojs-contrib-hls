@@ -1,6 +1,6 @@
 (function (window) {
-  var
-    M3U8Parser = window.videojs.hls.M3U8Parser;
+
+  var parser = window.videojs.hls.M3U8Parser;
 
   window.videojs.hls.ManifestController = function() {
     var self = this;
@@ -22,12 +22,8 @@
       window.vjs.get(manifestUrl, self.onManifestLoadComplete, self.onManifestLoadError);
     };
 
-    self.parseManifest = function(dataAsString) {
-      self.parser = new M3U8Parser();
-      self.parser.directory = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/.exec(self.url).slice(1)[1];
-      self.data = self.parser.parse(dataAsString);
-
-      return self.data;
+    self.parseManifest = function(manifest) {
+      return parser.parse(manifest);
     };
 
     self.onManifestLoadComplete = function(response) {
