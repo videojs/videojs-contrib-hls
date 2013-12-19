@@ -1,5 +1,20 @@
 (function(parseInt, undefined) {
-  var Stream, Tokenizer, Parser;
+  var
+    parseAttributes = function(attributes) {
+      var
+        attrs = attributes.split(','),
+        i = attrs.length,
+        result = {},
+        attr;
+      while (i--) {
+        attr = attrs[i].split('=');
+        result[attr[0]] = attr[1];
+      }
+      return result;
+    },
+    Stream,
+    Tokenizer,
+    Parser;
 
   Stream = function() {
     var listeners = {};
@@ -105,6 +120,122 @@
         event.title = match[2];
       }
       this.trigger('data', event);
+      return;
+    }
+    match = (/^#EXT-X-TARGETDURATION:?([0-9.]*)?/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'targetduration'
+      };
+      if (match[1]) {
+        event.duration = parseInt(match[1], 10);
+      }
+      this.trigger('data', event);
+      return;
+    }
+    match = (/^#EXT-X-VERSION:?([0-9.]*)?/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'version'
+      };
+      if (match[1]) {
+        event.version = parseInt(match[1], 10);
+      }
+      this.trigger('data', event);
+      return;
+    }
+    match = (/^#EXT-X-MEDIA-SEQUENCE:?([0-9.]*)?/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'media-sequence'
+      };
+      if (match[1]) {
+        event.number = parseInt(match[1], 10);
+      }
+      this.trigger('data', event);
+      return;
+    }
+    match = (/^#EXT-X-PLAYLIST-TYPE:?(.*)?$/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'playlist-type'
+      };
+      if (match[1]) {
+        event.playlistType = match[1];
+      }
+      this.trigger('data', event);
+      return;
+    }
+    match = (/^#EXT-X-BYTERANGE:?([0-9.]*)?@?([0-9.]*)?/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'byterange'
+      };
+      if (match[1]) {
+        event.length = parseInt(match[1], 10);
+      }
+      if (match[2]) {
+        event.offset = parseInt(match[2], 10);
+      }
+      this.trigger('data', event);
+      return;
+    }
+    match = (/^#EXT-X-ALLOW-CACHE:?(YES|NO)?/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'allow-cache'
+      };
+      if (match[1]) {
+        event.allowed = !(/NO/).test(match[1]);
+      }
+      this.trigger('data', event);
+      return;
+    }
+    match = (/^#EXT-X-STREAM-INF:?(.*)$/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'stream-inf'
+      };
+      if (match[1]) {
+        event.attributes = parseAttributes(match[1]);
+
+        if (event.attributes.RESOLUTION) {
+          (function() {
+            var
+              split = event.attributes.RESOLUTION.split('x'),
+              resolution = {};
+            if (split[0]) {
+              resolution.width = parseInt(split[0], 10);
+            }
+            if (split[1]) {
+              resolution.height = parseInt(split[1], 10);
+            }
+            event.attributes.RESOLUTION = resolution;
+          })();
+        }
+        if (event.attributes.BANDWIDTH) {
+          event.attributes.BANDWIDTH = parseInt(event.attributes.BANDWIDTH, 10);
+        }
+        if (event.attributes['PROGRAM-ID']) {
+          event.attributes['PROGRAM-ID'] = parseInt(event.attributes['PROGRAM-ID'], 10);
+        }
+      }
+      this.trigger('data', event);
+      return;
+    }
+    match = (/^#EXT-X-ENDLIST/).exec(line);
+    if (match) {
+      this.trigger('data', {
+        type: 'tag',
+        tagType: 'endlist'
+      });
       return;
     }
 

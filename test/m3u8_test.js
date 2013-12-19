@@ -39,11 +39,11 @@
     var data = manifestController.parseManifest(window.brightcove_playlist_data);
 
     ok(data);
-    equal(data.playlists.length, 4, 'Has correct rendition count');
-    equal(data.playlists[0].attributes.bandwidth, 240000, 'First rendition index bandwidth is correct');
-    equal(data.playlists[0].attributes.programId, 1, 'First rendition index program-id is correct');
-    equal(data.playlists[0].attributes.resolution.width, 396, 'First rendition index resolution width is correct');
-    equal(data.playlists[0].attributes.resolution.height, 224, 'First rendition index resolution height is correct');
+    strictEqual(data.playlists.length, 4, 'Has correct rendition count');
+    strictEqual(data.playlists[0].attributes.bandwidth, 240000, 'First rendition index bandwidth is correct');
+    strictEqual(data.playlists[0].attributes.programId, 1, 'First rendition index program-id is correct');
+    strictEqual(data.playlists[0].attributes.resolution.width, 396, 'First rendition index resolution width is correct');
+    strictEqual(data.playlists[0].attributes.resolution.height, 224, 'First rendition index resolution height is correct');
   });
 
   test('should get a manifest from an external URL', function() {
@@ -81,9 +81,9 @@
     });
     tokenizer.push('#EXTM3U\nmovie.ts\n');
 
-    equal(2, lines.length, 'two lines are ready');
-    equal('#EXTM3U', lines.shift(), 'the first line is the first token');
-    equal('movie.ts', lines.shift(), 'the second line is the second token');
+    strictEqual(2, lines.length, 'two lines are ready');
+    strictEqual('#EXTM3U', lines.shift(), 'the first line is the first token');
+    strictEqual('movie.ts', lines.shift(), 'the second line is the second token');
   });
   test('empty lines become empty strings', function() {
     var lines = [];
@@ -92,9 +92,9 @@
     });
     tokenizer.push('\n\n');
 
-    equal(2, lines.length, 'two lines are ready');
-    equal('', lines.shift(), 'the first line is empty');
-    equal('', lines.shift(), 'the second line is empty');
+    strictEqual(2, lines.length, 'two lines are ready');
+    strictEqual('', lines.shift(), 'the first line is empty');
+    strictEqual('', lines.shift(), 'the second line is empty');
   });
   test('handles lines broken across appends', function() {
     var lines = [];
@@ -102,12 +102,12 @@
       lines.push(line);
     });
     tokenizer.push('#EXTM');
-    equal(0, lines.length, 'no lines are ready');
+    strictEqual(0, lines.length, 'no lines are ready');
 
     tokenizer.push('3U\nmovie.ts\n');
-    equal(2, lines.length, 'two lines are ready');
-    equal('#EXTM3U', lines.shift(), 'the first line is the first token');
-    equal('movie.ts', lines.shift(), 'the second line is the second token');
+    strictEqual(2, lines.length, 'two lines are ready');
+    strictEqual('#EXTM3U', lines.shift(), 'the first line is the first token');
+    strictEqual('movie.ts', lines.shift(), 'the second line is the second token');
   });
   test('stops sending events after deregistering', function() {
     var
@@ -123,12 +123,12 @@
     tokenizer.on('data', temporary);
     tokenizer.on('data', permanent);
     tokenizer.push('line one\n');
-    equal(temporaryLines.length, permanentLines.length, 'both callbacks receive the event');
+    strictEqual(temporaryLines.length, permanentLines.length, 'both callbacks receive the event');
 
     ok(tokenizer.off('data', temporary), 'a listener was removed');
     tokenizer.push('line two\n');
-    equal(1, temporaryLines.length, 'no new events are received');
-    equal(2, permanentLines.length, 'new events are still received');
+    strictEqual(1, temporaryLines.length, 'no new events are received');
+    strictEqual(2, permanentLines.length, 'new events are still received');
   });
 
   module('M3U8 Parser', {
@@ -148,8 +148,8 @@
     tokenizer.push(manifest);
 
     ok(element, 'an event was triggered');
-    equal(element.type, 'comment', 'the type is comment');
-    equal(element.text,
+    strictEqual(element.type, 'comment', 'the type is comment');
+    strictEqual(element.text,
           manifest.slice(1, manifest.length - 1),
           'the comment text is parsed');
   });
@@ -163,8 +163,8 @@
     tokenizer.push(manifest);
 
     ok(element, 'an event was triggered');
-    equal(element.type, 'uri', 'the type is uri');
-    equal(element.uri,
+    strictEqual(element.type, 'uri', 'the type is uri');
+    strictEqual(element.uri,
           manifest.substring(0, manifest.length - 1),
           'the uri text is parsed');
   });
@@ -178,11 +178,13 @@
     tokenizer.push(manifest);
 
     ok(element, 'an event was triggered');
-    equal(element.type, 'tag', 'the type is tag');
-    equal(element.data,
+    strictEqual(element.type, 'tag', 'the type is tag');
+    strictEqual(element.data,
           manifest.slice(4, manifest.length - 1),
           'unknown tag data is preserved');
   });
+
+  // #EXTM3U
   test('parses #EXTM3U tags', function() {
     var
       manifest = '#EXTM3U\n',
@@ -193,9 +195,11 @@
     tokenizer.push(manifest);
 
     ok(element, 'an event was triggered');
-    equal(element.type, 'tag', 'the line type is tag');
-    equal(element.tagType, 'm3u', 'the tag type is m3u');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'm3u', 'the tag type is m3u');
   });
+
+  // #EXTINF
   test('parses minimal #EXTINF tags', function() {
     var
       manifest = '#EXTINF\n',
@@ -206,8 +210,8 @@
     tokenizer.push(manifest);
 
     ok(element, 'an event was triggered');
-    equal(element.type, 'tag', 'the line type is tag');
-    equal(element.tagType, 'inf', 'the tag type is inf');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'inf', 'the tag type is inf');
   });
   test('parses #EXTINF tags with durations', function() {
     var
@@ -219,18 +223,18 @@
     tokenizer.push(manifest);
 
     ok(element, 'an event was triggered');
-    equal(element.type, 'tag', 'the line type is tag');
-    equal(element.tagType, 'inf', 'the tag type is inf');
-    equal(element.duration, 15, 'the duration is parsed');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'inf', 'the tag type is inf');
+    strictEqual(element.duration, 15, 'the duration is parsed');
     ok(!('title' in element), 'no title is parsed');
 
     manifest = '#EXTINF:21,\n'
     tokenizer.push(manifest);
 
     ok(element, 'an event was triggered');
-    equal(element.type, 'tag', 'the line type is tag');
-    equal(element.tagType, 'inf', 'the tag type is inf');
-    equal(element.duration, 21, 'the duration is parsed');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'inf', 'the tag type is inf');
+    strictEqual(element.duration, 21, 'the duration is parsed');
     ok(!('title' in element), 'no title is parsed');
   });
   test('parses #EXTINF tags with a duration and title', function() {
@@ -243,13 +247,302 @@
     tokenizer.push(manifest);
 
     ok(element, 'an event was triggered');
-    equal(element.type, 'tag', 'the line type is tag');
-    equal(element.tagType, 'inf', 'the tag type is inf');
-    equal(element.duration, 13, 'the duration is parsed');
-    equal(element.title,
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'inf', 'the tag type is inf');
+    strictEqual(element.duration, 13, 'the duration is parsed');
+    strictEqual(element.title,
           manifest.substring(manifest.indexOf(',') + 1, manifest.length - 1),
           'the title is parsed');
   });
+
+  // #EXT-X-TARGETDURATION
+  test('parses minimal #EXT-X-TARGETDURATION tags', function() {
+    var
+      manifest = '#EXT-X-TARGETDURATION\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'targetduration', 'the tag type is targetduration');
+    ok(!('duration' in element), 'no duration is parsed');
+  });
+  test('parses #EXT-X-TARGETDURATION with duration', function() {
+    var
+      manifest = '#EXT-X-TARGETDURATION:47\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'targetduration', 'the tag type is targetduration');
+    strictEqual(element.duration, 47, 'the duration is parsed');
+  });
+
+  // #EXT-X-VERSION
+  test('parses minimal #EXT-X-VERSION tags', function() {
+    var
+      manifest = '#EXT-X-VERSION:\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'version', 'the tag type is version');
+    ok(!('version' in element), 'no version is present');
+  });
+  test('parses #EXT-X-VERSION with a version', function() {
+    var
+      manifest = '#EXT-X-VERSION:99\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'version', 'the tag type is version');
+    strictEqual(element.version, 99, 'the version is parsed');
+  });
+
+  // #EXT-X-MEDIA-SEQUENCE
+  test('parses minimal #EXT-X-MEDIA-SEQUENCE tags', function() {
+    var
+      manifest = '#EXT-X-MEDIA-SEQUENCE\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'media-sequence', 'the tag type is media-sequence');
+    ok(!('number' in element), 'no number is present');
+  });
+  test('parses #EXT-X-MEDIA-SEQUENCE with sequence numbers', function() {
+    var
+      manifest = '#EXT-X-MEDIA-SEQUENCE:109\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'media-sequence', 'the tag type is media-sequence');
+    ok(element.number, 109, 'the number is parsed');
+  });
+
+  // #EXT-X-PLAYLIST-TYPE
+  test('parses minimal #EXT-X-PLAYLIST-TYPE tags', function() {
+    var
+      manifest = '#EXT-X-PLAYLIST-TYPE:\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'playlist-type', 'the tag type is playlist-type');
+    ok(!('playlistType' in element), 'no playlist type is present');
+  });
+  test('parses #EXT-X-PLAYLIST-TYPE with mutability info', function() {
+    var
+      manifest = '#EXT-X-PLAYLIST-TYPE:EVENT\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'playlist-type', 'the tag type is playlist-type');
+    strictEqual(element.playlistType, 'EVENT', 'the playlist type is EVENT');
+
+    manifest = '#EXT-X-PLAYLIST-TYPE:VOD\n';
+    tokenizer.push(manifest);
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'playlist-type', 'the tag type is playlist-type');
+    strictEqual(element.playlistType, 'VOD', 'the playlist type is VOD');
+
+    manifest = '#EXT-X-PLAYLIST-TYPE:nonsense\n';
+    tokenizer.push(manifest);
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'playlist-type', 'the tag type is playlist-type');
+    strictEqual(element.playlistType, 'nonsense', 'the playlist type is parsed');
+  });
+
+  // #EXT-X-BYTERANGE
+  test('parses minimal #EXT-X-BYTERANGE tags', function() {
+    var
+      manifest = '#EXT-X-BYTERANGE\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'byterange', 'the tag type is byterange');
+    ok(!('length' in element), 'no length is present');
+    ok(!('offset' in element), 'no offset is present');
+  });
+  test('parses #EXT-X-BYTERANGE with length and offset', function() {
+    var
+      manifest = '#EXT-X-BYTERANGE:45\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'byterange', 'the tag type is byterange');
+    strictEqual(element.length, 45, 'length is parsed');
+    ok(!('offset' in element), 'no offset is present');
+
+    manifest = '#EXT-X-BYTERANGE:108@16\n';
+    tokenizer.push(manifest);
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'byterange', 'the tag type is byterange');
+    strictEqual(element.length, 108, 'length is parsed');
+    strictEqual(element.offset, 16, 'offset is parsed');
+  });
+
+  // #EXT-X-ALLOW-CACHE
+  test('parses minimal #EXT-X-ALLOW-CACHE tags', function() {
+    var
+      manifest = '#EXT-X-ALLOW-CACHE:\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'allow-cache', 'the tag type is allow-cache');
+    ok(!('allowed' in element), 'no allowed is present');
+  });
+  test('parses valid #EXT-X-ALLOW-CACHE tags', function() {
+    var
+      manifest = '#EXT-X-ALLOW-CACHE:YES\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'allow-cache', 'the tag type is allow-cache');
+    ok(element.allowed, 'allowed is parsed');
+
+    manifest = '#EXT-X-ALLOW-CACHE:NO\n';
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'allow-cache', 'the tag type is allow-cache');
+    ok(!element.allowed, 'allowed is parsed');
+  });
+  // #EXT-X-STREAM-INF
+  test('parses minimal #EXT-X-STREAM-INF tags', function() {
+    var
+      manifest = '#EXT-X-STREAM-INF\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'stream-inf', 'the tag type is stream-inf');
+    ok(!('attributes' in element), 'no attributes are present');
+  });
+  test('parses #EXT-X-STREAM-INF with common attributes', function() {
+    var
+      manifest = '#EXT-X-STREAM-INF:BANDWIDTH=14400\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'stream-inf', 'the tag type is stream-inf');
+    strictEqual(element.attributes.BANDWIDTH, 14400, 'bandwidth is parsed');
+
+    manifest = '#EXT-X-STREAM-INF:PROGRAM-ID=7\n';
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'stream-inf', 'the tag type is stream-inf');
+    strictEqual(element.attributes['PROGRAM-ID'], 7, 'program-id is parsed');
+
+    manifest = '#EXT-X-STREAM-INF:RESOLUTION=396x224\n';
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'stream-inf', 'the tag type is stream-inf');
+    strictEqual(element.attributes.RESOLUTION.width, 396, 'width is parsed');
+    strictEqual(element.attributes.RESOLUTION.height, 224, 'heigth is parsed');
+  });
+  test('parses #EXT-X-STREAM-INF with arbitrary attributes', function() {
+    var
+      manifest = '#EXT-X-STREAM-INF:NUMERIC=24,ALPHA=Value,MIXED=123abc\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'stream-inf', 'the tag type is stream-inf');
+    strictEqual(element.attributes.NUMERIC, '24', 'numeric attributes are parsed');
+    strictEqual(element.attributes.ALPHA, 'Value', 'alphabetic attributes are parsed');
+    strictEqual(element.attributes.MIXED, '123abc', 'mixed attributes are parsed');
+  });
+  // #EXT-X-ENDLIST
+  test('parses #EXT-X-ENDLIST tags', function() {
+    var
+      manifest = '#EXT-X-ENDLIST\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'endlist', 'the tag type is stream-inf');
+  });
+
   test('ignores empty lines', function() {
     var
       manifest = '\n',
@@ -290,15 +583,15 @@
     });
     tokenizer.push(window.playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    equal(data.openTag, true, 'data has valid EXTM3U');
-    equal(data.targetDuration, 10, 'data has correct TARGET DURATION');
-    equal(data.allowCache, undefined, 'ALLOW-CACHE is not present in the manifest');
-    equal(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
-    equal(data.segments.length, 17, 'there are 17 segments in the manifest');
-    equal(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
-    equal(data.totalDuration, undefined, "no total duration is specified");
-    equal(data.closeTag, true, 'should have ENDLIST tag');
+    notStrictEqual(data, null, 'data is not NULL');
+    strictEqual(data.openTag, true, 'data has valid EXTM3U');
+    strictEqual(data.targetDuration, 10, 'data has correct TARGET DURATION');
+    strictEqual(data.allowCache, undefined, 'ALLOW-CACHE is not present in the manifest');
+    strictEqual(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
+    strictEqual(data.segments.length, 17, 'there are 17 segments in the manifest');
+    strictEqual(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
+    strictEqual(data.totalDuration, undefined, "no total duration is specified");
+    strictEqual(data.closeTag, true, 'should have ENDLIST tag');
   });
 
   /*3.4.7.  EXT-X-PLAYLIST-TYPE
@@ -314,9 +607,9 @@
 
    The EXT-X-PLAYLIST-TYPE tag MUST NOT appear in a Master Playlist.
   */
-   
+
   test('should have parsed VOD playlist type', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_type_template),
       testData = {playlistType: 'VOD'},
       playlistData = playlistTemplate(testData),
@@ -326,13 +619,13 @@
     });
     tokenizer.push(window.playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    //equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-    equal(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
+    notStrictEqual(data, null, 'data is not NULL');
+    //strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    strictEqual(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
   });
 
   test('should have parsed EVENT playlist type', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_type_template),
       testData = {playlistType: 'EVENT'},
       playlistData = playlistTemplate(testData),
@@ -342,13 +635,13 @@
     });
     tokenizer.push(window.playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    //equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-    equal(data.playlistType, "EVENT", 'acceptable PLAYLIST TYPE');
+    notStrictEqual(data, null, 'data is not NULL');
+    //strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    strictEqual(data.playlistType, "EVENT", 'acceptable PLAYLIST TYPE');
   });
 
   test('handles a missing playlist type', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_type_template),
       testData = {},
       playlistData = playlistTemplate(testData),
@@ -358,21 +651,21 @@
     });
     tokenizer.push(window.playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    //equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-    //equal(data.warnings, 'EXT-X-PLAYLIST-TYPE was empty or missing.  Assuming VOD');
-    equal(data.playlistType, undefined, 'no PLAYLIST TYPE present');
+    notStrictEqual(data, null, 'data is not NULL');
+    //strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    //strictEqual(data.warnings, 'EXT-X-PLAYLIST-TYPE was empty or missing.  Assuming VOD');
+    strictEqual(data.playlistType, undefined, 'no PLAYLIST TYPE present');
   });
 
   test('should have an invalid reason due to invalid playlist type', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_type_template),
       testData = {playlistType: 'baklsdhfajsdf'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
-    notEqual(data, null, 'data is not NULL');
-    //equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    //equal(data.invalidReasons[0], 'Invalid Playlist Type Value: \'baklsdhfajsdf\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    //strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    //strictEqual(data.invalidReasons[0], 'Invalid Playlist Type Value: \'baklsdhfajsdf\'');
   });
 
   // test('handles an empty playlist type', function() {
@@ -381,10 +674,10 @@
   //     testData = {playlistType: ''},
   //     playlistData = playlistTemplate(testData),
   //     data = m3u8parser.parse(playlistData);
-  //   notEqual(data, null, 'data is not NULL');
-  //   //equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-  //   //equal(data.warnings, 'EXT-X-PLAYLIST-TYPE was empty or missing.  Assuming VOD');
-  //   equal(data.playlistType, '', 'PLAYLIST TYPE is the empty string');
+  //   notStrictEqual(data, null, 'data is not NULL');
+  //   //strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+  //   //strictEqual(data.warnings, 'EXT-X-PLAYLIST-TYPE was empty or missing.  Assuming VOD');
+  //   strictEqual(data.playlistType, '', 'PLAYLIST TYPE is the empty string');
   // });
 
   /*3.4.2.  EXT-X-TARGETDURATION
@@ -405,72 +698,72 @@
   */
 
   test('valid target duration', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_target_duration_template),
       testData = {targetDuration: '10'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
-    notEqual(data, null, 'data is not NULL');
-    equal(data.targetDuration, 10, 'data has correct TARGET DURATION');
-    //equal(data.invalidReasons.length, 0, 'data has 1 invalid reasons');
+    notStrictEqual(data, null, 'data is not NULL');
+    strictEqual(data.targetDuration, 10, 'data has correct TARGET DURATION');
+    //strictEqual(data.invalidReasons.length, 0, 'data has 1 invalid reasons');
   });
 
   test('NaN target duration', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_target_duration_template),
       testData = {targetDuration: 'string'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
     console.log(playlistData);
     console.log(data.targetDuration);
-    notEqual(data, null, 'data is not NULL');    
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 0 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Target Duration Value: \'NaN\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 0 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Target Duration Value: \'NaN\'');
   });
 
   test('empty target duration', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_target_duration_template),
       testData = {targetDuration: '\'\''},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
     console.log(playlistData);
     console.log(data.targetDuration);
-    notEqual(data, null, 'data is not NULL');    
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Target Duration Value: \'NaN\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Target Duration Value: \'NaN\'');
   });
 
   test('undefined target duration', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_target_duration_template),
       testData = {},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
     console.log(playlistData);
     console.log(data.targetDuration);
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Target Duration Value: \'undefined\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Target Duration Value: \'undefined\'');
 
   });
 
   test('target duration lower than segment', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_target_duration_template),
       testData = {targetDuration: '4'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Target Duration Value: 4 is lower than segments');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Target Duration Value: 4 is lower than segments');
   });
-  
+
   /*3.4.3.  EXT-X-MEDIA-SEQUENCE
 
    Each media segment in a Playlist has a unique integer sequence
@@ -489,48 +782,48 @@
    MEDIA-SEQUENCE tag then the sequence number of the first segment in
    the playlist SHALL be considered to be 0.  A client MUST NOT assume
    that segments with the same sequence number in different Media
-   Playlists contain matching content. 
-  
+   Playlists contain matching content.
+
    A media URI is not required to contain its sequence number.
   */
-  
+
   test('media sequence is valid in the playlist', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_media_sequence_template),
       testData = {mediaSequence: '0'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-    equal(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    strictEqual(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
   });
 
   test('media sequence is encountered twice in the playlist', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_media_sequence_template),
       testData = {mediaSequence: '0', mediaSequence1: '1'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-    equal(data.mediaSequence, 0, 'MEDIA SEQUENCE tags after the first should be ignored');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    strictEqual(data.mediaSequence, 0, 'MEDIA SEQUENCE tags after the first should be ignored');
   });
 
   test('media sequence is undefined in the playlist', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_media_sequence_template),
       testData = {mediaSequence: ''},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-    equal(data.mediaSequence, undefined, 'MEDIA SEQUENCE is undefined');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    strictEqual(data.mediaSequence, undefined, 'MEDIA SEQUENCE is undefined');
   });
 
   // test('media sequence is empty in the playlist', function() {
@@ -540,50 +833,50 @@
   //     playlistData = playlistTemplate(testData),
   //     data = m3u8parser.parse(playlistData);
 
-  //   notEqual(data, null, 'data is not NULL');
-  //   // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-  //   // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-  //   equal(data.mediaSequence, '', 'media sequence is the empty string');
+  //   notStrictEqual(data, null, 'data is not NULL');
+  //   // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+  //   // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+  //   strictEqual(data.mediaSequence, '', 'media sequence is the empty string');
   // });
 
   test('media sequence is high (non-zero in first file) in the playlist', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_media_sequence_template),
       testData = {mediaSequence: '1'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Media Sequence Value: \'1\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Media Sequence Value: \'1\'');
   });
 
   test('handles invalid media sequence numbers in the playlist', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_media_sequence_template),
       testData = {mediaSequence: '-1'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Media Sequence Value: \'-1\'');
-    equal(data.mediaSequence, -1, 'negative media sequence numbers don\'t break parsing');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Media Sequence Value: \'-1\'');
+    strictEqual(data.mediaSequence, -1, 'negative media sequence numbers don\'t break parsing');
   });
 
   test('media sequence invalid (string) in the playlist', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_media_sequence_template),
       testData = {mediaSequence: 'asdfkasdkfl'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Media Sequence Value: \'asdfkasdkfl\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Media Sequence Value: \'asdfkasdkfl\'');
   });
 
   module('Representative Playlist', {
@@ -596,13 +889,13 @@
     var data = m3u8parser.parse(window.brightcove_playlist_data);
 
     ok(data);
-    equal(data.playlists.length, 4, 'has correct playlist count');
-    equal(data.playlists[0].attributes.bandwidth, 240000, 'first rendition index bandwidth is correct');
-    equal(data.playlists[0].attributes.programId, 1, 'first rendition index program-id is correct');
-    equal(data.playlists[0].attributes.resolution.width,
+    strictEqual(data.playlists.length, 4, 'has correct playlist count');
+    strictEqual(data.playlists[0].attributes.bandwidth, 240000, 'first rendition index bandwidth is correct');
+    strictEqual(data.playlists[0].attributes.programId, 1, 'first rendition index program-id is correct');
+    strictEqual(data.playlists[0].attributes.resolution.width,
           396,
           'first rendition index resolution width is correct');
-    equal(data.playlists[0].attributes.resolution.height,
+    strictEqual(data.playlists[0].attributes.resolution.height,
           224,
           'first rendition index resolution height is correct');
 
@@ -630,111 +923,111 @@
    file, when rounded to the nearest integer, MUST be less than or equal
    to the target duration.
   */
-  
+
   test('test valid extinf values in playlist', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
       testData = {version: 4, extInf: '10', extInf1: '10', extInf2: '10', segment: 'hls_450k_video.ts'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
   });
 
   test('test valid extinf without associated segment in playlist', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
       testData = {version: 4, extInf: '10', extInf1: '10', extInf2: '10'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    //equal(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF missing segment\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    //strictEqual(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF missing segment\'');
   });
 
   //
   test('test invalid extinf values in playlist', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
       testData = {version: 4, extInf: 'asdf', extInf1: '10', extInf2: '10', segment: 'hls_450k_video.ts'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
   });
 
   //its best practice that every extinf have the same value, but its not required
   test('test inconsistent extinf values in playlist below target duration', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
       testData = {version: 4, extInf: '10', extInf1: '7', extInf2: '10', segment: 'hls_450k_video.ts'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
   });
 
   //extinf values must be below the target duration
   test('test inconsistent extinf values in playlist above target duration', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
       testData = {version: 4, extInf: '10', extInf1: '7', extInf2: '10', segment: 'hls_450k_video.ts'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF value higher than #TARGETDURATION\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF value higher than #TARGETDURATION\'');
   });
 
   //extinf values must be below the target duration
   test('test floating-point values not accepted with version 3', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
       testData = {version: 3, extInf: '10.5', extInf1: '10.5', extInf2: '10.5', segment: 'hls_450k_video.ts'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF value not an integer\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF value not an integer\'');
   });
 
   //extinf values must be below the target duration
   test('test floating-point values accepted with version 4', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
       testData = {version: 4, extInf: '10.5', extInf1: '10.5', extInf2: '10.5', segment: 'hls_450k_video.ts'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
   });
 
   //extinf values must be below the target duration
   test('test empty EXTINF values', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_extinf_template),
       testData = {version: 4, extInf: '', extInf1: '10.5', extInf2: '10.5', segment: 'hls_450k_video.ts'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF value empty\'');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid Segment Data: \'#EXTINF value empty\'');
   });
 
   /*
@@ -748,45 +1041,45 @@
 
    #EXT-X-ALLOW-CACHE:<YES|NO>
   */
-  
+
   test('test EXT-X-ALLOW-CACHE YES', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
       testData = {version: 4, allowCache: 'YES'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-    equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should be YES');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    strictEqual(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should be YES');
   });
 
   test('test EXT-X-ALLOW-CACHE NO', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
       testData = {version: 4, allowCache: 'NO'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-    equal(data.allowCache, 'NO', 'EXT-X-ALLOW-CACHE should be NO');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+    strictEqual(data.allowCache, 'NO', 'EXT-X-ALLOW-CACHE should be NO');
   });
 
   test('test EXT-X-ALLOW-CACHE invalid, default to YES', function() {
-    var 
+    var
       playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
       testData = {version: 4, allowCache: 'YESTERDAYNO'},
       playlistData = playlistTemplate(testData),
       data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid EXT-X-ALLOW-CACHE value: \'YESTERDAYNO\'');
-    equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES.');
+    notStrictEqual(data, null, 'data is not NULL');
+    // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+    // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+    // strictEqual(data.invalidReasons[0], 'Invalid EXT-X-ALLOW-CACHE value: \'YESTERDAYNO\'');
+    strictEqual(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES.');
   });
 
   // test('test EXT-X-ALLOW-CACHE empty, default to YES', function() {
@@ -796,26 +1089,26 @@
   //     playlistData = playlistTemplate(testData),
   //     data = m3u8parser.parse(playlistData);
 
-  //   notEqual(data, null, 'data is not NULL');
-  //   // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-  //   // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-  //   // equal(data.invalidReasons[0], 'Invalid EXT-X-ALLOW-CACHE value: \'\'');
-  //   equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES.');
+  //   notStrictEqual(data, null, 'data is not NULL');
+  //   // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+  //   // strictEqual(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+  //   // strictEqual(data.invalidReasons[0], 'Invalid EXT-X-ALLOW-CACHE value: \'\'');
+  //   strictEqual(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES.');
   // });
 
   // test('test EXT-X-ALLOW-CACHE missing, default to YES', function() {
-  //   var 
+  //   var
   //     playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
   //     testData = {version: 4},
   //     playlistData = playlistTemplate(testData),
   //     data = m3u8parser.parse(playlistData);
 
-  //   notEqual(data, null, 'data is not NULL');
-  //   // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-  //   // equal(data.invalidReasons.length, 1, 'No EXT-X-ALLOW-CACHE specified.  Default: YES.');
-  //   equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES');
+  //   notStrictEqual(data, null, 'data is not NULL');
+  //   // notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+  //   // strictEqual(data.invalidReasons.length, 1, 'No EXT-X-ALLOW-CACHE specified.  Default: YES.');
+  //   strictEqual(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES');
   // });
-  
+
   // test('test EXT-X-BYTERANGE valid', function() {
   //   var
   //     playlistTemplate = Handlebars.compile(window.playlist_byte_range),
@@ -823,14 +1116,14 @@
   //     playlistData = playlistTemplate(testData),
   //     data = m3u8parser.parse(playlistData);
 
-  //   notEqual(data, null, 'data is not NULL');
-  //   //notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-  //   //equal(data.invalidReasons.length, 0, 'Errors object should be empty.');
+  //   notStrictEqual(data, null, 'data is not NULL');
+  //   //notStrictEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+  //   //strictEqual(data.invalidReasons.length, 0, 'Errors object should be empty.');
   //   //TODO: Validate the byteRange info
-  //   equal(data.segments.length, 16, '16 segments should have been parsed.');
-  //   equal(data.segments[0].byterange, testData.byteRange, 'byteRange incorrect.');
-  //   equal(data.segments[1].byterange, testData.byteRange1, 'byteRange1 incorrect.');
-  //   equal(data.segments[15].byterange, testData.byteRange2, 'byteRange2 incorrect.');
+  //   strictEqual(data.segments.length, 16, '16 segments should have been parsed.');
+  //   strictEqual(data.segments[0].byterange, testData.byteRange, 'byteRange incorrect.');
+  //   strictEqual(data.segments[1].byterange, testData.byteRange1, 'byteRange1 incorrect.');
+  //   strictEqual(data.segments[15].byterange, testData.byteRange2, 'byteRange2 incorrect.');
   // });
 
   // test('test EXT-X-BYTERANGE used but version is < 4', function() {
@@ -840,12 +1133,12 @@
   //     playlistData = playlistTemplate(testData),
   //     data = m3u8parser.parse(playlistData);
 
-  //   notEqual(data, null, 'data is not NULL');
-  //   equal(data.segments.length, 16, '16 segments should have been parsed.');
-  //   // notEqual(data.invalidReasons, null, 'there should be an error');
-  //   // equal(data.invalidReasons.length, 1, 'there should be 1 error');
+  //   notStrictEqual(data, null, 'data is not NULL');
+  //   strictEqual(data.segments.length, 16, '16 segments should have been parsed.');
+  //   // notStrictEqual(data.invalidReasons, null, 'there should be an error');
+  //   // strictEqual(data.invalidReasons.length, 1, 'there should be 1 error');
   //   // //TODO: Validate the byteRange info
-  //   // equal(data.invalidReasons[0], 'EXT-X-BYTERANGE used but version is < 4.');x
+  //   // strictEqual(data.invalidReasons[0], 'EXT-X-BYTERANGE used but version is < 4.');x
   // });
 
 })(window, window.console);
