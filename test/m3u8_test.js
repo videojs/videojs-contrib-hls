@@ -2,7 +2,10 @@
   var
     Handlebars = this.Handlebars,
     manifestController = this.manifestController,
-    m3u8parser;
+    Parser = window.videojs.m3u8.Parser,
+    parser,
+    Tokenizer = window.videojs.m3u8.Tokenizer,
+    tokenizer;
 
   module('environment');
 
@@ -58,23 +61,234 @@
     M3U8 Test Suite
   */
 
+  module('M3U8 Tokenizer', {
+    setup: function() {
+      tokenizer = new Tokenizer();
+    }
+  });
+  test('empty inputs produce no tokens', function() {
+    var data = false;
+    tokenizer.on('data', function() {
+      data = true;
+    });
+    tokenizer.push('');
+    ok(!data, 'no tokens were produced');
+  });
+  test('splits on newlines', function() {
+    var lines = [];
+    tokenizer.on('data', function(line) {
+      lines.push(line);
+    });
+    tokenizer.push('#EXTM3U\nmovie.ts\n');
+
+    equal(2, lines.length, 'two lines are ready');
+    equal('#EXTM3U', lines.shift(), 'the first line is the first token');
+    equal('movie.ts', lines.shift(), 'the second line is the second token');
+  });
+  test('empty lines become empty strings', function() {
+    var lines = [];
+    tokenizer.on('data', function(line) {
+      lines.push(line);
+    });
+    tokenizer.push('\n\n');
+
+    equal(2, lines.length, 'two lines are ready');
+    equal('', lines.shift(), 'the first line is empty');
+    equal('', lines.shift(), 'the second line is empty');
+  });
+  test('handles lines broken across appends', function() {
+    var lines = [];
+    tokenizer.on('data', function(line) {
+      lines.push(line);
+    });
+    tokenizer.push('#EXTM');
+    equal(0, lines.length, 'no lines are ready');
+
+    tokenizer.push('3U\nmovie.ts\n');
+    equal(2, lines.length, 'two lines are ready');
+    equal('#EXTM3U', lines.shift(), 'the first line is the first token');
+    equal('movie.ts', lines.shift(), 'the second line is the second token');
+  });
+  test('stops sending events after deregistering', function() {
+    var
+      temporaryLines = [],
+      temporary = function(line) {
+        temporaryLines.push(line);
+      },
+      permanentLines = [],
+      permanent = function(line) {
+        permanentLines.push(line);
+      };
+
+    tokenizer.on('data', temporary);
+    tokenizer.on('data', permanent);
+    tokenizer.push('line one\n');
+    equal(temporaryLines.length, permanentLines.length, 'both callbacks receive the event');
+
+    ok(tokenizer.off('data', temporary), 'a listener was removed');
+    tokenizer.push('line two\n');
+    equal(1, temporaryLines.length, 'no new events are received');
+    equal(2, permanentLines.length, 'new events are still received');
+  });
+
+  module('M3U8 Parser', {
+    setup: function() {
+      tokenizer = new Tokenizer();
+      parser = new Parser();
+      tokenizer.pipe(parser);
+    }
+  });
+  test('parses comment lines', function() {
+    var
+      manifest = '# a line that starts with a hash mark without "EXT" is a comment\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    equal(element.type, 'comment', 'the type is comment');
+    equal(element.text,
+          manifest.slice(1, manifest.length - 1),
+          'the comment text is parsed');
+  });
+  test('parses uri lines', function() {
+    var
+      manifest = 'any non-blank line that does not start with a hash-mark is a URI\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    equal(element.type, 'uri', 'the type is uri');
+    equal(element.uri,
+          manifest.substring(0, manifest.length - 1),
+          'the uri text is parsed');
+  });
+  test('parses unknown tag types', function() {
+    var
+      manifest = '#EXT-X-EXAMPLE-TAG:some,additional,stuff\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    equal(element.type, 'tag', 'the type is tag');
+    equal(element.data,
+          manifest.slice(4, manifest.length - 1),
+          'unknown tag data is preserved');
+  });
+  test('parses #EXTM3U tags', function() {
+    var
+      manifest = '#EXTM3U\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    equal(element.type, 'tag', 'the line type is tag');
+    equal(element.tagType, 'm3u', 'the tag type is m3u');
+  });
+  test('parses minimal #EXTINF tags', function() {
+    var
+      manifest = '#EXTINF\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    equal(element.type, 'tag', 'the line type is tag');
+    equal(element.tagType, 'inf', 'the tag type is inf');
+  });
+  test('parses #EXTINF tags with durations', function() {
+    var
+      manifest = '#EXTINF:15\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    equal(element.type, 'tag', 'the line type is tag');
+    equal(element.tagType, 'inf', 'the tag type is inf');
+    equal(element.duration, 15, 'the duration is parsed');
+    ok(!('title' in element), 'no title is parsed');
+
+    manifest = '#EXTINF:21,\n'
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    equal(element.type, 'tag', 'the line type is tag');
+    equal(element.tagType, 'inf', 'the tag type is inf');
+    equal(element.duration, 21, 'the duration is parsed');
+    ok(!('title' in element), 'no title is parsed');
+  });
+  test('parses #EXTINF tags with a duration and title', function() {
+    var
+      manifest = '#EXTINF:13,Does anyone really use the title attribute?\n',
+      element;
+    parser.on('data', function(elem) {
+      element = elem;
+    });
+    tokenizer.push(manifest);
+
+    ok(element, 'an event was triggered');
+    equal(element.type, 'tag', 'the line type is tag');
+    equal(element.tagType, 'inf', 'the tag type is inf');
+    equal(element.duration, 13, 'the duration is parsed');
+    equal(element.title,
+          manifest.substring(manifest.indexOf(',') + 1, manifest.length - 1),
+          'the title is parsed');
+  });
+  test('ignores empty lines', function() {
+    var
+      manifest = '\n',
+      event = false;
+    parser.on('data', function() {
+      event = true;
+    });
+    tokenizer.push(manifest);
+
+    ok(!event, 'no event is triggered');
+  });
+
   module('m3u8 parser', {
     setup: function() {
-      m3u8parser = window.videojs.hls.M3U8Parser;
+      tokenizer = new Tokenizer();
+      parser = new Parser();
+      tokenizer.pipe(parser);
     }
   });
 
   test('should create my parser', function() {
-    ok(m3u8parser !== undefined);
+    ok(parser !== undefined);
   });
 
   test('should successfully parse manifest data', function() {
-    var parsedData = m3u8parser.parse(window.playlistData);
+    var parsedData;
+    parser.on('data', function(manifest) {
+      parsedData = manifest;
+    });
+    tokenizer.push(window.playlistData);
     ok(parsedData);
   });
 
   test('valid manifest should populate the manifest data object', function() {
-    var data = m3u8parser.parse(window.playlistData);
+    var data;
+    parser.on('data', function(manifest) {
+      data = manifest;
+    });
+    tokenizer.push(window.playlistData);
 
     notEqual(data, null, 'data is not NULL');
     equal(data.openTag, true, 'data has valid EXTM3U');
@@ -106,7 +320,11 @@
       playlistTemplate = Handlebars.compile(window.playlist_type_template),
       testData = {playlistType: 'VOD'},
       playlistData = playlistTemplate(testData),
-      data = m3u8parser.parse(playlistData);
+      data;
+    parser.on('data', function(element) {
+      data = element;
+    });
+    tokenizer.push(window.playlistData);
 
     notEqual(data, null, 'data is not NULL');
     //equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
@@ -118,7 +336,12 @@
       playlistTemplate = Handlebars.compile(window.playlist_type_template),
       testData = {playlistType: 'EVENT'},
       playlistData = playlistTemplate(testData),
-      data = m3u8parser.parse(playlistData);
+      data;
+    parser.on('data', function(element) {
+      data = element;
+    });
+    tokenizer.push(window.playlistData);
+
     notEqual(data, null, 'data is not NULL');
     //equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
     equal(data.playlistType, "EVENT", 'acceptable PLAYLIST TYPE');
@@ -129,7 +352,11 @@
       playlistTemplate = Handlebars.compile(window.playlist_type_template),
       testData = {},
       playlistData = playlistTemplate(testData),
-      data = m3u8parser.parse(playlistData);
+      data;
+    parser.on('data', function(element) {
+      data = element;
+    });
+    tokenizer.push(window.playlistData);
 
     notEqual(data, null, 'data is not NULL');
     //equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
@@ -148,17 +375,17 @@
     //equal(data.invalidReasons[0], 'Invalid Playlist Type Value: \'baklsdhfajsdf\'');
   });
 
-  test('handles an empty playlist type', function() {
-    var 
-      playlistTemplate = Handlebars.compile(window.playlist_type_template),
-      testData = {playlistType: ''},
-      playlistData = playlistTemplate(testData),
-      data = m3u8parser.parse(playlistData);
-    notEqual(data, null, 'data is not NULL');
-    //equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
-    //equal(data.warnings, 'EXT-X-PLAYLIST-TYPE was empty or missing.  Assuming VOD');
-    equal(data.playlistType, '', 'PLAYLIST TYPE is the empty string');
-  });
+  // test('handles an empty playlist type', function() {
+  //   var
+  //     playlistTemplate = Handlebars.compile(window.playlist_type_template),
+  //     testData = {playlistType: ''},
+  //     playlistData = playlistTemplate(testData),
+  //     data = m3u8parser.parse(playlistData);
+  //   notEqual(data, null, 'data is not NULL');
+  //   //equal(data.invalidReasons.length, 0, 'Errors object should not be empty.');
+  //   //equal(data.warnings, 'EXT-X-PLAYLIST-TYPE was empty or missing.  Assuming VOD');
+  //   equal(data.playlistType, '', 'PLAYLIST TYPE is the empty string');
+  // });
 
   /*3.4.2.  EXT-X-TARGETDURATION
 
@@ -306,18 +533,18 @@
     equal(data.mediaSequence, undefined, 'MEDIA SEQUENCE is undefined');
   });
 
-  test('media sequence is empty in the playlist', function() {
-    var 
-      playlistTemplate = Handlebars.compile(window.playlist_media_sequence_template),
-      testData = {mediaSequence: ''},
-      playlistData = playlistTemplate(testData),
-      data = m3u8parser.parse(playlistData);
+  // test('media sequence is empty in the playlist', function() {
+  //   var
+  //     playlistTemplate = Handlebars.compile(window.playlist_media_sequence_template),
+  //     testData = {mediaSequence: ''},
+  //     playlistData = playlistTemplate(testData),
+  //     data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    equal(data.mediaSequence, '', 'media sequence is the empty string');
-  });
+  //   notEqual(data, null, 'data is not NULL');
+  //   // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+  //   // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+  //   equal(data.mediaSequence, '', 'media sequence is the empty string');
+  // });
 
   test('media sequence is high (non-zero in first file) in the playlist', function() {
     var 
@@ -562,63 +789,63 @@
     equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES.');
   });
 
-  test('test EXT-X-ALLOW-CACHE empty, default to YES', function() {
-    var 
-      playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
-      testData = {version: 4, allowCache: ''},
-      playlistData = playlistTemplate(testData),
-      data = m3u8parser.parse(playlistData);
+  // test('test EXT-X-ALLOW-CACHE empty, default to YES', function() {
+  //   var
+  //     playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
+  //     testData = {version: 4, allowCache: ''},
+  //     playlistData = playlistTemplate(testData),
+  //     data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
-    // equal(data.invalidReasons[0], 'Invalid EXT-X-ALLOW-CACHE value: \'\'');
-    equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES.');
-  });
+  //   notEqual(data, null, 'data is not NULL');
+  //   // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+  //   // equal(data.invalidReasons.length, 1, 'data has 1 invalid reasons');
+  //   // equal(data.invalidReasons[0], 'Invalid EXT-X-ALLOW-CACHE value: \'\'');
+  //   equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES.');
+  // });
 
-  test('test EXT-X-ALLOW-CACHE missing, default to YES', function() {
-    var 
-      playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
-      testData = {version: 4},
-      playlistData = playlistTemplate(testData),
-      data = m3u8parser.parse(playlistData);
+  // test('test EXT-X-ALLOW-CACHE missing, default to YES', function() {
+  //   var 
+  //     playlistTemplate = Handlebars.compile(window.playlist_allow_cache),
+  //     testData = {version: 4},
+  //     playlistData = playlistTemplate(testData),
+  //     data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    // equal(data.invalidReasons.length, 1, 'No EXT-X-ALLOW-CACHE specified.  Default: YES.');
-    equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES');
-  });
+  //   notEqual(data, null, 'data is not NULL');
+  //   // notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+  //   // equal(data.invalidReasons.length, 1, 'No EXT-X-ALLOW-CACHE specified.  Default: YES.');
+  //   equal(data.allowCache, 'YES', 'EXT-X-ALLOW-CACHE should default to YES');
+  // });
   
-  test('test EXT-X-BYTERANGE valid', function() {
-    var 
-      playlistTemplate = Handlebars.compile(window.playlist_byte_range),
-      testData = {version: 4, byteRange: '522828,0', byteRange1: '587500,522828', byteRange2: '44556,8353216'},
-      playlistData = playlistTemplate(testData),
-      data = m3u8parser.parse(playlistData);
+  // test('test EXT-X-BYTERANGE valid', function() {
+  //   var
+  //     playlistTemplate = Handlebars.compile(window.playlist_byte_range),
+  //     testData = {version: 4, byteRange: '522828,0', byteRange1: '587500,522828', byteRange2: '44556,8353216'},
+  //     playlistData = playlistTemplate(testData),
+  //     data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    //notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
-    //equal(data.invalidReasons.length, 0, 'Errors object should be empty.');
-    //TODO: Validate the byteRange info
-    equal(data.segments.length, 16, '16 segments should have been parsed.');
-    equal(data.segments[0].byterange, testData.byteRange, 'byteRange incorrect.');
-    equal(data.segments[1].byterange, testData.byteRange1, 'byteRange1 incorrect.');
-    equal(data.segments[15].byterange, testData.byteRange2, 'byteRange2 incorrect.');
-  });
+  //   notEqual(data, null, 'data is not NULL');
+  //   //notEqual(data.invalidReasons, null, 'invalidReasons is not NULL');
+  //   //equal(data.invalidReasons.length, 0, 'Errors object should be empty.');
+  //   //TODO: Validate the byteRange info
+  //   equal(data.segments.length, 16, '16 segments should have been parsed.');
+  //   equal(data.segments[0].byterange, testData.byteRange, 'byteRange incorrect.');
+  //   equal(data.segments[1].byterange, testData.byteRange1, 'byteRange1 incorrect.');
+  //   equal(data.segments[15].byterange, testData.byteRange2, 'byteRange2 incorrect.');
+  // });
 
-  test('test EXT-X-BYTERANGE used but version is < 4', function() {
-    var 
-      playlistTemplate = Handlebars.compile(window.playlist_byte_range),
-      testData = {version: 3, byteRange: ['522828,0'], byteRange1: ['587500,522828'], byteRange2: ['44556,8353216']},
-      playlistData = playlistTemplate(testData),
-      data = m3u8parser.parse(playlistData);
+  // test('test EXT-X-BYTERANGE used but version is < 4', function() {
+  //   var
+  //     playlistTemplate = Handlebars.compile(window.playlist_byte_range),
+  //     testData = {version: 3, byteRange: ['522828,0'], byteRange1: ['587500,522828'], byteRange2: ['44556,8353216']},
+  //     playlistData = playlistTemplate(testData),
+  //     data = m3u8parser.parse(playlistData);
 
-    notEqual(data, null, 'data is not NULL');
-    equal(data.segments.length, 16, '16 segments should have been parsed.');
-    // notEqual(data.invalidReasons, null, 'there should be an error');
-    // equal(data.invalidReasons.length, 1, 'there should be 1 error');
-    // //TODO: Validate the byteRange info
-    // equal(data.invalidReasons[0], 'EXT-X-BYTERANGE used but version is < 4.');x
-  });
+  //   notEqual(data, null, 'data is not NULL');
+  //   equal(data.segments.length, 16, '16 segments should have been parsed.');
+  //   // notEqual(data.invalidReasons, null, 'there should be an error');
+  //   // equal(data.invalidReasons.length, 1, 'there should be 1 error');
+  //   // //TODO: Validate the byteRange info
+  //   // equal(data.invalidReasons[0], 'EXT-X-BYTERANGE used but version is < 4.');x
+  // });
 
 })(window, window.console);
