@@ -1,4 +1,4 @@
-window.playlistData = '#EXTM3U\n'+
+window.playlistM3U8data = '#EXTM3U\n'+
   '#EXT-X-TARGETDURATION:10\n' +
   '#EXT-X-VERSION:4\n' +
   '#EXT-X-MEDIA-SEQUENCE:0\n' +
