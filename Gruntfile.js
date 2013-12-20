@@ -27,8 +27,6 @@ module.exports = function(grunt) {
               'src/aac-stream.js',
               'src/segment-parser.js',
               'src/segment-controller.js',
-              'src/m3u8/m3u8.js',
-              'src/m3u8/m3u8-tag-types.js',
               'src/m3u8/m3u8-parser.js',
               'src/manifest-controller.js',
               'src/segment-controller.js',
