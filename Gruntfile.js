@@ -1,5 +1,7 @@
 'use strict';
 
+var basename = require('path').basename;
+
 module.exports = function(grunt) {
 
   // Project configuration.
@@ -12,7 +14,7 @@ module.exports = function(grunt) {
       ' Licensed <%= _.pluck(pkg.licenses, "type").join(", ") %> */\n',
     // Task configuration.
     clean: {
-      files: ['build', 'dist']
+      files: ['build', 'dist', 'tmp']
     },
     concat: {
       options: {
@@ -93,11 +95,56 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
 
+  grunt.registerTask('manifests-to-js', 'Wrap the test fixtures and output' +
+                     ' so they can be loaded in a browser',
+                     function() {
+    var
+      jsManifests = 'window.manifests = {\n',
+      jsExpected = 'window.expected = {\n';
+    grunt.file.recurse('test/manifest/',
+                       function(abspath, root, sub, filename) {
+      if ((/\.m3u8$/).test(abspath)) {
+
+        // translate this manifest
+        jsManifests += '  \'' + basename(filename, '.m3u8') + '\': ' +
+          grunt.file.read(abspath)
+            .split('\n')
+
+            // quote and concatenate
+            .map(function(line) {
+              return '    \'' + line + '\\n\' +\n';
+            }).join('')
+
+            // strip leading spaces and the trailing '+'
+            .slice(4, -3);
+        jsManifests += ',\n';
+      }
+
+      if ((/\.json$/).test(abspath)) {
+
+        // append the JSON
+        jsExpected += '  "' + basename(filename, '.json') + '": ' +
+          grunt.file.read(abspath) + ',\n';
+      }
+    });
+
+    // clean up and close the objects
+    jsManifests = jsManifests.slice(0, -2);
+    jsManifests += '\n};\n';
+    jsExpected = jsExpected.slice(0, -2);
+    jsExpected += '\n};\n';
+
+    // write out the manifests
+    grunt.file.write('tmp/manifests.js', jsManifests);
+    grunt.file.write('tmp/expected.js', jsExpected);
+  });
+
   // Default task.
   grunt.registerTask('default',
-                     ['jshint',
+                     ['clean',
+                      'jshint',
+                      'manifests-to-js',
                       'qunit',
-                      'clean',
                       'concat',
                       'uglify']);
 

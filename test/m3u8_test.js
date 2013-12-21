@@ -1126,4 +1126,19 @@
                 'the byterange offset was defaulted');
   });
 
+  module('m3u8s');
+
+  test('parses the example manifests as expected', function() {
+    var key;
+    for (key in window.manifests) {
+      if (window.expected[key]) {
+        parser = new Parser();
+        parser.push(window.manifests[key]);
+        deepEqual(parser.manifest,
+                  window.expected[key],
+                  key + '.m3u8 was parsed correctly');
+      }
+    }
+  });
+
 })(window, window.console);
