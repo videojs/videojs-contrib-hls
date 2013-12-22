@@ -1,0 +1,14 @@
+{
+  "targetDuration": 10,
+  "allowCache": false,
+  "mediaSequence": 0,
+  "playlistType": "VOD",
+  "segments": [{
+    "duration": 10,
+    "byterange": {
+      "length": 522828,
+      "offset": 0
+    },
+    "uri": "hls_450k_video.ts"
+  }]
+}

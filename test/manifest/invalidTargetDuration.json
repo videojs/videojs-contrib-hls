@@ -1,6 +1,5 @@
 {
   "allowCache": true,
-  "targetDuration": 10,
   "mediaSequence": 0,
   "playlistType": "VOD",
   "segments": [{
