@@ -16,48 +16,6 @@
   });
 
   /*
-    Manifest controller
-  */
-
-  // module('manifest controller', {
-  //   setup: function() {
-  //     manifestController = new window.videojs.hls.ManifestController();
-  //     this.vjsget = window.videojs.get;
-  //     window.videojs.get = function(url, success) {
-  //       success(window.brightcove_playlist_data);
-  //     };
-  //   },
-  //   teardown: function() {
-  //     window.videojs.get = this.vjsget;
-  //   }
-  // });
-
-  // test('should create', function() {
-  //   ok(manifestController);
-  // });
-
-  // test('should return a parsed object', function() {
-  //   parser.push(window.brightcove_playlist_data);
-
-  //   strictEqual(parser.manifest.playlists.length, 4, 'Has correct rendition count');
-  //   strictEqual(parser.manifest.playlists[0].attributes.BANDWIDTH, 240000, 'First rendition index bandwidth is correct');
-  //   strictEqual(parser.manifest.playlists[0].attributes['PROGRAM-ID'], 1, 'First rendition index program-id is correct');
-  //   strictEqual(parser.manifest.playlists[0].attributes.RESOLUTION.width, 396, 'First rendition index resolution width is correct');
-  //   strictEqual(parser.manifest.playlists[0].attributes.RESOLUTION.height, 224, 'First rendition index resolution height is correct');
-  // });
-
-  // test('should get a manifest from an external URL', function() {
-  //   manifestController.loadManifest('http://example.com/16x9-master.m3u8',
-  //                                   function(responseData) {
-  //                                     ok(responseData);
-  //                                   },
-  //                                   function() {
-  //                                     ok(false, 'does not error');
-  //                                   },
-  //                                   function() {});
-  // });
-
-  /*
     M3U8 Test Suite
   */
 
