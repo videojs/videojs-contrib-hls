@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <title>video.js HLS Plugin Example</title>
 
-  <link href="node_modules/video.js/video-js.css" rel="stylesheet">
+  <link href="node_modules/video.js/dist/video-js/video-js.css" rel="stylesheet">
   
   <!-- video.js -->
-  <script src="node_modules/video.js/video.dev.js"></script>
+  <script src="node_modules/video.js/dist/video-js/video.js"></script>
 
   <!-- Media Sources plugin -->
   <script src="node_modules/videojs-media-sources/videojs-media-sources.js"></script>
@@ -24,8 +24,7 @@
   <script src="src/segment-controller.js"></script>
 
   <!-- m3u8 handling -->
-  <script src="src/m3u8/m3u8.js"></script>
-  <script src="src/m3u8/m3u8-tag-types.js"></script>
+  <script src="src/stream.js"></script>
   <script src="src/m3u8/m3u8-parser.js"></script>
   <script src="src/manifest-controller.js"></script>
   <script src="src/segment-controller.js"></script>
@@ -46,18 +45,12 @@
          controls>
   </video>
   <script>
-    var video, mediaSource;
-
+    videojs.options.flash.swf = 'node_modules/video.js/dist/video-js/video-js.swf';
     // initialize the player
-    videojs.options.flash.swf = 'node_modules/videojs-media-sources/video-js-with-mse.swf';
-    video = videojs('video',{},function(){
-      this.playbackController = new window.videojs.hls.HLSPlaybackController(this);
-      this.playbackController.loadManifest('test/fixtures/prog_index.m3u8', function(data) {
-        console.log(data);
-      });
-    });
+    var player = videojs('video');
+
+    // load the master playlist
+    player.hls('test/fixtures/prog_index.m3u8');
   </script>
-
-
 </body>
 </html>
