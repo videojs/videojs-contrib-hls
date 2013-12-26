@@ -52,8 +52,13 @@ videojs.plugin('hls', function(options) {
     fillBuffer = function() {
       var
         xhr = new window.XMLHttpRequest(),
-        segment = player.hls.currentPlaylist.segments[player.hls.currentMediaIndex];
-      xhr.open('GET', segment.uri);
+        segment = player.hls.currentPlaylist.segments[player.hls.currentMediaIndex],
+        segmentUri = segment.uri;
+      if (!(/^([A-z]*:)?\/\//).test(segmentUri)) {
+        // the segment URI is relative to the manifest
+        segmentUri = url.split('/').slice(0, -1).concat(segmentUri).join('/');
+      }
+      xhr.open('GET', segmentUri);
       xhr.responseType = 'arraybuffer';
       xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {

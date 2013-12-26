@@ -35,8 +35,15 @@ module('HLS', {
         xhrParams = arguments;
       };
       this.send = function() {
+        // if the request URL looks like one of the test manifests, grab the
+        // contents off the global object
+        var manifestName = (/.*\/(.*)\.m3u8/).exec(xhrParams[1]);
+        if (manifestName) {
+          manifestName = manifestName[1];
+        }
+        this.responseText = window.manifests[manifestName || xhrParams[1]];
+
         this.readyState = 4;
-        this.responseText = window.manifests['media'];
         this.onreadystatechange();
       };
     };
@@ -73,7 +80,7 @@ test('loads the specified manifest URL on init', function() {
   ok(player.hls.manifest.segments, 'the segment entries are parsed');
   strictEqual(player.hls.manifest,
               player.hls.currentPlaylist,
-              'a playlist is selected');
+              'the playlist is selected');
   strictEqual(player.hls.readyState(), 1, 'the readyState is HAVE_METADATA');
 });
 
@@ -83,7 +90,18 @@ test('starts downloading a segment on loadedmetadata', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(xhrParams[1], '00001.ts', 'the first segment is requested');
+  strictEqual(xhrParams[1], 'manifest/00001.ts', 'the first segment is requested');
+});
+
+test('recognizes absolute URIs and uses them umnodified', function() {
+  player.hls('manifest/absoluteUris.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(xhrParams[1],
+              'http://example.com/00001.ts',
+              'the first segment is requested');
 });
 
 module('segment controller', {
