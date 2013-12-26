@@ -17,7 +17,7 @@ videojs.plugin('hls', function(options) {
     player = this,
     url,
 
-    loadSegment,
+    fillBuffer,
     selectPlaylist;
 
   if (typeof options === 'string') {

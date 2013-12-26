@@ -35,13 +35,6 @@
   testScriptEcmaArray,
   testNalUnit;
 
-  module('environment');
-
-  test('is sane', function() {
-    expect(1);
-    ok(true);
-  });
-
   module('segment parser', {
     setup: function() {
       parser = new window.videojs.hls.SegmentParser();
@@ -228,25 +221,4 @@
             'the size of the previous tag is correct');
     }
   });
-
-  module('segment controller', {
-    setup: function() {
-      segmentController = new window.videojs.hls.SegmentController();
-      this.vjsget = window.videojs.get;
-      window.videojs.get = function(url, success) {
-        success(window.bcSegment);
-      };
-    },
-    teardown: function() {
-      window.videojs.get = this.vjsget;
-    }
-  });
-
-  test('bandwidth calulation test', function() {
-    var
-      multiSecondData = segmentController.calculateThroughput(10000, 1000, 2000),
-      subSecondData = segmentController.calculateThroughput(10000, 1000, 1500);
-    equal(multiSecondData, 80000, 'MULTI-Second bits per second calculation');
-    equal(subSecondData, 160000, 'SUB-Second bits per second calculation');
-  });
-})(this);
+})(window);

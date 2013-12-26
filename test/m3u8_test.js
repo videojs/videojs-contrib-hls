@@ -8,13 +8,6 @@
     Parser = window.videojs.m3u8.Parser,
     parser;
 
-  module('environment');
-
-  test('is sane', function() {
-    expect(1);
-    ok(true);
-  });
-
   /*
     M3U8 Test Suite
   */
