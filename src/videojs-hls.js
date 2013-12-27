@@ -10,7 +10,7 @@
 
 videojs.hls = {};
 
-videojs.plugin('hls', function(options) {
+var init = function(options) {
   var
     mediaSource = new videojs.MediaSource(),
     segmentParser = new videojs.hls.SegmentParser(),
@@ -53,7 +53,8 @@ videojs.plugin('hls', function(options) {
       var
         xhr = new window.XMLHttpRequest(),
         segment = player.hls.currentPlaylist.segments[player.hls.currentMediaIndex],
-        segmentUri = segment.uri;
+        segmentUri = segment.uri,
+        startTime;
       if (!(/^([A-z]*:)?\/\//).test(segmentUri)) {
         // the segment URI is relative to the manifest
         segmentUri = url.split('/').slice(0, -1).concat(segmentUri).join('/');
@@ -61,15 +62,24 @@ videojs.plugin('hls', function(options) {
       xhr.open('GET', segmentUri);
       xhr.responseType = 'arraybuffer';
       xhr.onreadystatechange = function() {
+        var elapsed;
         if (xhr.readyState === 4) {
-          player.hls.currentMediaIndex++;
+          // calculate the download bandwidth
+          elapsed = ((+new Date()) - startTime) * 1000;
+          player.hls.bandwidth =  xhr.response.byteLength / elapsed;
+
+          // transmux the segment data from M2TS to FLV
           segmentParser.parseSegmentBinaryData(new Uint8Array(xhr.response));
           while (segmentParser.tagsAvailable()) {
             player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,
                                                  player);
           }
+
+          // update the segment index
+          player.hls.currentMediaIndex++;
         }
       };
+      startTime = +new Date();
       xhr.send(null);
     };
     player.on('loadedmetadata', fillBuffer);
@@ -102,6 +112,16 @@ videojs.plugin('hls', function(options) {
     src: videojs.URL.createObjectURL(mediaSource),
     type: "video/flv"
   });
+};
+
+videojs.plugin('hls', function() {
+  var initialize = function() {
+    return function() {
+      this.hls = initialize();
+      init.apply(this, arguments);
+    };
+  };
+  initialize().apply(this, arguments);
 });
 
 })(window, window.videojs);

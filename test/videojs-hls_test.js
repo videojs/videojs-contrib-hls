@@ -42,6 +42,7 @@ module('HLS', {
           manifestName = manifestName[1];
         }
         this.responseText = window.manifests[manifestName || xhrParams[1]];
+        this.response = new Uint8Array([1]).buffer;
 
         this.readyState = 4;
         this.onreadystatechange();
@@ -93,7 +94,7 @@ test('starts downloading a segment on loadedmetadata', function() {
   strictEqual(xhrParams[1], 'manifest/00001.ts', 'the first segment is requested');
 });
 
-test('recognizes absolute URIs and uses them umnodified', function() {
+test('recognizes absolute URIs and requests them unmodified', function() {
   player.hls('manifest/absoluteUris.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
@@ -102,6 +103,28 @@ test('recognizes absolute URIs and uses them umnodified', function() {
   strictEqual(xhrParams[1],
               'http://example.com/00001.ts',
               'the first segment is requested');
+});
+
+test('re-initializes the plugin for each source', function() {
+  var firstInit, secondInit;
+  player.hls('manifest/master.m3u8');
+  firstInit = player.hls;
+  player.hls('manifest/master.m3u8');
+  secondInit = player.hls;
+
+  notStrictEqual(firstInit, secondInit, 'the plugin object is replaced');
+
+});
+
+test('calculates the bandwidth after downloading a segment', function() {
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  ok(player.hls.bandwidth, 'bandwidth is calculated');
+  ok(player.hls.bandwidth > 0,
+     'bandwidth is positive: ' + player.hls.bandwidth);
 });
 
 module('segment controller', {
