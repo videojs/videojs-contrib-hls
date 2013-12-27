@@ -25,6 +25,7 @@ var
       player = this,
       url,
 
+      segmentXhr,
       fillBuffer,
       selectPlaylist;
 
@@ -64,10 +65,14 @@ var
         var
           buffered = player.buffered(),
           bufferedTime = 0,
-          xhr = new window.XMLHttpRequest(),
           segment = player.hls.currentPlaylist.segments[player.hls.currentMediaIndex],
           segmentUri,
           startTime;
+
+        // if there is a request already in flight, do nothing
+        if (segmentXhr) {
+          return;
+        }
 
         // if the video has finished downloading, stop trying to buffer
         if (!segment) {
@@ -77,10 +82,10 @@ var
         if (buffered) {
           // assuming a single, contiguous buffer region
           bufferedTime = player.buffered().end(0) - player.currentTime();
+          console.log('buffered time:', bufferedTime);
         }
 
         // if there is plenty of content in the buffer, relax for awhile
-        console.log('bufferedTime:', bufferedTime);
         if (bufferedTime >= goalBufferLength) {
           return;
         }
@@ -92,26 +97,29 @@ var
         }
 
         // request the next segment
-        xhr.open('GET', segmentUri);
-        xhr.responseType = 'arraybuffer';
-        xhr.onreadystatechange = function() {
-          if (xhr.readyState === 4) {
+        segmentXhr = new window.XMLHttpRequest();
+        segmentXhr.open('GET', segmentUri);
+        segmentXhr.responseType = 'arraybuffer';
+        segmentXhr.onreadystatechange = function() {
+          if (segmentXhr.readyState === 4) {
             // calculate the download bandwidth
-            player.hls.segmentRequestTime = (+new Date()) - startTime;
-            player.hls.bandwidth = xhr.response.byteLength / player.hls.segmentRequestTime;
+            player.hls.segmentXhrTime = (+new Date()) - startTime;
+            player.hls.bandwidth = segmentXhr.response.byteLength / player.hls.segmentXhrTime;
 
             // transmux the segment data from M2TS to FLV
-            segmentParser.parseSegmentBinaryData(new Uint8Array(xhr.response));
+            segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
             while (segmentParser.tagsAvailable()) {
               player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,
                                                    player);
             }
 
+            console.log('finished downloading segment ' + player.hls.currentMediaIndex);
+            segmentXhr = null;
             player.hls.currentMediaIndex++;
           }
         };
         startTime = +new Date();
-        xhr.send(null);
+        segmentXhr.send(null);
       };
       player.on('loadedmetadata', fillBuffer);
       player.on('timeupdate', fillBuffer);

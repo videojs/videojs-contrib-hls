@@ -145,8 +145,8 @@ test('calculates the bandwidth after downloading a segment', function() {
   ok(player.hls.bandwidth, 'bandwidth is calculated');
   ok(player.hls.bandwidth > 0,
      'bandwidth is positive: ' + player.hls.bandwidth);
-  ok(player.hls.segmentRequestTime >= 0,
-     'saves segment request time: ' + player.hls.segmentRequestTime + 's');
+  ok(player.hls.segmentXhrTime >= 0,
+     'saves segment request time: ' + player.hls.segmentXhrTime + 's');
 });
 
 test('does not download the next segment if the buffer is full', function() {
@@ -194,6 +194,26 @@ test('stops downloading segments at the end of the playlist', function() {
   player.trigger('timeupdate');
 
   strictEqual(xhrParams, null, 'no request is made');
+});
+
+test('only makes one segment request at a time', function() {
+  var openedXhrs = 0;
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  // mock out a long-running XHR
+  window.XMLHttpRequest = function() {
+    this.send = function() {};
+    this.open = function() {
+      openedXhrs++;
+    };
+  };
+  player.trigger('timeupdate');
+
+  strictEqual(1, openedXhrs, 'one XHR is made');
+  player.trigger('timeupdate');
+  strictEqual(1, openedXhrs, 'only one XHR is made');
 });
 
 module('segment controller', {
