@@ -20,13 +20,27 @@
     throws(block, [expected], [message])
   */
 
-var player, oldXhr, oldSourceBuffer, xhrParams;
+var player, oldFlashSupported, oldXhr, oldSourceBuffer, xhrParams;
 
 module('HLS', {
   setup: function() {
     var video  = document.createElement('video');
     document.querySelector('#qunit-fixture').appendChild(video);
-    player = videojs(video);
+    player = videojs(video, {
+      flash: {
+        swf: '../node_modules/video.js/dist/video-js/video-js.swf',
+      },
+      techOrder: ['flash']
+    });
+
+    // force Flash support in phantomjs
+    oldFlashSupported = videojs.Flash.isSupported;
+    videojs.Flash.isSupported = function() {
+      return true;
+    };
+    player.buffered = function() {
+      return videojs.createTimeRange(0, 0);
+    };
 
     // make XHR synchronous
     oldXhr = window.XMLHttpRequest;
@@ -56,6 +70,7 @@ module('HLS', {
     };
   },
   teardown: function() {
+    videojs.Flash.isSupported = oldFlashSupported;
     window.XMLHttpRequest = oldXhr;
     window.videojs.SourceBuffer = oldSourceBuffer;
   }
@@ -87,6 +102,9 @@ test('loads the specified manifest URL on init', function() {
 
 test('starts downloading a segment on loadedmetadata', function() {
   player.hls('manifest/media.m3u8');
+  player.buffered = function() {
+    return videojs.createTimeRange(0, 0);
+  };
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
@@ -96,6 +114,9 @@ test('starts downloading a segment on loadedmetadata', function() {
 
 test('recognizes absolute URIs and requests them unmodified', function() {
   player.hls('manifest/absoluteUris.m3u8');
+  player.buffered = function() {
+    return videojs.createTimeRange(0, 0);
+  };
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
@@ -113,7 +134,6 @@ test('re-initializes the plugin for each source', function() {
   secondInit = player.hls;
 
   notStrictEqual(firstInit, secondInit, 'the plugin object is replaced');
-
 });
 
 test('calculates the bandwidth after downloading a segment', function() {
@@ -125,6 +145,55 @@ test('calculates the bandwidth after downloading a segment', function() {
   ok(player.hls.bandwidth, 'bandwidth is calculated');
   ok(player.hls.bandwidth > 0,
      'bandwidth is positive: ' + player.hls.bandwidth);
+  ok(player.hls.segmentRequestTime >= 0,
+     'saves segment request time: ' + player.hls.segmentRequestTime + 's');
+});
+
+test('does not download the next segment if the buffer is full', function() {
+  player.hls('manifest/media.m3u8');
+  player.currentTime = function() {
+    return 15;
+  };
+  player.buffered = function() {
+    return videojs.createTimeRange(0, 20);
+  };
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  xhrParams = null;
+  player.trigger('timeupdate');
+
+  strictEqual(xhrParams, null, 'no segment request was made');
+});
+
+test('downloads the next segment if the buffer is getting low', function() {
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  player.currentTime = function() {
+    return 15;
+  };
+  player.buffered = function() {
+    return videojs.createTimeRange(0, 19.999);
+  };
+  xhrParams = null;
+  player.trigger('timeupdate');
+
+  ok(xhrParams, 'made a request');
+  strictEqual(xhrParams[1], 'manifest/00002.ts', 'made segment request');
+});
+
+test('stops downloading segments at the end of the playlist', function() {
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  xhrParams = null;
+  player.hls.currentMediaIndex = 4;
+  player.trigger('timeupdate');
+
+  strictEqual(xhrParams, null, 'no request is made');
 });
 
 module('segment controller', {
