@@ -1,17 +1,29 @@
 /**
- * A lightweight stream implemention that handles event dispatching. Objects
- * that inherit from streams should call init in their constructors.
+ * A lightweight readable stream implemention that handles event dispatching.
+ * Objects that inherit from streams should call init in their constructors.
  */
 (function(videojs, undefined) {
   var Stream = function() {
     this.init = function() {
       var listeners = {};
+      /**
+       * Add a listener for a specified event type.
+       * @param type {string} the event name
+       * @param listener {function} the callback to be invoked when an event of
+       * the specified type occurs
+       */
       this.on = function(type, listener) {
         if (!listeners[type]) {
           listeners[type] = [];
         }
         listeners[type].push(listener);
       };
+      /**
+       * Remove a listener for a specified event type.
+       * @param type {string} the event name
+       * @param listener {function} a function previously registered for this
+       * type of event through `on`
+       */
       this.off = function(type, listener) {
         var index;
         if (!listeners[type]) {
@@ -21,6 +33,11 @@
         listeners[type].splice(index, 1);
         return index > -1;
       };
+      /**
+       * Trigger an event of the specified type on this stream. Any additional
+       * arguments to this function are passed as parameters to event listeners.
+       * @param type {string} the event name
+       */
       this.trigger = function(type) {
         var callbacks, i, length, args;
         callbacks = listeners[type];
@@ -35,6 +52,13 @@
       };
     };
   };
+  /**
+   * Forwards all `data` events on this stream to the destination stream. The
+   * destination stream should provide a method `push` to receive the data
+   * events as they arrive.
+   * @param destination {stream} the stream that will receive all `data` events
+   * @see http://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
+   */
   Stream.prototype.pipe = function(destination) {
     this.on('data', function(data) {
       destination.push(data);
