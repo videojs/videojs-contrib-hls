@@ -20,20 +20,19 @@
     throws(block, [expected], [message])
   */
   var
-    segmentController,
     parser,
 
-  expectedHeader = [
-    0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00,
-    0x09, 0x00, 0x00, 0x00, 0x00
-  ],
-  testAudioTag,
-  testVideoTag,
-  testScriptTag,
-  asciiFromBytes,
-  testScriptString,
-  testScriptEcmaArray,
-  testNalUnit;
+    expectedHeader = [
+      0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00,
+      0x09, 0x00, 0x00, 0x00, 0x00
+    ],
+    testAudioTag,
+    testVideoTag,
+    testScriptTag,
+    asciiFromBytes,
+    testScriptString,
+    testScriptEcmaArray,
+    testNalUnit;
 
   module('segment parser', {
     setup: function() {

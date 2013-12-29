@@ -20,10 +20,22 @@
     throws(block, [expected], [message])
   */
 
-var player, oldFlashSupported, oldXhr, oldSourceBuffer, xhrParams;
+var
+  player,
+  segmentController,
+  oldFlashSupported,
+  oldXhr,
+  oldSourceBuffer,
+  xhrParams;
 
 module('HLS', {
   setup: function() {
+    // force Flash support in phantomjs
+    oldFlashSupported = videojs.Flash.isSupported;
+    videojs.Flash.isSupported = function() {
+      return true;
+    };
+
     var video  = document.createElement('video');
     document.querySelector('#qunit-fixture').appendChild(video);
     player = videojs(video, {
@@ -32,12 +44,6 @@ module('HLS', {
       },
       techOrder: ['flash']
     });
-
-    // force Flash support in phantomjs
-    oldFlashSupported = videojs.Flash.isSupported;
-    videojs.Flash.isSupported = function() {
-      return true;
-    };
     player.buffered = function() {
       return videojs.createTimeRange(0, 0);
     };
@@ -219,10 +225,7 @@ test('only makes one segment request at a time', function() {
 module('segment controller', {
   setup: function() {
     segmentController = new window.videojs.hls.SegmentController();
-    this.vjsget = window.videojs.get;
-    window.videojs.get = function(url, success) {
-      success(window.bcSegment);
-    };
+
   },
   teardown: function() {
     window.videojs.get = this.vjsget;
