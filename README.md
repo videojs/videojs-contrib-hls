@@ -18,7 +18,7 @@ Download the [plugin](https://raw.github.com/videojs/videojs-contrib-hls/master/
 ```
 
 ## Documentation
-(HTTP Live Streaming)[https://developer.apple.com/streaming/](HLS) has
+[HTTP Live Streaming](https://developer.apple.com/streaming/) (HLS) has
 become a de-facto standard for streaming video on mobile devices
 thanks to its native support on iOS and Android. There are a number of
 reasons independent of platform to recommend the format, though:
