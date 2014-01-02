@@ -31,8 +31,11 @@ var
 
     if (typeof options === 'string') {
       url = options;
-    } else {
+    } else if (options) {
       url = options.url;
+    } else {
+      // do nothing until the plugin is initialized with a valid URL
+      return;
     }
 
     // expose the HLS plugin state
