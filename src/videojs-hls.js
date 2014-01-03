@@ -23,18 +23,24 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
+      extname,
       url,
 
       segmentXhr,
       fillBuffer,
       selectPlaylist;
 
+    extname = (/[^#?]*(?:\/[^#?]*\.([^#?]*))/).exec(player.currentSrc());
     if (typeof options === 'string') {
       url = options;
     } else if (options) {
       url = options.url;
+    } else if (extname && extname[1] === 'm3u8') {
+      // if the currentSrc looks like an m3u8, attempt to use it
+      url = player.currentSrc();
     } else {
       // do nothing until the plugin is initialized with a valid URL
+      videojs.log('hls: no valid playlist URL specified');
       return;
     }
 
@@ -94,8 +100,22 @@ var
         }
 
         segmentUri = segment.uri;
-        if (!(/^([A-z]*:)?\/\//).test(segmentUri)) {
-          // the segment URI is relative to the manifest
+        if ((/^\/[^\/]/).test(segmentUri)) {
+          // the segment is specified with a network path,
+          // e.g. "/01.ts"
+          (function() {
+            // use an anchor to resolve the manifest URL to an absolute path
+            // this method should work back to IE6:
+            // http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
+            var resolver = document.createElement('div');
+            resolver.innerHTML = '<a href="' + url + '"></a>';
+
+            segmentUri = (/^[A-z]*:\/\/[^\/]*/).exec(resolver.firstChild.href)[0] +
+              segmentUri;
+          })();
+        } else if (!(/^([A-z]*:)?\/\//).test(segmentUri)) {
+          // the segment is specified with a relative path,
+          // e.g. "../01.ts" or "path/to/01.ts"
           segmentUri = url.split('/').slice(0, -1).concat(segmentUri).join('/');
         }
 
@@ -109,7 +129,7 @@ var
             player.hls.segmentXhrTime = (+new Date()) - startTime;
             player.hls.bandwidth = segmentXhr.response.byteLength / player.hls.segmentXhrTime;
 
-            // transmux the segment data from M2TS to FLV
+            // transmux the segment data from MP2T to FLV
             segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
             while (segmentParser.tagsAvailable()) {
               player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,

@@ -26,17 +26,23 @@ var
   oldFlashSupported,
   oldXhr,
   oldSourceBuffer,
-  xhrParams;
+  xhrUrls;
 
 module('HLS', {
   setup: function() {
-    // force Flash support in phantomjs
+
+    // mock out Flash feature for phantomjs
     oldFlashSupported = videojs.Flash.isSupported;
     videojs.Flash.isSupported = function() {
       return true;
     };
+    oldSourceBuffer = window.videojs.SourceBuffer;
+    window.videojs.SourceBuffer = function() {
+      this.appendBuffer = function() {};
+    };
 
-    var video  = document.createElement('video');
+    // create the test player
+    var video = document.createElement('video');
     document.querySelector('#qunit-fixture').appendChild(video);
     player = videojs(video, {
       flash: {
@@ -51,34 +57,29 @@ module('HLS', {
     // make XHR synchronous
     oldXhr = window.XMLHttpRequest;
     window.XMLHttpRequest = function() {
-      this.open = function() {
-        xhrParams = arguments;
+      this.open = function(method, url) {
+        xhrUrls.push(url);
       };
       this.send = function() {
         // if the request URL looks like one of the test manifests, grab the
         // contents off the global object
-        var manifestName = (/.*\/(.*)\.m3u8/).exec(xhrParams[1]);
+        var manifestName = (/.*\/(.*)\.m3u8/).exec(xhrUrls.slice(-1)[0]);
         if (manifestName) {
           manifestName = manifestName[1];
         }
-        this.responseText = window.manifests[manifestName || xhrParams[1]];
+        this.responseText = window.manifests[manifestName || xhrUrls.slice(-1)[0]];
         this.response = new Uint8Array([1]).buffer;
 
         this.readyState = 4;
         this.onreadystatechange();
       };
     };
-
-    // mock out SourceBuffer since it won't be available in phantomjs
-    oldSourceBuffer = window.videojs.SourceBuffer;
-    window.videojs.SourceBuffer = function() {
-      this.appendBuffer = function() {};
-    };
+    xhrUrls = [];
   },
   teardown: function() {
     videojs.Flash.isSupported = oldFlashSupported;
-    window.XMLHttpRequest = oldXhr;
     window.videojs.SourceBuffer = oldSourceBuffer;
+    window.XMLHttpRequest = oldXhr;
   }
 });
 
@@ -115,20 +116,28 @@ test('starts downloading a segment on loadedmetadata', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(xhrParams[1], 'manifest/00001.ts', 'the first segment is requested');
+  strictEqual(xhrUrls[1], 'manifest/00001.ts', 'the first segment is requested');
 });
 
 test('recognizes absolute URIs and requests them unmodified', function() {
   player.hls('manifest/absoluteUris.m3u8');
-  player.buffered = function() {
-    return videojs.createTimeRange(0, 0);
-  };
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
-  strictEqual(xhrParams[1],
+  strictEqual(xhrUrls[1],
               'http://example.com/00001.ts',
+              'the first segment is requested');
+});
+
+test('recognizes domain-relative URLs', function() {
+  player.hls('manifest/domainUris.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(xhrUrls[1],
+              window.location.origin + '/00001.ts',
               'the first segment is requested');
 });
 
@@ -166,10 +175,9 @@ test('does not download the next segment if the buffer is full', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
-  xhrParams = null;
   player.trigger('timeupdate');
 
-  strictEqual(xhrParams, null, 'no segment request was made');
+  strictEqual(xhrUrls.length, 1, 'no segment request was made');
 });
 
 test('downloads the next segment if the buffer is getting low', function() {
@@ -177,17 +185,17 @@ test('downloads the next segment if the buffer is getting low', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+  strictEqual(xhrUrls.length, 2, 'did not make a request');
   player.currentTime = function() {
     return 15;
   };
   player.buffered = function() {
     return videojs.createTimeRange(0, 19.999);
   };
-  xhrParams = null;
   player.trigger('timeupdate');
 
-  ok(xhrParams, 'made a request');
-  strictEqual(xhrParams[1], 'manifest/00002.ts', 'made segment request');
+  strictEqual(xhrUrls.length, 3, 'made a request');
+  strictEqual(xhrUrls[2], 'manifest/00002.ts', 'made segment request');
 });
 
 test('stops downloading segments at the end of the playlist', function() {
@@ -195,11 +203,11 @@ test('stops downloading segments at the end of the playlist', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
-  xhrParams = null;
+  xhrUrls = [];
   player.hls.currentMediaIndex = 4;
   player.trigger('timeupdate');
 
-  strictEqual(xhrParams, null, 'no request is made');
+  strictEqual(xhrUrls.length, 0, 'no request is made');
 });
 
 test('only makes one segment request at a time', function() {
@@ -221,6 +229,45 @@ test('only makes one segment request at a time', function() {
   player.trigger('timeupdate');
   strictEqual(1, openedXhrs, 'only one XHR is made');
 });
+
+test('uses the currentSrc if no options are provided and it ends in ".m3u8"', function() {
+  var url = 'http://example.com/services/mobile/streaming/index/master.m3u8?videoId=1824650741001';
+  player.src(url);
+  player.hls();
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(url, xhrUrls[0], 'currentSrc is used');
+});
+
+test('ignores currentSrc if it doesn\'t have the "m3u8" extension', function() {
+  player.src('basdfasdfasdfliel//.m3u9');
+  player.hls();
+  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
+  strictEqual(xhrUrls.length, 0, 'no request is made');
+
+  player.src('');
+  player.hls();
+  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
+  strictEqual(xhrUrls.length, 0, 'no request is made');
+
+  player.src('http://example.com/movie.mp4?q=why.m3u8');
+  player.hls();
+  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
+  strictEqual(xhrUrls.length, 0, 'no request is made');
+
+  player.src('http://example.m3u8/movie.mp4');
+  player.hls();
+  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
+  strictEqual(xhrUrls.length, 0, 'no request is made');
+
+  player.src('//example.com/movie.mp4#http://tricky.com/master.m3u8');
+  player.hls();
+  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
+  strictEqual(xhrUrls.length, 0, 'no request is made');
+});
+
 
 module('segment controller', {
   setup: function() {
