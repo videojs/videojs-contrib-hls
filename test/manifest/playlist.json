@@ -1,0 +1,127 @@
+{
+  "allowCache": true,
+  "targetDuration": 10,
+  "mediaSequence": 0,
+  "playlistType": "VOD",
+  "segments": [{
+    "duration": 10,
+    "byterange": {
+      "length": 522828,
+      "offset": 0
+    },
+    "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,	
+      "byterange": {
+        "length": 587500,
+        "offset": 522828
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 713084,
+        "offset": 1110328
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 476580,
+        "offset": 1823412
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 535612,
+        "offset": 2299992
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 207176,
+        "offset": 2835604
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 455900,
+        "offset": 3042780
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 657248,
+        "offset": 3498680
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 571708,
+        "offset": 4155928
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 485040,
+        "offset": 4727636
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 709136,
+        "offset": 5212676
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 730004,
+        "offset": 5921812
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 456276,
+        "offset": 6651816
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 468684,
+        "offset": 7108092
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 444996,
+        "offset": 7576776
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 10,
+      "byterange": {
+        "length": 331444,
+        "offset": 8021772
+      },
+      "uri": "hls_450k_video.ts"
+    }, {
+      "duration": 1.4167,
+      "byterange": {
+        "length": 44556,
+        "offset": 8353216
+      },
+      "uri": "hls_450k_video.ts"
+    }]
+}
+
