@@ -284,7 +284,8 @@
 
     // the manifest is empty until the parse stream begins delivering data
     this.manifest = {
-      allowCache: true
+      allowCache: true,
+      totalDuration: 0
     };
 
     // update the manifest with the m3u8 entry from the parse stream
