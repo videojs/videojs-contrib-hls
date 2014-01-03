@@ -91,7 +91,6 @@ var
         if (buffered) {
           // assuming a single, contiguous buffer region
           bufferedTime = player.buffered().end(0) - player.currentTime();
-          console.log('buffered time:', bufferedTime);
         }
 
         // if there is plenty of content in the buffer, relax for awhile
@@ -136,7 +135,6 @@ var
                                                    player);
             }
 
-            console.log('finished downloading segment ' + player.hls.currentMediaIndex);
             segmentXhr = null;
             player.hls.currentMediaIndex++;
           }
