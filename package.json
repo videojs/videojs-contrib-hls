@@ -18,7 +18,7 @@
     "grunt": "~0.4.1"
   },
   "dependencies": {
-    "video.js": "git+https://github.com/dmlap/video-js.git#v4.3.0-4",
+    "video.js": "git+https://github.com/dmlap/video-js.git#v4.3.0-5",
     "videojs-contrib-media-sources": "git+https://github.com/dmlap/videojs-contrib-media-sources.git#hotfix/misc-fixes"
   }
 }
