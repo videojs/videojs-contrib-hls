@@ -6,13 +6,52 @@
  * All rights reserved.
  */
 
-(function(window, videojs, undefined) {
+(function(window, videojs, document, undefined) {
 
 videojs.hls = {};
 
 var
   // the desired length of video to maintain in the buffer, in seconds
   goalBufferLength = 5,
+
+  /**
+   * Constructs a new URI by interpreting a path relative to another
+   * URI.
+   * @param basePath {string} a relative or absolute URI
+   * @param path {string} a path part to combine with the base
+   * @return {string} a URI that is equivalent to composing `base`
+   * with `path`
+   * @see http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
+   */
+  resolveUrl = function(basePath, path) {
+    // use the base element to get the browser to handle URI resolution
+    var
+      oldBase = document.querySelector('base'),
+      docHead = document.querySelector('head'),
+      a = document.createElement('a'),
+      base = oldBase,
+      oldHref,
+      result;
+
+    // prep the document
+    if (oldBase) {
+      oldHref = oldBase.href;
+    } else {
+      base = docHead.appendChild(document.createElement('base'));
+    }
+
+    base.href = basePath;
+    a.href = path;
+    result = a.href;
+
+    // clean up
+    if (oldBase) {
+      oldBase.href = oldHref;
+    } else {
+      docHead.removeChild(base);
+    }
+    return result;
+  },
 
   /**
    * Initializes the HLS plugin.
@@ -24,21 +63,21 @@ var
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
       extname,
-      url,
+      srcUrl,
 
       segmentXhr,
-      fillBuffer,
       onDurationUpdate,
-      selectPlaylist;
+      downloadPlaylist,
+      fillBuffer;
 
     extname = (/[^#?]*(?:\/[^#?]*\.([^#?]*))/).exec(player.currentSrc());
     if (typeof options === 'string') {
-      url = options;
+      srcUrl = options;
     } else if (options) {
-      url = options.url;
+      srcUrl = options.url;
     } else if (extname && extname[1] === 'm3u8') {
       // if the currentSrc looks like an m3u8, attempt to use it
-      url = player.currentSrc();
+      srcUrl = player.currentSrc();
     } else {
       // do nothing until the plugin is initialized with a valid URL
       videojs.log('hls: no valid playlist URL specified');
@@ -47,10 +86,142 @@ var
 
     // expose the HLS plugin state
     player.hls.readyState = function() {
-      if (!player.hls.manifest) {
+      if (!player.hls.media) {
         return 0; // HAVE_NOTHING
       }
       return 1;   // HAVE_METADATA
+    };
+
+
+    /**
+     * Chooses the appropriate media playlist based on the current
+     * bandwidth estimate and the player size.
+     */
+    player.hls.selectPlaylist = function() {
+      player.hls.media = player.hls.master.playlists[0];
+      player.hls.mediaIndex = 0;
+    };
+
+    onDurationUpdate = function(value) {
+      player.duration(value);
+    };
+
+    /**
+     * Download an M3U8 and update the current manifest object. If the provided
+     * URL is a master playlist, the default variant will be downloaded and
+     * parsed as well. Triggers `loadedmanifest` once for each playlist that is
+     * downloaded and `loadedmetadata` after at least one media playlist has
+     * been parsed. Whether multiple playlists were downloaded or not, after
+     * `loadedmetadata` fires a parsed or inferred master playlist object will
+     * be available as `player.hls.master`.
+     *
+     * @param url {string} a URL to the M3U8 file to process
+     */
+    downloadPlaylist = function(url) {
+      var xhr = new window.XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.onreadystatechange = function() {
+        var i, parser, playlist, playlistUri;
+
+        if (xhr.readyState === 4) {
+          // readystate DONE
+          parser = new videojs.m3u8.Parser();
+          parser.on('durationUpdate', onDurationUpdate);
+          parser.push(xhr.responseText);
+
+          // master playlists
+          if (parser.manifest.playlists) {
+            player.hls.master = parser.manifest;
+            downloadPlaylist(resolveUrl(url, parser.manifest.playlists[0].uri));
+            player.trigger('loadedmanifest');
+            return;
+          }
+
+          // media playlists
+          if (player.hls.master) {
+            // merge this playlist into the master
+            i = player.hls.master.playlists.length;
+            while (i--) {
+              playlist = player.hls.master.playlists[i];
+              playlistUri = resolveUrl(srcUrl, playlist.uri);
+              if (playlistUri === url) {
+                player.hls.master.playlists[i] =
+                  videojs.util.mergeOptions(playlist, parser.manifest);
+              }
+            }
+          } else {
+            // infer a master playlist if none was previously requested
+            player.hls.master = {
+              playlists: [parser.manifest]
+            };
+          }
+
+          player.hls.selectPlaylist();
+          player.trigger('loadedmanifest');
+          player.trigger('loadedmetadata');
+        }
+      };
+      xhr.send(null);
+    };
+
+    /**
+     * Determines whether there is enough video data currently in the buffer
+     * and downloads a new segment if the buffered time is less than the goal.
+     */
+    fillBuffer = function() {
+      var
+        buffered = player.buffered(),
+        bufferedTime = 0,
+        segment = player.hls.media.segments[player.hls.mediaIndex],
+        segmentUri,
+        startTime;
+
+      // if there is a request already in flight, do nothing
+      if (segmentXhr) {
+        return;
+      }
+
+      // if the video has finished downloading, stop trying to buffer
+      if (!segment) {
+        return;
+      }
+
+      if (buffered) {
+        // assuming a single, contiguous buffer region
+        bufferedTime = player.buffered().end(0) - player.currentTime();
+      }
+
+      // if there is plenty of content in the buffer, relax for awhile
+      if (bufferedTime >= goalBufferLength) {
+        return;
+      }
+
+      segmentUri = resolveUrl(resolveUrl(srcUrl, player.hls.media.uri || ''),
+                              segment.uri);
+
+      // request the next segment
+      segmentXhr = new window.XMLHttpRequest();
+      segmentXhr.open('GET', segmentUri);
+      segmentXhr.responseType = 'arraybuffer';
+      segmentXhr.onreadystatechange = function() {
+        if (segmentXhr.readyState === 4) {
+          // calculate the download bandwidth
+          player.hls.segmentXhrTime = (+new Date()) - startTime;
+          player.hls.bandwidth = segmentXhr.response.byteLength / player.hls.segmentXhrTime;
+
+          // transmux the segment data from MP2T to FLV
+          segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
+          while (segmentParser.tagsAvailable()) {
+            player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,
+                                                 player);
+          }
+
+          segmentXhr = null;
+          player.hls.mediaIndex++;
+        }
+      };
+      startTime = +new Date();
+      segmentXhr.send(null);
     };
 
     // load the MediaSource into the player
@@ -60,124 +231,10 @@ var
       player.hls.sourceBuffer = sourceBuffer;
       sourceBuffer.appendBuffer(segmentParser.getFlvHeader());
 
-      // Chooses the appropriate media playlist based on the current bandwidth
-      // estimate and the player size
-      selectPlaylist = function() {
-        player.hls.currentPlaylist = player.hls.manifest;
-        player.hls.currentMediaIndex = 0;
-      };
-
-      onDurationUpdate = function(value) {
-        player.duration(value);
-      };
-
-      /**
-       * Determines whether there is enough video data currently in the buffer
-       * and downloads a new segment if the buffered time is less than the goal.
-       */
-      fillBuffer = function() {
-        var
-          buffered = player.buffered(),
-          bufferedTime = 0,
-          segment = player.hls.currentPlaylist.segments[player.hls.currentMediaIndex],
-          segmentUri,
-          startTime;
-
-        // if there is a request already in flight, do nothing
-        if (segmentXhr) {
-          return;
-        }
-
-        // if the video has finished downloading, stop trying to buffer
-        if (!segment) {
-          return;
-        }
-
-        if (buffered) {
-          // assuming a single, contiguous buffer region
-          bufferedTime = player.buffered().end(0) - player.currentTime();
-        }
-
-        // if there is plenty of content in the buffer, relax for awhile
-        if (bufferedTime >= goalBufferLength) {
-          return;
-        }
-
-        segmentUri = segment.uri;
-        if ((/^\/[^\/]/).test(segmentUri)) {
-          // the segment is specified with a network path,
-          // e.g. "/01.ts"
-          (function() {
-            // use an anchor to resolve the manifest URL to an absolute path
-            // this method should work back to IE6:
-            // http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
-            var resolver = document.createElement('div');
-            resolver.innerHTML = '<a href="' + url + '"></a>';
-
-            segmentUri = (/^[A-z]*:\/\/[^\/]*/).exec(resolver.firstChild.href)[0] +
-              segmentUri;
-          })();
-        } else if (!(/^([A-z]*:)?\/\//).test(segmentUri)) {
-          // the segment is specified with a relative path,
-          // e.g. "../01.ts" or "path/to/01.ts"
-          segmentUri = url.split('/').slice(0, -1).concat(segmentUri).join('/');
-        }
-
-        // request the next segment
-        segmentXhr = new window.XMLHttpRequest();
-        segmentXhr.open('GET', segmentUri);
-        segmentXhr.responseType = 'arraybuffer';
-        segmentXhr.onreadystatechange = function() {
-          if (segmentXhr.readyState === 4) {
-            // calculate the download bandwidth
-            player.hls.segmentXhrTime = (+new Date()) - startTime;
-            player.hls.bandwidth = segmentXhr.response.byteLength / player.hls.segmentXhrTime;
-
-            // transmux the segment data from MP2T to FLV
-            segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
-            while (segmentParser.tagsAvailable()) {
-              player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,
-                                                   player);
-            }
-
-            segmentXhr = null;
-            player.hls.currentMediaIndex++;
-          }
-        };
-        startTime = +new Date();
-        segmentXhr.send(null);
-      };
       player.on('loadedmetadata', fillBuffer);
       player.on('timeupdate', fillBuffer);
-      
-      // download and process the manifest
-      (function() {
-        var xhr = new window.XMLHttpRequest();
-        xhr.open('GET', url);
-        xhr.onreadystatechange = function() {
-          var parser;
 
-          if (xhr.readyState === 4) {
-            // readystate DONE
-            parser = new videojs.m3u8.Parser();
-            parser.on('durationUpdate', onDurationUpdate);
-            parser.push(xhr.responseText);
-            player.hls.manifest = parser.manifest;
-
-            if(parser.manifest.totalDuration) {
-              player.duration(parser.manifest.totalDuration);
-            }
-
-            player.trigger('loadedmanifest');
-
-            if (parser.manifest.segments) {
-              selectPlaylist();
-              player.trigger('loadedmetadata');
-            }
-          }
-        };
-        xhr.send(null);
-      })();
+      downloadPlaylist(srcUrl);
     });
     player.src({
       src: videojs.URL.createObjectURL(mediaSource),
@@ -195,4 +252,4 @@ videojs.plugin('hls', function() {
   initialize().apply(this, arguments);
 });
 
-})(window, window.videojs);
+})(window, window.videojs, document);

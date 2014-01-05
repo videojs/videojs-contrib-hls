@@ -1,6 +1,5 @@
 {
   "allowCache": true,
-  "totalDuration": 0,
   "playlists": [{
     "attributes": {
       "PROGRAM-ID": 1,
@@ -10,13 +9,13 @@
         "height": 224
       }
     },
-    "uri": "media.m3u8"
+    "uri": "http://c.brightcove.com/services/mobile/streaming/index/rendition.m3u8?assetId=1824686811001&videoId=1824650741001"
   }, {
     "attributes": {
       "PROGRAM-ID": 1,
       "BANDWIDTH": 40000
     },
-    "uri": "media.m3u8"
+    "uri": "http://c.brightcove.com/services/mobile/streaming/index/rendition.m3u8?assetId=1824683759001&videoId=1824650741001"
   }, {
     "attributes": {
       "PROGRAM-ID": 1,
@@ -26,7 +25,7 @@
         "height": 224
       }
     },
-    "uri": "media.m3u8"
+    "uri": "http://c.brightcove.com/services/mobile/streaming/index/rendition.m3u8?assetId=1824686593001&videoId=1824650741001"
   }, {
     "attributes": {
       "PROGRAM-ID": 1,
@@ -36,6 +35,6 @@
         "height": 540
       }
     },
-    "uri": "media.m3u8"
+    "uri": "http://c.brightcove.com/services/mobile/streaming/index/rendition.m3u8?assetId=1824687660001&videoId=1824650741001"
   }]
 }

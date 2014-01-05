@@ -412,7 +412,7 @@
                 this.manifest.totalDuration = calculatedDuration;
                 this.trigger('info', {
                   message: 'updating total duration to use a calculated value'
-                })
+                });
               }
             }
           })[entry.tagType] || noop).call(self);

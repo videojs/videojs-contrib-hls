@@ -63,7 +63,7 @@ module('HLS', {
       this.send = function() {
         // if the request URL looks like one of the test manifests, grab the
         // contents off the global object
-        var manifestName = (/.*\/(.*)\.m3u8/).exec(xhrUrls.slice(-1)[0]);
+        var manifestName = (/(?:.*\/)?(.*)\.m3u8/).exec(xhrUrls.slice(-1)[0]);
         if (manifestName) {
           manifestName = manifestName[1];
         }
@@ -99,10 +99,11 @@ test('loads the specified manifest URL on init', function() {
   });
   ok(loadedmanifest, 'loadedmanifest fires');
   ok(loadedmetadata, 'loadedmetadata fires');
-  ok(player.hls.manifest, 'the manifest is available');
-  ok(player.hls.manifest.segments, 'the segment entries are parsed');
-  strictEqual(player.hls.manifest,
-              player.hls.currentPlaylist,
+  ok(player.hls.master, 'a master is inferred');
+  ok(player.hls.media, 'the manifest is available');
+  ok(player.hls.media.segments, 'the segment entries are parsed');
+  strictEqual(player.hls.master.playlists[0],
+              player.hls.media,
               'the playlist is selected');
   strictEqual(player.hls.readyState(), 1, 'the readyState is HAVE_METADATA');
 });
@@ -116,7 +117,11 @@ test('starts downloading a segment on loadedmetadata', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(xhrUrls[1], 'manifest/00001.ts', 'the first segment is requested');
+  strictEqual(xhrUrls[1],
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/00001.ts',
+              'the first segment is requested');
 });
 
 test('recognizes absolute URIs and requests them unmodified', function() {
@@ -149,6 +154,26 @@ test('re-initializes the plugin for each source', function() {
   secondInit = player.hls;
 
   notStrictEqual(firstInit, secondInit, 'the plugin object is replaced');
+});
+
+test('downloads media playlists after loading the master', function() {
+  player.hls('manifest/master.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(xhrUrls.length, 3, 'three requests were made');
+  strictEqual(xhrUrls[0], 'manifest/master.m3u8', 'master playlist requested');
+  strictEqual(xhrUrls[1],
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/media.m3u8',
+              'media playlist requested');
+  strictEqual(xhrUrls[2],
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/00001.ts',
+              'first segment requested');
 });
 
 test('calculates the bandwidth after downloading a segment', function() {
@@ -195,7 +220,11 @@ test('downloads the next segment if the buffer is getting low', function() {
   player.trigger('timeupdate');
 
   strictEqual(xhrUrls.length, 3, 'made a request');
-  strictEqual(xhrUrls[2], 'manifest/00002.ts', 'made segment request');
+  strictEqual(xhrUrls[2],
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/00002.ts',
+              'made segment request');
 });
 
 test('stops downloading segments at the end of the playlist', function() {
@@ -204,7 +233,7 @@ test('stops downloading segments at the end of the playlist', function() {
     type: 'sourceopen'
   });
   xhrUrls = [];
-  player.hls.currentMediaIndex = 4;
+  player.hls.mediaIndex = 4;
   player.trigger('timeupdate');
 
   strictEqual(xhrUrls.length, 0, 'no request is made');
