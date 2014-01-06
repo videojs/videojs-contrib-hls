@@ -162,7 +162,6 @@ test('downloads media playlists after loading the master', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(xhrUrls.length, 3, 'three requests were made');
   strictEqual(xhrUrls[0], 'manifest/master.m3u8', 'master playlist requested');
   strictEqual(xhrUrls[1],
               window.location.origin +
@@ -187,6 +186,124 @@ test('calculates the bandwidth after downloading a segment', function() {
      'bandwidth is positive: ' + player.hls.bandwidth);
   ok(player.hls.segmentXhrTime >= 0,
      'saves segment request time: ' + player.hls.segmentXhrTime + 's');
+});
+
+test('selects a playlist after segment downloads', function() {
+  var calls = 0;
+  player.hls('manifest/master.m3u8');
+  player.hls.selectPlaylist = function() {
+    calls++;
+    return player.hls.master.playlists[0];
+  };
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(calls, 1, 'selects after the initial segment');
+  player.currentTime = function() {
+    return 1;
+  };
+  player.buffered = function() {
+    return videojs.createTimeRange(0, 2);
+  };
+  player.trigger('timeupdate');
+  strictEqual(calls, 2, 'selects after additional segments');
+});
+
+test('downloads additional playlists if required', function() {
+  var
+    called = false,
+    playlist = {
+      uri: 'media3.m3u8'
+    };
+  player.hls('manifest/master.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  // before an m3u8 is downloaded, no segments are available
+  player.hls.selectPlaylist = function() {
+    if (!called) {
+      called = true;
+      return playlist;
+    }
+    playlist.segments = [];
+    return playlist;
+  };
+  xhrUrls = [];
+
+  // the playlist selection is revisited after a new segment is downloaded
+  player.currentTime = function() {
+    return 1;
+  };
+  player.trigger('timeupdate');
+
+  strictEqual(2, xhrUrls.length, 'requests were made');
+  strictEqual(xhrUrls[1],
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/' +
+              playlist.uri,
+              'made playlist request');
+  strictEqual(playlist, player.hls.media, 'a new playlists was selected');
+  ok(player.hls.media.segments, 'segments are now available');
+});
+
+test('selects a playlist below the current bandwidth', function() {
+  var playlist;
+  player.hls('manifest/master.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  // the default playlist has a really high bitrate
+  player.hls.master.playlists[0].attributes.BANDWIDTH = 9e10;
+  // playlist 1 has a very low bitrate
+  player.hls.master.playlists[1].attributes.BANDWIDTH = 1;
+  // but the detected client bandwidth is really low
+  player.hls.bandwidth = 10;
+
+  playlist = player.hls.selectPlaylist();
+  strictEqual(playlist,
+              player.hls.master.playlists[1],
+              'the low bitrate stream is selected');
+});
+
+test('raises the minimum bitrate for a stream proportionially', function() {
+  var playlist;
+  player.hls('manifest/master.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  // the default playlist's bandwidth + 10% is equal to the current bandwidth
+  player.hls.master.playlists[0].attributes.BANDWIDTH = 10;
+  player.hls.bandwidth = 11;
+
+  // 9.9 * 1.1 < 11
+  player.hls.master.playlists[1].attributes.BANDWIDTH = 9.9;
+  playlist = player.hls.selectPlaylist();
+
+  strictEqual(playlist,
+              player.hls.master.playlists[1],
+              'a lower bitrate stream is selected');
+});
+
+test('uses the lowest bitrate if no other is suitable', function() {
+  var playlist;
+  player.hls('manifest/master.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  // the lowest bitrate playlist is much greater than 1b/s
+  player.hls.bandwidth = 1;
+  playlist = player.hls.selectPlaylist();
+
+  // playlist 1 has the lowest advertised bitrate
+  strictEqual(playlist,
+              player.hls.master.playlists[1],
+              'the lowest bitrate stream is selected');
 });
 
 test('does not download the next segment if the buffer is full', function() {

@@ -14,6 +14,24 @@ var
   // the desired length of video to maintain in the buffer, in seconds
   goalBufferLength = 5,
 
+  // a fudge factor to apply to advertised playlist bitrates to account for
+  // temporary flucations in client bandwidth
+  bandwidthVariance = 1.1,
+
+  playlistBandwidth = function(left, right) {
+    var leftBandwidth, rightBandwidth;
+    if (left.attributes && left.attributes.BANDWIDTH) {
+      leftBandwidth = left.attributes.BANDWIDTH;
+    }
+    leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
+    if (right.attributes && right.attributes.BANDWIDTH) {
+      rightBandwidth = right.attributes.BANDWIDTH;
+    }
+    rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
+
+    return leftBandwidth - rightBandwidth;
+  },
+
   /**
    * Constructs a new URI by interpreting a path relative to another
    * URI.
@@ -92,14 +110,49 @@ var
       return 1;   // HAVE_METADATA
     };
 
-
     /**
      * Chooses the appropriate media playlist based on the current
      * bandwidth estimate and the player size.
+     * @return the highest bitrate playlist less than the currently detected
+     * bandwidth, accounting for some amount of bandwidth variance
      */
     player.hls.selectPlaylist = function() {
-      player.hls.media = player.hls.master.playlists[0];
-      player.hls.mediaIndex = 0;
+      var
+        bestVariant,
+        effectiveBitrate,
+        sortedPlaylists = player.hls.master.playlists.slice(),
+        i = sortedPlaylists.length,
+        variant;
+
+      sortedPlaylists.sort(playlistBandwidth);
+
+      while (i--) {
+        variant = sortedPlaylists[i];
+
+        // ignore playlists without bandwidth information
+        if (!variant.attributes || !variant.attributes.BANDWIDTH) {
+          continue;
+        }
+
+        effectiveBitrate = variant.attributes.BANDWIDTH * bandwidthVariance;
+
+        // since the playlists are sorted in ascending order by bandwidth, the
+        // current variant is the best as long as its effective bitrate is
+        // below the current bandwidth estimate
+        if (effectiveBitrate < player.hls.bandwidth) {
+          bestVariant = variant;
+          break;
+        }
+      }
+
+      // console.log('bandwidth:',
+      //             player.hls.bandwidth,
+      //             'variant:',
+      //             (bestVariant || sortedPlaylists[0]).attributes.BANDWIDTH);
+
+      // if no acceptable variant was found, fall back on the lowest
+      // bitrate playlist
+      return bestVariant || sortedPlaylists[0];
     };
 
     onDurationUpdate = function(value) {
@@ -111,7 +164,7 @@ var
      * URL is a master playlist, the default variant will be downloaded and
      * parsed as well. Triggers `loadedmanifest` once for each playlist that is
      * downloaded and `loadedmetadata` after at least one media playlist has
-     * been parsed. Whether multiple playlists were downloaded or not, after
+     * been parsed. Whether multiple playlists were downloaded or not, when
      * `loadedmetadata` fires a parsed or inferred master playlist object will
      * be available as `player.hls.master`.
      *
@@ -141,6 +194,7 @@ var
           if (player.hls.master) {
             // merge this playlist into the master
             i = player.hls.master.playlists.length;
+
             while (i--) {
               playlist = player.hls.master.playlists[i];
               playlistUri = resolveUrl(srcUrl, playlist.uri);
@@ -156,9 +210,22 @@ var
             };
           }
 
-          player.hls.selectPlaylist();
+          // always start playback with the default rendition
+          if (!player.hls.media) {
+            player.hls.media = player.hls.master.playlists[0];
+            player.trigger('loadedmanifest');
+            player.trigger('loadedmetadata');
+            return;
+          }
+
+          // select a playlist and download its metadata if necessary
+          playlist = player.hls.selectPlaylist();
+          if (!playlist.segments) {
+            downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
+          } else {
+            player.hls.media = playlist;
+          }
           player.trigger('loadedmanifest');
-          player.trigger('loadedmetadata');
         }
       };
       xhr.send(null);
@@ -204,10 +271,12 @@ var
       segmentXhr.open('GET', segmentUri);
       segmentXhr.responseType = 'arraybuffer';
       segmentXhr.onreadystatechange = function() {
+        var playlist;
+
         if (segmentXhr.readyState === 4) {
           // calculate the download bandwidth
           player.hls.segmentXhrTime = (+new Date()) - startTime;
-          player.hls.bandwidth = segmentXhr.response.byteLength / player.hls.segmentXhrTime;
+          player.hls.bandwidth = (segmentXhr.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
 
           // transmux the segment data from MP2T to FLV
           segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
@@ -218,6 +287,15 @@ var
 
           segmentXhr = null;
           player.hls.mediaIndex++;
+
+          // figure out what stream the next segment should be downloaded from
+          // with the updated bandwidth information
+          playlist = player.hls.selectPlaylist();
+          if (!playlist.segments) {
+            downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
+          } else {
+            player.hls.media = playlist;
+          }
         }
       };
       startTime = +new Date();
@@ -234,6 +312,7 @@ var
       player.on('loadedmetadata', fillBuffer);
       player.on('timeupdate', fillBuffer);
 
+      player.hls.mediaIndex = 0;
       downloadPlaylist(srcUrl);
     });
     player.src({
