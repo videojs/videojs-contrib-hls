@@ -16,6 +16,8 @@
         attr;
       while (i--) {
         attr = attrs[i].split('=');
+        attr[0] = attr[0].replace(/^\s+|\s+$/g, '');
+        attr[1] = attr[1].replace(/^\s+|\s+$/g, '');
         result[attr[0]] = attr[1];
       }
       return result;

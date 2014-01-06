@@ -16,7 +16,7 @@
       "PROGRAM-ID": 1,
       "BANDWIDTH": 40000
     },
-    "uri": "media.m3u8"
+    "uri": "media1.m3u8"
   }, {
     "attributes": {
       "PROGRAM-ID": 1,
@@ -26,7 +26,7 @@
         "height": 224
       }
     },
-    "uri": "media.m3u8"
+    "uri": "media2.m3u8"
   }, {
     "attributes": {
       "PROGRAM-ID": 1,
@@ -36,6 +36,6 @@
         "height": 540
       }
     },
-    "uri": "media.m3u8"
+    "uri": "media3.m3u8"
   }]
 }
