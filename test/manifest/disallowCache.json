@@ -1,5 +1,6 @@
 {
   "targetDuration": 10,
+  "totalDuration": 10,
   "allowCache": false,
   "mediaSequence": 0,
   "playlistType": "VOD",

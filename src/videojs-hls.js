@@ -164,6 +164,10 @@ var
             parser.push(xhr.responseText);
             player.hls.manifest = parser.manifest;
 
+            if(parser.manifest.totalDuration) {
+              player.duration(parser.manifest.totalDuration);
+            }
+
             player.trigger('loadedmanifest');
 
             if (parser.manifest.segments) {

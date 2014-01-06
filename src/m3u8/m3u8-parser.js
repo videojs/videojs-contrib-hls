@@ -141,6 +141,18 @@
       this.trigger('data', event);
       return;
     }
+    match = (/^#ZEN-TOTAL-DURATION:?([0-9.]*)?/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'totalduration'
+      };
+      if (match[1]) {
+        event.duration = parseInt(match[1], 10);
+      }
+      this.trigger('data', event);
+      return;
+    }
     match = (/^#EXT-X-VERSION:?([0-9.]*)?/).exec(line);
     if (match) {
       event = {
@@ -284,7 +296,8 @@
 
     // the manifest is empty until the parse stream begins delivering data
     this.manifest = {
-      allowCache: true
+      allowCache: true,
+      totalDuration: 0
     };
 
     // update the manifest with the m3u8 entry from the parse stream
@@ -373,17 +386,34 @@
               }
               this.manifest.targetDuration = entry.duration;
             },
-            'endlist': function() {
-              var calculatedDuration = 0,
-                i;
-              for( i = 0; i < this.manifest.segments.length; i++) {
-                if(this.manifest.segments[i].duration) {
-                  calculatedDuration += this.manifest.segments[i].duration;
-                } else if (this.manifest.targetDuration) {
-                  calculatedDuration += this.manifest.targetDuration;
-                }
+            'totalduration': function() {
+              if (!isFinite(entry.duration) || entry.duration < 0) {
+                this.trigger('warn', {
+                  message: 'ignoring invalid total duration: ' + entry.duration
+                });
+                return;
               }
-              this.trigger('durationUpdate', parseInt(calculatedDuration));
+              this.manifest.totalDuration = entry.duration;
+            },
+            'endlist': function() {
+              if(this.manifest.totalDuration === 0)
+              {
+                var calculatedDuration = 0,
+                  i;
+                for( i = 0; i < this.manifest.segments.length; i++) {
+                  if(this.manifest.segments[i].duration) {
+                    calculatedDuration += this.manifest.segments[i].duration;
+                  } else if (this.manifest.targetDuration > 0) {
+                    calculatedDuration += this.manifest.targetDuration;
+                  } else {
+                    calculatedDuration += 0;
+                  }
+                }
+                this.manifest.totalDuration = calculatedDuration;
+                this.trigger('info', {
+                  message: 'updating total duration to use a calculated value'
+                })
+              }
             }
           })[entry.tagType] || noop).call(self);
         },

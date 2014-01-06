@@ -3,6 +3,7 @@
   "mediaSequence": 11,
   "playlistType": "VOD",
   "targetDuration": 8,
+  "totalDuration": 24.32,
   "segments": [{
     "duration": 6.64,
     "uri": "/test/ts-files/tvy7/8a5e2822668b5370f4eb1438b2564fb7ab12ffe1-hi720.ts"

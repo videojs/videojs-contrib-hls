@@ -1,6 +1,7 @@
 {
   "allowCache": true,
   "targetDuration": 10,
+  "totalDuration": 164.7,
   "mediaSequence": 0,
   "playlistType": "VOD",
   "segments": [{
