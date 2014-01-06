@@ -374,8 +374,9 @@
               this.manifest.targetDuration = entry.duration;
             },
             'endlist': function() {
-              var calculatedDuration = 0;
-              for(var i = 0; i < this.manifest.segments.length; i++) {
+              var calculatedDuration = 0,
+                i;
+              for( i = 0; i < this.manifest.segments.length; i++) {
                 if(this.manifest.segments[i].duration) {
                   calculatedDuration += this.manifest.segments[i].duration;
                 } else if (this.manifest.targetDuration) {
