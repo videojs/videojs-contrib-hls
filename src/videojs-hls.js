@@ -28,7 +28,7 @@ var
 
       segmentXhr,
       fillBuffer,
-      onLoadedManifest,
+      onDurationUpdate,
       selectPlaylist;
 
     extname = (/[^#?]*(?:\/[^#?]*\.([^#?]*))/).exec(player.currentSrc());
@@ -67,18 +67,8 @@ var
         player.hls.currentMediaIndex = 0;
       };
 
-      onLoadedManifest = function() {
-        if(player.hls.manifest.totalDuration === 0) {
-          for(var i in player.hls.manifest.segments) {
-            var currentSegment = player.hls.manifest.segments[i];
-            currentSegment.timeRange = {};
-            currentSegment.timeRange.start = player.hls.manifest.totalDuration;
-            currentSegment.timeRange.end = currentSegment.timeRange.start + currentSegment.duration;
-            player.hls.manifest.totalDuration += currentSegment.duration;
-          }
-        }
-
-        player.duration(player.hls.manifest.totalDuration);
+      onDurationUpdate = function(value) {
+        player.duration(value);
       };
 
       /**
@@ -159,8 +149,7 @@ var
       };
       player.on('loadedmetadata', fillBuffer);
       player.on('timeupdate', fillBuffer);
-      player.on('loadedmanifest', onLoadedManifest);
-
+      
       // download and process the manifest
       (function() {
         var xhr = new window.XMLHttpRequest();
@@ -171,6 +160,7 @@ var
           if (xhr.readyState === 4) {
             // readystate DONE
             parser = new videojs.m3u8.Parser();
+            parser.on('durationUpdate', onDurationUpdate);
             parser.push(xhr.responseText);
             player.hls.manifest = parser.manifest;
 

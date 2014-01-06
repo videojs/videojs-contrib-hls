@@ -284,8 +284,7 @@
 
     // the manifest is empty until the parse stream begins delivering data
     this.manifest = {
-      allowCache: true,
-      totalDuration: 0
+      allowCache: true
     };
 
     // update the manifest with the m3u8 entry from the parse stream
@@ -373,6 +372,17 @@
                 return;
               }
               this.manifest.targetDuration = entry.duration;
+            },
+            'endlist': function() {
+              var calculatedDuration = 0;
+              for(var i = 0; i < this.manifest.segments.length; i++) {
+                if(this.manifest.segments[i].duration) {
+                  calculatedDuration += this.manifest.segments[i].duration;
+                } else if (this.manifest.targetDuration) {
+                  calculatedDuration += this.manifest.targetDuration;
+                }
+              }
+              this.trigger('durationUpdate', parseInt(calculatedDuration));
             }
           })[entry.tagType] || noop).call(self);
         },
