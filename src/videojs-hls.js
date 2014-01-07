@@ -84,7 +84,6 @@ var
       srcUrl,
 
       segmentXhr,
-      onDurationUpdate,
       downloadPlaylist,
       fillBuffer;
 
@@ -155,10 +154,6 @@ var
       return bestVariant || sortedPlaylists[0];
     };
 
-    onDurationUpdate = function(value) {
-      player.duration(value);
-    };
-
     /**
      * Download an M3U8 and update the current manifest object. If the provided
      * URL is a master playlist, the default variant will be downloaded and
@@ -179,7 +174,6 @@ var
         if (xhr.readyState === 4) {
           // readystate DONE
           parser = new videojs.m3u8.Parser();
-          parser.on('durationUpdate', onDurationUpdate);
           parser.push(xhr.responseText);
 
           // master playlists
@@ -213,6 +207,10 @@ var
           // always start playback with the default rendition
           if (!player.hls.media) {
             player.hls.media = player.hls.master.playlists[0];
+            if (parser.manifest.totalDuration) {
+              // update the duration
+              player.duration(parser.manifest.totalDuration);
+            }
             player.trigger('loadedmanifest');
             player.trigger('loadedmetadata');
             return;
@@ -224,7 +222,12 @@ var
             downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
           } else {
             player.hls.media = playlist;
+            if (parser.manifest.totalDuration) {
+              // update the duration
+              player.duration(parser.manifest.totalDuration);
+            }
           }
+
           player.trigger('loadedmanifest');
         }
       };

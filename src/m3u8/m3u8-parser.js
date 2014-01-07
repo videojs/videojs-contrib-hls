@@ -398,12 +398,10 @@
               this.manifest.totalDuration = entry.duration;
             },
             'endlist': function() {
-              if(this.manifest.totalDuration === 0)
-              {
-                var calculatedDuration = 0,
-                  i;
-                for( i = 0; i < this.manifest.segments.length; i++) {
-                  if(this.manifest.segments[i].duration) {
+              var i, calculatedDuration = 0;
+              if (this.manifest.totalDuration === 0) {
+                for (i = 0; i < this.manifest.segments.length; i++) {
+                  if (this.manifest.segments[i].duration) {
                     calculatedDuration += this.manifest.segments[i].duration;
                   } else if (this.manifest.targetDuration > 0) {
                     calculatedDuration += this.manifest.targetDuration;

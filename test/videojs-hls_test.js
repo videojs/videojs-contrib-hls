@@ -108,6 +108,22 @@ test('loads the specified manifest URL on init', function() {
   strictEqual(player.hls.readyState(), 1, 'the readyState is HAVE_METADATA');
 });
 
+test('sets the duration if one is available on the playlist', function() {
+  var calls = 0;
+  player.duration = function(value) {
+    if (value === undefined) {
+      return 0;
+    }
+    calls++;
+  };
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(1, calls, 'duration is set');
+});
+
 test('starts downloading a segment on loadedmetadata', function() {
   player.hls('manifest/media.m3u8');
   player.buffered = function() {
