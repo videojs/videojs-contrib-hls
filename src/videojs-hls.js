@@ -113,11 +113,15 @@ var
         if(value) {
           try {
             player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('currentTime', 0);
+            player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('appendBytesAction', 'resetSeek');
+            player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('appendBytesAction', 'resetBegin');
           } catch(err) {
 
           }
-          player.hls.mediaIndex = player.hls.selectSegmentByTime(value);
-          fillBuffer();
+          player.hls.sourceBuffer.appendBuffer(segmentParser.getFlvHeader());
+          player.hls.mediaIndex = player.hls.selectSegmentIndexByTime(value);
+          console.log(value, parseInt(value-player.hls.getSegmentByTime(value).timeRange.start,10));
+          fillBuffer(parseInt(value-player.hls.getSegmentByTime(value).timeRange.start,10));
         } else {
           try {
             return player.el().getElementsByClassName('vjs-tech')[0].vjs_getProperty('currentTime');
@@ -127,7 +131,20 @@ var
         }
     };
 
-    player.hls.selectSegmentByTime = function(time) {
+    player.hls.getSegmentByTime = function(time) {
+      var index, currentSegment;
+
+      if (player.hls.media && player.hls.media.segments) {
+        for (index = 0; index < player.hls.media.segments.length; index++) {
+          currentSegment = player.hls.media.segments[index];
+          if (time > currentSegment.timeRange.start && time <= currentSegment.timeRange.end) {
+            return currentSegment;
+          }
+        }
+      }
+    };
+
+    player.hls.selectSegmentIndexByTime = function(time) {
       var index, currentSegment;
 
       if (player.hls.media && player.hls.media.segments) {
@@ -275,13 +292,19 @@ var
      * Determines whether there is enough video data currently in the buffer
      * and downloads a new segment if the buffered time is less than the goal.
      */
-    fillBuffer = function() {
+    fillBuffer = function(intrasegmentSecond) {
       var
         buffered = player.buffered(),
         bufferedTime = 0,
         segment = player.hls.media.segments[player.hls.mediaIndex],
         segmentUri,
+        gotoSecond,
         startTime;
+
+      if(intrasegmentSecond)
+      {
+        gotoSecond = intrasegmentSecond;
+      }
 
       // if there is a request already in flight, do nothing
       if (segmentXhr) {
@@ -320,9 +343,28 @@ var
 
           // transmux the segment data from MP2T to FLV
           segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
+
+          if(gotoSecond!==null && gotoSecond>0)
+          {
+            /*
+             console.log(segmentParser.getTags().length, 'total');
+             console.log(gotoSecond, 'you want second');
+             console.log(player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration);
+             console.log((segmentParser.getTags().length/player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration)*gotoSecond);
+             */
+            var segmentCount = 100; //(segmentParser.getTags().length/player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration)*gotoSecond;
+            var xx = 0;
+
+            //drain until where you want in the buffer
+            while(xx<segmentCount)
+            {
+                segmentParser.getNextTag();
+                xx++;
+            }
+          }
+
           while (segmentParser.tagsAvailable()) {
-            player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,
-                                                 player);
+            player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes, player);
           }
 
           segmentXhr = null;
@@ -339,6 +381,7 @@ var
         }
       };
       startTime = +new Date();
+      console.log('getting segment', segmentUri);
       segmentXhr.send(null);
     };
 

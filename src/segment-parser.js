@@ -390,6 +390,10 @@
       return true;
     };
 
+    self.getTags = function() {
+      return h264Stream.tags;
+    };
+
     self.stats = {
       h264Tags: function() {
         return h264Stream.tags.length;
