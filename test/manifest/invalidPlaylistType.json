@@ -1,26 +1,57 @@
 {
   "allowCache": true,
-  "targetDuration": 10,
-  "totalDuration": 58,
   "mediaSequence": 0,
   "playlistType": "VOD",
-  "segments": [{
-    "duration": 10,
-    "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00001.ts"
-  }, {
-    "duration": 10,
-    "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00002.ts"
-  }, {
-    "duration": 10,
-    "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00003.ts"
-  }, {
-    "duration": 10,
-    "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00004.ts"
-  }, {
-    "duration": 10,
-    "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00005.ts"
-  }, {
-    "duration": 8,
-    "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00006.ts"
-  }]
+  "segments": [
+    {
+      "duration": 10,
+      "timeRange": {
+        "end": 10,
+        "start": 0
+      },
+      "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00001.ts"
+    },
+    {
+      "duration": 10,
+      "timeRange": {
+        "end": 20,
+        "start": 10
+      },
+      "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00002.ts"
+    },
+    {
+      "duration": 10,
+      "timeRange": {
+        "end": 30,
+        "start": 20
+      },
+      "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00003.ts"
+    },
+    {
+      "duration": 10,
+      "timeRange": {
+        "end": 40,
+        "start": 30
+      },
+      "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00004.ts"
+    },
+    {
+      "duration": 10,
+      "timeRange": {
+        "end": 50,
+        "start": 40
+      },
+      "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00005.ts"
+    },
+    {
+      "duration": 8,
+      "timeRange": {
+        "end": 58,
+        "start": 50
+      },
+      "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00006.ts"
+    }
+  ],
+  "targetDuration": 10,
+  "totalDuration": 58
 }

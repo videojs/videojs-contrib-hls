@@ -1,125 +1,207 @@
 {
   "allowCache": true,
-  "targetDuration": 10,
-  "totalDuration": 164.7,
   "mediaSequence": 0,
   "playlistType": "VOD",
-  "segments": [{
-    "duration": 10,
-    "byterange": {
-      "length": 522828,
-      "offset": 0
+  "segments": [
+    {
+      "byterange": {
+        "length": 522828,
+        "offset": 0
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": 10,
+        "start": 0
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "byterange": {
-      "length": 587500,
-      "offset": 522828
+    {
+      "byterange": {
+        "length": 587500,
+        "offset": 522828
+      },
+      "timeRange": {
+        "end": NaN,
+        "start": 10
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"    
-  }, {
-    "duration": 5,
-    "byterange": {
-      "length": 713084,
-      "offset": 1110328
+    {
+      "byterange": {
+        "length": 713084,
+        "offset": 1110328
+      },
+      "duration": 5,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 9.7,
-    "byterange": {
-      "length": 476580,
-      "offset": 1823412
+    {
+      "byterange": {
+        "length": 476580,
+        "offset": 1823412
+      },
+      "duration": 9.7,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 535612,
-      "offset": 2299992
+    {
+      "byterange": {
+        "length": 535612,
+        "offset": 2299992
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 207176,
-      "offset": 2835604
+    {
+      "byterange": {
+        "length": 207176,
+        "offset": 2835604
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 455900,
-      "offset": 3042780
+    {
+      "byterange": {
+        "length": 455900,
+        "offset": 3042780
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 657248,
-      "offset": 3498680
+    {
+      "byterange": {
+        "length": 657248,
+        "offset": 3498680
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 571708,
-      "offset": 4155928
+    {
+      "byterange": {
+        "length": 571708,
+        "offset": 4155928
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 485040,
-      "offset": 4727636
+    {
+      "byterange": {
+        "length": 485040,
+        "offset": 4727636
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 709136,
-      "offset": 5212676
+    {
+      "byterange": {
+        "length": 709136,
+        "offset": 5212676
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 730004,
-      "offset": 5921812
+    {
+      "byterange": {
+        "length": 730004,
+        "offset": 5921812
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 456276,
-      "offset": 6651816
+    {
+      "byterange": {
+        "length": 456276,
+        "offset": 6651816
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 468684,
-      "offset": 7108092
+    {
+      "byterange": {
+        "length": 468684,
+        "offset": 7108092
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 444996,
-      "offset": 7576776
+    {
+      "byterange": {
+        "length": 444996,
+        "offset": 7576776
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "duration": 10,
-    "byterange": {
-      "length": 331444,
-      "offset": 8021772
+    {
+      "byterange": {
+        "length": 331444,
+        "offset": 8021772
+      },
+      "duration": 10,
+      "timeRange": {
+        "end": NaN,
+        "start": NaN
+      },
+      "uri": "hls_450k_video.ts"
     },
-    "uri": "hls_450k_video.ts"
-  }, {
-    "byterange": {
-      "length": 44556,
-      "offset": 8353216
-    },
-    "uri": "hls_450k_video.ts"
-  }]
+    {
+      "byterange": {
+        "length": 44556,
+        "offset": 8353216
+      },
+      "uri": "hls_450k_video.ts"
+    }
+  ],
+  "targetDuration": 10,
+  "totalDuration": 164.7
 }
