@@ -109,9 +109,7 @@ var
       return 1;   // HAVE_METADATA
     };
 
-    if(player.ha === "Flash")
-    {
-      player.currentTime = function(value) {
+    player.currentTime = function(value) {
         if(value) {
           try {
             player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('currentTime', 0);
@@ -127,8 +125,7 @@ var
             return 0;
           }
         }
-      };
-    }
+    };
 
     player.hls.selectSegmentByTime = function(time) {
       var index, currentSegment;
@@ -245,12 +242,10 @@ var
               // update the duration
               player.duration(parser.manifest.totalDuration);
               // Notify the flash layer
-              if (player.ha === "Flash") {
-                try {
-                  player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('duration',parser.manifest.totalDuration);
-                } catch (err) {
+              try {
+                player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('duration',parser.manifest.totalDuration);
+              } catch (err) {
 
-                }
               }
             }
             player.trigger('loadedmanifest');
