@@ -120,19 +120,14 @@ var
     };
 
     player.hls.selectSegmentByTime = function(time) {
-      if(player.hls.media && player.hls.media.segments)
-      {
-        var index, currentSegment;
+      var index, currentSegment;
 
-        for (index = 0; index < player.hls.media.segments.length; index++)
-        {
+      if (player.hls.media && player.hls.media.segments) {
+        for (index = 0; index < player.hls.media.segments.length; index++) {
           currentSegment = player.hls.media.segments[index];
-
-          if(time > currentSegment.timeRange.start && time <= currentSegment.timeRange.end)
-          {
+          if (time > currentSegment.timeRange.start && time <= currentSegment.timeRange.end) {
             return index;
           }
-
         }
       }
     };
