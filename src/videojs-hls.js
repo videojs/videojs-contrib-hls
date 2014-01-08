@@ -112,7 +112,7 @@ var
     player.currentTime = function(value) {
         if(value) {
           try {
-            player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('currentTime', 0);
+            player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('currentTime', value);
             player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('appendBytesAction', 'resetSeek');
             player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('appendBytesAction', 'resetBegin');
           } catch(err) {
@@ -120,7 +120,6 @@ var
           }
           player.hls.sourceBuffer.appendBuffer(segmentParser.getFlvHeader());
           player.hls.mediaIndex = player.hls.selectSegmentIndexByTime(value);
-          console.log(value, parseInt(value-player.hls.getSegmentByTime(value).timeRange.start,10));
           fillBuffer(parseInt(value-player.hls.getSegmentByTime(value).timeRange.start,10));
         } else {
           try {
@@ -352,20 +351,32 @@ var
              console.log(player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration);
              console.log((segmentParser.getTags().length/player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration)*gotoSecond);
              */
-            var segmentCount = 100; //(segmentParser.getTags().length/player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration)*gotoSecond;
-            var xx = 0;
+            var seekToTagIndex = parseInt((segmentParser.getTags().length/player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration)*gotoSecond,10);
+            var seekToTagCounter = 0;
 
             //drain until where you want in the buffer
-            while(xx<segmentCount)
+            while(seekToTagCounter<seekToTagIndex)
             {
                 segmentParser.getNextTag();
-                xx++;
+                seekToTagCounter++;
             }
           }
 
           while (segmentParser.tagsAvailable()) {
             player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes, player);
           }
+
+          /*
+          if(player.hls.mediaIndex === player.hsl.selectPlaylist.segments.length-1)
+          {
+            try {
+              // TODO - Still need to test this. This tells the Flash Player the stream is over
+              // player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('appendBytesAction', 'endSequence');
+            } catch(err) {
+
+            }
+          }
+          */
 
           segmentXhr = null;
           player.hls.mediaIndex++;
