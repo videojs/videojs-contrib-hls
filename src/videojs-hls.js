@@ -109,15 +109,26 @@ var
       return 1;   // HAVE_METADATA
     };
 
-    player.currentTime = function(value) {
-      if(value) {
-        player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('currentTime', 0);
-        player.hls.mediaIndex = player.hls.selectSegmentByTime(value);
-        fillBuffer();
-      } else {
-        return player.el().getElementsByClassName('vjs-tech')[0].vjs_getProperty('currentTime');
-      }
-    };
+    if(player.ha === "Flash")
+    {
+      player.currentTime = function(value) {
+        if(value) {
+          try {
+            player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('currentTime', 0);
+          } catch(err) {
+
+          }
+          player.hls.mediaIndex = player.hls.selectSegmentByTime(value);
+          fillBuffer();
+        } else {
+          try {
+            return player.el().getElementsByClassName('vjs-tech')[0].vjs_getProperty('currentTime');
+          } catch(err) {
+            return 0;
+          }
+        }
+      };
+    }
 
     player.hls.selectSegmentByTime = function(time) {
       var index, currentSegment;
@@ -234,7 +245,13 @@ var
               // update the duration
               player.duration(parser.manifest.totalDuration);
               // Notify the flash layer
-              player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('duration',parser.manifest.totalDuration);
+              if (player.ha === "Flash") {
+                try {
+                  player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('duration',parser.manifest.totalDuration);
+                } catch (err) {
+
+                }
+              }
             }
             player.trigger('loadedmanifest');
             player.trigger('loadedmetadata');
