@@ -351,7 +351,13 @@
               if (entry.duration >= 0) {
                 currentUri.duration = entry.duration;
               }
+
+              currentUri.timeRange = {};
+              currentUri.timeRange.start = (uris.length > 0) ? uris[uris.length-1].timeRange.end : 0;
+              currentUri.timeRange.end = currentUri.timeRange.start + currentUri.duration;
+
               this.manifest.segments = uris;
+
             },
             'media-sequence': function() {
               if (!isFinite(entry.number)) {

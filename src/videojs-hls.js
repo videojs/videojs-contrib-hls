@@ -109,6 +109,34 @@ var
       return 1;   // HAVE_METADATA
     };
 
+    player.currentTime = function(value) {
+      if(value) {
+        player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('currentTime', 0);
+        player.hls.mediaIndex = player.hls.selectSegmentByTime(value);
+        fillBuffer();
+      } else {
+        return player.el().getElementsByClassName('vjs-tech')[0].vjs_getProperty('currentTime');
+      }
+    }
+
+    player.hls.selectSegmentByTime = function(time) {
+      if(player.hls.media && player.hls.media.segments)
+      {
+        var index, currentSegment;
+
+        for (index = 0; index < player.hls.media.segments.length; index++)
+        {
+          currentSegment = player.hls.media.segments[index];
+
+          if(time > currentSegment.timeRange.start && time <= currentSegment.timeRange.end)
+          {
+            return index;
+          }
+
+        }
+      }
+    }
+
     /**
      * Chooses the appropriate media playlist based on the current
      * bandwidth estimate and the player size.
@@ -210,6 +238,8 @@ var
             if (parser.manifest.totalDuration) {
               // update the duration
               player.duration(parser.manifest.totalDuration);
+              // Notify the flash layer
+              player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('duration',parser.manifest.totalDuration);
             }
             player.trigger('loadedmanifest');
             player.trigger('loadedmetadata');
