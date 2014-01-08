@@ -46,7 +46,7 @@ module('HLS', {
     document.querySelector('#qunit-fixture').appendChild(video);
     player = videojs(video, {
       flash: {
-        swf: '../node_modules/video.js/dist/video-js/video-js.swf',
+        swf: '../node_modules/video.js/dist/video-js/video-js.swf'
       },
       techOrder: ['flash']
     });
