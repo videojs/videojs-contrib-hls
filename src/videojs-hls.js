@@ -117,7 +117,7 @@ var
       } else {
         return player.el().getElementsByClassName('vjs-tech')[0].vjs_getProperty('currentTime');
       }
-    }
+    };
 
     player.hls.selectSegmentByTime = function(time) {
       if(player.hls.media && player.hls.media.segments)
@@ -135,7 +135,7 @@ var
 
         }
       }
-    }
+    };
 
     /**
      * Chooses the appropriate media playlist based on the current
