@@ -397,7 +397,6 @@ var
         }
       };
       startTime = +new Date();
-      console.log('getting segment', segmentUri);
       segmentXhr.send(null);
     };
 
