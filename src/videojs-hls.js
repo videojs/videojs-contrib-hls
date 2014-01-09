@@ -110,6 +110,8 @@ var
     };
 
     player.currentTime = function(value) {
+        var returnValue;
+
         if(value) {
           try {
             player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('currentTime', value);
@@ -120,10 +122,16 @@ var
           }
           player.hls.sourceBuffer.appendBuffer(segmentParser.getFlvHeader());
           player.hls.mediaIndex = player.hls.selectSegmentIndexByTime(value);
-          fillBuffer(parseInt(value-player.hls.getSegmentByTime(value).timeRange.start,10));
+          fillBuffer(value-player.hls.getSegmentByTime(value).timeRange.start);
         } else {
           try {
-            return player.el().getElementsByClassName('vjs-tech')[0].vjs_getProperty('currentTime');
+            returnValue = player.el().getElementsByClassName('vjs-tech')[0].vjs_getProperty('currentTime');
+            if(returnValue > player.duration()) {
+              returnValue = player.duration();
+            } else if (returnValue < 0) {
+              returnValue = 0;
+            }
+            return returnValue;
           } catch(err) {
             return 0;
           }
@@ -345,14 +353,11 @@ var
 
           if(gotoSecond!==null && gotoSecond>0)
           {
-            /*
-             console.log(segmentParser.getTags().length, 'total');
-             console.log(gotoSecond, 'you want second');
-             console.log(player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration);
-             console.log((segmentParser.getTags().length/player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration)*gotoSecond);
-             */
             var seekToTagIndex = parseInt((segmentParser.getTags().length/player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration)*gotoSecond,10);
             var seekToTagCounter = 0;
+
+            //console.log('Go to:', gotoSecond);
+            //console.log('tag index:', seekToTagIndex);
 
             //drain until where you want in the buffer
             while(seekToTagCounter<seekToTagIndex)
