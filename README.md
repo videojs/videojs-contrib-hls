@@ -46,10 +46,50 @@ support for:
 
 - Alternate audio and video tracks
 - Subtitles
-- Dynamic bitrate switching
 - Segment codecs _other than_ H.264 with AAC audio
 - Live streams
 - Internet Explorer 8
+
+### Runtime Properties
+#### player.hls.master
+Type: `object`
+
+An object representing the parsed master playlist. If a media playlist
+is loaded directly, a master playlist with only one entry will be
+created.
+
+#### player.hls.media
+Type: `object`
+
+An object representing the currently selected media playlist. This is
+the playlist that is being referred to when a additional video data
+needs to be downloaded.
+
+#### player.hls.mediaIndex
+Type: `number`
+
+The index of the next video segment to be downloaded from
+`player.hls.media`.
+
+#### player.hls.selectPlaylist
+Type: `function`
+
+A function that returns the media playlist object to use to download
+the next segment. It is invoked by the plugin immediately before a new
+segment is downloaded. You can override this function to provide your
+adaptive streaming logic. You must, however, be sure to return a valid
+media playlist object that is present in `player.hls.master`.
+
+### Events
+#### loadedmetadata
+
+Fired after the first media playlist is downloaded for a stream.
+
+#### loadedmanifest
+
+Fired immediately after a new master or media playlist has been
+downloaded. By default, the plugin only downloads playlists as they
+are needed.
 
 ## Hosting Considerations
 Unlike a native HLS implementation, the HLS plugin has to comply with
