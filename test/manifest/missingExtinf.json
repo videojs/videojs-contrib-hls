@@ -1,0 +1,28 @@
+{
+  "allowCache": true,
+  "mediaSequence": 0,
+  "playlistType": "VOD",
+  "segments": [
+    {
+      "duration": 10,
+      "timeRange": {
+        "end": 10,
+        "start": 0
+      },
+      "uri": "hls_450k_video.ts"
+    },
+    {
+      "uri": "hls_450k_video.ts"
+    },
+    {
+      "duration": 5,
+      "timeRange": {
+        "end": 30,
+        "start": 20
+      },
+      "uri": "hls_450k_video.ts"
+    },
+  ],
+  "targetDuration": 10,
+  "totalDuration": 30
+}

@@ -1,0 +1,16 @@
+{
+  "allowCache": true,
+  "mediaSequence": 0,
+  "playlistType": "VOD",
+  "segments": [
+    {
+      "duration": 10,
+      "timeRange": {
+        "end": 10,
+        "start": 0
+      },
+      "uri": "/test/ts-files/zencoder/gogo/00001.ts"
+    },
+  ],
+  "totalDuration": 10
+}
