@@ -80,6 +80,7 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
+      tech,
       extname,
       srcUrl,
 
@@ -109,33 +110,27 @@ var
       return 1;   // HAVE_METADATA
     };
 
-    player.currentTime = function(value) {
-        var returnValue;
+    player.on('ready', function() {
+      player.muted(true);
+      tech = player.el().querySelector('.vjs-tech');
+      tech.vjs_setProperty('playerId', player.P);
+    });
 
-        if(value) {
-          try {
-            player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('currentTime', value);
-            player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('appendBytesAction', 'resetSeek');
-            player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('appendBytesAction', 'resetBegin');
-          } catch(err) {
+    player.on('seeking', function() {
+      var seekValue = tech.vjs_getProperty('lastSeekedTime');
+      player.hls.mediaIndex = player.hls.getSegmentIndexByTime(seekValue);
+      fillBuffer(seekValue*1000);
+    });
 
-          }
-          player.hls.sourceBuffer.appendBuffer(segmentParser.getFlvHeader());
-          player.hls.mediaIndex = player.hls.selectSegmentIndexByTime(value);
-          fillBuffer(value-player.hls.getSegmentByTime(value).timeRange.start);
-        } else {
-          try {
-            returnValue = player.el().getElementsByClassName('vjs-tech')[0].vjs_getProperty('currentTime');
-            if(returnValue > player.duration()) {
-              returnValue = player.duration();
-            } else if (returnValue < 0) {
-              returnValue = 0;
-            }
-            return returnValue;
-          } catch(err) {
-            return 0;
-          }
-        }
+    player.on('waiting', function() {
+      if(player.currentTime() >= player.duration() && player.hls.isLastSegment()) {
+        player.pause();
+        player.trigger('ended');
+      }
+    });
+
+    player.hls.isLastSegment = function() {
+      return player.hls.mediaIndex === player.hls.selectPlaylist().segments.length;
     };
 
     player.hls.getSegmentByTime = function(time) {
@@ -151,9 +146,8 @@ var
       }
     };
 
-    player.hls.selectSegmentIndexByTime = function(time) {
+    player.hls.getSegmentIndexByTime = function(time) {
       var index, currentSegment;
-
       if (player.hls.media && player.hls.media.segments) {
         for (index = 0; index < player.hls.media.segments.length; index++) {
           currentSegment = player.hls.media.segments[index];
@@ -299,18 +293,21 @@ var
      * Determines whether there is enough video data currently in the buffer
      * and downloads a new segment if the buffered time is less than the goal.
      */
-    fillBuffer = function(intrasegmentSecond) {
+    fillBuffer = function(millisecond) {
       var
         buffered = player.buffered(),
         bufferedTime = 0,
         segment = player.hls.media.segments[player.hls.mediaIndex],
         segmentUri,
-        gotoSecond,
-        startTime;
+        desiredMillisecond,
+        startTime,
+        targetTag,
+        tagIndex,
+        bleedIndex = 0;
 
-      if(intrasegmentSecond)
+      if(millisecond)
       {
-        gotoSecond = intrasegmentSecond;
+        desiredMillisecond = millisecond;
       }
 
       // if there is a request already in flight, do nothing
@@ -351,37 +348,22 @@ var
           // transmux the segment data from MP2T to FLV
           segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
 
-          if(gotoSecond!==null && gotoSecond>0)
+          if(desiredMillisecond!==null && desiredMillisecond>0)
           {
-            var seekToTagIndex = parseInt((segmentParser.getTags().length/player.hls.selectPlaylist().segments[player.hls.mediaIndex].duration)*gotoSecond,10);
-            var seekToTagCounter = 0;
-
-            //console.log('Go to:', gotoSecond);
-            //console.log('tag index:', seekToTagIndex);
-
-            //drain until where you want in the buffer
-            while(seekToTagCounter<seekToTagIndex)
-            {
-                segmentParser.getNextTag();
-                seekToTagCounter++;
+            for(tagIndex = 0; tagIndex < segmentParser.getTags().length-1; tagIndex++) {
+              if(segmentParser.getTags()[tagIndex].pts <= desiredMillisecond && segmentParser.getTags()[tagIndex+1].pts > desiredMillisecond) {
+                targetTag = tagIndex;
+              }
+            }
+            while(bleedIndex < targetTag) {
+              segmentParser.getNextTag();
+              bleedIndex++;
             }
           }
 
           while (segmentParser.tagsAvailable()) {
             player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes, player);
           }
-
-          /*
-          if(player.hls.mediaIndex === player.hsl.selectPlaylist.segments.length-1)
-          {
-            try {
-              // TODO - Still need to test this. This tells the Flash Player the stream is over
-              // player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('appendBytesAction', 'endSequence');
-            } catch(err) {
-
-            }
-          }
-          */
 
           segmentXhr = null;
           player.hls.mediaIndex++;
