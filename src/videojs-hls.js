@@ -111,7 +111,6 @@ var
     };
 
     player.on('ready', function() {
-      player.muted(true);
       tech = player.el().querySelector('.vjs-tech');
       tech.vjs_setProperty('playerId', player.P);
     });
@@ -122,40 +121,39 @@ var
       fillBuffer(seekValue*1000);
     });
 
-    player.on('waiting', function() {
-      if(player.currentTime() >= player.duration() && player.hls.isLastSegment()) {
-        player.pause();
-        player.trigger('ended');
-      }
+    player.on('ended', function() {
+      //console.log('ended received');
     });
 
     player.hls.isLastSegment = function() {
       return player.hls.mediaIndex === player.hls.selectPlaylist().segments.length;
     };
 
-    player.hls.getSegmentByTime = function(time) {
-      var index, currentSegment;
-
-      if (player.hls.media && player.hls.media.segments) {
-        for (index = 0; index < player.hls.media.segments.length; index++) {
-          currentSegment = player.hls.media.segments[index];
-          if (time > currentSegment.timeRange.start && time <= currentSegment.timeRange.end) {
-            return currentSegment;
-          }
-        }
-      }
-    };
-
     player.hls.getSegmentIndexByTime = function(time) {
-      var index, currentSegment;
+      var index, counter, currentSegmentRange, timeRanges;
       if (player.hls.media && player.hls.media.segments) {
+
+        timeRanges = [];
+
         for (index = 0; index < player.hls.media.segments.length; index++) {
-          currentSegment = player.hls.media.segments[index];
-          if (time > currentSegment.timeRange.start && time <= currentSegment.timeRange.end) {
-            return index;
+          currentSegmentRange = {};
+          currentSegmentRange.start = (index===0) ? 0 : timeRanges[index-1].end;
+          currentSegmentRange.end = currentSegmentRange.start + player.hls.media.segments[index].duration;
+          timeRanges.push(currentSegmentRange);
+        }
+
+        for(counter = 0; counter < timeRanges.length; counter++){
+          if(time >= timeRanges[counter].start && time < timeRanges[counter].end) {
+
+            return counter;
           }
         }
+
+        return null;
+
       }
+
+      return null;
     };
 
     /**
@@ -355,10 +353,18 @@ var
                 targetTag = tagIndex;
               }
             }
+
+            try {
+              tech.vjs_setProperty('lastSeekedTime', segmentParser.getTags()[targetTag].pts/1000);
+            } catch(err) {
+
+            }
+
             while(bleedIndex < targetTag) {
               segmentParser.getNextTag();
               bleedIndex++;
             }
+
           }
 
           while (segmentParser.tagsAvailable()) {
