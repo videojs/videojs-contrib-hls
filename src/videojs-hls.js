@@ -80,7 +80,6 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
-      tech,
       extname,
       srcUrl,
 
@@ -111,20 +110,22 @@ var
     };
 
     player.on('seeking', function() {
-      var seekValue = tech.vjs_getProperty('lastSeekedTime');
+      var seekValue = player.el().querySelector('.vjs-tech').vjs_getProperty('lastSeekedTime');
       player.hls.mediaIndex = player.hls.getSegmentIndexByTime(seekValue);
+      console.log('seek to ', seekValue, 'segment index', player.hls.mediaIndex);
       fillBuffer(seekValue * 1000);
     });
 
-    player.on('waiting', function() {
-      if (player.hls.mediaIndex === player.hls.media.segments.length) {
-        player.pause();
-        player.trigger('ended');
-      }
+    player.on('timeupdate', function() {
+      console.log('tu', player.currentTime());
     });
 
-    player.hls.getSegmentByTime = function(time) {
-      var index, currentSegment;
+    player.on('ended', function() {
+      console.log('ended');
+    })
+
+    player.hls.getSegmentIndexByTime = function(time) {
+      var index, counter, timeRanges, currentSegmentRange;
 
       if (player.hls.media && player.hls.media.segments) {
 
@@ -248,7 +249,7 @@ var
               // update the duration
               player.duration(parser.manifest.totalDuration);
               // Notify the flash layer
-              player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('duration',parser.manifest.totalDuration);
+              player.el().querySelector('.vjs-tech').vjs_setProperty('duration',parser.manifest.totalDuration);
             }
             player.trigger('loadedmanifest');
             player.trigger('loadedmetadata');
@@ -324,17 +325,28 @@ var
           // transmux the segment data from MP2T to FLV
           segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
 
-          // handle intra-segment seeking, if requested
-          if (millisecond !== undefined) {
-            for (tagIndex = 0; tagIndex < segmentParser.getTags().length; tagIndex++) {
+          console.log('reporting segment', player.hls.mediaIndex, player.hls.media.segments.length);
+
+          if(player.hls.mediaIndex === player.hls.media.segments.length-1)
+          {
+            console.log('- tag count', segmentParser.getTags().length);
+            console.log('- start pts', segmentParser.getTags()[0].pts);
+            console.log('- end pts', segmentParser.getTags()[segmentParser.getTags().length-1].pts);
+            player.duration(19);
+          }
+
+          // handle intra-segment seeking, if requested //
+          // do not iterate over 0 index because it comes back with the end time //
+          if (millisecond !== undefined && typeof(millisecond) === "number") {
+            for (tagIndex = 1; tagIndex < segmentParser.getTags().length; tagIndex++) {
               if (segmentParser.getTags()[tagIndex].pts > millisecond) {
-                continue;
+                break;
               }
               // we're seeking past this tag, so ignore it
               segmentParser.getNextTag();
             }
-
-            tech.vjs_setProperty('lastSeekedTime', segmentParser.getTags()[tagIndex].pts / 1000);
+            player.el().querySelector('.vjs-tech').vjs_setProperty('lastSeekedTime', segmentParser.getTags()[tagIndex].pts/1000);
+            console.log('LST', tagIndex, '/', segmentParser.getTags().length, segmentParser.getTags()[tagIndex].pts/1000, player.currentTime());
           }
 
           while (segmentParser.tagsAvailable()) {
