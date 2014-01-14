@@ -110,27 +110,22 @@ var
       return 1;   // HAVE_METADATA
     };
 
-    player.on('ready', function() {
-      tech = player.el().querySelector('.vjs-tech');
-      tech.vjs_setProperty('playerId', player.P);
-    });
-
     player.on('seeking', function() {
       var seekValue = tech.vjs_getProperty('lastSeekedTime');
       player.hls.mediaIndex = player.hls.getSegmentIndexByTime(seekValue);
-      fillBuffer(seekValue*1000);
+      fillBuffer(seekValue * 1000);
     });
 
-    player.on('ended', function() {
-      //console.log('ended received');
+    player.on('waiting', function() {
+      if (player.hls.mediaIndex === player.hls.media.segments.length) {
+        player.pause();
+        player.trigger('ended');
+      }
     });
 
-    player.hls.isLastSegment = function() {
-      return player.hls.mediaIndex === player.hls.selectPlaylist().segments.length;
-    };
+    player.hls.getSegmentByTime = function(time) {
+      var index, currentSegment;
 
-    player.hls.getSegmentIndexByTime = function(time) {
-      var index, counter, currentSegmentRange, timeRanges;
       if (player.hls.media && player.hls.media.segments) {
 
         timeRanges = [];
@@ -190,11 +185,6 @@ var
           break;
         }
       }
-
-      // console.log('bandwidth:',
-      //             player.hls.bandwidth,
-      //             'variant:',
-      //             (bestVariant || sortedPlaylists[0]).attributes.BANDWIDTH);
 
       // if no acceptable variant was found, fall back on the lowest
       // bitrate playlist
@@ -258,11 +248,7 @@ var
               // update the duration
               player.duration(parser.manifest.totalDuration);
               // Notify the flash layer
-              try {
-                player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('duration',parser.manifest.totalDuration);
-              } catch (err) {
-
-              }
+              player.el().getElementsByClassName('vjs-tech')[0].vjs_setProperty('duration',parser.manifest.totalDuration);
             }
             player.trigger('loadedmanifest');
             player.trigger('loadedmetadata');
@@ -297,16 +283,8 @@ var
         bufferedTime = 0,
         segment = player.hls.media.segments[player.hls.mediaIndex],
         segmentUri,
-        desiredMillisecond,
         startTime,
-        targetTag,
-        tagIndex,
-        bleedIndex = 0;
-
-      if(millisecond)
-      {
-        desiredMillisecond = millisecond;
-      }
+        tagIndex;
 
       // if there is a request already in flight, do nothing
       if (segmentXhr) {
@@ -346,25 +324,17 @@ var
           // transmux the segment data from MP2T to FLV
           segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
 
-          if(desiredMillisecond!==null && desiredMillisecond>0)
-          {
-            for(tagIndex = 0; tagIndex < segmentParser.getTags().length-1; tagIndex++) {
-              if(segmentParser.getTags()[tagIndex].pts <= desiredMillisecond && segmentParser.getTags()[tagIndex+1].pts > desiredMillisecond) {
-                targetTag = tagIndex;
+          // handle intra-segment seeking, if requested
+          if (millisecond !== undefined) {
+            for (tagIndex = 0; tagIndex < segmentParser.getTags().length; tagIndex++) {
+              if (segmentParser.getTags()[tagIndex].pts > millisecond) {
+                continue;
               }
-            }
-
-            try {
-              tech.vjs_setProperty('lastSeekedTime', segmentParser.getTags()[targetTag].pts/1000);
-            } catch(err) {
-
-            }
-
-            while(bleedIndex < targetTag) {
+              // we're seeking past this tag, so ignore it
               segmentParser.getNextTag();
-              bleedIndex++;
             }
 
+            tech.vjs_setProperty('lastSeekedTime', segmentParser.getTags()[tagIndex].pts / 1000);
           }
 
           while (segmentParser.tagsAvailable()) {
