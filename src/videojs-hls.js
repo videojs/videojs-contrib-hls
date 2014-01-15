@@ -122,7 +122,7 @@ var
 
     player.on('ended', function() {
       console.log('ended');
-    })
+    });
 
     player.hls.getSegmentIndexByTime = function(time) {
       var index, counter, timeRanges, currentSegmentRange;
