@@ -9,10 +9,6 @@
         "offset": 0
       },
       "duration": 10,
-      "timeRange": {
-        "end": 10,
-        "start": 0
-      },
       "uri": "hls_450k_video.ts"
     }
   ],

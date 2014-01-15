@@ -5,12 +5,8 @@
   "segments": [
     {
       "duration": 10,
-      "timeRange": {
-        "end": 10,
-        "start": 0
-      },
       "uri": "hls_450k_video.ts"
-    },
+    }
   ],
   "targetDuration": 10,
   "totalDuration": 10
