@@ -5,10 +5,6 @@
   "segments": [
     {
       "duration": 10,
-      "timeRange": {
-        "end": 10,
-        "start": 0
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -17,10 +13,6 @@
         "offset": 522828
       },
       "duration": 10,
-      "timeRange": {
-        "end": 20,
-        "start": 10
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -29,10 +21,6 @@
         "offset": 0
       },
       "duration": 10,
-      "timeRange": {
-        "end": 30,
-        "start": 20
-      },
       "uri": "hls_450k_video2.ts"
     },
     {
@@ -41,10 +29,6 @@
         "offset": 1823412
       },
       "duration": 10,
-      "timeRange": {
-        "end": 40,
-        "start": 30
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -53,10 +37,6 @@
         "offset": 2299992
       },
       "duration": 10,
-      "timeRange": {
-        "end": 50,
-        "start": 40
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -65,10 +45,6 @@
         "offset": 2835604
       },
       "duration": 10,
-      "timeRange": {
-        "end": 60,
-        "start": 50
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -77,10 +53,6 @@
         "offset": 3042780
       },
       "duration": 10,
-      "timeRange": {
-        "end": 70,
-        "start": 60
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -89,10 +61,6 @@
         "offset": 3498680
       },
       "duration": 10,
-      "timeRange": {
-        "end": 80,
-        "start": 70
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -101,10 +69,6 @@
         "offset": 4155928
       },
       "duration": 10,
-      "timeRange": {
-        "end": 90,
-        "start": 80
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -113,10 +77,6 @@
         "offset": 4727636
       },
       "duration": 10,
-      "timeRange": {
-        "end": 100,
-        "start": 90
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -125,10 +85,6 @@
         "offset": 5212676
       },
       "duration": 10,
-      "timeRange": {
-        "end": 110,
-        "start": 100
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -137,10 +93,6 @@
         "offset": 5921812
       },
       "duration": 10,
-      "timeRange": {
-        "end": 120,
-        "start": 110
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -149,10 +101,6 @@
         "offset": 6651816
       },
       "duration": 10,
-      "timeRange": {
-        "end": 130,
-        "start": 120
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -161,10 +109,6 @@
         "offset": 7108092
       },
       "duration": 10,
-      "timeRange": {
-        "end": 140,
-        "start": 130
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -173,10 +117,6 @@
         "offset": 7576776
       },
       "duration": 10,
-      "timeRange": {
-        "end": 150,
-        "start": 140
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -185,10 +125,6 @@
         "offset": 8021772
       },
       "duration": 10,
-      "timeRange": {
-        "end": 160,
-        "start": 150
-      },
       "uri": "hls_450k_video.ts"
     },
     {
@@ -197,10 +133,6 @@
         "offset": 8353216
       },
       "duration": 1.4167,
-      "timeRange": {
-        "end": 161.4167,
-        "start": 160
-      },
       "uri": "hls_450k_video.ts"
     }
   ],

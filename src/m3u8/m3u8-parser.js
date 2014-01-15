@@ -352,10 +352,6 @@
                 currentUri.duration = entry.duration;
               }
 
-              currentUri.timeRange = {};
-              currentUri.timeRange.start = (uris.length > 0) ? uris[uris.length-1].timeRange.end : 0;
-              currentUri.timeRange.end = currentUri.timeRange.start + currentUri.duration;
-
               this.manifest.segments = uris;
 
             },
@@ -378,12 +374,20 @@
               this.manifest.playlistType = entry.playlistType;
             },
             'stream-inf': function() {
+              this.manifest.playlists = uris;
+
+              if (!entry.attributes) {
+                this.trigger('warn', {
+                  message: 'ignoring empty stream-inf attributes'
+                });
+                return;
+              }
+
               if (!currentUri.attributes) {
                 currentUri.attributes = {};
               }
               currentUri.attributes = mergeOptions(currentUri.attributes,
                                                    entry.attributes);
-              this.manifest.playlists = uris;
             },
             'targetduration': function() {
               if (!isFinite(entry.duration) || entry.duration < 0) {
