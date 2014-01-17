@@ -124,6 +124,23 @@ test('sets the duration if one is available on the playlist', function() {
   strictEqual(1, calls, 'duration is set');
 });
 
+test('calculates the duration if needed', function() {
+  var durations = [];
+  player.duration = function(duration) {
+    if (duration === undefined) {
+      return 0;
+    }
+    durations.push(duration);
+  };
+  player.hls('manifest/liveMissingSegmentDuration.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(durations.length, 1, 'duration is set');
+  strictEqual(durations[0], 6.64 + (2 * 8), 'duration is calculated');
+});
+
 test('starts downloading a segment on loadedmetadata', function() {
   player.hls('manifest/media.m3u8');
   player.buffered = function() {
@@ -224,6 +241,32 @@ test('selects a playlist after segment downloads', function() {
   };
   player.trigger('timeupdate');
   strictEqual(calls, 2, 'selects after additional segments');
+});
+
+test('updates the duration after switching playlists', function() {
+  var
+    calls = 0,
+    selectedPlaylist = false;
+  player.hls('manifest/master.m3u8');
+  player.hls.selectPlaylist = function() {
+    selectPlaylist = true;
+    return player.hls.master.playlists[1];
+  };
+  player.duration = function(duration) {
+    if (duration === undefined) {
+      return 0;
+    }
+    // only track calls that occur after the playlist has been switched
+    if (player.hls.media === player.hls.master.playlists[1]) {
+      calls++;
+    }
+  };
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  ok(selectPlaylist, 'selected playlist');
+  strictEqual(calls, 1, 'updates the duration');
 });
 
 test('downloads additional playlists if required', function() {

@@ -15,6 +15,5 @@
       "uri": "hls_450k_video.ts"
     }
   ],
-  "targetDuration": 10,
-  "totalDuration": 30
+  "targetDuration": 10
 }

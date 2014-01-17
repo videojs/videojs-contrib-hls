@@ -138,6 +138,5 @@
       "uri": "hls_450k_video.ts"
     }
   ],
-  "targetDuration": 10,
-  "totalDuration": 164.7
+  "targetDuration": 10
 }

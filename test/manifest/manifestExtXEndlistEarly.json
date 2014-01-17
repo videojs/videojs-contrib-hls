@@ -24,6 +24,5 @@
       "uri": "/test/ts-files/zencoder/gogo/00005.ts"
     }
   ],
-  "targetDuration": 10,
-  "totalDuration": 30
+  "targetDuration": 10
 }

@@ -39,7 +39,7 @@ var
    * @param time
    * @returns int
    */
-  getMediaIndexByTime = function (playlist, time) {
+  getMediaIndexByTime = function(playlist, time) {
     var index, counter, timeRanges, currentSegmentRange;
 
     timeRanges = [];
@@ -59,7 +59,7 @@ var
     return -1;
 
   },
-  getPtsByTime = function (segmentParser, time) {
+  getPtsByTime = function(segmentParser, time) {
       var index = 0;
 
       for (index; index<segmentParser.getTags().length; index++) {
@@ -71,6 +71,23 @@ var
           }
         }
       }
+  },
+
+  /**
+   * Calculate the total duration for a playlist based on segment metadata.
+   * @param playlist {object} a media playlist object
+   * @return {number} the currently known duration, in seconds
+   */
+  totalDuration = function(playlist) {
+    var
+      duration = 0,
+      i = playlist.segments.length,
+      segment;
+    while (i--) {
+      segment = playlist.segments[i];
+      duration += segment.duration || playlist.targetDuration || 0;
+    }
+    return duration;
   },
 
   /**
@@ -254,6 +271,8 @@ var
               player.duration(parser.manifest.totalDuration);
               // Notify the flash layer
               //player.el().querySelector('.vjs-tech').vjs_setProperty('duration',parser.manifest.totalDuration);
+            } else {
+              player.duration(totalDuration(parser.manifest));
             }
             player.trigger('loadedmanifest');
             player.trigger('loadedmetadata');
@@ -266,9 +285,11 @@ var
             downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
           } else {
             player.hls.media = playlist;
-            if (parser.manifest.totalDuration) {
+            if (player.hls.media.totalDuration) {
               // update the duration
-              player.duration(parser.manifest.totalDuration);
+              player.duration(player.hls.media.totalDuration);
+            } else {
+              player.duration(totalDuration(player.hls.media));
             }
           }
 
