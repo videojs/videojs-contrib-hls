@@ -249,7 +249,7 @@ test('updates the duration after switching playlists', function() {
     selectedPlaylist = false;
   player.hls('manifest/master.m3u8');
   player.hls.selectPlaylist = function() {
-    selectPlaylist = true;
+    selectedPlaylist = true;
     return player.hls.master.playlists[1];
   };
   player.duration = function(duration) {
@@ -265,7 +265,7 @@ test('updates the duration after switching playlists', function() {
     type: 'sourceopen'
   });
 
-  ok(selectPlaylist, 'selected playlist');
+  ok(selectedPlaylist, 'selected playlist');
   strictEqual(calls, 1, 'updates the duration');
 });
 
