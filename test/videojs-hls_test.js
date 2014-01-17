@@ -473,6 +473,47 @@ test('ignores currentSrc if it doesn\'t have the "m3u8" extension', function() {
   strictEqual(xhrUrls.length, 0, 'no request is made');
 });
 
+test('cancels outstanding XHRs when seeking', function() {
+  var
+    aborted = false,
+    opened = 0;
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  player.hls.media = {
+    segments: [{
+      uri: '0.ts',
+      duration: 10
+    }, {
+      uri: '1.ts',
+      duration: 10
+    }]
+  };
+
+  // XHR requests will never complete
+  window.XMLHttpRequest = function() {
+    this.open = function() {
+      opened++;
+    };
+    this.send = function() {};
+    this.abort = function() {
+      aborted = true;
+      this.readyState = 4;
+      this.status = 0;
+      this.onreadystatechange();
+    };
+  };
+  // trigger a segment download request
+  player.trigger('timeupdate');
+  opened = 0;
+  // attempt to seek while the download is in progress
+  player.trigger('seeking');
+
+  ok(aborted, 'XHR aborted');
+  strictEqual(1, opened, 'opened new XHR');
+});
+
 
 module('segment controller', {
   setup: function() {

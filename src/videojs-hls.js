@@ -168,9 +168,12 @@ var
     };
 
     player.on('seeking', function() {
-      var seekValue = player.el().querySelector('.vjs-tech').vjs_getProperty('lastSeekedTime');
-      player.hls.mediaIndex = getMediaIndexByTime(player.hls.media, seekValue);
-      fillBuffer(seekValue * 1000);
+      var currentTime = player.currentTime();
+      player.hls.mediaIndex = getMediaIndexByTime(player.hls.media, currentTime);
+      if (segmentXhr) {
+        segmentXhr.abort();
+      }
+      fillBuffer(currentTime * 1000);
     });
 
     /**
@@ -302,8 +305,10 @@ var
     /**
      * Determines whether there is enough video data currently in the buffer
      * and downloads a new segment if the buffered time is less than the goal.
+     * @param offset (optional) {number} the offset into the downloaded segment
+     * to seek to, in milliseconds
      */
-    fillBuffer = function(millisecond) {
+    fillBuffer = function(offset) {
       var
         buffered = player.buffered(),
         bufferedTime = 0,
@@ -342,20 +347,27 @@ var
       segmentXhr.onreadystatechange = function() {
         var playlist;
 
-        if (segmentXhr.readyState === 4) {
+        if (this.readyState === 4) {
+          // the segment request is no longer outstanding
+          segmentXhr = null;
+
+          // stop processing if the request was aborted
+          if (!this.response) {
+            return;
+          }
+
           // calculate the download bandwidth
           player.hls.segmentXhrTime = (+new Date()) - startTime;
-          player.hls.bandwidth = (segmentXhr.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
+          player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
 
           // transmux the segment data from MP2T to FLV
-          segmentParser.parseSegmentBinaryData(new Uint8Array(segmentXhr.response));
+          segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
 
           // handle intra-segment seeking, if requested //
-          // do not iterate over 0 index because it comes back with the end time //
-          if (millisecond !== undefined && typeof(millisecond) === "number") {
-            player.el().querySelector('.vjs-tech').vjs_setProperty('lastSeekedTime', getPtsByTime(segmentParser,millisecond)/1000);
+          if (offset !== undefined && typeof offset === "number") {
+            player.el().querySelector('.vjs-tech').vjs_setProperty('lastSeekedTime', getPtsByTime(segmentParser,offset)/1000);
             for (tagIndex = 0; tagIndex < segmentParser.getTags().length; tagIndex++) {
-              if (segmentParser.getTags()[tagIndex].pts > millisecond) {
+              if (segmentParser.getTags()[tagIndex].pts > offset) {
                 break;
               }
               // we're seeking past this tag, so ignore it
@@ -367,7 +379,6 @@ var
             player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes, player);
           }
 
-          segmentXhr = null;
           player.hls.mediaIndex++;
 
           if (player.hls.mediaIndex === player.hls.media.segments.length) {
