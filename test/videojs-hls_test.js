@@ -547,6 +547,59 @@ test('gets the correct PTS on seek', function() {
   ok(ptsByTime<=seekTime, 'PTS should be less than or equal to seek time');
 });
 
+test('missing playlist should trigger error', function() {
+  var errorTriggered = false;
+
+  window.XMLHttpRequest = function() {
+    this.open = function(method, url) {
+      xhrUrls.push(url);
+    };
+    this.send = function() {
+      this.status = 404;
+      this.onreadystatechange();
+    };
+  };
+
+  player.hls('manifest/media.m3u8');
+
+  player.on('hls-missing-playlist', function() {
+    errorTriggered = true;
+  });
+
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  equal(true, errorTriggered, 'Missing Playlist error event should trigger');
+});
+
+test('missing segment should trigger error', function() {
+  var errorTriggered = false;
+
+  player.hls('manifest/media.m3u8');
+
+  player.on('loadedmanifest', function() {
+    window.XMLHttpRequest = function() {
+      this.open = function(method, url) {
+        xhrUrls.push(url);
+      };
+      this.send = function() {
+        this.status = 404;
+        this.onreadystatechange();
+      };
+    };
+  });
+
+  player.on('hls-missing-segment', function() {
+    errorTriggered = true;
+  });
+
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  equal(true, errorTriggered, 'Missing Segment error event should trigger');
+});
 
 module('segment controller', {
   setup: function() {

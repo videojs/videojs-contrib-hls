@@ -177,6 +177,14 @@ var
       fillBuffer(currentTime * 1000);
     });
 
+    player.on('hls-missing-segment', function() {
+      //console.log('Missing Segment Triggered');
+    });
+
+    player.on('hls-missing-playlist', function() {
+      //console.log('Missing Playlist Triggered');
+    });
+
     /**
      * Chooses the appropriate media playlist based on the current
      * bandwidth estimate and the player size.
@@ -233,6 +241,11 @@ var
       xhr.open('GET', url);
       xhr.onreadystatechange = function() {
         var i, parser, playlist, playlistUri;
+
+        if (xhr.status === 404) {
+          player.trigger('hls-missing-playlist', url);
+          return;
+        }
 
         if (xhr.readyState === 4) {
           // readystate DONE
@@ -347,6 +360,11 @@ var
       segmentXhr.responseType = 'arraybuffer';
       segmentXhr.onreadystatechange = function() {
         var playlist;
+
+        if (this.status === 404) {
+          player.trigger('hls-missing-segment');
+          return;
+        }
 
         if (this.readyState === 4) {
           // the segment request is no longer outstanding
