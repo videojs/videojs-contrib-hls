@@ -514,11 +514,43 @@ test('cancels outstanding XHRs when seeking', function() {
   strictEqual(1, opened, 'opened new XHR');
 });
 
+test('gets the correct PTS on seek', function() {
+  var
+    ptsByTime = -1,
+    seekTime = 5.123,
+    segmentParser = new window.videojs.hls.SegmentParser();
+    segmentParser.getTags = function() {
+      return [
+        {pts:1},
+        {pts:2},
+        {pts:3},
+        {pts:4},
+        {pts:5},
+        {pts:6}
+      ];
+    };
+
+  player.hls('manifest/media.m3u8');
+
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  player.on('seeked', function() {
+    ptsByTime = player.hls.getPtsByTime(segmentParser,seekTime);
+  });
+
+  player.trigger('seeked');
+
+  notEqual(ptsByTime, -1, 'PTS Should be set on seek');
+  strictEqual(ptsByTime, 5, 'PTS should be closest');
+  ok(ptsByTime<=seekTime, 'PTS should be less than or equal to seek time');
+});
+
 
 module('segment controller', {
   setup: function() {
     segmentController = new window.videojs.hls.SegmentController();
-
   },
   teardown: function() {
     window.videojs.get = this.vjsget;

@@ -59,19 +59,6 @@ var
     return -1;
 
   },
-  getPtsByTime = function(segmentParser, time) {
-      var index = 0;
-
-      for (index; index<segmentParser.getTags().length; index++) {
-        if(index === segmentParser.getTags().length-1) {
-          return segmentParser.getTags()[index].pts;
-        } else {
-          if (segmentParser.getTags()[index].pts <= time && segmentParser.getTags()[index+1].pts > time) {
-            return segmentParser.getTags()[index].pts;
-          }
-        }
-      }
-  },
 
   /**
    * Calculate the total duration for a playlist based on segment metadata.
@@ -165,6 +152,20 @@ var
         return 0; // HAVE_NOTHING
       }
       return 1;   // HAVE_METADATA
+    };
+
+    player.hls.getPtsByTime = function(segmentParser, time) {
+      var index = 0;
+
+      for (index; index<segmentParser.getTags().length; index++) {
+        if(index === segmentParser.getTags().length-1) {
+          return segmentParser.getTags()[index].pts;
+        } else {
+          if (segmentParser.getTags()[index].pts <= time && segmentParser.getTags()[index+1].pts > time) {
+            return segmentParser.getTags()[index].pts;
+          }
+        }
+      }
     };
 
     player.on('seeking', function() {
@@ -365,7 +366,7 @@ var
 
           // handle intra-segment seeking, if requested //
           if (offset !== undefined && typeof offset === "number") {
-            player.el().querySelector('.vjs-tech').vjs_setProperty('lastSeekedTime', getPtsByTime(segmentParser,offset)/1000);
+            player.el().querySelector('.vjs-tech').vjs_setProperty('lastSeekedTime', player.hls.getPtsByTime(segmentParser,offset)/1000);
             for (tagIndex = 0; tagIndex < segmentParser.getTags().length; tagIndex++) {
               if (segmentParser.getTags()[tagIndex].pts > offset) {
                 break;
