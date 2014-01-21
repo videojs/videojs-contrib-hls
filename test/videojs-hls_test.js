@@ -555,6 +555,7 @@ test('missing playlist should trigger error', function() {
       xhrUrls.push(url);
     };
     this.send = function() {
+      this.readyState = 4;
       this.status = 404;
       this.onreadystatechange();
     };
@@ -562,8 +563,10 @@ test('missing playlist should trigger error', function() {
 
   player.hls('manifest/media.m3u8');
 
-  player.on('hls-missing-playlist', function() {
-    errorTriggered = true;
+  player.on('error', function() {
+    if (player.error.code === 2) {
+      errorTriggered = true;
+    }
   });
 
   videojs.mediaSources[player.currentSrc()].trigger({
@@ -584,14 +587,17 @@ test('missing segment should trigger error', function() {
         xhrUrls.push(url);
       };
       this.send = function() {
+        this.readyState = 4;
         this.status = 404;
         this.onreadystatechange();
       };
     };
   });
 
-  player.on('hls-missing-segment', function() {
-    errorTriggered = true;
+  player.on('error', function () {
+    if (player.error.code === 2) {
+      errorTriggered = true;
+    }
   });
 
   videojs.mediaSources[player.currentSrc()].trigger({

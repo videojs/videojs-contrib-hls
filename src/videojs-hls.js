@@ -185,6 +185,14 @@ var
       //console.log('Missing Playlist Triggered');
     });
 
+    player.on('error', function() {
+      if(player.error)
+      {
+        console.log(player.error.message);
+      }
+
+    });
+
     /**
      * Chooses the appropriate media playlist based on the current
      * bandwidth estimate and the player size.
@@ -242,12 +250,18 @@ var
       xhr.onreadystatechange = function() {
         var i, parser, playlist, playlistUri;
 
-        if (xhr.status === 404) {
-          player.trigger('hls-missing-playlist', url);
-          return;
-        }
-
         if (xhr.readyState === 4) {
+          if (xhr.status >= 400) {
+            player.error = {
+              type: 'hls-missing-playlist',
+              status: xhr.status,
+              message: 'HLS Missing Playlist at URL: ' + url,
+              code: (xhr.status >= 500) ? 4 : 2
+            };
+            player.trigger('error');
+            return;
+          }
+          
           // readystate DONE
           parser = new videojs.m3u8.Parser();
           parser.push(xhr.responseText);
@@ -361,12 +375,26 @@ var
       segmentXhr.onreadystatechange = function() {
         var playlist;
 
-        if (this.status === 404) {
-          player.trigger('hls-missing-segment');
-          return;
-        }
+       if (this.readyState === 4) {
+         if (this.status >= 400) {
+           console.log('index', player.hls.mediaIndex, player.hls.media.segments.length);
+           if(player.hls.mediaIndex<player.hls.media.segments.length-1)
+           {
+             player.hls.mediaIndex++;
+             segmentXhr = null;
+             fillBuffer();
+           } else {
+             player.error = {
+               type: 'hls-missing-segment',
+               message: 'HLS Missing Segment at index ' + player.hls.mediaIndex,
+               status: this.status,
+               code: (this.status >= 500) ? 4 : 2
+             };
+             player.trigger('error');
+           }
+           return;
+         }
 
-        if (this.readyState === 4) {
           // the segment request is no longer outstanding
           segmentXhr = null;
 
