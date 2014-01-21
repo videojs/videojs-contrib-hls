@@ -547,7 +547,7 @@ test('gets the correct PTS on seek', function() {
   ok(ptsByTime<=seekTime, 'PTS should be less than or equal to seek time');
 });
 
-test('missing playlist should trigger error', function() {
+test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
   var errorTriggered = false;
 
   window.XMLHttpRequest = function() {
@@ -564,9 +564,7 @@ test('missing playlist should trigger error', function() {
   player.hls('manifest/media.m3u8');
 
   player.on('error', function() {
-    if (player.error.code === 2) {
-      errorTriggered = true;
-    }
+    errorTriggered = true;
   });
 
   videojs.mediaSources[player.currentSrc()].trigger({
@@ -574,19 +572,21 @@ test('missing playlist should trigger error', function() {
   });
 
   equal(true, errorTriggered, 'Missing Playlist error event should trigger');
+  equal(2, player.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
+  equal('hls-missing-playlist', player.error.type, 'Player error type should inform user correctly');
 });
 
-test('missing segment should trigger error', function() {
+test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
   var errorTriggered = false;
 
   player.hls('manifest/media.m3u8');
 
-  player.on('loadedmanifest', function() {
-    window.XMLHttpRequest = function() {
-      this.open = function(method, url) {
+  player.on('loadedmanifest', function () {
+    window.XMLHttpRequest = function () {
+      this.open = function (method, url) {
         xhrUrls.push(url);
       };
-      this.send = function() {
+      this.send = function () {
         this.readyState = 4;
         this.status = 404;
         this.onreadystatechange();
@@ -595,9 +595,7 @@ test('missing segment should trigger error', function() {
   });
 
   player.on('error', function () {
-    if (player.error.code === 2) {
-      errorTriggered = true;
-    }
+    errorTriggered = true;
   });
 
   videojs.mediaSources[player.currentSrc()].trigger({
@@ -605,6 +603,39 @@ test('missing segment should trigger error', function() {
   });
 
   equal(true, errorTriggered, 'Missing Segment error event should trigger');
+  equal(2, player.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
+  equal('hls-missing-segment', player.error.type, 'Player error type should inform user correctly');
+});
+
+test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
+  var errorTriggered = false;
+
+  player.hls('manifest/media.m3u8');
+
+  player.on('loadedmanifest', function () {
+    window.XMLHttpRequest = function () {
+      this.open = function (method, url) {
+        xhrUrls.push(url);
+      };
+      this.send = function () {
+        this.readyState = 4;
+        this.status = 500;
+        this.onreadystatechange();
+      };
+    };
+  });
+
+  player.on('error', function () {
+    errorTriggered = true;
+  });
+
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  equal(true, errorTriggered, 'Missing Segment error event should trigger');
+  equal(4, player.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
+  equal('hls-missing-segment', player.error.type, 'Player error type should inform user correctly');
 });
 
 module('segment controller', {

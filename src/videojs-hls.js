@@ -186,10 +186,6 @@ var
     });
 
     player.on('error', function() {
-      if(player.error)
-      {
-        console.log(player.error.message);
-      }
 
     });
 
@@ -377,7 +373,6 @@ var
 
        if (this.readyState === 4) {
          if (this.status >= 400) {
-           console.log('index', player.hls.mediaIndex, player.hls.media.segments.length);
            if(player.hls.mediaIndex<player.hls.media.segments.length-1)
            {
              player.hls.mediaIndex++;
