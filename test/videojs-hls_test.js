@@ -572,8 +572,8 @@ test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
   });
 
   equal(true, errorTriggered, 'Missing Playlist error event should trigger');
-  equal(2, player.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
-  equal('hls-missing-playlist', player.error.type, 'Player error type should inform user correctly');
+  equal(2, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
+  ok(player.hls.error.message, 'Player error type should inform user correctly');
 });
 
 test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {

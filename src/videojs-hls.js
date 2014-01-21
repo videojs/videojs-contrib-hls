@@ -248,16 +248,15 @@ var
 
         if (xhr.readyState === 4) {
           if (xhr.status >= 400) {
-            player.error = {
-              type: 'hls-missing-playlist',
+            player.hls.error = {
               status: xhr.status,
-              message: 'HLS Missing Playlist at URL: ' + url,
+              message: 'HLS playlist request error at URL: ' + url,
               code: (xhr.status >= 500) ? 4 : 2
             };
             player.trigger('error');
             return;
           }
-          
+
           // readystate DONE
           parser = new videojs.m3u8.Parser();
           parser.push(xhr.responseText);
