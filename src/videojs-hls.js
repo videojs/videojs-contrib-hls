@@ -378,19 +378,19 @@ var
         // the segment request is no longer outstanding
         segmentXhr = null;
 
-        // stop processing if the request was aborted
-        if (!this.response) {
-          return;
-        }
-
         // trigger an error if the request was not successful
         if (this.status >= 400) {
           player.hls.error = {
-            status: segmentXhr.status,
+            status: this.status,
             message: 'HLS segment request error at URL: ' + segmentUri,
-            code: (segmentXhr.status >= 500) ? 4 : 2
+            code: (this.status >= 500) ? 4 : 2
           };
           player.trigger('error');
+          return;
+        }
+
+        // stop processing if the request was aborted
+        if (!this.response) {
           return;
         }
 
