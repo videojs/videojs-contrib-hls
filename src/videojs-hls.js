@@ -372,20 +372,12 @@ var
 
        if (this.readyState === 4) {
          if (this.status >= 400) {
-           if(player.hls.mediaIndex<player.hls.media.segments.length-1)
-           {
-             player.hls.mediaIndex++;
-             segmentXhr = null;
-             fillBuffer();
-           } else {
-             player.error = {
-               type: 'hls-missing-segment',
-               message: 'HLS Missing Segment at index ' + player.hls.mediaIndex,
-               status: this.status,
-               code: (this.status >= 500) ? 4 : 2
-             };
-             player.trigger('error');
-           }
+           player.hls.error = {
+             status: segmentXhr.status,
+             message: 'HLS segment request error at URL: ' + segmentUri,
+             code: (segmentXhr.status >= 500) ? 4 : 2
+           };
+           player.trigger('error');
            return;
          }
 
