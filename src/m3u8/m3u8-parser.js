@@ -20,15 +20,14 @@
         attr[0] = attr[0].replace(/^\s+|\s+$/g, '');
 
         // This is not sexy, but gives us the resulting object we want.
-        if (attr[1])
-        {
+        if (attr[1]) {
           attr[1] = attr[1].replace(/^\s+|\s+$/g, '');
-          if(attr[1].indexOf('"')!= -1 ) {
+          if (attr[1].indexOf('"') !== -1) {
             attr[1] = attr[1].split('"')[1];
           }
           result[attr[0]] = attr[1];
         } else {
-          attrs[i-1] = attrs[i-1] + ',' + attr[0];
+          attrs[i - 1] = attrs[i - 1] + ',' + attr[0];
         }
       }
       return result;
