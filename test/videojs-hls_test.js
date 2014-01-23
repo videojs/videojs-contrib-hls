@@ -603,8 +603,8 @@ test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
   });
 
   equal(true, errorTriggered, 'Missing Segment error event should trigger');
-  equal(2, player.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
-  equal('hls-missing-segment', player.error.type, 'Player error type should inform user correctly');
+  ok(player.hls.error.message, 'an error message is available');
+  equal(2, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
 });
 
 test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
@@ -634,8 +634,8 @@ test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
   });
 
   equal(true, errorTriggered, 'Missing Segment error event should trigger');
-  equal(4, player.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
-  equal('hls-missing-segment', player.error.type, 'Player error type should inform user correctly');
+  ok(player.hls.error.message, 'an error message is available');
+  equal(4, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
 });
 
 module('segment controller', {

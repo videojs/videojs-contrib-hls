@@ -292,11 +292,10 @@ var
           // always start playback with the default rendition
           if (!player.hls.media) {
             player.hls.media = player.hls.master.playlists[0];
+
+            // update the duration
             if (parser.manifest.totalDuration) {
-              // update the duration
               player.duration(parser.manifest.totalDuration);
-              // Notify the flash layer
-              //player.el().querySelector('.vjs-tech').vjs_setProperty('duration',parser.manifest.totalDuration);
             } else {
               player.duration(totalDuration(parser.manifest));
             }
@@ -311,8 +310,9 @@ var
             downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
           } else {
             player.hls.media = playlist;
+
+            // update the duration
             if (player.hls.media.totalDuration) {
-              // update the duration
               player.duration(player.hls.media.totalDuration);
             } else {
               player.duration(totalDuration(player.hls.media));
@@ -370,72 +370,67 @@ var
       segmentXhr.onreadystatechange = function() {
         var playlist;
 
-       if (this.readyState === 4) {
-         if (this.status >= 400) {
-           if(player.hls.mediaIndex<player.hls.media.segments.length-1)
-           {
-             player.hls.mediaIndex++;
-             segmentXhr = null;
-             fillBuffer();
-           } else {
-             player.error = {
-               type: 'hls-missing-segment',
-               message: 'HLS Missing Segment at index ' + player.hls.mediaIndex,
-               status: this.status,
-               code: (this.status >= 500) ? 4 : 2
-             };
-             player.trigger('error');
-           }
-           return;
-         }
+        // wait until the request completes
+        if (this.readyState !== 4) {
+          return;
+        }
 
-          // the segment request is no longer outstanding
-          segmentXhr = null;
+        // the segment request is no longer outstanding
+        segmentXhr = null;
 
-          // stop processing if the request was aborted
-          if (!this.response) {
-            return;
-          }
+        // trigger an error if the request was not successful
+        if (this.status >= 400) {
+          player.hls.error = {
+            status: this.status,
+            message: 'HLS segment request error at URL: ' + segmentUri,
+            code: (this.status >= 500) ? 4 : 2
+          };
+          player.trigger('error');
+          return;
+        }
 
-          // calculate the download bandwidth
-          player.hls.segmentXhrTime = (+new Date()) - startTime;
-          player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
+        // stop processing if the request was aborted
+        if (!this.response) {
+          return;
+        }
 
-          // transmux the segment data from MP2T to FLV
-          segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
+        // calculate the download bandwidth
+        player.hls.segmentXhrTime = (+new Date()) - startTime;
+        player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
 
-          // handle intra-segment seeking, if requested //
-          if (offset !== undefined && typeof offset === "number") {
-            player.el().querySelector('.vjs-tech').vjs_setProperty('lastSeekedTime', player.hls.getPtsByTime(segmentParser,offset)/1000);
-            for (tagIndex = 0; tagIndex < segmentParser.getTags().length; tagIndex++) {
-              if (segmentParser.getTags()[tagIndex].pts > offset) {
-                break;
-              }
-              // we're seeking past this tag, so ignore it
-              segmentParser.getNextTag();
+        // transmux the segment data from MP2T to FLV
+        segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
+
+        // handle intra-segment seeking, if requested //
+        if (offset !== undefined && typeof offset === "number") {
+          player.el().querySelector('.vjs-tech').vjs_setProperty('lastSeekedTime', player.hls.getPtsByTime(segmentParser,offset)/1000);
+          for (tagIndex = 0; tagIndex < segmentParser.getTags().length; tagIndex++) {
+            if (segmentParser.getTags()[tagIndex].pts > offset) {
+              break;
             }
+            // we're seeking past this tag, so ignore it
+            segmentParser.getNextTag();
           }
+        }
 
-          while (segmentParser.tagsAvailable()) {
-            player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes, player);
-          }
+        while (segmentParser.tagsAvailable()) {
+          player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes, player);
+        }
 
-          player.hls.mediaIndex++;
+        player.hls.mediaIndex++;
 
-          if (player.hls.mediaIndex === player.hls.media.segments.length) {
-            //TODO - Fix the endofstream //
-            mediaSource.endOfStream();
-            return;
-          }
+        if (player.hls.mediaIndex === player.hls.media.segments.length) {
+          mediaSource.endOfStream();
+          return;
+        }
 
-          // figure out what stream the next segment should be downloaded from
-          // with the updated bandwidth information
-          playlist = player.hls.selectPlaylist();
-          if (!playlist.segments) {
-            downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
-          } else {
-            player.hls.media = playlist;
-          }
+        // figure out what stream the next segment should be downloaded from
+        // with the updated bandwidth information
+        playlist = player.hls.selectPlaylist();
+        if (!playlist.segments) {
+          downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
+        } else {
+          player.hls.media = playlist;
         }
       };
       startTime = +new Date();
