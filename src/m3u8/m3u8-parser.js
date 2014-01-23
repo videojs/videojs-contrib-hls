@@ -14,11 +14,22 @@
         i = attrs.length,
         result = {},
         attr;
+
       while (i--) {
         attr = attrs[i].split('=');
         attr[0] = attr[0].replace(/^\s+|\s+$/g, '');
-        attr[1] = attr[1].replace(/^\s+|\s+$/g, '');
-        result[attr[0]] = attr[1];
+
+        // This is not sexy, but gives us the resulting object we want.
+        if (attr[1])
+        {
+          attr[1] = attr[1].replace(/^\s+|\s+$/g, '');
+          if(attr[1].indexOf('"')!= -1 ) {
+            attr[1] = attr[1].split('"')[1];
+          }
+          result[attr[0]] = attr[1];
+        } else {
+          attrs[i-1] = attrs[i-1] + ',' + attr[0];
+        }
       }
       return result;
     },
