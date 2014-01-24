@@ -154,20 +154,6 @@ var
       return 1;   // HAVE_METADATA
     };
 
-    player.hls.getPtsByTime = function(segmentParser, time) {
-      var index = 0;
-
-      for (index; index<segmentParser.getTags().length; index++) {
-        if(index === segmentParser.getTags().length-1) {
-          return segmentParser.getTags()[index].pts;
-        } else {
-          if (segmentParser.getTags()[index].pts <= time && segmentParser.getTags()[index+1].pts > time) {
-            return segmentParser.getTags()[index].pts;
-          }
-        }
-      }
-    };
-
     player.on('seeking', function() {
       var currentTime = player.currentTime();
       player.hls.mediaIndex = getMediaIndexByTime(player.hls.media, currentTime);
@@ -175,18 +161,6 @@ var
         segmentXhr.abort();
       }
       fillBuffer(currentTime * 1000);
-    });
-
-    player.on('hls-missing-segment', function() {
-      //console.log('Missing Segment Triggered');
-    });
-
-    player.on('hls-missing-playlist', function() {
-      //console.log('Missing Playlist Triggered');
-    });
-
-    player.on('error', function() {
-
     });
 
     /**
@@ -337,8 +311,7 @@ var
         bufferedTime = 0,
         segment = player.hls.media.segments[player.hls.mediaIndex],
         segmentUri,
-        startTime,
-        tagIndex;
+        startTime;
 
       // if there is a request already in flight, do nothing
       if (segmentXhr) {
@@ -401,13 +374,11 @@ var
         // transmux the segment data from MP2T to FLV
         segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
 
-        // handle intra-segment seeking, if requested //
+        // if we're refilling the buffer after a seek, scan through the muxed
+        // FLV tags until we find the one that is closest to the desired
+        // playback time
         if (offset !== undefined && typeof offset === "number") {
-          player.el().querySelector('.vjs-tech').vjs_setProperty('lastSeekedTime', player.hls.getPtsByTime(segmentParser,offset)/1000);
-          for (tagIndex = 0; tagIndex < segmentParser.getTags().length; tagIndex++) {
-            if (segmentParser.getTags()[tagIndex].pts > offset) {
-              break;
-            }
+          while (segmentParser.getTags()[0].pts < offset) {
             // we're seeking past this tag, so ignore it
             segmentParser.getNextTag();
           }

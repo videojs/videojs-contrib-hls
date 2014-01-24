@@ -186,15 +186,19 @@
 
   test('the flv tags are well-formed', function() {
     var
-      tag,
       byte,
+      tag,
       type,
+      currentPts = 0,
       lastTime = 0;
     parser.parseSegmentBinaryData(window.bcSegment);
 
     while (parser.tagsAvailable()) {
       tag = parser.getNextTag();
       type = tag.bytes[0];
+
+      ok(tag.pts >= currentPts, 'presentation time stamps are increasing');
+      currentPts = tag.pts;
 
       // generic flv headers
       ok(type === 8 || type === 9 || type === 18,
