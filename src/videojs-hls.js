@@ -8,7 +8,18 @@
 
 (function(window, videojs, document, undefined) {
 
-videojs.hls = {};
+videojs.hls = {
+  /**
+   * Whether the browser has built-in HLS support.
+   */
+  supportsNativeHls: (function() {
+    var
+      video = document.createElement('video'),
+      xMpegUrl = video.canPlayType('application/x-mpegURL'),
+      vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
+    return /probably|maybe/.test(xMpegUrl) || /probably|maybe/.test(vndMpeg);
+  })()
+};
 
 var
   // the desired length of video to maintain in the buffer, in seconds
@@ -125,6 +136,7 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
+      currentSrc,
       extname,
       srcUrl,
 
@@ -132,14 +144,27 @@ var
       downloadPlaylist,
       fillBuffer;
 
-    extname = (/[^#?]*(?:\/[^#?]*\.([^#?]*))/).exec(player.currentSrc());
+    // if the video element supports HLS natively, do nothing
+    if (videojs.hls.supportsNativeHls) {
+      return;
+    }
+
+    currentSrc = player.currentSrc();
+    // when the video element is initializing, currentSrc may be undefined
+    // grab the src from the video element because video.js doesn't currently
+    // expose it
+    if (!currentSrc) {
+      currentSrc = player.el().querySelector('.vjs-tech').src;
+    }
+
+    extname = (/[^#?]*(?:\/[^#?]*\.([^#?]*))/).exec(currentSrc);
     if (typeof options === 'string') {
       srcUrl = options;
     } else if (options) {
       srcUrl = options.url;
     } else if (extname && extname[1] === 'm3u8') {
       // if the currentSrc looks like an m3u8, attempt to use it
-      srcUrl = player.currentSrc();
+      srcUrl = currentSrc;
     } else {
       // do nothing until the plugin is initialized with a valid URL
       videojs.log('hls: no valid playlist URL specified');

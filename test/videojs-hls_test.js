@@ -605,6 +605,18 @@ test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
   equal(4, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
 });
 
+test('has no effect if native HLS is available', function() {
+  var supported = videojs.hls.supportsNativeHls;
+  videojs.hls.supportsNativeHls = true;
+  player.hls('manifest/master.m3u8');
+
+  ok(!(player.currentSrc() in videojs.mediaSources),
+     'no media source was opened');
+
+  // clean up
+  videojs.hls.supportsNativeHls = supported;
+});
+
 module('segment controller', {
   setup: function() {
     segmentController = new window.videojs.hls.SegmentController();
