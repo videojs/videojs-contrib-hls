@@ -26,6 +26,7 @@ var
   oldFlashSupported,
   oldXhr,
   oldSourceBuffer,
+  oldSupportsNativeHls,
   xhrUrls;
 
 module('HLS', {
@@ -40,6 +41,10 @@ module('HLS', {
     window.videojs.SourceBuffer = function() {
       this.appendBuffer = function() {};
     };
+
+    // force native HLS to be ignored
+    oldSupportsNativeHls = videojs.hls.supportsNativeHls;
+    videojs.hls.supportsNativeHls = false;
 
     // create the test player
     var video = document.createElement('video');
@@ -78,6 +83,7 @@ module('HLS', {
   },
   teardown: function() {
     videojs.Flash.isSupported = oldFlashSupported;
+    videojs.hls.supportsNativeHls = oldSupportsNativeHls;
     window.videojs.SourceBuffer = oldSourceBuffer;
     window.XMLHttpRequest = oldXhr;
   }
@@ -631,15 +637,11 @@ test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
 });
 
 test('has no effect if native HLS is available', function() {
-  var supported = videojs.hls.supportsNativeHls;
   videojs.hls.supportsNativeHls = true;
   player.hls('manifest/master.m3u8');
 
   ok(!(player.currentSrc() in videojs.mediaSources),
      'no media source was opened');
-
-  // clean up
-  videojs.hls.supportsNativeHls = supported;
 });
 
 module('segment controller', {

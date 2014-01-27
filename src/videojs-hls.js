@@ -15,9 +15,18 @@ videojs.hls = {
   supportsNativeHls: (function() {
     var
       video = document.createElement('video'),
-      xMpegUrl = video.canPlayType('application/x-mpegURL'),
-      vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
-    return /probably|maybe/.test(xMpegUrl) || /probably|maybe/.test(vndMpeg);
+      xMpegUrl,
+      vndMpeg;
+
+    // native HLS is definitely not supported if HTML5 video isn't
+    if (!videojs.Html5.isSupported()) {
+      return false;
+    }
+
+    xMpegUrl = video.canPlayType('application/x-mpegURL');
+    vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
+    return (/probably|maybe/).test(xMpegUrl) ||
+      (/probably|maybe/).test(vndMpeg);
   })()
 };
 
