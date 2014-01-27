@@ -38,6 +38,15 @@ var
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.1,
 
+  /**
+   * A comparator function to sort two playlist object by bandwidth.
+   * @param left {object} a media playlist object
+   * @param right {object} a media playlist object
+   * @return {number} Greater than zero if the bandwidth attribute of
+   * left is greater than the corresponding attribute of right. Less
+   * than zero if the bandwidth of right is greater than left and
+   * exactly zero if the two are equal.
+   */
   playlistBandwidth = function(left, right) {
     var leftBandwidth, rightBandwidth;
     if (left.attributes && left.attributes.BANDWIDTH) {
