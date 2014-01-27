@@ -189,6 +189,31 @@ test('re-initializes the plugin for each source', function() {
   notStrictEqual(firstInit, secondInit, 'the plugin object is replaced');
 });
 
+test('triggers an error when a master playlist request errors', function() {
+  var
+    status = 0,
+    error;
+  window.XMLHttpRequest = function() {
+    this.open = function() {};
+    this.send = function() {
+      this.readyState = 4;
+      this.status = status;
+      this.onreadystatechange();
+    };
+  };
+
+  player.on('error', function() {
+    error = player.hls.error;
+  });
+  player.hls('manifest/master.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  ok(error, 'an error is triggered');
+  strictEqual(2, error.code, 'a network error is triggered');
+});
+
 test('downloads media playlists after loading the master', function() {
   player.hls('manifest/master.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({

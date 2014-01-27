@@ -246,7 +246,7 @@ var
         var i, parser, playlist, playlistUri;
 
         if (xhr.readyState === 4) {
-          if (xhr.status >= 400) {
+          if (xhr.status >= 400 || this.status === 0) {
             player.hls.error = {
               status: xhr.status,
               message: 'HLS playlist request error at URL: ' + url,
