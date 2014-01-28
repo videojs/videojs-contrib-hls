@@ -62,6 +62,34 @@ var
   },
 
   /**
+   * A comparator function to sort two playlist object by resolution (width).
+   * @param left {object} a media playlist object
+   * @param right {object} a media playlist object
+   * @return {number} Greater than zero if the resolution.width attribute of
+   * left is greater than the corresponding attribute of right. Less
+   * than zero if the resolution.width of right is greater than left and
+   * exactly zero if the two are equal.
+   */
+  playlistResolution = function(left, right) {
+    var leftWidth, rightWidth;
+
+    if(left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
+      leftWidth = left.attributes.RESOLUTION.width;
+    }
+
+    leftWidth = leftWidth || window.Number.MAX_VALUE;
+
+    if(right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
+      rightWidth = right.attributes.RESOLUTION.width;
+    }
+
+    rightWidth = rightWidth || window.Number.MAX_VALUE;
+
+    return leftWidth - rightWidth;
+
+  },
+
+  /**
    * TODO - Document this great feature.
    *
    * @param playlist
@@ -206,6 +234,8 @@ var
       fillBuffer(currentTime * 1000);
     });
 
+    player.hls.useViewportSelection = true;
+
     /**
      * Chooses the appropriate media playlist based on the current
      * bandwidth estimate and the player size.
@@ -217,11 +247,13 @@ var
         bestVariant,
         effectiveBitrate,
         sortedPlaylists = player.hls.master.playlists.slice(),
+        mappedPlaylists = [],
         i = sortedPlaylists.length,
         variant;
 
       sortedPlaylists.sort(playlistBandwidth);
 
+      // determine best variant by bandwidth
       while (i--) {
         variant = sortedPlaylists[i];
 
@@ -238,6 +270,52 @@ var
         if (effectiveBitrate < player.hls.bandwidth) {
           bestVariant = variant;
           break;
+        }
+      }
+
+      // determine best variant by resolution
+      // we only want to run this if bandwidth routine above determined a best variant and override is true (default)
+      if (bestVariant && player.hls.useViewportSelection) {
+        // reset i
+        i = sortedPlaylists.length;
+
+        // map the playlists by resolution
+        // NOTE - this needs to be separate routine because eventually we want to set to index+1
+        while(i--) {
+          variant = sortedPlaylists[i];
+
+          // ignored playlists without resolution information
+          if (!variant.attributes || !variant.attributes.RESOLUTION || !variant.attributes.RESOLUTION.width || !variant.attributes.RESOLUTION.height) {
+            continue;
+          }
+
+          mappedPlaylists.push(variant);
+        }
+
+        // set index to the available mapped renditions
+        i = mappedPlaylists.length;
+
+        // sort by resolution [currently widths]
+        mappedPlaylists.sort(playlistResolution);
+
+        // iterate through the mapped playlists and assign a best variant based on rendition resolution
+        while (i--) {
+          variant = mappedPlaylists[i];
+
+          // override the bandwidth best variant with the best rendition variant
+          if (variant.attributes.RESOLUTION.width <= player.width() && variant.attributes.RESOLUTION.height <= player.height()) {
+
+            bestVariant = variant;
+
+            // TODO - select the variant one index higher than the best variant to account for dimension variance
+            /*
+              if( mappedPlaylists[i+1] != undefined )
+              {
+              bestVariant = mappedPlaylists[i+1];
+             */
+
+            break;
+          }
         }
       }
 
