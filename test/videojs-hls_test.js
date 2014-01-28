@@ -239,6 +239,24 @@ test('downloads media playlists after loading the master', function() {
               'first segment requested');
 });
 
+test('timeupdates do not check to fill the buffer until a media playlist is ready', function() {
+  var urls = [];
+  window.XMLHttpRequest = function() {
+    this.open = function(method, url) {
+      urls.push(url);
+    };
+    this.send = function() {};
+  };
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  player.trigger('timeupdate');
+
+  strictEqual(1, urls.length, 'one request was made');
+  strictEqual('manifest/media.m3u8', urls[0], 'media playlist requested');
+});
+
 test('calculates the bandwidth after downloading a segment', function() {
   player.hls('manifest/media.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({

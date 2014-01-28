@@ -394,8 +394,13 @@ var
             } else {
               player.duration(totalDuration(parser.manifest));
             }
+
+            // periodicaly check if the buffer needs to be refilled
+            player.on('timeupdate', fillBuffer);
+
             player.trigger('loadedmanifest');
             player.trigger('loadedmetadata');
+            fillBuffer();
             return;
           }
 
@@ -535,9 +540,6 @@ var
       var sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
       player.hls.sourceBuffer = sourceBuffer;
       sourceBuffer.appendBuffer(segmentParser.getFlvHeader());
-
-      player.on('loadedmetadata', fillBuffer);
-      player.on('timeupdate', fillBuffer);
 
       player.hls.mediaIndex = 0;
       downloadPlaylist(srcUrl);
