@@ -48,7 +48,7 @@ support for:
 - Subtitles
 - Segment codecs _other than_ H.264 with AAC audio
 - Live streams
-- Internet Explorer 8
+- Internet Explorer < 10
 
 ### Runtime Properties
 #### player.hls.master
