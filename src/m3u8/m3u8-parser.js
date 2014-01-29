@@ -422,6 +422,15 @@
           currentUri.uri = entry.uri;
           uris.push(currentUri);
 
+          // if no explicit duration was declared, use the target duration
+          if (this.manifest.targetDuration &&
+              !('duration' in currentUri)) {
+            this.trigger('warn', {
+              message: 'defaulting segment duration to the target duration'
+            });
+            currentUri.duration = this.manifest.targetDuration;
+          }
+
           // prepare for the next URI
           currentUri = {};
         },

@@ -16,6 +16,7 @@
         "length": 587500,
         "offset": 522828
       },
+      "duration": 10,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -135,6 +136,7 @@
         "length": 44556,
         "offset": 8353216
       },
+      "duration": 10,
       "uri": "hls_450k_video.ts"
     }
   ],
