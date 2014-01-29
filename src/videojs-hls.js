@@ -484,7 +484,9 @@ var
             message: 'HLS segment request error at URL: ' + segmentUri,
             code: (this.status >= 500) ? 4 : 2
           };
-          player.trigger('error');
+
+          // try moving on to the next segment
+          player.hls.mediaIndex++
           return;
         }
 

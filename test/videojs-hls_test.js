@@ -292,6 +292,28 @@ test('selects a playlist after segment downloads', function() {
   strictEqual(calls, 2, 'selects after additional segments');
 });
 
+test('moves to the next segment if there is a network error', function() {
+  var mediaIndex;
+  player.hls('manifest/master.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  // fail the next segment request
+  window.XMLHttpRequest = function() {
+    this.open = function() {};
+    this.send = function() {
+      this.readyState = 4;
+      this.status = 400;
+      this.onreadystatechange();
+    };
+  };
+  mediaIndex = player.hls.mediaIndex;
+  player.trigger('timeupdate');
+
+  strictEqual(mediaIndex + 1, player.hls.mediaIndex, 'media index is incremented');
+});
+
 test('updates the duration after switching playlists', function() {
   var
     calls = 0,
@@ -593,8 +615,6 @@ test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
 });
 
 test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
-  var errorTriggered = false;
-
   player.hls('manifest/media.m3u8');
 
   player.on('loadedmanifest', function () {
@@ -610,22 +630,15 @@ test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
     };
   });
 
-  player.on('error', function () {
-    errorTriggered = true;
-  });
-
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
-  equal(true, errorTriggered, 'Missing Segment error event should trigger');
   ok(player.hls.error.message, 'an error message is available');
   equal(2, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
 });
 
 test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
-  var errorTriggered = false;
-
   player.hls('manifest/media.m3u8');
 
   player.on('loadedmanifest', function () {
@@ -641,15 +654,10 @@ test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
     };
   });
 
-  player.on('error', function () {
-    errorTriggered = true;
-  });
-
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
-  equal(true, errorTriggered, 'Missing Segment error event should trigger');
   ok(player.hls.error.message, 'an error message is available');
   equal(4, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
 });
