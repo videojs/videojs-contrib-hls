@@ -486,7 +486,7 @@ var
           };
 
           // try moving on to the next segment
-          player.hls.mediaIndex++
+          player.hls.mediaIndex++;
           return;
         }
 
