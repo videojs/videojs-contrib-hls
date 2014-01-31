@@ -506,9 +506,9 @@ test('only makes one segment request at a time', function() {
   strictEqual(1, openedXhrs, 'only one XHR is made');
 });
 
-test('uses the currentSrc if no options are provided and it ends in ".m3u8"', function() {
+test('uses the src attribute if no options are provided and it ends in ".m3u8"', function() {
   var url = 'http://example.com/services/mobile/streaming/index/master.m3u8?videoId=1824650741001';
-  player.src(url);
+  player.el().querySelector('.vjs-tech').src = url;
   player.hls();
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
@@ -517,31 +517,51 @@ test('uses the currentSrc if no options are provided and it ends in ".m3u8"', fu
   strictEqual(url, xhrUrls[0], 'currentSrc is used');
 });
 
-test('ignores currentSrc if it doesn\'t have the "m3u8" extension', function() {
-  player.src('basdfasdfasdfliel//.m3u9');
+test('ignores src attribute if it doesn\'t have the "m3u8" extension', function() {
+  var tech = player.el().querySelector('.vjs-tech');
+  tech.src = 'basdfasdfasdfliel//.m3u9';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
   strictEqual(xhrUrls.length, 0, 'no request is made');
 
-  player.src('');
+  tech.src = '';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
   strictEqual(xhrUrls.length, 0, 'no request is made');
 
-  player.src('http://example.com/movie.mp4?q=why.m3u8');
+  tech.src = 'http://example.com/movie.mp4?q=why.m3u8';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
   strictEqual(xhrUrls.length, 0, 'no request is made');
 
-  player.src('http://example.m3u8/movie.mp4');
+  tech.src = 'http://example.m3u8/movie.mp4';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
   strictEqual(xhrUrls.length, 0, 'no request is made');
 
-  player.src('//example.com/movie.mp4#http://tricky.com/master.m3u8');
+  tech.src = '//example.com/movie.mp4#http://tricky.com/master.m3u8';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
   strictEqual(xhrUrls.length, 0, 'no request is made');
+});
+
+test('activates if the first playable source is HLS', function() {
+  document.querySelector('#qunit-fixture').innerHTML =
+    '<video controls>' +
+      '<source type="slartibartfast$%" src="movie.slarti">' +
+      '<source type="application/x-mpegURL" src="movie.m3u8">' +
+      '<source type="video/mp4" src="movie.mp4">' +
+    '</video>';
+  video = document.querySelector('#qunit-fixture video');
+  player = videojs(video, {
+    flash: {
+      swf: '../node_modules/video.js/dist/video-js/video-js.swf'
+    },
+    techOrder: ['flash']
+  });
+  player.hls();
+
+  ok(player.currentSrc() in videojs.mediaSources, 'media source created');
 });
 
 test('cancels outstanding XHRs when seeking', function() {

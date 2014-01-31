@@ -182,7 +182,6 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
-      currentSrc,
       extname,
       srcUrl,
 
@@ -195,23 +194,60 @@ var
       return;
     }
 
-    currentSrc = player.currentSrc();
-    // when the video element is initializing, currentSrc may be undefined
-    // grab the src from the video element because video.js doesn't currently
-    // expose it
-    if (!currentSrc) {
-      currentSrc = player.el().querySelector('.vjs-tech').src;
-    }
+    srcUrl = (function() {
+      var
+        extname,
+        i = 0,
+        j = 0,
+        src = player.el().querySelector('.vjs-tech').src,
+        sources = player.options().sources,
+        techName,
+        length = sources.length;
 
-    extname = (/[^#?]*(?:\/[^#?]*\.([^#?]*))/).exec(currentSrc);
-    if (typeof options === 'string') {
-      srcUrl = options;
-    } else if (options) {
-      srcUrl = options.url;
-    } else if (extname && extname[1] === 'm3u8') {
-      // if the currentSrc looks like an m3u8, attempt to use it
-      srcUrl = currentSrc;
-    } else {
+      // use the URL specified in options if one was provided
+      if (typeof options === 'string') {
+        return options;
+      } else if (options) {
+        return options.url;
+      }
+
+      // src attributes take precedence over source children
+      if (src) {
+
+        // assume files with the m3u8 extension are HLS
+        extname = (/[^#?]*(?:\/[^#?]*\.([^#?]*))/).exec(src);
+        if (extname && extname[1] === 'm3u8') {
+          return src;
+        }
+        return;
+      }
+
+      // find the first playable source
+      for (; i < length; i++) {
+
+        // ignore sources without a specified type
+        if (!sources[i].type) {
+          continue;
+        }
+
+        // do nothing if the source is handled by one of the standard techs
+        for (j in player.options().techOrder) {
+          techName = player.options().techOrder[j];
+          techName = techName[0].toUpperCase() + techName.substring(1);
+          if (videojs[techName].canPlaySource({ type: sources[i].type })) {
+            return;
+          }
+        }
+
+        // use the plugin if the MIME type specifies HLS
+        if ((/application\/x-mpegURL/).test(sources[i].type) ||
+            (/application\/vnd\.apple\.mpegURL/).test(sources[i].type)) {
+          return sources[i].src;
+        }
+      }
+    })();
+
+    if (!srcUrl) {
       // do nothing until the plugin is initialized with a valid URL
       videojs.log('hls: no valid playlist URL specified');
       return;
@@ -546,10 +582,10 @@ var
       player.hls.mediaIndex = 0;
       downloadPlaylist(srcUrl);
     });
-    player.src({
+    player.src([{
       src: videojs.URL.createObjectURL(mediaSource),
       type: "video/flv"
-    });
+    }]);
   };
 
 videojs.plugin('hls', function() {
