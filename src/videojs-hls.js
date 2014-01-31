@@ -182,7 +182,6 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
-      extname,
       srcUrl,
 
       segmentXhr,

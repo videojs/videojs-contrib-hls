@@ -546,6 +546,7 @@ test('ignores src attribute if it doesn\'t have the "m3u8" extension', function(
 });
 
 test('activates if the first playable source is HLS', function() {
+  var video;
   document.querySelector('#qunit-fixture').innerHTML =
     '<video controls>' +
       '<source type="slartibartfast$%" src="movie.slarti">' +
