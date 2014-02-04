@@ -27,7 +27,7 @@
       0x09, 0x00, 0x00, 0x00, 0x00
     ],
 
-    extend = videojs.util.mergeOptions,
+    extend = window.videojs.util.mergeOptions,
 
     testAudioTag,
     testVideoTag,
@@ -155,8 +155,7 @@
           settings = extend({
             payloadUnitStartIndicator: true,
             pid: 0x00
-          }, options),
-          pid;
+          }, options);
 
         // header
         // sync_byte
@@ -169,11 +168,11 @@
         result = result.concat(makePsi(settings));
 
         // ensure the resulting packet is the correct size
-        result.length = videojs.hls.SegmentParser.MP2T_PACKET_LENGTH;
+        result.length = window.videojs.hls.SegmentParser.MP2T_PACKET_LENGTH;
         return result;
       },
-      h264Type = videojs.hls.SegmentParser.STREAM_TYPES.h264,
-      adtsType = videojs.hls.SegmentParser.STREAM_TYPES.adts;
+      h264Type = window.videojs.hls.SegmentParser.STREAM_TYPES.h264,
+      adtsType = window.videojs.hls.SegmentParser.STREAM_TYPES.adts;
 
     parser.parseSegmentBinaryData(new Uint8Array(makePacket({
       programs: {

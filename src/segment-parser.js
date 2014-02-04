@@ -284,8 +284,8 @@
         patTableId = data[offset];
 
         if (patTableId !== 0x00) {
-          videojs.log('the table_id of the PAT should be 0x00 but was'
-                      + patTableId.toString(16));
+          videojs.log('the table_id of the PAT should be 0x00 but was' +
+                      patTableId.toString(16));
         }
 
         // the current_next_indicator specifies whether this PAT is
@@ -382,8 +382,8 @@
           offset += 1 + data[offset];
         }
         if (data[offset] !== 0x02) {
-          videojs.log('The table_id of a PMT should be 0x02 but was '
-                      + data[offset].toString(16));
+          videojs.log('The table_id of a PMT should be 0x02 but was ' +
+                      data[offset].toString(16));
         }
 
         // whether this PMT is currently applicable or is part of the
