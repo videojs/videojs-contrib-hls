@@ -269,7 +269,6 @@ var
       fillBuffer(currentTime * 1000);
     });
 
-    player.hls.useViewportSelection = true;
 
     /**
      * Chooses the appropriate media playlist based on the current
@@ -277,18 +276,20 @@ var
      * @return the highest bitrate playlist less than the currently detected
      * bandwidth, accounting for some amount of bandwidth variance
      */
-    player.hls.selectPlaylist = function() {
+    player.hls.selectPlaylist = function () {
       var
-        bestVariant,
         effectiveBitrate,
         sortedPlaylists = player.hls.master.playlists.slice(),
-        mappedPlaylists = [],
+        bandwidthPlaylists = [],
         i = sortedPlaylists.length,
-        variant;
+        variant,
+        bandwidthBestVariant,
+        resolutionBestVariant;
 
       sortedPlaylists.sort(playlistBandwidth);
 
-      // determine best variant by bandwidth
+      // map playlist options by bandwidth and select
+      // best variant as appropriate
       while (i--) {
         variant = sortedPlaylists[i];
 
@@ -302,61 +303,45 @@ var
         // since the playlists are sorted in ascending order by bandwidth, the
         // current variant is the best as long as its effective bitrate is
         // below the current bandwidth estimate
+        // NOTE - only set once
         if (effectiveBitrate < player.hls.bandwidth) {
-          bestVariant = variant;
+          bandwidthPlaylists.push(variant);
+          if (!bandwidthBestVariant) {
+            bandwidthBestVariant = variant;
+          }
+        }
+      }
+
+      // set index to the available bandwidth mapped renditions
+      i = bandwidthPlaylists.length;
+
+      // sort those by resolution [currently widths]
+      bandwidthPlaylists.sort(playlistResolution);
+
+      // iterate through bandwidth related playlists and find
+      // best rendition by player dimension
+
+      // Tests
+      // Seeking - find if you've seeked correctly?
+      // SelectPlaylist -
+      while (i--) {
+        variant = bandwidthPlaylists[i];
+
+        // ignored playlists without resolution information
+        if (!variant.attributes || !variant.attributes.RESOLUTION ||
+          !variant.attributes.RESOLUTION.width || !variant.attributes.RESOLUTION.height) {
+          continue;
+        }
+
+        if (variant.attributes.RESOLUTION.width <= player.width() &&
+          variant.attributes.RESOLUTION.height <= player.height()) {
+          resolutionBestVariant = variant;
           break;
         }
       }
 
-      // determine best variant by resolution
-      // we only want to run this if bandwidth routine above determined a best variant and override is true (default)
-      if (bestVariant && player.hls.useViewportSelection) {
-        // reset i
-        i = sortedPlaylists.length;
-
-        // map the playlists by resolution
-        // NOTE - this needs to be separate routine because eventually we want to set to index+1
-        while(i--) {
-          variant = sortedPlaylists[i];
-
-          // ignored playlists without resolution information
-          if (!variant.attributes || !variant.attributes.RESOLUTION || !variant.attributes.RESOLUTION.width || !variant.attributes.RESOLUTION.height) {
-            continue;
-          }
-
-          mappedPlaylists.push(variant);
-        }
-
-        // set index to the available mapped renditions
-        i = mappedPlaylists.length;
-
-        // sort by resolution [currently widths]
-        mappedPlaylists.sort(playlistResolution);
-
-        // iterate through the mapped playlists and assign a best variant based on rendition resolution
-        while (i--) {
-          variant = mappedPlaylists[i];
-
-          // override the bandwidth best variant with the best rendition variant
-          if (variant.attributes.RESOLUTION.width <= player.width() && variant.attributes.RESOLUTION.height <= player.height()) {
-
-            bestVariant = variant;
-
-            // TODO - select the variant one index higher than the best variant to account for dimension variance
-            /*
-              if( mappedPlaylists[i+1] != undefined )
-              {
-              bestVariant = mappedPlaylists[i+1];
-             */
-
-            break;
-          }
-        }
-      }
-
-      // if no acceptable variant was found, fall back on the lowest
-      // bitrate playlist
-      return bestVariant || sortedPlaylists[0];
+      // fallback chain of variants
+      return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
     };
 
     /**
