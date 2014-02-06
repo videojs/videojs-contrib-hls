@@ -73,20 +73,23 @@ var
   playlistResolution = function(left, right) {
     var leftWidth, rightWidth;
 
-    if(left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
+    if (left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
       leftWidth = left.attributes.RESOLUTION.width;
     }
 
     leftWidth = leftWidth || window.Number.MAX_VALUE;
 
-    if(right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
+    if (right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
       rightWidth = right.attributes.RESOLUTION.width;
     }
 
     rightWidth = rightWidth || window.Number.MAX_VALUE;
 
-    return leftWidth - rightWidth;
-
+    if (leftWidth === rightWidth && left.attributes.BANDWIDTH && right.attributes.BANDWIDTH) {
+      return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
+    } else {
+      return leftWidth - rightWidth;
+    }
   },
 
   /**
