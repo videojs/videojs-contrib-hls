@@ -101,5 +101,22 @@ configured. Easy [instructions are
 available](http://enable-cors.org/server.html) for popular webservers
 and most CDNs should have no trouble turning CORS on for your account.
 
+## MBR Rendition Selection Logic
+In situations where manifests have multiple renditions, the player will
+go through the following algorithm to determine the best rendition by
+bandwidth and viewport dimensions.
+
+- Start on index 0 as defined in the HLS Spec (link above)
+- On a successful load complete per segment determine the following;
+    - player.hls.bandwidth set to value as segment byte size over download time
+    - Viewport width/height as determined by player.width()/player.height()
+    - Playlists mapped and sorted by BANDWIDTH less than or equal to 1.1x player.hls.bandwidth
+    - Best playlist variant by BANDWIDTH determined
+    - Subset of bandwidth appropriate renditions mapped
+    - Subset validated for RESOLUTION attributes less than or equal to player dimensions
+    - Best playlist variant by RESOLUTION determined
+- Result is as follows;
+    - [Best RESOLUTION variant] OR [Best BANDWIDTH variant] OR [inital playlist in manifest]
+
 ## Release History
 _(Nothing yet)_

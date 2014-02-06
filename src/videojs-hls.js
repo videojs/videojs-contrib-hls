@@ -85,6 +85,8 @@ var
 
     rightWidth = rightWidth || window.Number.MAX_VALUE;
 
+    // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
+    // have the same media dimensions/ resolution
     if (leftWidth === rightWidth && left.attributes.BANDWIDTH && right.attributes.BANDWIDTH) {
       return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
     } else {
