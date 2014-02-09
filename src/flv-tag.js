@@ -296,8 +296,8 @@ hls.FlvTag = function(type, extraData) {
 
     // trim down the byte buffer to what is actually being used
     this.bytes = this.bytes.subarray(0, this.length);
+    this.frameTime = hls.FlvTag.frameTime(this.bytes);
     console.assert(this.bytes.byteLength === this.length);
-
     return this;
   };
 };

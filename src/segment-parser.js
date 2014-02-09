@@ -4,23 +4,29 @@
     FlvTag = videojs.hls.FlvTag,
     H264Stream = videojs.hls.H264Stream,
     AacStream = videojs.hls.AacStream,
-    m2tsPacketSize = 188;
+    MP2T_PACKET_LENGTH,
+    STREAM_TYPES;
 
-  console.assert(H264Stream);
-  console.assert(AacStream);
-
-  window.videojs.hls.SegmentParser = function() {
+  /**
+   * An object that incrementally transmuxes MPEG2 Trasport Stream
+   * chunks into an FLV.
+   */
+  videojs.hls.SegmentParser = function() {
     var
       self = this,
       parseTSPacket,
-      pmtPid,
-      streamBuffer = new Uint8Array(m2tsPacketSize),
+      streamBuffer = new Uint8Array(MP2T_PACKET_LENGTH),
       streamBufferByteCount = 0,
-      videoPid,
       h264Stream = new H264Stream(),
-      audioPid,
       aacStream = new AacStream(),
       seekToKeyFrame = false;
+
+    // expose the stream metadata
+    self.stream = {
+      // the mapping between transport stream programs and the PIDs
+      // that form their elementary streams
+      programMapTable: {}
+    };
 
     // For information on the FLV format, see
     // http://download.macromedia.com/f4v/video_file_format_spec_v10_1.pdf.
@@ -146,24 +152,24 @@
       // reconstruct the first packet. The rest of the packets will be
       // parsed directly from data
       if (streamBufferByteCount > 0) {
-        if (data.byteLength + streamBufferByteCount < m2tsPacketSize) {
+        if (data.byteLength + streamBufferByteCount < MP2T_PACKET_LENGTH) {
           // the current data is less than a single m2ts packet, so stash it
           // until we receive more
 
           // ?? this seems to append streamBuffer onto data and then just give up. I'm not sure why that would be interesting.
-          videojs.log('data.length + streamBuffer.length < m2tsPacketSize ??');
+          videojs.log('data.length + streamBuffer.length < MP2T_PACKET_LENGTH ??');
           streamBuffer.readBytes(data, data.length, streamBuffer.length);
           return;
         } else {
           // we have enough data for an m2ts packet
           // process it immediately
-          dataSlice = data.subarray(0, m2tsPacketSize - streamBufferByteCount);
+          dataSlice = data.subarray(0, MP2T_PACKET_LENGTH - streamBufferByteCount);
           streamBuffer.set(dataSlice, streamBufferByteCount);
 
           parseTSPacket(streamBuffer);
 
           // reset the buffer
-          streamBuffer = new Uint8Array(m2tsPacketSize);
+          streamBuffer = new Uint8Array(MP2T_PACKET_LENGTH);
           streamBufferByteCount = 0;
         }
       }
@@ -178,7 +184,7 @@
         }
 
         // base case: not enough data to parse a m2ts packet
-        if (data.byteLength - dataPosition < m2tsPacketSize) {
+        if (data.byteLength - dataPosition < MP2T_PACKET_LENGTH) {
           if (data.byteLength - dataPosition > 0) {
             // there are bytes remaining, save them for next time
             streamBuffer.set(data.subarray(dataPosition),
@@ -189,8 +195,8 @@
         }
 
         // attempt to parse a m2ts packet
-        if (parseTSPacket(data.subarray(dataPosition, dataPosition + m2tsPacketSize))) {
-          dataPosition += m2tsPacketSize;
+        if (parseTSPacket(data.subarray(dataPosition, dataPosition + MP2T_PACKET_LENGTH))) {
+          dataPosition += MP2T_PACKET_LENGTH;
         } else {
           // If there was an error parsing a TS packet. it could be
           // because we are not TS packet aligned. Step one forward by
@@ -201,24 +207,31 @@
       }
     };
 
+    /**
+     * Parses a video/mp2t packet and appends the underlying video and
+     * audio data onto h264stream and aacStream, respectively.
+     * @param data {Uint8Array} the bytes of an MPEG2-TS packet,
+     * including the sync byte.
+     * @return {boolean} whether a valid packet was encountered
+     */
     // TODO add more testing to make sure we dont walk past the end of a TS
     // packet!
     parseTSPacket = function(data) { // :ByteArray):Boolean {
       var
         offset = 0, // :uint
-        end = offset + m2tsPacketSize, // :uint
-
-        // Don't look for a sync byte. We handle that in
-        // parseSegmentBinaryData()
+        end = offset + MP2T_PACKET_LENGTH, // :uint
 
         // Payload Unit Start Indicator
         pusi = !!(data[offset + 1] & 0x40), // mask: 0100 0000
 
-        // PacketId
+        // packet identifier (PID), a unique identifier for the elementary
+        // stream this packet describes
         pid = (data[offset + 1] & 0x1F) << 8 | data[offset + 2], // mask: 0001 1111
+
+        // adaptation_field_control, whether this header is followed by an
+        // adaptation field, a payload, or both
         afflag = (data[offset + 3] & 0x30 ) >>> 4,
 
-        aflen, // :uint
         patTableId, // :int
         patCurrentNextIndicator, // Boolean
         patSectionLength, // :uint
@@ -231,8 +244,8 @@
         pts, // :uint
         dts, // :uint
 
-        pmtTableId, // :int
         pmtCurrentNextIndicator, // :Boolean
+        pmtProgramDescriptorsLength,
         pmtSectionLength, // :uint
 
         streamType, // :int
@@ -243,42 +256,64 @@
       // corrupt stream detection
       // cc = (data[offset + 3] & 0x0F);
 
-      // Done with TS header
+      // move past the header
       offset += 4;
 
-      if (afflag > 0x01) {   // skip most of the adaption field
-        aflen = data[offset];
-        offset += aflen + 1;
+      // if an adaption field is present, its length is specified by
+      // the fifth byte of the PES header. The adaptation field is
+      // used to specify some forms of timing and control data that we
+      // do not currently use.
+      if (afflag > 0x01) {
+        offset += data[offset] + 1;
       }
 
+      // Handle a Program Association Table (PAT). PATs map PIDs to
+      // individual programs. If this transport stream was being used
+      // for television broadcast, a program would probably be
+      // equivalent to a channel. In HLS, it would be very unusual to
+      // create an mp2t stream with multiple programs.
       if (0x0000 === pid) {
-        // always test for PMT first! (becuse other variables default to 0)
-
-        // if pusi is set we must skip X bytes (PSI pointer field)
-        offset += pusi ? 1 + data[offset] : 0;
+        // The PAT may be split into multiple sections and those
+        // sections may be split into multiple packets. If a PAT
+        // section starts in this packet, PUSI will be true and the
+        // first byte of the playload will indicate the offset from
+        // the current position to the start of the section.
+        if (pusi) {
+          offset += 1 + data[offset];
+        }
         patTableId = data[offset];
 
-        console.assert(0x00 === patTableId, 'patTableId should be 0x00');
+        if (patTableId !== 0x00) {
+          videojs.log('the table_id of the PAT should be 0x00 but was' +
+                      patTableId.toString(16));
+        }
 
+        // the current_next_indicator specifies whether this PAT is
+        // currently applicable or is part of the next table to become
+        // active
         patCurrentNextIndicator = !!(data[offset + 5] & 0x01);
         if (patCurrentNextIndicator) {
+          // section_length specifies the number of bytes following
+          // its position to the end of this section
           patSectionLength =  (data[offset + 1] & 0x0F) << 8 | data[offset + 2];
-          offset += 8; // skip past PSI header
+          // move past the rest of the PSI header to the first program
+          // map table entry
+          offset += 8;
 
-          // We currently only support streams with 1 program
-          patSectionLength = (patSectionLength - 9) / 4;
-          if (1 !== patSectionLength) {
+          // we don't handle streams with more than one program, so
+          // raise an exception if we encounter one
+          // section_length = rest of header + (n * entry length) + CRC
+          // = 5 + (n * 4) + 4
+          if ((patSectionLength - 5 - 4) / 4 !== 1) {
             throw new Error("TS has more that 1 program");
           }
 
-          // if we ever support more that 1 program (unlikely) loop over them here
-          // var programNumber =   data[offset + 0] << 8 | data[offset + 1];
-          // var programId = (data[offset+2] & 0x1F) << 8 | data[offset + 3];
-          pmtPid = (data[offset + 2] & 0x1F) << 8 | data[offset + 3];
+          // the Program Map Table (PMT) associates the underlying
+          // video and audio streams with a unique PID
+          self.stream.pmtPid = (data[offset + 2] & 0x1F) << 8 | data[offset + 3];
         }
-
-        // We could test the CRC here to detect corruption with extra CPU cost
-      } else if (videoPid === pid || audioPid === pid) {
+      } else if (pid === self.stream.programMapTable[STREAM_TYPES.h264] ||
+                 pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
         if (pusi) {
           // comment out for speed
           if (0x00 !== data[offset + 0] || 0x00 !== data[offset + 1] || 0x01 !== data[offset + 2]) {
@@ -322,60 +357,81 @@
           // Skip past "optional" portion of PTS header
           offset += pesHeaderLength;
 
-          if (videoPid === pid) {
+          if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
             // Stash this frame for future use.
             // console.assert(videoFrames.length < 3);
 
             h264Stream.setNextTimeStamp(pts,
                                         dts,
                                         dataAlignmentIndicator);
-          } else if (audioPid === pid) {
+          } else if (pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
             aacStream.setNextTimeStamp(pts,
                                        pesPacketSize,
                                        dataAlignmentIndicator);
           }
         }
 
-        if (audioPid === pid) {
+        if (pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
           aacStream.writeBytes(data, offset, end - offset);
-        } else if (videoPid === pid) {
+        } else if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
           h264Stream.writeBytes(data, offset, end - offset);
         }
-      } else if (pmtPid === pid) {
-        // TODO sanity check data[offset]
-        // if pusi is set we must skip X bytes (PSI pointer field)
-        offset += (pusi ? 1 + data[offset] : 0);
-        pmtTableId = data[offset];
+      } else if (self.stream.pmtPid === pid) {
+        // similarly to the PAT, jump to the first byte of the section
+        if (pusi) {
+          offset += 1 + data[offset];
+        }
+        if (data[offset] !== 0x02) {
+          videojs.log('The table_id of a PMT should be 0x02 but was ' +
+                      data[offset].toString(16));
+        }
 
-        console.assert(0x02 === pmtTableId);
-
+        // whether this PMT is currently applicable or is part of the
+        // next table to become active
         pmtCurrentNextIndicator = !!(data[offset + 5] & 0x01);
         if (pmtCurrentNextIndicator) {
-          audioPid = videoPid = 0;
-          pmtSectionLength  = (data[offset + 1] & 0x0F) << 8 | data[offset + 2];
+          // overwrite any existing program map table
+          self.stream.programMapTable = {};
+          // section_length specifies the number of bytes following
+          // its position to the end of this section
+          pmtSectionLength  = (data[offset + 1] & 0x0f) << 8 | data[offset + 2];
+          // subtract the length of the program info descriptors
+          pmtProgramDescriptorsLength = (data[offset + 10] & 0x0f) << 8 | data[offset + 11];
+          pmtSectionLength -= pmtProgramDescriptorsLength;
           // skip CRC and PSI data we dont care about
+          // rest of header + CRC = 9 + 4
           pmtSectionLength -= 13;
 
-          offset += 12; // skip past PSI header and some PMT data
-          while (0 < pmtSectionLength) {
-            streamType = data[offset + 0];
-            elementaryPID = (data[offset + 1] & 0x1F) << 8 | data[offset + 2];
-            ESInfolength = (data[offset + 3] & 0x0F) << 8 | data[offset + 4];
-            offset += 5 + ESInfolength;
-            pmtSectionLength -=  5 + ESInfolength;
+          // align offset to the first entry in the PMT
+          offset += 12 + pmtProgramDescriptorsLength;
 
-            if (0x1B === streamType) {
-              if (0 !== videoPid) {
+          // iterate through the entries
+          while (0 < pmtSectionLength) {
+            // the type of data carried in the PID this entry describes
+            streamType = data[offset + 0];
+            // the PID for this entry
+            elementaryPID = (data[offset + 1] & 0x1F) << 8 | data[offset + 2];
+
+            if (streamType === STREAM_TYPES.h264) {
+              if (self.stream.programMapTable[streamType] &&
+                  self.stream.programMapTable[streamType] !== elementaryPID) {
                 throw new Error("Program has more than 1 video stream");
               }
-              videoPid = elementaryPID;
-            } else if (0x0F === streamType) {
-              if (0 !== audioPid) {
+              self.stream.programMapTable[streamType] = elementaryPID;
+            } else if (streamType === STREAM_TYPES.adts) {
+              if (self.stream.programMapTable[streamType] &&
+                  self.stream.programMapTable[streamType] !== elementaryPID) {
                 throw new Error("Program has more than 1 audio Stream");
               }
-              audioPid = elementaryPID;
+              self.stream.programMapTable[streamType] = elementaryPID;
             }
             // TODO add support for MP3 audio
+
+            // the length of the entry descriptor
+            ESInfolength = (data[offset + 3] & 0x0F) << 8 | data[offset + 4];
+            // move to the first byte after the end of this entry
+            offset += 5 + ESInfolength;
+            pmtSectionLength -=  5 + ESInfolength;
           }
         }
         // We could test the CRC here to detect corruption with extra CPU cost
@@ -390,6 +446,10 @@
       return true;
     };
 
+    self.getTags = function() {
+      return h264Stream.tags;
+    };
+
     self.stats = {
       h264Tags: function() {
         return h264Stream.tags.length;
@@ -399,4 +459,12 @@
       }
     };
   };
+
+  // MPEG2-TS constants
+  videojs.hls.SegmentParser.MP2T_PACKET_LENGTH = MP2T_PACKET_LENGTH = 188;
+  videojs.hls.SegmentParser.STREAM_TYPES = STREAM_TYPES = {
+    h264: 0x1b,
+    adts: 0x0f
+  };
+
 })(window);

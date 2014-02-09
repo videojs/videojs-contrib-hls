@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <title>video.js HLS Plugin Example</title>
 
-  <link href="node_modules/video.js/video-js.css" rel="stylesheet">
+  <link href="node_modules/video.js/dist/video-js/video-js.css" rel="stylesheet">
   
   <!-- video.js -->
-  <script src="node_modules/video.js/video.dev.js"></script>
+  <script src="node_modules/video.js/dist/video-js/video.js"></script>
 
   <!-- Media Sources plugin -->
-  <script src="node_modules/videojs-media-sources/videojs-media-sources.js"></script>
+  <script src="node_modules/videojs-contrib-media-sources/videojs-media-sources.js"></script>
 
   <!-- HLS plugin -->
-  <script src="src/video-js-hls.js"></script>
+  <script src="src/videojs-hls.js"></script>
 
   <!-- segment handling -->
   <script src="src/flv-tag.js"></script>
@@ -21,15 +21,10 @@
   <script src="src/h264-stream.js"></script>
   <script src="src/aac-stream.js"></script>
   <script src="src/segment-parser.js"></script>
-  <script src="src/segment-controller.js"></script>
 
   <!-- m3u8 handling -->
-  <script src="src/m3u8/m3u8.js"></script>
-  <script src="src/m3u8/m3u8-tag-types.js"></script>
+  <script src="src/stream.js"></script>
   <script src="src/m3u8/m3u8-parser.js"></script>
-  <script src="src/manifest-controller.js"></script>
-  <script src="src/segment-controller.js"></script>
-  <script src="src/hls-playback-controller.js"></script>
   
   <!-- example MPEG2-TS segments -->
   <!-- bipbop -->
@@ -44,20 +39,17 @@
          height="300"
          width="600"
          controls>
+    <source
+       src="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8"
+       type="application/x-mpegURL">
   </video>
   <script>
-    var video, mediaSource;
-
+    videojs.options.flash.swf = 'node_modules/video.js/dist/video-js/video-js.swf';
     // initialize the player
-    videojs.options.flash.swf = 'node_modules/videojs-media-sources/video-js-with-mse.swf';
-    video = videojs('video',{},function(){
-      this.playbackController = new window.videojs.hls.HLSPlaybackController(this);
-      this.playbackController.loadManifest('test/fixtures/prog_index.m3u8', function(data) {
-        console.log(data);
-      });
-    });
+    var player = videojs('video');
+
+    // initialize the plugin
+    player.hls();
   </script>
-
-
 </body>
 </html>

@@ -20,29 +20,22 @@
     throws(block, [expected], [message])
   */
   var
-    manifestController,
-    segmentController,
-    m3u8parser,
     parser,
 
-  expectedHeader = [
-    0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00,
-    0x09, 0x00, 0x00, 0x00, 0x00
-  ],
-  testAudioTag,
-  testVideoTag,
-  testScriptTag,
-  asciiFromBytes,
-  testScriptString,
-  testScriptEcmaArray,
-  testNalUnit;
+    expectedHeader = [
+      0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00,
+      0x09, 0x00, 0x00, 0x00, 0x00
+    ],
 
-  module('environment');
+    extend = window.videojs.util.mergeOptions,
 
-  test('is sane', function() {
-    expect(1);
-    ok(true);
-  });
+    testAudioTag,
+    testVideoTag,
+    testScriptTag,
+    asciiFromBytes,
+    testScriptString,
+    testScriptEcmaArray,
+    testNalUnit;
 
   module('segment parser', {
     setup: function() {
@@ -59,6 +52,143 @@
     equal(header[2], 'V'.charCodeAt(0), 'the third character is "V"');
 
     deepEqual(expectedHeader, header, 'the rest of the header is correct');
+  });
+
+  test('parses PMTs with program descriptors', function() {
+    var
+      makePmt = function(options) {
+        var
+          result = [],
+          entryCount = 0,
+          k,
+          sectionLength;
+        for (k in options.pids) {
+          entryCount++;
+        }
+        // table_id
+        result.push(0x02);
+        // section_syntax_indicator '0' reserved section_length
+        // 13 + (program_info_length) + (n * 5 + ES_info_length[n])
+        sectionLength = 13 + (5 * entryCount) + 17;
+        result.push(0x80 | (0xF00 & sectionLength >>> 8));
+        result.push(sectionLength & 0xFF);
+        // program_number
+        result.push(0x00);
+        result.push(0x01);
+        // reserved version_number current_next_indicator
+        result.push(0x01);
+        // section_number
+        result.push(0x00);
+        // last_section_number
+        result.push(0x00);
+        // reserved PCR_PID
+        result.push(0xe1);
+        result.push(0x00);
+        // reserved program_info_length
+        result.push(0xf0);
+        result.push(0x11); // hard-coded 17 byte descriptor
+        // program descriptors
+        result = result.concat([
+          0x25, 0x0f, 0xff, 0xff,
+          0x49, 0x44, 0x33, 0x20,
+          0xff, 0x49, 0x44, 0x33,
+          0x20, 0x00, 0x1f, 0x00,
+          0x01
+        ]);
+        for (k in options.pids) {
+          // stream_type
+          result.push(options.pids[k]);
+          // reserved elementary_PID
+          result.push(0xe0 | (k & 0x1f00) >>> 8);
+          result.push(k & 0xff);
+          // reserved ES_info_length
+          result.push(0xf0);
+          result.push(0x00); // ES_info_length = 0
+        }
+        // CRC_32
+        result.push([0x00, 0x00, 0x00, 0x00]); // invalid CRC but we don't check it
+        return result;
+      },
+      makePat = function(options) {
+        var
+          result = [],
+          k;
+        // table_id
+        result.push(0x00);
+        // section_syntax_indicator '0' reserved section_length
+        result.push(0x80);
+        result.push(0x0d); // section_length for one program
+        // transport_stream_id
+        result.push(0x00);
+        result.push(0x00);
+        // reserved version_number current_next_indicator
+        result.push(0x01); // current_next_indicator is 1
+        // section_number
+        result.push(0x00);
+        // last_section_number
+        result.push(0x00);
+        for (k in options.programs) {
+          // program_number
+          result.push((k & 0xFF00) >>> 8);
+          result.push(k & 0x00FF);
+          // reserved program_map_pid
+          result.push((options.programs[k] & 0x1f00) >>> 8);
+          result.push(options.programs[k] & 0xff);
+        }
+        return result;
+      },
+      makePsi = function(options) {
+        var result = [];
+
+        // pointer_field
+        if (options.payloadUnitStartIndicator) {
+          result.push(0x00);
+        }
+        if (options.programs) {
+          return result.concat(makePat(options));
+        }
+        return result.concat(makePmt(options));
+      },
+      makePacket = function(options) {
+        var
+          result = [],
+          settings = extend({
+            payloadUnitStartIndicator: true,
+            pid: 0x00
+          }, options);
+
+        // header
+        // sync_byte
+        result.push(0x47);
+        // transport_error_indicator payload_unit_start_indicator transport_priority PID
+        result.push((settings.pid & 0x1f) << 8 | 0x40);
+        result.push(settings.pid & 0xff);
+        // transport_scrambling_control adaptation_field_control continuity_counter
+        result.push(0x10);
+        result = result.concat(makePsi(settings));
+
+        // ensure the resulting packet is the correct size
+        result.length = window.videojs.hls.SegmentParser.MP2T_PACKET_LENGTH;
+        return result;
+      },
+      h264Type = window.videojs.hls.SegmentParser.STREAM_TYPES.h264,
+      adtsType = window.videojs.hls.SegmentParser.STREAM_TYPES.adts;
+
+    parser.parseSegmentBinaryData(new Uint8Array(makePacket({
+      programs: {
+        0x01: [0x01]
+      }
+    }).concat(makePacket({
+      pid: 0x01,
+      pids: {
+        0x02: h264Type, // h264 video
+        0x03: adtsType // adts audio
+      }
+    }))));
+
+    strictEqual(parser.stream.pmtPid, 0x01, 'PMT PID is 1');
+    strictEqual(parser.stream.programMapTable[h264Type], 0x02, 'video is PID 2');
+    strictEqual(parser.stream.programMapTable[adtsType], 0x03, 'audio is PID 3');
   });
 
   test('parses the first bipbop segment', function() {
@@ -196,15 +326,19 @@
 
   test('the flv tags are well-formed', function() {
     var
-      tag,
       byte,
+      tag,
       type,
+      currentPts = 0,
       lastTime = 0;
     parser.parseSegmentBinaryData(window.bcSegment);
 
     while (parser.tagsAvailable()) {
       tag = parser.getNextTag();
       type = tag.bytes[0];
+
+      ok(tag.pts >= currentPts, 'presentation time stamps are increasing');
+      currentPts = tag.pts;
 
       // generic flv headers
       ok(type === 8 || type === 9 || type === 18,
@@ -230,119 +364,4 @@
             'the size of the previous tag is correct');
     }
   });
-
-  /*
-    M3U8 Test Suite
-  */
-
-  module('m3u8 parser', {
-    setup: function() {
-      m3u8parser = new window.videojs.hls.M3U8Parser();
-    }
-  });
-
-  test('should create my parser', function() {
-    ok(m3u8parser !== undefined);
-  });
-
-  test('should successfully parse manifest data', function() {
-    var parsedData = m3u8parser.parse(window.playlistData);
-    ok(parsedData);
-  });
-
-  test('test for expected results', function() {
-    var data = m3u8parser.parse(window.playlistData);
-
-    notEqual(data, null, 'data is not NULL');
-    equal(data.invalidReasons.length, 0, 'data has 0 invalid reasons');
-    equal(data.hasValidM3UTag, true, 'data has valid EXTM3U');
-    equal(data.targetDuration, 10, 'data has correct TARGET DURATION');
-    equal(data.allowCache, "NO", 'acceptable ALLOW CACHE');
-    equal(data.isPlaylist, false, 'data is parsed as a PLAYLIST as expected');
-    equal(data.playlistType, "VOD", 'acceptable PLAYLIST TYPE');
-    equal(data.mediaItems.length, 16, 'acceptable mediaItem count');
-    equal(data.mediaSequence, 0, 'MEDIA SEQUENCE is correct');
-    equal(data.totalDuration, -1, "ZEN TOTAL DURATION is unknown as expected");
-    equal(data.hasEndTag, true, 'should have ENDLIST tag');
-  });
-
-  module('brightcove playlist', {
-    setup: function() {
-      m3u8parser = new window.videojs.hls.M3U8Parser();
-    }
-  });
-
-  test('should parse a brightcove manifest data', function() {
-    var data = m3u8parser.parse(window.brightcove_playlist_data);
-
-    ok(data);
-    equal(data.playlistItems.length, 4, 'Has correct rendition count');
-    equal(data.isPlaylist, true, 'data is parsed as a PLAYLIST as expected');
-    equal(data.playlistItems[0].bandwidth, 240000, 'First rendition index bandwidth is correct');
-    equal(data.playlistItems[0]["program-id"], 1, 'First rendition index program-id is correct');
-    equal(data.playlistItems[0].resolution.width, 396, 'First rendition index resolution width is correct');
-    equal(data.playlistItems[0].resolution.height, 224, 'First rendition index resolution height is correct');
-
-  }
-      );
-
-  module('manifest controller', {
-    setup: function() {
-      manifestController = new window.videojs.hls.ManifestController();
-      this.vjsget = window.videojs.get;
-      window.videojs.get = function(url, success) {
-        success(window.brightcove_playlist_data);
-      };
-    },
-    teardown: function() {
-      window.videojs.get = this.vjsget;
-    }
-  });
-
-  test('should create', function() {
-    ok(manifestController);
-  });
-
-  test('should return a parsed object', function() {
-    var data = manifestController.parseManifest(window.brightcove_playlist_data);
-
-    ok(data);
-    equal(data.playlistItems.length, 4, 'Has correct rendition count');
-    equal(data.playlistItems[0].bandwidth, 240000, 'First rendition index bandwidth is correct');
-    equal(data.playlistItems[0]["program-id"], 1, 'First rendition index program-id is correct');
-    equal(data.playlistItems[0].resolution.width, 396, 'First rendition index resolution width is correct');
-    equal(data.playlistItems[0].resolution.height, 224, 'First rendition index resolution height is correct');
-  });
-
-  test('should get a manifest from hermes', function() {
-    manifestController.loadManifest('http://example.com/16x9-master.m3u8',
-                                    function(responseData) {
-                                      ok(responseData);
-                                    },
-                                    function() {
-                                      ok(false, 'does not error');
-                                    },
-                                    function() {});
-  });
-
-  module('segment controller', {
-    setup: function() {
-      segmentController = new window.videojs.hls.SegmentController();
-      this.vjsget = window.videojs.get;
-      window.videojs.get = function(url, success) {
-        success(window.bcSegment);
-      };
-    },
-    teardown: function() {
-      window.videojs.get = this.vjsget;
-    }
-  });
-
-  test('bandwidth calulation test', function() {
-    var
-      multiSecondData = segmentController.calculateThroughput(10000, 1000, 2000),
-      subSecondData = segmentController.calculateThroughput(10000, 1000, 1500);
-    equal(multiSecondData, 80000, 'MULTI-Second bits per second calculation');
-    equal(subSecondData, 160000, 'SUB-Second bits per second calculation');
-  });
-})(this);
+})(window);
