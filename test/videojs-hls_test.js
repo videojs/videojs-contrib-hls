@@ -22,7 +22,6 @@
 
 var
   player,
-  segmentController,
   oldFlashSupported,
   oldXhr,
   oldSourceBuffer,
@@ -719,23 +718,6 @@ test('has no effect if native HLS is available', function() {
 
   ok(!(player.currentSrc() in videojs.mediaSources),
      'no media source was opened');
-});
-
-module('segment controller', {
-  setup: function() {
-    segmentController = new window.videojs.hls.SegmentController();
-  },
-  teardown: function() {
-    window.videojs.get = this.vjsget;
-  }
-});
-
-test('bandwidth calulation test', function() {
-  var
-    multiSecondData = segmentController.calculateThroughput(10000, 1000, 2000),
-    subSecondData = segmentController.calculateThroughput(10000, 1000, 1500);
-  equal(multiSecondData, 80000, 'MULTI-Second bits per second calculation');
-  equal(subSecondData, 160000, 'SUB-Second bits per second calculation');
 });
 
 })(window, window.videojs);

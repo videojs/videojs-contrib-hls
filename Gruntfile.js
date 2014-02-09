@@ -28,11 +28,8 @@ module.exports = function(grunt) {
               'src/h264-stream.js',
               'src/aac-stream.js',
               'src/segment-parser.js',
-              'src/segment-controller.js',
-              'src/m3u8/m3u8-parser.js',
-              'src/manifest-controller.js',
-              'src/segment-controller.js',
-              'src/hls-playback-controller.js'],
+              'src/m3u8/m3u8-parser.js'
+             ],
         dest: 'dist/videojs.hls.js'
       },
     },
