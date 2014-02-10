@@ -24,6 +24,7 @@ var
   player,
   oldFlashSupported,
   oldXhr,
+  oldSegmentParser,
   oldSourceBuffer,
   oldSupportsNativeHls,
   xhrUrls;
@@ -58,6 +59,9 @@ module('HLS', {
       return videojs.createTimeRange(0, 0);
     };
 
+    // store the SegmentParser so it can be easily mocked
+    oldSegmentParser = videojs.hls.SegmentParser;
+
     // make XHR synchronous
     oldXhr = window.XMLHttpRequest;
     window.XMLHttpRequest = function() {
@@ -83,7 +87,8 @@ module('HLS', {
   teardown: function() {
     videojs.Flash.isSupported = oldFlashSupported;
     videojs.hls.supportsNativeHls = oldSupportsNativeHls;
-    window.videojs.SourceBuffer = oldSourceBuffer;
+    videojs.hls.SegmentParser = oldSegmentParser;
+    videojs.SourceBuffer = oldSourceBuffer;
     window.XMLHttpRequest = oldXhr;
   }
 });
@@ -633,6 +638,80 @@ test('cancels outstanding XHRs when seeking', function() {
 
   ok(aborted, 'XHR aborted');
   strictEqual(1, opened, 'opened new XHR');
+});
+
+test('flushes the parser after each segment', function() {
+  var flushes = 0;
+  // mock out the segment parser
+  videojs.hls.SegmentParser = function() {
+    this.getFlvHeader = function() {
+      return [];
+    };
+    this.parseSegmentBinaryData = function() {};
+    this.flushTags = function() {
+      flushes++;
+    };
+    this.tagsAvailable = function() {};
+  };
+
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(1, flushes, 'tags are flushed at the end of a segment');
+});
+
+test('drops tags before the target timestamp when seeking', function() {
+  var
+    i = 10,
+    segment = [],
+    tags = [],
+    bytes = [];
+
+  // mock out the parser and source buffer
+  videojs.hls.SegmentParser = function() {
+    this.getFlvHeader = function() {
+      return [];
+    };
+    this.parseSegmentBinaryData = function() {};
+    this.flushTags = function() {};
+    this.tagsAvailable = function() {
+      return tags.length;
+    };
+    this.getTags = function() {
+      return tags;
+    };
+    this.getNextTag = function() {
+      return tags.shift();
+    };
+  };
+  window.videojs.SourceBuffer = function() {
+    this.appendBuffer = function(chunk) {
+      bytes.push(chunk);
+    };
+  };
+
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  // build up some mock FLV tags
+  while (i--) {
+    segment.unshift({
+      pts: i * 1000,
+      bytes: i
+    });
+  }
+  tags = segment.slice();
+  bytes = [];
+  player.currentTime = function() {
+    return 7;
+  };
+  player.trigger('seeking');
+
+  deepEqual([7,8,9], bytes, 'three tags are appended');
 });
 
 test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
