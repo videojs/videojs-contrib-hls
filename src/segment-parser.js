@@ -358,9 +358,6 @@
           offset += pesHeaderLength;
 
           if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
-            // Stash this frame for future use.
-            // console.assert(videoFrames.length < 3);
-
             h264Stream.setNextTimeStamp(pts,
                                         dts,
                                         dataAlignmentIndicator);

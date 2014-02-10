@@ -293,8 +293,8 @@ var
 
       sortedPlaylists.sort(playlistBandwidth);
 
-      // map playlist options by bandwidth and select
-      // best variant as appropriate
+      // filter out any variant that has greater effective bitrate
+      // than the current estimated bandwidth
       while (i--) {
         variant = sortedPlaylists[i];
 
@@ -305,39 +305,36 @@ var
 
         effectiveBitrate = variant.attributes.BANDWIDTH * bandwidthVariance;
 
-        // since the playlists are sorted in ascending order by bandwidth, the
-        // current variant is the best as long as its effective bitrate is
-        // below the current bandwidth estimate
-        // NOTE - only set once
         if (effectiveBitrate < player.hls.bandwidth) {
           bandwidthPlaylists.push(variant);
+
+          // since the playlists are sorted in ascending order by
+          // bandwidth, the first viable variant is the best
           if (!bandwidthBestVariant) {
             bandwidthBestVariant = variant;
           }
         }
       }
 
-      // set index to the available bandwidth mapped renditions
       i = bandwidthPlaylists.length;
 
-      // sort those by resolution [currently widths]
+      // sort variants by resolution
       bandwidthPlaylists.sort(playlistResolution);
 
-      // iterate through bandwidth related playlists and find
+      // iterate through the bandwidth-filtered playlists and find
       // best rendition by player dimension
-
-      // Tests
-      // Seeking - find if you've seeked correctly?
-      // SelectPlaylist -
       while (i--) {
         variant = bandwidthPlaylists[i];
 
-        // ignored playlists without resolution information
+        // ignore playlists without resolution information
         if (!variant.attributes || !variant.attributes.RESOLUTION ||
           !variant.attributes.RESOLUTION.width || !variant.attributes.RESOLUTION.height) {
           continue;
         }
 
+        // since the playlists are sorted, the first variant that has
+        // dimensions less than or equal to the player size is the
+        // best
         if (variant.attributes.RESOLUTION.width <= player.width() &&
           variant.attributes.RESOLUTION.height <= player.height()) {
           resolutionBestVariant = variant;
@@ -526,13 +523,13 @@ var
 
         // transmux the segment data from MP2T to FLV
         segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
+        segmentParser.flushTags();
 
         // if we're refilling the buffer after a seek, scan through the muxed
         // FLV tags until we find the one that is closest to the desired
         // playback time
         if (offset !== undefined && typeof offset === "number") {
           while (segmentParser.getTags()[0].pts < offset) {
-            // we're seeking past this tag, so ignore it
             segmentParser.getNextTag();
           }
         }

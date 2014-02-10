@@ -292,7 +292,7 @@
 
     //(pts:uint, dts:uint, dataAligned:Boolean):void
     this.setNextTimeStamp = function(pts, dts, dataAligned) {
-      if (0>pts_delta) {
+      if (pts_delta < 0) {
         // We assume the very first pts is less than 0x8FFFFFFF (max signed
         // int32)
         pts_delta = pts;
@@ -310,7 +310,7 @@
 
     this.finishFrame = function() {
       if (h264Frame) {
-        // Push SPS before EVERY IDR frame fo seeking
+        // Push SPS before EVERY IDR frame for seeking
         if (newExtraData.extraDataExists()) {
           oldExtraData = newExtraData;
           newExtraData = new H264ExtraData();
