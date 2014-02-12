@@ -22,7 +22,9 @@ module.exports = function(grunt) {
         stripBanners: true
       },
       dist: {
-        src: ['src/video-js-hls.js',
+        nonull: true,
+        src: ['src/videojs-hls.js',
+              'src/async-queue.js',
               'src/flv-tag.js',
               'src/exp-golomb.js',
               'src/h264-stream.js',
