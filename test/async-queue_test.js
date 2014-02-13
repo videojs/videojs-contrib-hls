@@ -48,6 +48,9 @@
 
     callbacks.shift()();
     strictEqual(1, callbacks.length, 'the next task is scheduled');
+
+    callbacks.shift()();
+    strictEqual(1, callbacks.length, 'nothing is scheduled on an empty queue');
   });
 
   test('can be emptied at any time', function() {
