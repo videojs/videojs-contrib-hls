@@ -584,6 +584,10 @@ var
       src: videojs.URL.createObjectURL(mediaSource),
       type: "video/flv"
     }]);
+
+    if (player.options().autoplay) {
+      player.play();
+    }
   };
 
 videojs.plugin('hls', function() {

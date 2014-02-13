@@ -55,7 +55,7 @@ var
 module('HLS', {
   setup: function() {
 
-    // mock out Flash feature for phantomjs
+    // mock out Flash features for phantomjs
     oldFlashSupported = videojs.Flash.isSupported;
     videojs.Flash.isSupported = function() {
       return true;
@@ -116,6 +116,20 @@ module('HLS', {
     window.setTimeout = oldSetTimeout;
     window.XMLHttpRequest = oldXhr;
   }
+});
+
+test('starts playing if autoplay is specified', function() {
+  var plays = 0;
+  player.play = function() {
+    plays++;
+  };
+  player.options().autoplay = true;
+  player.hls('manifest/playlist.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(1, plays, 'play was called');
 });
 
 test('loads the specified manifest URL on init', function() {
