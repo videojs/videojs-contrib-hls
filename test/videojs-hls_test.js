@@ -25,9 +25,32 @@ var
   oldFlashSupported,
   oldXhr,
   oldSegmentParser,
+  oldSetTimeout,
   oldSourceBuffer,
   oldSupportsNativeHls,
-  xhrUrls;
+  xhrUrls,
+
+  mockSegmentParser = function(tags) {
+    if (tags === undefined) {
+      tags = [];
+    }
+    return function() {
+      this.getFlvHeader = function() {
+        return 'flv';
+      };
+      this.parseSegmentBinaryData = function() {};
+      this.flushTags = function() {};
+      this.tagsAvailable = function() {
+        return tags.length;
+      };
+      this.getTags = function() {
+        return tags;
+      };
+      this.getNextTag = function() {
+        return tags.shift();
+      };
+    };
+  };
 
 module('HLS', {
   setup: function() {
@@ -59,10 +82,11 @@ module('HLS', {
       return videojs.createTimeRange(0, 0);
     };
 
-    // store the SegmentParser so it can be easily mocked
+    // store functionality that some tests need to mock
     oldSegmentParser = videojs.hls.SegmentParser;
+    oldSetTimeout = window.setTimeout;
 
-    // make XHR synchronous
+    // make XHRs synchronous
     oldXhr = window.XMLHttpRequest;
     window.XMLHttpRequest = function() {
       this.open = function(method, url) {
@@ -89,6 +113,7 @@ module('HLS', {
     videojs.hls.supportsNativeHls = oldSupportsNativeHls;
     videojs.hls.SegmentParser = oldSegmentParser;
     videojs.SourceBuffer = oldSourceBuffer;
+    window.setTimeout = oldSetTimeout;
     window.XMLHttpRequest = oldXhr;
   }
 });
@@ -665,53 +690,88 @@ test('flushes the parser after each segment', function() {
 test('drops tags before the target timestamp when seeking', function() {
   var
     i = 10,
-    segment = [],
+    callbacks = [],
     tags = [],
     bytes = [];
 
   // mock out the parser and source buffer
-  videojs.hls.SegmentParser = function() {
-    this.getFlvHeader = function() {
-      return [];
-    };
-    this.parseSegmentBinaryData = function() {};
-    this.flushTags = function() {};
-    this.tagsAvailable = function() {
-      return tags.length;
-    };
-    this.getTags = function() {
-      return tags;
-    };
-    this.getNextTag = function() {
-      return tags.shift();
-    };
-  };
+  videojs.hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
     };
   };
+  // capture timeouts
+  window.setTimeout = function(callback) {
+    callbacks.push(callback);
+  };
+
+  // push a tag into the buffer
+  tags.push({ pts: 0, bytes: 0 });
 
   player.hls('manifest/media.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+  while (callbacks.length) {
+    callbacks.shift()();
+  }
 
-  // build up some mock FLV tags
+  // mock out a new segment of FLV tags
+  bytes = [];
   while (i--) {
-    segment.unshift({
+    tags.unshift({
       pts: i * 1000,
       bytes: i
     });
   }
-  tags = segment.slice();
-  bytes = [];
   player.currentTime = function() {
     return 7;
   };
   player.trigger('seeking');
 
-  deepEqual([7,8,9], bytes, 'three tags are appended');
+  while (callbacks.length) {
+    callbacks.shift()();
+  }
+
+  deepEqual(bytes, [7,8,9], 'three tags are appended');
+});
+
+test('clears pending buffer updates when seeking', function() {
+  var
+    bytes = [],
+    callbacks = [],
+    tags = [{ pts: 0, bytes: 0 }];
+  // mock out the parser and source buffer
+  videojs.hls.SegmentParser = mockSegmentParser(tags);
+  window.videojs.SourceBuffer = function() {
+    this.appendBuffer = function(chunk) {
+      bytes.push(chunk);
+    };
+  };
+  // capture timeouts
+  window.setTimeout = function(callback) {
+    callbacks.push(callback);
+  };
+
+  // queue up a tag to be pushed into the buffer (but don't push it yet!)
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  // seek to 7s
+  tags.push({ pts: 7000, bytes: 7 });
+  player.currentTime = function() {
+    return 7;
+  };
+  player.trigger('seeking');
+
+  while (callbacks.length) {
+    callbacks.shift()();
+  }
+
+  deepEqual(bytes, ['flv', 7], 'tags queued to be appended should be cancelled');
 });
 
 test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
