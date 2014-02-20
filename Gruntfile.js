@@ -32,7 +32,7 @@ module.exports = function(grunt) {
               'src/segment-parser.js',
               'src/stream.js',
               'src/m3u8/m3u8-parser.js'
-             ],
+            ],
         dest: 'dist/videojs.hls.js'
       }
     },
@@ -106,10 +106,26 @@ module.exports = function(grunt) {
           logConcurrentOutput: true
         }
       }
-    }
+    },
+    karma: {
+      options: {
+        configFile: 'test/karma.conf.js',
+        frameworks: ['qunit']
+      },
+      dev: {
+        configFile: 'test/karma.conf.js',
+        autoWatch: true
+      },
+      ci: {
+        configFile: 'test/karma.conf.js',
+        autoWatch: false
+      }
+    },
+
   });
 
   // These plugins provide necessary tasks.
+  grunt.loadNpmTasks('grunt-karma');
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-uglify');
@@ -119,6 +135,9 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-connect');
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-concurrent');
+  grunt.loadNpmTasks('grunt-saucelabs');
+  grunt.loadNpmTasks('grunt-contrib-watch');
+  
 
   grunt.registerTask('manifests-to-js', 'Wrap the test fixtures and output' +
                      ' so they can be loaded in a browser',
@@ -175,5 +194,12 @@ module.exports = function(grunt) {
                       'qunit',
                       'concat',
                       'uglify']);
+
+  grunt.registerTask('test', 
+                      ['manifests-to-js', 'qunit', 'karma']);
+
+  // travis build task
+  grunt.registerTask('build:travis', ['jshint', 'test:node', 'test:sauce-browser']);
+
 
 };
