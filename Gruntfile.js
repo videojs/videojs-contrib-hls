@@ -31,7 +31,7 @@ module.exports = function(grunt) {
               'src/aac-stream.js',
               'src/segment-parser.js',
               'src/m3u8/m3u8-parser.js'
-             ],
+            ],
         dest: 'dist/videojs.hls.js'
       },
     },
@@ -84,6 +84,19 @@ module.exports = function(grunt) {
         tasks: ['jshint:test', 'qunit']
       },
     },
+    karma: {
+      options: {
+        configFile: 'test/karma.conf.js'
+      },
+      dev: {
+        configFile: 'test/karma.conf.js',
+        autoWatch: true
+      },
+      ci: {
+        configFile: 'test/karma.conf.js',
+        autoWatch: false
+      }
+    }
   });
 
   // These plugins provide necessary tasks.
@@ -93,6 +106,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-qunit');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-karma');
 
   grunt.registerTask('manifests-to-js', 'Wrap the test fixtures and output' +
                      ' so they can be loaded in a browser',
