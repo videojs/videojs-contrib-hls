@@ -119,6 +119,6 @@ bandwidth and viewport dimensions.
     - [Best RESOLUTION variant] OR [Best BANDWIDTH variant] OR [inital playlist in manifest]
 
 ## Release History
-0.3.0: Performance fixes for high-bitrate streams
-0.2.0: Basic playback and adaptive bitrate selection
-0.1.0: Initial release
+ - 0.3.0: Performance fixes for high-bitrate streams
+ - 0.2.0: Basic playback and adaptive bitrate selection
+ - 0.1.0: Initial release
