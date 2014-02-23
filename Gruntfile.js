@@ -33,7 +33,7 @@ module.exports = function(grunt) {
               'src/m3u8/m3u8-parser.js'
              ],
         dest: 'dist/videojs.hls.js'
-      },
+      }
     },
     uglify: {
       options: {
@@ -42,7 +42,7 @@ module.exports = function(grunt) {
       dist: {
         src: '<%= concat.dist.dest %>',
         dest: 'dist/videojs.hls.min.js'
-      },
+      }
     },
     qunit: {
       files: ['test/**/*.html', '!test/perf.html']
@@ -68,7 +68,13 @@ module.exports = function(grunt) {
               '!test/tsSegment.js',
               '!test/fixtures/*.js',
               '!test/manifest/**']
-      },
+      }
+    },
+    connect: {
+        dev: {
+            port: 8000,
+            base: '.'
+        }
     },
     watch: {
       gruntfile: {
@@ -82,8 +88,8 @@ module.exports = function(grunt) {
       test: {
         files: '<%= jshint.test.src %>',
         tasks: ['jshint:test', 'qunit']
-      },
-    },
+      }
+    }
   });
 
   // These plugins provide necessary tasks.
@@ -93,6 +99,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-qunit');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-contrib-connect');
 
   grunt.registerTask('manifests-to-js', 'Wrap the test fixtures and output' +
                      ' so they can be loaded in a browser',
