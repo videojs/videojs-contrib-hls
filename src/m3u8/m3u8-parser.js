@@ -35,7 +35,8 @@
     Stream = videojs.hls.Stream,
     LineStream,
     ParseStream,
-    Parser;
+    Parser,
+    merge;
 
   /**
    * A stream that buffers string input and generates a `data` event for each
@@ -345,12 +346,6 @@
               }
             },
             'inf': function() {
-              if (!this.manifest.playlistType) {
-                this.manifest.playlistType = 'VOD';
-                this.trigger('info', {
-                  message: 'defaulting playlist type to VOD'
-                });
-              }
               if (!('mediaSequence' in this.manifest)) {
                 this.manifest.mediaSequence = 0;
                 this.trigger('info', {
@@ -458,9 +453,50 @@
     this.lineStream.push('\n');
   };
 
+  /**
+   * Merges two versions of a media playlist.
+   * @param base {object} the earlier version of the media playlist.
+   * @param update {object} the updates to apply to the base playlist.
+   * @return {object} a new media playlist object that combines the
+   * information in the two arguments.
+   */
+  merge = function(base, update) {
+    var
+      result = mergeOptions({}, base, update),
+      uri = update.segments[0].uri,
+      i = base.segments.length,
+      byterange,
+      segment;
+
+    // align and apply the updated segments
+    while (i--) {
+      segment = base.segments[i];
+      if (uri === segment.uri) {
+        // if there is no byterange information, match by URI
+        if (!segment.byterange) {
+          result.segments = base.segments.slice(0, i).concat(update.segments);
+          break;
+        }
+        // if a byterange is specified, make sure the segments match exactly
+        byterange = update.segments[0].byterange || {};
+        if (segment.byterange.offset === byterange.offset &&
+            segment.byterange.length === byterange.length) {
+          result.segments = base.segments.slice(0, i).concat(update.segments);
+          break;
+        }
+      }
+    }
+    // concatenate the two arrays if there was no overlap
+    if (i < 0) {
+      result.segments = base.segments.concat(update.segments);
+    }
+    return result;
+  };
+
   window.videojs.m3u8 = {
     LineStream: LineStream,
     ParseStream: ParseStream,
-    Parser: Parser
+    Parser: Parser,
+    merge: merge
   };
 })(window.videojs, window.parseInt, window.isFinite, window.videojs.util.mergeOptions);

@@ -1,11 +1,12 @@
 (function(window, undefined) {
   var
     //manifestController = this.manifestController,
-    ParseStream = window.videojs.m3u8.ParseStream,
+    m3u8 = window.videojs.m3u8,
+    ParseStream = m3u8.ParseStream,
     parseStream,
-    LineStream = window.videojs.m3u8.LineStream,
+    LineStream = m3u8.LineStream,
     lineStream,
-    Parser = window.videojs.m3u8.Parser,
+    Parser = m3u8.Parser,
     parser;
 
   /*
@@ -506,19 +507,140 @@
     ok(!event, 'no event is triggered');
   });
 
-  module('m3u8 parser', {
-    setup: function() {
-      parser = new Parser();
+  module('m3u8 parser');
+
+  test('can be constructed', function() {
+    notStrictEqual(new Parser(), undefined, 'parser is defined');
+  });
+
+  test('merges a manifest that strictly adds to an earlier one', function() {
+    var key, base, mid, parsed;
+    for (key in window.manifests) {
+      if (window.expected[key]) {
+        manifest = window.manifests[key];
+        // parse the first half of the manifest
+        mid = manifest.length / 2;
+        parser = new Parser();
+        parser.push(manifest.substring(0, mid));
+        base = parser.manifest;
+        if (!base.segments) {
+          // only test merges for media playlists
+          continue;
+        }
+
+        // attach the partial manifest to a new parser
+        parser = new Parser();
+        parser.push(manifest);
+
+        // merge the manifests together
+        deepEqual(m3u8.merge(base, parser.manifest),
+                  window.expected[key],
+                  key + '.m3u8 was parsed correctly');
+      }
     }
   });
 
-  test('should create a parser', function() {
-    notStrictEqual(parser, undefined, 'parser is defined');
+  test('merges overlapping segments without media sequences', function() {
+    var base;
+    parser = new Parser();
+    parser.push('#EXTM3U\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('0.ts\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('1.ts\n');
+    base = parser.manifest;
+
+    parser = new Parser();
+    parser.push('#EXTM3U\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('1.ts\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('2.ts\n');
+
+    deepEqual({
+      allowCache: true,
+      mediaSequence: 0,
+      segments: [{ duration: 10, uri: '0.ts'},
+                 { duration: 10, uri: '1.ts' },
+                 { duration: 10, uri: '2.ts' }]
+    }, m3u8.merge(base, parser.manifest), 'merges segment additions');
+  });
+
+  test('appends non-overlapping segments without media sequences', function() {
+    var base;
+    parser = new Parser();
+    parser.push('#EXTM3U\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('0.ts\n');
+    base = parser.manifest;
+
+    parser = new Parser();
+    parser.push('#EXTM3U\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('1.ts\n');
+
+    deepEqual({
+      allowCache: true,
+      mediaSequence: 0,
+      segments: [{ duration: 10, uri: '0.ts'},
+                 { duration: 10, uri: '1.ts' }]
+    }, m3u8.merge(base, parser.manifest), 'appends segment additions');
+  });
+
+  test('replaces segments when merging with a higher media sequence number', function() {
+    var base;
+    parser = new Parser();
+    parser.push('#EXTM3U\n');
+    parser.push('#EXT-X-MEDIA-SEQUENCE:3\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('3.ts\n');
+    base = parser.manifest;
+
+    parser = new Parser();
+    parser.push('#EXTM3U\n');
+    parser.push('#EXT-X-MEDIA-SEQUENCE:7\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('7.ts\n');
+    base = parser.manifest;
+
+    deepEqual({
+      allowCache: true,
+      mediaSequence:  7,
+      segments: [{ duration: 10, uri: '7.ts' }]
+    }, m3u8.merge(base, parser.manifest), 'replaces segments');
+  });
+
+  test('replaces overlapping segments when media sequence is present', function() {
+    var base;
+    parser = new Parser();
+    parser.push('#EXTM3U\n');
+    parser.push('#EXT-X-MEDIA-SEQUENCE:3\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('3.ts\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('4.ts\n');
+    base = parser.manifest;
+
+    parser = new Parser();
+    parser.push('#EXTM3U\n');
+    parser.push('#EXT-X-MEDIA-SEQUENCE:4\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('4.ts\n');
+    parser.push('#EXTINF:10,\n');
+    parser.push('5.ts\n');
+    base = parser.manifest;
+
+    deepEqual({
+      allowCache: true,
+      mediaSequence:  4,
+      segments: [{ duration: 10, uri: '4.ts' },
+                 { duration: 10, uri: '5.ts' }]
+    }, m3u8.merge(base, parser.manifest), 'replaces segments');
   });
 
   module('m3u8s');
 
-  test('parses the example manifests as expected', function() {
+  test('parses static manifests as expected', function() {
     var key;
     for (key in window.manifests) {
       if (window.expected[key]) {
