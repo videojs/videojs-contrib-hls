@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "video.js": "git+https://github.com/videojs/video.js.git#v4.4.1",
-    "videojs-swf": "git+https://github.com/seniorflexdeveloper/video-js-swf.git",
-    "videojs-contrib-media-sources": "git+https://github.com/dmlap/videojs-contrib-media-sources.git#hotfix/misc-fixes"
+    "videojs-swf": "git+https://github.com/videojs/video-js-swf.git#v4.4.0",
+    "videojs-contrib-media-sources": "git+https://github.com/videojs/videojs-contrib-media-sources.git"
   }
 }
