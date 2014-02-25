@@ -71,10 +71,18 @@ module.exports = function(grunt) {
       }
     },
     connect: {
-        dev: {
-            port: 8000,
-            base: '.'
+      dev: {
+        options: {
+          port: 9999,
+          keepalive: true
         }
+      }
+    },
+    open : {
+      dev : {
+        path: 'http://127.0.0.1:<%= connect.dev.options.port %>/example.html',
+        app: 'Google Chrome'
+      }
     },
     watch: {
       gruntfile: {
@@ -89,6 +97,14 @@ module.exports = function(grunt) {
         files: '<%= jshint.test.src %>',
         tasks: ['jshint:test', 'qunit']
       }
+    },
+    concurrent: {
+      dev: {
+        tasks: ['connect', 'open', 'watch'],
+        options: {
+          logConcurrentOutput: true
+        }
+      }
     }
   });
 
@@ -100,6 +116,8 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-connect');
+  grunt.loadNpmTasks('grunt-open');
+  grunt.loadNpmTasks('grunt-concurrent');
 
   grunt.registerTask('manifests-to-js', 'Wrap the test fixtures and output' +
                      ' so they can be loaded in a browser',
@@ -144,6 +162,9 @@ module.exports = function(grunt) {
     grunt.file.write('tmp/manifests.js', jsManifests);
     grunt.file.write('tmp/expected.js', jsExpected);
   });
+
+  // Launch a Development Environment
+  grunt.registerTask('dev', 'Launching Dev Environment', 'concurrent:dev');
 
   // Default task.
   grunt.registerTask('default',
