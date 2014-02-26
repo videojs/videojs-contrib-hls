@@ -2,7 +2,7 @@
   "name": "videojs-contrib-hls",
   "version": "0.3.1",
   "engines": {
-    "node": ">= 0.8.0"
+    "node": ">= 0.10.12"
   },
   "repository": {
     "type": "git",
@@ -10,8 +10,7 @@
   },
   "license": "Apache 2",
   "scripts": {
-    "test": "grunt",
-    "postinstall": "echo 'fire post install' && cd node_modules/video.js/ && npm install && grunt"
+    "test": "grunt"
   },
   "devDependencies": {
     "grunt-contrib-jshint": "~0.6.0",
@@ -21,11 +20,14 @@
     "grunt-contrib-watch": "~0.4.0",
     "grunt-contrib-clean": "~0.4.0",
     "grunt-contrib-connect": "~0.6.0",
+    "grunt-concurrent": "0.4.3",
+    "grunt-open": "0.2.3",
+    "grunt-shell": "0.6.1",
     "grunt": "~0.4.1"
   },
   "dependencies": {
-    "video.js": "git+https://github.com/videojs/video.js.git",
-    "videojs-swf": "git+https://github.com/seniorflexdeveloper/video-js-swf.git",
-    "videojs-contrib-media-sources": "git+https://github.com/dmlap/videojs-contrib-media-sources.git#hotfix/misc-fixes"
+    "video.js": "git+https://github.com/videojs/video.js.git#v4.4.1",
+    "videojs-swf": "git+https://github.com/videojs/video-js-swf.git#v4.4.0",
+    "videojs-contrib-media-sources": "git+https://github.com/videojs/videojs-contrib-media-sources.git"
   }
 }
