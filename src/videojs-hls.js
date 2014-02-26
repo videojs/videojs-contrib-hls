@@ -433,6 +433,7 @@ var
           player.hls.master = {
             playlists: [parser.manifest]
           };
+          parser.manifest.uri = url;
         }
 
         // check the playlist for updates if EXT-X-ENDLIST isn't present
@@ -516,8 +517,13 @@ var
         return;
       }
 
-      segmentUri = resolveUrl(resolveUrl(srcUrl, player.hls.media.uri || ''),
-                              segment.uri);
+      // resolve the segment URL relative to the playlist
+      if (player.hls.media.uri === srcUrl) {
+        segmentUri = resolveUrl(srcUrl, segment.uri);
+      } else {
+        segmentUri = resolveUrl(resolveUrl(srcUrl, player.hls.media.uri || ''),
+                                segment.uri);
+      }
 
       // request the next segment
       segmentXhr = new window.XMLHttpRequest();

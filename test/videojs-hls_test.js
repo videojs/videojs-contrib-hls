@@ -948,7 +948,6 @@ test('merges playlist reloads', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
-  player.hls.media.uri = 'http://example.com/manifest/missingEndlist.m3u8';
 
   callback();
   strictEqual(1, merges, 'reloaded playlist was merged');
