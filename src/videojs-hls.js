@@ -175,6 +175,17 @@ var
     } else {
       docHead.removeChild(base);
     }
+
+    if (videojs.hls.hd2) {
+      if (!/hdnea/.test(result)) {
+        if (/\?/.test(result)) {
+          result += '&' + videojs.hls.hd2;
+        } else {
+          result += '?' + videojs.hls.hd2;
+        }
+      }
+    }
+
     return result;
   },
 
@@ -572,12 +583,27 @@ var
 
     // load the MediaSource into the player
     mediaSource.addEventListener('sourceopen', function() {
+      var sourceBuffer, i, l, query, hd2hdneaRegex;
+
       // construct the video data buffer and set the appropriate MIME type
-      var sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
+      sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
       player.hls.sourceBuffer = sourceBuffer;
       sourceBuffer.appendBuffer(segmentParser.getFlvHeader());
 
       player.hls.mediaIndex = 0;
+
+      query = srcUrl.split('?')[1].split('#')[0].split('&');
+      i = 0;
+      l = query.length;
+      hd2hdneaRegex = /^hdnea/;
+
+      for (; i < l; i++) {
+        if (hd2hdneaRegex.test(querysplit[i])) {
+          videojs.hls.hd2 = querysplit[i];
+          break;
+        }
+      }
+
       downloadPlaylist(srcUrl);
     });
     player.src([{
