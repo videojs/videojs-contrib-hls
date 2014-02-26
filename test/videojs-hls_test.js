@@ -181,7 +181,7 @@ test('calculates the duration if needed', function() {
     }
     durations.push(duration);
   };
-  player.hls('manifest/liveMissingSegmentDuration.m3u8');
+  player.hls('http://example.com/manifest/liveMissingSegmentDuration.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
@@ -871,6 +871,89 @@ test('has no effect if native HLS is available', function() {
 
   ok(!(player.currentSrc() in videojs.mediaSources),
      'no media source was opened');
+});
+
+test('reloads live playlists', function() {
+  var callbacks = [];
+  // capture timeouts
+  window.setTimeout = function(callback, timeout) {
+    callbacks.push({ callback: callback, timeout: timeout });
+  };
+  player.hls('manifest/missingEndlist.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(1, callbacks.length, 'refresh was scheduled');
+  strictEqual(player.hls.media.targetDuration * 1000,
+              callbacks[0].timeout,
+              'waited one target duration');
+});
+
+test('does not reload playlists with an endlist tag', function() {
+  var callbacks = [];
+  // capture timeouts
+  window.setTimeout = function(callback, timeout) {
+    callbacks.push({ callback: callback, timeout: timeout });
+  };
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(0, callbacks.length, 'no refresh was scheduled');
+});
+
+test('reloads a live playlist after half a target duration if it has not ' +
+     'changed since the last request', function() {
+  var callbacks = [];
+  // capture timeouts
+  window.setTimeout = function(callback, timeout) {
+    callbacks.push({ callback: callback, timeout: timeout });
+  };
+  player.hls('http://example.com/manifest/missingEndlist.m3u8');
+
+  // an identical manifest has already been parsed
+  player.hls.media = videojs.util.mergeOptions({}, window.expected['missingEndlist']);
+  player.hls.media.uri = 'http://example.com/manifest/missingEndlist.m3u8';
+  player.hls.master = {
+    playlists: [player.hls.media]
+  };
+
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(1, callbacks.length, 'refresh was scheduled');
+  strictEqual(player.hls.media.targetDuration / 2 * 1000,
+              callbacks[0].timeout,
+              'waited half a target duration');
+});
+
+test('merges playlist reloads', function() {
+  var
+    realMerge = videojs.m3u8.merge,
+    merges = 0,
+    callback;
+  // capture timeouts and playlist merges
+  window.setTimeout = function(cb) {
+    callback = cb;
+  };
+  videojs.m3u8.merge = function(base, update) {
+    merges++;
+    return update;
+  };
+
+  player.hls('http://example.com/manifest/missingEndlist.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  player.hls.media.uri = 'http://example.com/manifest/missingEndlist.m3u8';
+
+  callback();
+  strictEqual(1, merges, 'reloaded playlist was merged');
+
+  videojs.m3u8.merge = realMerge;
 });
 
 })(window, window.videojs);

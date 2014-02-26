@@ -345,6 +345,9 @@
                 byterange.offset = entry.offset;
               }
             },
+            'endlist': function() {
+              this.manifest.endList = true;
+            },
             'inf': function() {
               if (!('mediaSequence' in this.manifest)) {
                 this.manifest.mediaSequence = 0;
@@ -462,11 +465,13 @@
    */
   merge = function(base, update) {
     var
-      result = mergeOptions({}, base, update),
+      result = mergeOptions({}, base),
       uri = update.segments[0].uri,
-      i = base.segments.length,
+      i = base.segments ? base.segments.length : 0,
       byterange,
       segment;
+
+    result = mergeOptions(result, update);
 
     // align and apply the updated segments
     while (i--) {
@@ -488,7 +493,7 @@
     }
     // concatenate the two arrays if there was no overlap
     if (i < 0) {
-      result.segments = base.segments.concat(update.segments);
+      result.segments = (base.segments || []).concat(update.segments);
     }
     return result;
   };

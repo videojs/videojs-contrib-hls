@@ -341,8 +341,10 @@ var
         variant = bandwidthPlaylists[i];
 
         // ignore playlists without resolution information
-        if (!variant.attributes || !variant.attributes.RESOLUTION ||
-          !variant.attributes.RESOLUTION.width || !variant.attributes.RESOLUTION.height) {
+        if (!variant.attributes ||
+            !variant.attributes.RESOLUTION ||
+            !variant.attributes.RESOLUTION.width ||
+            !variant.attributes.RESOLUTION.height) {
           continue;
         }
 
@@ -350,7 +352,7 @@ var
         // dimensions less than or equal to the player size is the
         // best
         if (variant.attributes.RESOLUTION.width <= player.width() &&
-          variant.attributes.RESOLUTION.height <= player.height()) {
+            variant.attributes.RESOLUTION.height <= player.height()) {
           resolutionBestVariant = variant;
           break;
         }
@@ -375,88 +377,107 @@ var
       var xhr = new window.XMLHttpRequest();
       xhr.open('GET', url);
       xhr.onreadystatechange = function() {
-        var i, parser, playlist, playlistUri;
+        var i, parser, playlist, playlistUri, refreshDelay;
 
-        if (xhr.readyState === 4) {
-          if (xhr.status >= 400 || this.status === 0) {
-            player.hls.error = {
-              status: xhr.status,
-              message: 'HLS playlist request error at URL: ' + url,
-              code: (xhr.status >= 500) ? 4 : 2
-            };
-            player.trigger('error');
-            return;
-          }
+        // wait until the request completes
+        if (xhr.readyState !== 4) {
+          return;
+        }
 
-          // readystate DONE
-          parser = new videojs.m3u8.Parser();
-          parser.push(xhr.responseText);
+        if (xhr.status >= 400 || this.status === 0) {
+          player.hls.error = {
+            status: xhr.status,
+            message: 'HLS playlist request error at URL: ' + url,
+            code: (xhr.status >= 500) ? 4 : 2
+          };
+          player.trigger('error');
+          return;
+        }
 
-          // master playlists
-          if (parser.manifest.playlists) {
-            player.hls.master = parser.manifest;
-            downloadPlaylist(resolveUrl(url, parser.manifest.playlists[0].uri));
-            player.trigger('loadedmanifest');
-            return;
-          }
+        // readystate DONE
+        parser = new videojs.m3u8.Parser();
+        parser.push(xhr.responseText);
 
-          // media playlists
-          if (player.hls.master) {
-            // merge this playlist into the master
-            i = player.hls.master.playlists.length;
+        // master playlists
+        if (parser.manifest.playlists) {
+          player.hls.master = parser.manifest;
+          downloadPlaylist(resolveUrl(url, parser.manifest.playlists[0].uri));
+          player.trigger('loadedmanifest');
+          return;
+        }
 
-            while (i--) {
-              playlist = player.hls.master.playlists[i];
-              playlistUri = resolveUrl(srcUrl, playlist.uri);
-              if (playlistUri === url) {
-                player.hls.master.playlists[i] =
-                  videojs.util.mergeOptions(playlist, parser.manifest);
+        // media playlists
+        refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
+        if (player.hls.master) {
+          // merge this playlist into the master
+          i = player.hls.master.playlists.length;
+
+          while (i--) {
+            playlist = player.hls.master.playlists[i];
+            playlistUri = resolveUrl(srcUrl, playlist.uri);
+            if (playlistUri === url) {
+              // if the playlist is unchanged since the last reload,
+              // try again after half the target duration
+              // http://tools.ietf.org/html/draft-pantos-http-live-streaming-12#section-6.3.4
+              if (playlist.segments &&
+                  playlist.segments.length === parser.manifest.segments.length) {
+                refreshDelay /= 2;
               }
+
+              player.hls.master.playlists[i] =
+                videojs.m3u8.merge(playlist, parser.manifest);
             }
+          }
+        } else {
+          // infer a master playlist if none was previously requested
+          player.hls.master = {
+            playlists: [parser.manifest]
+          };
+        }
+
+        // check the playlist for updates if EXT-X-ENDLIST isn't present
+        if (!parser.manifest.endList) {
+          window.setTimeout(function() {
+            downloadPlaylist(url);
+          }, refreshDelay);
+        }
+
+        // always start playback with the default rendition
+        if (!player.hls.media) {
+          player.hls.media = player.hls.master.playlists[0];
+
+          // update the duration
+          if (parser.manifest.totalDuration) {
+            player.duration(parser.manifest.totalDuration);
           } else {
-            // infer a master playlist if none was previously requested
-            player.hls.master = {
-              playlists: [parser.manifest]
-            };
+            player.duration(totalDuration(parser.manifest));
           }
 
-          // always start playback with the default rendition
-          if (!player.hls.media) {
-            player.hls.media = player.hls.master.playlists[0];
-
-            // update the duration
-            if (parser.manifest.totalDuration) {
-              player.duration(parser.manifest.totalDuration);
-            } else {
-              player.duration(totalDuration(parser.manifest));
-            }
-
-            // periodicaly check if the buffer needs to be refilled
-            player.on('timeupdate', fillBuffer);
-
-            player.trigger('loadedmanifest');
-            player.trigger('loadedmetadata');
-            fillBuffer();
-            return;
-          }
-
-          // select a playlist and download its metadata if necessary
-          playlist = player.hls.selectPlaylist();
-          if (!playlist.segments) {
-            downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
-          } else {
-            player.hls.media = playlist;
-
-            // update the duration
-            if (player.hls.media.totalDuration) {
-              player.duration(player.hls.media.totalDuration);
-            } else {
-              player.duration(totalDuration(player.hls.media));
-            }
-          }
+          // periodicaly check if the buffer needs to be refilled
+          player.on('timeupdate', fillBuffer);
 
           player.trigger('loadedmanifest');
+          player.trigger('loadedmetadata');
+          fillBuffer();
+          return;
         }
+
+        // select a playlist and download its metadata if necessary
+        playlist = player.hls.selectPlaylist();
+        if (!playlist.segments) {
+          downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
+        } else {
+          player.hls.media = playlist;
+
+          // update the duration
+          if (player.hls.media.totalDuration) {
+            player.duration(player.hls.media.totalDuration);
+          } else {
+            player.duration(totalDuration(player.hls.media));
+          }
+        }
+
+        player.trigger('loadedmanifest');
       };
       xhr.send(null);
     };

@@ -514,7 +514,7 @@
   });
 
   test('merges a manifest that strictly adds to an earlier one', function() {
-    var key, base, mid, parsed;
+    var key, base, manifest, mid;
     for (key in window.manifests) {
       if (window.expected[key]) {
         manifest = window.manifests[key];
