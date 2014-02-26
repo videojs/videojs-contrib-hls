@@ -187,6 +187,7 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
+      calculatedBandwidth = 0,
 
       // async queue of Uint8Arrays to be appended to the SourceBuffer
       tags = videojs.hls.queue(function(tag) {
@@ -288,6 +289,13 @@ var
       fillBuffer(currentTime * 1000);
     });
 
+    player.hls.bandwidth = function(bitrate) {
+      if(bitrate) {
+        calculatedBandwidth = bitrate;
+      } else {
+        return calculatedBandwidth;
+      }
+    }
 
     /**
      * Chooses the appropriate media playlist based on the current
@@ -319,7 +327,7 @@ var
 
         effectiveBitrate = variant.attributes.BANDWIDTH * bandwidthVariance;
 
-        if (effectiveBitrate < player.hls.bandwidth) {
+        if (effectiveBitrate < player.hls.bandwidth()) {
           bandwidthPlaylists.push(variant);
 
           // since the playlists are sorted in ascending order by
@@ -533,7 +541,7 @@ var
 
         // calculate the download bandwidth
         player.hls.segmentXhrTime = (+new Date()) - startTime;
-        player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
+        player.hls.bandwidth((this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000);
 
         // transmux the segment data from MP2T to FLV
         segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
