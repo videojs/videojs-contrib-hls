@@ -132,6 +132,11 @@ var
       duration = 0,
       i = playlist.segments.length,
       segment;
+    // duration should be Infinity for live playlists
+    if (!playlist.endList) {
+      return window.Infinity;
+    }
+
     while (i--) {
       segment = playlist.segments[i];
       duration += segment.duration || playlist.targetDuration || 0;

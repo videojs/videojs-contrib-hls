@@ -181,13 +181,15 @@ test('calculates the duration if needed', function() {
     }
     durations.push(duration);
   };
-  player.hls('http://example.com/manifest/liveMissingSegmentDuration.m3u8');
+  player.hls('http://example.com/manifest/missingExtinf.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
   strictEqual(durations.length, 1, 'duration is set');
-  strictEqual(durations[0], 6.64 + (2 * 8), 'duration is calculated');
+  strictEqual(durations[0],
+              player.hls.media.segments.length * 10,
+              'duration is calculated');
 });
 
 test('starts downloading a segment on loadedmetadata', function() {
@@ -888,6 +890,15 @@ test('reloads live playlists', function() {
   strictEqual(player.hls.media.targetDuration * 1000,
               callbacks[0].timeout,
               'waited one target duration');
+});
+
+test('duration is Infinity for live playlists', function() {
+  player.hls('manifest/missingEndlist.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(Infinity, player.duration(), 'duration is infinity');
 });
 
 test('does not reload playlists with an endlist tag', function() {

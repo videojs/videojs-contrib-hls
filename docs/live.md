@@ -1,9 +1,19 @@
 # Live HLS Research
 This document is a collection of notes on Live HLS implementations in the wild.
 
+There are two varieties of Live HLS. In the first, playlists are
+persistent and strictly appended to. In the alternative form, the
+maximum number of segments in a playlist is relatively stable and an
+old segment is removed every time a new segment becomes available.
+
+On iOS devices, both stream types report a duration of `Infinity`. The
+`currentTime` is equal to the amount of the stream that has been
+played back on the device.
+
 ## Akamai HD2
 
 ## OnceLIVE
+"Sliding window" live streams.
 
 ### Variant Playlists
 Once variant playlists look like standard HLS variant playlists.
