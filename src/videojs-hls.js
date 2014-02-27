@@ -201,7 +201,8 @@ var
 
       segmentXhr,
       downloadPlaylist,
-      fillBuffer;
+      fillBuffer,
+      updateDuration;
 
     // if the video element supports HLS natively, do nothing
     if (videojs.hls.supportsNativeHls) {
@@ -304,6 +305,12 @@ var
      * bandwidth, accounting for some amount of bandwidth variance
      */
     player.hls.selectPlaylist = function () {
+      // initial load should go to first rendition per HLS spec
+      if(player.hls.media === undefined && player.hls.master.playlists[0])
+      {
+        return player.hls.master.playlists[0];
+      }
+
       var
         effectiveBitrate,
         sortedPlaylists = player.hls.master.playlists.slice(),
@@ -368,6 +375,17 @@ var
       return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
     };
 
+    updateDuration = function() {
+      // update the duration
+      if (player.hls.media && player.hls.media.totalDuration) {
+        player.duration(player.hls.media.totalDuration);
+      } else if(player.hls.media && player.hls.media.segments) {
+        player.duration(totalDuration(player.hls.media));
+      } else {
+        player.duration(0);
+      }
+    };
+
     /**
      * Download an M3U8 and update the current manifest object. If the provided
      * URL is a master playlist, the default variant will be downloaded and
@@ -430,14 +448,11 @@ var
 
           // always start playback with the default rendition
           if (!player.hls.media) {
-            player.hls.media = player.hls.master.playlists[0];
+            //player.hls.media = player.hls.master.playlists[0];
+            console.log('initial validate', player.media);
+            player.hls.validate(player.hls.selectPlaylist());
 
-            // update the duration
-            if (parser.manifest.totalDuration) {
-              player.duration(parser.manifest.totalDuration);
-            } else {
-              player.duration(totalDuration(parser.manifest));
-            }
+            updateDuration();
 
             // periodicaly check if the buffer needs to be refilled
             player.on('timeupdate', fillBuffer);
@@ -449,24 +464,32 @@ var
           }
 
           // select a playlist and download its metadata if necessary
+          /*
           playlist = player.hls.selectPlaylist();
           if (!playlist.segments) {
             downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
           } else {
             player.hls.media = playlist;
 
-            // update the duration
-            if (player.hls.media.totalDuration) {
-              player.duration(player.hls.media.totalDuration);
-            } else {
-              player.duration(totalDuration(player.hls.media));
-            }
+            updateDuration();
           }
+          */
+
+          player.hls.validate(player.hls.selectPlaylist());
 
           player.trigger('loadedmanifest');
         }
       };
       xhr.send(null);
+    };
+
+    player.hls.validate = function(playlist) {
+      if (!playlist.segments) {
+        downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
+      } else {
+        player.hls.media = playlist;
+        updateDuration();
+      }
     };
 
     /**
@@ -476,6 +499,11 @@ var
      * to seek to, in milliseconds
      */
     fillBuffer = function(offset) {
+
+      if(player.hls.media === undefined) {
+        return;
+      }
+
       var
         buffered = player.buffered(),
         bufferedTime = 0,
@@ -565,14 +593,7 @@ var
 
         player.hls.mediaIndex++;
 
-        // figure out what stream the next segment should be downloaded from
-        // with the updated bandwidth information
-        playlist = player.hls.selectPlaylist();
-        if (!playlist.segments) {
-          downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
-        } else {
-          player.hls.media = playlist;
-        }
+        player.hls.validate(player.hls.selectPlaylist());
       };
       startTime = +new Date();
       segmentXhr.send(null);
@@ -588,6 +609,7 @@ var
       player.hls.mediaIndex = 0;
       downloadPlaylist(srcUrl);
     });
+
     player.src([{
       src: videojs.URL.createObjectURL(mediaSource),
       type: "video/flv"
