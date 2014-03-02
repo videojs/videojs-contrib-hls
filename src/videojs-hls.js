@@ -123,6 +123,42 @@ var
   },
 
   /**
+   * Determine the media index in one playlist that corresponds to a
+   * specified media index in another. This function can be used to
+   * calculate a new segment position when a playlist is reloaded or a
+   * variant playlist is becoming active.
+   * @param mediaIndex {number} the index into the original playlist
+   * to translate
+   * @param original {object} the playlist to translate the media
+   * index from
+   * @param update {object} the playlist to translate the media index
+   * to
+   * @param {number} the corresponding media index in the updated
+   * playlist
+   */
+  findCorrespondingMediaIndex = function(mediaIndex, original, update) {
+    var
+      i = update.segments.length,
+      originalSegment;
+
+    // no segments have been loaded from the original playlist
+    if (mediaIndex === 0) {
+      return 0;
+    }
+
+    // try to sync based on URI
+    originalSegment = original.segments[mediaIndex - 1];
+    while (i--) {
+      if (originalSegment.uri === update.segments[i].uri) {
+        return i + 1;
+      }
+    }
+
+    // sync on media sequence
+    return (original.mediaSequence + mediaIndex) - update.mediaSequence;
+  },
+
+  /**
    * Calculate the total duration for a playlist based on segment metadata.
    * @param playlist {object} a media playlist object
    * @return {number} the currently known duration, in seconds
@@ -316,6 +352,10 @@ var
           mediaSequence > (playlist.mediaSequence || 0) + playlist.segments.length) {
         downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
       } else {
+        player.hls.mediaIndex =
+          findCorrespondingMediaIndex(player.hls.mediaIndex,
+                                      player.hls.media,
+                                      playlist);
         player.hls.media = playlist;
 
         // update the duration
@@ -411,27 +451,7 @@ var
       var xhr = new window.XMLHttpRequest();
       xhr.open('GET', url);
       xhr.onreadystatechange = function() {
-        var i, parser, playlist, playlistUri, refreshDelay,
-          updateMediaIndex = function(original, update) {
-            var
-              i = update.segments.length,
-              updatedIndex = 0,
-              originalSegment;
-
-            // no segments have been loaded from the original playlist
-            if (player.hls.mediaIndex === 0) {
-              return;
-            }
-
-            originalSegment = original.segments[player.hls.mediaIndex - 1];
-            while (i--) {
-              if (originalSegment.uri === update.segments[i].uri) {
-                updatedIndex = i + 1;
-                break;
-              }
-            }
-            player.hls.mediaIndex = updatedIndex;
-          };
+        var i, parser, playlist, playlistUri, refreshDelay;
 
         // wait until the request completes
         if (xhr.readyState !== 4) {
@@ -487,7 +507,11 @@ var
 
               // determine the new mediaIndex if we're updating the
               // current media playlist
-              updateMediaIndex(playlist, parser.manifest);
+              player.hls.mediaIndex =
+                findCorrespondingMediaIndex(player.hls.mediaIndex,
+                                            playlist,
+                                            parser.manifest);
+              player.hls.media = parser.manifest;
             }
           }
         } else {

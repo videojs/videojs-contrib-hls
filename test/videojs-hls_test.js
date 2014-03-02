@@ -991,7 +991,7 @@ test('updates the media index when a playlist reloads', function() {
     '3.ts\n';
   callback();
 
-  strictEqual(2, player.hls.mediaIndex, 'mediaIndex is updated after the reload');
+  strictEqual(player.hls.mediaIndex, 2, 'mediaIndex is updated after the reload');
 });
 
 test('mediaIndex is zero before the first segment loads', function() {
@@ -1012,42 +1012,39 @@ test('mediaIndex is zero before the first segment loads', function() {
 });
 
 test('reloads out-of-date live playlists when switching variants', function() {
-  var callback;
-  // capture timeouts
-  window.setTimeout = function(cb) {
-    callback = cb;
-  };
-
   player.hls('http://example.com/master.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
-  // playing segment 15 on playlist 0
   player.hls.master = {
     playlists: [{
       mediaSequence: 15,
-      segments: [{}, {}]
+      segments: [1, 1, 1]
     }, {
       uri: 'http://example.com/variant-update.m3u8',
       mediaSequence: 0,
-      segments: [{}, {}]
+      segments: [1, 1]
     }]
   };
+  // playing segment 15 on playlist zero
   player.hls.media = player.hls.master.playlists[0];
-  player.mediaIndex = 0;
+  player.mediaIndex = 1;
   window.manifests['variant-update'] = '#EXTM3U\n' +
     '#EXT-X-MEDIA-SEQUENCE:16\n' +
     '#EXTINF:10,\n' +
-    '16.ts\n';
+    '16.ts\n' +
+    '#EXTINF:10,\n' +
+    '17.ts\n';
 
   // switch playlists
   player.hls.selectPlaylist = function() {
     return player.hls.master.playlists[1];
   };
+  // timeupdate downloads segment 16 then switches playlists
   player.trigger('timeupdate');
 
-  ok(callback, 'reload is scheduled');
+  strictEqual(player.mediaIndex, 1, 'mediaIndex points at the next segment');
 });
 
 })(window, window.videojs);
