@@ -26,7 +26,7 @@ module.exports = function(config) {
     // - PhantomJS
     // - IE (only Windows)
     // Example usage:
-    browsers: ['test_browser'],
+    browsers: ['test_browser', 'firefox_test', 'safari_test', 'ipad_test'],
 
     // List of files / patterns to load in the browser
     // Add any new src files to this list.
@@ -57,11 +57,11 @@ module.exports = function(config) {
     plugins: [
       'karma-qunit',
       'karma-chrome-launcher',
-      //'karma-firefox-launcher',
+      'karma-firefox-launcher',
       //'karma-ie-launcher',
       //'karma-opera-launcher',
       //'karma-phantomjs-launcher',
-      //'karma-safari-launcher',
+      'karma-safari-launcher',
       'karma-sauce-launcher'
     ],
 
@@ -106,12 +106,34 @@ module.exports = function(config) {
 
     //define SL browsers
     customLaunchers: {
-    test_browser: { 
-      singleRun: true,
-      base: 'SauceLabs', 
-      browserName: 'chrome',
-      platform: 'Windows XP'
+      test_browser: { 
+        singleRun: true,
+        base: 'SauceLabs', 
+        browserName: 'chrome',
+        platform: 'Windows XP'
+      },
+
+      firefox_test: {
+        singleRun: true,
+        base: 'SauceLabs',
+        browserName: 'firefox',
+        platform: 'Windows 8'
+      },
+
+      safari_test: {
+        singleRun: true,
+        base: 'SauceLabs',
+        browserName: 'safari',
+        platform: 'OS X 10.8'
+      },
+
+      ipad_test: {
+        singleRun: true,
+        base: 'SauceLabs',
+        browserName: 'ipad',
+        platform:'OS X 10.8'
       }
+
     }
 
   });
