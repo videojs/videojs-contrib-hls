@@ -94,6 +94,15 @@ var
     }
   },
 
+  /**
+   * Creates and sends an XMLHttpRequest.
+   * @param options {string | object} if this argument is a string, it
+   * is intrepreted as a URL and a simple GET request is
+   * inititated. If it is an object, it should contain a `url`
+   * property that indicates the URL to request and optionally a
+   * `method` which is the type of HTTP request to send.
+   * @return {object} the XMLHttpRequest that was initiated.
+   */
   xhr = function(url, callback) {
     var
       options = {
@@ -165,7 +174,7 @@ var
    * @param {number} the corresponding media index in the updated
    * playlist
    */
-  findCorrespondingMediaIndex = function(mediaIndex, original, update) {
+  translateMediaIndex = function(mediaIndex, original, update) {
     var
       i = update.segments.length,
       originalSegment;
@@ -195,8 +204,13 @@ var
   totalDuration = function(playlist) {
     var
       duration = 0,
-      i = playlist.segments.length,
+      i,
       segment;
+
+    if (!playlist.segments) {
+      return 0;
+    }
+    i = playlist.segments.length;
 
     // if present, use the duration specified in the playlist
     if (playlist.totalDuration) {
@@ -274,8 +288,9 @@ var
       }),
       srcUrl,
 
+      playlistXhr,
       segmentXhr,
-      downloadPlaylist,
+      loadedPlaylist,
       fillBuffer,
       updateCurrentPlaylist;
 
@@ -379,12 +394,16 @@ var
       if (!playlist.segments ||
           mediaSequence < (playlist.mediaSequence || 0) ||
           mediaSequence > (playlist.mediaSequence || 0) + playlist.segments.length) {
-        xhr(resolveUrl(srcUrl, playlist.uri), downloadPlaylist);
+
+        if (playlistXhr) {
+          playlistXhr.abort();
+        }
+        playlistXhr = xhr(resolveUrl(srcUrl, playlist.uri), loadedPlaylist);
       } else {
         player.hls.mediaIndex =
-          findCorrespondingMediaIndex(player.hls.mediaIndex,
-                                      player.hls.media,
-                                      playlist);
+          translateMediaIndex(player.hls.mediaIndex,
+                              player.hls.media,
+                              playlist);
         player.hls.media = playlist;
 
         // update the duration
@@ -466,20 +485,19 @@ var
     };
 
     /**
-     * Callback that is invoked when a playlist finishes
-     * downloading. If the response is a master playlist, the default
-     * variant will be downloaded and parsed as well. Triggers
-     * `loadedmanifest` once for each playlist that is downloaded and
-     * `loadedmetadata` after at least one media playlist has been
-     * parsed. Whether multiple playlists were downloaded or not, when
-     * `loadedmetadata` fires a parsed or inferred master playlist
-     * object will be available as `player.hls.master`.
+     * Callback that is invoked when a media playlist finishes
+     * downloading. Triggers `loadedmanifest` once for each playlist
+     * that is downloaded and `loadedmetadata` after at least one
+     * media playlist has been parsed.
      *
      * @param error {*} truthy if the request was not successful
      * @param url {string} a URL to the M3U8 file to process
      */
-    downloadPlaylist = function(error, url) {
+    loadedPlaylist = function(error, url) {
       var i, parser, playlist, playlistUri, refreshDelay;
+
+      // clear the current playlist XHR
+      playlistXhr = null;
 
       if (error) {
         player.hls.error = {
@@ -487,68 +505,51 @@ var
           message: 'HLS playlist request error at URL: ' + url,
           code: (this.status >= 500) ? 4 : 2
         };
-        player.trigger('error');
-        return;
+        return player.trigger('error');
       }
 
-      // readystate DONE
       parser = new videojs.m3u8.Parser();
       parser.push(this.responseText);
 
-      // master playlists
-      if (parser.manifest.playlists) {
-        player.hls.master = parser.manifest;
-        xhr(resolveUrl(url, parser.manifest.playlists[0].uri), downloadPlaylist);
-        player.trigger('loadedmanifest');
-        return;
-      }
-
-      // media playlists
+      // merge this playlist into the master
+      i = player.hls.master.playlists.length;
       refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
-      if (player.hls.master) {
-        // merge this playlist into the master
-        i = player.hls.master.playlists.length;
-
-        while (i--) {
-          playlist = player.hls.master.playlists[i];
-          playlistUri = resolveUrl(srcUrl, playlist.uri);
-          if (playlistUri === url) {
-            // if the playlist is unchanged since the last reload,
-            // try again after half the target duration
-            // http://tools.ietf.org/html/draft-pantos-http-live-streaming-12#section-6.3.4
-            if (playlist.segments &&
-                playlist.segments.length === parser.manifest.segments.length) {
-              refreshDelay /= 2;
-            }
-
-            player.hls.master.playlists[i] =
-              videojs.util.mergeOptions(playlist, parser.manifest);
-
-            if (playlist !== player.hls.media) {
-              continue;
-            }
-
-            // determine the new mediaIndex if we're updating the
-            // current media playlist
-            player.hls.mediaIndex =
-              findCorrespondingMediaIndex(player.hls.mediaIndex,
-                                          playlist,
-                                          parser.manifest);
-            player.hls.media = parser.manifest;
+      while (i--) {
+        playlist = player.hls.master.playlists[i];
+        playlistUri = resolveUrl(srcUrl, playlist.uri);
+        if (playlistUri === url) {
+          // if the playlist is unchanged since the last reload,
+          // try again after half the target duration
+          // http://tools.ietf.org/html/draft-pantos-http-live-streaming-12#section-6.3.4
+          if (playlist.segments &&
+              playlist.segments.length === parser.manifest.segments.length) {
+            refreshDelay /= 2;
           }
+
+          player.hls.master.playlists[i] =
+            videojs.util.mergeOptions(playlist, parser.manifest);
+
+          if (playlist !== player.hls.media) {
+            continue;
+          }
+
+          // determine the new mediaIndex if we're updating the
+          // current media playlist
+          player.hls.mediaIndex =
+            translateMediaIndex(player.hls.mediaIndex,
+                                playlist,
+                                parser.manifest);
+          player.hls.media = parser.manifest;
         }
-      } else {
-        // infer a master playlist if none was previously requested
-        player.hls.master = {
-          playlists: [parser.manifest]
-        };
-        parser.manifest.uri = url;
       }
 
       // check the playlist for updates if EXT-X-ENDLIST isn't present
       if (!parser.manifest.endList) {
         window.setTimeout(function() {
-          xhr(url, downloadPlaylist);
+          if (!playlistXhr &&
+              resolveUrl(srcUrl, player.hls.media.uri) === url) {
+            playlistXhr = xhr(url, loadedPlaylist);
+          }
         }, refreshDelay);
       }
 
@@ -689,7 +690,26 @@ var
       sourceBuffer.appendBuffer(segmentParser.getFlvHeader());
 
       player.hls.mediaIndex = 0;
-      xhr(srcUrl, downloadPlaylist);
+      xhr(srcUrl, function(error, url) {
+        var uri, parser = new videojs.m3u8.Parser();
+        parser.push(this.responseText);
+
+        // master playlists
+        if (parser.manifest.playlists) {
+          player.hls.master = parser.manifest;
+          playlistXhr = xhr(resolveUrl(url, parser.manifest.playlists[0].uri), loadedPlaylist);
+          return player.trigger('loadedmanifest');
+        } else {
+          // infer a master playlist if a media playlist is loaded directly
+          uri = resolveUrl(window.location.href, url);
+          player.hls.master = {
+            playlists: [{
+              uri: uri
+            }]
+          };
+          loadedPlaylist.call(this, error, uri);
+        }
+      });
     });
     player.src([{
       src: videojs.URL.createObjectURL(mediaSource),
