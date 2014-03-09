@@ -32,7 +32,6 @@ window.videojs.hls.ExpGolomb = function(workingData) {
       workingBytes = new Uint8Array(4),
       availableBytes = Math.min(4, workingBytesAvailable);
 
-    // console.assert(availableBytes > 0);
     if (availableBytes === 0) {
       throw new Error('no bytes available');
     }
