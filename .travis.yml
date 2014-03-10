@@ -7,10 +7,10 @@ before_script:
 - npm install -g grunt-cli
 - curl https://gist.github.com/santiycr/5139565/raw/sauce_connect_setup.sh | bash
 notifications:
-     hipchat: fa664f1eb0940506d8c511a791780e @ test room
-rooms:
-secure: l5TTd5JuPAW883PtcyaIBcJI9Chr9JpsZPQAEUBKAgIEwzuS6y7t5arlkS1PwH6gi1FADzYDf+OXSIou4GkTSrIetnBcT/SAgF0gBKgIhj+eRkuCfZ4VaC7BPhfZ0hgYRE+5Ejf5BM2MJafRm0pj7OlqG4xKrQZwtuV1te5r3JY=
-
+  hipchat:
+    rooms:
+      secure: l5TTd5JuPAW883PtcyaIBcJI9Chr9JpsZPQAEUBKAgIEwzuS6y7t5arlkS1PwH6gi1FADzYDf+OXSIou4GkTSrIetnBcT/SAgF0gBKgIhj+eRkuCfZ4VaC7BPhfZ0hgYRE+5Ejf5BM2MJafRm0pj7OlqG4xKrQZwtuV1te5r3JY=
+  irc: "chat.freenode.net#videojs"
 addons:
      sauce_connect: 
        username: "sheff555"
