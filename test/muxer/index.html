@@ -137,7 +137,11 @@
             i,
             pos;
 
+        // clear old tag info
+        vjsTags.innerHTML = '';
+
         parser.parseSegmentBinaryData(new Uint8Array(reader.result));
+
         // collect all the tags
         while (parser.tagsAvailable()) {
           tag = parser.getNextTag();
@@ -177,6 +181,9 @@
             dataSize,
             li;
 
+        // clear old tag info
+        workingTags.innerHTML = '';
+
         // traverse the tags
         i += 4; // previous tag size
         while (i < bytes.byteLength) {
@@ -200,6 +207,30 @@
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
+  </script>
+  <script type="text/plain">
+    // map nal_unit_types to friendly names
+    console.log([
+      'unspecified',
+      'slice_layer_without_partitioning',
+      'slice_data_partition_a_layer',
+      'slice_data_partition_b_layer',
+      'slice_data_partition_c_layer',
+      'slice_layer_without_partitioning_idr',
+      'sei',
+      'seq_parameter_set',
+      'pic_parameter_set',
+      'access_unit_delimiter',
+      'end_of_seq',
+      'end_of_stream',
+      'filler',
+      'seq_parameter_set_ext',
+      'prefix_nal_unit',
+      'subset_seq_parameter_set',
+      'reserved',
+      'reserved',
+      'reserved'
+    ][nalUnitType]);
   </script>
 </body>
 </html>
