@@ -55,6 +55,19 @@
           </form>
         </section>
         <section>
+          <h2>Tag Comparison</h2>
+          <div class="result-wrapper">
+            <h3>videojs-contrib-hls</h3>
+            <ol class="vjs-tags">
+            </ol>
+          </div>
+          <div class="result-wrapper">
+            <h3>Working</h3>
+            <ol class="working-tags">
+            </ol>
+          </div>
+        </section>
+        <section>
           <h2>Results</h2>
           <div class="result-wrapper">
             <h3>videojs-contrib-hls</h3>
@@ -98,15 +111,27 @@
     var inputs = document.getElementById('inputs'),
         original = document.getElementById('original'),
         working = document.getElementById('working'),
+
+        vjsTags = document.querySelector('.vjs-tags'),
+        workingTags = document.querySelector('.working-tags'),
+
         vjsOutput = document.querySelector('.vjs-hls-output'),
-        workingOutput = document.querySelector('.working-output');
+        workingOutput = document.querySelector('.working-output'),
+
+        tagTypes = {
+          0x08: 'audio',
+          0x09: 'video',
+          0x12: 'metadata'
+        };
 
     original.addEventListener('change', function() {
       var reader = new FileReader();
       reader.addEventListener('loadend', function() {
         var parser = new videojs.hls.SegmentParser(),
             tags = [parser.getFlvHeader()],
+            tag,
             hex,
+            li,
             byteLength = 0,
             data,
             i,
@@ -115,7 +140,11 @@
         parser.parseSegmentBinaryData(new Uint8Array(reader.result));
         // collect all the tags
         while (parser.tagsAvailable()) {
-          tags.push(parser.getNextTag().bytes);
+          tag = parser.getNextTag();
+          tags.push(tag.bytes);
+          li = document.createElement('li');
+          li.innerHTML = tagTypes[tag.bytes[0]] + ': ' + tag.bytes.byteLength + 'B';
+          vjsTags.appendChild(li);
         }
         // create a uint8array for the entire segment and copy everything over
         i = tags.length;
@@ -142,8 +171,30 @@
     working.addEventListener('change', function() {
       var reader = new FileReader();
       reader.addEventListener('loadend', function() {
-        var hex = '<pre>';
-        hex += videojs.hls.utils.hexDump(new Uint8Array(reader.result));
+        var hex = '<pre>',
+            bytes = new Uint8Array(reader.result),
+            i = 9, // header
+            dataSize,
+            li;
+
+        // traverse the tags
+        i += 4; // previous tag size
+        while (i < bytes.byteLength) {
+          dataSize = bytes[i + 1] << 16;
+          dataSize |= bytes[i + 2] << 8;
+          dataSize |= bytes[i + 3];
+          dataSize += 11;
+
+          li = document.createElement('li');
+          li.innerHTML = tagTypes[bytes[i]] + ': ' + dataSize + 'B';
+          workingTags.appendChild(li);
+
+          i += dataSize; // tag size
+          i += 4; // previous tag size
+        }
+
+        // output the hex dump
+        hex += videojs.hls.utils.hexDump(bytes);
         hex += '</pre>';
         workingOutput.innerHTML = hex;
       });

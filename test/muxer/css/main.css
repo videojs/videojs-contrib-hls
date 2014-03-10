@@ -157,6 +157,10 @@ nav a:hover {
    Author's custom styles
    ========================================================================== */
 
+section {
+  clear: both;
+}
+
 form label {
   display: block;
 }
