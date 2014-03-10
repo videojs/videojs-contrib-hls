@@ -288,6 +288,9 @@ var
       fillBuffer(currentTime * 1000);
     });
 
+    player.on('ended', function() {
+      player.loadingSpinner.hide();
+    });
 
     /**
      * Chooses the appropriate media playlist based on the current
