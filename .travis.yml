@@ -1,8 +1,6 @@
 language: node_js
 node_js:
-   # "0.10"
-   - "0.8"
-   #- "0.11"
+- '0.8'
 before_script:
 - npm install -g grunt-cli
 - curl https://gist.github.com/santiycr/5139565/raw/sauce_connect_setup.sh | bash
@@ -10,10 +8,11 @@ notifications:
   hipchat:
     rooms:
       secure: l5TTd5JuPAW883PtcyaIBcJI9Chr9JpsZPQAEUBKAgIEwzuS6y7t5arlkS1PwH6gi1FADzYDf+OXSIou4GkTSrIetnBcT/SAgF0gBKgIhj+eRkuCfZ4VaC7BPhfZ0hgYRE+5Ejf5BM2MJafRm0pj7OlqG4xKrQZwtuV1te5r3JY=
-  irc: "chat.freenode.net#videojs"
+  irc: chat.freenode.net#videojs
 addons:
-     sauce_connect: 
-       username: "sheff555"
-       access_key: 
-         secure: "BCHrZOG8g5gRLyNr5oDF0h8BRim3TF6hrIXFXQI4HyxRmWMxMVbXiU1uqhxI59IA8QgfoI5nvJSiFL5vUt6IVvxTmxUWuQeS3WXe/r0wZzyo3fjTJtZa5PJzV3/dR8YwMSqhvEtR/FgTjpgNcdpQP4ym8tHJJ2dFqysK2RYbJ3k="
+  sauce_connect:
+    username: 
+      secure: "Y++AtTlMXkcPAx+K0cL6uzn4FlmfiIki5bkGCkowoYSCxq1X9tNta39JONSVSeZKBlP58GJwNJdB4Wq1CpJL4NriGc3UvpcgNcrILGOWLczX0zFvXkOIaLn0bUuierf4wzUjk3i6XOh83NrMaX+gBHXb8RVUEBf2z0/WM3zHrEM="
+    access_key:
+      secure: "T5HHGII84ZXCVbuEK283/cwiqfNVHZtKtMs6quGFNchXkQGujRF7KpQ+ayni45N19VB4irrnuVwEpJrV1rN3lV9OvHVKBbc88XmAFRIcVhn2Ewc0BapA8gcwpki3teu0rQV5SUE3tuXZbozUm05K5H9V88srgTkqciery/CISoo="
 
