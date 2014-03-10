@@ -1,3 +1,4 @@
+(function(videojs) {
 module('H264 Stream');
 
 var
@@ -43,7 +44,7 @@ test('metadata is generated for IDRs after a full NAL unit is written', function
       0x00,
       0x01,
       nalUnitTypes.slice_layer_without_partitioning_rbsp_idr
-    ]);;
+    ]);
 
   h264Stream.setNextTimeStamp(0, 0, true);
   h264Stream.writeBytes(accessUnitDelimiter, 0, accessUnitDelimiter.byteLength);
@@ -58,3 +59,4 @@ test('metadata is generated for IDRs after a full NAL unit is written', function
      'picture parameter set is written');
   ok(h264Stream.tags[2].keyFrame, 'key frame is written');
 });
+})(window.videojs);
