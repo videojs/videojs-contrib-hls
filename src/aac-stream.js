@@ -1,6 +1,6 @@
 /*
  * aac-stream
- * 
+ *
  *
  * Copyright (c) 2013 Brightcove
  * All rights reserved.
@@ -18,9 +18,9 @@ var
   ];
 
 window.videojs.hls.AacStream = function() {
-  var 
+  var
     next_pts, // :uint
-    pts_delta = -1, // :int
+    pts_offset, // :int
     state, // :uint
     pes_length, // :int
 
@@ -39,18 +39,22 @@ window.videojs.hls.AacStream = function() {
 
   // (pts:uint, pes_size:int, dataAligned:Boolean):void
   this.setNextTimeStamp = function(pts, pes_size, dataAligned) {
-    if (0 > pts_delta) {
-      // We assume the very first pts is less than 0x80000000
-      pts_delta = pts;
-    }
 
-    next_pts = pts - pts_delta;
-    pes_length = pes_size;
+    // on the first invocation, capture the starting PTS value
+    pts_offset = pts;
 
-    // If data is aligned, flush all internal buffers
-    if (dataAligned) {
-      state = 0;
-    }
+    // on subsequent invocations, calculate the PTS based on the starting offset
+    this.setNextTimeStamp = function(pts, pes_size, dataAligned) {
+      next_pts = pts - pts_offset;
+      pes_length = pes_size;
+
+      // If data is aligned, flush all internal buffers
+      if (dataAligned) {
+        state = 0;
+      }
+    };
+
+    this.setNextTimeStamp(pts, pes_size, dataAligned);
   };
 
   // (data:ByteArray, o:int = 0, l:int = 0):void
@@ -114,7 +118,7 @@ window.videojs.hls.AacStream = function() {
         offset += 1;
         state = 3;
         break;
-      case 3: 
+      case 3:
         if (offset >= end) {
           return;
         }
@@ -124,7 +128,7 @@ window.videojs.hls.AacStream = function() {
         offset += 1;
         state = 4;
         break;
-      case 4: 
+      case 4:
         if (offset >= end) {
           return;
         }
@@ -143,7 +147,7 @@ window.videojs.hls.AacStream = function() {
         offset += 1;
         state = 6;
         break;
-      case 6: 
+      case 6:
         if (offset >= end) {
           return;
         }
@@ -159,11 +163,11 @@ window.videojs.hls.AacStream = function() {
           aacFrame.dts = next_pts;
 
           // AAC is always 10
-          aacFrame.writeMetaDataDouble("audiocodecid", 10); 
+          aacFrame.writeMetaDataDouble("audiocodecid", 10);
           aacFrame.writeMetaDataBoolean("stereo", 2 === adtsChanelConfig);
           aacFrame.writeMetaDataDouble ("audiosamplerate", adtsSampleingRates[adtsSampleingIndex]);
           // Is AAC always 16 bit?
-          aacFrame.writeMetaDataDouble ("audiosamplesize", 16); 
+          aacFrame.writeMetaDataDouble ("audiosamplesize", 16);
 
           this.tags.push(aacFrame);
 
@@ -173,7 +177,7 @@ window.videojs.hls.AacStream = function() {
           // For audio, DTS is always the same as PTS. We want to set the DTS
           // however so we can compare with video DTS to determine approximate
           // packet order
-          aacFrame.pts = next_pts; 
+          aacFrame.pts = next_pts;
           aacFrame.view.setUint16(aacFrame.position, newExtraData);
           aacFrame.position += 2;
           aacFrame.length = Math.max(aacFrame.length, aacFrame.position);

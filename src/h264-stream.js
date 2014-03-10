@@ -253,7 +253,7 @@
     var
       next_pts, // :uint;
       next_dts, // :uint;
-      pts_delta = -1, // :int
+      pts_offset, // :int
 
       h264Frame, // :FlvTag
 
@@ -268,20 +268,22 @@
 
     //(pts:uint, dts:uint, dataAligned:Boolean):void
     this.setNextTimeStamp = function(pts, dts, dataAligned) {
-      if (pts_delta < 0) {
-        // We assume the very first pts is less than 0x8FFFFFFF (max signed
-        // int32)
-        pts_delta = pts;
-      }
+      // on the first invocation, capture the starting PTS value
+      pts_offset = pts;
 
-      // We could end up with a DTS less than 0 here. We need to deal with that!
-      next_pts = pts - pts_delta;
-      next_dts = dts - pts_delta;
+      // on subsequent invocations, calculate the PTS based on the starting offset
+      this.setNextTimeStamp = function(pts, dts, dataAligned) {
+        // We could end up with a DTS less than 0 here. We need to deal with that!
+        next_pts = pts - pts_offset;
+        next_dts = dts - pts_offset;
 
-      // If data is aligned, flush all internal buffers
-      if (dataAligned) {
-        this.finishFrame();
-      }
+        // If data is aligned, flush all internal buffers
+        if (dataAligned) {
+          this.finishFrame();
+        }
+      };
+
+      this.setNextTimeStamp(pts, dts, dataAligned);
     };
 
     this.finishFrame = function() {
