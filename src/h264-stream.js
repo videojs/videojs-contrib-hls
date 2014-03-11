@@ -8,7 +8,6 @@
 
 (function(window) {
   var
-
     ExpGolomb = window.videojs.hls.ExpGolomb,
     FlvTag = window.videojs.hls.FlvTag,
 
@@ -16,22 +15,8 @@
       this.sps = []; // :Array
       this.pps = []; // :Array
 
-      this.addSPS = function(size) { // :ByteArray
-        console.assert(size > 0);
-        var tmp = new Uint8Array(size); // :ByteArray
-        this.sps.push(tmp);
-        return tmp;
-      };
-
-      this.addPPS = function(size) { // :ByteArray
-        console.assert(size);
-        var tmp = new Uint8Array(size); // :ByteArray
-        this.pps.push(tmp);
-        return tmp;
-      };
-
       this.extraDataExists = function() { // :Boolean
-        return 0 < this.sps.length;
+        return this.sps.length > 0;
       };
 
       // (sizeOfScalingList:int, expGolomb:ExpGolomb):void
@@ -56,61 +41,37 @@
       };
 
       /**
-       *              NAL unit
-       * |- NAL header -|------ RBSP ------|
-       *
-       * NAL unit: Network abstraction layer unit. The combination of a NAL
-       * header and an RBSP.
-       * NAL header: the encapsulation unit for transport-specific metadata in
-       * an h264 stream. Exactly one byte.
        * RBSP: raw bit-stream payload. The actual encoded video data.
        *
        * SPS: sequence parameter set. Part of the RBSP. Metadata to be applied
        * to a complete video sequence, like width and height.
        */
       this.getSps0Rbsp = function() { // :ByteArray
-        // remove emulation bytes. Is this nesessary? is there ever emulation
-        // bytes in the SPS?
         var
-          spsCount = 0,
-          sps0 = this.sps[0], // :ByteArray
-          rbspCount = 0,
-          start = 1, // :uint
-          end = sps0.byteLength - 2, // :uint
-          rbsp = new Uint8Array(sps0.byteLength), // :ByteArray
-          offset = 0; // :uint
+          sps = this.sps[0],
+          offset = 1,
+          start = 1,
+          written = 0,
+          end = sps.byteLength - 2,
+          result = new Uint8Array(sps.byteLength);
 
-        // H264 requires emulation bytes (0x03) be dropped to interpret NAL
-        // units. For instance, 0x8a03b4 should be read as 0x8ab4.
-        for (offset = start ; offset < end ;) {
-          if (3 !== sps0[offset + 2]) {
-            offset += 3;
-          } else if (0 !== sps0[offset + 1]) {
-            offset += 2;
-          } else if (0 !== sps0[offset + 0]) {
-            offset += 1;
-          } else {
-            rbsp.set([0x00, 0x00], rbspCount);
-            spsCount += 2;
-            rbspCount += 2;
-
-            if (offset > start) {
-              // If there are bytes to write, write them
-              rbsp.set(sps0.subarray(start, offset - start), rbspCount);
-              spsCount += offset - start;
-              rbspCount += offset - start;
-            }
-
-            // skip the emulation bytes
-            offset += 3;
-            start = offset;
+        // In order to prevent 0x0000 01 from being interpreted as a
+        // NAL start code, occurences of that byte sequence in the
+        // RBSP are escaped with an "emulation byte". That turns
+        // sequences of 0x0000 01 into 0x0000 0301. When interpreting
+        // a NAL payload, they must be filtered back out.
+        while (offset < end) {
+          if (sps[offset]     === 0x00 &&
+              sps[offset + 1] === 0x00 &&
+              sps[offset + 2] === 0x03) {
+            result.set(sps.subarray(start, offset + 1), written);
+            written += offset + 1 - start;
+            start = offset + 3;
           }
+          offset++;
         }
-
-        // copy any remaining bytes
-        rbsp.set(sps0.subarray(spsCount), rbspCount); // sps0.readBytes(rbsp, rbsp.length);
-
-        return rbsp;
+        result.set(sps.subarray(start), written);
+        return result.subarray(0, written + (sps.byteLength - start));
       };
 
       // (pts:uint):FlvTag
@@ -257,27 +218,42 @@
       };
     },
 
-    // incomplete, see Table 7.1 of ITU-T H.264 for 12-32
-    NALUnitType = {
-      unspecified: 0,
-      slice_layer_without_partitioning_rbsp_non_idr: 1,
-      slice_data_partition_a_layer_rbsp: 2,
-      slice_data_partition_b_layer_rbsp: 3,
-      slice_data_partition_c_layer_rbsp: 4,
-      slice_layer_without_partitioning_rbsp_idr: 5,
-      sei_rbsp: 6,
-      seq_parameter_set_rbsp: 7,
-      pic_parameter_set_rbsp: 8,
-      access_unit_delimiter_rbsp: 9,
-      end_of_seq_rbsp: 10,
-      end_of_stream_rbsp: 11
-    };
+    NALUnitType;
+
+  /**
+   * Network Abstraction Layer (NAL) units are the packets of an H264
+   * stream. NAL units are divided into types based on their payload
+   * data. Each type has a unique numeric identifier.
+   *
+   *              NAL unit
+   * |- NAL header -|------ RBSP ------|
+   *
+   * NAL unit: Network abstraction layer unit. The combination of a NAL
+   * header and an RBSP.
+   * NAL header: the encapsulation unit for transport-specific metadata in
+   * an h264 stream. Exactly one byte.
+   */
+  // incomplete, see Table 7.1 of ITU-T H.264 for 12-32
+  window.videojs.hls.NALUnitType = NALUnitType = {
+    unspecified: 0,
+    slice_layer_without_partitioning_rbsp_non_idr: 1,
+    slice_data_partition_a_layer_rbsp: 2,
+    slice_data_partition_b_layer_rbsp: 3,
+    slice_data_partition_c_layer_rbsp: 4,
+    slice_layer_without_partitioning_rbsp_idr: 5,
+    sei_rbsp: 6,
+    seq_parameter_set_rbsp: 7,
+    pic_parameter_set_rbsp: 8,
+    access_unit_delimiter_rbsp: 9,
+    end_of_seq_rbsp: 10,
+    end_of_stream_rbsp: 11
+  };
 
   window.videojs.hls.H264Stream = function() {
     var
       next_pts, // :uint;
       next_dts, // :uint;
-      pts_delta = -1, // :int
+      pts_offset, // :int
 
       h264Frame, // :FlvTag
 
@@ -292,20 +268,22 @@
 
     //(pts:uint, dts:uint, dataAligned:Boolean):void
     this.setNextTimeStamp = function(pts, dts, dataAligned) {
-      if (pts_delta < 0) {
-        // We assume the very first pts is less than 0x8FFFFFFF (max signed
-        // int32)
-        pts_delta = pts;
-      }
+      // on the first invocation, capture the starting PTS value
+      pts_offset = pts;
 
-      // We could end up with a DTS less than 0 here. We need to deal with that!
-      next_pts = pts - pts_delta;
-      next_dts = dts - pts_delta;
+      // on subsequent invocations, calculate the PTS based on the starting offset
+      this.setNextTimeStamp = function(pts, dts, dataAligned) {
+        // We could end up with a DTS less than 0 here. We need to deal with that!
+        next_pts = pts - pts_offset;
+        next_dts = dts - pts_offset;
 
-      // If data is aligned, flush all internal buffers
-      if (dataAligned) {
-        this.finishFrame();
-      }
+        // If data is aligned, flush all internal buffers
+        if (dataAligned) {
+          this.finishFrame();
+        }
+      };
+
+      this.setNextTimeStamp(pts, dts, dataAligned);
     };
 
     this.finishFrame = function() {
@@ -395,7 +373,7 @@
                 data[offset + 1] === 0 &&
                 data[offset + 2] === 1) {
               // 00 : 00 00 01
-              h264Frame.length -= 1;
+              // h264Frame.length -= 1;
               state = 3;
               return this.writeBytes(data, offset + 3, length - 3);
             }
@@ -466,7 +444,6 @@
             h264Frame.endNalUnit(newExtraData.pps);
             break;
           case NALUnitType.slice_layer_without_partitioning_rbsp_idr:
-            h264Frame.keyFrame = true;
             h264Frame.endNalUnit();
             break;
           default:
@@ -477,8 +454,13 @@
 
         // setup to begin processing the new NAL unit
         nalUnitType = data[offset] & 0x1F;
-        if (h264Frame && 9 === nalUnitType) {
-          this.finishFrame(); // We are starting a new access unit. Flush the previous one
+        if (h264Frame) {
+            if (nalUnitType === NALUnitType.access_unit_delimiter_rbsp) {
+              // starting a new access unit, flush the previous one
+              this.finishFrame();
+            } else if (nalUnitType === NALUnitType.slice_layer_without_partitioning_rbsp_idr) {
+              h264Frame.keyFrame = true;
+            }
         }
 
         // finishFrame may render h264Frame null, so we must test again

@@ -46,7 +46,7 @@ module.exports = function(grunt) {
       }
     },
     qunit: {
-      files: ['test/**/*.html', '!test/perf.html']
+      files: ['test/**/*.html', '!test/perf.html', '!test/muxer/**']
     },
     jshint: {
       gruntfile: {
@@ -68,7 +68,8 @@ module.exports = function(grunt) {
         src: ['test/**/*.js',
               '!test/tsSegment.js',
               '!test/fixtures/*.js',
-              '!test/manifest/**']
+              '!test/manifest/**',
+              '!test/muxer/**']
       }
     },
     connect: {

@@ -14,13 +14,15 @@
           }
           return '.';
         },
+        result = '',
         hex,
         ascii;
       for (var j = 0; j < bytes.length / step; j++) {
         hex = bytes.slice(j * step, j * step + step).map(formatHexString).join(' ');
         ascii = bytes.slice(j * step, j * step + step).map(formatAsciiString).join('');
-        return hex + '  ' + ascii;
+        result += hex + '  ' + ascii + '\n';
       }
+      return result;
     },
     tagDump: function(tag) {
       return module.hexDump(tag.bytes);

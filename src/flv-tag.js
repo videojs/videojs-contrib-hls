@@ -1,5 +1,8 @@
 (function(window) {
 
+window.videojs = window.videojs || {};
+window.videojs.hls = window.videojs.hls || {};
+
 var
   hls = window.videojs.hls,
 
