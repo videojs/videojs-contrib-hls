@@ -26,7 +26,7 @@ module.exports = function(config) {
     // - PhantomJS
     // - IE (only Windows)
     // Example usage:
-    browsers: ['test_browser', 'firefox_test', 'safari_test', 'ipad_test'],
+    browsers: ['Chrome','Firefox','Safari'],
 
     // List of files / patterns to load in the browser
     // Add any new src files to this list.
@@ -61,8 +61,7 @@ module.exports = function(config) {
       'karma-ie-launcher',
       'karma-opera-launcher',
       'karma-phantomjs-launcher',
-      'karma-safari-launcher',
-      'karma-sauce-launcher'
+      'karma-safari-launcher'
     ],
 
     // list of files to exclude
@@ -79,59 +78,20 @@ module.exports = function(config) {
     // web server port
     port: 9876,
 
+
     // cli runner port
     runnerPort: 9100,
 
+
     // enable / disable colors in the output (reporters and logs)
     colors: true,
+
 
     // level of logging
     // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
     //logLevel: config.LOG_INFO,
 
     // If browser does not capture in given timeout [ms], kill it
-    captureTimeout: 60000,
-
-    // global config for SauceLabs
-    sauceLabs: {
-      username: "sheff555",
-      accessKey: "d04372cc-0fc3-4e59-aa02-3cfd9df03240",
-      startConnect: true,
-      tunnelIdentifier: 'uniquekarmaidentifier',
-      testName: 'ps test sample'
-    },
-
-    //define SL browsers
-    customLaunchers: {
-      test_browser: { 
-        singleRun: true,
-        base: 'SauceLabs', 
-        browserName: 'chrome',
-        platform: 'Windows XP'
-      },
-
-      firefox_test: {
-        singleRun: true,
-        base: 'SauceLabs',
-        browserName: 'firefox',
-        platform: 'Windows 8'
-      },
-
-      safari_test: {
-        singleRun: true,
-        base: 'SauceLabs',
-        browserName: 'safari',
-        platform: 'OS X 10.8'
-      },
-
-      ipad_test: {
-        singleRun: true,
-        base: 'SauceLabs',
-        browserName: 'ipad',
-        platform:'OS X 10.8'
-      }
-
-    }
-
+    captureTimeout: 60000
   });
 };
