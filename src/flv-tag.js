@@ -1,11 +1,7 @@
 (function(window) {
 
-if (!window.videojs) {
-  window.videojs = {};
-}
-if (!window.videojs.hls) {
-  window.videojs.hls = {};
-}
+window.videojs = window.videojs || {};
+window.videojs.hls = window.videojs.hls || {};
 
 var
   hls = window.videojs.hls,
