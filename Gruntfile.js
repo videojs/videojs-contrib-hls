@@ -112,8 +112,14 @@ module.exports = function(grunt) {
         configFile: 'test/karma.conf.js',
         frameworks: ['qunit']
       },
-      dev: {
+
+      saucelabs: {
         configFile: 'test/karma.conf.js',
+        autoWatch: true
+      },
+
+      dev: {
+        configFile: 'test/localkarma.conf.js',
         autoWatch: true
       },
       ci: {
