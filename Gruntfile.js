@@ -262,7 +262,7 @@ module.exports = function(grunt) {
                       ['manifests-to-js', 'qunit', 'karma']);
 
   // travis build task
-  grunt.registerTask('build:travis', ['jshint', 'test:node', 'test:sauceLabs']);
+  grunt.registerTask('build:travis', ['jshint', 'test:node', 'test:sauce-browser']);
 
   //test:sauce-browser
 
