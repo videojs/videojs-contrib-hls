@@ -118,9 +118,9 @@ module.exports = function(grunt) {
       },
 
       dev: {
-          browsers: ['Chrome', 'Safari', 'Firefox', 'Opera', 'IE', 'PhantomJS', 'ChromeCanary'],
-          configFile: 'test/localkarma.conf.js',
-          autoWatch: true
+        browsers: ['Chrome', 'Safari', 'Firefox', 'Opera', 'IE', 'PhantomJS', 'ChromeCanary'],
+        configFile: 'test/localkarma.conf.js',
+        autoWatch: true
       },
 
       chromecanary: {
@@ -258,13 +258,10 @@ module.exports = function(grunt) {
                       'concat',
                       'uglify']);
 
-  grunt.registerTask('test', 
-                      ['manifests-to-js', 'qunit', 'karma']);
+  grunt.registerTask('test', ['manifests-to-js', 'qunit', 'karma']);
 
   // travis build task
-  grunt.registerTask('build:travis', ['jshint', 'test:node', 'test:sauce-browser']);
-
-  //test:sauce-browser
-
+  grunt.registerTask('build:travis',
+  ['jshint', 'test:node', 'test:sauce-browser']);
 
 };
