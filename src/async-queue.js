@@ -20,7 +20,7 @@
             window.setTimeout(process, 0);
             q.running = true;
           }
-        },
+        }
       },
       process = function() {
         var task;
