@@ -118,7 +118,8 @@ module.exports = function(grunt) {
       },
 
       dev: {
-        browsers: ['Chrome', 'Safari', 'Firefox', 'Opera', 'IE', 'PhantomJS', 'ChromeCanary'],
+        browsers: ['Chrome', 'Safari', 'Firefox',
+        'Opera', 'IE', 'PhantomJS', 'ChromeCanary'],
         configFile: 'test/localkarma.conf.js',
         autoWatch: true
       },
