@@ -26,8 +26,7 @@ module.exports = function(config) {
     // - PhantomJS
     // - IE (only Windows)
     // Example usage:
-    browsers: ['Chrome','Firefox','Safari'],
-
+    // browsers: [],
     // List of files / patterns to load in the browser
     // Add any new src files to this list.
     // If you add new unit tests, they will be picked up automatically by Karma,

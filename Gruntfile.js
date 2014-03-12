@@ -110,7 +110,6 @@ module.exports = function(grunt) {
     },
     karma: {
       options: {
-        configFile: 'test/karma.conf.js',
         frameworks: ['qunit']
       },
 
@@ -120,9 +119,67 @@ module.exports = function(grunt) {
       },
 
       dev: {
-        configFile: 'test/localkarma.conf.js',
-        autoWatch: true
+          browsers: ['Chrome', 'Safari', 'Firefox', 'Opera', 'IE', 'PhantomJS', 'ChromeCanary'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
       },
+
+      chromecanary: {
+        options: {
+          browsers: ['ChromeCanary'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      phantomjs: {
+        options: {
+          browsers: ['PhantomJS'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      opera: {
+        options: {
+          browsers: ['Opera'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      chrome: {
+        options: {
+          browsers: ['Chrome'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      safari: {
+        options: {
+          browsers: ['Safari'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      firefox: {
+        options: {
+          browsers: ['Firefox'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      ie: {
+        options: {
+          browsers: ['IE'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
       ci: {
         configFile: 'test/karma.conf.js',
         autoWatch: false
