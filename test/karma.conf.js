@@ -103,26 +103,26 @@ module.exports = function(config) {
 
     //define SL browsers
     customLaunchers: {
-      test_browser: { 
-        singleRun: true,
-        base: 'SauceLabs', 
-        browserName: 'chrome',
-        platform: 'Windows XP'
-      },
+      // test_browser: { 
+      //   singleRun: true,
+      //   base: 'SauceLabs', 
+      //   browserName: 'chrome',
+      //   platform: 'Windows XP'
+      // },
 
-      firefox_test: {
-        singleRun: true,
-        base: 'SauceLabs',
-        browserName: 'firefox',
-        platform: 'Windows 8'
-      },
+      // firefox_test: {
+      //   singleRun: true,
+      //   base: 'SauceLabs',
+      //   browserName: 'firefox',
+      //   platform: 'Windows 8'
+      // },
 
-      safari_test: {
-        singleRun: true,
-        base: 'SauceLabs',
-        browserName: 'safari',
-        platform: 'OS X 10.8'
-      },
+      // safari_test: {
+      //   singleRun: true,
+      //   base: 'SauceLabs',
+      //   browserName: 'safari',
+      //   platform: 'OS X 10.8'
+      // },
 
       ipad_test: {
         singleRun: true,
