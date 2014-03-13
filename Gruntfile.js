@@ -117,27 +117,27 @@ module.exports = function(grunt) {
         autoWatch: true
       },
 
-      dev: {
-        browsers: ['Chrome', 'Safari', 'Firefox',
-        'Opera', 'IE', 'PhantomJS', 'ChromeCanary'],
-        configFile: 'test/localkarma.conf.js',
-        autoWatch: true
-      },
+      // dev: {
+      //   browsers: ['Chrome', 'Safari', 'Firefox',
+      //   'Opera', 'IE', 'PhantomJS', 'ChromeCanary'],
+      //   configFile: 'test/localkarma.conf.js',
+      //   autoWatch: true
+      // },
 
-      chromecanary: {
-        options: {
-          browsers: ['ChromeCanary'],
-          configFile: 'test/localkarma.conf.js',
-          autoWatch: true
-        }
-      },
+      // chromecanary: {
+      //   options: {
+      //     browsers: ['ChromeCanary'],
+      //     configFile: 'test/localkarma.conf.js',
+      //     autoWatch: true
+      //   }
+      // },
 
-      phantomjs: {
-        options: {
-          browsers: ['PhantomJS'],
-          configFile: 'test/localkarma.conf.js',
-          autoWatch: true
-        }
+      // phantomjs: {
+      //   options: {
+      //     browsers: ['PhantomJS'],
+      //     configFile: 'test/localkarma.conf.js',
+      //     autoWatch: true
+      //   }
       },
 
       opera: {
