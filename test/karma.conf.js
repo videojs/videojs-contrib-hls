@@ -26,7 +26,7 @@ module.exports = function(config) {
     // - PhantomJS
     // - IE (only Windows)
     // Example usage:
-    browsers: ['test_browser', 'firefox_test', 'safari_test', 'ipad_test'],
+    browsers: ['test_browser'],
 
     // List of files / patterns to load in the browser
     // Add any new src files to this list.
@@ -103,26 +103,26 @@ module.exports = function(config) {
 
     //define SL browsers
     customLaunchers: {
-      // test_browser: { 
-      //   singleRun: true,
-      //   base: 'SauceLabs', 
-      //   browserName: 'chrome',
-      //   platform: 'Windows XP'
-      // },
+      test_browser: { 
+        singleRun: true,
+        base: 'SauceLabs', 
+        browserName: 'chrome',
+        platform: 'Windows XP'
+      },
 
-      // firefox_test: {
-      //   singleRun: true,
-      //   base: 'SauceLabs',
-      //   browserName: 'firefox',
-      //   platform: 'Windows 8'
-      // },
+      firefox_test: {
+        singleRun: true,
+        base: 'SauceLabs',
+        browserName: 'firefox',
+        platform: 'Windows 8'
+      },
 
-      // safari_test: {
-      //   singleRun: true,
-      //   base: 'SauceLabs',
-      //   browserName: 'safari',
-      //   platform: 'OS X 10.8'
-      // },
+      safari_test: {
+        singleRun: true,
+        base: 'SauceLabs',
+        browserName: 'safari',
+        platform: 'OS X 10.8'
+      },
 
       ipad_test: {
         singleRun: true,
