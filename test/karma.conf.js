@@ -107,6 +107,7 @@ module.exports = function(config) {
         singleRun: true,
         base: 'SauceLabs', 
         browserName: 'chrome',
+        version: '33',
         platform: 'Windows XP'
       },
 
