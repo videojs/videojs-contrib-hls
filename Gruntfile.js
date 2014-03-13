@@ -259,7 +259,7 @@ module.exports = function(grunt) {
                       'concat',
                       'uglify']);
 
-  grunt.registerTask('test', ['manifests-to-js', 'qunit', 'karma']);
+  grunt.registerTask('test', ['manifests-to-js', 'karma:saucelabs']);
 
   // travis build task
   grunt.registerTask('build:travis',
