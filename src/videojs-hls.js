@@ -333,7 +333,7 @@ var
       // use the URL specified in options if one was provided
       if (typeof options === 'string') {
         return options;
-      } else if (options) {
+      } else if (options.url) {
         return options.url;
       }
 
