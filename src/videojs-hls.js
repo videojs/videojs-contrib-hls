@@ -638,6 +638,8 @@ var
                                 segment.uri);
       }
 
+      startTime = +new Date();
+
       // request the next segment
       segmentXhr = xhr({
         url: segmentUri,
@@ -693,8 +695,6 @@ var
           updateCurrentPlaylist();
         }
       });
-
-      startTime = +new Date();
     };
 
     // load the MediaSource into the player
