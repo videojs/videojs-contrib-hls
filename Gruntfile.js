@@ -32,7 +32,7 @@ module.exports = function(grunt) {
               'src/segment-parser.js',
               'src/stream.js',
               'src/m3u8/m3u8-parser.js'
-             ],
+            ],
         dest: 'dist/videojs.hls.js'
       }
     },
@@ -107,10 +107,90 @@ module.exports = function(grunt) {
           logConcurrentOutput: true
         }
       }
-    }
+    },
+    karma: {
+      options: {
+        frameworks: ['qunit']
+      },
+
+      saucelabs: {
+        configFile: 'test/karma.conf.js',
+        autoWatch: true
+      },
+
+      dev: {
+        browsers: ['Chrome', 'Safari', 'Firefox',
+        'Opera', 'IE', 'PhantomJS', 'ChromeCanary'],
+        configFile: 'test/localkarma.conf.js',
+        autoWatch: true
+      },
+
+      chromecanary: {
+        options: {
+          browsers: ['ChromeCanary'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      phantomjs: {
+        options: {
+          browsers: ['PhantomJS'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      opera: {
+        options: {
+          browsers: ['Opera'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      chrome: {
+        options: {
+          browsers: ['Chrome'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      safari: {
+        options: {
+          browsers: ['Safari'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      firefox: {
+        options: {
+          browsers: ['Firefox'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      ie: {
+        options: {
+          browsers: ['IE'],
+          configFile: 'test/localkarma.conf.js',
+          autoWatch: true
+        }
+      },
+
+      ci: {
+        configFile: 'test/karma.conf.js',
+        autoWatch: false
+      }
+    },
+
   });
 
   // These plugins provide necessary tasks.
+  grunt.loadNpmTasks('grunt-karma');
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-uglify');
@@ -120,6 +200,9 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-connect');
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-concurrent');
+  grunt.loadNpmTasks('grunt-saucelabs');
+  grunt.loadNpmTasks('grunt-contrib-watch');
+  
 
   grunt.registerTask('manifests-to-js', 'Wrap the test fixtures and output' +
                      ' so they can be loaded in a browser',
@@ -176,5 +259,11 @@ module.exports = function(grunt) {
                       'qunit',
                       'concat',
                       'uglify']);
+
+  grunt.registerTask('test', ['manifests-to-js', 'karma:saucelabs']);
+
+  // travis build task
+  grunt.registerTask('build:travis', ['jshint', 'test:node', 'test:sauce-browser']);
+
 
 };
