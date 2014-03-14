@@ -31,6 +31,9 @@ videojs.hls = {
 };
 
 var
+
+  pluginOptions,
+
   // the desired length of video to maintain in the buffer, in seconds
   goalBufferLength = 5,
 
@@ -109,11 +112,21 @@ var
         method: 'GET'
       },
       request;
+
+    if (typeof callback !== 'function') {
+      callback = function() {};
+    }
+
     if (typeof url === 'object') {
       options = videojs.util.mergeOptions(options, url);
       url = options.url;
     }
     request = new window.XMLHttpRequest();
+
+    if (pluginOptions.withCredentials) {
+      request.withCredentials = true;
+    }
+
     request.open(options.method, url);
     request.onreadystatechange = function() {
       // wait until the request completes
@@ -298,6 +311,8 @@ var
     if (videojs.hls.supportsNativeHls) {
       return;
     }
+
+    pluginOptions = options || {};
 
     srcUrl = (function() {
       var
