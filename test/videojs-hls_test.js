@@ -366,26 +366,31 @@ asyncTest('selects a playlist after segment downloads', function() {
   player.trigger('timeupdate');
 });
 
-test('moves to the next segment if there is a network error', function() {
+asyncTest('moves to the next segment if there is a network error', function() {
   var mediaIndex;
+
+  player.on('loadedmanifest', function() {
+    // fail the next segment request
+    window.XMLHttpRequest = function() {
+      this.open = function() {};
+      this.send = function() {
+        this.readyState = 4;
+        this.status = 400;
+        this.onreadystatechange();
+
+        strictEqual(mediaIndex + 1, player.hls.mediaIndex, 'media index is incremented');
+        start();
+      };
+    };
+
+    mediaIndex = player.hls.mediaIndex;
+    player.trigger('timeupdate');
+  });
+
   player.hls('manifest/master.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
-
-  // fail the next segment request
-  window.XMLHttpRequest = function() {
-    this.open = function() {};
-    this.send = function() {
-      this.readyState = 4;
-      this.status = 400;
-      this.onreadystatechange();
-    };
-  };
-  mediaIndex = player.hls.mediaIndex;
-  player.trigger('timeupdate');
-
-  strictEqual(mediaIndex + 1, player.hls.mediaIndex, 'media index is incremented');
 });
 
 test('updates the duration after switching playlists', function() {
