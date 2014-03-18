@@ -316,47 +316,18 @@ test('calculates the bandwidth after downloading a segment', function() {
      'saves segment request time: ' + player.hls.segmentXhrTime + 's');
 });
 
-asyncTest('selects a playlist after segment downloads', function() {
-  window.XMLHttpRequest = function() {
-    this.open = function(method, url) {
-      xhrUrls.push(url);
-    };
-    this.send = function() {
-      var self = this;
-      setTimeout(function() {
-        var manifestName = (/(?:.*\/)?(.*)\.m3u8/).exec(xhrUrls.slice(-1)[0]);
-        if (manifestName) {
-          manifestName = manifestName[1];
-        }
-        self.responseText = window.manifests[manifestName || xhrUrls.slice(-1)[0]];
-        self.response = new Uint8Array([1]).buffer;
-
-        self.readyState = 4;
-        self.onreadystatechange();
-      }, 0);
-    };
-    this.abort = function() {};
-  };
-
+test('selects a playlist after segment downloads', function() {
   var calls = 0;
   player.hls('manifest/master.m3u8');
   player.hls.selectPlaylist = function() {
     calls++;
-    strictEqual(calls, 1, 'selects after the initial segment');
-
-    player.hls.selectPlaylist = function() {
-      calls++;
-      strictEqual(calls, 2, 'selects after additional segments');
-      start();
-      return player.hls.master.playlists[0];
-    };
-
     return player.hls.master.playlists[0];
   };
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
+  strictEqual(calls, 1, 'selects after the initial segment');
   player.currentTime = function() {
     return 1;
   };
@@ -364,6 +335,7 @@ asyncTest('selects a playlist after segment downloads', function() {
     return videojs.createTimeRange(0, 2);
   };
   player.trigger('timeupdate');
+  strictEqual(calls, 2, 'selects after additional segments');
 });
 
 asyncTest('moves to the next segment if there is a network error', function() {
