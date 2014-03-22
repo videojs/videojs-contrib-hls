@@ -18,8 +18,7 @@
       streamBuffer = new Uint8Array(MP2T_PACKET_LENGTH),
       streamBufferByteCount = 0,
       h264Stream = new H264Stream(),
-      aacStream = new AacStream(),
-      seekToKeyFrame = false;
+      aacStream = new AacStream();
 
     // expose the stream metadata
     self.stream = {
@@ -84,60 +83,35 @@
     self.flushTags = function() {
       h264Stream.finishFrame();
     };
-    self.doSeek = function() {
-      self.flushTags();
-      aacStream.tags.length = 0;
-      h264Stream.tags.length = 0;
-      seekToKeyFrame = true;
-    };
 
+    /**
+     * Returns whether a call to `getNextTag()` will be successful.
+     * @return {boolean} whether there is at least one transmuxed FLV
+     * tag ready
+     */
     self.tagsAvailable = function() { // :int {
-      var i, pts; // :uint
-
-      if (seekToKeyFrame) {
-        for (i = 0 ; i < h264Stream.tags.length && seekToKeyFrame; ++i) {
-          if (h264Stream.tags[i].keyFrame) {
-            seekToKeyFrame = false; // We found, a keyframe, stop seeking
-          }
-        }
-
-        if (seekToKeyFrame) {
-          // we didnt find a keyframe. yet
-          h264Stream.tags.length = 0;
-          return 0;
-        }
-
-        // TODO we MAY need to use dts, not pts
-        h264Stream.tags = h264Stream.tags.slice(i);
-        pts = h264Stream.tags[0].pts;
-
-        // Remove any audio before the found keyframe
-        while( 0 < aacStream.tags.length && pts > aacStream.tags[0].pts ) {
-          aacStream.tags.shift();
-        }
-      }
-
       return h264Stream.tags.length + aacStream.tags.length;
     };
 
-    self.getNextTag = function() { // :ByteArray {
-      var tag; // :FlvTag; // return tags in approximate dts order
+    /**
+     * Returns the next tag in decoder-timestamp (DTS) order.
+     * @returns {object} the next tag to decoded.
+     */
+    self.getNextTag = function() {
+      var tag;
 
-      if (0 === self.tagsAvailable()) {
-        throw new Error("getNextTag() called when 0 == tagsAvailable()");
-      }
-
-      if (0 < h264Stream.tags.length) {
-        if (0 < aacStream.tags.length && aacStream.tags[0].dts < h264Stream.tags[0].dts) {
-          tag = aacStream.tags.shift();
-        } else {
-          tag = h264Stream.tags.shift();
-        }
-      } else if ( 0 < aacStream.tags.length ) {
+      if (!h264Stream.tags.length) {
+        // only audio tags remain
+        tag = aacStream.tags.shift();
+      } else if (!aacStream.tags.length) {
+        // only video tags remain
+        tag = h264Stream.tags.shift();
+      } else if (aacStream.tags[0].dts < h264Stream.tags[0].dts) {
+        // audio should be decoded next
         tag = aacStream.tags.shift();
       } else {
-        // We dont have any tags available to return
-        return new Uint8Array();
+        // video should be decoded next
+        tag = h264Stream.tags.shift();
       }
 
       return tag.finalize();

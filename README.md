@@ -1,11 +1,11 @@
-[![Build Status](https://travis-ci.org/brightcove/videojs-contrib-hls.png)](https://travis-ci.org/brightcove/videojs-contrib-hls)
+[![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.png)](https://travis-ci.org/videojs/videojs-contrib-hls)
 
 # video.js HLS Plugin
 
 A video.js plugin that plays HLS video on platforms that don't support it but have Flash.
 
 ## Getting Started
-Download the [plugin](https://raw.github.com/videojs/videojs-contrib-hls/master/dist/videojs-hls.min.js). On your web page:
+Download the [plugin](https://github.com/videojs/videojs-contrib-hls/releases). On your web page:
 
 ```html
 <script src="video.js"></script>
@@ -119,4 +119,6 @@ bandwidth and viewport dimensions.
     - [Best RESOLUTION variant] OR [Best BANDWIDTH variant] OR [inital playlist in manifest]
 
 ## Release History
-_(Nothing yet)_
+ - 0.3.0: Performance fixes for high-bitrate streams
+ - 0.2.0: Basic playback and adaptive bitrate selection
+ - 0.1.0: Initial release

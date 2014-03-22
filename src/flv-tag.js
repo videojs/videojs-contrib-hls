@@ -1,27 +1,9 @@
 (function(window) {
 
-var
-  hls = window.videojs.hls,
+window.videojs = window.videojs || {};
+window.videojs.hls = window.videojs.hls || {};
 
-  // commonly used metadata properties
-  widthBytes = new Uint8Array('width'.length),
-  heightBytes = new Uint8Array('height'.length),
-  videocodecidBytes = new Uint8Array('videocodecid'.length),
-  i;
-
-// calculating the bytes of common metadata names ahead of time makes the
-// corresponding writes faster because we don't have to loop over the
-// characters
-// re-test with test/perf.html if you're planning on changing this
-for (i in 'width') {
-  widthBytes[i] = 'width'.charCodeAt(i);
-}
-for (i in 'height') {
-  heightBytes[i] = 'height'.charCodeAt(i);
-}
-for (i in 'videocodecid') {
-  videocodecidBytes[i] = 'videocodecid'.charCodeAt(i);
-}
+var hls = window.videojs.hls;
 
 // (type:uint, extraData:Boolean = false) extends ByteArray
 hls.FlvTag = function(type, extraData) {
@@ -46,7 +28,33 @@ hls.FlvTag = function(type, extraData) {
       bytes.set(flv.bytes.subarray(0, flv.position), 0);
       flv.bytes = bytes;
       flv.view = new DataView(flv.bytes.buffer);
-    };
+    },
+
+    // commonly used metadata properties
+    widthBytes = hls.FlvTag.widthBytes || new Uint8Array('width'.length),
+    heightBytes = hls.FlvTag.heightBytes || new Uint8Array('height'.length),
+    videocodecidBytes = hls.FlvTag.videocodecidBytes || new Uint8Array('videocodecid'.length),
+    i;
+
+  if (!hls.FlvTag.widthBytes) {
+    // calculating the bytes of common metadata names ahead of time makes the
+    // corresponding writes faster because we don't have to loop over the
+    // characters
+    // re-test with test/perf.html if you're planning on changing this
+    for (i in 'width') {
+      widthBytes[i] = 'width'.charCodeAt(i);
+    }
+    for (i in 'height') {
+      heightBytes[i] = 'height'.charCodeAt(i);
+    }
+    for (i in 'videocodecid') {
+      videocodecidBytes[i] = 'videocodecid'.charCodeAt(i);
+    }
+
+    hls.FlvTag.widthBytes = widthBytes;
+    hls.FlvTag.heightBytes = heightBytes;
+    hls.FlvTag.videocodecidBytes = videocodecidBytes;
+  }
 
   this.keyFrame = false; // :Boolean
 

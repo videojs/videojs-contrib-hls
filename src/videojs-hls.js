@@ -737,6 +737,10 @@ var
   };
 
 videojs.plugin('hls', function() {
+  if (typeof Uint8Array === 'undefined') {
+    return;
+  }
+
   var initialize = function() {
     return function() {
       this.hls = initialize();

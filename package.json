@@ -1,8 +1,12 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "engines": {
-    "node": ">= 0.8.0"
+    "node": ">= 0.10.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:videojs/videojs-contrib-hls.git"
   },
   "license": "Apache 2",
   "scripts": {
@@ -15,11 +19,15 @@
     "grunt-contrib-uglify": "~0.2.0",
     "grunt-contrib-watch": "~0.4.0",
     "grunt-contrib-clean": "~0.4.0",
+    "grunt-contrib-connect": "~0.6.0",
+    "grunt-concurrent": "0.4.3",
+    "grunt-open": "0.2.3",
+    "grunt-shell": "0.6.1",
     "grunt": "~0.4.1"
   },
   "dependencies": {
-    "video.js": "git+https://github.com/dmlap/video-js.git#v4.3.0-10",
-    "videojs-contrib-media-sources": "git+https://github.com/dmlap/videojs-contrib-media-sources.git#hotfix/misc-fixes",
-    "sinon": "~1.9.0"
+    "video.js": "git+https://github.com/videojs/video.js.git#v4.4.1",
+    "videojs-swf": "git+https://github.com/videojs/video-js-swf.git#v4.4.0",
+    "videojs-contrib-media-sources": "git+https://github.com/videojs/videojs-contrib-media-sources.git"
   }
 }
