@@ -23,7 +23,6 @@
 var
   player,
   oldFlashSupported,
-  oldXhr,
   oldSegmentParser,
   oldSetTimeout,
   oldSourceBuffer,
@@ -33,7 +32,9 @@ var
   xhr,
 
   standardXHRResponse = function(request) {
-    if (!request.url) return;
+    if (!request.url) {
+      return;
+    }
 
     var contentType = "application/json",
         // contents off the global object
@@ -42,7 +43,7 @@ var
     if (manifestName) {
       manifestName = manifestName[1];
     } else {
-      request.url;
+      manifestName = request.url;
     }
 
     if (/\.m3u8?/.test(request.url)) {
@@ -54,7 +55,7 @@ var
     request.response = new Uint8Array([1]).buffer;
     request.respond(200,
                     {'Content-Type': contentType},
-                    window.manifests[manifestName || request.url]);
+                    window.manifests[manifestName]);
   },
 
   mockSegmentParser = function(tags) {
@@ -704,9 +705,6 @@ test('activates if the first playable source is HLS', function() {
 });
 
 test('cancels outstanding XHRs when seeking', function() {
-  var
-    aborted = false,
-    opened = 0;
   player.hls('manifest/media.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
@@ -724,7 +722,6 @@ test('cancels outstanding XHRs when seeking', function() {
 
   // trigger a segment download request
   player.trigger('timeupdate');
-  opened = 0;
   // attempt to seek while the download is in progress
   player.trigger('seeking');
 
@@ -757,12 +754,10 @@ test('flushes the parser after each segment', function() {
 });
 
 test('drops tags before the target timestamp when seeking', function() {
-  var
-    i = 10,
-    callbacks = [],
-    tags = [],
-    bytes = [],
-    oldSetTimeout = window.setTimeout;
+  var i = 10,
+      callbacks = [],
+      tags = [],
+      bytes = [];
 
   // mock out the parser and source buffer
   videojs.hls.SegmentParser = mockSegmentParser(tags);
@@ -808,15 +803,12 @@ test('drops tags before the target timestamp when seeking', function() {
   }
 
   deepEqual(bytes, [7,8,9], 'three tags are appended');
-  window.setTimeout = oldSetTimeout;
 });
 
 test('clears pending buffer updates when seeking', function() {
-  var
-    bytes = [],
-    callbacks = [],
-    tags = [{ pts: 0, bytes: 0 }],
-    oldSetTimeout = window.setTimeout;
+  var bytes = [],
+      callbacks = [],
+      tags = [{ pts: 0, bytes: 0 }];
 
   // mock out the parser and source buffer
   videojs.hls.SegmentParser = mockSegmentParser(tags);
@@ -852,7 +844,6 @@ test('clears pending buffer updates when seeking', function() {
   }
 
   deepEqual(bytes, ['flv', 7], 'tags queued to be appended should be cancelled');
-  window.setTimeout = oldSetTimeout;
 });
 
 test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
@@ -919,8 +910,7 @@ test('has no effect if native HLS is available', function() {
 });
 
 test('reloads live playlists', function() {
-  var callbacks = [],
-      oldSetTimeout = window.setTimeout;
+  var callbacks = [];
   // capture timeouts
   window.setTimeout = function(callback, timeout) {
     callbacks.push({ callback: callback, timeout: timeout });
@@ -935,7 +925,6 @@ test('reloads live playlists', function() {
   strictEqual(player.hls.media.targetDuration * 1000,
               callbacks[0].timeout,
               'waited one target duration');
-  window.setTimeout = oldSetTimeout;
 });
 
 test('duration is Infinity for live playlists', function() {
@@ -965,8 +954,7 @@ test('does not reload playlists with an endlist tag', function() {
 
 test('reloads a live playlist after half a target duration if it has not ' +
      'changed since the last request', function() {
-  var callbacks = [],
-      oldSetTimeout = window.setTimeout;
+  var callbacks = [];
   // capture timeouts
   window.setTimeout = function(callback, timeout) {
     callbacks.push({ callback: callback, timeout: timeout });
@@ -986,14 +974,11 @@ test('reloads a live playlist after half a target duration if it has not ' +
   strictEqual(callbacks[0].timeout,
               player.hls.media.targetDuration / 2 * 1000,
               'waited half a target duration');
-  window.setTimeout = oldSetTimeout;
 });
 
 test('merges playlist reloads', function() {
-  var
-    oldPlaylist,
-    callback,
-    oldSetTimeout = window.setTimeout;
+  var oldPlaylist,
+      callback;
 
   // capture timeouts
   window.setTimeout = function(cb) {
@@ -1011,12 +996,10 @@ test('merges playlist reloads', function() {
   callback();
   standardXHRResponse(requests[2]);
   ok(oldPlaylist !== player.hls.media, 'player.hls.media was updated');
-  window.setTimeout = oldSetTimeout;
 });
 
 test('updates the media index when a playlist reloads', function() {
-  var callback,
-      oldSetTimeout = window.setTimeout;
+  var callback;
   window.setTimeout = function(cb) {
     callback = cb;
   };
@@ -1053,7 +1036,6 @@ test('updates the media index when a playlist reloads', function() {
   standardXHRResponse(requests[2]);
 
   strictEqual(player.hls.mediaIndex, 2, 'mediaIndex is updated after the reload');
-  window.setTimeout = oldSetTimeout;
 });
 
 test('mediaIndex is zero before the first segment loads', function() {
@@ -1127,7 +1109,6 @@ test('only reloads the active media playlist', function() {
   var callbacks = [],
       i = 0,
       filteredRequests = [],
-      oldSetTimeout = window.setTimeout,
       customResponse;
 
   customResponse = function(request) {
@@ -1177,7 +1158,6 @@ test('only reloads the active media playlist', function() {
               'http://example.com/switched.m3u8',
               'refreshed the active playlist');
 
-  window.setTimeout = oldSetTimeout;
 });
 
 })(window, window.videojs);
