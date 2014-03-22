@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "video.js": "git+https://github.com/dmlap/video-js.git#v4.3.0-10",
-    "videojs-contrib-media-sources": "git+https://github.com/dmlap/videojs-contrib-media-sources.git#hotfix/misc-fixes"
+    "videojs-contrib-media-sources": "git+https://github.com/dmlap/videojs-contrib-media-sources.git#hotfix/misc-fixes",
+    "sinon": "~1.9.0"
   }
 }
