@@ -32,7 +32,7 @@ videojs.hls = {
 
 var
 
-  pluginOptions,
+  settings,
 
   // the desired length of video to maintain in the buffer, in seconds
   goalBufferLength = 5,
@@ -129,7 +129,7 @@ var
     if (responseType) {
       request.responseType = responseType;
     }
-    if (pluginOptions.withCredentials) {
+    if (settings.withCredentials) {
       request.withCredentials = true;
     }
 
@@ -318,7 +318,7 @@ var
       return;
     }
 
-    pluginOptions = options || {};
+    settings = videojs.util.mergeOptions({}, options);
 
     srcUrl = (function() {
       var
@@ -658,42 +658,42 @@ var
           // try moving on to the next segment
           player.hls.mediaIndex++;
           return;
-        } else {
-          // stop processing if the request was aborted
-          if (!this.response) {
-            return;
-          }
-
-          // calculate the download bandwidth
-          player.hls.segmentXhrTime = (+new Date()) - startTime;
-          player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
-
-          // transmux the segment data from MP2T to FLV
-          segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
-          segmentParser.flushTags();
-
-          // if we're refilling the buffer after a seek, scan through the muxed
-          // FLV tags until we find the one that is closest to the desired
-          // playback time
-          if (offset !== undefined && typeof offset === "number") {
-            while (segmentParser.getTags()[0].pts < offset) {
-              segmentParser.getNextTag();
-            }
-          }
-
-          while (segmentParser.tagsAvailable()) {
-            // queue up the bytes to be appended to the SourceBuffer
-            // the queue gives control back to the browser between tags
-            // so that large segments don't cause a "hiccup" in playback
-            tags.push(segmentParser.getNextTag().bytes);
-          }
-
-          player.hls.mediaIndex++;
-
-          // figure out what stream the next segment should be downloaded from
-          // with the updated bandwidth information
-          updateCurrentPlaylist();
         }
+
+        // stop processing if the request was aborted
+        if (!this.response) {
+          return;
+        }
+
+        // calculate the download bandwidth
+        player.hls.segmentXhrTime = (+new Date()) - startTime;
+        player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
+
+        // transmux the segment data from MP2T to FLV
+        segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
+        segmentParser.flushTags();
+
+        // if we're refilling the buffer after a seek, scan through the muxed
+        // FLV tags until we find the one that is closest to the desired
+        // playback time
+        if (offset !== undefined && typeof offset === "number") {
+          while (segmentParser.getTags()[0].pts < offset) {
+            segmentParser.getNextTag();
+          }
+        }
+
+        while (segmentParser.tagsAvailable()) {
+          // queue up the bytes to be appended to the SourceBuffer
+          // the queue gives control back to the browser between tags
+          // so that large segments don't cause a "hiccup" in playback
+          tags.push(segmentParser.getNextTag().bytes);
+        }
+
+        player.hls.mediaIndex++;
+
+        // figure out what stream the next segment should be downloaded from
+        // with the updated bandwidth information
+        updateCurrentPlaylist();
       });
     };
 
