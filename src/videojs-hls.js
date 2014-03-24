@@ -31,6 +31,9 @@ videojs.hls = {
 };
 
 var
+
+  settings,
+
   // the desired length of video to maintain in the buffer, in seconds
   goalBufferLength = 5,
 
@@ -108,12 +111,28 @@ var
       options = {
         method: 'GET'
       },
+      responseType,
       request;
+
+    if (typeof callback !== 'function') {
+      callback = function() {};
+    }
+
     if (typeof url === 'object') {
       options = videojs.util.mergeOptions(options, url);
       url = options.url;
+      responseType = options.responseType;
     }
+
     request = new window.XMLHttpRequest();
+
+    if (responseType) {
+      request.responseType = responseType;
+    }
+    if (settings.withCredentials) {
+      request.withCredentials = true;
+    }
+
     request.open(options.method, url);
     request.onreadystatechange = function() {
       // wait until the request completes
@@ -299,6 +318,8 @@ var
       return;
     }
 
+    settings = videojs.util.mergeOptions({}, options);
+
     srcUrl = (function() {
       var
         extname,
@@ -312,7 +333,7 @@ var
       // use the URL specified in options if one was provided
       if (typeof options === 'string') {
         return options;
-      } else if (options) {
+      } else if (options && options.url) {
         return options.url;
       }
 
@@ -617,24 +638,20 @@ var
                                 segment.uri);
       }
 
-      // request the next segment
-      segmentXhr = new window.XMLHttpRequest();
-      segmentXhr.open('GET', segmentUri);
-      segmentXhr.responseType = 'arraybuffer';
-      segmentXhr.onreadystatechange = function() {
-        // wait until the request completes
-        if (this.readyState !== 4) {
-          return;
-        }
+      startTime = +new Date();
 
+      // request the next segment
+      segmentXhr = xhr({
+        url: segmentUri,
+        responseType: 'arraybuffer'
+      }, function(error, url) {
         // the segment request is no longer outstanding
         segmentXhr = null;
 
-        // trigger an error if the request was not successful
-        if (this.status >= 400) {
+        if (error) {
           player.hls.error = {
             status: this.status,
-            message: 'HLS segment request error at URL: ' + segmentUri,
+            message: 'HLS segment request error at URL: ' + url,
             code: (this.status >= 500) ? 4 : 2
           };
 
@@ -677,9 +694,7 @@ var
         // figure out what stream the next segment should be downloaded from
         // with the updated bandwidth information
         updateCurrentPlaylist();
-      };
-      startTime = +new Date();
-      segmentXhr.send(null);
+      });
     };
 
     // load the MediaSource into the player
