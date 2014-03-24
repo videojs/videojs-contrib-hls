@@ -1160,4 +1160,15 @@ test('only reloads the active media playlist', function() {
 
 });
 
+test('if withCredentials option is used, withCredentials is set on the XHR object', function() {
+  player.hls({
+    url: 'http://example.com/media.m3u8',
+    withCredentials: true
+  });
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  ok(requests[0].withCredentials, "with credentials should be set to true if that option is passed in");
+});
+
 })(window, window.videojs);
