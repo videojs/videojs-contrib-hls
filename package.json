@@ -23,11 +23,13 @@
     "grunt-concurrent": "0.4.3",
     "grunt-open": "0.2.3",
     "grunt-shell": "0.6.1",
-    "grunt": "~0.4.1"
+    "grunt": "~0.4.1",
+    "video.js": "~4.4"
+  },
+  "peerDependencies": {
+    "video.js": "~4.4"
   },
   "dependencies": {
-    "video.js": "git+https://github.com/videojs/video.js.git#v4.4.1",
-    "videojs-swf": "git+https://github.com/videojs/video-js-swf.git#v4.4.0",
     "videojs-contrib-media-sources": "git+https://github.com/videojs/videojs-contrib-media-sources.git"
   }
 }
