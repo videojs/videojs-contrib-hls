@@ -187,6 +187,7 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
+      calculatedBandwidth = 0,
 
       // async queue of Uint8Arrays to be appended to the SourceBuffer
       tags = videojs.hls.queue(function(tag) {
@@ -200,7 +201,8 @@ var
 
       segmentXhr,
       downloadPlaylist,
-      fillBuffer;
+      fillBuffer,
+      updateDuration;
 
     // if the video element supports HLS natively, do nothing
     if (videojs.hls.supportsNativeHls) {
@@ -288,6 +290,13 @@ var
       fillBuffer(currentTime * 1000);
     });
 
+    player.hls.bandwidth = function(bitrate) {
+      if(bitrate) {
+        calculatedBandwidth = bitrate;
+      } else {
+        return calculatedBandwidth;
+      }
+    }
 
     /**
      * Chooses the appropriate media playlist based on the current
@@ -296,6 +305,12 @@ var
      * bandwidth, accounting for some amount of bandwidth variance
      */
     player.hls.selectPlaylist = function () {
+      // initial load should go to first rendition per HLS spec
+      if(player.hls.media === undefined && player.hls.master.playlists[0])
+      {
+        return player.hls.master.playlists[0];
+      }
+
       var
         effectiveBitrate,
         sortedPlaylists = player.hls.master.playlists.slice(),
@@ -319,7 +334,7 @@ var
 
         effectiveBitrate = variant.attributes.BANDWIDTH * bandwidthVariance;
 
-        if (effectiveBitrate < player.hls.bandwidth) {
+        if (effectiveBitrate < player.hls.bandwidth()) {
           bandwidthPlaylists.push(variant);
 
           // since the playlists are sorted in ascending order by
@@ -358,6 +373,17 @@ var
 
       // fallback chain of variants
       return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+    };
+
+    updateDuration = function() {
+      // update the duration
+      if (player.hls.media && player.hls.media.totalDuration) {
+        player.duration(player.hls.media.totalDuration);
+      } else if(player.hls.media && player.hls.media.segments) {
+        player.duration(totalDuration(player.hls.media));
+      } else {
+        player.duration(0);
+      }
     };
 
     /**
@@ -422,14 +448,11 @@ var
 
           // always start playback with the default rendition
           if (!player.hls.media) {
-            player.hls.media = player.hls.master.playlists[0];
+            //player.hls.media = player.hls.master.playlists[0];
+            console.log('initial validate', player.media);
+            player.hls.validate(player.hls.selectPlaylist());
 
-            // update the duration
-            if (parser.manifest.totalDuration) {
-              player.duration(parser.manifest.totalDuration);
-            } else {
-              player.duration(totalDuration(parser.manifest));
-            }
+            updateDuration();
 
             // periodicaly check if the buffer needs to be refilled
             player.on('timeupdate', fillBuffer);
@@ -441,24 +464,32 @@ var
           }
 
           // select a playlist and download its metadata if necessary
+          /*
           playlist = player.hls.selectPlaylist();
           if (!playlist.segments) {
             downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
           } else {
             player.hls.media = playlist;
 
-            // update the duration
-            if (player.hls.media.totalDuration) {
-              player.duration(player.hls.media.totalDuration);
-            } else {
-              player.duration(totalDuration(player.hls.media));
-            }
+            updateDuration();
           }
+          */
+
+          player.hls.validate(player.hls.selectPlaylist());
 
           player.trigger('loadedmanifest');
         }
       };
       xhr.send(null);
+    };
+
+    player.hls.validate = function(playlist) {
+      if (!playlist.segments) {
+        downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
+      } else {
+        player.hls.media = playlist;
+        updateDuration();
+      }
     };
 
     /**
@@ -468,6 +499,11 @@ var
      * to seek to, in milliseconds
      */
     fillBuffer = function(offset) {
+
+      if(player.hls.media === undefined) {
+        return;
+      }
+
       var
         buffered = player.buffered(),
         bufferedTime = 0,
@@ -533,7 +569,7 @@ var
 
         // calculate the download bandwidth
         player.hls.segmentXhrTime = (+new Date()) - startTime;
-        player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
+        player.hls.bandwidth((this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000);
 
         // transmux the segment data from MP2T to FLV
         segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
@@ -557,14 +593,7 @@ var
 
         player.hls.mediaIndex++;
 
-        // figure out what stream the next segment should be downloaded from
-        // with the updated bandwidth information
-        playlist = player.hls.selectPlaylist();
-        if (!playlist.segments) {
-          downloadPlaylist(resolveUrl(srcUrl, playlist.uri));
-        } else {
-          player.hls.media = playlist;
-        }
+        player.hls.validate(player.hls.selectPlaylist());
       };
       startTime = +new Date();
       segmentXhr.send(null);
@@ -580,6 +609,7 @@ var
       player.hls.mediaIndex = 0;
       downloadPlaylist(srcUrl);
     });
+
     player.src([{
       src: videojs.URL.createObjectURL(mediaSource),
       type: "video/flv"
