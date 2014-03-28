@@ -20,5 +20,6 @@
       "uri": "http://example.com/00004.ts"
     }
   ],
-  "targetDuration": 10
+  "targetDuration": 10,
+  "endList": true
 }

@@ -105,6 +105,7 @@ module('HLS', {
         this.readyState = 4;
         this.onreadystatechange();
       };
+      this.abort = function() {};
     };
     xhrUrls = [];
   },
@@ -170,7 +171,7 @@ test('sets the duration if one is available on the playlist', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(1, calls, 'duration is set');
+  strictEqual(calls, 2, 'duration is set');
 });
 
 test('calculates the duration if needed', function() {
@@ -181,13 +182,15 @@ test('calculates the duration if needed', function() {
     }
     durations.push(duration);
   };
-  player.hls('manifest/liveMissingSegmentDuration.m3u8');
+  player.hls('http://example.com/manifest/missingExtinf.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
-  strictEqual(durations.length, 1, 'duration is set');
-  strictEqual(durations[0], 6.64 + (2 * 8), 'duration is calculated');
+  strictEqual(durations.length, 2, 'duration is set');
+  strictEqual(durations[0],
+              player.hls.media.segments.length * 10,
+              'duration is calculated');
 });
 
 test('starts downloading a segment on loadedmetadata', function() {
@@ -400,15 +403,12 @@ test('downloads additional playlists if required', function() {
       called = true;
       return playlist;
     }
-    playlist.segments = [];
+    playlist.segments = [1, 1, 1];
     return playlist;
   };
   xhrUrls = [];
 
   // the playlist selection is revisited after a new segment is downloaded
-  player.currentTime = function() {
-    return 1;
-  };
   player.trigger('timeupdate');
 
   strictEqual(2, xhrUrls.length, 'requests were made');
@@ -867,10 +867,246 @@ test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
 
 test('has no effect if native HLS is available', function() {
   videojs.hls.supportsNativeHls = true;
-  player.hls('manifest/master.m3u8');
+  player.hls('http://example.com/manifest/master.m3u8');
 
   ok(!(player.currentSrc() in videojs.mediaSources),
      'no media source was opened');
+});
+
+test('reloads live playlists', function() {
+  var callbacks = [];
+  // capture timeouts
+  window.setTimeout = function(callback, timeout) {
+    callbacks.push({ callback: callback, timeout: timeout });
+  };
+  player.hls('http://example.com/manifest/missingEndlist.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(1, callbacks.length, 'refresh was scheduled');
+  strictEqual(player.hls.media.targetDuration * 1000,
+              callbacks[0].timeout,
+              'waited one target duration');
+});
+
+test('duration is Infinity for live playlists', function() {
+  player.hls('http://example.com/manifest/missingEndlist.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(Infinity, player.duration(), 'duration is infinity');
+});
+
+test('does not reload playlists with an endlist tag', function() {
+  var callbacks = [];
+  // capture timeouts
+  window.setTimeout = function(callback, timeout) {
+    callbacks.push({ callback: callback, timeout: timeout });
+  };
+  player.hls('manifest/media.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(0, callbacks.length, 'no refresh was scheduled');
+});
+
+test('reloads a live playlist after half a target duration if it has not ' +
+     'changed since the last request', function() {
+  var callbacks = [];
+  // capture timeouts
+  window.setTimeout = function(callback, timeout) {
+    callbacks.push({ callback: callback, timeout: timeout });
+  };
+  player.hls('http://example.com/manifest/missingEndlist.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(callbacks.length, 1, 'full-length refresh scheduled');
+  callbacks.pop().callback();
+
+  strictEqual(1, callbacks.length, 'half-length refresh was scheduled');
+  strictEqual(callbacks[0].timeout,
+              player.hls.media.targetDuration / 2 * 1000,
+              'waited half a target duration');
+});
+
+test('merges playlist reloads', function() {
+  var
+    oldPlaylist,
+    callback;
+  // capture timeouts
+  window.setTimeout = function(cb) {
+    callback = cb;
+  };
+
+  player.hls('http://example.com/manifest/missingEndlist.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  oldPlaylist = player.hls.media;
+
+  callback();
+  ok(oldPlaylist !== player.hls.media, 'player.hls.media was updated');
+});
+
+test('updates the media index when a playlist reloads', function() {
+  var callback;
+  window.setTimeout = function(cb) {
+    callback = cb;
+  };
+  // the initial playlist
+  window.manifests['live-updating'] =
+    '#EXTM3U\n' +
+    '#EXTINF:10,\n' +
+    '0.ts\n' +
+    '#EXTINF:10,\n' +
+    '1.ts\n' +
+    '#EXTINF:10,\n' +
+    '2.ts\n';
+
+  player.hls('http://example.com/live-updating.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  // play the stream until 2.ts is playing
+  player.hls.mediaIndex = 3;
+
+  // reload the updated playlist
+  window.manifests['live-updating'] =
+    '#EXTM3U\n' +
+    '#EXTINF:10,\n' +
+    '1.ts\n' +
+    '#EXTINF:10,\n' +
+    '2.ts\n' +
+    '#EXTINF:10,\n' +
+    '3.ts\n';
+  callback();
+
+  strictEqual(player.hls.mediaIndex, 2, 'mediaIndex is updated after the reload');
+});
+
+test('mediaIndex is zero before the first segment loads', function() {
+  window.manifests['first-seg-load'] =
+    '#EXTM3U\n' +
+    '#EXTINF:10,\n' +
+    '0.ts\n';
+  window.XMLHttpRequest = function() {
+    this.open = function() {};
+    this.send = function() {};
+  };
+  player.hls('http://example.com/first-seg-load.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(player.hls.mediaIndex, 0, 'mediaIndex is zero');
+});
+
+test('reloads out-of-date live playlists when switching variants', function() {
+  player.hls('http://example.com/master.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  player.hls.master = {
+    playlists: [{
+      mediaSequence: 15,
+      segments: [1, 1, 1]
+    }, {
+      uri: 'http://example.com/variant-update.m3u8',
+      mediaSequence: 0,
+      segments: [1, 1]
+    }]
+  };
+  // playing segment 15 on playlist zero
+  player.hls.media = player.hls.master.playlists[0];
+  player.mediaIndex = 1;
+  window.manifests['variant-update'] = '#EXTM3U\n' +
+    '#EXT-X-MEDIA-SEQUENCE:16\n' +
+    '#EXTINF:10,\n' +
+    '16.ts\n' +
+    '#EXTINF:10,\n' +
+    '17.ts\n';
+
+  // switch playlists
+  player.hls.selectPlaylist = function() {
+    return player.hls.master.playlists[1];
+  };
+  // timeupdate downloads segment 16 then switches playlists
+  player.trigger('timeupdate');
+
+  strictEqual(player.mediaIndex, 1, 'mediaIndex points at the next segment');
+});
+
+test('does not reload master playlists', function() {
+  var callbacks = [];
+  window.setTimeout = function(callback) {
+    callbacks.push(callback);
+  };
+
+  player.hls('http://example.com/master.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(callbacks.length, 0, 'no reload scheduled');
+});
+
+test('only reloads the active media playlist', function() {
+  var callbacks = [], urls = [], responses = [];
+  window.setTimeout = function(callback) {
+    callbacks.push(callback);
+  };
+
+  player.hls('http://example.com/missingEndlist.m3u8');
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+
+  window.XMLHttpRequest = function() {
+    this.open = function(method, url) {
+      urls.push(url);
+    };
+    this.send = function() {
+      var xhr = this;
+      responses.push(function() {
+        xhr.readyState = 4;
+        xhr.responseText = '#EXTM3U\n' +
+          '#EXT-X-MEDIA-SEQUENCE:1\n' +
+          '#EXTINF:10,\n' +
+          '1.ts\n';
+        xhr.response = new Uint8Array([1]).buffer;
+        xhr.onreadystatechange();
+      });
+    };
+  };
+  player.hls.selectPlaylist = function() {
+    return player.hls.master.playlists[1];
+  };
+  player.hls.master.playlists.push({
+    uri: 'http://example.com/switched.m3u8'
+  });
+
+  player.trigger('timeupdate');
+  strictEqual(callbacks.length, 1, 'a refresh is scheduled');
+  strictEqual(responses.length, 1, 'segment requested');
+
+  responses.shift()(); // segment response
+  responses.shift()(); // loaded switched.m3u8
+
+  urls = [];
+  callbacks.shift()(); // out-of-date refresh of missingEndlist.m3u8
+  callbacks.shift()(); // refresh switched.m3u8
+
+  strictEqual(urls.length, 1, 'one refresh was made');
+  strictEqual(urls[0],
+              'http://example.com/switched.m3u8',
+              'refreshed the active playlist');
 });
 
 })(window, window.videojs);
