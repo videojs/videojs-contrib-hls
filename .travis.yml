@@ -3,7 +3,6 @@ node_js:
 - '0.10'
 before_script:
 - npm install -g grunt-cli
-- curl https://gist.github.com/santiycr/5139565/raw/sauce_connect_setup.sh | bash
 notifications:
   hipchat:
     rooms:
