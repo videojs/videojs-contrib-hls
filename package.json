@@ -1,6 +1,6 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "engines": {
     "node": ">= 0.10.12"
   },
@@ -34,10 +34,12 @@
     "karma-phantomjs-launcher": "~0.1.1",
     "karma-safari-launcher": "~0.1.1",
     "karma-qunit": "~0.1.1"
+    "video.js": "^4.5"
+  },
+  "peerDependencies": {
+    "video.js": "^4.5"
   },
   "dependencies": {
-    "video.js": "git+https://github.com/videojs/video.js.git#v4.4.1",
-    "videojs-swf": "git+https://github.com/videojs/video-js-swf.git#v4.4.0",
     "videojs-contrib-media-sources": "git+https://github.com/videojs/videojs-contrib-media-sources.git"
   }
 }

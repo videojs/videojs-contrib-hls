@@ -20,5 +20,6 @@
       "uri": "/test/ts-files/tvy7/6cfa378684ffeb1c455a64dae6c103290a1f53d4-hi720.ts"
     }
   ],
-  "targetDuration": 8
+  "targetDuration": 8,
+  "endList": true
 }

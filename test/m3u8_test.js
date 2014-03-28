@@ -1,11 +1,12 @@
 (function(window, undefined) {
   var
     //manifestController = this.manifestController,
-    ParseStream = window.videojs.m3u8.ParseStream,
+    m3u8 = window.videojs.m3u8,
+    ParseStream = m3u8.ParseStream,
     parseStream,
-    LineStream = window.videojs.m3u8.LineStream,
+    LineStream = m3u8.LineStream,
     lineStream,
-    Parser = window.videojs.m3u8.Parser,
+    Parser = m3u8.Parser,
     parser;
 
   /*
@@ -506,19 +507,15 @@
     ok(!event, 'no event is triggered');
   });
 
-  module('m3u8 parser', {
-    setup: function() {
-      parser = new Parser();
-    }
-  });
+  module('m3u8 parser');
 
-  test('should create a parser', function() {
-    notStrictEqual(parser, undefined, 'parser is defined');
+  test('can be constructed', function() {
+    notStrictEqual(new Parser(), undefined, 'parser is defined');
   });
 
   module('m3u8s');
 
-  test('parses the example manifests as expected', function() {
+  test('parses static manifests as expected', function() {
     var key;
     for (key in window.manifests) {
       if (window.expected[key]) {

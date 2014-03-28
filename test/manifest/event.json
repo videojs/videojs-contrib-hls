@@ -28,5 +28,6 @@
       "uri": "/test/ts-files/zencoder/haze/Haze_Mantel_President_encoded_1200-00006.ts"
     }
   ],
-  "targetDuration": 10
+  "targetDuration": 10,
+  "endList": true
 }
