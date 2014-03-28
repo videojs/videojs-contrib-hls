@@ -33,7 +33,7 @@
     "karma-opera-launcher": "~0.1.0",
     "karma-phantomjs-launcher": "~0.1.1",
     "karma-safari-launcher": "~0.1.1",
-    "karma-qunit": "~0.1.1"
+    "karma-qunit": "~0.1.1",
     "video.js": "^4.5"
   },
   "peerDependencies": {
