@@ -200,7 +200,6 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-connect');
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-concurrent');
-  grunt.loadNpmTasks('grunt-saucelabs');
   grunt.loadNpmTasks('grunt-contrib-watch');
   
 
@@ -260,10 +259,10 @@ module.exports = function(grunt) {
                       'concat',
                       'uglify']);
 
-  grunt.registerTask('test', ['manifests-to-js', 'karma:saucelabs']);
+  grunt.registerTask('test', ['jshint', 'manifests-to-js', 'karma:saucelabs']);
 
   // travis build task
-  grunt.registerTask('build:travis', ['jshint', 'test:node', 'test:sauce-browser']);
+  grunt.registerTask('test-local', ['jshint', 'manifests-to-js', 'qunit']);
 
 
 };
