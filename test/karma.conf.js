@@ -26,11 +26,11 @@ module.exports = function(config) {
     // - PhantomJS
     // - IE (only Windows)
     // Example usage:
-    browsers: ['chrome_test', 
-              //'firefox_test', 
-              //'safari_test', '
-              //'ipad_test', 
-              'android_test'],
+    browsers: ['chrome_test']
+              //'firefox_test',
+              //'safari_test',
+              //'ipad_test',
+              //'android_test'
 
     // List of files / patterns to load in the browser
     // Add any new src files to this list.
