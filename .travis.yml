@@ -1,7 +1,16 @@
 language: node_js
+node_js:
+- '0.10'
 before_script:
 - npm install -g grunt-cli
 notifications:
   hipchat:
     rooms:
       secure: l5TTd5JuPAW883PtcyaIBcJI9Chr9JpsZPQAEUBKAgIEwzuS6y7t5arlkS1PwH6gi1FADzYDf+OXSIou4GkTSrIetnBcT/SAgF0gBKgIhj+eRkuCfZ4VaC7BPhfZ0hgYRE+5Ejf5BM2MJafRm0pj7OlqG4xKrQZwtuV1te5r3JY=
+  irc: chat.freenode.net#videojs
+#addons:
+  #sauce_connect:
+    #username:
+      #secure: "Y++AtTlMXkcPAx+K0cL6uzn4FlmfiIki5bkGCkowoYSCxq1X9tNta39JONSVSeZKBlP58GJwNJdB4Wq1CpJL4NriGc3UvpcgNcrILGOWLczX0zFvXkOIaLn0bUuierf4wzUjk3i6XOh83NrMaX+gBHXb8RVUEBf2z0/WM3zHrEM="
+    #access_key:
+      #secure: "bCan88WIWqm6jP4ZtDbLVrrGXe1a33otfQhi7SYp95wHFLemUHS1JyXv+HbbbsW5dNjatfdhzvc47bpw4LbccL6evVR9sb2Tld15TxW2a2WQtMPzvOfj55aP1YQtIxYwy14swifWGK/Lj/A0ZUCUNolCf7DjCK6hZGaWaDRtdIE="

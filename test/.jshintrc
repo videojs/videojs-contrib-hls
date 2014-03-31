@@ -11,6 +11,7 @@
   "boss": true,
   "eqnull": true,
   "browser": true,
+  "node": true,
   "predef": [
     "QUnit",
     "module",
@@ -27,6 +28,7 @@
     "strictEqual",
     "notStrictEqual",
     "throws",
-    "sinon"
+    "sinon",
+    "process"
   ]
 }
