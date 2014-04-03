@@ -204,13 +204,8 @@ var
   totalDuration = function(playlist) {
     var
       duration = 0,
-      i,
-      segment;
-
-    if (!playlist.segments) {
-      return 0;
-    }
-    i = playlist.segments.length;
+      segment,
+      i = (playlist.segments || []).length;
 
     // if present, use the duration specified in the playlist
     if (playlist.totalDuration) {
@@ -585,7 +580,7 @@ var
       var
         buffered = player.buffered(),
         bufferedTime = 0,
-        segment = player.hls.media.segments[player.hls.mediaIndex],
+        segment,
         segmentUri,
         startTime;
 
@@ -594,7 +589,13 @@ var
         return;
       }
 
+      // if no segments are available, do nothing
+      if (!player.hls.media.segments) {
+        return;
+      }
+
       // if the video has finished downloading, stop trying to buffer
+      segment = player.hls.media.segments[player.hls.mediaIndex];
       if (!segment) {
         return;
       }
