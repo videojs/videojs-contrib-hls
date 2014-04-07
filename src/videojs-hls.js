@@ -207,9 +207,10 @@ var
       i,
       segment;
 
-    if (!playlist.segments) {
+    if (!playlist || !playlist.segments) {
       return 0;
     }
+    
     i = playlist.segments.length;
 
     // if present, use the duration specified in the playlist
@@ -292,7 +293,8 @@ var
       segmentXhr,
       loadedPlaylist,
       fillBuffer,
-      updateCurrentPlaylist;
+      updateCurrentPlaylist,
+      updateDuration;
 
     // if the video element supports HLS natively, do nothing
     if (videojs.hls.supportsNativeHls) {
@@ -366,6 +368,10 @@ var
       return 1;   // HAVE_METADATA
     };
 
+    player.on('loadedmanifest', function() {
+      updateDuration();
+    });
+
     player.on('seeking', function() {
       var currentTime = player.currentTime();
       player.hls.mediaIndex = getMediaIndexByTime(player.hls.media, currentTime);
@@ -379,6 +385,20 @@ var
       // begin filling the buffer at the new position
       fillBuffer(currentTime * 1000);
     });
+
+    /**
+     * Update the player duration
+     */
+    updateDuration = function() {
+      // update the duration
+      player.duration(totalDuration(player.hls.media));
+      // tell the flash tech of the new duration
+      if(player.el().querySelector('.vjs-tech').id === 'video_flash_api') {
+        player.el().querySelector('.vjs-tech').vjs_setProperty('duration', player.duration());
+      }
+      // manually fire the duration change
+      player.trigger('durationchange');
+    };
 
     /**
      * Determine whether the current media playlist should be changed
@@ -406,14 +426,7 @@ var
                               playlist);
         player.hls.media = playlist;
 
-        // update the duration
-        player.duration(totalDuration(player.hls.media));
-        // tell the flash tech of the new duration
-        if(player.el().querySelector('.vjs-tech').id === 'video_flash_api') {
-          player.el().querySelector('.vjs-tech').vjs_setProperty('duration', player.duration());
-        }
-        // manually fire the duration change
-        player.trigger('durationchange');
+        updateDuration();
       }
     };
 
