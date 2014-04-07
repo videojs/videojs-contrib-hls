@@ -125,6 +125,7 @@ var
     }
 
     request = new window.XMLHttpRequest();
+    request.open(options.method, url);
 
     if (responseType) {
       request.responseType = responseType;
@@ -133,7 +134,6 @@ var
       request.withCredentials = true;
     }
 
-    request.open(options.method, url);
     request.onreadystatechange = function() {
       // wait until the request completes
       if (this.readyState !== 4) {
