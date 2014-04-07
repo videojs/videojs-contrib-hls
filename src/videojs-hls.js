@@ -210,7 +210,7 @@ var
     if (!playlist || !playlist.segments) {
       return 0;
     }
-    
+
     i = playlist.segments.length;
 
     // if present, use the duration specified in the playlist
@@ -368,10 +368,6 @@ var
       return 1;   // HAVE_METADATA
     };
 
-    player.on('loadedmanifest', function() {
-      updateDuration();
-    });
-
     player.on('seeking', function() {
       var currentTime = player.currentTime();
       player.hls.mediaIndex = getMediaIndexByTime(player.hls.media, currentTime);
@@ -389,9 +385,9 @@ var
     /**
      * Update the player duration
      */
-    updateDuration = function() {
+    updateDuration = function(playlist) {
       // update the duration
-      player.duration(totalDuration(player.hls.media));
+      player.duration(totalDuration(playlist));
       // tell the flash tech of the new duration
       if(player.el().querySelector('.vjs-tech').id === 'video_flash_api') {
         player.el().querySelector('.vjs-tech').vjs_setProperty('duration', player.duration());
@@ -426,7 +422,7 @@ var
                               playlist);
         player.hls.media = playlist;
 
-        updateDuration();
+        updateDuration(player.hls.media);
       }
     };
 
@@ -577,7 +573,7 @@ var
         player.hls.media = player.hls.master.playlists[0];
 
         // update the duration
-        player.duration(totalDuration(parser.manifest));
+        updateDuration(parser.manifest);
 
         // periodicaly check if the buffer needs to be refilled
         player.on('timeupdate', fillBuffer);
