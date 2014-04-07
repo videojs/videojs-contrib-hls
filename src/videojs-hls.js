@@ -389,12 +389,9 @@ var
       // update the duration
       player.duration(totalDuration(playlist));
       // tell the flash tech of the new duration
-      if(!videojs.hls.supportsNativeHls) {
-        try {
-          player.el().querySelector('.vjs-tech').vjs_setProperty('duration', player.duration());
-        } catch (err) {
-
-        }
+      var tech = player.el().querySelector('.vjs-tech');
+      if(tech.vjs_setProperty) {
+        tech.vjs_setProperty('duration', player.duration());
       }
       // manually fire the duration change
       player.trigger('durationchange');
