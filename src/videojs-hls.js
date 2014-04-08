@@ -204,13 +204,8 @@ var
   totalDuration = function(playlist) {
     var
       duration = 0,
-      i,
-      segment;
-
-    if (!playlist.segments) {
-      return 0;
-    }
-    i = playlist.segments.length;
+      segment,
+      i = (playlist.segments || []).length;
 
     // if present, use the duration specified in the playlist
     if (playlist.totalDuration) {
@@ -292,7 +287,8 @@ var
       segmentXhr,
       loadedPlaylist,
       fillBuffer,
-      updateCurrentPlaylist;
+      updateCurrentPlaylist,
+      updateDuration;
 
     // if the video element supports HLS natively, do nothing
     if (videojs.hls.supportsNativeHls) {
@@ -381,6 +377,22 @@ var
     });
 
     /**
+     * Update the player duration
+     */
+    updateDuration = function(playlist) {
+      var tech;
+      // update the duration
+      player.duration(totalDuration(playlist));
+      // tell the flash tech of the new duration
+      tech = player.el().querySelector('.vjs-tech');
+      if(tech.vjs_setProperty) {
+        tech.vjs_setProperty('duration', player.duration());
+      }
+      // manually fire the duration change
+      player.trigger('durationchange');
+    };
+
+    /**
      * Determine whether the current media playlist should be changed
      * and trigger a switch if necessary. If a sufficiently fresh
      * version of the target playlist is available, the switch will take
@@ -406,8 +418,7 @@ var
                               playlist);
         player.hls.media = playlist;
 
-        // update the duration
-        player.duration(totalDuration(player.hls.media));
+        updateDuration(player.hls.media);
       }
     };
 
@@ -558,7 +569,7 @@ var
         player.hls.media = player.hls.master.playlists[0];
 
         // update the duration
-        player.duration(totalDuration(parser.manifest));
+        updateDuration(parser.manifest);
 
         // periodicaly check if the buffer needs to be refilled
         player.on('timeupdate', fillBuffer);
@@ -585,7 +596,7 @@ var
       var
         buffered = player.buffered(),
         bufferedTime = 0,
-        segment = player.hls.media.segments[player.hls.mediaIndex],
+        segment,
         segmentUri,
         startTime;
 
@@ -594,7 +605,13 @@ var
         return;
       }
 
+      // if no segments are available, do nothing
+      if (!player.hls.media.segments) {
+        return;
+      }
+
       // if the video has finished downloading, stop trying to buffer
+      segment = player.hls.media.segments[player.hls.mediaIndex];
       if (!segment) {
         return;
       }
