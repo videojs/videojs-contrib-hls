@@ -204,14 +204,8 @@ var
   totalDuration = function(playlist) {
     var
       duration = 0,
-      i,
-      segment;
-
-    if (!playlist || !playlist.segments) {
-      return 0;
-    }
-
-    i = playlist.segments.length;
+      segment,
+      i = (playlist.segments || []).length;
 
     // if present, use the duration specified in the playlist
     if (playlist.totalDuration) {
@@ -386,10 +380,11 @@ var
      * Update the player duration
      */
     updateDuration = function(playlist) {
+      var tech;
       // update the duration
       player.duration(totalDuration(playlist));
       // tell the flash tech of the new duration
-      var tech = player.el().querySelector('.vjs-tech');
+      tech = player.el().querySelector('.vjs-tech');
       if(tech.vjs_setProperty) {
         tech.vjs_setProperty('duration', player.duration());
       }
@@ -601,7 +596,7 @@ var
       var
         buffered = player.buffered(),
         bufferedTime = 0,
-        segment = player.hls.media.segments[player.hls.mediaIndex],
+        segment,
         segmentUri,
         startTime;
 
@@ -610,7 +605,13 @@ var
         return;
       }
 
+      // if no segments are available, do nothing
+      if (!player.hls.media.segments) {
+        return;
+      }
+
       // if the video has finished downloading, stop trying to buffer
+      segment = player.hls.media.segments[player.hls.mediaIndex];
       if (!segment) {
         return;
       }

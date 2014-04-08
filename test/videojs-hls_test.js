@@ -1109,4 +1109,28 @@ test('only reloads the active media playlist', function() {
               'refreshed the active playlist');
 });
 
+test('does not break if the playlist has no segments', function() {
+  window.XMLHttpRequest = function () {
+    this.open = function () {};
+    this.send = function () {
+      this.readyState = 4;
+      this.status = 200;
+      this.responseText = '#EXTM3U\n' +
+        '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+        '#EXT-X-TARGETDURATION:10\n';
+      this.onreadystatechange();
+    };
+  };
+  player.hls('manifest/master.m3u8');
+  try {
+    videojs.mediaSources[player.currentSrc()].trigger({
+      type: 'sourceopen'
+    });
+  } catch(e) {
+    ok(false, 'an error was thrown');
+    throw e;
+  }
+  ok(true, 'no error was thrown');
+});
+
 })(window, window.videojs);
