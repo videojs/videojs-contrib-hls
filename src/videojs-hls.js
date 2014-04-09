@@ -376,6 +376,59 @@ var
       fillBuffer(currentTime * 1000);
     });
 
+    // expose the HLS rules for determining the initial media index
+    // this will allow future extention
+    player.hls.determineInitialMediaIndexByPlaylist = function(playlist) {
+      var proposedMediaIndex = 0;
+      // VOD
+      // Always start from 0
+      if (totalDuration(playlist) !== Infinity) {
+        proposedMediaIndex = 0;
+      }
+      // Live
+      // Find the point closest to the end with a full goalbuffer.
+      if (totalDuration(playlist) === Infinity &&
+          playlist.segments && playlist.segments.length > 0) {
+        // Have Segments
+        var currentSegmentRange, timeRanges = [];
+        for (index = 0; index < playlist.segments.length; index++) {
+          currentSegmentRange = {};
+          currentSegmentRange.start = (index === 0) ? 0 : timeRanges[index - 1].end;
+          currentSegmentRange.end = currentSegmentRange.start + playlist.segments[index].duration;
+          currentSegmentRange.duration = currentSegmentRange.end - currentSegmentRange.start;
+          timeRanges.push(currentSegmentRange);
+        }
+
+        // Work backwards to make sure you have enough for goal buffers
+        var i = timeRanges.length;
+        var concatinatedBuffer = 0;
+
+        while (i--) {
+          if( (timeRanges[i].duration + concatinatedBuffer) >= goalBufferLength) {
+            proposedMediaIndex = i;
+            break;
+          } else {
+            concatinatedBuffer += timeRanges[i].duration;
+          }
+        }
+
+      } else {
+        // No Segments or UNKNOWN condition
+        proposedMediaIndex = 0;
+      }
+
+      // Should never happen
+      if (proposedMediaIndex < 0) {
+        proposedMediaIndex = 0;
+      }
+
+      console.log('media index', proposedMediaIndex);
+
+      return proposedMediaIndex;
+
+    };
+
+
     /**
      * Update the player duration
      */
@@ -570,6 +623,9 @@ var
 
         // update the duration
         updateDuration(parser.manifest);
+
+        // find the initial media index
+        player.hls.mediaIndex = player.hls.determineInitialMediaIndexByPlaylist(parser.manifest);
 
         // periodicaly check if the buffer needs to be refilled
         player.on('timeupdate', fillBuffer);
