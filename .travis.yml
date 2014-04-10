@@ -11,5 +11,5 @@ notifications:
   irc: chat.freenode.net#videojs
 env:
   global:
-    secure: "Y++AtTlMXkcPAx+K0cL6uzn4FlmfiIki5bkGCkowoYSCxq1X9tNta39JONSVSeZKBlP58GJwNJdB4Wq1CpJL4NriGc3UvpcgNcrILGOWLczX0zFvXkOIaLn0bUuierf4wzUjk3i6XOh83NrMaX+gBHXb8RVUEBf2z0/WM3zHrEM="
-    secure: "bCan88WIWqm6jP4ZtDbLVrrGXe1a33otfQhi7SYp95wHFLemUHS1JyXv+HbbbsW5dNjatfdhzvc47bpw4LbccL6evVR9sb2Tld15TxW2a2WQtMPzvOfj55aP1YQtIxYwy14swifWGK/Lj/A0ZUCUNolCf7DjCK6hZGaWaDRtdIE="
+    SAUCE_USERNAME: "Y++AtTlMXkcPAx+K0cL6uzn4FlmfiIki5bkGCkowoYSCxq1X9tNta39JONSVSeZKBlP58GJwNJdB4Wq1CpJL4NriGc3UvpcgNcrILGOWLczX0zFvXkOIaLn0bUuierf4wzUjk3i6XOh83NrMaX+gBHXb8RVUEBf2z0/WM3zHrEM="
+    SAUCE_ACCESS_KEY: "bCan88WIWqm6jP4ZtDbLVrrGXe1a33otfQhi7SYp95wHFLemUHS1JyXv+HbbbsW5dNjatfdhzvc47bpw4LbccL6evVR9sb2Tld15TxW2a2WQtMPzvOfj55aP1YQtIxYwy14swifWGK/Lj/A0ZUCUNolCf7DjCK6hZGaWaDRtdIE="
