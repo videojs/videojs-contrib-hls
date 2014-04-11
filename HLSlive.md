@@ -11,7 +11,7 @@
 - Akamai only serves HLS Live off of Akamai HD2 endpoints.
 - These vary from their HDS counterparts by url syntax.
 	- ```<host> /i/``` vs.``` <host> /z/``` for HDS
-	- `master.m3u8` vs.`manifest.frm` for HDS
+	- `master.m3u8` vs.`manifest.f4m` for HDS
 - Their endpoints are difficult to arrange CORS configurations on.
 - Akamai manifests span the gamut of known HLS tags, both supported and unsupported by our plugin.
 
