@@ -1171,4 +1171,28 @@ test('if withCredentials option is used, withCredentials is set on the XHR objec
   ok(requests[0].withCredentials, "with credentials should be set to true if that option is passed in");
 });
 
+test('does not break if the playlist has no segments', function() {
+  window.XMLHttpRequest = function () {
+    this.open = function () {};
+    this.send = function () {
+      this.readyState = 4;
+      this.status = 200;
+      this.responseText = '#EXTM3U\n' +
+        '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+        '#EXT-X-TARGETDURATION:10\n';
+      this.onreadystatechange();
+    };
+  };
+  player.hls('manifest/master.m3u8');
+  try {
+    videojs.mediaSources[player.currentSrc()].trigger({
+      type: 'sourceopen'
+    });
+  } catch(e) {
+    ok(false, 'an error was thrown');
+    throw e;
+  }
+  ok(true, 'no error was thrown');
+});
+
 })(window, window.videojs);
