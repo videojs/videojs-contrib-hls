@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.png)](https://travis-ci.org/videojs/videojs-contrib-hls)
+[![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
 
 # video.js HLS Plugin
 
