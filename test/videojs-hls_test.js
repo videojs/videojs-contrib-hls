@@ -1172,22 +1172,20 @@ test('if withCredentials option is used, withCredentials is set on the XHR objec
 });
 
 test('does not break if the playlist has no segments', function() {
-  window.XMLHttpRequest = function () {
-    this.open = function () {};
-    this.send = function () {
-      this.readyState = 4;
-      this.status = 200;
-      this.responseText = '#EXTM3U\n' +
-        '#EXT-X-PLAYLIST-TYPE:VOD\n' +
-        '#EXT-X-TARGETDURATION:10\n';
-      this.onreadystatechange();
-    };
+  var customResponse = function(request) {
+    request.response = new Uint8Array([1]).buffer;
+    request.respond(200,
+                    {'Content-Type': 'application/vnd.apple.mpegurl'},
+                    '#EXTM3U\n' +
+                    '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                    '#EXT-X-TARGETDURATION:10\n');
   };
   player.hls('manifest/master.m3u8');
   try {
     videojs.mediaSources[player.currentSrc()].trigger({
       type: 'sourceopen'
     });
+    customResponse(requests[0]);
   } catch(e) {
     ok(false, 'an error was thrown');
     throw e;
