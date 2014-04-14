@@ -40,6 +40,6 @@
     "video.js": "^4.5"
   },
   "dependencies": {
-    "videojs-contrib-media-sources": "git+https://github.com/videojs/videojs-contrib-media-sources.git"
+    "videojs-contrib-media-sources": "^0.2"
   }
 }

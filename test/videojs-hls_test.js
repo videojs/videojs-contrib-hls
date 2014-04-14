@@ -63,6 +63,7 @@ module('HLS', {
     oldSourceBuffer = window.videojs.SourceBuffer;
     window.videojs.SourceBuffer = function() {
       this.appendBuffer = function() {};
+      this.abort = function() {};
     };
 
     // force native HLS to be ignored
@@ -714,6 +715,7 @@ test('drops tags before the target timestamp when seeking', function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
     };
+    this.abort = function() {};
   };
   // capture timeouts
   window.setTimeout = function(callback) {
@@ -755,12 +757,16 @@ test('clears pending buffer updates when seeking', function() {
   var
     bytes = [],
     callbacks = [],
+    aborts = 0,
     tags = [{ pts: 0, bytes: 0 }];
   // mock out the parser and source buffer
   videojs.hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
+    };
+    this.abort = function() {
+      aborts++;
     };
   };
   // capture timeouts
@@ -785,7 +791,7 @@ test('clears pending buffer updates when seeking', function() {
     callbacks.shift()();
   }
 
-  deepEqual(bytes, ['flv', 7], 'tags queued to be appended should be cancelled');
+  strictEqual(1, aborts, 'aborted pending buffer');
 });
 
 test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
@@ -1067,6 +1073,7 @@ test('only reloads the active media playlist', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+  videojs.mediaSources[player.currentSrc()].endOfStream = function() {};
 
   window.XMLHttpRequest = function() {
     this.open = function(method, url) {
