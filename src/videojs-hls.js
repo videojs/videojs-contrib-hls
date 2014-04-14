@@ -357,6 +357,9 @@ var
       var currentTime = player.currentTime();
       player.hls.mediaIndex = getMediaIndexByTime(player.hls.media, currentTime);
 
+      // abort any segments still being decoded
+      player.hls.sourceBuffer.abort();
+
       // cancel outstanding requests and buffer appends
       if (segmentXhr) {
         segmentXhr.abort();
