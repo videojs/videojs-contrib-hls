@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.png)](https://travis-ci.org/videojs/videojs-contrib-hls)
+[![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
 
 # video.js HLS Plugin
 
@@ -47,7 +47,6 @@ support for:
 - Alternate audio and video tracks
 - Subtitles
 - Segment codecs _other than_ H.264 with AAC audio
-- Live streams
 - Internet Explorer < 10
 
 ### Runtime Properties
@@ -119,6 +118,7 @@ bandwidth and viewport dimensions.
     - [Best RESOLUTION variant] OR [Best BANDWIDTH variant] OR [inital playlist in manifest]
 
 ## Release History
+ - 0.4.0: Live stream support
  - 0.3.0: Performance fixes for high-bitrate streams
  - 0.2.0: Basic playback and adaptive bitrate selection
  - 0.1.0: Initial release
