@@ -289,15 +289,6 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
-
-      // async queue of Uint8Arrays to be appended to the SourceBuffer
-      tags = videojs.hls.queue(function(tag) {
-        player.hls.sourceBuffer.appendBuffer(tag, player);
-
-        if (player.hls.mediaIndex === player.hls.media.segments.length) {
-          mediaSource.endOfStream();
-        }
-      }),
       srcUrl,
 
       playlistXhr,
@@ -385,11 +376,13 @@ var
       var currentTime = player.currentTime();
       player.hls.mediaIndex = getMediaIndexByTime(player.hls.media, currentTime);
 
+      // abort any segments still being decoded
+      player.hls.sourceBuffer.abort();
+
       // cancel outstanding requests and buffer appends
       if (segmentXhr) {
         segmentXhr.abort();
       }
-      tags.tasks = [];
 
       // begin filling the buffer at the new position
       fillBuffer(currentTime * 1000);
@@ -701,10 +694,17 @@ var
           // queue up the bytes to be appended to the SourceBuffer
           // the queue gives control back to the browser between tags
           // so that large segments don't cause a "hiccup" in playback
-          tags.push(segmentParser.getNextTag().bytes);
+
+          player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,
+                                               player);
+
         }
 
         player.hls.mediaIndex++;
+
+        if (player.hls.mediaIndex === player.hls.media.segments.length) {
+          mediaSource.endOfStream();
+        }
 
         // figure out what stream the next segment should be downloaded from
         // with the updated bandwidth information

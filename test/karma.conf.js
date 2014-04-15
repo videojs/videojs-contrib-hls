@@ -40,7 +40,7 @@ module.exports = function(config) {
 
     files: [
       '../node_modules/video.js/dist/video-js/video.js',
-      '../node_modules/videojs-contrib-media-sources/videojs-media-sources.js',
+      '../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js',
       '../test/karma-qunit-shim.js',
       "../src/videojs-hls.js",
       "../src/flv-tag.js",
