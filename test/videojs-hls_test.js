@@ -23,12 +23,40 @@
 var
   player,
   oldFlashSupported,
-  oldXhr,
   oldSegmentParser,
   oldSetTimeout,
   oldSourceBuffer,
   oldSupportsNativeHls,
   xhrUrls,
+  requests,
+  xhr,
+
+  standardXHRResponse = function(request) {
+    if (!request.url) {
+      return;
+    }
+
+    var contentType = "application/json",
+        // contents off the global object
+        manifestName = (/(?:.*\/)?(.*)\.m3u8/).exec(request.url);
+
+    if (manifestName) {
+      manifestName = manifestName[1];
+    } else {
+      manifestName = request.url;
+    }
+
+    if (/\.m3u8?/.test(request.url)) {
+      contentType = 'application/vnd.apple.mpegurl';
+    } else if (/\.ts/.test(request.url)) {
+      contentType = 'video/MP2T';
+    }
+
+    request.response = new Uint8Array([1]).buffer;
+    request.respond(200,
+                    {'Content-Type': contentType},
+                    window.manifests[manifestName]);
+  },
 
   mockSegmentParser = function(tags) {
     if (tags === undefined) {
@@ -88,35 +116,21 @@ module('HLS', {
     oldSetTimeout = window.setTimeout;
 
     // make XHRs synchronous
-    oldXhr = window.XMLHttpRequest;
-    window.XMLHttpRequest = function() {
-      this.open = function(method, url) {
-        xhrUrls.push(url);
-      };
-      this.send = function() {
-        // if the request URL looks like one of the test manifests, grab the
-        // contents off the global object
-        var manifestName = (/(?:.*\/)?(.*)\.m3u8/).exec(xhrUrls.slice(-1)[0]);
-        if (manifestName) {
-          manifestName = manifestName[1];
-        }
-        this.responseText = window.manifests[manifestName || xhrUrls.slice(-1)[0]];
-        this.response = new Uint8Array([1]).buffer;
-
-        this.readyState = 4;
-        this.onreadystatechange();
-      };
-      this.abort = function() {};
+    xhr = sinon.useFakeXMLHttpRequest();
+    requests = [];
+    xhr.onCreate = function(xhr) {
+      requests.push(xhr);
     };
     xhrUrls = [];
   },
+
   teardown: function() {
     videojs.Flash.isSupported = oldFlashSupported;
     videojs.hls.supportsNativeHls = oldSupportsNativeHls;
     videojs.hls.SegmentParser = oldSegmentParser;
     videojs.SourceBuffer = oldSourceBuffer;
     window.setTimeout = oldSetTimeout;
-    window.XMLHttpRequest = oldXhr;
+    xhr.restore();
   }
 });
 
@@ -131,6 +145,7 @@ test('starts playing if autoplay is specified', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
   strictEqual(1, plays, 'play was called');
 });
 
@@ -148,6 +163,7 @@ test('loads the specified manifest URL on init', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+  standardXHRResponse(requests[0]);
   ok(loadedmanifest, 'loadedmanifest fires');
   ok(loadedmetadata, 'loadedmetadata fires');
   ok(player.hls.master, 'a master is inferred');
@@ -172,6 +188,8 @@ test('sets the duration if one is available on the playlist', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
   strictEqual(calls, 2, 'duration is set');
 });
 
@@ -188,6 +206,8 @@ test('calculates the duration if needed', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
   strictEqual(durations.length, 2, 'duration is set');
   strictEqual(durations[0],
               player.hls.media.segments.length * 10,
@@ -203,7 +223,9 @@ test('starts downloading a segment on loadedmetadata', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(xhrUrls[1],
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  strictEqual(requests[1].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
               '/manifest/00001.ts',
@@ -216,7 +238,9 @@ test('recognizes absolute URIs and requests them unmodified', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(xhrUrls[1],
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  strictEqual(requests[1].url,
               'http://example.com/00001.ts',
               'the first segment is requested');
 });
@@ -227,7 +251,9 @@ test('recognizes domain-relative URLs', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(xhrUrls[1],
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  strictEqual(requests[1].url,
               window.location.origin + '/00001.ts',
               'the first segment is requested');
 });
@@ -273,13 +299,17 @@ test('downloads media playlists after loading the master', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(xhrUrls[0], 'manifest/master.m3u8', 'master playlist requested');
-  strictEqual(xhrUrls[1],
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  standardXHRResponse(requests[2]);
+
+  strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
+  strictEqual(requests[1].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
               '/manifest/media.m3u8',
               'media playlist requested');
-  strictEqual(xhrUrls[2],
+  strictEqual(requests[2].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
               '/manifest/00001.ts',
@@ -310,6 +340,9 @@ test('calculates the bandwidth after downloading a segment', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+
   ok(player.hls.bandwidth, 'bandwidth is calculated');
   ok(player.hls.bandwidth > 0,
      'bandwidth is positive: ' + player.hls.bandwidth);
@@ -328,6 +361,10 @@ test('selects a playlist after segment downloads', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  standardXHRResponse(requests[2]);
+
   strictEqual(calls, 1, 'selects after the initial segment');
   player.currentTime = function() {
     return 1;
@@ -336,28 +373,26 @@ test('selects a playlist after segment downloads', function() {
     return videojs.createTimeRange(0, 2);
   };
   player.trigger('timeupdate');
+
+  standardXHRResponse(requests[3]);
   strictEqual(calls, 2, 'selects after additional segments');
 });
 
 test('moves to the next segment if there is a network error', function() {
   var mediaIndex;
+
   player.hls('manifest/master.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
-  // fail the next segment request
-  window.XMLHttpRequest = function() {
-    this.open = function() {};
-    this.send = function() {
-      this.readyState = 4;
-      this.status = 400;
-      this.onreadystatechange();
-    };
-  };
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+
   mediaIndex = player.hls.mediaIndex;
   player.trigger('timeupdate');
 
+  requests[2].respond(400);
   strictEqual(mediaIndex + 1, player.hls.mediaIndex, 'media index is incremented');
 });
 
@@ -383,6 +418,10 @@ test('updates the duration after switching playlists', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  standardXHRResponse(requests[2]);
+  standardXHRResponse(requests[3]);
   ok(selectedPlaylist, 'selected playlist');
   strictEqual(calls, 1, 'updates the duration');
 });
@@ -398,6 +437,8 @@ test('downloads additional playlists if required', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
   // before an m3u8 is downloaded, no segments are available
   player.hls.selectPlaylist = function() {
     if (!called) {
@@ -407,13 +448,15 @@ test('downloads additional playlists if required', function() {
     playlist.segments = [1, 1, 1];
     return playlist;
   };
-  xhrUrls = [];
 
   // the playlist selection is revisited after a new segment is downloaded
   player.trigger('timeupdate');
 
-  strictEqual(2, xhrUrls.length, 'requests were made');
-  strictEqual(xhrUrls[1],
+  standardXHRResponse(requests[2]);
+  standardXHRResponse(requests[3]);
+
+  strictEqual(4, requests.length, 'requests were made');
+  strictEqual(requests[3].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
               '/manifest/' +
@@ -429,6 +472,8 @@ test('selects a playlist below the current bandwidth', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+
+  standardXHRResponse(requests[0]);
 
   // the default playlist has a really high bitrate
   player.hls.master.playlists[0].attributes.BANDWIDTH = 9e10;
@@ -450,6 +495,8 @@ test('raises the minimum bitrate for a stream proportionially', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+
   // the default playlist's bandwidth + 10% is equal to the current bandwidth
   player.hls.master.playlists[0].attributes.BANDWIDTH = 10;
   player.hls.bandwidth = 11;
@@ -470,6 +517,8 @@ test('uses the lowest bitrate if no other is suitable', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+
   // the lowest bitrate playlist is much greater than 1b/s
   player.hls.bandwidth = 1;
   playlist = player.hls.selectPlaylist();
@@ -488,6 +537,8 @@ test('selects the correct rendition by player dimensions', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+
+  standardXHRResponse(requests[0]);
 
   player.width(640);
   player.height(360);
@@ -521,9 +572,12 @@ test('does not download the next segment if the buffer is full', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+
+  standardXHRResponse(requests[0]);
+
   player.trigger('timeupdate');
 
-  strictEqual(xhrUrls.length, 1, 'no segment request was made');
+  strictEqual(requests.length, 1, 'no segment request was made');
 });
 
 test('downloads the next segment if the buffer is getting low', function() {
@@ -531,7 +585,11 @@ test('downloads the next segment if the buffer is getting low', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
-  strictEqual(xhrUrls.length, 2, 'did not make a request');
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+
+  strictEqual(requests.length, 2, 'did not make a request');
   player.currentTime = function() {
     return 15;
   };
@@ -540,8 +598,10 @@ test('downloads the next segment if the buffer is getting low', function() {
   };
   player.trigger('timeupdate');
 
-  strictEqual(xhrUrls.length, 3, 'made a request');
-  strictEqual(xhrUrls[2],
+  standardXHRResponse(requests[2]);
+
+  strictEqual(requests.length, 3, 'made a request');
+  strictEqual(requests[2].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
               '/manifest/00002.ts',
@@ -553,7 +613,8 @@ test('stops downloading segments at the end of the playlist', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
-  xhrUrls = [];
+  standardXHRResponse(requests[0]);
+  requests = [];
   player.hls.mediaIndex = 4;
   player.trigger('timeupdate');
 
@@ -566,6 +627,8 @@ test('only makes one segment request at a time', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+  xhr.restore();
+  var oldXHR = window.XMLHttpRequest;
   // mock out a long-running XHR
   window.XMLHttpRequest = function() {
     this.send = function() {};
@@ -573,11 +636,14 @@ test('only makes one segment request at a time', function() {
       openedXhrs++;
     };
   };
+  standardXHRResponse(requests[0]);
   player.trigger('timeupdate');
 
   strictEqual(1, openedXhrs, 'one XHR is made');
   player.trigger('timeupdate');
   strictEqual(1, openedXhrs, 'only one XHR is made');
+  window.XMLHttpRequest = oldXHR;
+  xhr = sinon.useFakeXMLHttpRequest();
 });
 
 test('uses the src attribute if no options are provided and it ends in ".m3u8"', function() {
@@ -588,7 +654,7 @@ test('uses the src attribute if no options are provided and it ends in ".m3u8"',
     type: 'sourceopen'
   });
 
-  strictEqual(url, xhrUrls[0], 'currentSrc is used');
+  strictEqual(requests[0].url, url, 'currentSrc is used');
 });
 
 test('ignores src attribute if it doesn\'t have the "m3u8" extension', function() {
@@ -596,27 +662,27 @@ test('ignores src attribute if it doesn\'t have the "m3u8" extension', function(
   tech.src = 'basdfasdfasdfliel//.m3u9';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(xhrUrls.length, 0, 'no request is made');
+  strictEqual(requests.length, 0, 'no request is made');
 
   tech.src = '';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(xhrUrls.length, 0, 'no request is made');
+  strictEqual(requests.length, 0, 'no request is made');
 
   tech.src = 'http://example.com/movie.mp4?q=why.m3u8';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(xhrUrls.length, 0, 'no request is made');
+  strictEqual(requests.length, 0, 'no request is made');
 
   tech.src = 'http://example.m3u8/movie.mp4';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(xhrUrls.length, 0, 'no request is made');
+  strictEqual(requests.length, 0, 'no request is made');
 
   tech.src = '//example.com/movie.mp4#http://tricky.com/master.m3u8';
   player.hls();
   ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(xhrUrls.length, 0, 'no request is made');
+  strictEqual(requests.length, 0, 'no request is made');
 });
 
 test('activates if the first playable source is HLS', function() {
@@ -640,13 +706,11 @@ test('activates if the first playable source is HLS', function() {
 });
 
 test('cancels outstanding XHRs when seeking', function() {
-  var
-    aborted = false,
-    opened = 0;
   player.hls('manifest/media.m3u8');
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+  standardXHRResponse(requests[0]);
   player.hls.media = {
     segments: [{
       uri: '0.ts',
@@ -657,27 +721,13 @@ test('cancels outstanding XHRs when seeking', function() {
     }]
   };
 
-  // XHR requests will never complete
-  window.XMLHttpRequest = function() {
-    this.open = function() {
-      opened++;
-    };
-    this.send = function() {};
-    this.abort = function() {
-      aborted = true;
-      this.readyState = 4;
-      this.status = 0;
-      this.onreadystatechange();
-    };
-  };
   // trigger a segment download request
   player.trigger('timeupdate');
-  opened = 0;
   // attempt to seek while the download is in progress
   player.trigger('seeking');
 
-  ok(aborted, 'XHR aborted');
-  strictEqual(1, opened, 'opened new XHR');
+  ok(requests[1].aborted, 'XHR aborted');
+  strictEqual(requests.length, 3, 'opened new XHR');
 });
 
 test('flushes the parser after each segment', function() {
@@ -699,15 +749,16 @@ test('flushes the parser after each segment', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(1, flushes, 'tags are flushed at the end of a segment');
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  strictEqual(flushes, 1, 'tags are flushed at the end of a segment');
 });
 
 test('drops tags before the target timestamp when seeking', function() {
-  var
-    i = 10,
-    callbacks = [],
-    tags = [],
-    bytes = [];
+  var i = 10,
+      callbacks = [],
+      tags = [],
+      bytes = [];
 
   // mock out the parser and source buffer
   videojs.hls.SegmentParser = mockSegmentParser(tags);
@@ -729,6 +780,8 @@ test('drops tags before the target timestamp when seeking', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
   while (callbacks.length) {
     callbacks.shift()();
   }
@@ -745,6 +798,7 @@ test('drops tags before the target timestamp when seeking', function() {
     return 7;
   };
   player.trigger('seeking');
+  standardXHRResponse(requests[2]);
 
   while (callbacks.length) {
     callbacks.shift()();
@@ -759,6 +813,7 @@ test('clears pending buffer updates when seeking', function() {
     callbacks = [],
     aborts = 0,
     tags = [{ pts: 0, bytes: 0 }];
+
   // mock out the parser and source buffer
   videojs.hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
@@ -780,12 +835,16 @@ test('clears pending buffer updates when seeking', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+
   // seek to 7s
   tags.push({ pts: 7000, bytes: 7 });
   player.currentTime = function() {
     return 7;
   };
   player.trigger('seeking');
+  standardXHRResponse(requests[2]);
 
   while (callbacks.length) {
     callbacks.shift()();
@@ -826,23 +885,12 @@ test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
 test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
   player.hls('manifest/media.m3u8');
 
-  player.on('loadedmanifest', function () {
-    window.XMLHttpRequest = function () {
-      this.open = function (method, url) {
-        xhrUrls.push(url);
-      };
-      this.send = function () {
-        this.readyState = 4;
-        this.status = 404;
-        this.onreadystatechange();
-      };
-    };
-  });
-
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  requests[1].respond(404);
   ok(player.hls.error.message, 'an error message is available');
   equal(2, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
 });
@@ -850,23 +898,12 @@ test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
 test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
   player.hls('manifest/media.m3u8');
 
-  player.on('loadedmanifest', function () {
-    window.XMLHttpRequest = function () {
-      this.open = function (method, url) {
-        xhrUrls.push(url);
-      };
-      this.send = function () {
-        this.readyState = 4;
-        this.status = 500;
-        this.onreadystatechange();
-      };
-    };
-  });
-
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  requests[1].respond(500);
   ok(player.hls.error.message, 'an error message is available');
   equal(4, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
 });
@@ -889,6 +926,7 @@ test('reloads live playlists', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+  standardXHRResponse(requests[0]);
 
   strictEqual(1, callbacks.length, 'refresh was scheduled');
   strictEqual(player.hls.media.targetDuration * 1000,
@@ -902,7 +940,9 @@ test('duration is Infinity for live playlists', function() {
     type: 'sourceopen'
   });
 
-  strictEqual(Infinity, player.duration(), 'duration is infinity');
+  standardXHRResponse(requests[0]);
+
+  strictEqual(player.duration(), Infinity, 'duration is infinity');
 });
 
 test('does not reload playlists with an endlist tag', function() {
@@ -931,19 +971,22 @@ test('reloads a live playlist after half a target duration if it has not ' +
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
   strictEqual(callbacks.length, 1, 'full-length refresh scheduled');
   callbacks.pop().callback();
+  standardXHRResponse(requests[2]);
 
-  strictEqual(1, callbacks.length, 'half-length refresh was scheduled');
+  strictEqual(callbacks.length, 1, 'half-length refresh was scheduled');
   strictEqual(callbacks[0].timeout,
               player.hls.media.targetDuration / 2 * 1000,
               'waited half a target duration');
 });
 
 test('merges playlist reloads', function() {
-  var
-    oldPlaylist,
-    callback;
+  var oldPlaylist,
+      callback;
+
   // capture timeouts
   window.setTimeout = function(cb) {
     callback = cb;
@@ -953,9 +996,12 @@ test('merges playlist reloads', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
   oldPlaylist = player.hls.media;
 
   callback();
+  standardXHRResponse(requests[2]);
   ok(oldPlaylist !== player.hls.media, 'player.hls.media was updated');
 });
 
@@ -979,6 +1025,8 @@ test('updates the media index when a playlist reloads', function() {
     type: 'sourceopen'
   });
 
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
   // play the stream until 2.ts is playing
   player.hls.mediaIndex = 3;
 
@@ -992,6 +1040,7 @@ test('updates the media index when a playlist reloads', function() {
     '#EXTINF:10,\n' +
     '3.ts\n';
   callback();
+  standardXHRResponse(requests[2]);
 
   strictEqual(player.hls.mediaIndex, 2, 'mediaIndex is updated after the reload');
 });
@@ -1064,7 +1113,21 @@ test('does not reload master playlists', function() {
 });
 
 test('only reloads the active media playlist', function() {
-  var callbacks = [], urls = [], responses = [];
+  var callbacks = [],
+      i = 0,
+      filteredRequests = [],
+      customResponse;
+
+  customResponse = function(request) {
+    request.response = new Uint8Array([1]).buffer;
+    request.respond(200,
+                    {'Content-Type': 'application/vnd.apple.mpegurl'},
+                    '#EXTM3U\n' +
+                    '#EXT-X-MEDIA-SEQUENCE:1\n' +
+                    '#EXTINF:10,\n' +
+                    '1.ts\n');
+  };
+
   window.setTimeout = function(callback) {
     callbacks.push(callback);
   };
@@ -1073,25 +1136,12 @@ test('only reloads the active media playlist', function() {
   videojs.mediaSources[player.currentSrc()].trigger({
     type: 'sourceopen'
   });
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+
   videojs.mediaSources[player.currentSrc()].endOfStream = function() {};
 
-  window.XMLHttpRequest = function() {
-    this.open = function(method, url) {
-      urls.push(url);
-    };
-    this.send = function() {
-      var xhr = this;
-      responses.push(function() {
-        xhr.readyState = 4;
-        xhr.responseText = '#EXTM3U\n' +
-          '#EXT-X-MEDIA-SEQUENCE:1\n' +
-          '#EXTINF:10,\n' +
-          '1.ts\n';
-        xhr.response = new Uint8Array([1]).buffer;
-        xhr.onreadystatechange();
-      });
-    };
-  };
   player.hls.selectPlaylist = function() {
     return player.hls.master.playlists[1];
   };
@@ -1101,43 +1151,57 @@ test('only reloads the active media playlist', function() {
 
   player.trigger('timeupdate');
   strictEqual(callbacks.length, 1, 'a refresh is scheduled');
-  strictEqual(responses.length, 1, 'segment requested');
 
-  responses.shift()(); // segment response
-  responses.shift()(); // loaded switched.m3u8
+  standardXHRResponse(requests[2]); // segment response
+  customResponse(requests[3]); // loaded witched.m3u8
 
-  urls = [];
   callbacks.shift()(); // out-of-date refresh of missingEndlist.m3u8
   callbacks.shift()(); // refresh switched.m3u8
 
-  strictEqual(urls.length, 1, 'one refresh was made');
-  strictEqual(urls[0],
+  for (; i < requests.length; i++) {
+    if (/switched/.test(requests[i].url)) {
+      filteredRequests.push(requests[i]);
+    }
+  }
+  strictEqual(filteredRequests.length, 2, 'one refresh was made');
+  strictEqual(filteredRequests[1].url,
               'http://example.com/switched.m3u8',
               'refreshed the active playlist');
+
+});
+
+test('if withCredentials option is used, withCredentials is set on the XHR object', function() {
+  player.hls({
+    url: 'http://example.com/media.m3u8',
+    withCredentials: true
+  });
+  videojs.mediaSources[player.currentSrc()].trigger({
+    type: 'sourceopen'
+  });
+  ok(requests[0].withCredentials, "with credentials should be set to true if that option is passed in");
 });
 
 test('does not break if the playlist has no segments', function() {
-  window.XMLHttpRequest = function () {
-    this.open = function () {};
-    this.send = function () {
-      this.readyState = 4;
-      this.status = 200;
-      this.responseText = '#EXTM3U\n' +
-        '#EXT-X-PLAYLIST-TYPE:VOD\n' +
-        '#EXT-X-TARGETDURATION:10\n';
-      this.onreadystatechange();
-    };
+  var customResponse = function(request) {
+    request.response = new Uint8Array([1]).buffer;
+    request.respond(200,
+                    {'Content-Type': 'application/vnd.apple.mpegurl'},
+                    '#EXTM3U\n' +
+                    '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                    '#EXT-X-TARGETDURATION:10\n');
   };
   player.hls('manifest/master.m3u8');
   try {
     videojs.mediaSources[player.currentSrc()].trigger({
       type: 'sourceopen'
     });
+    customResponse(requests[0]);
   } catch(e) {
     ok(false, 'an error was thrown');
     throw e;
   }
   ok(true, 'no error was thrown');
+  strictEqual(requests.length, 1, 'no requests for non-existent segments were queued');
 });
 
 })(window, window.videojs);

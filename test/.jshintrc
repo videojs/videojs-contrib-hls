@@ -28,6 +28,7 @@
     "strictEqual",
     "notStrictEqual",
     "throws",
+    "sinon",
     "process"
   ]
 }
