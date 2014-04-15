@@ -122,6 +122,7 @@ module('HLS', {
     };
     xhrUrls = [];
   },
+
   teardown: function() {
     videojs.Flash.isSupported = oldFlashSupported;
     videojs.hls.supportsNativeHls = oldSupportsNativeHls;
@@ -129,7 +130,6 @@ module('HLS', {
     videojs.SourceBuffer = oldSourceBuffer;
     window.setTimeout = oldSetTimeout;
     xhr.restore();
-    //window.XMLHttpRequest = oldXhr;
   }
 });
 
