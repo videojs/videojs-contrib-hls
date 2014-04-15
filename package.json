@@ -41,6 +41,7 @@
     "video.js": "^4.5"
   },
   "dependencies": {
+    "sinon": "^1.9.1",
     "videojs-contrib-media-sources": "git+https://github.com/videojs/videojs-contrib-media-sources.git"
   }
 }
