@@ -1191,6 +1191,7 @@ test('does not break if the playlist has no segments', function() {
     throw e;
   }
   ok(true, 'no error was thrown');
+  strictEqual(requests.length, 1, 'no requests for non-existent segments were queued');
 });
 
 })(window, window.videojs);
