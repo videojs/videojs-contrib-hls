@@ -111,7 +111,6 @@ var
       options = {
         method: 'GET'
       },
-      responseType,
       request;
 
     if (typeof callback !== 'function') {
@@ -121,14 +120,13 @@ var
     if (typeof url === 'object') {
       options = videojs.util.mergeOptions(options, url);
       url = options.url;
-      responseType = options.responseType;
     }
 
     request = new window.XMLHttpRequest();
     request.open(options.method, url);
 
-    if (responseType) {
-      request.responseType = responseType;
+    if (options.responseType) {
+      request.responseType = options.responseType;
     }
     if (settings.withCredentials) {
       request.withCredentials = true;
