@@ -60,7 +60,12 @@ Type: `boolean`
 When the `withCredentials` property is set to `true`, all XHR requests for
 manifests and segments would have `withCredentials` set to `true` as well. This
 enables storing and passing cookies from the server that the manifests and
-segments live on.
+segments live on. This has some implications on CORS because when set, the
+`Access-Control-Allow-Origin` header cannot be set to `*`, also, the response
+headers require the addition of `Access-Control-Allow-Credentials` header which
+is set to `true`.
+See [html5rocks's article](http://www.html5rocks.com/en/tutorials/cors/)
+for more info
 
 ### Runtime Properties
 #### player.hls.master
