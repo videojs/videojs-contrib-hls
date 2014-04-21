@@ -115,7 +115,7 @@ module('HLS', {
     oldSegmentParser = videojs.hls.SegmentParser;
     oldSetTimeout = window.setTimeout;
 
-    // make XHRs synchronous
+    // fake XHRs
     xhr = sinon.useFakeXMLHttpRequest();
     requests = [];
     xhr.onCreate = function(xhr) {

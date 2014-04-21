@@ -104,6 +104,9 @@ var
    * inititated. If it is an object, it should contain a `url`
    * property that indicates the URL to request and optionally a
    * `method` which is the type of HTTP request to send.
+   * @param callback (optional) {function} a function to call when the
+   * request completes. If the request was not successful, the first
+   * argument will be falsey.
    * @return {object} the XMLHttpRequest that was initiated.
    */
   xhr = function(url, callback) {
