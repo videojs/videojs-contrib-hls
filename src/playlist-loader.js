@@ -5,102 +5,8 @@
 (function(window, videojs) {
   'use strict';
   var
-
-    /* XXX COPIED REMOVE ME */
-    /**
-     * Constructs a new URI by interpreting a path relative to another
-     * URI.
-     * @param basePath {string} a relative or absolute URI
-     * @param path {string} a path part to combine with the base
-     * @return {string} a URI that is equivalent to composing `base`
-     * with `path`
-     * @see http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
-     */
-    resolveUrl = function(basePath, path) {
-      // use the base element to get the browser to handle URI resolution
-      var
-        oldBase = document.querySelector('base'),
-        docHead = document.querySelector('head'),
-        a = document.createElement('a'),
-        base = oldBase,
-        oldHref,
-        result;
-
-      // prep the document
-      if (oldBase) {
-        oldHref = oldBase.href;
-      } else {
-        base = docHead.appendChild(document.createElement('base'));
-      }
-
-      base.href = basePath;
-      a.href = path;
-      result = a.href;
-
-      // clean up
-      if (oldBase) {
-        oldBase.href = oldHref;
-      } else {
-        docHead.removeChild(base);
-      }
-      return result;
-    },
-
-    /* XXX COPIED REMOVE ME */
-    /**
-     * Creates and sends an XMLHttpRequest.
-     * @param options {string | object} if this argument is a string, it
-     * is intrepreted as a URL and a simple GET request is
-     * inititated. If it is an object, it should contain a `url`
-     * property that indicates the URL to request and optionally a
-     * `method` which is the type of HTTP request to send.
-     * @param callback (optional) {function} a function to call when the
-     * request completes. If the request was not successful, the first
-     * argument will be falsey.
-     * @return {object} the XMLHttpRequest that was initiated.
-     */
-    xhr = function(url, callback) {
-      var
-        options = {
-          method: 'GET'
-        },
-        request;
-
-      if (typeof callback !== 'function') {
-        callback = function() {};
-      }
-
-      if (typeof url === 'object') {
-        options = videojs.util.mergeOptions(options, url);
-        url = options.url;
-      }
-
-      request = new window.XMLHttpRequest();
-      request.open(options.method, url);
-
-      if (options.responseType) {
-        request.responseType = options.responseType;
-      }
-      if (options.withCredentials) {
-        request.withCredentials = true;
-      }
-
-      request.onreadystatechange = function() {
-        // wait until the request completes
-        if (this.readyState !== 4) {
-          return;
-        }
-
-        // request error
-        if (this.status >= 400 || this.status === 0) {
-          return callback.call(this, true, url);
-        }
-
-        return callback.call(this, false, url);
-      };
-      request.send(null);
-      return request;
-    },
+    resolveUrl = videojs.hls.resolveUrl,
+    xhr = videojs.hls.xhr,
 
     /**
      * Returns a new master playlist that is the result of merging an
@@ -147,7 +53,7 @@
         media,
         request,
 
-        haveMetadata = function(error, url) {
+        haveMetadata = function(error, xhr, url) {
           var parser, refreshDelay, update;
 
           // any in-flight request is now finished
@@ -155,9 +61,9 @@
 
           if (error) {
             loader.error = {
-              status: this.status,
+              status: xhr.status,
               message: 'HLS playlist request error at URL: ' + url,
-              code: (this.status >= 500) ? 4 : 2
+              code: (xhr.status >= 500) ? 4 : 2
             };
             return loader.trigger('error');
           }
@@ -165,7 +71,7 @@
           loader.state = 'HAVE_METADATA';
 
           parser = new videojs.m3u8.Parser();
-          parser.push(this.responseText);
+          parser.push(xhr.responseText);
           parser.manifest.uri = url;
 
           // merge this playlist into the master
@@ -235,7 +141,7 @@
 
         // request the new playlist
         request = xhr(resolveUrl(loader.master.uri, playlist.uri), function(error) {
-          haveMetadata.call(this, error, playlist.uri);
+          haveMetadata(error, this, playlist.uri);
         });
       };
 
@@ -249,7 +155,7 @@
         loader.state = 'HAVE_CURRENT_METADATA';
         request = xhr(resolveUrl(loader.master.uri, loader.media().uri),
                       function(error) {
-                        haveMetadata.call(this, error, loader.media().uri);
+                        haveMetadata(error, this, loader.media().uri);
                       });
       });
 
@@ -286,9 +192,9 @@
           request = xhr(resolveUrl(srcUrl, parser.manifest.playlists[0].uri),
                         function(error) {
                           // pass along the URL specified in the master playlist
-                          haveMetadata.call(this,
-                                            error,
-                                            parser.manifest.playlists[0].uri);
+                          haveMetadata(error,
+                                       this,
+                                       parser.manifest.playlists[0].uri);
                         });
           return loader.trigger('loadedplaylist');
         }
@@ -302,7 +208,7 @@
           }]
         };
         loader.master.playlists[srcUrl] = loader.master.playlists[0];
-        return haveMetadata.call(this, null, srcUrl);
+        return haveMetadata(null, this, srcUrl);
       });
     };
   PlaylistLoader.prototype = new videojs.hls.Stream();

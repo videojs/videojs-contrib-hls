@@ -32,8 +32,6 @@ videojs.hls = {
 
 var
 
-  settings,
-
   // the desired length of video to maintain in the buffer, in seconds
   goalBufferLength = 5,
 
@@ -109,7 +107,7 @@ var
    * argument will be falsey.
    * @return {object} the XMLHttpRequest that was initiated.
    */
-  xhr = function(url, callback) {
+  xhr = videojs.hls.xhr = function(url, callback) {
     var
       options = {
         method: 'GET'
@@ -131,7 +129,7 @@ var
     if (options.responseType) {
       request.responseType = options.responseType;
     }
-    if (settings.withCredentials) {
+    if (options.withCredentials) {
       request.withCredentials = true;
     }
 
@@ -253,7 +251,7 @@ var
    * with `path`
    * @see http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
    */
-  resolveUrl = function(basePath, path) {
+  resolveUrl = videojs.hls.resolveUrl = function(basePath, path) {
     // use the base element to get the browser to handle URI resolution
     var
       oldBase = document.querySelector('base'),
@@ -296,6 +294,7 @@ var
 
       playlistXhr,
       segmentXhr,
+      settings,
       loadedPlaylist,
       fillBuffer,
       updateCurrentPlaylist,
@@ -425,7 +424,10 @@ var
         if (playlistXhr) {
           playlistXhr.abort();
         }
-        playlistXhr = xhr(resolveUrl(srcUrl, playlist.uri), loadedPlaylist);
+        playlistXhr = xhr({
+          url: resolveUrl(srcUrl, playlist.uri),
+          withCredentials: settings.withCredentials
+        }, loadedPlaylist);
       } else {
         player.hls.mediaIndex =
           translateMediaIndex(player.hls.mediaIndex,
@@ -654,7 +656,8 @@ var
       // request the next segment
       segmentXhr = xhr({
         url: segmentUri,
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        withCredentials: settings.withCredentials
       }, function(error, url) {
         // the segment request is no longer outstanding
         segmentXhr = null;
@@ -723,14 +726,20 @@ var
       sourceBuffer.appendBuffer(segmentParser.getFlvHeader());
 
       player.hls.mediaIndex = 0;
-      xhr(srcUrl, function(error, url) {
+      xhr({
+        url: srcUrl,
+        withCredentials: settings.withCredentials
+      }, function(error, url) {
         var uri, parser = new videojs.m3u8.Parser();
         parser.push(this.responseText);
 
         // master playlists
         if (parser.manifest.playlists) {
           player.hls.master = parser.manifest;
-          playlistXhr = xhr(resolveUrl(url, parser.manifest.playlists[0].uri), loadedPlaylist);
+          playlistXhr = xhr({
+            url: resolveUrl(url, parser.manifest.playlists[0].uri),
+            withCredentials: settings.withCredentials
+          }, loadedPlaylist);
           return player.trigger('loadedmanifest');
         } else {
           // infer a master playlist if a media playlist is loaded directly
