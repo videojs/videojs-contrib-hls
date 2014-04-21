@@ -72,8 +72,8 @@
                            '0.ts\n' +
                            '#EXT-X-ENDLIST\n');
     ok(loader.master, 'infers a master playlist');
-    ok(loader.media, 'sets the media playlist');
-    ok(loader.media.uri, 'sets the media playlist URI');
+    ok(loader.media(), 'sets the media playlist');
+    ok(loader.media().uri, 'sets the media playlist URI');
     strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
     strictEqual(0, requests.length, 'no more requests are made');
   });
@@ -85,7 +85,7 @@
                            '#EXTINF:10,\n' +
                            '0.ts\n');
     ok(loader.master, 'infers a master playlist');
-    ok(loader.media, 'sets the media playlist');
+    ok(loader.media(), 'sets the media playlist');
     strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
   });
 
@@ -113,7 +113,7 @@
                            '#EXTINF:10,\n' +
                            '0.ts\n');
     ok(loader.master, 'sets the master playlist');
-    ok(loader.media, 'sets the media playlist');
+    ok(loader.media(), 'sets the media playlist');
     strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
   });
 
@@ -240,5 +240,110 @@
 
     strictEqual(errors, 1, 'emitted an error');
     strictEqual(loader.error.status, 500, 'captured the status code');
+  });
+
+  test('switches media playlists when requested', function() {
+    var loader = new videojs.hls.PlaylistLoader('master.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'low-0.ts\n');
+
+    loader.media(loader.master.playlists[1]);
+    strictEqual(loader.state, 'SWITCHING_MEDIA', 'updated the state');
+
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'high-0.ts\n');
+    strictEqual(loader.state, 'HAVE_METADATA', 'switched active media');
+    strictEqual(loader.media(),
+                loader.master.playlists[1],
+                'updated the active media');
+  });
+
+  test('can switch media playlists based on URI', function() {
+    var loader = new videojs.hls.PlaylistLoader('master.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'low-0.ts\n');
+
+    loader.media('high.m3u8');
+    strictEqual(loader.state, 'SWITCHING_MEDIA', 'updated the state');
+
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'high-0.ts\n');
+    strictEqual(loader.state, 'HAVE_METADATA', 'switched active media');
+    strictEqual(loader.media(),
+                loader.master.playlists[1],
+                'updated the active media');
+  });
+
+  test('aborts in-flight playlist refreshes when switching', function() {
+    var loader = new videojs.hls.PlaylistLoader('master.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'low-0.ts\n');
+    clock.tick(10 * 1000);
+    loader.media('high.m3u8');
+    strictEqual(requests[0].aborted, true, 'aborted refresh request');
+    strictEqual(loader.state, 'SWITCHING_MEDIA', 'updated the state');
+  });
+
+  test('throws an error if a media switch is initiated too early', function() {
+    var loader = new videojs.hls.PlaylistLoader('master.m3u8');
+
+    throws(function() {
+      loader.media('high.m3u8');
+    }, 'threw an error from HAVE_NOTHING');
+
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    throws(function() {
+      loader.media('high.m3u8');
+    }, 'throws an error from HAVE_MASTER');
+  });
+
+  test('throws an error if a switch to an unrecognized playlist is requested', function() {
+    var loader = new videojs.hls.PlaylistLoader('master.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'media.m3u8\n');
+
+    throws(function() {
+      loader.media('unrecognized.m3u8');
+    }, 'throws an error');
   });
 })(window);

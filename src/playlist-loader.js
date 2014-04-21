@@ -134,6 +134,7 @@
           }
 
           result.playlists[i] = videojs.util.mergeOptions(playlist, media);
+          result.playlists[media.uri] = result.playlists[i];
           changed = true;
         }
       }
@@ -143,10 +144,15 @@
     PlaylistLoader = function(srcUrl) {
       var
         loader = this,
+        media,
         request,
 
         haveMetadata = function(error, url) {
           var parser, refreshDelay, update;
+
+          // any in-flight request is now finished
+          request = null;
+
           if (error) {
             loader.error = {
               status: this.status,
@@ -167,7 +173,7 @@
           refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
           if (update) {
             loader.master = update;
-            loader.media = parser.manifest;
+            media = loader.master.playlists[url];
           } else {
             // if the playlist is unchanged since the last reload,
             // try again after half the target duration
@@ -175,7 +181,7 @@
           }
 
           // refresh live playlists after a target duration passes
-          if (!loader.media.endList) {
+          if (!loader.media().endList) {
             window.setTimeout(function() {
               loader.trigger('mediaupdatetimeout');
             }, refreshDelay);
@@ -190,6 +196,49 @@
 
       loader.state = 'HAVE_NOTHING';
 
+      /**
+       * When called without any arguments, returns the currently
+       * active media playlist. When called with a single argument,
+       * triggers the playlist loader to asynchronously switch to the
+       * specified media playlist. Calling this method while the
+       * loader is in the HAVE_NOTHING or HAVE_MASTER states causes an
+       * error to be emitted but otherwise has no effect.
+       * @param playlist (optional) {object} the parsed media playlist
+       * object to switch to
+       */
+      loader.media = function(playlist) {
+        // getter
+        if (!playlist) {
+          return media;
+        }
+
+        // setter
+        if (loader.state === 'HAVE_NOTHING' || loader.state === 'HAVE_MASTER') {
+          throw new Error('Cannot switch media playlist from ' + loader.state);
+        }
+        loader.state = 'SWITCHING_MEDIA';
+
+        // abort any outstanding playlist refreshes
+        if (request) {
+          request.abort();
+          request = null;
+        }
+
+        // find the playlist object if the target playlist has been
+        // specified by URI
+        if (typeof playlist === 'string') {
+          if (!loader.master.playlists[playlist]) {
+            throw new Error('Unknown playlist URI: ' + playlist);
+          }
+          playlist = loader.master.playlists[playlist];
+        }
+
+        // request the new playlist
+        request = xhr(resolveUrl(loader.master.uri, playlist.uri), function(error) {
+          haveMetadata.call(this, error, playlist.uri);
+        });
+      };
+
       // live playlist staleness timeout
       loader.on('mediaupdatetimeout', function() {
         if (loader.state !== 'HAVE_METADATA') {
@@ -198,15 +247,15 @@
         }
 
         loader.state = 'HAVE_CURRENT_METADATA';
-        request = xhr(resolveUrl(loader.master.uri, loader.media.uri),
+        request = xhr(resolveUrl(loader.master.uri, loader.media().uri),
                       function(error) {
-                        haveMetadata.call(this, error, loader.media.uri);
+                        haveMetadata.call(this, error, loader.media().uri);
                       });
       });
 
       // request the specified URL
       xhr(srcUrl, function(error) {
-        var parser;
+        var parser, i;
 
         if (error) {
           loader.error = {
@@ -227,6 +276,13 @@
         // loaded a master playlist
         if (parser.manifest.playlists) {
           loader.master = parser.manifest;
+
+          // setup by-URI lookups
+          i = loader.master.playlists.length;
+          while (i--) {
+            loader.master.playlists[loader.master.playlists[i].uri] = loader.master.playlists[i];
+          }
+
           request = xhr(resolveUrl(srcUrl, parser.manifest.playlists[0].uri),
                         function(error) {
                           // pass along the URL specified in the master playlist
@@ -245,6 +301,7 @@
             uri: srcUrl
           }]
         };
+        loader.master.playlists[srcUrl] = loader.master.playlists[0];
         return haveMetadata.call(this, null, srcUrl);
       });
     };
