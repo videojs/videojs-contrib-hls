@@ -79,7 +79,7 @@ created.
 Type: `function`
 
 A function that can be used to retrieve or modify the currently active
-media playlist. The active media playlist is referred to when a
+media playlist. The active media playlist is referred to when
 additional video data needs to be downloaded. Calling this function
 with no arguments returns the parsed playlist object for the active
 media playlist. Calling this function with a playlist object from the
