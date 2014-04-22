@@ -47,7 +47,7 @@
       return changed ? result : null;
     },
 
-    PlaylistLoader = function(srcUrl) {
+    PlaylistLoader = function(srcUrl, withCredentials) {
       var
         loader = this,
         media,
@@ -92,6 +92,8 @@
               loader.trigger('mediaupdatetimeout');
             }, refreshDelay);
           }
+
+          loader.trigger('loadedplaylist');
         };
 
       PlaylistLoader.prototype.init.call(this);
@@ -122,13 +124,6 @@
         if (loader.state === 'HAVE_NOTHING' || loader.state === 'HAVE_MASTER') {
           throw new Error('Cannot switch media playlist from ' + loader.state);
         }
-        loader.state = 'SWITCHING_MEDIA';
-
-        // abort any outstanding playlist refreshes
-        if (request) {
-          request.abort();
-          request = null;
-        }
 
         // find the playlist object if the target playlist has been
         // specified by URI
@@ -139,8 +134,24 @@
           playlist = loader.master.playlists[playlist];
         }
 
+        if (playlist.uri === media.uri) {
+          // switching to the currently active playlist is a no-op
+          return;
+        }
+
+        loader.state = 'SWITCHING_MEDIA';
+
+        // abort any outstanding playlist refreshes
+        if (request) {
+          request.abort();
+          request = null;
+        }
+
         // request the new playlist
-        request = xhr(resolveUrl(loader.master.uri, playlist.uri), function(error) {
+        request = xhr({
+          url: resolveUrl(loader.master.uri, playlist.uri),
+          withCredentials: withCredentials
+        }, function(error) {
           haveMetadata(error, this, playlist.uri);
         });
       };
@@ -153,21 +164,26 @@
         }
 
         loader.state = 'HAVE_CURRENT_METADATA';
-        request = xhr(resolveUrl(loader.master.uri, loader.media().uri),
-                      function(error) {
-                        haveMetadata(error, this, loader.media().uri);
-                      });
+        request = xhr({
+          url: resolveUrl(loader.master.uri, loader.media().uri),
+          withCredentials: withCredentials
+        }, function(error) {
+          haveMetadata(error, this, loader.media().uri);
+        });
       });
 
       // request the specified URL
-      xhr(srcUrl, function(error) {
+      xhr({
+        url: srcUrl,
+        withCredentials: withCredentials
+      }, function(error) {
         var parser, i;
 
         if (error) {
           loader.error = {
             status: this.status,
             message: 'HLS playlist request error at URL: ' + srcUrl,
-            code: (this.status >= 500) ? 4 : 2
+            code: 2 // MEDIA_ERR_NETWORK
           };
           return loader.trigger('error');
         }
@@ -189,13 +205,16 @@
             loader.master.playlists[loader.master.playlists[i].uri] = loader.master.playlists[i];
           }
 
-          request = xhr(resolveUrl(srcUrl, parser.manifest.playlists[0].uri),
-                        function(error) {
-                          // pass along the URL specified in the master playlist
-                          haveMetadata(error,
-                                       this,
-                                       parser.manifest.playlists[0].uri);
-                        });
+          request = xhr({
+            url: resolveUrl(srcUrl, parser.manifest.playlists[0].uri),
+            withCredentials: withCredentials
+          }, function(error) {
+            // pass along the URL specified in the master playlist
+            haveMetadata(error,
+                         this,
+                         parser.manifest.playlists[0].uri);
+            loader.trigger('loadedmetadata');
+          });
           return loader.trigger('loadedplaylist');
         }
 
@@ -208,7 +227,8 @@
           }]
         };
         loader.master.playlists[srcUrl] = loader.master.playlists[0];
-        return haveMetadata(null, this, srcUrl);
+        haveMetadata(null, this, srcUrl);
+        return loader.trigger('loadedmetadata');
       });
     };
   PlaylistLoader.prototype = new videojs.hls.Stream();

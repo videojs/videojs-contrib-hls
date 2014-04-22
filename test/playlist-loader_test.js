@@ -65,7 +65,12 @@
   });
 
   test('jumps to HAVE_METADATA when initialized with a media playlist', function() {
-    var loader = new videojs.hls.PlaylistLoader('media.m3u8');
+    var
+      loadedmetadatas = 0,
+      loader = new videojs.hls.PlaylistLoader('media.m3u8');
+    loader.on('loadedmetadata', function() {
+      loadedmetadatas++;
+    });
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXTINF:10,\n' +
@@ -75,7 +80,8 @@
     ok(loader.media(), 'sets the media playlist');
     ok(loader.media().uri, 'sets the media playlist URI');
     strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
-    strictEqual(0, requests.length, 'no more requests are made');
+    strictEqual(requests.length, 0, 'no more requests are made');
+    strictEqual(loadedmetadatas, 1, 'fired one loadedmetadata');
   });
 
   test('jumps to HAVE_METADATA when initialized with a live media playlist', function() {
@@ -91,17 +97,22 @@
 
   test('moves to HAVE_METADATA after loading a media playlist', function() {
     var
-      loadedPlaylist = false,
+      loadedPlaylist = 0,
+      loadedMetadata = 0,
       loader = new videojs.hls.PlaylistLoader('master.m3u8');
     loader.on('loadedplaylist', function() {
-      loadedPlaylist = true;
+      loadedPlaylist++;
+    });
+    loader.on('loadedmetadata', function() {
+      loadedMetadata++;
     });
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:\n' +
                            'media.m3u8\n' +
                            'alt.m3u8\n');
-    ok(loadedPlaylist, 'loadedplaylist fired');
+    strictEqual(loadedPlaylist, 1, 'fired loadedplaylist once');
+    strictEqual(loadedMetadata, 0, 'did not fire loadedmetadata');
     strictEqual(requests.length, 1, 'requests the media playlist');
     strictEqual(requests[0].method, 'GET', 'GETs the media playlist');
     strictEqual(requests[0].url,
@@ -114,6 +125,8 @@
                            '0.ts\n');
     ok(loader.master, 'sets the master playlist');
     ok(loader.media(), 'sets the media playlist');
+    strictEqual(loadedPlaylist, 2, 'fired loadedplaylist twice');
+    strictEqual(loadedMetadata, 1, 'fired loadedmetadata once');
     strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
   });
 
@@ -315,6 +328,25 @@
     loader.media('high.m3u8');
     strictEqual(requests[0].aborted, true, 'aborted refresh request');
     strictEqual(loader.state, 'SWITCHING_MEDIA', 'updated the state');
+  });
+
+  test('switching to the active playlist is a no-op', function() {
+    var loader = new videojs.hls.PlaylistLoader('master.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'low-0.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+    loader.media('low.m3u8');
+
+    strictEqual(requests.length, 0, 'no requests is sent');
   });
 
   test('throws an error if a media switch is initiated too early', function() {
