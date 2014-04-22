@@ -68,19 +68,25 @@ See html5rocks's [article](http://www.html5rocks.com/en/tutorials/cors/)
 for more info.
 
 ### Runtime Properties
-#### player.hls.master
+#### player.hls.playlists.master
 Type: `object`
 
 An object representing the parsed master playlist. If a media playlist
 is loaded directly, a master playlist with only one entry will be
 created.
 
-#### player.hls.media
-Type: `object`
+#### player.hls.playlists.media
+Type: `function`
 
-An object representing the currently selected media playlist. This is
-the playlist that is being referred to when a additional video data
-needs to be downloaded.
+A function that can be used to retrieve or modify the currently active
+media playlist. The active media playlist is referred to when a
+additional video data needs to be downloaded. Calling this function
+with no arguments returns the parsed playlist object for the active
+media playlist. Calling this function with a playlist object from the
+master playlist or a URI string as specified in the master playlist
+will kick off an asynchronous load of the specified media
+playlist. Once it has been retreived, it will become the active media
+playlist.
 
 #### player.hls.mediaIndex
 Type: `number`
