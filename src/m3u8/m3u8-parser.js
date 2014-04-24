@@ -117,6 +117,10 @@
       return;
     }
 
+    //strip off any carriage returns here so the regex matching
+    //doesn't have to account for them.
+    line = line.replace('\r','');
+
     // Tags
     match = /^#EXTM3U/.exec(line);
     if (match) {
