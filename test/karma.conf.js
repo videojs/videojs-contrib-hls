@@ -39,6 +39,10 @@ module.exports = function(config) {
     // add their paths to this list.
 
     files: [
+      '../node_modules/sinon/lib/sinon.js',
+      '../node_modules/sinon/lib/sinon/util/event.js',
+      '../node_modules/sinon/lib/sinon/util/fake_xml_http_request.js',
+      '../node_modules/sinon/lib/sinon/util/xhr_ie.js',
       '../node_modules/video.js/dist/video-js/video.js',
       '../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js',
       '../test/karma-qunit-shim.js',
@@ -54,11 +58,7 @@ module.exports = function(config) {
       '../tmp/expected.js',
       'tsSegment-bc.js',
       '../src/bin-utils.js',
-      '../test/*.js',
-      '../node_modules/sinon/lib/sinon.js',
-      '../node_modules/sinon/lib/sinon/util/event.js',
-      '../node_modules/sinon/lib/sinon/util/xhr_ie.js',
-      '../node_modules/sinon/lib/sinon/util/fake_xml_http_request.js'
+      '../test/*.js'
       ],
 
     plugins: [
