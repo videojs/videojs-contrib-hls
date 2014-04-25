@@ -31,6 +31,9 @@ videojs.hls = {
 };
 
 var
+
+  settings,
+
   // the desired length of video to maintain in the buffer, in seconds
   goalBufferLength = 5,
 
@@ -109,12 +112,26 @@ var
         method: 'GET'
       },
       request;
+
+    if (typeof callback !== 'function') {
+      callback = function() {};
+    }
+
     if (typeof url === 'object') {
       options = videojs.util.mergeOptions(options, url);
       url = options.url;
     }
+
     request = new window.XMLHttpRequest();
     request.open(options.method, url);
+
+    if (options.responseType) {
+      request.responseType = options.responseType;
+    }
+    if (settings.withCredentials) {
+      request.withCredentials = true;
+    }
+
     request.onreadystatechange = function() {
       // wait until the request completes
       if (this.readyState !== 4) {
@@ -204,13 +221,8 @@ var
   totalDuration = function(playlist) {
     var
       duration = 0,
-      i,
-      segment;
-
-    if (!playlist.segments) {
-      return 0;
-    }
-    i = playlist.segments.length;
+      segment,
+      i = (playlist.segments || []).length;
 
     // if present, use the duration specified in the playlist
     if (playlist.totalDuration) {
@@ -277,27 +289,21 @@ var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.hls.SegmentParser(),
       player = this,
-
-      // async queue of Uint8Arrays to be appended to the SourceBuffer
-      tags = videojs.hls.queue(function(tag) {
-        player.hls.sourceBuffer.appendBuffer(tag, player);
-
-        if (player.hls.mediaIndex === player.hls.media.segments.length) {
-          mediaSource.endOfStream();
-        }
-      }),
       srcUrl,
 
       playlistXhr,
       segmentXhr,
       loadedPlaylist,
       fillBuffer,
-      updateCurrentPlaylist;
+      updateCurrentPlaylist,
+      updateDuration;
 
     // if the video element supports HLS natively, do nothing
     if (videojs.hls.supportsNativeHls) {
       return;
     }
+
+    settings = videojs.util.mergeOptions({}, options);
 
     srcUrl = (function() {
       var
@@ -312,7 +318,7 @@ var
       // use the URL specified in options if one was provided
       if (typeof options === 'string') {
         return options;
-      } else if (options) {
+      } else if (options && options.url) {
         return options.url;
       }
 
@@ -370,15 +376,33 @@ var
       var currentTime = player.currentTime();
       player.hls.mediaIndex = getMediaIndexByTime(player.hls.media, currentTime);
 
+      // abort any segments still being decoded
+      player.hls.sourceBuffer.abort();
+
       // cancel outstanding requests and buffer appends
       if (segmentXhr) {
         segmentXhr.abort();
       }
-      tags.tasks = [];
 
       // begin filling the buffer at the new position
       fillBuffer(currentTime * 1000);
     });
+
+    /**
+     * Update the player duration
+     */
+    updateDuration = function(playlist) {
+      var tech;
+      // update the duration
+      player.duration(totalDuration(playlist));
+      // tell the flash tech of the new duration
+      tech = player.el().querySelector('.vjs-tech');
+      if(tech.vjs_setProperty) {
+        tech.vjs_setProperty('duration', player.duration());
+      }
+      // manually fire the duration change
+      player.trigger('durationchange');
+    };
 
     /**
      * Determine whether the current media playlist should be changed
@@ -406,8 +430,7 @@ var
                               playlist);
         player.hls.media = playlist;
 
-        // update the duration
-        player.duration(totalDuration(player.hls.media));
+        updateDuration(player.hls.media);
       }
     };
 
@@ -558,7 +581,7 @@ var
         player.hls.media = player.hls.master.playlists[0];
 
         // update the duration
-        player.duration(totalDuration(parser.manifest));
+        updateDuration(parser.manifest);
 
         // periodicaly check if the buffer needs to be refilled
         player.on('timeupdate', fillBuffer);
@@ -585,7 +608,7 @@ var
       var
         buffered = player.buffered(),
         bufferedTime = 0,
-        segment = player.hls.media.segments[player.hls.mediaIndex],
+        segment,
         segmentUri,
         startTime;
 
@@ -594,7 +617,13 @@ var
         return;
       }
 
+      // if no segments are available, do nothing
+      if (!player.hls.media.segments) {
+        return;
+      }
+
       // if the video has finished downloading, stop trying to buffer
+      segment = player.hls.media.segments[player.hls.mediaIndex];
       if (!segment) {
         return;
       }
@@ -617,24 +646,20 @@ var
                                 segment.uri);
       }
 
-      // request the next segment
-      segmentXhr = new window.XMLHttpRequest();
-      segmentXhr.open('GET', segmentUri);
-      segmentXhr.responseType = 'arraybuffer';
-      segmentXhr.onreadystatechange = function() {
-        // wait until the request completes
-        if (this.readyState !== 4) {
-          return;
-        }
+      startTime = +new Date();
 
+      // request the next segment
+      segmentXhr = xhr({
+        url: segmentUri,
+        responseType: 'arraybuffer'
+      }, function(error, url) {
         // the segment request is no longer outstanding
         segmentXhr = null;
 
-        // trigger an error if the request was not successful
-        if (this.status >= 400) {
+        if (error) {
           player.hls.error = {
             status: this.status,
-            message: 'HLS segment request error at URL: ' + segmentUri,
+            message: 'HLS segment request error at URL: ' + url,
             code: (this.status >= 500) ? 4 : 2
           };
 
@@ -669,17 +694,22 @@ var
           // queue up the bytes to be appended to the SourceBuffer
           // the queue gives control back to the browser between tags
           // so that large segments don't cause a "hiccup" in playback
-          tags.push(segmentParser.getNextTag().bytes);
+
+          player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,
+                                               player);
+
         }
 
         player.hls.mediaIndex++;
 
+        if (player.hls.mediaIndex === player.hls.media.segments.length) {
+          mediaSource.endOfStream();
+        }
+
         // figure out what stream the next segment should be downloaded from
         // with the updated bandwidth information
         updateCurrentPlaylist();
-      };
-      startTime = +new Date();
-      segmentXhr.send(null);
+      });
     };
 
     // load the MediaSource into the player

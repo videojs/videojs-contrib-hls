@@ -1,8 +1,8 @@
-[![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.png)](https://travis-ci.org/videojs/videojs-contrib-hls)
-
 # video.js HLS Plugin
 
 A video.js plugin that plays HLS video on platforms that don't support it but have Flash.
+
+[![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
 
 ## Getting Started
 Download the [plugin](https://github.com/videojs/videojs-contrib-hls/releases). On your web page:
@@ -47,8 +47,25 @@ support for:
 - Alternate audio and video tracks
 - Subtitles
 - Segment codecs _other than_ H.264 with AAC audio
-- Live streams
 - Internet Explorer < 10
+
+### Plugin Options
+
+You may pass in an options object to the hls plugin upon initialization. This
+object may contain one of the following properties:
+
+#### withCredentials
+Type: `boolean`
+
+When the `withCredentials` property is set to `true`, all XHR requests for
+manifests and segments would have `withCredentials` set to `true` as well. This
+enables storing and passing cookies from the server that the manifests and
+segments live on. This has some implications on CORS because when set, the
+`Access-Control-Allow-Origin` header cannot be set to `*`, also, the response
+headers require the addition of `Access-Control-Allow-Credentials` header which
+is set to `true`.
+See html5rocks's [article](http://www.html5rocks.com/en/tutorials/cors/)
+for more info.
 
 ### Runtime Properties
 #### player.hls.master
@@ -119,6 +136,8 @@ bandwidth and viewport dimensions.
     - [Best RESOLUTION variant] OR [Best BANDWIDTH variant] OR [inital playlist in manifest]
 
 ## Release History
+ - 0.5.0: cookie-based content protection support (see `withCredentials`)
+ - 0.4.0: Live stream support
  - 0.3.0: Performance fixes for high-bitrate streams
  - 0.2.0: Basic playback and adaptive bitrate selection
  - 0.1.0: Initial release
