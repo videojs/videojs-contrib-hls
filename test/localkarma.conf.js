@@ -49,7 +49,6 @@ module.exports = function(config) {
       "../tmp/expected.js",
       "tsSegment-bc.js",
       "../src/bin-utils.js",
-      "../src/async-queue.js",
       '../test/*.js' 
       ],
 
