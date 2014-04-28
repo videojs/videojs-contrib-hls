@@ -56,7 +56,7 @@ module.exports = function(config) {
 
     // custom launchers for sauce labs
     //define SL browsers
-    customLaunchers: customLaunchers
+    customLaunchers: customLaunchers,
 
     // Start these browsers, currently available:
     // - Chrome
