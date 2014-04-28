@@ -5,6 +5,45 @@
 //       3.  Run your tests
 
 module.exports = function(config) {
+  var customLaunchers = {
+    chrome_sl: {
+      singleRun: true,
+      base: 'SauceLabs',
+      browserName: 'chrome',
+      platform: 'Windows 7',
+      version: '34'
+    },
+
+    firefox_sl: {
+      singleRun: true,
+      base: 'SauceLabs',
+      browserName: 'firefox',
+      platform: 'Windows 8'
+    },
+
+    safari_sl: {
+      singleRun: true,
+      base: 'SauceLabs',
+      browserName: 'safari',
+      platform: 'OS X 10.8'
+    },
+
+    ipad_sl: {
+      singleRun: true,
+      base: 'SauceLabs',
+      browserName: 'ipad',
+      platform:'OS X 10.9',
+      version: '7.1'
+    },
+
+    android_sl: {
+      singleRun: true,
+      base: 'SauceLabs',
+      browserName: 'android',
+      platform:'Linux'
+    }
+  };
+
   config.set({
     // base path, that will be used to resolve files and exclude
     basePath: '',
@@ -17,20 +56,12 @@ module.exports = function(config) {
     // Setting singleRun to true here will start up your specified browsers, run tests, and then shut down the browsers.  Helpful to have in a CI environment, where you don't want to leave browsers running continuously.
     singleRun: true,
 
-    // Start these browsers, currently available:
-    // - Chrome
-    // - ChromeCanary
-    // - Firefox
-    // - Opera
-    // - Safari (only Mac)
-    // - PhantomJS
-    // - IE (only Windows)
-    // Example usage:
-    browsers: ['chrome_test'],
-              //'firefox_test',
-              //'safari_test',
-              //'ipad_test',
-              //'android_test'
+    // custom launchers for sauce labs
+    //define SL browsers
+    customLaunchers: customLaunchers,
+
+    // Start these browsers
+    browsers: ['chrome_sl', 'ipad_sl'], //Object.keys(customLaunchers),
 
     // List of files / patterns to load in the browser
     // Add any new src files to this list.
@@ -72,16 +103,9 @@ module.exports = function(config) {
       'karma-sauce-launcher'
     ],
 
-    // list of files to exclude
-    exclude: [
-
-    ],
-
-
     // test results reporter to use
     // possible values: 'dots', 'progress', 'junit'
-    reporters: ['progress'],
-
+    reporters: ['dots', 'progress'],
 
     // web server port
     port: 9876,
@@ -106,46 +130,6 @@ module.exports = function(config) {
       build: process.env.TRAVIS_BUILD_NUMBER,
       testName: process.env.TRAVIS_BUILD_NUMBER + process.env.TRAVIS_BRANCH,
       recordScreenshots: false
-    },
-
-    //define SL browsers
-    customLaunchers: {
-      chrome_test: { 
-        singleRun: true,
-        base: 'SauceLabs', 
-        browserName: 'chrome',
-        platform: 'Windows XP'
-      },
-
-      firefox_test: {
-        singleRun: true,
-        base: 'SauceLabs',
-        browserName: 'firefox',
-        platform: 'Windows 8'
-      },
-
-      safari_test: {
-        singleRun: true,
-        base: 'SauceLabs',
-        browserName: 'safari',
-        platform: 'OS X 10.8'
-      },
-
-      ipad_test: {
-        singleRun: true,
-        base: 'SauceLabs',
-        browserName: 'ipad',
-        platform:'OS X 10.8'
-      },
-
-      android_test: {
-        singleRun: true,
-        base: 'SauceLabs',
-        browserName: 'android',
-        platform:'Linux'
-      }
-
     }
-
   });
 };
