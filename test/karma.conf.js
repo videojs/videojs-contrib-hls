@@ -10,7 +10,8 @@ module.exports = function(config) {
       singleRun: true,
       base: 'SauceLabs',
       browserName: 'chrome',
-      platform: 'Windows XP'
+      platform: 'Windows 7',
+      version: '34'
     },
 
     firefox_sl: {
@@ -31,7 +32,8 @@ module.exports = function(config) {
       singleRun: true,
       base: 'SauceLabs',
       browserName: 'ipad',
-      platform:'OS X 10.8'
+      platform:'OS X 10.9',
+      version: '7.1'
     },
 
     android_sl: {
@@ -58,16 +60,8 @@ module.exports = function(config) {
     //define SL browsers
     customLaunchers: customLaunchers,
 
-    // Start these browsers, currently available:
-    // - Chrome
-    // - ChromeCanary
-    // - Firefox
-    // - Opera
-    // - Safari (only Mac)
-    // - PhantomJS
-    // - IE (only Windows)
-    // Example usage:
-    browsers: Object.keys(customLaunchers),
+    // Start these browsers
+    browsers: ['chrome_sl', 'ipad_sl'], //Object.keys(customLaunchers),
 
     // List of files / patterns to load in the browser
     // Add any new src files to this list.
