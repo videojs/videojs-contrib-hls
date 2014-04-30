@@ -108,6 +108,25 @@ Fired immediately after a new master or media playlist has been
 downloaded. By default, the plugin only downloads playlists as they
 are needed.
 
+### Testing
+
+For testing, you can either run `npm test` or use `grunt` directly.
+If you use `npm test`, it will only run the karma tests using chrome.
+You can specify which browsers you want the tests to run via grunt's `test` task.
+You can use either grunt-style arguments or comma separated arguments:
+```
+grunt test:chrome:firefox	# grunt-style
+grunt test:chrome,firefox	# comma-separated
+```
+Possible options are:
+* `chromecanary`
+* `phantomjs`
+* `opera`
+* `chrome`
+* `safari`
+* `firefox`
+* `ie`
+
 ## Hosting Considerations
 Unlike a native HLS implementation, the HLS plugin has to comply with
 the browser's security policies. That means that all the files that
