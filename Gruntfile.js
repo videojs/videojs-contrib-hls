@@ -30,7 +30,8 @@ module.exports = function(grunt) {
               'src/aac-stream.js',
               'src/segment-parser.js',
               'src/stream.js',
-              'src/m3u8/m3u8-parser.js'
+              'src/m3u8/m3u8-parser.js',
+              'src/playlist-loader.js'
             ],
         dest: 'dist/videojs.hls.js'
       }
