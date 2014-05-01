@@ -270,7 +270,9 @@ module.exports = function(grunt) {
 
     grunt.task.run(['jshint', 'manifests-to-js']);
 
-    if (process.env.TRAVIS) {
+    if (process.env.TRAVIS_PULL_REQUEST) {
+      grunt.task.run(['karma:phantomjs']);
+    } else if (process.env.TRAVIS) {
       grunt.task.run(['karma:saucelabs']);
     } else {
       if (tasks.length === 0) {
