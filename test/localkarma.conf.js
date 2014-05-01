@@ -34,23 +34,28 @@ module.exports = function(config) {
     // add their paths to this list.
 
     files: [
+      '../node_modules/sinon/lib/sinon.js',
+      '../node_modules/sinon/lib/sinon/util/event.js',
+      '../node_modules/sinon/lib/sinon/util/fake_xml_http_request.js',
+      '../node_modules/sinon/lib/sinon/util/xhr_ie.js',
+      '../node_modules/sinon/lib/sinon/util/fake_timers.js',
       '../node_modules/video.js/dist/video-js/video.js',
       '../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js',
       '../test/karma-qunit-shim.js',
-      "../src/videojs-hls.js",
-      "../src/flv-tag.js",
-      "../src/exp-golomb.js",
-      "../src/h264-stream.js",
-      "../src/aac-stream.js",
-      "../src/segment-parser.js",
-      "../src/stream.js",
-      "../src/m3u8/m3u8-parser.js",
-      "../tmp/manifests.js",
-      "../tmp/expected.js",
-      "tsSegment-bc.js",
-      "../src/bin-utils.js",
-      "../src/async-queue.js",
-      '../test/*.js' 
+      '../src/videojs-hls.js',
+      '../src/flv-tag.js',
+      '../src/exp-golomb.js',
+      '../src/h264-stream.js',
+      '../src/aac-stream.js',
+      '../src/segment-parser.js',
+      '../src/stream.js',
+      '../src/m3u8/m3u8-parser.js',
+      '../src/playlist-loader.js',
+      '../tmp/manifests.js',
+      '../tmp/expected.js',
+      'tsSegment-bc.js',
+      '../src/bin-utils.js',
+      '../test/*.js'
       ],
 
     plugins: [
@@ -88,7 +93,7 @@ module.exports = function(config) {
 
     // level of logging
     // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
-    //logLevel: config.LOG_INFO,
+    logLevel: config.LOG_DISABLE,
 
     // If browser does not capture in given timeout [ms], kill it
     captureTimeout: 60000

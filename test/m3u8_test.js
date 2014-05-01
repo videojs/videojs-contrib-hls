@@ -206,6 +206,23 @@
           manifest.substring(manifest.indexOf(',') + 1, manifest.length - 1),
           'the title is parsed');
   });
+  test('parses #EXTINF tags with carriage returns', function() {
+    var 
+      manifest = '#EXTINF:13,Does anyone really use the title attribute?\r\n',
+      element;
+    parseStream.on('data', function(elem) {
+      element = elem;
+    });
+    lineStream.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'inf', 'the tag type is inf');
+    strictEqual(element.duration, 13, 'the duration is parsed');
+    strictEqual(element.title,
+          manifest.substring(manifest.indexOf(',') + 1, manifest.length - 2),
+          'the title is parsed');
+  });
 
   // #EXT-X-TARGETDURATION
   test('parses minimal #EXT-X-TARGETDURATION tags', function() {

@@ -259,10 +259,31 @@ module.exports = function(grunt) {
                       'concat',
                       'uglify']);
 
-  grunt.registerTask('test', ['jshint', 'manifests-to-js', 'karma:saucelabs']);
+  // The test task will run `karma:saucelabs` when running in travis,
+  // otherwise, it'll default to running karma in chrome.
+  // You can specify which browsers to build with by using grunt-style arguments
+  // or separating them with a comma:
+  //   grunt test:chrome:firefox  # grunt-style
+  //   grunt test:chrome,firefox  # comma-separated
+  grunt.registerTask('test', function() {
+    var tasks = this.args;
 
-  // travis build task
-  grunt.registerTask('test-local', ['jshint', 'manifests-to-js', 'qunit']);
+    grunt.task.run(['jshint', 'manifests-to-js']);
 
+    if (process.env.TRAVIS) {
+      grunt.task.run(['karma:saucelabs']);
+    } else {
+      if (tasks.length === 0) {
+        tasks.push('chrome');
+      }
+      if (tasks.length === 1) {
+        tasks = tasks[0].split(',');
+      }
+      tasks = tasks.map(function(el) {
+        return 'karma:' + el;
+      });
 
+      grunt.task.run(tasks);
+    }
+  });
 };
