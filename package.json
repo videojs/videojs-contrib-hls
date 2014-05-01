@@ -1,24 +1,46 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "0.2.0",
+  "version": "0.5.0",
   "engines": {
-    "node": ">= 0.8.0"
+    "node": ">= 0.10.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:videojs/videojs-contrib-hls.git"
   },
   "license": "Apache 2",
   "scripts": {
-    "test": "grunt"
+    "test": "grunt test"
   },
   "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-concurrent": "0.4.3",
+    "grunt-contrib-clean": "~0.4.0",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-connect": "~0.6.0",
     "grunt-contrib-jshint": "~0.6.0",
     "grunt-contrib-qunit": "~0.2.0",
-    "grunt-contrib-concat": "~0.3.0",
     "grunt-contrib-uglify": "~0.2.0",
     "grunt-contrib-watch": "~0.4.0",
-    "grunt-contrib-clean": "~0.4.0",
-    "grunt": "~0.4.1"
+    "grunt-karma": "~0.6.2",
+    "grunt-open": "0.2.3",
+    "grunt-shell": "0.6.1",
+    "karma": "~0.10.0",
+    "karma-chrome-launcher": "~0.1.2",
+    "karma-firefox-launcher": "~0.1.3",
+    "karma-ie-launcher": "~0.1.1",
+    "karma-opera-launcher": "~0.1.0",
+    "karma-phantomjs-launcher": "~0.1.1",
+    "karma-qunit": "~0.1.1",
+    "karma-safari-launcher": "~0.1.1",
+    "karma-sauce-launcher": "~0.1.8",
+    "sinon": "^1.9.1",
+    "video.js": "^4.5"
+  },
+  "peerDependencies": {
+    "video.js": "^4.5"
   },
   "dependencies": {
-    "video.js": "git+https://github.com/dmlap/video-js.git#v4.3.0-10",
-    "videojs-contrib-media-sources": "git+https://github.com/dmlap/videojs-contrib-media-sources.git#hotfix/misc-fixes"
+    "videojs-contrib-media-sources": "^0.2"
   }
 }

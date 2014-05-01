@@ -1,11 +1,11 @@
-[![Build Status](https://travis-ci.org/brightcove/videojs-contrib-hls.png)](https://travis-ci.org/brightcove/videojs-contrib-hls)
-
 # video.js HLS Plugin
 
 A video.js plugin that plays HLS video on platforms that don't support it but have Flash.
 
+[![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
+
 ## Getting Started
-Download the [plugin](https://raw.github.com/videojs/videojs-contrib-hls/master/dist/videojs-hls.min.js). On your web page:
+Download the [plugin](https://github.com/videojs/videojs-contrib-hls/releases). On your web page:
 
 ```html
 <script src="video.js"></script>
@@ -47,23 +47,46 @@ support for:
 - Alternate audio and video tracks
 - Subtitles
 - Segment codecs _other than_ H.264 with AAC audio
-- Live streams
 - Internet Explorer < 10
 
+### Plugin Options
+
+You may pass in an options object to the hls plugin upon initialization. This
+object may contain one of the following properties:
+
+#### withCredentials
+Type: `boolean`
+
+When the `withCredentials` property is set to `true`, all XHR requests for
+manifests and segments would have `withCredentials` set to `true` as well. This
+enables storing and passing cookies from the server that the manifests and
+segments live on. This has some implications on CORS because when set, the
+`Access-Control-Allow-Origin` header cannot be set to `*`, also, the response
+headers require the addition of `Access-Control-Allow-Credentials` header which
+is set to `true`.
+See html5rocks's [article](http://www.html5rocks.com/en/tutorials/cors/)
+for more info.
+
 ### Runtime Properties
-#### player.hls.master
+#### player.hls.playlists.master
 Type: `object`
 
 An object representing the parsed master playlist. If a media playlist
 is loaded directly, a master playlist with only one entry will be
 created.
 
-#### player.hls.media
-Type: `object`
+#### player.hls.playlists.media
+Type: `function`
 
-An object representing the currently selected media playlist. This is
-the playlist that is being referred to when a additional video data
-needs to be downloaded.
+A function that can be used to retrieve or modify the currently active
+media playlist. The active media playlist is referred to when
+additional video data needs to be downloaded. Calling this function
+with no arguments returns the parsed playlist object for the active
+media playlist. Calling this function with a playlist object from the
+master playlist or a URI string as specified in the master playlist
+will kick off an asynchronous load of the specified media
+playlist. Once it has been retreived, it will become the active media
+playlist.
 
 #### player.hls.mediaIndex
 Type: `number`
@@ -90,6 +113,25 @@ Fired after the first media playlist is downloaded for a stream.
 Fired immediately after a new master or media playlist has been
 downloaded. By default, the plugin only downloads playlists as they
 are needed.
+
+### Testing
+
+For testing, you can either run `npm test` or use `grunt` directly.
+If you use `npm test`, it will only run the karma tests using chrome.
+You can specify which browsers you want the tests to run via grunt's `test` task.
+You can use either grunt-style arguments or comma separated arguments:
+```
+grunt test:chrome:firefox	# grunt-style
+grunt test:chrome,firefox	# comma-separated
+```
+Possible options are:
+* `chromecanary`
+* `phantomjs`
+* `opera`
+* `chrome`
+* `safari`
+* `firefox`
+* `ie`
 
 ## Hosting Considerations
 Unlike a native HLS implementation, the HLS plugin has to comply with
@@ -119,4 +161,8 @@ bandwidth and viewport dimensions.
     - [Best RESOLUTION variant] OR [Best BANDWIDTH variant] OR [inital playlist in manifest]
 
 ## Release History
-_(Nothing yet)_
+ - 0.5.0: cookie-based content protection support (see `withCredentials`)
+ - 0.4.0: Live stream support
+ - 0.3.0: Performance fixes for high-bitrate streams
+ - 0.2.0: Basic playback and adaptive bitrate selection
+ - 0.1.0: Initial release

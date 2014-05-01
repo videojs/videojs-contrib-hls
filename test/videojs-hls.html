@@ -3,13 +3,20 @@
 <head>
   <meta charset="utf-8">
   <title>video.js HLS Plugin Test Suite</title>
+  <!-- Load sinon server for fakeXHR -->
+  <script src="../node_modules/sinon/lib/sinon.js"></script>
+  <script src="../node_modules/sinon/lib/sinon/util/event.js"></script>
+  <script src="../node_modules/sinon/lib/sinon/util/fake_xml_http_request.js"></script>
+  <script src="../node_modules/sinon/lib/sinon/util/xhr_ie.js"></script>
+  <script src="../node_modules/sinon/lib/sinon/util/fake_timers.js"></script>
+
   <!-- Load local QUnit. -->
   <link rel="stylesheet" href="../libs/qunit/qunit.css" media="screen">
   <script src="../libs/qunit/qunit.js"></script>
 
   <!-- video.js -->
   <script src="../node_modules/video.js/dist/video-js/video.js"></script>
-  <script src="../node_modules/videojs-contrib-media-sources/videojs-media-sources.js"></script>
+  <script src="../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
 
   <!-- HLS plugin -->
   <script src="../src/videojs-hls.js"></script>
@@ -22,6 +29,7 @@
   <!-- M3U8 -->
   <script src="../src/stream.js"></script>
   <script src="../src/m3u8/m3u8-parser.js"></script>
+  <script src="../src/playlist-loader.js"></script>
   <!-- M3U8 TEST DATA -->
   <script src="../tmp/manifests.js"></script>
   <script src="../tmp/expected.js"></script>
@@ -30,9 +38,6 @@
   <!-- SEGMENT -->
   <script src="tsSegment-bc.js"></script>
   <script src="../src/bin-utils.js"></script>
-
-  <!-- async queue -->
-  <script src="../src/async-queue.js"></script>
 
   <!-- Test cases -->
   <script>
@@ -44,10 +49,11 @@
   </script>
   <script src="videojs-hls_test.js"></script>
   <script src="segment-parser.js"></script>
+  <script src="h264-stream_test.js"></script>
   <script src="exp-golomb_test.js"></script>
   <script src="flv-tag_test.js"></script>
   <script src="m3u8_test.js"></script>
-  <script src="async-queue_test.js"></script>
+  <script src="playlist-loader_test.js"></script>
 </head>
 <body>
   <div id="qunit"></div>

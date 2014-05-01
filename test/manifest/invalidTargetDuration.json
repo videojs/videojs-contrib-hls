@@ -139,5 +139,6 @@
       "duration": 1.4167,
       "uri": "hls_450k_video.ts"
     }
-  ]
+  ],
+  "endList": true
 }

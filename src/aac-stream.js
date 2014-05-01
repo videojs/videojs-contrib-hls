@@ -1,6 +1,6 @@
 /*
  * aac-stream
- * 
+ *
  *
  * Copyright (c) 2013 Brightcove
  * All rights reserved.
@@ -18,9 +18,9 @@ var
   ];
 
 window.videojs.hls.AacStream = function() {
-  var 
+  var
     next_pts, // :uint
-    pts_delta = -1, // :int
+    pts_offset, // :int
     state, // :uint
     pes_length, // :int
 
@@ -39,115 +39,119 @@ window.videojs.hls.AacStream = function() {
 
   // (pts:uint, pes_size:int, dataAligned:Boolean):void
   this.setNextTimeStamp = function(pts, pes_size, dataAligned) {
-    if (0 > pts_delta) {
-      // We assume the very firts pts is less than 0x80000000
-      pts_delta = pts;
-    }
 
-    next_pts = pts - pts_delta;
-    pes_length = pes_size;
+    // on the first invocation, capture the starting PTS value
+    pts_offset = pts;
 
-    // If data is aligned, flush all internal buffers
-    if (dataAligned) {
-      state = 0;
-    }
+    // on subsequent invocations, calculate the PTS based on the starting offset
+    this.setNextTimeStamp = function(pts, pes_size, dataAligned) {
+      next_pts = pts - pts_offset;
+      pes_length = pes_size;
+
+      // If data is aligned, flush all internal buffers
+      if (dataAligned) {
+        state = 0;
+      }
+    };
+
+    this.setNextTimeStamp(pts, pes_size, dataAligned);
   };
 
   // (data:ByteArray, o:int = 0, l:int = 0):void
-  this.writeBytes = function(data, o, l) {
+  this.writeBytes = function(data, offset, length) {
     var
-      e, // :int
+      end, // :int
       newExtraData, // :uint
       bytesToCopy; // :int
 
     // default arguments
-    o = o || 0;
-    l = l || 0;
+    offset = offset || 0;
+    length = length || 0;
 
     // Do not allow more than 'pes_length' bytes to be written
-    l = (pes_length < l ? pes_length : l);
-    pes_length -= l;
-    e = o + l;
-    while (o < e) {
+    length = (pes_length < length ? pes_length : length);
+    pes_length -= length;
+    end = offset + length;
+    while (offset < end) {
       switch (state) {
       default:
         state = 0;
         break;
       case 0:
-        if (o >= e) {
+        if (offset >= end) {
           return;
         }
-        if (0xFF !== data[o]) {
+        if (0xFF !== data[offset]) {
           console.assert(false, 'Error no ATDS header found');
-          o += 1;
+          offset += 1;
           state = 0;
           return;
         }
 
-        o += 1;
+        offset += 1;
         state = 1;
         break;
       case 1:
-        if (o >= e) {
+        if (offset >= end) {
           return;
         }
-        if (0xF0 !== (data[o] & 0xF0)) {
+        if (0xF0 !== (data[offset] & 0xF0)) {
           console.assert(false, 'Error no ATDS header found');
-          o +=1;
+          offset +=1;
           state = 0;
           return;
         }
 
-        adtsProtectionAbsent = !!(data[o] & 0x01);
+        adtsProtectionAbsent = !!(data[offset] & 0x01);
 
-        o += 1;
+        offset += 1;
         state = 2;
         break;
       case 2:
-        if (o >= e) {
+        if (offset >= end) {
           return;
         }
-        adtsObjectType = ((data[o] & 0xC0) >>> 6) + 1;
-        adtsSampleingIndex = ((data[o] & 0x3C) >>> 2);
-        adtsChanelConfig = ((data[o] & 0x01) << 2);
+        adtsObjectType = ((data[offset] & 0xC0) >>> 6) + 1;
+        adtsSampleingIndex = ((data[offset] & 0x3C) >>> 2);
+        adtsChanelConfig = ((data[offset] & 0x01) << 2);
 
-        o += 1;
+        offset += 1;
         state = 3;
         break;
-      case 3: 
-        if (o >= e) {
+      case 3:
+        if (offset >= end) {
           return;
         }
-        adtsChanelConfig |= ((data[o] & 0xC0) >>> 6);
-        adtsFrameSize = ((data[o] & 0x03) << 11);
+        adtsChanelConfig |= ((data[offset] & 0xC0) >>> 6);
+        adtsFrameSize = ((data[offset] & 0x03) << 11);
 
-        o += 1;
+        offset += 1;
         state = 4;
         break;
-      case 4: 
-        if (o >= e) {
+      case 4:
+        if (offset >= end) {
           return;
         }
-        adtsFrameSize |= (data[o] << 3);
+        adtsFrameSize |= (data[offset] << 3);
 
-        o += 1;
+        offset += 1;
         state = 5;
         break;
       case 5:
-        if(o >= e) {
+        if(offset >= end) {
           return;
         }
-        adtsFrameSize |= ((data[o] & 0xE0) >>> 5);
+        adtsFrameSize |= ((data[offset] & 0xE0) >>> 5);
         adtsFrameSize -= (adtsProtectionAbsent ? 7 : 9);
 
-        o += 1;
+        offset += 1;
         state = 6;
         break;
-      case 6: 
-        if (o >= e) {
+      case 6:
+        if (offset >= end) {
           return;
         }
-        adtsSampleCount = ((data[o] & 0x03) + 1) * 1024;
+        adtsSampleCount = ((data[offset] & 0x03) + 1) * 1024;
         adtsDuration = (adtsSampleCount * 1000) / adtsSampleingRates[adtsSampleingIndex];
 
         newExtraData = (adtsObjectType << 11) |
@@ -159,11 +163,11 @@ window.videojs.hls.AacStream = function() {
           aacFrame.dts = next_pts;
 
           // AAC is always 10
-          aacFrame.writeMetaDataDouble("audiocodecid", 10); 
+          aacFrame.writeMetaDataDouble("audiocodecid", 10);
           aacFrame.writeMetaDataBoolean("stereo", 2 === adtsChanelConfig);
           aacFrame.writeMetaDataDouble ("audiosamplerate", adtsSampleingRates[adtsSampleingIndex]);
           // Is AAC always 16 bit?
-          aacFrame.writeMetaDataDouble ("audiosamplesize", 16); 
+          aacFrame.writeMetaDataDouble ("audiosamplesize", 16);
 
           this.tags.push(aacFrame);
 
@@ -173,7 +177,7 @@ window.videojs.hls.AacStream = function() {
           // For audio, DTS is always the same as PTS. We want to set the DTS
           // however so we can compare with video DTS to determine approximate
           // packet order
-          aacFrame.pts = next_pts; 
+          aacFrame.pts = next_pts;
           aacFrame.view.setUint16(aacFrame.position, newExtraData);
           aacFrame.position += 2;
           aacFrame.length = Math.max(aacFrame.length, aacFrame.position);
@@ -182,15 +186,15 @@ window.videojs.hls.AacStream = function() {
         }
 
         // Skip the checksum if there is one
-        o += 1;
+        offset += 1;
         state = 7;
         break;
       case 7:
         if (!adtsProtectionAbsent) {
-          if (2 > (e - o)) {
+          if (2 > (end - offset)) {
             return;
           } else {
-            o += 2;
+            offset += 2;
           }
         }
 
@@ -201,12 +205,12 @@ window.videojs.hls.AacStream = function() {
         break;
       case 8:
         while (adtsFrameSize) {
-          if (o >= e) {
+          if (offset >= end) {
             return;
           }
-          bytesToCopy = (e - o) < adtsFrameSize ? (e - o) : adtsFrameSize;
-          aacFrame.writeBytes(data, o, bytesToCopy);
-          o += bytesToCopy;
+          bytesToCopy = (end - offset) < adtsFrameSize ? (end - offset) : adtsFrameSize;
+          aacFrame.writeBytes(data, offset, bytesToCopy);
+          offset += bytesToCopy;
           adtsFrameSize -= bytesToCopy;
         }
 

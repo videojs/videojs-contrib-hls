@@ -1,7 +1,19 @@
 language: node_js
+node_js:
+- '0.10'
 before_script:
 - npm install -g grunt-cli
+- curl https://gist.githubusercontent.com/santiycr/5139565/raw/sauce_connect_setup.sh
+  | bash
 notifications:
   hipchat:
     rooms:
       secure: l5TTd5JuPAW883PtcyaIBcJI9Chr9JpsZPQAEUBKAgIEwzuS6y7t5arlkS1PwH6gi1FADzYDf+OXSIou4GkTSrIetnBcT/SAgF0gBKgIhj+eRkuCfZ4VaC7BPhfZ0hgYRE+5Ejf5BM2MJafRm0pj7OlqG4xKrQZwtuV1te5r3JY=
+  irc:
+    channels:
+      - "chat.freenode.net#videojs"
+    use_notice: true
+env:
+  global:
+  - secure: dM7svnHPPu5IiUMeFWW5zg+iuWNpwt6SSDi3MmVvhSclNMRLesQoRB+7Qq5J/LiKhmjpv1/GlNVV0CTsHMRhZNwQ3fo38eEuTXv99aAflEITXwSEh/VntKViHbGFubn06EnVkJoH6MX3zJ6kbiwc2QdSQbywKzS6l6quUEpWpd0=
+  - secure: AnduYGXka5ft1x7V3SuVYqvlKLvJGhUaRNFdy4UDJr3ZVuwpQjE4TMDG8REmJIJvXfHbh4qY4N1cFSGnXkZ4bH21Xk0v9DLhsxbarKz+X2BvPgXs+Af9EQ6vLEy/5S1vMLxfT5+y+Ec5bVNGOsdUZby8Y21CRzSg6ADN9kwPGlE=

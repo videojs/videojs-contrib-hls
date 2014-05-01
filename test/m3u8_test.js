@@ -1,11 +1,12 @@
 (function(window, undefined) {
   var
     //manifestController = this.manifestController,
-    ParseStream = window.videojs.m3u8.ParseStream,
+    m3u8 = window.videojs.m3u8,
+    ParseStream = m3u8.ParseStream,
     parseStream,
-    LineStream = window.videojs.m3u8.LineStream,
+    LineStream = m3u8.LineStream,
     lineStream,
-    Parser = window.videojs.m3u8.Parser,
+    Parser = m3u8.Parser,
     parser;
 
   /*
@@ -203,6 +204,23 @@
     strictEqual(element.duration, 13, 'the duration is parsed');
     strictEqual(element.title,
           manifest.substring(manifest.indexOf(',') + 1, manifest.length - 1),
+          'the title is parsed');
+  });
+  test('parses #EXTINF tags with carriage returns', function() {
+    var 
+      manifest = '#EXTINF:13,Does anyone really use the title attribute?\r\n',
+      element;
+    parseStream.on('data', function(elem) {
+      element = elem;
+    });
+    lineStream.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'inf', 'the tag type is inf');
+    strictEqual(element.duration, 13, 'the duration is parsed');
+    strictEqual(element.title,
+          manifest.substring(manifest.indexOf(',') + 1, manifest.length - 2),
           'the title is parsed');
   });
 
@@ -506,19 +524,15 @@
     ok(!event, 'no event is triggered');
   });
 
-  module('m3u8 parser', {
-    setup: function() {
-      parser = new Parser();
-    }
-  });
+  module('m3u8 parser');
 
-  test('should create a parser', function() {
-    notStrictEqual(parser, undefined, 'parser is defined');
+  test('can be constructed', function() {
+    notStrictEqual(new Parser(), undefined, 'parser is defined');
   });
 
   module('m3u8s');
 
-  test('parses the example manifests as expected', function() {
+  test('parses static manifests as expected', function() {
     var key;
     for (key in window.manifests) {
       if (window.expected[key]) {

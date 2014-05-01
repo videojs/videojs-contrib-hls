@@ -117,6 +117,10 @@
       return;
     }
 
+    //strip off any carriage returns here so the regex matching
+    //doesn't have to account for them.
+    line = line.replace('\r','');
+
     // Tags
     match = /^#EXTM3U/.exec(line);
     if (match) {
@@ -344,13 +348,10 @@
                 byterange.offset = entry.offset;
               }
             },
+            'endlist': function() {
+              this.manifest.endList = true;
+            },
             'inf': function() {
-              if (!this.manifest.playlistType) {
-                this.manifest.playlistType = 'VOD';
-                this.trigger('info', {
-                  message: 'defaulting playlist type to VOD'
-                });
-              }
               if (!('mediaSequence' in this.manifest)) {
                 this.manifest.mediaSequence = 0;
                 this.trigger('info', {
