@@ -8,28 +8,6 @@
 
 (function(window, videojs, document, undefined) {
 
-videojs.hls = {
-  /**
-   * Whether the browser has built-in HLS support.
-   */
-  supportsNativeHls: (function() {
-    var
-      video = document.createElement('video'),
-      xMpegUrl,
-      vndMpeg;
-
-    // native HLS is definitely not supported if HTML5 video isn't
-    if (!videojs.Html5.isSupported()) {
-      return false;
-    }
-
-    xMpegUrl = video.canPlayType('application/x-mpegURL');
-    vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
-    return (/probably|maybe/).test(xMpegUrl) ||
-      (/probably|maybe/).test(vndMpeg);
-  })()
-};
-
 var
 
   // the desired length of video to maintain in the buffer, in seconds
@@ -95,60 +73,7 @@ var
     }
   },
 
-  /**
-   * Creates and sends an XMLHttpRequest.
-   * @param options {string | object} if this argument is a string, it
-   * is intrepreted as a URL and a simple GET request is
-   * inititated. If it is an object, it should contain a `url`
-   * property that indicates the URL to request and optionally a
-   * `method` which is the type of HTTP request to send.
-   * @param callback (optional) {function} a function to call when the
-   * request completes. If the request was not successful, the first
-   * argument will be falsey.
-   * @return {object} the XMLHttpRequest that was initiated.
-   */
-  xhr = videojs.hls.xhr = function(url, callback) {
-    var
-      options = {
-        method: 'GET'
-      },
-      request;
-
-    if (typeof callback !== 'function') {
-      callback = function() {};
-    }
-
-    if (typeof url === 'object') {
-      options = videojs.util.mergeOptions(options, url);
-      url = options.url;
-    }
-
-    request = new window.XMLHttpRequest();
-    request.open(options.method, url);
-
-    if (options.responseType) {
-      request.responseType = options.responseType;
-    }
-    if (options.withCredentials) {
-      request.withCredentials = true;
-    }
-
-    request.onreadystatechange = function() {
-      // wait until the request completes
-      if (this.readyState !== 4) {
-        return;
-      }
-
-      // request error
-      if (this.status >= 400 || this.status === 0) {
-        return callback.call(this, true, url);
-      }
-
-      return callback.call(this, false, url);
-    };
-    request.send(null);
-    return request;
-  },
+  xhr,
 
   /**
    * TODO - Document this great feature.
@@ -247,44 +172,7 @@ var
     return duration;
   },
 
-  /**
-   * Constructs a new URI by interpreting a path relative to another
-   * URI.
-   * @param basePath {string} a relative or absolute URI
-   * @param path {string} a path part to combine with the base
-   * @return {string} a URI that is equivalent to composing `base`
-   * with `path`
-   * @see http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
-   */
-  resolveUrl = videojs.hls.resolveUrl = function(basePath, path) {
-    // use the base element to get the browser to handle URI resolution
-    var
-      oldBase = document.querySelector('base'),
-      docHead = document.querySelector('head'),
-      a = document.createElement('a'),
-      base = oldBase,
-      oldHref,
-      result;
-
-    // prep the document
-    if (oldBase) {
-      oldHref = oldBase.href;
-    } else {
-      base = docHead.appendChild(document.createElement('base'));
-    }
-
-    base.href = basePath;
-    a.href = path;
-    result = a.href;
-
-    // clean up
-    if (oldBase) {
-      oldBase.href = oldHref;
-    } else {
-      docHead.removeChild(base);
-    }
-    return result;
-  },
+  resolveUrl,
 
   /**
    * Initializes the HLS plugin.
@@ -293,7 +181,7 @@ var
   init = function(options) {
     var
       mediaSource = new videojs.MediaSource(),
-      segmentParser = new videojs.hls.SegmentParser(),
+      segmentParser = new videojs.Hls.SegmentParser(),
       player = this,
       srcUrl,
 
@@ -303,7 +191,7 @@ var
       updateDuration;
 
     // if the video element supports HLS natively, do nothing
-    if (videojs.hls.supportsNativeHls) {
+    if (videojs.Hls.supportsNativeHls) {
       return;
     }
 
@@ -346,13 +234,13 @@ var
         }
 
         // do nothing if the source is handled by one of the standard techs
-        for (j in player.options().techOrder) {
-          techName = player.options().techOrder[j];
-          techName = techName[0].toUpperCase() + techName.substring(1);
-          if (videojs[techName].canPlaySource({ type: sources[i].type })) {
-            return;
-          }
-        }
+        //for (j in player.options().techOrder) {
+          //techname = player.options().techorder[j];
+          //techname = techname[0].touppercase() + techname.substring(1);
+          //if (videojs[techname].canplaysource({ type: sources[i].type })) {
+            //return;
+          //}
+        //}
 
         // use the plugin if the MIME type specifies HLS
         if ((/application\/x-mpegURL/).test(sources[i].type) ||
@@ -638,28 +526,158 @@ var
         oldMediaPlaylist = updatedPlaylist;
       });
     });
-    player.src([{
-      src: videojs.URL.createObjectURL(mediaSource),
-      type: "video/flv"
-    }]);
 
-    if (player.options().autoplay) {
-      player.play();
-    }
+    //player.src([{
+      //src: videojs.URL.createObjectURL(mediaSource),
+      //type: "video/flv"
+    //}]);
+
+    //if (player.options().autoplay) {
+      //player.play();
+    //}
   };
 
-videojs.plugin('hls', function() {
-  if (typeof Uint8Array === 'undefined') {
-    return;
+var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
+
+videojs.Hls = videojs.Flash.extend({
+  init: function(player, options, ready) {
+    videojs.Flash.call(this, player, options, ready);
+    player.hls = {};
+    this.ready(function() {
+      console.log('ready!');
+      //init.call(player, options);
+    });
+  }
+});
+
+//for (var prop in videojs.Flash) {
+  //videojs.Hls[prop] = videojs.Flash[prop];
+//}
+//for (prop in videojs.Flash.prototype) {
+  //videojs.Hls.prototype[prop] = videojs.Flash[prop];
+//}
+
+videojs.Hls.isSupported = function() {
+  return videojs.Flash.isSupported() && videojs.MediaSource;
+}
+
+videojs.Hls.canPlaySource = function(srcObj) {
+  return mpegurlRE.test(srcObj.type) || videojs.Flash.canPlaySource.call(this, srcObj);
+};
+
+videojs.Hls.supportsNativeHls = (function() {
+  var
+    video = document.createElement('video'),
+    xMpegUrl,
+    vndMpeg;
+
+  // native HLS is definitely not supported if HTML5 video isn't
+  if (!videojs.Html5.isSupported()) {
+    return false;
   }
 
-  var initialize = function() {
-    return function() {
-      this.hls = initialize();
-      init.apply(this, arguments);
-    };
+  xMpegUrl = video.canPlayType('application/x-mpegURL');
+  vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
+  return (/probably|maybe/).test(xMpegUrl) ||
+    (/probably|maybe/).test(vndMpeg);
+})();
+
+/**
+ * Creates and sends an XMLHttpRequest.
+ * @param options {string | object} if this argument is a string, it
+ * is intrepreted as a URL and a simple GET request is
+ * inititated. If it is an object, it should contain a `url`
+ * property that indicates the URL to request and optionally a
+ * `method` which is the type of HTTP request to send.
+ * @param callback (optional) {function} a function to call when the
+ * request completes. If the request was not successful, the first
+ * argument will be falsey.
+ * @return {object} the XMLHttpRequest that was initiated.
+ */
+xhr = videojs.Hls.xhr = function(url, callback) {
+  var
+    options = {
+      method: 'GET'
+    },
+    request;
+
+  if (typeof callback !== 'function') {
+    callback = function() {};
+  }
+
+  if (typeof url === 'object') {
+    options = videojs.util.mergeOptions(options, url);
+    url = options.url;
+  }
+
+  request = new window.XMLHttpRequest();
+  request.open(options.method, url);
+
+  if (options.responseType) {
+    request.responseType = options.responseType;
+  }
+  if (options.withCredentials) {
+    request.withCredentials = true;
+  }
+
+  request.onreadystatechange = function() {
+    // wait until the request completes
+    if (this.readyState !== 4) {
+      return;
+    }
+
+    // request error
+    if (this.status >= 400 || this.status === 0) {
+      return callback.call(this, true, url);
+    }
+
+    return callback.call(this, false, url);
   };
-  initialize().apply(this, arguments);
-});
+  request.send(null);
+  return request;
+};
+
+/**
+ * Constructs a new URI by interpreting a path relative to another
+ * URI.
+ * @param basePath {string} a relative or absolute URI
+ * @param path {string} a path part to combine with the base
+ * @return {string} a URI that is equivalent to composing `base`
+ * with `path`
+ * @see http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
+ */
+resolveUrl = videojs.Hls.resolveUrl = function(basePath, path) {
+  // use the base element to get the browser to handle URI resolution
+  var
+    oldBase = document.querySelector('base'),
+    docHead = document.querySelector('head'),
+    a = document.createElement('a'),
+    base = oldBase,
+    oldHref,
+    result;
+
+  // prep the document
+  if (oldBase) {
+    oldHref = oldBase.href;
+  } else {
+    base = docHead.appendChild(document.createElement('base'));
+  }
+
+  base.href = basePath;
+  a.href = path;
+  result = a.href;
+
+  // clean up
+  if (oldBase) {
+    oldBase.href = oldHref;
+  } else {
+    docHead.removeChild(base);
+  }
+  return result;
+};
+
+//videojs.Hls.onReady = videojs.Flash.onReady;
+//videojs.Hls.onEvent = videojs.Flash.onEvent;
+//videojs.Hls.onError = videojs.Flash.onError;
 
 })(window, window.videojs, document);

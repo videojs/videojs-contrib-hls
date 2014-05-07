@@ -65,5 +65,5 @@
     });
   };
 
-  videojs.hls.Stream = Stream;
+  videojs.Hls.Stream = Stream;
 })(window.videojs);
