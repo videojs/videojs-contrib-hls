@@ -178,7 +178,7 @@ var
    * Initializes the HLS plugin.
    * @param options {mixed} the URL to an HLS playlist
    */
-  init = function(options) {
+  init = function(options, ready) {
     var
       mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.Hls.SegmentParser(),
@@ -535,18 +535,25 @@ var
     //if (player.options().autoplay) {
       //player.play();
     //}
+
+    var source = options.source;
+    options.source = [{
+      src: videojs.URL.createObjectURL(mediaSource),
+      type: "video/flv"
+    }];
+    //delete options.source;
+    //console.log(options.source);
+    videojs.Flash.call(videojs.Hls, player, options, ready);
+    options.source = source;
+    console.log(options.source);
   };
 
 var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
 videojs.Hls = videojs.Flash.extend({
   init: function(player, options, ready) {
-    videojs.Flash.call(this, player, options, ready);
     player.hls = {};
-    this.ready(function() {
-      console.log('ready!');
-      //init.call(player, options);
-    });
+    init.call(player, options, ready);
   }
 });
 
