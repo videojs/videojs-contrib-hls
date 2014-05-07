@@ -7,7 +7,7 @@
   <link href="node_modules/video.js/dist/video-js/video-js.css" rel="stylesheet">
   
   <!-- video.js -->
-  <script src="node_modules/video.js/dist/video-js/video.js"></script>
+  <script src="node_modules/video.js/dist/video-js/video.dev.js"></script>
 
   <!-- Media Sources plugin -->
   <script src="node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
@@ -31,7 +31,7 @@
   <!-- bipbop -->
   <!-- <script src="test/tsSegment.js"></script> -->
   <!-- bunnies -->
-  <script src="test/tsSegment-bc.js"></script>
+  <!--<script src="test/tsSegment-bc.js"></script>-->
 
   <style>
     body {
@@ -63,10 +63,12 @@
   <script>
     videojs.options.flash.swf = 'node_modules/video.js/dist/video-js/video-js.swf';
     // initialize the player
-    var player = videojs('video');
+    var player = videojs('video', {
+      techOrder: ['hls']
+    });
 
     // initialize the plugin
-    player.hls();
+    //player.hls()
   </script>
 </body>
 </html>

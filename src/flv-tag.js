@@ -1,9 +1,9 @@
 (function(window) {
 
 window.videojs = window.videojs || {};
-window.videojs.hls = window.videojs.hls || {};
+window.videojs.Hls = window.videojs.Hls || {};
 
-var hls = window.videojs.hls;
+var hls = window.videojs.Hls;
 
 // (type:uint, extraData:Boolean = false) extends ByteArray
 hls.FlvTag = function(type, extraData) {

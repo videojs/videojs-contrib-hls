@@ -29,5 +29,5 @@
     }
   };
 
-  window.videojs.hls.utils = module;
+  window.videojs.Hls.utils = module;
 })(this);
