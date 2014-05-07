@@ -178,9 +178,8 @@ var
    * Initializes the HLS plugin.
    * @param options {mixed} the URL to an HLS playlist
    */
-  init = function(options, ready) {
+  init = function(options, mediaSource) {
     var
-      mediaSource = new videojs.MediaSource(),
       segmentParser = new videojs.Hls.SegmentParser(),
       player = this,
       srcUrl,
@@ -202,7 +201,6 @@ var
         extname,
         i = 0,
         j = 0,
-        src = player.el().querySelector('.vjs-tech').src,
         sources = player.options().sources,
         techName,
         length = sources.length;
@@ -212,17 +210,6 @@ var
         return options;
       } else if (options && options.url) {
         return options.url;
-      }
-
-      // src attributes take precedence over source children
-      if (src) {
-
-        // assume files with the m3u8 extension are HLS
-        extname = (/[^#?]*(?:\/[^#?]*\.([^#?]*))/).exec(src);
-        if (extname && extname[1] === 'm3u8') {
-          return src;
-        }
-        return;
       }
 
       // find the first playable source
@@ -536,24 +523,22 @@ var
       //player.play();
     //}
 
-    var source = options.source;
-    options.source = [{
-      src: videojs.URL.createObjectURL(mediaSource),
-      type: "video/flv"
-    }];
-    //delete options.source;
-    //console.log(options.source);
-    videojs.Flash.call(videojs.Hls, player, options, ready);
-    options.source = source;
-    console.log(options.source);
   };
 
 var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
 videojs.Hls = videojs.Flash.extend({
   init: function(player, options, ready) {
+    var mediaSource = new videojs.MediaSource();
+    var source = options.source;
+    options.source = {
+      src: videojs.URL.createObjectURL(mediaSource),
+      type: "video/flv"
+    };
+    videojs.Flash.call(this, player, options, ready);
     player.hls = {};
-    init.call(player, options, ready);
+    options.source = source;
+    init.call(player, options, mediaSource);
   }
 });
 
