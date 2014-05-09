@@ -531,6 +531,8 @@ videojs.Hls = videojs.Flash.extend({
   init: function(player, options, ready) {
     var mediaSource = new videojs.MediaSource();
     var source = options.source;
+    var settings = player.options();
+    options.swf = settings.flash.swf;
     options.source = {
       src: videojs.URL.createObjectURL(mediaSource),
       type: "video/flv"
