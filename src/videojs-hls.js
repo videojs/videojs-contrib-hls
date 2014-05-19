@@ -484,7 +484,7 @@ var
 
       player.hls.mediaIndex = 0;
       player.hls.playlists =
-        new videojs.hls.PlaylistLoader(srcUrl, settings.withCredentials);
+        new videojs.Hls.PlaylistLoader(srcUrl, settings.withCredentials);
       player.hls.playlists.on('loadedmetadata', function() {
         oldMediaPlaylist = player.hls.playlists.media();
 
