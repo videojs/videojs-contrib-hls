@@ -174,82 +174,15 @@ var
 
   resolveUrl,
 
-  /**
-   * Initializes the HLS plugin.
-   * @param options {mixed} the URL to an HLS playlist
-   */
-  init = function(options, mediaSource) {
+  initSource = function(player, mediaSource, srcUrl) {
     var
       segmentParser = new videojs.Hls.SegmentParser(),
-      player = this,
-      srcUrl,
 
       segmentXhr,
-      settings,
+      settings = videojs.util.mergeOptions({}, player.options().hls),
       fillBuffer,
       updateDuration;
 
-    // if the video element supports HLS natively, do nothing
-    if (videojs.Hls.supportsNativeHls) {
-      return;
-    }
-
-    settings = videojs.util.mergeOptions({}, options);
-
-    srcUrl = (function() {
-      var
-        extname,
-        i = 0,
-        j = 0,
-        sources = player.options().sources,
-        techName,
-        length = sources.length;
-
-      // use the URL specified in options if one was provided
-      if (typeof options === 'string') {
-        return options;
-      } else if (options && options.url) {
-        return options.url;
-      }
-
-      // find the first playable source
-      for (; i < length; i++) {
-
-        // ignore sources without a specified type
-        if (!sources[i].type) {
-          continue;
-        }
-
-        // do nothing if the source is handled by one of the standard techs
-        //for (j in player.options().techOrder) {
-          //techname = player.options().techorder[j];
-          //techname = techname[0].touppercase() + techname.substring(1);
-          //if (videojs[techname].canplaysource({ type: sources[i].type })) {
-            //return;
-          //}
-        //}
-
-        // use the plugin if the MIME type specifies HLS
-        if ((/application\/x-mpegURL/).test(sources[i].type) ||
-            (/application\/vnd\.apple\.mpegURL/).test(sources[i].type)) {
-          return sources[i].src;
-        }
-      }
-    })();
-
-    if (!srcUrl) {
-      // do nothing until the plugin is initialized with a valid URL
-      videojs.log('hls: no valid playlist URL specified');
-      return;
-    }
-
-    // expose the HLS plugin state
-    player.hls.readyState = function() {
-      if (!player.hls.media) {
-        return 0; // HAVE_NOTHING
-      }
-      return 1;   // HAVE_METADATA
-    };
 
     player.on('seeking', function() {
       var currentTime = player.currentTime();
@@ -513,36 +446,44 @@ var
         oldMediaPlaylist = updatedPlaylist;
       });
     });
-
-    //player.src([{
-      //src: videojs.URL.createObjectURL(mediaSource),
-      //type: "video/flv"
-    //}]);
-
-    //if (player.options().autoplay) {
-      //player.play();
-    //}
-
   };
 
 var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
 videojs.Hls = videojs.Flash.extend({
   init: function(player, options, ready) {
-    var mediaSource = new videojs.MediaSource();
-    var source = options.source;
-    var settings = player.options();
+    var
+      source = options.source,
+      settings = player.options();
+
+    delete options.source;
     options.swf = settings.flash.swf;
-    options.source = {
-      src: videojs.URL.createObjectURL(mediaSource),
-      type: "video/flv"
-    };
     videojs.Flash.call(this, player, options, ready);
     player.hls = {};
     options.source = source;
-    init.call(player, options, mediaSource);
+    videojs.Hls.prototype.src.call(player, options.source && options.source.src);
   }
 });
+
+videojs.Hls.prototype.src = function(src) {
+  var
+    player = this.player(),
+    mediaSource,
+    source;
+
+  if (src) {
+    mediaSource = new videojs.MediaSource(),
+    source = {
+      src: videojs.URL.createObjectURL(mediaSource),
+      type: "video/flv"
+    };
+    player.hls.mediaSource = mediaSource;
+    initSource(player, mediaSource, src);
+    this.ready(function() {
+      this.el().querySelector('.vjs-tech').vjs_src(source.src);
+    });
+  }
+}
 
 //for (var prop in videojs.Flash) {
   //videojs.Hls[prop] = videojs.Flash[prop];
@@ -553,7 +494,7 @@ videojs.Hls = videojs.Flash.extend({
 
 videojs.Hls.isSupported = function() {
   return videojs.Flash.isSupported() && videojs.MediaSource;
-}
+};
 
 videojs.Hls.canPlaySource = function(srcObj) {
   return mpegurlRE.test(srcObj.type) || videojs.Flash.canPlaySource.call(this, srcObj);
