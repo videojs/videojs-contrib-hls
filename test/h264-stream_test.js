@@ -2,12 +2,12 @@
 module('H264 Stream');
 
 var
-  nalUnitTypes = window.videojs.hls.NALUnitType,
-  FlvTag = window.videojs.hls.FlvTag;
+  nalUnitTypes = window.videojs.Hls.NALUnitType,
+  FlvTag = window.videojs.Hls.FlvTag;
 
 test('metadata is generated for IDRs after a full NAL unit is written', function() {
   var
-    h264Stream = new videojs.hls.H264Stream(),
+    h264Stream = new videojs.Hls.H264Stream(),
     accessUnitDelimiter = new Uint8Array([
       0x00,
       0x00,
@@ -62,7 +62,7 @@ test('metadata is generated for IDRs after a full NAL unit is written', function
 
 test('starting PTS values can be negative', function() {
   var
-    h264Stream = new videojs.hls.H264Stream(),
+    h264Stream = new videojs.Hls.H264Stream(),
     accessUnitDelimiter = new Uint8Array([
       0x00,
       0x00,

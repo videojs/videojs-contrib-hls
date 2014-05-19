@@ -127,7 +127,7 @@
     original.addEventListener('change', function() {
       var reader = new FileReader();
       reader.addEventListener('loadend', function() {
-        var parser = new videojs.hls.SegmentParser(),
+        var parser = new videojs.Hls.SegmentParser(),
             tags = [parser.getFlvHeader()],
             tag,
             hex,
@@ -164,7 +164,7 @@
         }
 
         hex = '<pre>'
-        hex += videojs.hls.utils.hexDump(data);
+        hex += videojs.Hls.utils.hexDump(data);
         hex += '</pre>'
     
         vjsOutput.innerHTML = hex;
@@ -201,7 +201,7 @@
         }
 
         // output the hex dump
-        hex += videojs.hls.utils.hexDump(bytes);
+        hex += videojs.Hls.utils.hexDump(bytes);
         hex += '</pre>';
         workingOutput.innerHTML = hex;
       });

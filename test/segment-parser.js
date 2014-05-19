@@ -39,7 +39,7 @@
 
   module('segment parser', {
     setup: function() {
-      parser = new window.videojs.hls.SegmentParser();
+      parser = new window.videojs.Hls.SegmentParser();
     }
   });
 
@@ -168,11 +168,11 @@
         result = result.concat(makePsi(settings));
 
         // ensure the resulting packet is the correct size
-        result.length = window.videojs.hls.SegmentParser.MP2T_PACKET_LENGTH;
+        result.length = window.videojs.Hls.SegmentParser.MP2T_PACKET_LENGTH;
         return result;
       },
-      h264Type = window.videojs.hls.SegmentParser.STREAM_TYPES.h264,
-      adtsType = window.videojs.hls.SegmentParser.STREAM_TYPES.adts;
+      h264Type = window.videojs.Hls.SegmentParser.STREAM_TYPES.h264,
+      adtsType = window.videojs.Hls.SegmentParser.STREAM_TYPES.adts;
 
     parser.parseSegmentBinaryData(new Uint8Array(makePacket({
       programs: {

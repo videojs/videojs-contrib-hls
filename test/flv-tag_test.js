@@ -19,7 +19,7 @@
       notStrictEqual(actual, expected, [message])
       throws(block, [expected], [message])
   */
-var FlvTag = window.videojs.hls.FlvTag;
+var FlvTag = window.videojs.Hls.FlvTag;
 
 module('FLV tag');
 
