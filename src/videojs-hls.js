@@ -370,11 +370,19 @@ var
 
     // expose the HLS plugin state
     player.hls.readyState = function() {
-      if (!player.hls.media) {
+      if (!player.hls.playlists.media()) {
         return 0; // HAVE_NOTHING
       }
       return 1;   // HAVE_METADATA
     };
+
+    // loaded in error state fix
+    if (player.error() && player.error().code === 4 && srcUrl) {
+      player.error(null);
+      player.one('play', function() {
+        player.trigger('firstplay');
+      });
+    }
 
     player.on('seeking', function() {
       var currentTime = player.currentTime();
