@@ -51,6 +51,7 @@
       var
         loader = this,
         media,
+        mediaUpdateTimeout,
         request,
 
         haveMetadata = function(error, xhr, url) {
@@ -88,7 +89,7 @@
 
           // refresh live playlists after a target duration passes
           if (!loader.media().endList) {
-            window.setTimeout(function() {
+            mediaUpdateTimeout = window.setTimeout(function() {
               loader.trigger('mediaupdatetimeout');
             }, refreshDelay);
           }
@@ -103,6 +104,13 @@
       }
 
       loader.state = 'HAVE_NOTHING';
+
+      loader.dispose = function() {
+        if (request) {
+          request.abort();
+        }
+        window.clearTimeout(mediaUpdateTimeout);
+      };
 
       /**
        * When called without any arguments, returns the currently
@@ -213,7 +221,9 @@
             haveMetadata(error,
                          this,
                          parser.manifest.playlists[0].uri);
-            loader.trigger('loadedmetadata');
+            if (!error) {
+              loader.trigger('loadedmetadata');
+            }
           });
           return loader.trigger('loadedplaylist');
         }

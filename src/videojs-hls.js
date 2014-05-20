@@ -153,7 +153,13 @@ var
     var
       duration = 0,
       segment,
-      i = (playlist.segments || []).length;
+      i;
+
+    if (!playlist) {
+      return 0;
+    }
+
+    i = (playlist.segments || []).length;
 
     // if present, use the duration specified in the playlist
     if (playlist.totalDuration) {
@@ -205,16 +211,8 @@ var
      * Update the player duration
      */
     updateDuration = function(playlist) {
-      var tech;
       // update the duration
       player.duration(totalDuration(playlist));
-      // tell the flash tech of the new duration
-      tech = player.el().querySelector('.vjs-tech');
-      if(tech.vjs_setProperty) {
-        tech.vjs_setProperty('duration', player.duration());
-      }
-      // manually fire the duration change
-      player.trigger('durationchange');
     };
 
     /**
@@ -310,7 +308,8 @@ var
       }
 
       // if no segments are available, do nothing
-      if (!player.hls.playlists.media().segments) {
+      if (player.hls.playlists.state === "HAVE_NOTHING" ||
+          !player.hls.playlists.media().segments) {
         return;
       }
 
@@ -456,12 +455,12 @@ videojs.Hls = videojs.Flash.extend({
       source = options.source,
       settings = player.options();
 
+    player.hls = this;
     delete options.source;
     options.swf = settings.flash.swf;
     videojs.Flash.call(this, player, options, ready);
-    player.hls = {};
     options.source = source;
-    videojs.Hls.prototype.src.call(player, options.source && options.source.src);
+    videojs.Hls.prototype.src.call(this, options.source && options.source.src);
   }
 });
 
@@ -472,7 +471,7 @@ videojs.Hls.prototype.src = function(src) {
     source;
 
   if (src) {
-    mediaSource = new videojs.MediaSource(),
+    mediaSource = new videojs.MediaSource();
     source = {
       src: videojs.URL.createObjectURL(mediaSource),
       type: "video/flv"
@@ -480,10 +479,25 @@ videojs.Hls.prototype.src = function(src) {
     player.hls.mediaSource = mediaSource;
     initSource(player, mediaSource, src);
     this.ready(function() {
-      this.el().querySelector('.vjs-tech').vjs_src(source.src);
+      this.el().vjs_src(source.src);
     });
   }
-}
+};
+
+videojs.Hls.prototype.duration = function() {
+  var playlists = this.player().hls.playlists;
+  if (playlists) {
+    return totalDuration(playlists.media());
+  }
+  return 0;
+};
+
+videojs.Hls.prototype.dispose = function() {
+  if (this.player().hls.playlists) {
+    this.player().hls.playlists.dispose();
+  }
+  videojs.Flash.prototype.dispose.call(this);
+};
 
 //for (var prop in videojs.Flash) {
   //videojs.Hls[prop] = videojs.Flash[prop];
