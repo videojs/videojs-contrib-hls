@@ -32,7 +32,7 @@
       }
       return result;
     },
-    Stream = videojs.hls.Stream,
+    Stream = videojs.Hls.Stream,
     LineStream,
     ParseStream,
     Parser;

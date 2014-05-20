@@ -5,8 +5,8 @@
 (function(window, videojs) {
   'use strict';
   var
-    resolveUrl = videojs.hls.resolveUrl,
-    xhr = videojs.hls.xhr,
+    resolveUrl = videojs.Hls.resolveUrl,
+    xhr = videojs.Hls.xhr,
 
     /**
      * Returns a new master playlist that is the result of merging an
@@ -231,7 +231,7 @@
         return loader.trigger('loadedmetadata');
       });
     };
-  PlaylistLoader.prototype = new videojs.hls.Stream();
+  PlaylistLoader.prototype = new videojs.Hls.Stream();
 
-  videojs.hls.PlaylistLoader = PlaylistLoader;
+  videojs.Hls.PlaylistLoader = PlaylistLoader;
 })(window, window.videojs);
