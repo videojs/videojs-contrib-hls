@@ -476,7 +476,7 @@ videojs.Hls.prototype.src = function(src) {
       src: videojs.URL.createObjectURL(mediaSource),
       type: "video/flv"
     };
-    player.hls.mediaSource = mediaSource;
+    this.mediaSource = mediaSource;
     initSource(player, mediaSource, src);
     this.ready(function() {
       this.el().vjs_src(source.src);
@@ -485,7 +485,7 @@ videojs.Hls.prototype.src = function(src) {
 };
 
 videojs.Hls.prototype.duration = function() {
-  var playlists = this.player().hls.playlists;
+  var playlists = this.playlists;
   if (playlists) {
     return totalDuration(playlists.media());
   }
@@ -493,8 +493,8 @@ videojs.Hls.prototype.duration = function() {
 };
 
 videojs.Hls.prototype.dispose = function() {
-  if (this.player().hls.playlists) {
-    this.player().hls.playlists.dispose();
+  if (this.playlists) {
+    this.playlists.dispose();
   }
   videojs.Flash.prototype.dispose.call(this);
 };
