@@ -754,7 +754,7 @@ test('cancels outstanding XHRs when seeking', function() {
   // trigger a segment download request
   player.trigger('timeupdate');
   // attempt to seek while the download is in progress
-  player.trigger('seeking');
+  player.hls.currentTime(7);
 
   ok(requests[1].aborted, 'XHR aborted');
   strictEqual(requests.length, 3, 'opened new XHR');
@@ -830,10 +830,7 @@ test('drops tags before the target timestamp when seeking', function() {
       bytes: i
     });
   }
-  player.currentTime = function() {
-    return 7;
-  };
-  player.trigger('seeking');
+  player.hls.currentTime(7);
   standardXHRResponse(requests[2]);
 
   while (callbacks.length) {
@@ -879,10 +876,7 @@ test('clears pending buffer updates when seeking', function() {
 
   // seek to 7s
   tags.push({ pts: 7000, bytes: 7 });
-  player.currentTime = function() {
-    return 7;
-  };
-  player.trigger('seeking');
+  player.hls.currentTime(7);
   standardXHRResponse(requests[2]);
 
   while (callbacks.length) {

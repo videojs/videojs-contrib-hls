@@ -190,13 +190,19 @@ var
       updateDuration;
 
 
-    player.on('seeking', function() {
-      var currentTime = player.currentTime();
-      player.hls.mediaIndex = getMediaIndexByTime(player.hls.playlists.media(),
-                                                  currentTime);
+    player.hls.currentTime = function(currentTime) {
+      if (currentTime === undefined) {
+        return this.el().vjs_getProperty('currentTime');
+      }
+
+      if (!(this.playlists && this.playlists.media())) {
+        return 0;
+      }
+      this.mediaIndex =
+          getMediaIndexByTime(this.playlists.media(), currentTime);
 
       // abort any segments still being decoded
-      player.hls.sourceBuffer.abort();
+      this.sourceBuffer.abort();
 
       // cancel outstanding requests and buffer appends
       if (segmentXhr) {
@@ -205,7 +211,7 @@ var
 
       // begin filling the buffer at the new position
       fillBuffer(currentTime * 1000);
-    });
+    };
 
     /**
      * Update the player duration
