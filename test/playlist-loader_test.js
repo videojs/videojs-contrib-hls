@@ -378,4 +378,31 @@
       loader.media('unrecognized.m3u8');
     }, 'throws an error');
   });
+
+  test('dispose cancels the refresh timeout', function() {
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n');
+    loader.dispose();
+    // a lot of time passes...
+    clock.tick(15 * 1000);
+
+    strictEqual(requests.length, 0, 'no refresh request was made');
+  });
+
+  test('dispose aborts pending refresh requests', function() {
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n');
+    clock.tick(10 * 1000);
+
+    loader.dispose();
+    ok(requests[0].aborted, 'refresh request aborted');
+  });
 })(window);

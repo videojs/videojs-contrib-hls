@@ -1140,4 +1140,22 @@ test('does not break if the playlist has no segments', function() {
   strictEqual(requests.length, 1, 'no requests for non-existent segments were queued');
 });
 
+test('disposes the playlist loader', function() {
+  var disposes = 0, player;
+  player = createPlayer();
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+  player.hls.playlists.dispose = function() {
+    disposes++;
+  };
+
+  player.dispose();
+  strictEqual(disposes, 1, 'disposed playlist loader');
+});
+
 })(window, window.videojs);
