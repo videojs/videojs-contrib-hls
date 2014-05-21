@@ -499,13 +499,6 @@ videojs.Hls.prototype.dispose = function() {
   videojs.Flash.prototype.dispose.call(this);
 };
 
-//for (var prop in videojs.Flash) {
-  //videojs.Hls[prop] = videojs.Flash[prop];
-//}
-//for (prop in videojs.Flash.prototype) {
-  //videojs.Hls.prototype[prop] = videojs.Flash[prop];
-//}
-
 videojs.Hls.isSupported = function() {
   return videojs.Flash.isSupported() && videojs.MediaSource;
 };
@@ -624,9 +617,5 @@ resolveUrl = videojs.Hls.resolveUrl = function(basePath, path) {
   }
   return result;
 };
-
-//videojs.Hls.onReady = videojs.Flash.onReady;
-//videojs.Hls.onEvent = videojs.Flash.onEvent;
-//videojs.Hls.onError = videojs.Flash.onError;
 
 })(window, window.videojs, document);
