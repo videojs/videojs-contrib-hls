@@ -8,7 +8,7 @@
 
 (function(window) {
 var
-  FlvTag = window.videojs.hls.FlvTag,
+  FlvTag = window.videojs.Hls.FlvTag,
   adtsSampleingRates = [
     96000, 88200,
     64000, 48000,
@@ -17,7 +17,7 @@ var
     16000, 12000
   ];
 
-window.videojs.hls.AacStream = function() {
+window.videojs.Hls.AacStream = function() {
   var
     next_pts, // :uint
     pts_offset, // :int

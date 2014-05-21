@@ -1,4 +1,5 @@
 (function(window, videojs, undefined) {
+  'use strict';
   /*
     ======== A Handy Little QUnit Reference ========
     http://api.qunitjs.com/
@@ -22,15 +23,37 @@
 
 var
   player,
-  oldFlashSupported,
+  oldMediaSourceOpen,
   oldSegmentParser,
   oldSetTimeout,
   oldSourceBuffer,
-  oldSupportsNativeHls,
-  xhrUrls,
+  oldFlashSupported,
   requests,
   xhr,
 
+  createPlayer = function(options) {
+    var tech, video, player;
+    video = document.createElement('video');
+    document.querySelector('#qunit-fixture').appendChild(video);
+    player = videojs(video, {
+      flash: {
+        swf: ''
+      },
+      techOrder: ['hls'],
+      hls: options || {}
+    });
+
+    player.buffered = function() {
+      return videojs.createTimeRange(0, 0);
+    };
+
+    tech = player.el().querySelector('.vjs-tech');
+    tech.vjs_getProperty = function() {};
+    tech.vjs_src = function() {};
+    videojs.Flash.onReady(tech.id);
+
+    return player;
+  },
   standardXHRResponse = function(request) {
     if (!request.url) {
       return;
@@ -82,37 +105,23 @@ var
 
 module('HLS', {
   setup: function() {
+    oldMediaSourceOpen = videojs.MediaSource.open;
+    videojs.MediaSource.open = function() {};
 
     // mock out Flash features for phantomjs
     oldFlashSupported = videojs.Flash.isSupported;
     videojs.Flash.isSupported = function() {
       return true;
     };
+
     oldSourceBuffer = window.videojs.SourceBuffer;
     window.videojs.SourceBuffer = function() {
       this.appendBuffer = function() {};
       this.abort = function() {};
     };
 
-    // force native HLS to be ignored
-    oldSupportsNativeHls = videojs.hls.supportsNativeHls;
-    videojs.hls.supportsNativeHls = false;
-
-    // create the test player
-    var video = document.createElement('video');
-    document.querySelector('#qunit-fixture').appendChild(video);
-    player = videojs(video, {
-      flash: {
-        swf: '../node_modules/video.js/dist/video-js/video-js.swf'
-      },
-      techOrder: ['flash']
-    });
-    player.buffered = function() {
-      return videojs.createTimeRange(0, 0);
-    };
-
     // store functionality that some tests need to mock
-    oldSegmentParser = videojs.hls.SegmentParser;
+    oldSegmentParser = videojs.Hls.SegmentParser;
     oldSetTimeout = window.setTimeout;
 
     // fake XHRs
@@ -121,13 +130,16 @@ module('HLS', {
     xhr.onCreate = function(xhr) {
       requests.push(xhr);
     };
-    xhrUrls = [];
+
+    // create the test player
+    player = createPlayer();
   },
 
   teardown: function() {
+    player.dispose();
     videojs.Flash.isSupported = oldFlashSupported;
-    videojs.hls.supportsNativeHls = oldSupportsNativeHls;
-    videojs.hls.SegmentParser = oldSegmentParser;
+    videojs.MediaSource.open = oldMediaSourceOpen;
+    videojs.Hls.SegmentParser = oldSegmentParser;
     videojs.SourceBuffer = oldSourceBuffer;
     window.setTimeout = oldSetTimeout;
     xhr.restore();
@@ -140,8 +152,11 @@ test('starts playing if autoplay is specified', function() {
     plays++;
   };
   player.options().autoplay = true;
-  player.hls('manifest/playlist.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -155,9 +170,12 @@ test('creates a PlaylistLoader on init', function() {
     loadedmetadata = true;
   });
 
-  player.hls('manifest/playlist.m3u8');
-  ok(!player.hls.playlists, 'waits for sourceopen to create the loader');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  ok(!player.hls.playlists, 'waits for set src to create the loader');
+  player.src({
+    src:'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
   standardXHRResponse(requests[0]);
@@ -178,8 +196,11 @@ test('sets the duration if one is available on the playlist', function() {
     }
     calls++;
   };
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -197,8 +218,11 @@ test('calculates the duration if needed', function() {
     }
     durations.push(duration);
   };
-  player.hls('http://example.com/manifest/missingExtinf.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'http://example.com/manifest/missingExtinf.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -210,11 +234,14 @@ test('calculates the duration if needed', function() {
 });
 
 test('starts downloading a segment on loadedmetadata', function() {
-  player.hls('manifest/media.m3u8');
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
   player.buffered = function() {
     return videojs.createTimeRange(0, 0);
   };
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -228,8 +255,11 @@ test('starts downloading a segment on loadedmetadata', function() {
 });
 
 test('recognizes absolute URIs and requests them unmodified', function() {
-  player.hls('manifest/absoluteUris.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/absoluteUris.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -241,8 +271,11 @@ test('recognizes absolute URIs and requests them unmodified', function() {
 });
 
 test('recognizes domain-relative URLs', function() {
-  player.hls('manifest/domainUris.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/domainUris.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -253,14 +286,31 @@ test('recognizes domain-relative URLs', function() {
               'the first segment is requested');
 });
 
-test('re-initializes the plugin for each source', function() {
-  var firstInit, secondInit;
-  player.hls('manifest/master.m3u8');
-  firstInit = player.hls;
-  player.hls('manifest/master.m3u8');
-  secondInit = player.hls;
+test('re-initializes the tech for each source', function() {
+  var firstPlaylists, secondPlaylists, firstMSE, secondMSE;
 
-  notStrictEqual(firstInit, secondInit, 'the plugin object is replaced');
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+  firstPlaylists = player.hls.playlists;
+  firstMSE = player.hls.mediaSource;
+
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+  secondPlaylists = player.hls.playlists;
+  secondMSE = player.hls.mediaSource;
+
+  notStrictEqual(firstPlaylists, secondPlaylists, 'the playlist object is not reused');
+  notStrictEqual(firstMSE, secondMSE, 'the media source object is not reused');
 });
 
 test('triggers an error when a master playlist request errors', function() {
@@ -268,8 +318,11 @@ test('triggers an error when a master playlist request errors', function() {
   player.on('error', function() {
     error = player.hls.error;
   });
-  player.hls('manifest/master.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
   requests.pop().respond(500);
@@ -279,8 +332,11 @@ test('triggers an error when a master playlist request errors', function() {
 });
 
 test('downloads media playlists after loading the master', function() {
-  player.hls('manifest/master.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -309,8 +365,11 @@ test('timeupdates do not check to fill the buffer until a media playlist is read
     };
     this.send = function() {};
   };
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
   player.trigger('timeupdate');
@@ -320,8 +379,11 @@ test('timeupdates do not check to fill the buffer until a media playlist is read
 });
 
 test('calculates the bandwidth after downloading a segment', function() {
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -337,12 +399,15 @@ test('calculates the bandwidth after downloading a segment', function() {
 
 test('selects a playlist after segment downloads', function() {
   var calls = 0;
-  player.hls('manifest/master.m3u8');
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
   player.hls.selectPlaylist = function() {
     calls++;
     return player.hls.playlists.master.playlists[0];
   };
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -367,8 +432,11 @@ test('selects a playlist after segment downloads', function() {
 test('moves to the next segment if there is a network error', function() {
   var mediaIndex;
 
-  player.hls('manifest/master.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -386,7 +454,10 @@ test('updates the duration after switching playlists', function() {
   var
     calls = 0,
     selectedPlaylist = false;
-  player.hls('manifest/master.m3u8');
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
   player.hls.selectPlaylist = function() {
     selectedPlaylist = true;
     return player.hls.playlists.master.playlists[1];
@@ -400,7 +471,7 @@ test('updates the duration after switching playlists', function() {
       calls++;
     }
   };
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -418,8 +489,11 @@ test('downloads additional playlists if required', function() {
     playlist = {
       uri: 'media3.m3u8'
     };
-  player.hls('manifest/master.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -456,8 +530,11 @@ test('downloads additional playlists if required', function() {
 
 test('selects a playlist below the current bandwidth', function() {
   var playlist;
-  player.hls('manifest/master.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -478,8 +555,11 @@ test('selects a playlist below the current bandwidth', function() {
 
 test('raises the minimum bitrate for a stream proportionially', function() {
   var playlist;
-  player.hls('manifest/master.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -500,8 +580,11 @@ test('raises the minimum bitrate for a stream proportionially', function() {
 
 test('uses the lowest bitrate if no other is suitable', function() {
   var playlist;
-  player.hls('manifest/master.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -520,9 +603,12 @@ test('uses the lowest bitrate if no other is suitable', function() {
 test('selects the correct rendition by player dimensions', function() {
   var playlist;
 
-  player.hls('manifest/master.m3u8');
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
 
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -550,14 +636,17 @@ test('selects the correct rendition by player dimensions', function() {
 
 
 test('does not download the next segment if the buffer is full', function() {
-  player.hls('manifest/media.m3u8');
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
   player.currentTime = function() {
     return 15;
   };
   player.buffered = function() {
     return videojs.createTimeRange(0, 20);
   };
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -569,8 +658,11 @@ test('does not download the next segment if the buffer is full', function() {
 });
 
 test('downloads the next segment if the buffer is getting low', function() {
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -597,8 +689,11 @@ test('downloads the next segment if the buffer is getting low', function() {
 });
 
 test('stops downloading segments at the end of the playlist', function() {
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
   standardXHRResponse(requests[0]);
@@ -606,13 +701,16 @@ test('stops downloading segments at the end of the playlist', function() {
   player.hls.mediaIndex = 4;
   player.trigger('timeupdate');
 
-  strictEqual(xhrUrls.length, 0, 'no request is made');
+  strictEqual(requests.length, 0, 'no request is made');
 });
 
 test('only makes one segment request at a time', function() {
   var openedXhrs = 0;
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
   xhr.restore();
@@ -634,68 +732,12 @@ test('only makes one segment request at a time', function() {
   xhr = sinon.useFakeXMLHttpRequest();
 });
 
-test('uses the src attribute if no options are provided and it ends in ".m3u8"', function() {
-  var url = 'http://example.com/services/mobile/streaming/index/master.m3u8?videoId=1824650741001';
-  player.el().querySelector('.vjs-tech').src = url;
-  player.hls();
-  videojs.mediaSources[player.currentSrc()].trigger({
-    type: 'sourceopen'
-  });
-
-  strictEqual(requests[0].url, url, 'currentSrc is used');
-});
-
-test('ignores src attribute if it doesn\'t have the "m3u8" extension', function() {
-  var tech = player.el().querySelector('.vjs-tech');
-  tech.src = 'basdfasdfasdfliel//.m3u9';
-  player.hls();
-  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(requests.length, 0, 'no request is made');
-
-  tech.src = '';
-  player.hls();
-  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(requests.length, 0, 'no request is made');
-
-  tech.src = 'http://example.com/movie.mp4?q=why.m3u8';
-  player.hls();
-  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(requests.length, 0, 'no request is made');
-
-  tech.src = 'http://example.m3u8/movie.mp4';
-  player.hls();
-  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(requests.length, 0, 'no request is made');
-
-  tech.src = '//example.com/movie.mp4#http://tricky.com/master.m3u8';
-  player.hls();
-  ok(!(player.currentSrc() in videojs.mediaSources), 'no media source is created');
-  strictEqual(requests.length, 0, 'no request is made');
-});
-
-test('activates if the first playable source is HLS', function() {
-  var video;
-  document.querySelector('#qunit-fixture').innerHTML =
-    '<video controls>' +
-      '<source type="slartibartfast$%" src="movie.slarti">' +
-      '<source type="application/x-mpegURL" src="movie.m3u8">' +
-      '<source type="video/mp4" src="movie.mp4">' +
-    '</video>';
-  video = document.querySelector('#qunit-fixture video');
-  player = videojs(video, {
-    flash: {
-      swf: '../node_modules/video.js/dist/video-js/video-js.swf'
-    },
-    techOrder: ['flash']
-  });
-  player.hls();
-
-  ok(player.currentSrc() in videojs.mediaSources, 'media source created');
-});
-
 test('cancels outstanding XHRs when seeking', function() {
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
   standardXHRResponse(requests[0]);
@@ -721,7 +763,7 @@ test('cancels outstanding XHRs when seeking', function() {
 test('flushes the parser after each segment', function() {
   var flushes = 0;
   // mock out the segment parser
-  videojs.hls.SegmentParser = function() {
+  videojs.Hls.SegmentParser = function() {
     this.getFlvHeader = function() {
       return [];
     };
@@ -732,8 +774,11 @@ test('flushes the parser after each segment', function() {
     this.tagsAvailable = function() {};
   };
 
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -749,7 +794,7 @@ test('drops tags before the target timestamp when seeking', function() {
       bytes = [];
 
   // mock out the parser and source buffer
-  videojs.hls.SegmentParser = mockSegmentParser(tags);
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
@@ -764,8 +809,11 @@ test('drops tags before the target timestamp when seeking', function() {
   // push a tag into the buffer
   tags.push({ pts: 0, bytes: 0 });
 
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
   standardXHRResponse(requests[0]);
@@ -803,7 +851,7 @@ test('clears pending buffer updates when seeking', function() {
     tags = [{ pts: 0, bytes: 0 }];
 
   // mock out the parser and source buffer
-  videojs.hls.SegmentParser = mockSegmentParser(tags);
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
@@ -818,8 +866,11 @@ test('clears pending buffer updates when seeking', function() {
   };
 
   // queue up a tag to be pushed into the buffer (but don't push it yet!)
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -846,8 +897,11 @@ test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
   player.on('error', function() {
     errorTriggered = true;
   });
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
   requests.pop().respond(404);
@@ -862,9 +916,12 @@ test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
 });
 
 test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
-  player.hls('manifest/media.m3u8');
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
 
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -875,9 +932,12 @@ test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
 });
 
 test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
-  player.hls('manifest/media.m3u8');
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
 
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -887,17 +947,12 @@ test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
   equal(4, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
 });
 
-test('has no effect if native HLS is available', function() {
-  videojs.hls.supportsNativeHls = true;
-  player.hls('http://example.com/manifest/master.m3u8');
-
-  ok(!(player.currentSrc() in videojs.mediaSources),
-     'no media source was opened');
-});
-
 test('duration is Infinity for live playlists', function() {
-  player.hls('http://example.com/manifest/missingEndlist.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'http://example.com/manifest/missingEndlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -912,8 +967,11 @@ test('does not reload playlists with an endlist tag', function() {
   window.setTimeout = function(callback, timeout) {
     callbacks.push({ callback: callback, timeout: timeout });
   };
-  player.hls('manifest/media.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -921,8 +979,11 @@ test('does not reload playlists with an endlist tag', function() {
 });
 
 test('updates the media index when a playlist reloads', function() {
-  player.hls('http://example.com/live-updating.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'http://example.com/live-updating.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -964,8 +1025,11 @@ test('mediaIndex is zero before the first segment loads', function() {
     this.open = function() {};
     this.send = function() {};
   };
-  player.hls('http://example.com/first-seg-load.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'http://example.com/first-seg-load.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -973,8 +1037,11 @@ test('mediaIndex is zero before the first segment loads', function() {
 });
 
 test('reloads out-of-date live playlists when switching variants', function() {
-  player.hls('http://example.com/master.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'http://example.com/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
@@ -1014,29 +1081,40 @@ test('does not reload master playlists', function() {
     callbacks.push(callback);
   };
 
-  player.hls('http://example.com/master.m3u8');
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'http://example.com/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
 
-  strictEqual(callbacks.length, 0, 'no reload scheduled');
+  strictEqual(callbacks.length,
+              0, 'no reload scheduled');
 });
 
 test('if withCredentials option is used, withCredentials is set on the XHR object', function() {
-  player.hls({
-    url: 'http://example.com/media.m3u8',
+  player.dispose();
+  player = createPlayer({
     withCredentials: true
   });
-  videojs.mediaSources[player.currentSrc()].trigger({
+  player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
   ok(requests[0].withCredentials, "with credentials should be set to true if that option is passed in");
 });
 
 test('does not break if the playlist has no segments', function() {
-  player.hls('manifest/master.m3u8');
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
   try {
-    videojs.mediaSources[player.currentSrc()].trigger({
+    player.hls.mediaSource.trigger({
       type: 'sourceopen'
     });
     requests[0].respond(200, null,
@@ -1049,6 +1127,24 @@ test('does not break if the playlist has no segments', function() {
   }
   ok(true, 'no error was thrown');
   strictEqual(requests.length, 1, 'no requests for non-existent segments were queued');
+});
+
+test('disposes the playlist loader', function() {
+  var disposes = 0, player;
+  player = createPlayer();
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+  player.hls.playlists.dispose = function() {
+    disposes++;
+  };
+
+  player.dispose();
+  strictEqual(disposes, 1, 'disposed playlist loader');
 });
 
 })(window, window.videojs);

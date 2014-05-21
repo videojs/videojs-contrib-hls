@@ -1,9 +1,9 @@
 (function(window) {
   var
     videojs = window.videojs,
-    FlvTag = videojs.hls.FlvTag,
-    H264Stream = videojs.hls.H264Stream,
-    AacStream = videojs.hls.AacStream,
+    FlvTag = videojs.Hls.FlvTag,
+    H264Stream = videojs.Hls.H264Stream,
+    AacStream = videojs.Hls.AacStream,
     MP2T_PACKET_LENGTH,
     STREAM_TYPES;
 
@@ -11,7 +11,7 @@
    * An object that incrementally transmuxes MPEG2 Trasport Stream
    * chunks into an FLV.
    */
-  videojs.hls.SegmentParser = function() {
+  videojs.Hls.SegmentParser = function() {
     var
       self = this,
       parseTSPacket,
@@ -432,8 +432,8 @@
   };
 
   // MPEG2-TS constants
-  videojs.hls.SegmentParser.MP2T_PACKET_LENGTH = MP2T_PACKET_LENGTH = 188;
-  videojs.hls.SegmentParser.STREAM_TYPES = STREAM_TYPES = {
+  videojs.Hls.SegmentParser.MP2T_PACKET_LENGTH = MP2T_PACKET_LENGTH = 188;
+  videojs.Hls.SegmentParser.STREAM_TYPES = STREAM_TYPES = {
     h264: 0x1b,
     adts: 0x0f
   };

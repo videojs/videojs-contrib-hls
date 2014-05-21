@@ -21,7 +21,7 @@
   */
 var
   buffer,
-  ExpGolomb = window.videojs.hls.ExpGolomb,
+  ExpGolomb = window.videojs.Hls.ExpGolomb,
   expGolomb;
 
 module('Exponential Golomb coding');

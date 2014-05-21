@@ -4,7 +4,7 @@
  * Parser for exponential Golomb codes, a variable-bitwidth number encoding
  * scheme used by h264.
  */
-window.videojs.hls.ExpGolomb = function(workingData) {
+window.videojs.Hls.ExpGolomb = function(workingData) {
   var
     // the number of bytes left to examine in workingData
     workingBytesAvailable = workingData.byteLength,

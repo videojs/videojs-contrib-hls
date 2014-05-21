@@ -8,8 +8,8 @@
 
 (function(window) {
   var
-    ExpGolomb = window.videojs.hls.ExpGolomb,
-    FlvTag = window.videojs.hls.FlvTag,
+    ExpGolomb = window.videojs.Hls.ExpGolomb,
+    FlvTag = window.videojs.Hls.FlvTag,
 
     H264ExtraData = function() {
       this.sps = []; // :Array
@@ -234,7 +234,7 @@
    * an h264 stream. Exactly one byte.
    */
   // incomplete, see Table 7.1 of ITU-T H.264 for 12-32
-  window.videojs.hls.NALUnitType = NALUnitType = {
+  window.videojs.Hls.NALUnitType = NALUnitType = {
     unspecified: 0,
     slice_layer_without_partitioning_rbsp_non_idr: 1,
     slice_data_partition_a_layer_rbsp: 2,
@@ -249,7 +249,7 @@
     end_of_stream_rbsp: 11
   };
 
-  window.videojs.hls.H264Stream = function() {
+  window.videojs.Hls.H264Stream = function() {
     var
       next_pts, // :uint;
       next_dts, // :uint;
