@@ -947,17 +947,6 @@ test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
   equal(4, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
 });
 
-test('has no effect if native HLS is available', function() {
-  videojs.Hls.supportsNativeHls = true;
-  player.src({
-    src: 'http://example.com/manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  ok(!(player.currentSrc() in videojs.mediaSources),
-     'no media source was opened');
-});
-
 test('duration is Infinity for live playlists', function() {
   player.src({
     src: 'http://example.com/manifest/missingEndlist.m3u8',

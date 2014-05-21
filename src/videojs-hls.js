@@ -507,23 +507,6 @@ videojs.Hls.canPlaySource = function(srcObj) {
   return mpegurlRE.test(srcObj.type) || videojs.Flash.canPlaySource.call(this, srcObj);
 };
 
-videojs.Hls.supportsNativeHls = (function() {
-  var
-    video = document.createElement('video'),
-    xMpegUrl,
-    vndMpeg;
-
-  // native HLS is definitely not supported if HTML5 video isn't
-  if (!videojs.Html5.isSupported()) {
-    return false;
-  }
-
-  xMpegUrl = video.canPlayType('application/x-mpegURL');
-  vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
-  return (/probably|maybe/).test(xMpegUrl) ||
-    (/probably|maybe/).test(vndMpeg);
-})();
-
 /**
  * Creates and sends an XMLHttpRequest.
  * @param options {string | object} if this argument is a string, it
