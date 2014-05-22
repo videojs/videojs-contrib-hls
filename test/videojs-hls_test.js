@@ -49,6 +49,7 @@ var
 
     tech = player.el().querySelector('.vjs-tech');
     tech.vjs_getProperty = function() {};
+    tech.vjs_setProperty = function() {};
     tech.vjs_src = function() {};
     videojs.Flash.onReady(tech.id);
 
@@ -654,6 +655,7 @@ test('does not download the next segment if the buffer is full', function() {
 
   player.trigger('timeupdate');
 
+  console.log(requests);
   strictEqual(requests.length, 1, 'no segment request was made');
 });
 
@@ -754,7 +756,7 @@ test('cancels outstanding XHRs when seeking', function() {
   // trigger a segment download request
   player.trigger('timeupdate');
   // attempt to seek while the download is in progress
-  player.hls.currentTime(7);
+  player.currentTime(7);
 
   ok(requests[1].aborted, 'XHR aborted');
   strictEqual(requests.length, 3, 'opened new XHR');
@@ -830,7 +832,7 @@ test('drops tags before the target timestamp when seeking', function() {
       bytes: i
     });
   }
-  player.hls.currentTime(7);
+  player.currentTime(7);
   standardXHRResponse(requests[2]);
 
   while (callbacks.length) {
@@ -876,7 +878,7 @@ test('clears pending buffer updates when seeking', function() {
 
   // seek to 7s
   tags.push({ pts: 7000, bytes: 7 });
-  player.hls.currentTime(7);
+  player.currentTime(7);
   standardXHRResponse(requests[2]);
 
   while (callbacks.length) {

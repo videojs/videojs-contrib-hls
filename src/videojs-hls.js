@@ -183,21 +183,31 @@ var
   initSource = function(player, mediaSource, srcUrl) {
     var
       segmentParser = new videojs.Hls.SegmentParser(),
-
-      segmentXhr,
       settings = videojs.util.mergeOptions({}, player.options().hls),
+
+      lastSeekedTime,
+      segmentXhr,
       fillBuffer,
       updateDuration;
 
 
-    player.hls.currentTime = function(currentTime) {
-      if (currentTime === undefined) {
-        return this.el().vjs_getProperty('currentTime');
+    player.hls.currentTime = function() {
+      if (lastSeekedTime) {
+        return lastSeekedTime;
       }
-
+      return this.el().vjs_getProperty('currentTime');
+    };
+    player.hls.setCurrentTime = function(currentTime) {
       if (!(this.playlists && this.playlists.media())) {
+        // return immediately if the metadata is not ready yet
         return 0;
       }
+
+      // save the seek target so currentTime can report it correctly
+      // while the seek is pending
+      lastSeekedTime = currentTime;
+
+      // determine the requested segment
       this.mediaIndex =
           getMediaIndexByTime(this.playlists.media(), currentTime);
 
@@ -330,8 +340,9 @@ var
         bufferedTime = player.buffered().end(0) - player.currentTime();
       }
 
-      // if there is plenty of content in the buffer, relax for awhile
-      if (bufferedTime >= goalBufferLength) {
+      // if there is plenty of content in the buffer and we're not
+      // seeking, relax for awhile
+      if (typeof offset !== 'number' && bufferedTime >= goalBufferLength) {
         return;
       }
 
@@ -382,10 +393,15 @@ var
         // if we're refilling the buffer after a seek, scan through the muxed
         // FLV tags until we find the one that is closest to the desired
         // playback time
-        if (offset !== undefined && typeof offset === "number") {
+        if (typeof offset === 'number') {
           while (segmentParser.getTags()[0].pts < offset) {
             segmentParser.getNextTag();
           }
+
+          // tell the SWF where we will be seeking to
+          player.hls.el().vjs_setProperty('currentTime',
+                                          segmentParser.getTags()[0].pts * 0.001);
+          lastSeekedTime = null;
         }
 
         while (segmentParser.tagsAvailable()) {
@@ -473,6 +489,7 @@ videojs.Hls = videojs.Flash.extend({
 videojs.Hls.prototype.src = function(src) {
   var
     player = this.player(),
+    self = this,
     mediaSource,
     source;
 
@@ -484,8 +501,8 @@ videojs.Hls.prototype.src = function(src) {
     };
     this.mediaSource = mediaSource;
     initSource(player, mediaSource, src);
-    this.ready(function() {
-      this.el().vjs_src(source.src);
+    this.player().ready(function() {
+      self.el().vjs_src(source.src);
     });
   }
 };
