@@ -34,12 +34,9 @@
     "karma-safari-launcher": "~0.1.1",
     "karma-sauce-launcher": "~0.1.8",
     "sinon": "^1.9.1",
-    "video.js": "^4.5"
-  },
-  "peerDependencies": {
-    "video.js": "^4.5"
+    "video.js": "git+ssh://git@github.com:dmlap/video-js.git#0.6.1-alpha"
   },
   "dependencies": {
-    "videojs-contrib-media-sources": "^0.2"
+    "videojs-contrib-media-sources": "git+ssh://git@github.com:videojs/videojs-contrib-media-sources.git#feature/abort"
   }
 }
