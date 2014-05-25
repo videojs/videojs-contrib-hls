@@ -40,7 +40,7 @@ var
         swf: ''
       },
       techOrder: ['hls'],
-      hls: options || {}
+      hls: options || {goalBufferLength: 10}
     });
 
     player.buffered = function() {
@@ -641,7 +641,7 @@ test('does not download the next segment if the buffer is full', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   player.currentTime = function() {
-    return 15;
+    return 10;
   };
   player.buffered = function() {
     return videojs.createTimeRange(0, 20);
@@ -671,7 +671,7 @@ test('downloads the next segment if the buffer is getting low', function() {
 
   strictEqual(requests.length, 2, 'did not make a request');
   player.currentTime = function() {
-    return 15;
+    return 10;
   };
   player.buffered = function() {
     return videojs.createTimeRange(0, 19.999);
