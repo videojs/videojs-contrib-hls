@@ -688,6 +688,41 @@ test('downloads the next segment if the buffer is getting low', function() {
               'made segment request');
 });
 
+test('downloads the next segment if the buffer is getting low - customized goalBufferLength', function() {
+  player.dispose();
+  player = createPlayer({
+    goalBufferLength: 10
+  });
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+
+  strictEqual(requests.length, 2, 'did not make a request');
+  player.currentTime = function() {
+    return 10;
+  };
+  player.buffered = function() {
+    return videojs.createTimeRange(0, 19.999);
+  };
+  player.trigger('timeupdate');
+
+  standardXHRResponse(requests[2]);
+
+  strictEqual(requests.length, 3, 'made a request');
+  strictEqual(requests[2].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/00002.ts',
+              'made segment request');
+});
+
 test('stops downloading segments at the end of the playlist', function() {
   player.src({
     src: 'manifest/media.m3u8',
