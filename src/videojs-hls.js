@@ -11,6 +11,7 @@
 var
 
   // the desired length of video to maintain in the buffer, in seconds
+  // can be customized with hls option goalbufferLength
   goalBufferLength = 5,
 
   // a fudge factor to apply to advertised playlist bitrates to account for
@@ -185,7 +186,7 @@ var
       segmentParser = new videojs.Hls.SegmentParser(),
 
       segmentXhr,
-      settings = videojs.util.mergeOptions({}, player.options().hls),
+      settings = videojs.util.mergeOptions({goalBufferLength: goalBufferLength}, player.options().hls),
       fillBuffer,
       updateDuration;
 
@@ -325,7 +326,7 @@ var
       }
 
       // if there is plenty of content in the buffer, relax for awhile
-      if (bufferedTime >= goalBufferLength) {
+      if (bufferedTime >= settings.goalBufferLength) {
         return;
       }
 
