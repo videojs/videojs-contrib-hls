@@ -1,18 +1,19 @@
-# video.js HLS Plugin
+# video.js HLS Tech
 
-A video.js plugin that plays HLS video on platforms that don't support it but have Flash.
+A video.js tech that plays HLS video on platforms that don't support it but have Flash.
 
 [![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
 
 ## Getting Started
-Download the [plugin](https://github.com/videojs/videojs-contrib-hls/releases). On your web page:
+Download the [tech](https://github.com/videojs/videojs-contrib-hls/releases). On your web page:
 
 ```html
 <script src="video.js"></script>
 <script src="videojs-hls.min.js"></script>
 <script>
-  var player = videojs('video');
-  player.hls('http://example.com/video.m3u8');
+  var player = videojs('video', {
+    techOrder: ['html5', 'hls', 'flash']
+  });
   player.play();
 </script>
 ```
@@ -34,13 +35,13 @@ position of having to maintain alternate renditions of the same video
 and potentially having to forego HTML-based video entirely to provide
 the best desktop viewing experience.
 
-This plugin attempts to address that situation by providing a polyfill
+This tech attempts to address that situation by providing a polyfill
 for HLS on browsers that have Flash support. You can deploy a single
 HLS stream, code against the regular HTML5 video APIs, and create a
 fast, high-quality video experience across all the big web device
 categories.
 
-The videojs-hls plugin is still working towards a 1.0 release so it
+The videojs-hls tech is still working towards a 1.0 release so it
 may not fit your requirements today. Specifically, there is _no_
 support for:
 
@@ -49,10 +50,20 @@ support for:
 - Segment codecs _other than_ H.264 with AAC audio
 - Internet Explorer < 10
 
-### Plugin Options
+### Options
 
-You may pass in an options object to the hls plugin upon initialization. This
-object may contain one of the following properties:
+You may pass in an options object to the hls tech at player
+initialization. You can pass in options just like you would for any
+other tech:
+
+```javascript
+videojs(video, {
+  techOrder: ['hls'],
+  hls: {
+    withCredentials: true
+  }
+});
+```
 
 #### withCredentials
 Type: `boolean`
@@ -98,7 +109,7 @@ The index of the next video segment to be downloaded from
 Type: `function`
 
 A function that returns the media playlist object to use to download
-the next segment. It is invoked by the plugin immediately before a new
+the next segment. It is invoked by the tech immediately before a new
 segment is downloaded. You can override this function to provide your
 adaptive streaming logic. You must, however, be sure to return a valid
 media playlist object that is present in `player.hls.master`.
@@ -111,7 +122,7 @@ Fired after the first media playlist is downloaded for a stream.
 #### loadedmanifest
 
 Fired immediately after a new master or media playlist has been
-downloaded. By default, the plugin only downloads playlists as they
+downloaded. By default, the tech only downloads playlists as they
 are needed.
 
 ### Testing
@@ -134,7 +145,7 @@ Possible options are:
 * `ie`
 
 ## Hosting Considerations
-Unlike a native HLS implementation, the HLS plugin has to comply with
+Unlike a native HLS implementation, the HLS tech has to comply with
 the browser's security policies. That means that all the files that
 make up the stream must be served from the same domain as the page
 hosting the video player or from a server that has appropriate [CORS
