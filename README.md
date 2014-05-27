@@ -119,7 +119,7 @@ media playlist object that is present in `player.hls.master`.
 
 Fired after the first media playlist is downloaded for a stream.
 
-#### loadedmanifest
+#### loadedplaylist
 
 Fired immediately after a new master or media playlist has been
 downloaded. By default, the tech only downloads playlists as they
