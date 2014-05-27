@@ -655,7 +655,6 @@ test('does not download the next segment if the buffer is full', function() {
 
   player.trigger('timeupdate');
 
-  console.log(requests);
   strictEqual(requests.length, 1, 'no segment request was made');
 });
 
