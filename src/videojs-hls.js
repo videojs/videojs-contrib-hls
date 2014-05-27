@@ -393,16 +393,19 @@ var
         // if we're refilling the buffer after a seek, scan through the muxed
         // FLV tags until we find the one that is closest to the desired
         // playback time
-        if (typeof offset === 'number') {
-          while (segmentParser.getTags()[0].pts < offset) {
-            segmentParser.getNextTag();
-          }
+          if (typeof offset === 'number') {
+            (function() {
+              var tag = segmentParser.getTags()[0];
 
-          // tell the SWF where we will be seeking to
-          player.hls.el().vjs_setProperty('currentTime',
-                                          segmentParser.getTags()[0].pts * 0.001);
-          lastSeekedTime = null;
-        }
+              for (; tag.pts < offset; tag = segmentParser.getTags()[0]) {
+                segmentParser.getNextTag();
+              }
+
+              // tell the SWF where we will be seeking to
+              player.hls.el().vjs_setProperty('currentTime', tag.pts * 0.001);
+              lastSeekedTime = null;
+            })();
+          }
 
         while (segmentParser.tagsAvailable()) {
           // queue up the bytes to be appended to the SourceBuffer
