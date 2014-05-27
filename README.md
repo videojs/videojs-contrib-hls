@@ -11,8 +11,9 @@ Download the [plugin](https://github.com/videojs/videojs-contrib-hls/releases). 
 <script src="video.js"></script>
 <script src="videojs-hls.min.js"></script>
 <script>
-  var player = videojs('video');
-  player.hls('http://example.com/video.m3u8');
+  var player = videojs('video', {
+      techOrder: ['hls']
+  });
   player.play();
 </script>
 ```
