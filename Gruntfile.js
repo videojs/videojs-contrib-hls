@@ -66,7 +66,8 @@ module.exports = function(grunt) {
               '!test/tsSegment.js',
               '!test/fixtures/*.js',
               '!test/manifest/**',
-              '!test/muxer/**']
+              '!test/muxer/**',
+               '!test/switcher/**']
       }
     },
     connect: {
