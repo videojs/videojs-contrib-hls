@@ -1,8 +1,14 @@
 (function(window, document) {
   'use strict';
-  var duration = 9 * 100,
+  var segmentDuration = 9, // seconds
+      duration = segmentDuration * 100, // 100 segments
+
+      clock,
+      fakeXhr,
+      requests,
 
       runSimulation,
+      player,
       runButton,
       parameters,
       addTimePeriod,
@@ -11,6 +17,20 @@
       timeline,
 
       displayTimeline;
+
+  // mock out the environment and dependencies
+  clock = sinon.useFakeTimers();
+  fakeXhr = sinon.useFakeXMLHttpRequest();
+  requests = [];
+  fakeXhr.onCreate = function(xhr) {
+    requests.push(xhr);
+  };
+  videojs.options.flash.swf = '../../node_modules/video.js/dist/video-js/video-js.swf';
+  videojs.Hls.SegmentParser = function() {
+    this.getFlvHeader = function() {
+      return new Uint8Array([]);
+    }
+  };
 
   // a dynamic number of time-bandwidth pairs may be defined to drive the simulation
   addTimePeriod = document.querySelector('.add-time-period');
@@ -30,37 +50,73 @@
     }
     networkTimeline.appendChild(fragment);
   });
-  
+
   // collect the simulation parameters
   parameters = function() {
     var times = Array.prototype.slice.call(document.querySelectorAll('.time')),
-        bandwidths = document.querySelectorAll('input.bandwidth');
+        bandwidths = document.querySelectorAll('input.bandwidth'),
+        playlists = Array.prototype.slice.call(document.querySelectorAll('input.bitrate'));
 
-    return times.reduce(function(conditions, time, i) {
-      return conditions.concat({
-        time: +time.value,
-        bandwidth: +bandwidths[i].value
-      });
-    }, []);
+    return {
+      playlists: playlists.map(function(input) {
+        return +input.value;
+      }),
+      bandwidths: times.reduce(function(conditions, time, i) {
+        return conditions.concat({
+          time: +time.value,
+          bandwidth: +bandwidths[i].value
+        });
+      }, [])
+    };
   };
 
   // run the simulation
   runSimulation = function(options) {
     var results = [],
+        bandwidths = options.bandwidths,
+        fixture = document.getElementById('fixture'),
+        video,
         t,
         i;
 
-    options.sort(function(left, right) {
+    // clean up the last run if necessary
+    if (player) {
+      player.dispose();
+    };
+
+    // initialize the HLS tech
+    fixture.innerHTML = '';
+    video = document.createElement('video');
+    fixture.appendChild(video);
+    player = videojs(video, {
+      techOrder: ['hls'],
+      sources: [{
+        src: 'http://example.com/master.m3u8',
+        type: 'application/x-mpegurl'
+      }]
+    });
+    player.ready(function() {
+      var master = '#EXTM3U\n' +
+        options.playlists.reduce(function(playlists, value) {
+          return playlists +
+            '#EXT-X-STREAM-INF:' + value + '\n' +
+            value + '\n';
+        }, '');
+      requests.pop().respond(200, null, master);
+    });
+
+    // bandwidth
+    bandwidths.sort(function(left, right) {
       return left.time - right.time;
     });
 
     for (t = i = 0; t < duration; t++) {
-      while (options[i + 1] && options[i + 1].time <= t) {
+      while (bandwidths[i + 1] && bandwidths[i + 1].time <= t) {
         i++;
       }
       results.push({
         time: t,
-        bandwidth: options[i].bandwidth
+        bandwidth: bandwidths[i].bandwidth
       });
     }
     return results;
@@ -137,7 +193,7 @@
     };
   })();
 
-  
+
   displayTimeline(runSimulation(parameters()));
-  
+
 })(window, document);
