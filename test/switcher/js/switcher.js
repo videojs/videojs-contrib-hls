@@ -84,7 +84,11 @@
 
   // run the simulation
   runSimulation = function(options, done) {
-    var results = [],
+    var results = {
+          bandwidth: [],
+          playlists: [],
+          options: options
+        },
         bandwidths = options.bandwidths,
         fixture = document.getElementById('fixture'),
 
@@ -100,7 +104,6 @@
     if (player) {
       player.dispose();
     };
-
 
     // mock out the environment
     clock = sinon.useFakeTimers();
@@ -159,7 +162,7 @@
           while (bandwidths[i + 1] && bandwidths[i + 1].time <= t) {
             i++;
           }
-          results.push({
+          results.bandwidth.push({
             time: t,
             bandwidth: bandwidths[i].bandwidth
           });
@@ -168,11 +171,10 @@
           requests = requests.reduce(function(remaining, request) {
             var arrival = request.startTime + propagationDelay,
                 delivered = Math.max(0, bandwidths[i].bandwidth * (t - arrival)),
-                playlist = /playlist-\d+$/.test(request.url),
                 segmentSize = +request.url.match(/(\d+)-\d+$/)[1] * segmentDuration;
 
             // playlist responses
-            if (playlist) {
+            if (/playlist-\d+$/.test(request.url)) {
               // playlist responses have no trasmission time
               if (t === arrival) {
                 request.respond(200, null, playlistResponse(+requests[0].url.match(/\d+$/)));
@@ -194,6 +196,11 @@
             } else {
               if (t === arrival) {
                 // segment response headers arrive after the propogation delay
+
+                results.playlists.push({
+                  time: t,
+                  bitrate: +request.url.match(/(\d+)-\d+$/)[1]
+                });
                 request.setResponseHeaders({
                   'Content-Type': 'video/mp2t'
                 });
@@ -244,39 +251,43 @@
     .append('g')
       .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
-    displayTimeline = function(error, bandwidth) {
+    displayTimeline = function(error, data) {
       var x = d3.scale.linear().range([0, width]),
-          y = d3.scale.linear().range([height, 0]),
+          y0 = d3.scale.linear().range([height, 0]),
+          y1 = d3.scale.ordinal().rangeRoundBands([height, 0], 0.1),
 
-          xAxis = d3.svg.axis().scale(x).orient('bottom'),
-          yAxis = d3.svg.axis().scale(y).orient('left'),
+          timeAxis = d3.svg.axis().scale(x).orient('bottom'),
+          bandwidthAxis = d3.svg.axis().scale(y0).orient('left'),
+          segmentBitrateAxis = d3.svg.axis().scale(y1).orient('right'),
 
-          line = d3.svg.line()
+          bandwidthLine = d3.svg.line()
             .interpolate('basis')
             .x(function(data) {
               return x(data.time);
             })
             .y(function(data) {
-              return y(data.bandwidth);
+              return y0(data.bandwidth);
             });
 
-      x.domain(d3.extent(bandwidth, function(data) {
+      x.domain(d3.extent(data.bandwidth, function(data) {
         return data.time;
       }));
-      y.domain([0, d3.max(bandwidth, function(data) {
+      y0.domain([0, d3.max(data.bandwidth, function(data) {
         return data.bandwidth;
       })]);
+      y1.domain(data.options.playlists);
 
-      // draw the new timeline
+      // time axis
       svg.selectAll('.axis').remove();
       svg.append('g')
         .attr('class', 'x axis')
         .attr('transform', 'translate(0,' + height + ')')
-        .call(xAxis);
+        .call(timeAxis);
 
+      // bandwidth axis
       svg.append('g')
         .attr('class', 'y axis')
-        .call(yAxis)
+        .call(bandwidthAxis)
       .append('text')
         .attr('transform', 'rotate(-90)')
         .attr('y', 6)
@@ -284,11 +295,38 @@
         .style('text-anchor', 'end')
         .text('Bandwidth (b/s)');
 
+      // segment bitrate axis
+      svg.append('g')
+        .attr('class', 'y axis')
+        .attr('transform', 'translate(' + width + ', 0)')
+        .call(segmentBitrateAxis)
+      .append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', 6)
+        .attr('dy', '-.71em')
+        .style('text-anchor', 'end')
+        .text('Bitrate (b/s)');
+
+      // bandwidth line
       svg.selectAll('.bandwidth').remove();
       svg.append('path')
-        .datum(bandwidth)
+        .datum(data.bandwidth)
         .attr('class', 'line bandwidth')
-        .attr('d', line);
+        .attr('d', bandwidthLine);
+
+      // segment bitrate dots
+      svg.selectAll('.segment-bitrate').remove();
+      svg.selectAll('.segment-bitrate')
+        .data(data.playlists)
+      .enter().append('circle')
+        .attr('class', 'dot segment-bitrate')
+        .attr('r', 3.5)
+        .attr('cx', function(playlist) {
+          return x(playlist.time);
+        })
+        .attr('cy', function(playlist) {
+          return y1(playlist.bitrate) + (y1.rangeBand() / 2);
+        });
     };
   })();
 
