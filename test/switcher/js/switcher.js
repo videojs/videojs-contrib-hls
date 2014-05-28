@@ -1,13 +1,12 @@
 (function(window, document) {
   'use strict';
   var segmentDuration = 9, // seconds
-      duration = segmentDuration * 100, // 100 segments
-
-      clock,
-      fakeXhr,
-      requests,
+      segmentCount = 100,
+      duration = segmentDuration * segmentCount,
+      propagationDelay = 1,
 
       runSimulation,
+      playlistResponse,
       player,
       runButton,
       parameters,
@@ -19,17 +18,16 @@
       displayTimeline;
 
   // mock out the environment and dependencies
-  clock = sinon.useFakeTimers();
-  fakeXhr = sinon.useFakeXMLHttpRequest();
-  requests = [];
-  fakeXhr.onCreate = function(xhr) {
-    requests.push(xhr);
-  };
   videojs.options.flash.swf = '../../node_modules/video.js/dist/video-js/video-js.swf';
   videojs.Hls.SegmentParser = function() {
     this.getFlvHeader = function() {
       return new Uint8Array([]);
-    }
+    };
+    this.parseSegmentBinaryData = function() {};
+    this.flushTags = function() {};
+    this.tagsAvailable = function() {
+      return false;
+    };
   };
 
   // a dynamic number of time-bandwidth pairs may be defined to drive the simulation
@@ -70,18 +68,47 @@
     };
   };
 
+  // send a mock playlist response
+  playlistResponse = function(bitrate) {
+    var i = segmentCount,
+        response = '#EXTM3U\n';
+
+    while (i--) {
+      response += '#EXTINF:' + segmentDuration + ',\n';
+      response += bitrate + '-' + (segmentCount - i) + '\n';
+    }
+    response += '#EXT-X-ENDLIST\n';
+
+    return response;
+  };
+
   // run the simulation
-  runSimulation = function(options) {
+  runSimulation = function(options, done) {
     var results = [],
         bandwidths = options.bandwidths,
         fixture = document.getElementById('fixture'),
+
+        realSetTimeout = window.setTimeout,
+        clock,
+        fakeXhr,
+        requests,
         video,
-        t,
-        i;
+        t = 0,
+        i = 0;
 
     // clean up the last run if necessary
     if (player) {
       player.dispose();
+    };
+
+
+    // mock out the environment
+    clock = sinon.useFakeTimers();
+    fakeXhr = sinon.useFakeXMLHttpRequest();
+    requests = [];
+    fakeXhr.onCreate = function(xhr) {
+      xhr.startTime = t;
+      requests.push(xhr);
     };
 
     // initialize the HLS tech
@@ -95,35 +122,107 @@
         type: 'application/x-mpegurl'
       }]
     });
+
     player.ready(function() {
-      var master = '#EXTM3U\n' +
-        options.playlists.reduce(function(playlists, value) {
-          return playlists +
-            '#EXT-X-STREAM-INF:' + value + '\n' +
-            value + '\n';
-        }, '');
-      requests.pop().respond(200, null, master);
-    });
+      // run next tick so that Flash doesn't swallow exceptions
+      realSetTimeout(function() {
+        var master = '#EXTM3U\n' +
+              options.playlists.reduce(function(playlists, value) {
+                return playlists +
+                  '#EXT-X-STREAM-INF:' + value + '\n' +
+                  'playlist-' + value + '\n';
+              }, ''),
+            buffered = 0,
+            currentTime = 0;
 
-    // bandwidth
-    bandwidths.sort(function(left, right) {
-      return left.time - right.time;
-    });
+        // mock out buffered and currentTime
+        player.buffered = function() {
+          return videojs.createTimeRange(0, currentTime + buffered);
+        };
+        player.currentTime = function() {
+          return currentTime;
+        };
 
-    for (t = i = 0; t < duration; t++) {
-      while (bandwidths[i + 1] && bandwidths[i + 1].time <= t) {
-        i++;
-      }
-      results.push({
-        time: t,
-        bandwidth: bandwidths[i].bandwidth
-      });
-    }
-    return results;
+        // respond to the playlist requests
+        requests.shift().respond(200, null, master);
+        requests[0].respond(200, null, playlistResponse(+requests[0].url.match(/\d+$/)));
+        requests.shift();
+
+        bandwidths.sort(function(left, right) {
+          return left.time - right.time;
+        });
+
+        // advance time and collect simulation results
+        for (t = i = 0; t < duration; clock.tick(1 * 1000), t++) {
+
+          // determine the bandwidth value at this moment
+          while (bandwidths[i + 1] && bandwidths[i + 1].time <= t) {
+            i++;
+          }
+          results.push({
+            time: t,
+            bandwidth: bandwidths[i].bandwidth
+          });
+
+          // deliver responses if they're ready
+          requests = requests.reduce(function(remaining, request) {
+            var arrival = request.startTime + propagationDelay,
+                delivered = Math.max(0, bandwidths[i].bandwidth * (t - arrival)),
+                playlist = /playlist-\d+$/.test(request.url),
+                segmentSize = +request.url.match(/(\d+)-\d+$/)[1] * segmentDuration;
+
+            // playlist responses
+            if (playlist) {
+              // playlist responses have no trasmission time
+              if (t === arrival) {
+                request.respond(200, null, playlistResponse(+requests[0].url.match(/\d+$/)));
+                return remaining;
+              }
+              // the response has not arrived. re-enqueue it for later.
+              return remaining.concat(request);
+            }
+
+            // segment responses
+            if (delivered > segmentSize) {
+              // segment responses are delivered after the propagation
+              // delay and the transmission time have elapsed
+              buffered += segmentDuration;
+              request.status = 200;
+              request.response = new Uint8Array(segmentSize);
+              request.setResponseBody('');
+              return remaining;
+            } else {
+              if (t === arrival) {
+                // segment response headers arrive after the propogation delay
+                request.setResponseHeaders({
+                  'Content-Type': 'video/mp2t'
+                });
+              }
+              // the response has not arrived fully. re-enqueue it for
+              // later
+              return remaining.concat(request);
+            }
+          }, []);
+
+          // simulate playback
+          if (buffered > 0) {
+            buffered--;
+            currentTime++;
+          }
+          player.trigger('timeupdate');
+        }
+
+        // restore the environment
+        clock.restore();
+        fakeXhr.restore();
+
+        done(null, results);
+      }, 0);
+    });
   };
   runButton = document.getElementById('run-simulation');
   runButton.addEventListener('click', function() {
-    displayTimeline(runSimulation(parameters()));
+    runSimulation(parameters(), displayTimeline);
   });
 
   // render the timeline with d3
@@ -145,7 +244,7 @@
     .append('g')
       .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
-    displayTimeline = function(bandwidth) {
+    displayTimeline = function(error, bandwidth) {
       var x = d3.scale.linear().range([0, width]),
           y = d3.scale.linear().range([height, 0]),
 
@@ -193,7 +292,6 @@
     };
   })();
 
-
-  displayTimeline(runSimulation(parameters()));
+  runSimulation(parameters(), displayTimeline);
 
 })(window, document);
