@@ -19,9 +19,9 @@
   addTimePeriod.addEventListener('click', function() {
     var clone = timePeriod.cloneNode(true),
         fragment = document.createDocumentFragment(),
-        count = networkTimeline.querySelectorAll('.bandwidth').length,
+        count = networkTimeline.querySelectorAll('input.bandwidth').length,
         time = clone.querySelector('.time'),
-        bandwidth = clone.querySelector('.bandwidth');
+        bandwidth = clone.querySelector('input.bandwidth');
 
     time.name = 'time' + count;
     bandwidth.name = 'bandwidth' + count;
@@ -34,7 +34,7 @@
   // collect the simulation parameters
   parameters = function() {
     var times = Array.prototype.slice.call(document.querySelectorAll('.time')),
-        bandwidths = document.querySelectorAll('.bandwidth');
+        bandwidths = document.querySelectorAll('input.bandwidth');
 
     return times.reduce(function(conditions, time, i) {
       return conditions.concat({
@@ -113,6 +113,7 @@
       })]);
 
       // draw the new timeline
+      svg.selectAll('.axis').remove();
       svg.append('g')
         .attr('class', 'x axis')
         .attr('transform', 'translate(0,' + height + ')')
@@ -128,6 +129,7 @@
         .style('text-anchor', 'end')
         .text('Bandwidth (b/s)');
 
+      svg.selectAll('.bandwidth').remove();
       svg.append('path')
         .datum(bandwidth)
         .attr('class', 'line bandwidth')
