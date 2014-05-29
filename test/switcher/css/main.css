@@ -418,8 +418,14 @@ form label {
 
 .line {
   fill: none;
-  stroke: steelblue;
   stroke-width: 1.5px;
+}
+.line.bandwidth {
+  stroke: steelblue;
+}
+.line.buffered {
+  stroke: #2ca02c;
+  opacity: 0.25;
 }
 
 .timeline {

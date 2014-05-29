@@ -87,6 +87,7 @@
     var results = {
           bandwidth: [],
           playlists: [],
+          buffered: [],
           options: options
         },
         bandwidths = options.bandwidths,
@@ -216,6 +217,11 @@
             return;
           }, []);
 
+          results.buffered.push({
+            time: t,
+            buffered: buffered
+          });
+
           // simulate playback
           if (buffered > 0) {
             buffered--;
@@ -259,6 +265,7 @@
     displayTimeline = function(error, data) {
       var x = d3.scale.linear().range([0, width]),
           y = d3.scale.linear().range([height, 0]),
+          y0 = d3.scale.linear().range([height, 0]),
 
           timeAxis = d3.svg.axis().scale(x).orient('bottom'),
           tickFormatter = d3.format(',.0f'),
@@ -276,6 +283,14 @@
             })
             .y(function(data) {
               return y(data.bandwidth);
+            }),
+          bufferedLine = d3.svg.line()
+            .interpolate('basis')
+            .x(function(data) {
+              return x(data.time);
+            })
+            .y(function(data) {
+              return y0(data.buffered);
             });
 
       x.domain(d3.extent(data.bandwidth, function(data) {
@@ -284,6 +299,9 @@
       y.domain([0, Math.max(d3.max(data.bandwidth, function(data) {
         return data.bandwidth;
       }), d3.max(data.options.playlists))]);
+      y0.domain([0, d3.max(data.buffered, function(data) {
+        return data.buffered;
+      })]);
 
       // time axis
       svg.selectAll('.axis').remove();
@@ -312,9 +330,16 @@
 
       svg.append('text')
         .attr('transform', 'translate(' + x(x.range()[1]) + ', ' + y(data.bandwidth.slice(-1)[0].bandwidth) + ')')
-        .attr('x', 3)
         .attr('dy', '1.35em')
-        .text('bandwidth')
+        .text('bandwidth');
+
+      // buffered line
+      svg.selectAll('.buffered').remove();
+      svg.append('path')
+        .datum(data.buffered)
+        .attr('class', 'line buffered')
+        .attr('y', 6)
+        .attr('d', bufferedLine);
 
       // segment bitrate dots
       svg.selectAll('.segment-bitrate').remove();
