@@ -111,12 +111,15 @@
     requests = [];
     fakeXhr.onCreate = function(xhr) {
       xhr.startTime = t;
+      xhr.delivered = 0;
       requests.push(xhr);
     };
 
     // initialize the HLS tech
     fixture.innerHTML = '';
     video = document.createElement('video');
+    video.className = 'video-js vjs-default-skin';
+    video.controls = true;
     fixture.appendChild(video);
     player = videojs(video, {
       techOrder: ['hls'],
@@ -170,7 +173,6 @@
           // deliver responses if they're ready
           requests = requests.reduce(function(remaining, request) {
             var arrival = request.startTime + propagationDelay,
-                delivered = Math.max(0, bandwidths[i].bandwidth * (t - arrival)),
                 segmentSize = +request.url.match(/(\d+)-\d+$/)[1] * segmentDuration;
 
             // playlist responses
@@ -185,7 +187,11 @@
             }
 
             // segment responses
-            if (delivered > segmentSize) {
+            if (t >= arrival) {
+              request.delivered += results.bandwidth[t].bandwidth;
+
+            }
+            if (request.delivered >= segmentSize) {
               // segment responses are delivered after the propagation
               // delay and the transmission time have elapsed
               buffered += segmentDuration;
