@@ -329,6 +329,7 @@
         .attr('d', bandwidthLine);
 
       svg.append('text')
+        .attr('class', 'bandwidth label')
         .attr('transform', 'translate(' + x(x.range()[1]) + ', ' + y(data.bandwidth.slice(-1)[0].bandwidth) + ')')
         .attr('dy', '1.35em')
         .text('bandwidth');
