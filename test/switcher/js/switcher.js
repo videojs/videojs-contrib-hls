@@ -135,7 +135,7 @@
         var master = '#EXTM3U\n' +
               options.playlists.reduce(function(playlists, value) {
                 return playlists +
-                  '#EXT-X-STREAM-INF:' + value + '\n' +
+                  '#EXT-X-STREAM-INF:BANDWIDTH=' + value + '\n' +
                   'playlist-' + value + '\n';
               }, ''),
             buffered = 0,
@@ -171,26 +171,23 @@
           });
 
           // deliver responses if they're ready
-          requests = requests.reduce(function(remaining, request) {
+          requests.forEach(function(request, i) {
             var arrival = request.startTime + propagationDelay,
-                segmentSize = +request.url.match(/(\d+)-\d+$/)[1] * segmentDuration;
+                segmentSize;
 
             // playlist responses
             if (/playlist-\d+$/.test(request.url)) {
-              // playlist responses have no trasmission time
+              // for simplicity, playlist responses have zero trasmission time
               if (t === arrival) {
                 request.respond(200, null, playlistResponse(+requests[0].url.match(/\d+$/)));
-                return remaining;
+                // the request is completed
+                return requests.splice(requests.indexOf(request), 1);
               }
-              // the response has not arrived. re-enqueue it for later.
-              return remaining.concat(request);
+              return;
             }
 
             // segment responses
-            if (t >= arrival) {
-              request.delivered += results.bandwidth[t].bandwidth;
-
-            }
+            segmentSize = +request.url.match(/(\d+)-\d+$/)[1] * segmentDuration;
             // segment response headers arrive after the propogation delay
             if (t === arrival) {
               results.playlists.push({
@@ -205,12 +202,18 @@
             if (request.delivered >= segmentSize) {
               buffered += segmentDuration;
               request.status = 200;
-              request.response = new Uint8Array(segmentSize);
+              request.response = new Uint8Array(segmentSize * 0.125);
               request.setResponseBody('');
-              return remaining;
+              // the request is completed
+              return requests.splice(requests.indexOf(request), 1);
             }
-            // response has not arrived fully, re-enqueue it for later
-            return remaining.concat(request);
+            // transmit the bits for this tick
+            if (t >= arrival) {
+              request.delivered += results.bandwidth[t].bandwidth;
+
+            }
+            // response has not arrived fully
+            return;
           }, []);
 
           // simulate playback

@@ -349,6 +349,27 @@
     strictEqual(requests.length, 0, 'no requests is sent');
   });
 
+  test('does not abort requests when the same playlist is re-requested', function() {
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'low-0.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+    loader.media('high.m3u8');
+    loader.media('high.m3u8');
+
+    strictEqual(requests.length, 1, 'made only one request');
+    ok(!requests[0].aborted, 'request not aborted');
+  });
+
   test('throws an error if a media switch is initiated too early', function() {
     var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
 

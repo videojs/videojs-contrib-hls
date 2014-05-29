@@ -563,6 +563,7 @@ xhr = videojs.Hls.xhr = function(url, callback) {
 
   request = new window.XMLHttpRequest();
   request.open(options.method, url);
+  request.url = url;
 
   if (options.responseType) {
     request.responseType = options.responseType;
