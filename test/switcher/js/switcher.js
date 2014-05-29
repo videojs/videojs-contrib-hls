@@ -292,7 +292,7 @@
         .attr('transform', 'translate(0,' + height + ')')
         .call(timeAxis);
 
-      // bandwidth axis
+      // bitrate axis
       svg.append('g')
         .attr('class', 'y axis')
         .call(bitrateAxis)
@@ -309,6 +309,12 @@
         .datum(data.bandwidth)
         .attr('class', 'line bandwidth')
         .attr('d', bandwidthLine);
+
+      svg.append('text')
+        .attr('transform', 'translate(' + x(x.range()[1]) + ', ' + y(data.bandwidth.slice(-1)[0].bandwidth) + ')')
+        .attr('x', 3)
+        .attr('dy', '1.35em')
+        .text('bandwidth')
 
       // segment bitrate dots
       svg.selectAll('.segment-bitrate').remove();
