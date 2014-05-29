@@ -191,30 +191,26 @@
               request.delivered += results.bandwidth[t].bandwidth;
 
             }
+            // segment response headers arrive after the propogation delay
+            if (t === arrival) {
+              results.playlists.push({
+                time: t,
+                bitrate: +request.url.match(/(\d+)-\d+$/)[1]
+              });
+              request.setResponseHeaders({
+                'Content-Type': 'video/mp2t'
+              });
+            }
+            // send the response body if all bytes have been delivered
             if (request.delivered >= segmentSize) {
-              // segment responses are delivered after the propagation
-              // delay and the transmission time have elapsed
               buffered += segmentDuration;
               request.status = 200;
               request.response = new Uint8Array(segmentSize);
               request.setResponseBody('');
               return remaining;
-            } else {
-              if (t === arrival) {
-                // segment response headers arrive after the propogation delay
-
-                results.playlists.push({
-                  time: t,
-                  bitrate: +request.url.match(/(\d+)-\d+$/)[1]
-                });
-                request.setResponseHeaders({
-                  'Content-Type': 'video/mp2t'
-                });
-              }
-              // the response has not arrived fully. re-enqueue it for
-              // later
-              return remaining.concat(request);
             }
+            // response has not arrived fully, re-enqueue it for later
+            return remaining.concat(request);
           }, []);
 
           // simulate playback
@@ -259,12 +255,16 @@
 
     displayTimeline = function(error, data) {
       var x = d3.scale.linear().range([0, width]),
-          y0 = d3.scale.linear().range([height, 0]),
-          y1 = d3.scale.ordinal().rangeRoundBands([height, 0], 0.1),
+          y = d3.scale.linear().range([height, 0]),
 
           timeAxis = d3.svg.axis().scale(x).orient('bottom'),
-          bandwidthAxis = d3.svg.axis().scale(y0).orient('left'),
-          segmentBitrateAxis = d3.svg.axis().scale(y1).orient('right'),
+          tickFormatter = d3.format(',.0f'),
+          bitrateAxis = d3.svg.axis()
+            .scale(y)
+            .tickFormat(function(value) {
+              return tickFormatter(value / 1024);
+            })
+            .orient('left'),
 
           bandwidthLine = d3.svg.line()
             .interpolate('basis')
@@ -272,16 +272,15 @@
               return x(data.time);
             })
             .y(function(data) {
-              return y0(data.bandwidth);
+              return y(data.bandwidth);
             });
 
       x.domain(d3.extent(data.bandwidth, function(data) {
         return data.time;
       }));
-      y0.domain([0, d3.max(data.bandwidth, function(data) {
+      y.domain([0, Math.max(d3.max(data.bandwidth, function(data) {
         return data.bandwidth;
-      })]);
-      y1.domain(data.options.playlists);
+      }), d3.max(data.options.playlists))]);
 
       // time axis
       svg.selectAll('.axis').remove();
@@ -293,25 +292,13 @@
       // bandwidth axis
       svg.append('g')
         .attr('class', 'y axis')
-        .call(bandwidthAxis)
+        .call(bitrateAxis)
       .append('text')
         .attr('transform', 'rotate(-90)')
         .attr('y', 6)
         .attr('dy', '.71em')
         .style('text-anchor', 'end')
-        .text('Bandwidth (b/s)');
-
-      // segment bitrate axis
-      svg.append('g')
-        .attr('class', 'y axis')
-        .attr('transform', 'translate(' + width + ', 0)')
-        .call(segmentBitrateAxis)
-      .append('text')
-        .attr('transform', 'rotate(-90)')
-        .attr('y', 6)
-        .attr('dy', '-.71em')
-        .style('text-anchor', 'end')
-        .text('Bitrate (b/s)');
+        .text('Bitrate (kb/s)');
 
       // bandwidth line
       svg.selectAll('.bandwidth').remove();
@@ -331,7 +318,7 @@
           return x(playlist.time);
         })
         .attr('cy', function(playlist) {
-          return y1(playlist.bitrate) + (y1.rangeBand() / 2);
+          return y(playlist.bitrate);
         });
     };
   })();
