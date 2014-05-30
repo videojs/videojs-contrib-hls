@@ -111,7 +111,7 @@
     fakeXhr = sinon.useFakeXMLHttpRequest();
     requests = [];
     fakeXhr.onCreate = function(xhr) {
-      xhr.startTime = t;
+      xhr.startTime = +new Date();
       xhr.delivered = 0;
       requests.push(xhr);
     };
@@ -159,10 +159,8 @@
           return left.time - right.time;
         });
 
-        // advance time and collect simulation results
-        for (t = i = 0; t < duration; clock.tick(1 * 1000), t++) {
-
-          // determine the bandwidth value at this moment
+        // pre-calculate the bandwidth at each second
+        for (t = i = 0; t < duration; t++) {
           while (bandwidths[i + 1] && bandwidths[i + 1].time <= t) {
             i++;
           }
@@ -170,52 +168,55 @@
             time: t,
             bandwidth: bandwidths[i].bandwidth
           });
+        }
 
-          // deliver responses if they're ready
-          requests.forEach(function(request, i) {
-            var arrival = request.startTime + propagationDelay,
-                segmentSize;
+        // advance time and collect simulation results
+        for (t = 0; t < duration; clock.tick(1000), t++) {
+          // schedule response deliveries
+          while (requests.length) {
+            (function(request) {
+              var segmentSize;
 
-            // playlist responses
-            if (/playlist-\d+$/.test(request.url)) {
-              // for simplicity, playlist responses have zero trasmission time
-              if (t === arrival) {
-                request.respond(200, null, playlistResponse(+requests[0].url.match(/\d+$/)));
-                // the request is completed
-                return requests.splice(requests.indexOf(request), 1);
+              // playlist responses
+              if (/playlist-\d+$/.test(request.url)) {
+                // for simplicity, playlist responses have zero trasmission time
+                return setTimeout(function() {
+                  request.respond(200, null, playlistResponse(+request.url.match(/\d+$/)));
+                }, propagationDelay * 1000);
               }
-              return;
-            }
 
-            // segment responses
-            segmentSize = +request.url.match(/(\d+)-\d+$/)[1] * segmentDuration;
-            // segment response headers arrive after the propogation delay
-            if (t === arrival) {
-              results.playlists.push({
-                time: t,
-                bitrate: +request.url.match(/(\d+)-\d+$/)[1]
-              });
-              request.setResponseHeaders({
-                'Content-Type': 'video/mp2t'
-              });
-            }
-            // send the response body if all bytes have been delivered
-            if (request.delivered >= segmentSize) {
-              buffered += segmentDuration;
-              request.status = 200;
-              request.response = new Uint8Array(segmentSize * 0.125);
-              request.setResponseBody('');
-              // the request is completed
-              return requests.splice(requests.indexOf(request), 1);
-            }
-            // transmit the bits for this tick
-            if (t >= arrival) {
-              request.delivered += results.bandwidth[t].bandwidth;
+              // segment responses
+              segmentSize = +request.url.match(/(\d+)-\d+$/)[1] * segmentDuration;
+              // segment response headers arrive after the propogation delay
+              setTimeout(function() {
+                var arrival = Math.ceil(+new Date() * 0.001);
+                results.playlists.push({
+                  time: arrival,
+                  bitrate: +request.url.match(/(\d+)-\d+$/)[1]
+                });
+                request.setResponseHeaders({
+                  'Content-Type': 'video/mp2t'
+                });
 
-            }
-            // response has not arrived fully
-            return;
-          }, []);
+                results.bandwidth.slice(arrival).every(function(value, i) {
+                  var remaining = segmentSize - request.delivered;
+                  if (remaining - value.bandwidth <= 0) {
+                    // send the response body once all bytes have been delivered
+                    setTimeout(function() {
+                      buffered += segmentDuration;
+                      request.status = 200;
+                      request.response = new Uint8Array(segmentSize * 0.125);
+                      request.setResponseBody('');
+                    }, ((remaining / value.bandwidth) + i) * 1000);
+                    return false;
+                  }
+                  // record the bits for this tick
+                  request.delivered += value.bandwidth;
+                  return true;
+                });
+              }, propagationDelay * 1000);
+            })(requests.shift());
+          }
 
           results.buffered.push({
             time: t,
