@@ -321,6 +321,15 @@
         .style('text-anchor', 'end')
         .text('Bitrate (kb/s)');
 
+      // playlist bitrate lines
+      svg.selectAll('.line.bitrate')
+        .data(data.options.playlists)
+      .enter().append('path')
+        .attr('class', 'line bitrate')
+        .attr('d', function(playlist) {
+          return 'M0,' + y(playlist) + 'L' + width + ',' + y(playlist);
+        });
+
       // bandwidth line
       svg.selectAll('.bandwidth').remove();
       svg.append('path')

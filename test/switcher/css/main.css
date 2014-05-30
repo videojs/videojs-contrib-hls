@@ -427,6 +427,11 @@ form label {
   stroke: #2ca02c;
   opacity: 0.25;
 }
+.line.bitrate {
+  stroke: #999;
+  opacity: 0.5;
+  stroke-dasharray: 5, 5;
+}
 
 .timeline {
   color: #888;
