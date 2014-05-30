@@ -37,6 +37,6 @@
     "video.js": "git+https://github.com/dmlap/video-js.git#0.6.1-alpha"
   },
   "dependencies": {
-    "videojs-contrib-media-sources": "git+https://github.com/videojs/videojs-contrib-media-sources.git#c1b0f3bd83ec975442b0a53864f6793a56751fb8"
+    "videojs-contrib-media-sources": "^0.3.0"
   }
 }
