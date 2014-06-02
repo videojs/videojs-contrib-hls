@@ -452,8 +452,7 @@ var
         player.trigger('loadedmetadata');
       });
       player.hls.playlists.on('error', function() {
-        player.hls.error = player.hls.playlists.error;
-        player.trigger('error');
+        player.error(player.hls.playlists.error);
       });
       player.hls.playlists.on('loadedplaylist', function() {
         var updatedPlaylist = player.hls.playlists.media();

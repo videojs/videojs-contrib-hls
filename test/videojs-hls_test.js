@@ -315,9 +315,9 @@ test('re-initializes the tech for each source', function() {
 });
 
 test('triggers an error when a master playlist request errors', function() {
-  var error;
+  var errors = 0;
   player.on('error', function() {
-    error = player.hls.error;
+    errors++;
   });
   player.src({
     src: 'manifest/master.m3u8',
@@ -328,8 +328,9 @@ test('triggers an error when a master playlist request errors', function() {
   });
   requests.pop().respond(500);
 
-  ok(error, 'an error is triggered');
-  strictEqual(2, error.code, 'a network error is triggered');
+  ok(player.error(), 'an error is triggered');
+  strictEqual(1, errors, 'fired one error');
+  strictEqual(2, player.error().code, 'a network error is triggered');
 });
 
 test('downloads media playlists after loading the master', function() {
@@ -904,10 +905,10 @@ test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
   equal(errorTriggered,
         true,
         'Missing Playlist error event should trigger');
-  equal(player.hls.error.code,
+  equal(player.error().code,
         2,
         'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
-  ok(player.hls.error.message, 'Player error type should inform user correctly');
+  ok(player.error().message, 'included an error message');
 });
 
 test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
