@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Playlist Switching Simulator</title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width">
+
+  <link rel="stylesheet" href="css/normalize.min.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="../../node_modules/video.js/dist/video-js/video-js.css">
+
+  <script src="js/vendor/modernizr-2.6.2.min.js"></script>
+</head>
+<body>
+  <!--[if lt IE 7]>
+      <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+      <![endif]-->
+
+  <div class="header-container">
+    <header class="wrapper clearfix">
+      <h1 class="title">Playlist Switching Simulator</h1>
+    </header>
+  </div>
+
+  <div class="main-container">
+    <div class="main wrapper clearfix">
+
+      <article>
+        <header>
+          <p>
+            You can use this page to visualize the behavior of the
+            playlist switcher under different network conditions. It
+            can helpful to understand how tweaks to the switching
+            logic will affect playback.
+          </p>
+          <p>
+            Flash security restrictions prevent this page from running
+            over the file protocol. Run <code>grunt connect</code> and
+            then <a href="http://localhost:9999/test/switcher">reload.</a>
+          </p>
+        </header>
+        <section>
+          <h2>Timeline</h2>
+          <p class=timeline>Simulation results will show up here</p>
+          <button id=run-simulation type=submit>Run Simulation</button>
+        </section>
+        <section>
+          <h2>Parameters</h2>
+          <form id=parameters>
+            <ol class=network-timeline>
+              <li>
+                <label>
+                  After <input name=time0 class=time type=number value=0 min=0> seconds,
+                </label>
+                <label>
+                  the link capacity is <input name=bandwidth0 class=bandwidth type=number value=921600> bits per second
+                </label>
+              </li>
+              <li>
+                <label>
+                  After <input name=time1 class=time type=number value=150 min=0> seconds,
+                </label>
+                <label>
+                  the link capacity is <input name=bandwidth1 class=bandwidth type=number value=450560> bits per second
+                </label>
+              </li>
+              <li>
+                <label>
+                  After <input name=time2 class=time type=number value=600 min=0> seconds,
+                </label>
+                <label>
+                  the link capacity is <input name=bandwidth2 class=bandwidth type=number value=1843200> bits per second
+                </label>
+              </li>
+            </ol>
+            <p>
+              You can simulate more complex network conditions by
+              changing the bandwidth during the run. Start a new time
+              period and then define its starting time and link
+              capacity.
+              <button type=button class=add-time-period>Add time period</button>
+            </p>
+            The video is available at
+            <ul>
+              <li><input class=bitrate type=number min=1 value=65536> bits per second</li>
+              <li><input class=bitrate type=number min=1 value=153600> bits per second</li>
+              <li><input class=bitrate type=number min=1 value=450560> bits per second</li>
+              <li><input class=bitrate type=number min=1 value=921600> bits per second</li>
+              <li><input class=bitrate type=number min=1 value=1536000> bits per second</li>
+            </ul>
+          </form>
+        </section>
+      </article>
+
+    </div> <!-- #main -->
+  </div> <!-- #main-container -->
+
+  <div class="footer-container">
+    <footer class="wrapper">
+      <h3>videojs-contrib-hls</h3>
+    </footer>
+  </div>
+  <div id=fixture></div>
+  <script src="../../node_modules/sinon/lib/sinon.js"></script>
+  <script src="../../node_modules/sinon/lib/sinon/util/event.js"></script>
+  <script src="../../node_modules/sinon/lib/sinon/util/fake_xml_http_request.js"></script>
+  <script src="../../node_modules/sinon/lib/sinon/util/xhr_ie.js"></script>
+  <script src="../../node_modules/sinon/lib/sinon/util/fake_timers.js"></script>
+  <script src="js/vendor/d3.min.js"></script>
+
+  <script src="../../node_modules/video.js/dist/video-js/video.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
+  <script src="../../src/videojs-hls.js"></script>
+  <script src="../../src/stream.js"></script>
+  <script src="../../src/m3u8/m3u8-parser.js"></script>
+  <script src="../../src/playlist-loader.js"></script>
+
+  <script src="js/switcher.js"></script>
+</body>
+</html>

@@ -147,10 +147,17 @@
           return;
         }
 
+
+
         loader.state = 'SWITCHING_MEDIA';
 
-        // abort any outstanding playlist refreshes
+        // there is already an outstanding playlist request
         if (request) {
+          if (resolveUrl(loader.master.uri, playlist.uri) === request.url) {
+            // requesting to switch to the same playlist multiple times
+            // has no effect after the first
+            return;
+          }
           request.abort();
           request = null;
         }
