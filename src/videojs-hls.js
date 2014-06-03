@@ -551,7 +551,7 @@ xhr = videojs.Hls.xhr = function(url, callback) {
       timeout: 45 * 1000
     },
     request,
-    timeout;
+    abortTimeout;
 
   if (typeof callback !== 'function') {
     callback = function() {};
@@ -577,7 +577,7 @@ xhr = videojs.Hls.xhr = function(url, callback) {
       request.timeout = options.timeout;
     } else {
       // polyfill XHR2 by aborting after the timeout
-      timeout = window.setTimeout(function() {
+      abortTimeout = window.setTimeout(function() {
         if (request.readystate !== 4) {
           request.abort();
         }
@@ -592,7 +592,7 @@ xhr = videojs.Hls.xhr = function(url, callback) {
     }
 
     // clear outstanding timeouts
-    window.clearTimeout(timeout);
+    window.clearTimeout(abortTimeout);
 
     // request error
     if (this.status >= 400 || this.status === 0) {
