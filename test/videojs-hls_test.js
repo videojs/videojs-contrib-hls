@@ -78,7 +78,7 @@ var
 
     request.response = new Uint8Array([1]).buffer;
     request.respond(200,
-                    {'Content-Type': contentType},
+                    { 'Content-Type': contentType },
                     window.manifests[manifestName]);
   },
 
@@ -360,13 +360,6 @@ test('downloads media playlists after loading the master', function() {
 });
 
 test('timeupdates do not check to fill the buffer until a media playlist is ready', function() {
-  var urls = [];
-  window.XMLHttpRequest = function() {
-    this.open = function(method, url) {
-      urls.push(url);
-    };
-    this.send = function() {};
-  };
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -376,8 +369,8 @@ test('timeupdates do not check to fill the buffer until a media playlist is read
   });
   player.trigger('timeupdate');
 
-  strictEqual(1, urls.length, 'one request was made');
-  strictEqual('manifest/media.m3u8', urls[0], 'media playlist requested');
+  strictEqual(1, requests.length, 'one request was made');
+  strictEqual('manifest/media.m3u8', requests[0].url, 'media playlist requested');
 });
 
 test('calculates the bandwidth after downloading a segment', function() {
@@ -707,7 +700,6 @@ test('stops downloading segments at the end of the playlist', function() {
 });
 
 test('only makes one segment request at a time', function() {
-  var openedXhrs = 0;
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -715,23 +707,12 @@ test('only makes one segment request at a time', function() {
   player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
-  xhr.restore();
-  var oldXHR = window.XMLHttpRequest;
-  // mock out a long-running XHR
-  window.XMLHttpRequest = function() {
-    this.send = function() {};
-    this.open = function() {
-      openedXhrs++;
-    };
-  };
-  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests.pop());
   player.trigger('timeupdate');
 
-  strictEqual(1, openedXhrs, 'one XHR is made');
+  strictEqual(1, requests.length, 'one XHR is made');
   player.trigger('timeupdate');
-  strictEqual(1, openedXhrs, 'only one XHR is made');
-  window.XMLHttpRequest = oldXHR;
-  xhr = sinon.useFakeXMLHttpRequest();
+  strictEqual(1, requests.length, 'only one XHR is made');
 });
 
 test('cancels outstanding XHRs when seeking', function() {
@@ -791,7 +772,6 @@ test('flushes the parser after each segment', function() {
 
 test('drops tags before the target timestamp when seeking', function() {
   var i = 10,
-      callbacks = [],
       tags = [],
       bytes = [];
 
@@ -802,10 +782,6 @@ test('drops tags before the target timestamp when seeking', function() {
       bytes.push(chunk);
     };
     this.abort = function() {};
-  };
-  // capture timeouts
-  window.setTimeout = function(callback) {
-    callbacks.push(callback);
   };
 
   // push a tag into the buffer
@@ -820,9 +796,6 @@ test('drops tags before the target timestamp when seeking', function() {
   });
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
-  while (callbacks.length) {
-    callbacks.shift()();
-  }
 
   // mock out a new segment of FLV tags
   bytes = [];
@@ -835,21 +808,17 @@ test('drops tags before the target timestamp when seeking', function() {
   player.currentTime(7);
   standardXHRResponse(requests[2]);
 
-  while (callbacks.length) {
-    callbacks.shift()();
-  }
-
   deepEqual(bytes, [7,8,9], 'three tags are appended');
 });
 
-test('clears pending buffer updates when seeking', function() {
+test('calls abort() on the SourceBuffer before seeking', function() {
   var
-    bytes = [],
-    callbacks = [],
     aborts = 0,
+    bytes = [],
     tags = [{ pts: 0, bytes: 0 }];
 
-  // mock out the parser and source buffer
+
+  // track calls to abort()
   videojs.Hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
@@ -859,12 +828,7 @@ test('clears pending buffer updates when seeking', function() {
       aborts++;
     };
   };
-  // capture timeouts
-  window.setTimeout = function(callback) {
-    callbacks.push(callback);
-  };
 
-  // queue up a tag to be pushed into the buffer (but don't push it yet!)
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -880,10 +844,6 @@ test('clears pending buffer updates when seeking', function() {
   tags.push({ pts: 7000, bytes: 7 });
   player.currentTime(7);
   standardXHRResponse(requests[2]);
-
-  while (callbacks.length) {
-    callbacks.shift()();
-  }
 
   strictEqual(1, aborts, 'aborted pending buffer');
 });
@@ -957,23 +917,6 @@ test('duration is Infinity for live playlists', function() {
   strictEqual(player.duration(), Infinity, 'duration is infinity');
 });
 
-test('does not reload playlists with an endlist tag', function() {
-  var callbacks = [];
-  // capture timeouts
-  window.setTimeout = function(callback, timeout) {
-    callbacks.push({ callback: callback, timeout: timeout });
-  };
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
-
-  strictEqual(0, callbacks.length, 'no refresh was scheduled');
-});
-
 test('updates the media index when a playlist reloads', function() {
   player.src({
     src: 'http://example.com/live-updating.m3u8',
@@ -1017,10 +960,6 @@ test('mediaIndex is zero before the first segment loads', function() {
     '#EXTM3U\n' +
     '#EXTINF:10,\n' +
     '0.ts\n';
-  window.XMLHttpRequest = function() {
-    this.open = function() {};
-    this.send = function() {};
-  };
   player.src({
     src: 'http://example.com/first-seg-load.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1071,24 +1010,6 @@ test('reloads out-of-date live playlists when switching variants', function() {
   strictEqual(player.mediaIndex, 1, 'mediaIndex points at the next segment');
 });
 
-test('does not reload master playlists', function() {
-  var callbacks = [];
-  window.setTimeout = function(callback) {
-    callbacks.push(callback);
-  };
-
-  player.src({
-    src: 'http://example.com/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
-
-  strictEqual(callbacks.length,
-              0, 'no reload scheduled');
-});
-
 test('if withCredentials option is used, withCredentials is set on the XHR object', function() {
   player.dispose();
   player = createPlayer({
@@ -1126,7 +1047,7 @@ test('does not break if the playlist has no segments', function() {
 });
 
 test('disposes the playlist loader', function() {
-  var disposes = 0, player;
+  var disposes = 0, player, loaderDispose;
   player = createPlayer();
   player.src({
     src: 'manifest/master.m3u8',
@@ -1135,8 +1056,10 @@ test('disposes the playlist loader', function() {
   player.hls.mediaSource.trigger({
     type: 'sourceopen'
   });
+  loaderDispose = player.hls.playlists.dispose;
   player.hls.playlists.dispose = function() {
     disposes++;
+    loaderDispose.call(player.hls.playlists);
   };
 
   player.dispose();
