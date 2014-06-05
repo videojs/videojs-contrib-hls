@@ -22,6 +22,8 @@
       sinonXhr = sinon.useFakeXMLHttpRequest();
       requests = [];
       sinonXhr.onCreate = function(xhr) {
+        // force the XHR2 timeout polyfill
+        xhr.timeout = undefined;
         requests.push(xhr);
       };
 
@@ -425,5 +427,18 @@
 
     loader.dispose();
     ok(requests[0].aborted, 'refresh request aborted');
+  });
+
+  test('errors if requests take longer than 45s', function() {
+    var
+      loader = new videojs.Hls.PlaylistLoader('media.m3u8'),
+      errors = 0;
+    loader.on('error', function() {
+      errors++;
+    });
+    clock.tick(45 * 1000);
+
+    strictEqual(errors, 1, 'fired one error');
+    strictEqual(loader.error.code, 2, 'fired a network error');
   });
 })(window);

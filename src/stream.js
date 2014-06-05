@@ -50,6 +50,12 @@
           callbacks[i].apply(this, args);
         }
       };
+      /**
+       * Destroys the stream and cleans up.
+       */
+      this.dispose = function() {
+        listeners = {};
+      };
     };
   };
   /**

@@ -50,6 +50,7 @@
     PlaylistLoader = function(srcUrl, withCredentials) {
       var
         loader = this,
+        dispose,
         media,
         mediaUpdateTimeout,
         request,
@@ -105,11 +106,18 @@
 
       loader.state = 'HAVE_NOTHING';
 
+      // capture the prototype dispose function
+      dispose = this.dispose;
+
+      /**
+       * Abort any outstanding work and clean up.
+       */
       loader.dispose = function() {
         if (request) {
           request.abort();
         }
         window.clearTimeout(mediaUpdateTimeout);
+        dispose.call(this);
       };
 
       /**

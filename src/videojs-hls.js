@@ -547,9 +547,11 @@ videojs.Hls.canPlaySource = function(srcObj) {
 xhr = videojs.Hls.xhr = function(url, callback) {
   var
     options = {
-      method: 'GET'
+      method: 'GET',
+      timeout: 45 * 1000
     },
-    request;
+    request,
+    abortTimeout;
 
   if (typeof callback !== 'function') {
     callback = function() {};
@@ -570,12 +572,27 @@ xhr = videojs.Hls.xhr = function(url, callback) {
   if (options.withCredentials) {
     request.withCredentials = true;
   }
+  if (options.timeout) {
+    if (request.timeout === 0) {
+      request.timeout = options.timeout;
+    } else {
+      // polyfill XHR2 by aborting after the timeout
+      abortTimeout = window.setTimeout(function() {
+        if (request.readystate !== 4) {
+          request.abort();
+        }
+      }, options.timeout);
+    }
+  }
 
   request.onreadystatechange = function() {
     // wait until the request completes
     if (this.readyState !== 4) {
       return;
     }
+
+    // clear outstanding timeouts
+    window.clearTimeout(abortTimeout);
 
     // request error
     if (this.status >= 400 || this.status === 0) {
