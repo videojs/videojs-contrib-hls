@@ -5,16 +5,20 @@ A video.js tech that plays HLS video on platforms that don't support it but have
 [![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
 
 ## Getting Started
-Download the [tech](https://github.com/videojs/videojs-contrib-hls/releases). On your web page:
+Download the [Media Source plugin](https://github.com/videojs/videojs-contrib-media-sources/releases) as well as the [HLS tech](https://github.com/videojs/videojs-contrib-hls/releases). On your web page:
 
 ```html
 <script src="video.js"></script>
+<script src="videojs-media-sources.js"></script>
 <script src="videojs-hls.min.js"></script>
 <script>
-  var player = videojs('video', {
+  var player = videojs('test-vid', {
     techOrder: ['html5', 'hls', 'flash']
   });
-  player.play();
+
+  player.ready(function() {
+    this.play();
+  });
 </script>
 ```
 
