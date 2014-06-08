@@ -14,9 +14,7 @@ Download the [Media Source plugin](https://github.com/videojs/videojs-contrib-me
 <script>
   var player = videojs('test-vid', {
     techOrder: ['html5', 'hls', 'flash']
-  });
-
-  player.ready(function() {
+  }, function() {
     this.play();
   });
 </script>
