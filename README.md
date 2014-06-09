@@ -12,11 +12,8 @@ Download the [Media Source plugin](https://github.com/videojs/videojs-contrib-me
 <script src="videojs-media-sources.js"></script>
 <script src="videojs-hls.min.js"></script>
 <script>
-  var player = videojs('test-vid', {
-    techOrder: ['html5', 'hls', 'flash']
-  }, function() {
-    this.play();
-  });
+  var player = videojs('test-vid');
+  player.play();
 </script>
 ```
 
@@ -60,7 +57,6 @@ other tech:
 
 ```javascript
 videojs(video, {
-  techOrder: ['hls'],
   hls: {
     withCredentials: true
   }
