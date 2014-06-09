@@ -644,4 +644,7 @@ resolveUrl = videojs.Hls.resolveUrl = function(basePath, path) {
   return result;
 };
 
+// Add HLS to the standard tech order
+videojs.options.techOrder.push('hls');
+
 })(window, window.videojs, document);
