@@ -1066,4 +1066,20 @@ test('disposes the playlist loader', function() {
   strictEqual(disposes, 1, 'disposed playlist loader');
 });
 
+test('only supports HLS MIME types', function() {
+  ok(videojs.Hls.canPlaySource({
+    type: 'aPplicatiOn/x-MPegUrl'
+  }), 'supports x-mpegurl');
+  ok(videojs.Hls.canPlaySource({
+    type: 'aPplicatiOn/VnD.aPPle.MpEgUrL'
+  }), 'supports vnd.apple.mpegurl');
+
+  ok(!videojs.Hls.canPlaySource({
+    type: 'video/mp4'
+  }), 'does not support mp4');
+  ok(!videojs.Hls.canPlaySource({
+    type: 'video/x-flv'
+  }), 'does not support flv');
+});
+
 })(window, window.videojs);

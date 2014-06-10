@@ -529,7 +529,7 @@ videojs.Hls.isSupported = function() {
 };
 
 videojs.Hls.canPlaySource = function(srcObj) {
-  return mpegurlRE.test(srcObj.type) || videojs.Flash.canPlaySource.call(this, srcObj);
+  return mpegurlRE.test(srcObj.type);
 };
 
 /**
