@@ -227,8 +227,13 @@ var
      * Update the player duration
      */
     updateDuration = function(playlist) {
-      // update the duration
-      player.duration(totalDuration(playlist));
+      var oldDuration = player.duration(),
+          newDuration = totalDuration(playlist);
+
+      // if the duration has changed, invalidate the cached value
+      if (oldDuration !== newDuration) {
+        player.trigger('durationchange');
+      }
     };
 
     /**

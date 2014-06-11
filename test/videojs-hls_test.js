@@ -915,6 +915,7 @@ test('duration is Infinity for live playlists', function() {
   standardXHRResponse(requests[0]);
 
   strictEqual(player.duration(), Infinity, 'duration is infinity');
+  ok((' ' + player.el().className + ' ').indexOf(' vjs-live ') >= 0, 'added vjs-live class');
 });
 
 test('updates the media index when a playlist reloads', function() {
