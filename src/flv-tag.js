@@ -298,6 +298,9 @@ hls.FlvTag = function(type, extraData) {
     this.bytes[ 9] = 0;
     this.bytes[10] = 0;
 
+    // Sometimes we're at the end of the view and have one slot to write a
+    // uint32, so, prepareWrite of count 4, since, view is uint8
+    prepareWrite(this, 4);
     this.view.setUint32(this.length, this.length);
     this.length += 4;
     this.position += 4;
