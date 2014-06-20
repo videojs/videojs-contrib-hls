@@ -387,6 +387,10 @@ var
           return;
         }
 
+        if (segment.discontinuity) {
+          player.hls.sourceBuffer.abort();
+        }
+
         // calculate the download bandwidth
         player.hls.segmentXhrTime = (+new Date()) - startTime;
         player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
