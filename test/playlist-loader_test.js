@@ -348,8 +348,77 @@
                            '#EXT-X-ENDLIST\n');
     loader.media('low.m3u8');
 
-    strictEqual(requests.length, 0, 'no requests is sent');
+    strictEqual(requests.length, 0, 'no requests are sent');
   });
+
+  test('switching to the active live playlist is a no-op', function() {
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'low-0.ts\n');
+    loader.media('low.m3u8');
+
+    strictEqual(requests.length, 0, 'no requests are sent');
+  });
+
+  test('switches back to loaded playlists without re-requesting them', function() {
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'low-0.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+    loader.media('high.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'high-0.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+    loader.media('low.m3u8');
+
+    strictEqual(requests.length, 0, 'no outstanding requests');
+    strictEqual(loader.state, 'HAVE_METADATA', 'returned to loaded playlist');
+  });
+
+  test('aborts outstanding requests if switching back to an already loaded playlist', function() {
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'low-0.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+    loader.media('high.m3u8');
+    loader.media('low.m3u8');
+
+    strictEqual(requests.length, 1, 'requested high playlist');
+    ok(requests[0].aborted, 'aborted playlist request');
+    strictEqual(loader.state, 'HAVE_METADATA', 'returned to loaded playlist');
+    strictEqual(loader.media(), loader.master.playlists[0], 'switched to loaded playlist');
+  });
+
 
   test('does not abort requests when the same playlist is re-requested', function() {
     var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
