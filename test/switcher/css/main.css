@@ -423,9 +423,8 @@ form label {
 .line.bandwidth {
   stroke: steelblue;
 }
-.line.buffered {
-  stroke: #2ca02c;
-  opacity: 0.25;
+.line.effective-bandwidth {
+  stroke: #FF7F0E;
 }
 .line.bitrate {
   stroke: #999;
