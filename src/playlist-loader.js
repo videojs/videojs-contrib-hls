@@ -150,12 +150,21 @@
           playlist = loader.master.playlists[playlist];
         }
 
-        if (playlist.uri === media.uri) {
-          // switching to the currently active playlist is a no-op
+        // switch to fully loaded playlists immediately
+        if (loader.master.playlists[playlist.uri].endList) {
+          if (request) {
+            request.abort();
+            request = null;
+          }
+          loader.state = 'HAVE_METADATA';
+          media = playlist;
           return;
         }
 
-
+        // switching to the active playlist is a no-op
+        if (playlist.uri === media.uri) {
+          return;
+        }
 
         loader.state = 'SWITCHING_MEDIA';
 
