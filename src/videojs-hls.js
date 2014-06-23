@@ -406,12 +406,15 @@ var
             (function() {
               var tag = segmentParser.getTags()[0];
 
-              for (; tag.pts < offset; tag = segmentParser.getTags()[0]) {
+              for (; tag && tag.pts < offset; tag = segmentParser.getTags()[0]) {
                 segmentParser.getNextTag();
               }
 
               // tell the SWF where we will be seeking to
-              player.hls.el().vjs_setProperty('currentTime', tag.pts * 0.001);
+              if (tag) {
+                player.hls.el().vjs_setProperty('currentTime', tag.pts * 0.001);
+              }
+
               lastSeekedTime = null;
             })();
           }

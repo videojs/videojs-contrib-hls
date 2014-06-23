@@ -302,6 +302,7 @@
 
         h264Frame.endNalUnit();
         this.tags.push(h264Frame);
+
       }
 
       h264Frame = null;
@@ -427,7 +428,9 @@
 
         // We did not find any start codes. Try again next packet
         state = 1;
-        h264Frame.writeBytes(data, start, length);
+        if (h264Frame) {
+          h264Frame.writeBytes(data, start, length);
+        }
         return;
       case 3:
         // The next byte is the first byte of a NAL Unit
