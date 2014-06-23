@@ -124,6 +124,8 @@
           0x12: 'metadata'
         };
 
+    videojs.log = console.log.bind(console);
+
     original.addEventListener('change', function() {
       var reader = new FileReader();
       reader.addEventListener('loadend', function() {
