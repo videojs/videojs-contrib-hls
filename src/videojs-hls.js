@@ -424,7 +424,6 @@ var
             (function() {
               var tag = segmentParser.getTags()[0],
                   ptsnaught = tag.pts,
-                  ptsdelta,
                   playlist = player.hls.playlists.media(),
                   segmentOffset,
                   ptsTime;
