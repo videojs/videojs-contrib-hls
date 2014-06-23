@@ -7,6 +7,7 @@
  */
 
 (function(window, videojs, document, undefined) {
+'use strict';
 
 var
 
@@ -145,21 +146,41 @@ var
   },
 
   /**
+   * Calculate the duration of a playlist from a given start index to a given
+   * end index.
+   * @param playlist {object} a media playlist object
+   * @param startIndex {number} an inclusive lower boundary for the playlist.
+   * Defaults to 0.
+   * @param endIndex {number} an exclusive upper boundary for the playlist.
+   * Defaults to playlist length.
+   * @return {number} the duration between the start index and end index.
+   */
+  duration = function(playlist, startIndex, endIndex) {
+    var dur = 0,
+        segment,
+        i;
+
+    startIndex = startIndex || 0;
+    endIndex = endIndex || (playlist.segments || []).length;
+    i = endIndex - 1;
+
+    for (; i >= startIndex; i--) {
+      segment = playlist.segments[i];
+      dur += segment.duration || playlist.targetDuration || 0;
+    }
+
+    return dur;
+  },
+
+  /**
    * Calculate the total duration for a playlist based on segment metadata.
    * @param playlist {object} a media playlist object
    * @return {number} the currently known duration, in seconds
    */
   totalDuration = function(playlist) {
-    var
-      duration = 0,
-      segment,
-      i;
-
     if (!playlist) {
       return 0;
     }
-
-    i = (playlist.segments || []).length;
 
     // if present, use the duration specified in the playlist
     if (playlist.totalDuration) {
@@ -171,11 +192,7 @@ var
       return window.Infinity;
     }
 
-    while (i--) {
-      segment = playlist.segments[i];
-      duration += segment.duration || playlist.targetDuration || 0;
-    }
-    return duration;
+    return duration(playlist);
   },
 
   resolveUrl,
@@ -197,6 +214,7 @@ var
       }
       return this.el().vjs_getProperty('currentTime');
     };
+
     player.hls.setCurrentTime = function(currentTime) {
       if (!(this.playlists && this.playlists.media())) {
         // return immediately if the metadata is not ready yet
@@ -404,16 +422,23 @@ var
         // playback time
           if (typeof offset === 'number') {
             (function() {
-              var tag = segmentParser.getTags()[0];
+              var tag = segmentParser.getTags()[0],
+                  ptsnaught = tag.pts,
+                  ptsdelta,
+                  playlist = player.hls.playlists.media(),
+                  segmentOffset,
+                  ptsTime;
 
-              for (; tag && tag.pts < offset; tag = segmentParser.getTags()[0]) {
+              segmentOffset = duration(playlist, 0, player.hls.mediaIndex) * 1000;
+
+              ptsTime = offset - segmentOffset + ptsnaught;
+
+              for (; tag && tag.pts < ptsTime; tag = segmentParser.getTags()[0]) {
                 segmentParser.getNextTag();
               }
 
               // tell the SWF where we will be seeking to
-              if (tag) {
-                player.hls.el().vjs_setProperty('currentTime', tag.pts * 0.001);
-              }
+              player.hls.el().vjs_setProperty('currentTime', (tag.pts - ptsnaught + segmentOffset) * 0.001);
 
               lastSeekedTime = null;
             })();
