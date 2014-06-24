@@ -1051,7 +1051,7 @@ test('does not break if the playlist has no segments', function() {
 });
 
 test('waits until the buffer is empty before appending bytes at a discontinuity', function() {
-  var aborts = 0, currentTime, bufferEnd;
+  var aborts = 0, setTime, currentTime, bufferEnd;
 
   player.src({
     src: 'disc.m3u8',
@@ -1066,6 +1066,11 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
   };
   player.hls.sourceBuffer.abort = function() {
     aborts++;
+  };
+  player.hls.el().vjs_setProperty = function(name, value) {
+    if (name === 'currentTime') {
+      return setTime = value;
+    }
   };
 
   requests.pop().respond(200, null,
@@ -1089,6 +1094,7 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
   // pretend the buffer has emptied
   player.trigger('waiting');
   strictEqual(aborts, 1, 'aborted before appending the new segment');
+  strictEqual(setTime, 10, 'updated the time after crossing the discontinuity');
 });
 
 test('clears the segment buffer on seek', function() {

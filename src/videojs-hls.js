@@ -467,6 +467,7 @@ var
       segment = playlist.segments[mediaIndex];
 
       event = event || {};
+      segmentOffset = duration(playlist, 0, mediaIndex) * 1000;
 
       // abort() clears any data queued in the source buffer so wait
       // until it empties before calling it when a discontinuity is
@@ -476,13 +477,14 @@ var
           return;
         }
         player.hls.sourceBuffer.abort();
+        // tell the SWF where playback is continuing in the stitched timeline
+        player.hls.el().vjs_setProperty('currentTime', segmentOffset * 0.001);
       }
 
       // if we're refilling the buffer after a seek, scan through the muxed
       // FLV tags until we find the one that is closest to the desired
       // playback time
       if (typeof offset === 'number') {
-        segmentOffset = duration(playlist, 0, mediaIndex) * 1000;
         ptsTime = offset - segmentOffset + tags[0].pts;
 
         while (tags[i].pts < ptsTime) {
