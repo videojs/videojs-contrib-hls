@@ -1050,6 +1050,100 @@ test('does not break if the playlist has no segments', function() {
   strictEqual(requests.length, 1, 'no requests for non-existent segments were queued');
 });
 
+test('waits until the buffer is empty before appending bytes at a discontinuity', function() {
+  var aborts = 0, currentTime, bufferEnd;
+
+  player.src({
+    src: 'disc.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+  player.currentTime = function() { return currentTime; };
+  player.buffered = function() {
+    return videojs.createTimeRange(0, bufferEnd);
+  };
+  player.hls.sourceBuffer.abort = function() {
+    aborts++;
+  };
+
+  requests.pop().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXTINF:10,0\n' +
+                         '1.ts\n' +
+                         '#EXT-X-DISCONTINUITY\n' +
+                         '#EXTINF:10,0\n' +
+                         '2.ts\n');
+  standardXHRResponse(requests.pop());
+
+  // play to 6s to trigger the next segment request
+  currentTime = 6;
+  bufferEnd = 10;
+  player.trigger('timeupdate');
+  strictEqual(aborts, 0, 'no aborts before the buffer empties');
+
+  standardXHRResponse(requests.pop());
+  strictEqual(aborts, 0, 'no aborts before the buffer empties');
+
+  // pretend the buffer has emptied
+  player.trigger('waiting');
+  strictEqual(aborts, 1, 'aborted before appending the new segment');
+});
+
+test('clears the segment buffer on seek', function() {
+  var aborts = 0, tags = [], currentTime, bufferEnd, oldCurrentTime;
+
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+
+  player.src({
+    src: 'disc.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+  oldCurrentTime = player.currentTime;
+  player.currentTime = function(time) {
+    if (time !== undefined) {
+      return oldCurrentTime.call(player, time);
+    }
+    return currentTime;
+  };
+  player.buffered = function() {
+    return videojs.createTimeRange(0, bufferEnd);
+  };
+  player.hls.sourceBuffer.abort = function() {
+    aborts++;
+  };
+
+  requests.pop().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXTINF:10,0\n' +
+                         '1.ts\n' +
+                         '#EXT-X-DISCONTINUITY\n' +
+                         '#EXTINF:10,0\n' +
+                         '2.ts\n');
+  standardXHRResponse(requests.pop());
+
+  // play to 6s to trigger the next segment request
+  currentTime = 6;
+  bufferEnd = 10;
+  player.trigger('timeupdate');
+
+  standardXHRResponse(requests.pop());
+
+  // seek back to the beginning
+  player.currentTime(0);
+  tags.push({ pts: 0, bytes: 0 });
+  standardXHRResponse(requests.pop());
+  strictEqual(aborts, 1, 'aborted once for the seek');
+
+  // the source buffer empties. is 2.ts still in the segment buffer?
+  player.trigger('waiting');
+  strictEqual(aborts, 1, 'cleared the segment buffer on a seek');
+});
+
 test('disposes the playlist loader', function() {
   var disposes = 0, player, loaderDispose;
   player = createPlayer();

@@ -239,6 +239,9 @@ var
         segmentXhr.abort();
       }
 
+      // clear out any buffered segments
+      segmentBuffer = [];
+
       // begin filling the buffer at the new position
       fillBuffer(currentTime * 1000);
     };
