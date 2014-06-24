@@ -161,7 +161,7 @@ var
         i;
 
     startIndex = startIndex || 0;
-    endIndex = endIndex || (playlist.segments || []).length;
+    endIndex = endIndex !== undefined ? endIndex : (playlist.segments || []).length;
     i = endIndex - 1;
 
     for (; i >= startIndex; i--) {
@@ -201,10 +201,12 @@ var
     var
       segmentParser = new videojs.Hls.SegmentParser(),
       settings = videojs.util.mergeOptions({}, player.options().hls),
+      segmentBuffer = [],
 
       lastSeekedTime,
       segmentXhr,
       fillBuffer,
+      drainBuffer,
       updateDuration;
 
 
@@ -385,6 +387,8 @@ var
         responseType: 'arraybuffer',
         withCredentials: settings.withCredentials
       }, function(error, url) {
+        var tags;
+
         // the segment request is no longer outstanding
         segmentXhr = null;
 
@@ -405,10 +409,6 @@ var
           return;
         }
 
-        if (segment.discontinuity) {
-          player.hls.sourceBuffer.abort();
-        }
-
         // calculate the download bandwidth
         player.hls.segmentXhrTime = (+new Date()) - startTime;
         player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
@@ -417,52 +417,97 @@ var
         segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
         segmentParser.flushTags();
 
-        // if we're refilling the buffer after a seek, scan through the muxed
-        // FLV tags until we find the one that is closest to the desired
-        // playback time
-          if (typeof offset === 'number') {
-            (function() {
-              var tag = segmentParser.getTags()[0],
-                  ptsnaught = tag.pts,
-                  playlist = player.hls.playlists.media(),
-                  segmentOffset,
-                  ptsTime;
-
-              segmentOffset = duration(playlist, 0, player.hls.mediaIndex) * 1000;
-
-              ptsTime = offset - segmentOffset + ptsnaught;
-
-              for (; tag && tag.pts < ptsTime; tag = segmentParser.getTags()[0]) {
-                segmentParser.getNextTag();
-              }
-
-              // tell the SWF where we will be seeking to
-              player.hls.el().vjs_setProperty('currentTime', (tag.pts - ptsnaught + segmentOffset) * 0.001);
-
-              lastSeekedTime = null;
-            })();
-          }
-
+        // package up all the work to append the segment
+        // if the segment is the start of a timestamp discontinuity,
+        // we have to wait until the sourcebuffer is empty before
+        // aborting the source buffer processing
+        tags = [];
         while (segmentParser.tagsAvailable()) {
-          // queue up the bytes to be appended to the SourceBuffer
-          // the queue gives control back to the browser between tags
-          // so that large segments don't cause a "hiccup" in playback
-
-          player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,
-                                               player);
-
+          tags.push(segmentParser.getNextTag());
         }
+        segmentBuffer.push({
+          mediaIndex: player.hls.mediaIndex,
+          playlist: player.hls.playlists.media(),
+          offset: offset,
+          tags: tags
+        });
+        drainBuffer();
 
         player.hls.mediaIndex++;
-
-        if (player.hls.mediaIndex === player.hls.playlists.media().segments.length) {
-          mediaSource.endOfStream();
-        }
 
         // figure out what stream the next segment should be downloaded from
         // with the updated bandwidth information
         player.hls.playlists.media(player.hls.selectPlaylist());
       });
+    };
+
+    drainBuffer = function(event) {
+      var
+        i = 0,
+        mediaIndex,
+        playlist,
+        offset,
+        tags,
+        segment,
+
+        ptsTime,
+        segmentOffset;
+
+      if (!segmentBuffer.length) {
+        return;
+      }
+
+      mediaIndex = segmentBuffer[0].mediaIndex;
+      playlist = segmentBuffer[0].playlist;
+      offset = segmentBuffer[0].offset;
+      tags = segmentBuffer[0].tags;
+      segment = playlist.segments[mediaIndex];
+
+      event = event || {};
+
+      // abort() clears any data queued in the source buffer so wait
+      // until it empties before calling it when a discontinuity is
+      // next in the buffer
+      if (segment.discontinuity) {
+        if (event.type !== 'waiting') {
+          return;
+        }
+        player.hls.sourceBuffer.abort();
+      }
+
+      // if we're refilling the buffer after a seek, scan through the muxed
+      // FLV tags until we find the one that is closest to the desired
+      // playback time
+      if (typeof offset === 'number') {
+        segmentOffset = duration(playlist, 0, mediaIndex) * 1000;
+        ptsTime = offset - segmentOffset + tags[0].pts;
+
+        while (tags[i].pts < ptsTime) {
+          i++;
+        }
+
+        // tell the SWF where we will be seeking to
+        player.hls.el().vjs_setProperty('currentTime', (tags[i].pts - tags[0].pts + segmentOffset) * 0.001);
+
+        tags = tags.slice(i);
+
+        lastSeekedTime = null;
+      }
+
+      for (i = 0; i < tags.length; i++) {
+        // queue up the bytes to be appended to the SourceBuffer
+        // the queue gives control back to the browser between tags
+        // so that large segments don't cause a "hiccup" in playback
+
+        player.hls.sourceBuffer.appendBuffer(tags[i].bytes, player);
+      }
+
+      // we're done processing this segment
+      segmentBuffer.shift();
+
+      if (mediaIndex === playlist.segments.length) {
+        mediaSource.endOfStream();
+      }
     };
 
     // load the MediaSource into the player
@@ -481,9 +526,12 @@ var
       player.hls.playlists.on('loadedmetadata', function() {
         oldMediaPlaylist = player.hls.playlists.media();
 
-        // periodicaly check if the buffer needs to be refilled
+        // periodically check if new data needs to be downloaded or
+        // buffered data should be appended to the source buffer
         fillBuffer();
         player.on('timeupdate', fillBuffer);
+        player.on('timeupdate', drainBuffer);
+        player.on('waiting', drainBuffer);
 
         player.trigger('loadedmetadata');
       });

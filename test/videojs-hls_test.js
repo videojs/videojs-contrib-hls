@@ -840,8 +840,11 @@ test('calls abort() on the SourceBuffer before seeking', function() {
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
 
-  // seek to 7s
+  // drainBuffer() uses the first PTS value to account for any timestamp discontinuities in the stream
+  // adding a tag with a PTS of zero looks like a stream with no discontinuities
+  tags.push({ pts: 0, bytes: 0 });
   tags.push({ pts: 7000, bytes: 7 });
+  // seek to 7s
   player.currentTime(7);
   standardXHRResponse(requests[2]);
 
