@@ -107,6 +107,19 @@ Type: `number`
 The index of the next video segment to be downloaded from
 `player.hls.media`.
 
+#### player.hls.segmentXhrTime
+Type: `number`
+
+The number of milliseconds it took to download the last media segment.
+This value is updated after each segment download completes.
+
+#### player.hls.bandwidth
+Type: `number`
+
+The number of bits downloaded per second in the last segment download.
+This value is used by the default implementation of `selectPlaylist` 
+to select an appropriate bitrate to play.
+
 #### player.hls.selectPlaylist
 Type: `function`
 
