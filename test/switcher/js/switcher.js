@@ -191,10 +191,6 @@
               // segment response headers arrive after the propogation delay
               setTimeout(function() {
                 var arrival = Math.ceil(+new Date() * 0.001);
-                results.playlists.push({
-                  time: arrival,
-                  bitrate: +request.url.match(/(\d+)-\d+$/)[1]
-                });
                 request.setResponseHeaders({
                   'Content-Type': 'video/mp2t'
                 });
@@ -204,6 +200,7 @@
                   if (remaining - value.bandwidth <= 0) {
                     // send the response body once all bytes have been delivered
                     setTimeout(function() {
+                      var time = Math.ceil(+new Date() * 0.001);
                       if (request.aborted) {
                         return;
                       }
@@ -211,11 +208,15 @@
                       request.response = new Uint8Array(segmentSize * 0.125);
                       request.setResponseBody('');
 
-                      buffered += segmentDuration;
+                      results.playlists.push({
+                        time: time,
+                        bitrate: +request.url.match(/(\d+)-\d+$/)[1]
+                      });
                       // update the buffered value
+                      buffered += segmentDuration;
                       results.buffered[results.buffered.length - 1].buffered = buffered;
                       results.effectiveBandwidth.push({
-                        time: Math.ceil(+new Date() * 0.001),
+                        time: time,
                         bandwidth: player.hls.bandwidth
                       });
                     }, ((remaining / value.bandwidth) + i) * 1000);
@@ -309,7 +310,9 @@
       }));
       y.domain([0, Math.max(d3.max(data.bandwidth, function(data) {
         return data.bandwidth;
-      }), d3.max(data.options.playlists))]);
+      }), d3.max(data.options.playlists), d3.max(data.playlists, function(data) {
+        return data.bitrate;
+      }))]);
 
       // time axis
       svg.selectAll('.axis').remove();
@@ -330,6 +333,7 @@
         .text('Bitrate (kb/s)');
 
       // playlist bitrate lines
+      svg.selectAll('.line.bitrate').remove();
       svg.selectAll('.line.bitrate')
         .data(data.options.playlists)
       .enter().append('path')
