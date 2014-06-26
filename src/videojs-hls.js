@@ -7,6 +7,7 @@
  */
 
 (function(window, videojs, document, undefined) {
+'use strict';
 
 var
 
@@ -145,21 +146,41 @@ var
   },
 
   /**
+   * Calculate the duration of a playlist from a given start index to a given
+   * end index.
+   * @param playlist {object} a media playlist object
+   * @param startIndex {number} an inclusive lower boundary for the playlist.
+   * Defaults to 0.
+   * @param endIndex {number} an exclusive upper boundary for the playlist.
+   * Defaults to playlist length.
+   * @return {number} the duration between the start index and end index.
+   */
+  duration = function(playlist, startIndex, endIndex) {
+    var dur = 0,
+        segment,
+        i;
+
+    startIndex = startIndex || 0;
+    endIndex = endIndex !== undefined ? endIndex : (playlist.segments || []).length;
+    i = endIndex - 1;
+
+    for (; i >= startIndex; i--) {
+      segment = playlist.segments[i];
+      dur += segment.duration || playlist.targetDuration || 0;
+    }
+
+    return dur;
+  },
+
+  /**
    * Calculate the total duration for a playlist based on segment metadata.
    * @param playlist {object} a media playlist object
    * @return {number} the currently known duration, in seconds
    */
   totalDuration = function(playlist) {
-    var
-      duration = 0,
-      segment,
-      i;
-
     if (!playlist) {
       return 0;
     }
-
-    i = (playlist.segments || []).length;
 
     // if present, use the duration specified in the playlist
     if (playlist.totalDuration) {
@@ -171,11 +192,7 @@ var
       return window.Infinity;
     }
 
-    while (i--) {
-      segment = playlist.segments[i];
-      duration += segment.duration || playlist.targetDuration || 0;
-    }
-    return duration;
+    return duration(playlist);
   },
 
   resolveUrl,
@@ -184,10 +201,12 @@ var
     var
       segmentParser = new videojs.Hls.SegmentParser(),
       settings = videojs.util.mergeOptions({}, player.options().hls),
+      segmentBuffer = [],
 
       lastSeekedTime,
       segmentXhr,
       fillBuffer,
+      drainBuffer,
       updateDuration;
 
 
@@ -197,6 +216,7 @@ var
       }
       return this.el().vjs_getProperty('currentTime');
     };
+
     player.hls.setCurrentTime = function(currentTime) {
       if (!(this.playlists && this.playlists.media())) {
         // return immediately if the metadata is not ready yet
@@ -218,6 +238,9 @@ var
       if (segmentXhr) {
         segmentXhr.abort();
       }
+
+      // clear out any buffered segments
+      segmentBuffer = [];
 
       // begin filling the buffer at the new position
       fillBuffer(currentTime * 1000);
@@ -367,6 +390,8 @@ var
         responseType: 'arraybuffer',
         withCredentials: settings.withCredentials
       }, function(error, url) {
+        var tags;
+
         // the segment request is no longer outstanding
         segmentXhr = null;
 
@@ -395,43 +420,99 @@ var
         segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
         segmentParser.flushTags();
 
-        // if we're refilling the buffer after a seek, scan through the muxed
-        // FLV tags until we find the one that is closest to the desired
-        // playback time
-          if (typeof offset === 'number') {
-            (function() {
-              var tag = segmentParser.getTags()[0];
-
-              for (; tag.pts < offset; tag = segmentParser.getTags()[0]) {
-                segmentParser.getNextTag();
-              }
-
-              // tell the SWF where we will be seeking to
-              player.hls.el().vjs_setProperty('currentTime', tag.pts * 0.001);
-              lastSeekedTime = null;
-            })();
-          }
-
+        // package up all the work to append the segment
+        // if the segment is the start of a timestamp discontinuity,
+        // we have to wait until the sourcebuffer is empty before
+        // aborting the source buffer processing
+        tags = [];
         while (segmentParser.tagsAvailable()) {
-          // queue up the bytes to be appended to the SourceBuffer
-          // the queue gives control back to the browser between tags
-          // so that large segments don't cause a "hiccup" in playback
-
-          player.hls.sourceBuffer.appendBuffer(segmentParser.getNextTag().bytes,
-                                               player);
-
+          tags.push(segmentParser.getNextTag());
         }
+        segmentBuffer.push({
+          mediaIndex: player.hls.mediaIndex,
+          playlist: player.hls.playlists.media(),
+          offset: offset,
+          tags: tags
+        });
+        drainBuffer();
 
         player.hls.mediaIndex++;
-
-        if (player.hls.mediaIndex === player.hls.playlists.media().segments.length) {
-          mediaSource.endOfStream();
-        }
 
         // figure out what stream the next segment should be downloaded from
         // with the updated bandwidth information
         player.hls.playlists.media(player.hls.selectPlaylist());
       });
+    };
+
+    drainBuffer = function(event) {
+      var
+        i = 0,
+        mediaIndex,
+        playlist,
+        offset,
+        tags,
+        segment,
+
+        ptsTime,
+        segmentOffset;
+
+      if (!segmentBuffer.length) {
+        return;
+      }
+
+      mediaIndex = segmentBuffer[0].mediaIndex;
+      playlist = segmentBuffer[0].playlist;
+      offset = segmentBuffer[0].offset;
+      tags = segmentBuffer[0].tags;
+      segment = playlist.segments[mediaIndex];
+
+      event = event || {};
+      segmentOffset = duration(playlist, 0, mediaIndex) * 1000;
+
+      // abort() clears any data queued in the source buffer so wait
+      // until it empties before calling it when a discontinuity is
+      // next in the buffer
+      if (segment.discontinuity) {
+        if (event.type !== 'waiting') {
+          return;
+        }
+        player.hls.sourceBuffer.abort();
+        // tell the SWF where playback is continuing in the stitched timeline
+        player.hls.el().vjs_setProperty('currentTime', segmentOffset * 0.001);
+      }
+
+      // if we're refilling the buffer after a seek, scan through the muxed
+      // FLV tags until we find the one that is closest to the desired
+      // playback time
+      if (typeof offset === 'number') {
+        ptsTime = offset - segmentOffset + tags[0].pts;
+
+        while (tags[i].pts < ptsTime) {
+          i++;
+        }
+
+        // tell the SWF where we will be seeking to
+        player.hls.el().vjs_setProperty('currentTime', (tags[i].pts - tags[0].pts + segmentOffset) * 0.001);
+
+        tags = tags.slice(i);
+
+        lastSeekedTime = null;
+      }
+
+      for (i = 0; i < tags.length; i++) {
+        // queue up the bytes to be appended to the SourceBuffer
+        // the queue gives control back to the browser between tags
+        // so that large segments don't cause a "hiccup" in playback
+
+        player.hls.sourceBuffer.appendBuffer(tags[i].bytes, player);
+      }
+
+      // we're done processing this segment
+      segmentBuffer.shift();
+
+      if (mediaIndex === playlist.segments.length) {
+        mediaSource.endOfStream();
+      }
     };
 
     // load the MediaSource into the player
@@ -450,9 +531,12 @@ var
       player.hls.playlists.on('loadedmetadata', function() {
         oldMediaPlaylist = player.hls.playlists.media();
 
-        // periodicaly check if the buffer needs to be refilled
+        // periodically check if new data needs to be downloaded or
+        // buffered data should be appended to the source buffer
         fillBuffer();
         player.on('timeupdate', fillBuffer);
+        player.on('timeupdate', drainBuffer);
+        player.on('waiting', drainBuffer);
 
         player.trigger('loadedmetadata');
       });

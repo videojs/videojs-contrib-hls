@@ -273,6 +273,14 @@
       });
       return;
     }
+    match = (/^#EXT-X-DISCONTINUITY/).exec(line);
+    if (match) {
+      this.trigger('data', {
+        type: 'tag',
+        tagType: 'discontinuity'
+      });
+      return;
+    }
 
     // unknown tag type
     this.trigger('data', {
@@ -398,6 +406,9 @@
               }
               currentUri.attributes = mergeOptions(currentUri.attributes,
                                                    entry.attributes);
+            },
+            'discontinuity': function() {
+              currentUri.discontinuity = true;
             },
             'targetduration': function() {
               if (!isFinite(entry.duration) || entry.duration < 0) {
