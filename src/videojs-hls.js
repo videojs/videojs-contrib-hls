@@ -11,9 +11,6 @@
 
 var
 
-  // the desired length of video to maintain in the buffer, in seconds
-  goalBufferLength = 5,
-
   // a fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.1,
@@ -370,7 +367,8 @@ var
 
       // if there is plenty of content in the buffer and we're not
       // seeking, relax for awhile
-      if (typeof offset !== 'number' && bufferedTime >= goalBufferLength) {
+      if (typeof offset !== 'number' &&
+          bufferedTime >= videojs.Hls.GOAL_BUFFER_LENGTH) {
         return;
       }
 
@@ -576,6 +574,9 @@ videojs.Hls = videojs.Flash.extend({
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
   }
 });
+
+// the desired length of video to maintain in the buffer, in seconds
+videojs.Hls.GOAL_BUFFER_LENGTH = 30;
 
 videojs.Hls.prototype.src = function(src) {
   var

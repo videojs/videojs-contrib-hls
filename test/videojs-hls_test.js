@@ -631,15 +631,16 @@ test('selects the correct rendition by player dimensions', function() {
 
 
 test('does not download the next segment if the buffer is full', function() {
+  var currentTime = 15;
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   player.currentTime = function() {
-    return 15;
+    return currentTime;
   };
   player.buffered = function() {
-    return videojs.createTimeRange(0, 20);
+    return videojs.createTimeRange(0, currentTime + videojs.Hls.GOAL_BUFFER_LENGTH);
   };
   player.hls.mediaSource.trigger({
     type: 'sourceopen'
