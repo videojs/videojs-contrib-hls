@@ -204,6 +204,9 @@
                   if (remaining - value.bandwidth <= 0) {
                     // send the response body once all bytes have been delivered
                     setTimeout(function() {
+                      if (request.aborted) {
+                        return;
+                      }
                       request.status = 200;
                       request.response = new Uint8Array(segmentSize * 0.125);
                       request.setResponseBody('');
