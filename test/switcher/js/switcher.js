@@ -10,9 +10,6 @@
       player,
       runButton,
       parameters,
-      addTimePeriod,
-      networkTimeline,
-      timePeriod,
       timeline,
 
       displayTimeline;
@@ -31,23 +28,21 @@
   };
 
   // a dynamic number of time-bandwidth pairs may be defined to drive the simulation
-  addTimePeriod = document.querySelector('.add-time-period');
-  networkTimeline = document.querySelector('.network-timeline');
-  timePeriod = networkTimeline.cloneNode(true);
-  addTimePeriod.addEventListener('click', function() {
-    var clone = timePeriod.cloneNode(true),
-        fragment = document.createDocumentFragment(),
-        count = networkTimeline.querySelectorAll('input.bandwidth').length,
-        time = clone.querySelector('.time'),
-        bandwidth = clone.querySelector('input.bandwidth');
+  (function() {
+    var addTimePeriod = document.querySelector('.add-time-period'),
+        networkTimeline = document.querySelector('.network-timeline'),
+        timePeriod = networkTimeline.querySelector('li:last-child').cloneNode(true);
+    addTimePeriod.addEventListener('click', function() {
+      var clone = timePeriod.cloneNode(true),
+          count = networkTimeline.querySelectorAll('input.bandwidth').length,
+          time = clone.querySelector('.time'),
+          bandwidth = clone.querySelector('input.bandwidth');
 
-    time.name = 'time' + count;
-    bandwidth.name = 'bandwidth' + count;
-    while (clone.childNodes.length) {
-      fragment.appendChild(clone.childNodes[0]);
-    }
-    networkTimeline.appendChild(fragment);
-  });
+      time.name = 'time' + count;
+      bandwidth.name = 'bandwidth' + count;
+      networkTimeline.appendChild(clone);
+    });
+  })();
 
   // collect the simulation parameters
   parameters = function() {
