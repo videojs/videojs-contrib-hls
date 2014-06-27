@@ -420,7 +420,6 @@ test('selects a playlist after segment downloads', function() {
   player.trigger('timeupdate');
 
   standardXHRResponse(requests[3]);
-  console.log(requests.map(function(i) { return i.url; }));
   strictEqual(calls, 2, 'selects after additional segments');
 });
 
@@ -1149,6 +1148,27 @@ test('clears the segment buffer on seek', function() {
   // the source buffer empties. is 2.ts still in the segment buffer?
   player.trigger('waiting');
   strictEqual(aborts, 1, 'cleared the segment buffer on a seek');
+});
+
+test('resets the switching algorithm if a request times out', function() {
+  player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media.m3u8
+  // simulate a segment timeout
+  requests[0].timedout = true;
+  requests.shift().abort();
+
+  standardXHRResponse(requests.shift());
+
+  strictEqual(player.hls.playlists.media(),
+              player.hls.playlists.master.playlists[1],
+              'reset to the lowest bitrate playlist');
 });
 
 test('disposes the playlist loader', function() {

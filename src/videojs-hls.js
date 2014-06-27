@@ -330,6 +330,20 @@ var
     };
 
     /**
+     * Abort all outstanding work and cleanup.
+     */
+    player.hls.dispose = function() {
+      if (segmentXhr) {
+        segmentXhr.onreadystatechange = null;
+        segmentXhr.abort();
+      }
+      if (this.playlists) {
+        this.playlists.dispose();
+      }
+      videojs.Flash.prototype.dispose.call(this);
+    };
+
+    /**
      * Determines whether there is enough video data currently in the buffer
      * and downloads a new segment if the buffered time is less than the goal.
      * @param offset (optional) {number} the offset into the downloaded segment
@@ -394,6 +408,12 @@ var
         segmentXhr = null;
 
         if (error) {
+          // if a segment request times out, we may have better luck with another playlist
+          if (error === 'timeout') {
+            player.hls.bandwidth = 1;
+            return player.hls.playlists.media(player.hls.selectPlaylist());
+          }
+          // otherwise, try jumping ahead to the next segment
           player.hls.error = {
             status: this.status,
             message: 'HLS segment request error at URL: ' + url,
@@ -607,13 +627,6 @@ videojs.Hls.prototype.duration = function() {
   return 0;
 };
 
-videojs.Hls.prototype.dispose = function() {
-  if (this.playlists) {
-    this.playlists.dispose();
-  }
-  videojs.Flash.prototype.dispose.call(this);
-};
-
 videojs.Hls.isSupported = function() {
   return videojs.Flash.isSupported() && videojs.MediaSource;
 };
@@ -665,10 +678,14 @@ xhr = videojs.Hls.xhr = function(url, callback) {
   if (options.timeout) {
     if (request.timeout === 0) {
       request.timeout = options.timeout;
+      request.ontimeout = function() {
+        request.timedout = true;
+      };
     } else {
       // polyfill XHR2 by aborting after the timeout
       abortTimeout = window.setTimeout(function() {
         if (request.readystate !== 4) {
+          request.timedout = true;
           request.abort();
         }
       }, options.timeout);
@@ -684,7 +701,12 @@ xhr = videojs.Hls.xhr = function(url, callback) {
     // clear outstanding timeouts
     window.clearTimeout(abortTimeout);
 
-    // request error
+    // request timeout
+    if (request.timedout) {
+      return callback.call(this, 'timeout', url);
+    }
+
+    // request aborted or errored
     if (this.status >= 400 || this.status === 0) {
       return callback.call(this, true, url);
     }
