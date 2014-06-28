@@ -29,18 +29,43 @@
 
   // a dynamic number of time-bandwidth pairs may be defined to drive the simulation
   (function() {
-    var addTimePeriod = document.querySelector('.add-time-period'),
+    var params,
         networkTimeline = document.querySelector('.network-timeline'),
-        timePeriod = networkTimeline.querySelector('li:last-child').cloneNode(true);
-    addTimePeriod.addEventListener('click', function() {
-      var clone = timePeriod.cloneNode(true),
-          count = networkTimeline.querySelectorAll('input.bandwidth').length,
-          time = clone.querySelector('.time'),
-          bandwidth = clone.querySelector('input.bandwidth');
+        timePeriod = networkTimeline.querySelector('li:last-child').cloneNode(true),
+        appendTimePeriod = function() {
+          var clone = timePeriod.cloneNode(true),
+              count = networkTimeline.querySelectorAll('input.bandwidth').length,
+              time = clone.querySelector('.time'),
+              bandwidth = clone.querySelector('input.bandwidth');
 
-      time.name = 'time' + count;
-      bandwidth.name = 'bandwidth' + count;
-      networkTimeline.appendChild(clone);
+          time.name = 'time' + count;
+          bandwidth.name = 'bandwidth' + count;
+          networkTimeline.appendChild(clone);
+        };
+    document.querySelector('.add-time-period')
+      .addEventListener('click', appendTimePeriod);
+
+    // apply any simulation parameters that were set in the fragment identifier
+    if (!window.location.hash) {
+      return;
+    }
+
+    // time periods are specified as t<seconds>=<bitrate>
+    // e.g. #t15=450560&t150=65530
+    params = window.location.hash.substring(1)
+      .split('&')
+      .map(function(param) {
+        return ((/t(\d+)=(\d+)/i).exec(param) || [])
+          .map(window.parseFloat).slice(1);
+      }).filter(function(pair) {
+        return pair.length === 2;
+      });
+
+    networkTimeline.innerHTML = '';
+    params.forEach(function(param) {
+      appendTimePeriod();
+      networkTimeline.querySelector('li:last-child .time').value = param[0];
+      networkTimeline.querySelector('li:last-child input.bandwidth').value = param[1];
     });
   })();
 
@@ -241,6 +266,11 @@
         // restore the environment
         clock.restore();
         fakeXhr.restore();
+
+        // update the fragment identifier so this scenario can be re-run easily
+        window.location.hash = '#' + options.bandwidths.map(function(interval) {
+          return 't' + interval.time + '=' + interval.bandwidth;
+        }).join('&');
 
         done(null, results);
       }, 0);
