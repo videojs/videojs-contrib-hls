@@ -28,6 +28,7 @@ var
   oldSetTimeout,
   oldSourceBuffer,
   oldFlashSupported,
+  oldNativeHlsSupport,
   requests,
   xhr,
 
@@ -39,7 +40,6 @@ var
       flash: {
         swf: ''
       },
-      techOrder: ['hls'],
       hls: options || {}
     });
 
@@ -125,6 +125,8 @@ module('HLS', {
     oldSegmentParser = videojs.Hls.SegmentParser;
     oldSetTimeout = window.setTimeout;
 
+    oldNativeHlsSupport = videojs.Hls.supportsNativeHls;
+
     // fake XHRs
     xhr = sinon.useFakeXMLHttpRequest();
     requests = [];
@@ -141,6 +143,7 @@ module('HLS', {
     videojs.Flash.isSupported = oldFlashSupported;
     videojs.MediaSource.open = oldMediaSourceOpen;
     videojs.Hls.SegmentParser = oldSegmentParser;
+    videojs.Hls.supportsNativeHls = oldNativeHlsSupport;
     videojs.SourceBuffer = oldSourceBuffer;
     window.setTimeout = oldSetTimeout;
     xhr.restore();
@@ -1205,6 +1208,23 @@ test('only supports HLS MIME types', function() {
   ok(!videojs.Hls.canPlaySource({
     type: 'video/x-flv'
   }), 'does not support flv');
+});
+
+test('adds Hls to the default tech order', function() {
+  strictEqual(videojs.options.techOrder[0], 'hls', 'first entry is Hls');
+});
+
+test('has no effect if native HLS is available', function() {
+  var player;
+  videojs.Hls.supportsNativeHls = true;
+  player = createPlayer();
+  player.src({
+    src: 'http://example.com/manifest/master.m3u8',
+    type: 'application/x-mpegURL'
+  });
+
+  ok(!player.hls, 'did not load hls tech');
+  player.dispose();
 });
 
 })(window, window.videojs);
