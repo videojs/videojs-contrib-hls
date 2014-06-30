@@ -595,6 +595,26 @@ videojs.Hls = videojs.Flash.extend({
   }
 });
 
+/**
+ * Whether the browser has built-in HLS support.
+ */
+videojs.Hls.supportsNativeHls = (function() {
+  var
+    video = document.createElement('video'),
+    xMpegUrl,
+    vndMpeg;
+
+  // native HLS is definitely not supported if HTML5 video isn't
+  if (!videojs.Html5.isSupported()) {
+    return false;
+  }
+
+  xMpegUrl = video.canPlayType('application/x-mpegURL');
+  vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
+  return (/probably|maybe/).test(xMpegUrl) ||
+    (/probably|maybe/).test(vndMpeg);
+})();
+
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
 
@@ -628,7 +648,9 @@ videojs.Hls.prototype.duration = function() {
 };
 
 videojs.Hls.isSupported = function() {
-  return videojs.Flash.isSupported() && videojs.MediaSource;
+  return !videojs.Hls.supportsNativeHls &&
+    videojs.Flash.isSupported() &&
+    videojs.MediaSource;
 };
 
 videojs.Hls.canPlaySource = function(srcObj) {
@@ -757,6 +779,6 @@ resolveUrl = videojs.Hls.resolveUrl = function(basePath, path) {
 };
 
 // Add HLS to the standard tech order
-videojs.options.techOrder.push('hls');
+videojs.options.techOrder.unshift('hls');
 
 })(window, window.videojs, document);
