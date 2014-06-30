@@ -10,9 +10,6 @@
       player,
       runButton,
       parameters,
-      addTimePeriod,
-      networkTimeline,
-      timePeriod,
       timeline,
 
       displayTimeline;
@@ -31,23 +28,46 @@
   };
 
   // a dynamic number of time-bandwidth pairs may be defined to drive the simulation
-  addTimePeriod = document.querySelector('.add-time-period');
-  networkTimeline = document.querySelector('.network-timeline');
-  timePeriod = networkTimeline.cloneNode(true);
-  addTimePeriod.addEventListener('click', function() {
-    var clone = timePeriod.cloneNode(true),
-        fragment = document.createDocumentFragment(),
-        count = networkTimeline.querySelectorAll('input.bandwidth').length,
-        time = clone.querySelector('.time'),
-        bandwidth = clone.querySelector('input.bandwidth');
+  (function() {
+    var params,
+        networkTimeline = document.querySelector('.network-timeline'),
+        timePeriod = networkTimeline.querySelector('li:last-child').cloneNode(true),
+        appendTimePeriod = function() {
+          var clone = timePeriod.cloneNode(true),
+              count = networkTimeline.querySelectorAll('input.bandwidth').length,
+              time = clone.querySelector('.time'),
+              bandwidth = clone.querySelector('input.bandwidth');
 
-    time.name = 'time' + count;
-    bandwidth.name = 'bandwidth' + count;
-    while (clone.childNodes.length) {
-      fragment.appendChild(clone.childNodes[0]);
+          time.name = 'time' + count;
+          bandwidth.name = 'bandwidth' + count;
+          networkTimeline.appendChild(clone);
+        };
+    document.querySelector('.add-time-period')
+      .addEventListener('click', appendTimePeriod);
+
+    // apply any simulation parameters that were set in the fragment identifier
+    if (!window.location.hash) {
+      return;
     }
-    networkTimeline.appendChild(fragment);
-  });
+
+    // time periods are specified as t<seconds>=<bitrate>
+    // e.g. #t15=450560&t150=65530
+    params = window.location.hash.substring(1)
+      .split('&')
+      .map(function(param) {
+        return ((/t(\d+)=(\d+)/i).exec(param) || [])
+          .map(window.parseFloat).slice(1);
+      }).filter(function(pair) {
+        return pair.length === 2;
+      });
+
+    networkTimeline.innerHTML = '';
+    params.forEach(function(param) {
+      appendTimePeriod();
+      networkTimeline.querySelector('li:last-child .time').value = param[0];
+      networkTimeline.querySelector('li:last-child input.bandwidth').value = param[1];
+    });
+  })();
 
   // collect the simulation parameters
   parameters = function() {
@@ -143,7 +163,7 @@
             buffered = 0,
             currentTime = 0;
 
-        // mock out buffered and currentTime
+        // simulate buffered and currentTime during playback
         player.buffered = function() {
           return videojs.createTimeRange(0, currentTime + buffered);
         };
@@ -191,10 +211,6 @@
               // segment response headers arrive after the propogation delay
               setTimeout(function() {
                 var arrival = Math.ceil(+new Date() * 0.001);
-                results.playlists.push({
-                  time: arrival,
-                  bitrate: +request.url.match(/(\d+)-\d+$/)[1]
-                });
                 request.setResponseHeaders({
                   'Content-Type': 'video/mp2t'
                 });
@@ -204,12 +220,23 @@
                   if (remaining - value.bandwidth <= 0) {
                     // send the response body once all bytes have been delivered
                     setTimeout(function() {
-                      buffered += segmentDuration;
+                      var time = Math.ceil(+new Date() * 0.001);
+                      if (request.aborted) {
+                        return;
+                      }
                       request.status = 200;
                       request.response = new Uint8Array(segmentSize * 0.125);
                       request.setResponseBody('');
+
+                      results.playlists.push({
+                        time: time,
+                        bitrate: +request.url.match(/(\d+)-\d+$/)[1]
+                      });
+                      // update the buffered value
+                      buffered += segmentDuration;
+                      results.buffered[results.buffered.length - 1].buffered = buffered;
                       results.effectiveBandwidth.push({
-                        time: Math.ceil(+new Date() * 0.001),
+                        time: time,
                         bandwidth: player.hls.bandwidth
                       });
                     }, ((remaining / value.bandwidth) + i) * 1000);
@@ -239,6 +266,11 @@
         // restore the environment
         clock.restore();
         fakeXhr.restore();
+
+        // update the fragment identifier so this scenario can be re-run easily
+        window.location.hash = '#' + options.bandwidths.map(function(interval) {
+          return 't' + interval.time + '=' + interval.bandwidth;
+        }).join('&');
 
         done(null, results);
       }, 0);
@@ -303,7 +335,9 @@
       }));
       y.domain([0, Math.max(d3.max(data.bandwidth, function(data) {
         return data.bandwidth;
-      }), d3.max(data.options.playlists))]);
+      }), d3.max(data.options.playlists), d3.max(data.playlists, function(data) {
+        return data.bitrate;
+      }))]);
 
       // time axis
       svg.selectAll('.axis').remove();
@@ -324,6 +358,7 @@
         .text('Bitrate (kb/s)');
 
       // playlist bitrate lines
+      svg.selectAll('.line.bitrate').remove();
       svg.selectAll('.line.bitrate')
         .data(data.options.playlists)
       .enter().append('path')
@@ -368,6 +403,40 @@
         .attr('cy', function(playlist) {
           return y(playlist.bitrate);
         });
+
+      // highlight intervals when the buffer is empty
+      svg.selectAll('.buffer-empty').remove();
+      svg.selectAll('.buffer-empty')
+        .data(data.buffered.reduce(function(result, sample) {
+          var last = result[result.length - 1];
+          if (sample.buffered === 0) {
+            if (last && sample.time === last.end + 1) {
+              // add this sample to the interval we're accumulating
+              return result.slice(0, result.length - 1).concat({
+                start: last.start,
+                end: sample.time
+              });
+            } else {
+              // this sample starts a new interval
+              return result.concat({
+                start: sample.time,
+                end: sample.time
+              });
+            }
+          }
+          // filter out time periods where the buffer isn't empty
+          return result;
+        }, []))
+        .enter().append('rect')
+        .attr('class', 'buffer-empty')
+        .attr('x', function(data) {
+          return x(data.start);
+        })
+        .attr('width', function(data) {
+          return x(1 + data.end - data.start);
+        })
+        .attr('y', 0)
+        .attr('height', y(height));
     };
   })();
 
