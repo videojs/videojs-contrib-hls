@@ -41,13 +41,13 @@ hls.FlvTag = function(type, extraData) {
     // corresponding writes faster because we don't have to loop over the
     // characters
     // re-test with test/perf.html if you're planning on changing this
-    for (i in 'width') {
+    for (i = 0; i < 'width'.length; i++) {
       widthBytes[i] = 'width'.charCodeAt(i);
     }
-    for (i in 'height') {
+    for (i = 0; i < 'height'.length; i++) {
       heightBytes[i] = 'height'.charCodeAt(i);
     }
-    for (i in 'videocodecid') {
+    for (i = 0; i < 'videocodecid'.length; i++) {
       videocodecidBytes[i] = 'videocodecid'.charCodeAt(i);
     }
 
@@ -199,7 +199,7 @@ hls.FlvTag = function(type, extraData) {
       this.bytes.set(videocodecidBytes, this.position);
       this.position += 12;
     } else {
-      for (i in key) {
+      for (i = 0; i < key.length; i++) {
         this.bytes[this.position] = key.charCodeAt(i);
         this.position++;
       }
@@ -223,7 +223,7 @@ hls.FlvTag = function(type, extraData) {
     prepareWrite(this, 2);
     this.view.setUint16(this.position, key.length);
     this.position += 2;
-    for (i in key) {
+    for (i = 0; i < key.length; i++) {
       console.assert(key.charCodeAt(i) < 255);
       prepareWrite(this, 1);
       this.bytes[this.position] = key.charCodeAt(i);
