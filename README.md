@@ -116,6 +116,11 @@ The number of bits downloaded per second in the last segment download.
 This value is used by the default implementation of `selectPlaylist` 
 to select an appropriate bitrate to play.
 
+#### player.hls.bytesReceived
+Type: `number`
+
+The total number of content bytes downloaded by the HLS tech.
+
 #### player.hls.selectPlaylist
 Type: `function`
 
@@ -135,6 +140,13 @@ Fired after the first media playlist is downloaded for a stream.
 Fired immediately after a new master or media playlist has been
 downloaded. By default, the tech only downloads playlists as they
 are needed.
+
+#### mediachange
+
+Fired when a new playlist becomes the active media playlist. Note that
+the actual rendering quality change does not occur simultaneously with
+this event; a new segment must be requested and the existing buffer
+depleted first.
 
 ### Testing
 

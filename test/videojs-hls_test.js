@@ -1227,4 +1227,55 @@ test('has no effect if native HLS is available', function() {
   player.dispose();
 });
 
+test('tracks the bytes downloaded', function() {
+  player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+
+  strictEqual(player.hls.bytesReceived, 0, 'no bytes received');
+
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+  // transmit some segment bytes
+  requests[0].response = new ArrayBuffer(17);
+  requests.shift().respond(200, null, '');
+
+  strictEqual(player.hls.bytesReceived, 17, 'tracked bytes received');
+
+  player.trigger('timeupdate');
+
+  // transmit some more
+  requests[0].response = new ArrayBuffer(5);
+  requests.shift().respond(200, null, '');
+
+  strictEqual(player.hls.bytesReceived, 22, 'tracked more bytes');
+});
+
+test('re-emits mediachange events', function() {
+  var mediaChanges = 0;
+  player.on('mediachange', function() {
+    mediaChanges++;
+  });
+
+  player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.mediaSource.trigger({
+    type: 'sourceopen'
+  });
+
+  player.hls.playlists.trigger('mediachange');
+  strictEqual(mediaChanges, 1, 'fired mediachange');
+});
+
 })(window, window.videojs);

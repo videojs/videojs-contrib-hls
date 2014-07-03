@@ -433,6 +433,7 @@ var
         // calculate the download bandwidth
         player.hls.segmentXhrTime = (+new Date()) - startTime;
         player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
+        player.hls.bytesReceived += this.response.byteLength;
 
         // transmux the segment data from MP2T to FLV
         segmentParser.parseSegmentBinaryData(new Uint8Array(this.response));
@@ -575,6 +576,9 @@ var
                                                     updatedPlaylist);
         oldMediaPlaylist = updatedPlaylist;
       });
+      player.hls.playlists.on('mediachange', function() {
+        player.trigger('mediachange');
+      });
     });
   };
 
@@ -591,6 +595,8 @@ videojs.Hls = videojs.Flash.extend({
     options.swf = settings.flash.swf;
     videojs.Flash.call(this, player, options, ready);
     options.source = source;
+    this.bytesReceived = 0;
+
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
   }
 });
