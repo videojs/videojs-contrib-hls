@@ -211,6 +211,10 @@ var
       if (lastSeekedTime) {
         return lastSeekedTime;
       }
+      // currentTime is zero while the tech is initializing
+      if (!this.el() || !this.el().vjs_getProperty) {
+        return 0;
+      }
       return this.el().vjs_getProperty('currentTime');
     };
 
@@ -640,6 +644,11 @@ videojs.Hls.prototype.src = function(src) {
     this.mediaSource = mediaSource;
     initSource(player, mediaSource, src);
     this.player().ready(function() {
+      // do nothing if the tech has been disposed already
+      // this can occur if someone sets the src in player.ready(), for instance
+      if (!self.el()) {
+        return;
+      }
       self.el().vjs_src(source.src);
     });
   }
