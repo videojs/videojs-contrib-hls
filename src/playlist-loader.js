@@ -131,6 +131,7 @@
        * object to switch to
        */
       loader.media = function(playlist) {
+        var mediaChange = false;
         // getter
         if (!playlist) {
           return media;
@@ -150,19 +151,27 @@
           playlist = loader.master.playlists[playlist];
         }
 
+        mediaChange = playlist.uri !== media.uri;
+
         // switch to fully loaded playlists immediately
         if (loader.master.playlists[playlist.uri].endList) {
+          // abort outstanding playlist requests
           if (request) {
             request.abort();
             request = null;
           }
           loader.state = 'HAVE_METADATA';
           media = playlist;
+
+          // trigger media change if the active media has been updated
+          if (mediaChange) {
+            loader.trigger('mediachange');
+          }
           return;
         }
 
         // switching to the active playlist is a no-op
-        if (playlist.uri === media.uri) {
+        if (!mediaChange) {
           return;
         }
 
@@ -185,6 +194,7 @@
           withCredentials: withCredentials
         }, function(error) {
           haveMetadata(error, this, playlist.uri);
+          loader.trigger('mediachange');
         });
       };
 

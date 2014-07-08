@@ -510,4 +510,45 @@
     strictEqual(errors, 1, 'fired one error');
     strictEqual(loader.error.code, 2, 'fired a network error');
   });
+
+  test('triggers an event when the active media changes', function() {
+    var
+      loader = new videojs.Hls.PlaylistLoader('master.m3u8'),
+      mediaChanges = 0;
+    loader.on('mediachange', function() {
+      mediaChanges++;
+    });
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                             '#EXTINF:10,\n' +
+                             'low-0.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+    strictEqual(mediaChanges, 0, 'initial selection is not a media change');
+
+    loader.media('high.m3u8');
+    strictEqual(mediaChanges, 0, 'mediachange does not fire immediately');
+
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                             '#EXTINF:10,\n' +
+                             'high-0.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+    strictEqual(mediaChanges, 1, 'fired a mediachange');
+
+    // switch back to an already loaded playlist
+    loader.media('low.m3u8');
+    strictEqual(mediaChanges, 2, 'fired a mediachange');
+
+    // trigger a no-op switch
+    loader.media('low.m3u8');
+    strictEqual(mediaChanges, 2, 'ignored a no-op media change');
+  });
 })(window);
