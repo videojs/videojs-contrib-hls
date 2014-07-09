@@ -289,10 +289,10 @@ hls.FlvTag = function(type, extraData) {
     this.bytes[ 2] = (len & 0x0000FF00) >>>  8;
     this.bytes[ 3] = (len & 0x000000FF) >>>  0;
     // write the Timestamp
-    this.bytes[ 4] = (this.pts & 0x00FF0000) >>> 16;
-    this.bytes[ 5] = (this.pts & 0x0000FF00) >>>  8;
-    this.bytes[ 6] = (this.pts & 0x000000FF) >>>  0;
-    this.bytes[ 7] = (this.pts & 0xFF000000) >>> 24;
+    this.bytes[ 4] = (this.dts & 0x00FF0000) >>> 16;
+    this.bytes[ 5] = (this.dts & 0x0000FF00) >>>  8;
+    this.bytes[ 6] = (this.dts & 0x000000FF) >>>  0;
+    this.bytes[ 7] = (this.dts & 0xFF000000) >>> 24;
     // write the StreamID
     this.bytes[ 8] = 0;
     this.bytes[ 9] = 0;
