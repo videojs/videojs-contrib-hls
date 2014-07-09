@@ -1278,4 +1278,28 @@ test('re-emits mediachange events', function() {
   strictEqual(mediaChanges, 1, 'fired mediachange');
 });
 
+test('can be disposed before finishing initialization', function() {
+  var player = createPlayer(), readyHandlers = [];
+  player.ready = function(callback) {
+    readyHandlers.push(callback);
+  };
+  player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.src({
+    src: 'http://example.com/media.mp4',
+    type: 'video/mp4'
+  });
+  ok(readyHandlers.length > 0, 'registered a ready handler');
+  try {
+    while (readyHandlers.length) {
+      readyHandlers.shift()();
+    }
+    ok(true, 'did not throw an exception');
+  } catch (e) {
+    ok(false, 'threw an exception');
+  }
+});
+
 })(window, window.videojs);
