@@ -38,7 +38,8 @@
         headBytes = new Uint8Array(3 + 1 + 1 + 4),
         head = new DataView(headBytes.buffer),
         metadata,
-        result;
+        result,
+        metadataLength;
 
       // default arguments
       duration = duration || 0;
@@ -73,9 +74,10 @@
       metadata = new FlvTag(FlvTag.METADATA_TAG);
       metadata.pts = metadata.dts = 0;
       metadata.writeMetaDataDouble("duration", duration);
-      result = new Uint8Array(headBytes.byteLength + metadata.byteLength);
-      result.set(head);
-      result.set(head.bytesLength, metadata.finalize());
+      metadataLength = metadata.finalize().length;
+      result = new Uint8Array(headBytes.byteLength + metadataLength);
+      result.set(headBytes);
+      result.set(head.byteLength, metadataLength);
 
       return result;
     };
