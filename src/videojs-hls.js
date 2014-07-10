@@ -221,7 +221,7 @@ var
     player.hls.setCurrentTime = function(currentTime) {
       if (!(this.playlists && this.playlists.media())) {
         // return immediately if the metadata is not ready yet
-        return 0;
+        return;
       }
 
       // save the seek target so currentTime can report it correctly
@@ -527,7 +527,7 @@ var
         // the queue gives control back to the browser between tags
         // so that large segments don't cause a "hiccup" in playback
 
-        player.hls.sourceBuffer.appendBuffer(tags[i].bytes, player);
+        player.hls.sourceBuffer.appendBuffer(tags[i].bytes);
       }
 
       // we're done processing this segment
@@ -557,7 +557,7 @@ var
         // periodically check if new data needs to be downloaded or
         // buffered data should be appended to the source buffer
         fillBuffer();
-        player.on('timeupdate', fillBuffer);
+        player.on('timeupdate', function(){ fillBuffer(); });
         player.on('timeupdate', drainBuffer);
         player.on('waiting', drainBuffer);
 
@@ -665,7 +665,7 @@ videojs.Hls.prototype.duration = function() {
 videojs.Hls.isSupported = function() {
   return !videojs.Hls.supportsNativeHls &&
     videojs.Flash.isSupported() &&
-    videojs.MediaSource;
+    !!videojs.MediaSource;
 };
 
 videojs.Hls.canPlaySource = function(srcObj) {
