@@ -137,7 +137,7 @@
         tagType: 'inf'
       };
       if (match[1]) {
-        event.duration = parseFloat(match[1], 10);
+        event.duration = parseFloat(match[1]);
       }
       if (match[2]) {
         event.title = match[2];
