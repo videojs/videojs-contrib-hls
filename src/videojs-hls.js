@@ -721,7 +721,7 @@ xhr = videojs.Hls.xhr = function(url, callback) {
     } else {
       // polyfill XHR2 by aborting after the timeout
       abortTimeout = window.setTimeout(function() {
-        if (request.readystate !== 4) {
+        if (request.readyState !== 4) {
           request.timedout = true;
           request.abort();
         }
