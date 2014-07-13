@@ -55,6 +55,13 @@ var
 
     return player;
   },
+  openMediaSource = function(player) {
+    player.hls.mediaSource.trigger({
+      type: 'sourceopen'
+    });
+    // endOfStream triggers an exception if flash isn't available
+    player.hls.mediaSource.endOfStream = function() {};
+  },
   standardXHRResponse = function(request) {
     if (!request.url) {
       return;
@@ -160,9 +167,7 @@ test('starts playing if autoplay is specified', function() {
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   strictEqual(1, plays, 'play was called');
@@ -179,9 +184,7 @@ test('creates a PlaylistLoader on init', function() {
     src:'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   standardXHRResponse(requests[0]);
   ok(loadedmetadata, 'loadedmetadata fires');
   ok(player.hls.playlists.master, 'set the master playlist');
@@ -204,9 +207,7 @@ test('sets the duration if one is available on the playlist', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   strictEqual(calls, 1, 'duration is set');
@@ -226,9 +227,7 @@ test('calculates the duration if needed', function() {
     src: 'http://example.com/manifest/missingExtinf.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   strictEqual(durations.length, 1, 'duration is set');
@@ -245,9 +244,7 @@ test('starts downloading a segment on loadedmetadata', function() {
   player.buffered = function() {
     return videojs.createTimeRange(0, 0);
   };
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -263,9 +260,7 @@ test('recognizes absolute URIs and requests them unmodified', function() {
     src: 'manifest/absoluteUris.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -279,9 +274,7 @@ test('recognizes domain-relative URLs', function() {
     src: 'manifest/domainUris.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -297,9 +290,7 @@ test('re-initializes the tech for each source', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   firstPlaylists = player.hls.playlists;
   firstMSE = player.hls.mediaSource;
 
@@ -307,9 +298,7 @@ test('re-initializes the tech for each source', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   secondPlaylists = player.hls.playlists;
   secondMSE = player.hls.mediaSource;
 
@@ -326,9 +315,7 @@ test('triggers an error when a master playlist request errors', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   requests.pop().respond(500);
 
   ok(player.error(), 'an error is triggered');
@@ -341,9 +328,7 @@ test('downloads media playlists after loading the master', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -367,9 +352,7 @@ test('timeupdates do not check to fill the buffer until a media playlist is read
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   player.trigger('timeupdate');
 
   strictEqual(1, requests.length, 'one request was made');
@@ -381,9 +364,7 @@ test('calculates the bandwidth after downloading a segment', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -405,9 +386,7 @@ test('selects a playlist after segment downloads', function() {
     calls++;
     return player.hls.playlists.master.playlists[0];
   };
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -433,9 +412,7 @@ test('moves to the next segment if there is a network error', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -468,9 +445,7 @@ test('updates the duration after switching playlists', function() {
       calls++;
     }
   };
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -490,9 +465,7 @@ test('downloads additional playlists if required', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -531,9 +504,7 @@ test('selects a playlist below the current bandwidth', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
 
@@ -556,9 +527,7 @@ test('raises the minimum bitrate for a stream proportionially', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
 
@@ -581,9 +550,7 @@ test('uses the lowest bitrate if no other is suitable', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
 
@@ -605,9 +572,7 @@ test('selects the correct rendition by player dimensions', function() {
     type: 'application/vnd.apple.mpegurl'
   });
 
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
 
@@ -644,9 +609,7 @@ test('does not download the next segment if the buffer is full', function() {
   player.buffered = function() {
     return videojs.createTimeRange(0, currentTime + videojs.Hls.GOAL_BUFFER_LENGTH);
   };
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
 
@@ -660,9 +623,7 @@ test('downloads the next segment if the buffer is getting low', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -691,9 +652,7 @@ test('stops downloading segments at the end of the playlist', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   standardXHRResponse(requests[0]);
   requests = [];
   player.hls.mediaIndex = 4;
@@ -707,9 +666,7 @@ test('only makes one segment request at a time', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   standardXHRResponse(requests.pop());
   player.trigger('timeupdate');
 
@@ -723,9 +680,7 @@ test('cancels outstanding XHRs when seeking', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   standardXHRResponse(requests[0]);
   player.hls.media = {
     segments: [{
@@ -764,9 +719,7 @@ test('flushes the parser after each segment', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -794,9 +747,7 @@ test('drops tags before the target timestamp when seeking', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
 
@@ -836,9 +787,7 @@ test('calls abort() on the SourceBuffer before seeking', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -863,9 +812,7 @@ test('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   requests.pop().respond(404);
 
   equal(errorTriggered,
@@ -883,9 +830,7 @@ test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
     type: 'application/vnd.apple.mpegurl'
   });
 
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   requests[1].respond(404);
@@ -899,9 +844,7 @@ test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
     type: 'application/vnd.apple.mpegurl'
   });
 
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
   requests[1].respond(500);
@@ -914,9 +857,7 @@ test('duration is Infinity for live playlists', function() {
     src: 'http://example.com/manifest/missingEndlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   standardXHRResponse(requests[0]);
 
@@ -929,9 +870,7 @@ test('updates the media index when a playlist reloads', function() {
     src: 'http://example.com/live-updating.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   requests[0].respond(200, null,
                       '#EXTM3U\n' +
@@ -971,9 +910,7 @@ test('mediaIndex is zero before the first segment loads', function() {
     src: 'http://example.com/first-seg-load.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   strictEqual(player.hls.mediaIndex, 0, 'mediaIndex is zero');
 });
@@ -983,9 +920,7 @@ test('reloads out-of-date live playlists when switching variants', function() {
     src: 'http://example.com/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   player.hls.master = {
     playlists: [{
@@ -1026,9 +961,7 @@ test('if withCredentials option is used, withCredentials is set on the XHR objec
     src: 'http://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   ok(requests[0].withCredentials, "with credentials should be set to true if that option is passed in");
 });
 
@@ -1038,9 +971,7 @@ test('does not break if the playlist has no segments', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   try {
-    player.hls.mediaSource.trigger({
-      type: 'sourceopen'
-    });
+    openMediaSource(player);
     requests[0].respond(200, null,
                         '#EXTM3U\n' +
                         '#EXT-X-PLAYLIST-TYPE:VOD\n' +
@@ -1060,9 +991,7 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
     src: 'disc.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   player.currentTime = function() { return currentTime; };
   player.buffered = function() {
     return videojs.createTimeRange(0, bufferEnd);
@@ -1109,9 +1038,7 @@ test('clears the segment buffer on seek', function() {
     src: 'disc.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   oldCurrentTime = player.currentTime;
   player.currentTime = function(time) {
     if (time !== undefined) {
@@ -1158,9 +1085,7 @@ test('resets the switching algorithm if a request times out', function() {
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   standardXHRResponse(requests.shift()); // master
   standardXHRResponse(requests.shift()); // media.m3u8
   // simulate a segment timeout
@@ -1181,9 +1106,7 @@ test('disposes the playlist loader', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
   loaderDispose = player.hls.playlists.dispose;
   player.hls.playlists.dispose = function() {
     disposes++;
@@ -1232,9 +1155,7 @@ test('tracks the bytes downloaded', function() {
     src: 'http://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   strictEqual(player.hls.bytesReceived, 0, 'no bytes received');
 
@@ -1270,9 +1191,7 @@ test('re-emits mediachange events', function() {
     src: 'http://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  player.hls.mediaSource.trigger({
-    type: 'sourceopen'
-  });
+  openMediaSource(player);
 
   player.hls.playlists.trigger('mediachange');
   strictEqual(mediaChanges, 1, 'fired mediachange');
@@ -1300,6 +1219,29 @@ test('can be disposed before finishing initialization', function() {
   } catch (e) {
     ok(false, 'threw an exception');
   }
+});
+
+test('calls ended() on the media source at the end of a playlist', function() {
+  var endOfStreams = 0;
+  player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.hls.mediaSource.endOfStream = function() {
+    endOfStreams++;
+  };
+  // playlist response
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+  // segment response
+  requests[0].response = new ArrayBuffer(17);
+  requests.shift().respond(200, null, '');
+
+  strictEqual(endOfStreams, 1, 'ended media source');
 });
 
 })(window, window.videojs);

@@ -533,7 +533,9 @@ var
       // we're done processing this segment
       segmentBuffer.shift();
 
-      if (mediaIndex === playlist.segments.length) {
+      // transition the sourcebuffer to the ended state if we've hit the end of
+      // the playlist
+      if (mediaIndex + 1 === playlist.segments.length) {
         mediaSource.endOfStream();
       }
     };
