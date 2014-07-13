@@ -51,6 +51,7 @@ var
     tech.vjs_getProperty = function() {};
     tech.vjs_setProperty = function() {};
     tech.vjs_src = function() {};
+    tech.vjs_play = function() {};
     videojs.Flash.onReady(tech.id);
 
     return player;
@@ -1242,6 +1243,27 @@ test('calls ended() on the media source at the end of a playlist', function() {
   requests.shift().respond(200, null, '');
 
   strictEqual(endOfStreams, 1, 'ended media source');
+});
+
+test('calling play() at the end of a video resets the media index', function() {
+  player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+  standardXHRResponse(requests.shift());
+
+  strictEqual(player.hls.mediaIndex, 1, 'index is 1 after the first segment');
+  player.hls.ended = function() {
+    return true;
+  };
+  player.play();
+  strictEqual(player.hls.mediaIndex, 0, 'index is 1 after the first segment');
 });
 
 })(window, window.videojs);

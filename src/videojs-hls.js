@@ -604,6 +604,18 @@ videojs.Hls = videojs.Flash.extend({
     this.bytesReceived = 0;
 
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
+  },
+  /**
+   * Reset the mediaIndex if play() is called after the video has
+   * ended.
+   */
+  play: function() {
+    if (this.ended()) {
+      this.mediaIndex = 0;
+    }
+
+    // delegate back to the Flash implementation
+    return videojs.Flash.prototype.play.apply(this, arguments);
   }
 });
 
