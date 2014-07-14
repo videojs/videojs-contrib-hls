@@ -125,7 +125,9 @@ module('HLS', {
     oldSegmentParser = videojs.Hls.SegmentParser;
     oldSetTimeout = window.setTimeout;
 
+    // force the HLS tech to run
     oldNativeHlsSupport = videojs.Hls.supportsNativeHls;
+    videojs.Hls.supportsNativeHls = false;
 
     // fake XHRs
     xhr = sinon.useFakeXMLHttpRequest();

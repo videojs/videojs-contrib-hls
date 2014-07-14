@@ -11,8 +11,8 @@
   <script src="../node_modules/sinon/lib/sinon/util/fake_timers.js"></script>
 
   <!-- Load local QUnit. -->
-  <link rel="stylesheet" href="../libs/qunit/qunit.css" media="screen">
-  <script src="../libs/qunit/qunit.js"></script>
+  <link rel="stylesheet" href="../node_modules/qunitjs/qunit/qunit.css" media="screen">
+  <script src="../node_modules/qunitjs/qunit/qunit.js"></script>
 
   <!-- video.js -->
   <script src="../node_modules/video.js/dist/video-js/video.js"></script>
@@ -39,6 +39,9 @@
   <script src="tsSegment-bc.js"></script>
   <script src="../src/bin-utils.js"></script>
 
+  <!-- mp4 utilities -->
+  <script src="muxer/js/mp4-inspector.js"></script>
+
   <!-- Test cases -->
   <script>
   module('environment');
@@ -54,6 +57,7 @@
   <script src="flv-tag_test.js"></script>
   <script src="m3u8_test.js"></script>
   <script src="playlist-loader_test.js"></script>
+  <script src="mp4-inspector_test.js"></script>
 </head>
 <body>
   <div id="qunit"></div>
