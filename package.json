@@ -34,7 +34,7 @@
     "karma-safari-launcher": "~0.1.1",
     "karma-sauce-launcher": "~0.1.8",
     "sinon": "1.10.2",
-    "video.js": "git+https://github.com/dmlap/video-js.git#0.6.1-alpha"
+    "video.js": "4.6.4"
   },
   "dependencies": {
     "videojs-contrib-media-sources": "^0.3.0"
