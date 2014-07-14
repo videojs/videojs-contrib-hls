@@ -361,6 +361,9 @@ var
         segmentUri,
         startTime;
 
+      // offset can be an Event object.
+      offset = typeof offset === 'number'? offset : 0;
+
       // if there is a request already in flight, do nothing
       if (segmentXhr) {
         return;
@@ -557,7 +560,7 @@ var
         // periodically check if new data needs to be downloaded or
         // buffered data should be appended to the source buffer
         fillBuffer();
-        player.on('timeupdate', function(){ fillBuffer(); });
+        player.on('timeupdate', fillBuffer);
         player.on('timeupdate', drainBuffer);
         player.on('waiting', drainBuffer);
 
