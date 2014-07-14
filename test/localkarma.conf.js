@@ -58,7 +58,8 @@ module.exports = function(config) {
       '../tmp/expected.js',
       'tsSegment-bc.js',
       '../src/bin-utils.js',
-      '../test/*.js'
+      '../test/*.js',
+      '../test/muxer/js/mp4-inspector.js'
       ],
 
     plugins: [

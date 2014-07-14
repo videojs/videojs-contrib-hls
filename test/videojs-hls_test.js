@@ -212,7 +212,9 @@ module('HLS', {
     oldClearTimeout = window.clearTimeout;
     oldGlobalOptions = window.videojs.getGlobalOptions();
 
+    // force the HLS tech to run
     oldNativeHlsSupport = videojs.Hls.supportsNativeHls;
+    videojs.Hls.supportsNativeHls = false;
 
     oldDecrypt = videojs.Hls.Decrypter;
     videojs.Hls.Decrypter = function() {};
