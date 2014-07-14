@@ -361,8 +361,8 @@ var
         segmentUri,
         startTime;
 
-      // offset can be an Event object.
-      offset = typeof offset === 'number'? offset : 0;
+      // offset can be an Event object. But the following line triggers 12 Errors in the unit tests:
+      // offset = typeof offset === 'number'? offset : 0;
 
       // if there is a request already in flight, do nothing
       if (segmentXhr) {
