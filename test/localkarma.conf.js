@@ -43,6 +43,7 @@ module.exports = function(config) {
       '../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js',
       '../test/karma-qunit-shim.js',
       '../src/videojs-hls.js',
+      '../src/xhr.js',
       '../src/flv-tag.js',
       '../src/exp-golomb.js',
       '../src/h264-stream.js',
