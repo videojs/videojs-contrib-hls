@@ -221,7 +221,7 @@ var
     player.hls.setCurrentTime = function(currentTime) {
       if (!(this.playlists && this.playlists.media())) {
         // return immediately if the metadata is not ready yet
-        return 0;
+        return;
       }
 
       // save the seek target so currentTime can report it correctly
@@ -360,6 +360,9 @@ var
         segment,
         segmentUri,
         startTime;
+
+      // offset can be an Event object. But the following line triggers 12 Errors in the unit tests:
+      // offset = typeof offset === 'number'? offset : 0;
 
       // if there is a request already in flight, do nothing
       if (segmentXhr) {
@@ -527,7 +530,7 @@ var
         // the queue gives control back to the browser between tags
         // so that large segments don't cause a "hiccup" in playback
 
-        player.hls.sourceBuffer.appendBuffer(tags[i].bytes, player);
+        player.hls.sourceBuffer.appendBuffer(tags[i].bytes);
       }
 
       // we're done processing this segment
@@ -665,7 +668,7 @@ videojs.Hls.prototype.duration = function() {
 videojs.Hls.isSupported = function() {
   return !videojs.Hls.supportsNativeHls &&
     videojs.Flash.isSupported() &&
-    videojs.MediaSource;
+    !!videojs.MediaSource;
 };
 
 videojs.Hls.canPlaySource = function(srcObj) {

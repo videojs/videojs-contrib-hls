@@ -5,3 +5,4 @@ dist/*
 *.iml
 *.swp
 tmp/**
+.idea/
