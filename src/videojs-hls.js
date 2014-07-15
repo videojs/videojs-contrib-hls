@@ -10,67 +10,6 @@
 'use strict';
 
 var
-
-  // a fudge factor to apply to advertised playlist bitrates to account for
-  // temporary flucations in client bandwidth
-  bandwidthVariance = 1.1,
-
-  /**
-   * A comparator function to sort two playlist object by bandwidth.
-   * @param left {object} a media playlist object
-   * @param right {object} a media playlist object
-   * @return {number} Greater than zero if the bandwidth attribute of
-   * left is greater than the corresponding attribute of right. Less
-   * than zero if the bandwidth of right is greater than left and
-   * exactly zero if the two are equal.
-   */
-  playlistBandwidth = function(left, right) {
-    var leftBandwidth, rightBandwidth;
-    if (left.attributes && left.attributes.BANDWIDTH) {
-      leftBandwidth = left.attributes.BANDWIDTH;
-    }
-    leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
-    if (right.attributes && right.attributes.BANDWIDTH) {
-      rightBandwidth = right.attributes.BANDWIDTH;
-    }
-    rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
-
-    return leftBandwidth - rightBandwidth;
-  },
-
-  /**
-   * A comparator function to sort two playlist object by resolution (width).
-   * @param left {object} a media playlist object
-   * @param right {object} a media playlist object
-   * @return {number} Greater than zero if the resolution.width attribute of
-   * left is greater than the corresponding attribute of right. Less
-   * than zero if the resolution.width of right is greater than left and
-   * exactly zero if the two are equal.
-   */
-  playlistResolution = function(left, right) {
-    var leftWidth, rightWidth;
-
-    if (left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
-      leftWidth = left.attributes.RESOLUTION.width;
-    }
-
-    leftWidth = leftWidth || window.Number.MAX_VALUE;
-
-    if (right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
-      rightWidth = right.attributes.RESOLUTION.width;
-    }
-
-    rightWidth = rightWidth || window.Number.MAX_VALUE;
-
-    // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
-    // have the same media dimensions/ resolution
-    if (leftWidth === rightWidth && left.attributes.BANDWIDTH && right.attributes.BANDWIDTH) {
-      return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
-    } else {
-      return leftWidth - rightWidth;
-    }
-  },
-
   xhr,
 
   /**
@@ -206,7 +145,6 @@ var
       drainBuffer,
       updateDuration;
 
-
     player.hls.currentTime = function() {
       if (lastSeekedTime) {
         return lastSeekedTime;
@@ -266,6 +204,17 @@ var
      * @return the highest bitrate playlist less than the currently detected
      * bandwidth, accounting for some amount of bandwidth variance
      */
+
+    player.hls.selectPlaylist = function () {
+        var
+            self = this,
+            player = self.player(),
+            sortedPlaylists = self.playlists.master.playlists.slice(),
+            width = player.width(),
+            height = player.height();
+        return videojs.Hls.PlaylistSelector.selectPlaylist(sortedPlaylists, width, height, self.bandwidth);
+    };
+    /*
     player.hls.selectPlaylist = function () {
       var
         effectiveBitrate,
@@ -332,6 +281,7 @@ var
       // fallback chain of variants
       return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
     };
+    */
 
     /**
      * Abort all outstanding work and cleanup.
@@ -359,7 +309,8 @@ var
         bufferedTime = 0,
         segment,
         segmentUri,
-        startTime;
+        startTime,
+        playerSelector = videojs.Hls.PlaylistSelector;
 
       // if there is a request already in flight, do nothing
       if (segmentXhr) {
@@ -435,8 +386,13 @@ var
         }
 
         // calculate the download bandwidth
+        /*
         player.hls.segmentXhrTime = (+new Date()) - startTime;
         player.hls.bandwidth = (this.response.byteLength / player.hls.segmentXhrTime) * 8 * 1000;
+        player.hls.bytesReceived += this.response.byteLength;
+        */
+        player.hls.segmentXhrTime = playerSelector.elapsed();
+        player.hls.bandwidth = playerSelector.bandwidth;
         player.hls.bytesReceived += this.response.byteLength;
 
         // transmux the segment data from MP2T to FLV
@@ -691,7 +647,8 @@ xhr = videojs.Hls.xhr = function(url, callback) {
       timeout: 45 * 1000
     },
     request,
-    abortTimeout;
+    abortTimeout,
+    playlistSelector = videojs.Hls.PlaylistSelector;
 
   if (typeof callback !== 'function') {
     callback = function() {};
@@ -738,6 +695,9 @@ xhr = videojs.Hls.xhr = function(url, callback) {
     // clear outstanding timeouts
     window.clearTimeout(abortTimeout);
 
+    playlistSelector.onBytesTransferred(request.response ? request.response.byteLength : 0);
+    playlistSelector.onTransferEnd();
+
     // request timeout
     if (request.timedout) {
       return callback.call(this, 'timeout', url);
@@ -750,6 +710,13 @@ xhr = videojs.Hls.xhr = function(url, callback) {
 
     return callback.call(this, false, url);
   };
+
+  request.onprogress = function (ev) {
+    playlistSelector.onBytesTransferred(ev.loaded);
+  };
+
+  playlistSelector.onTransferStart();
+
   request.send(null);
   return request;
 };
