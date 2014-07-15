@@ -206,11 +206,12 @@ var
      */
 
     player.hls.selectPlaylist = function () {
-        var self = this;
-        var player = self.player();
-        var sortedPlaylists = self.playlists.master.playlists.slice();
-        var width = player.width();
-        var height = player.height();
+        var
+            self = this,
+            player = self.player(),
+            sortedPlaylists = self.playlists.master.playlists.slice(),
+            width = player.width(),
+            height = player.height();
         return videojs.Hls.PlaylistSelector.selectPlaylist(sortedPlaylists, width, height, self.bandwidth);
     };
     /*
