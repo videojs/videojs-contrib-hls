@@ -158,6 +158,19 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   });
 };
 
+/**
+ * Reset the mediaIndex if play() is called after the video has
+ * ended.
+ */
+videojs.Hls.prototype.play = function() {
+  if (this.ended()) {
+    this.mediaIndex = 0;
+  }
+
+  // delegate back to the Flash implementation
+  return videojs.Flash.prototype.play.apply(this, arguments);
+};
+
 videojs.Hls.prototype.duration = function() {
   var playlists = this.playlists;
   if (playlists) {
@@ -458,7 +471,9 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   // we're done processing this segment
   segmentBuffer.shift();
 
-  if (mediaIndex === playlist.segments.length) {
+  // transition the sourcebuffer to the ended state if we've hit the end of
+  // the playlist
+  if (mediaIndex + 1 === playlist.segments.length) {
     this.mediaSource.endOfStream();
   }
 };
