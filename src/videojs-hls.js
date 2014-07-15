@@ -9,196 +9,26 @@
 'use strict';
 
 var
-
   // a fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.1,
+  resolveUrl;
 
-  /**
-   * A comparator function to sort two playlist object by bandwidth.
-   * @param left {object} a media playlist object
-   * @param right {object} a media playlist object
-   * @return {number} Greater than zero if the bandwidth attribute of
-   * left is greater than the corresponding attribute of right. Less
-   * than zero if the bandwidth of right is greater than left and
-   * exactly zero if the two are equal.
-   */
-  playlistBandwidth = function(left, right) {
-    var leftBandwidth, rightBandwidth;
-    if (left.attributes && left.attributes.BANDWIDTH) {
-      leftBandwidth = left.attributes.BANDWIDTH;
-    }
-    leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
-    if (right.attributes && right.attributes.BANDWIDTH) {
-      rightBandwidth = right.attributes.BANDWIDTH;
-    }
-    rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
-
-    return leftBandwidth - rightBandwidth;
-  },
-
-  /**
-   * A comparator function to sort two playlist object by resolution (width).
-   * @param left {object} a media playlist object
-   * @param right {object} a media playlist object
-   * @return {number} Greater than zero if the resolution.width attribute of
-   * left is greater than the corresponding attribute of right. Less
-   * than zero if the resolution.width of right is greater than left and
-   * exactly zero if the two are equal.
-   */
-  playlistResolution = function(left, right) {
-    var leftWidth, rightWidth;
-
-    if (left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
-      leftWidth = left.attributes.RESOLUTION.width;
-    }
-
-    leftWidth = leftWidth || window.Number.MAX_VALUE;
-
-    if (right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
-      rightWidth = right.attributes.RESOLUTION.width;
-    }
-
-    rightWidth = rightWidth || window.Number.MAX_VALUE;
-
-    // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
-    // have the same media dimensions/ resolution
-    if (leftWidth === rightWidth && left.attributes.BANDWIDTH && right.attributes.BANDWIDTH) {
-      return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
-    } else {
-      return leftWidth - rightWidth;
-    }
-  },
-
-  /**
-   * TODO - Document this great feature.
-   *
-   * @param playlist
-   * @param time
-   * @returns int
-   */
-  getMediaIndexByTime = function(playlist, time) {
-    var index, counter, timeRanges, currentSegmentRange;
-
-    timeRanges = [];
-    for (index = 0; index < playlist.segments.length; index++) {
-      currentSegmentRange = {};
-      currentSegmentRange.start = (index === 0) ? 0 : timeRanges[index - 1].end;
-      currentSegmentRange.end = currentSegmentRange.start + playlist.segments[index].duration;
-      timeRanges.push(currentSegmentRange);
-    }
-
-    for (counter = 0; counter < timeRanges.length; counter++) {
-      if (time >= timeRanges[counter].start && time < timeRanges[counter].end) {
-        return counter;
-      }
-    }
-
-    return -1;
-
-  },
-
-  /**
-   * Determine the media index in one playlist that corresponds to a
-   * specified media index in another. This function can be used to
-   * calculate a new segment position when a playlist is reloaded or a
-   * variant playlist is becoming active.
-   * @param mediaIndex {number} the index into the original playlist
-   * to translate
-   * @param original {object} the playlist to translate the media
-   * index from
-   * @param update {object} the playlist to translate the media index
-   * to
-   * @param {number} the corresponding media index in the updated
-   * playlist
-   */
-  translateMediaIndex = function(mediaIndex, original, update) {
+videojs.Hls = videojs.Flash.extend({
+  init: function(player, options, ready) {
     var
-      i,
-      originalSegment;
+      source = options.source,
+      settings = player.options();
 
-    // no segments have been loaded from the original playlist
-    if (mediaIndex === 0) {
-      return 0;
-    }
-    if (!(update && update.segments)) {
-      // let the media index be zero when there are no segments defined
-      return 0;
-    }
+    player.hls = this;
+    delete options.source;
+    options.swf = settings.flash.swf;
+    videojs.Flash.call(this, player, options, ready);
+    options.source = source;
+    this.bytesReceived = 0;
 
-    // try to sync based on URI
-    i = update.segments.length;
-    originalSegment = original.segments[mediaIndex - 1];
-    while (i--) {
-      if (originalSegment.uri === update.segments[i].uri) {
-        return i + 1;
-      }
-    }
-
-    // sync on media sequence
-    return (original.mediaSequence + mediaIndex) - update.mediaSequence;
-  },
-
-  /**
-   * Calculate the duration of a playlist from a given start index to a given
-   * end index.
-   * @param playlist {object} a media playlist object
-   * @param startIndex {number} an inclusive lower boundary for the playlist.
-   * Defaults to 0.
-   * @param endIndex {number} an exclusive upper boundary for the playlist.
-   * Defaults to playlist length.
-   * @return {number} the duration between the start index and end index.
-   */
-  duration = function(playlist, startIndex, endIndex) {
-    var dur = 0,
-        segment,
-        i;
-
-    startIndex = startIndex || 0;
-    endIndex = endIndex !== undefined ? endIndex : (playlist.segments || []).length;
-    i = endIndex - 1;
-
-    for (; i >= startIndex; i--) {
-      segment = playlist.segments[i];
-      dur += segment.duration || playlist.targetDuration || 0;
-    }
-
-    return dur;
-  },
-
-  /**
-   * Calculate the total duration for a playlist based on segment metadata.
-   * @param playlist {object} a media playlist object
-   * @return {number} the currently known duration, in seconds
-   */
-  totalDuration = function(playlist) {
-    if (!playlist) {
-      return 0;
-    }
-
-    // if present, use the duration specified in the playlist
-    if (playlist.totalDuration) {
-      return playlist.totalDuration;
-    }
-
-    // duration should be Infinity for live playlists
-    if (!playlist.endList) {
-      return window.Infinity;
-    }
-
-    return duration(playlist);
-  },
-
-  resolveUrl,
-
-  initSource = function(player) {
-    var
-      updateDuration;
-
-    this.segmentBuffer_ = [];
-    this.segmentParser_ = new videojs.Hls.SegmentParser();
-
-    player.hls.currentTime = function() {
+    // TODO: After video.js#1347 is pulled in move these to the prototype
+    this.currentTime = function() {
       if (this.lastSeekedTime_) {
         return this.lastSeekedTime_;
       }
@@ -208,8 +38,7 @@ var
       }
       return this.el().vjs_getProperty('currentTime');
     };
-
-    player.hls.setCurrentTime = function(currentTime) {
+    this.setCurrentTime = function(currentTime) {
       if (!(this.playlists && this.playlists.media())) {
         // return immediately if the metadata is not ready yet
         return 0;
@@ -220,8 +49,7 @@ var
       this.lastSeekedTime_ = currentTime;
 
       // determine the requested segment
-      this.mediaIndex =
-          getMediaIndexByTime(this.playlists.media(), currentTime);
+      this.mediaIndex = videojs.Hls.getMediaIndexByTime(this.playlists.media(), currentTime);
 
       // abort any segments still being decoded
       this.sourceBuffer.abort();
@@ -238,180 +66,18 @@ var
       this.fillBuffer(currentTime * 1000);
     };
 
-    /**
-     * Update the player duration
-     */
-    updateDuration = function(playlist) {
-      var oldDuration = player.duration(),
-          newDuration = totalDuration(playlist);
-
-      // if the duration has changed, invalidate the cached value
-      if (oldDuration !== newDuration) {
-        player.trigger('durationchange');
-      }
-    };
-
-    /**
-     * Chooses the appropriate media playlist based on the current
-     * bandwidth estimate and the player size.
-     * @return the highest bitrate playlist less than the currently detected
-     * bandwidth, accounting for some amount of bandwidth variance
-     */
-    player.hls.selectPlaylist = function () {
-      var
-        effectiveBitrate,
-        sortedPlaylists = player.hls.playlists.master.playlists.slice(),
-        bandwidthPlaylists = [],
-        i = sortedPlaylists.length,
-        variant,
-        bandwidthBestVariant,
-        resolutionBestVariant;
-
-      sortedPlaylists.sort(playlistBandwidth);
-
-      // filter out any variant that has greater effective bitrate
-      // than the current estimated bandwidth
-      while (i--) {
-        variant = sortedPlaylists[i];
-
-        // ignore playlists without bandwidth information
-        if (!variant.attributes || !variant.attributes.BANDWIDTH) {
-          continue;
-        }
-
-        effectiveBitrate = variant.attributes.BANDWIDTH * bandwidthVariance;
-
-        if (effectiveBitrate < player.hls.bandwidth) {
-          bandwidthPlaylists.push(variant);
-
-          // since the playlists are sorted in ascending order by
-          // bandwidth, the first viable variant is the best
-          if (!bandwidthBestVariant) {
-            bandwidthBestVariant = variant;
-          }
-        }
-      }
-
-      i = bandwidthPlaylists.length;
-
-      // sort variants by resolution
-      bandwidthPlaylists.sort(playlistResolution);
-
-      // iterate through the bandwidth-filtered playlists and find
-      // best rendition by player dimension
-      while (i--) {
-        variant = bandwidthPlaylists[i];
-
-        // ignore playlists without resolution information
-        if (!variant.attributes ||
-            !variant.attributes.RESOLUTION ||
-            !variant.attributes.RESOLUTION.width ||
-            !variant.attributes.RESOLUTION.height) {
-          continue;
-        }
-
-        // since the playlists are sorted, the first variant that has
-        // dimensions less than or equal to the player size is the
-        // best
-        if (variant.attributes.RESOLUTION.width <= player.width() &&
-            variant.attributes.RESOLUTION.height <= player.height()) {
-          resolutionBestVariant = variant;
-          break;
-        }
-      }
-
-      // fallback chain of variants
-      return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
-    };
-
-    /**
-     * Abort all outstanding work and cleanup.
-     */
-    player.hls.dispose = function() {
-      if (this.segmentXhr_) {
-        this.segmentXhr_.onreadystatechange = null;
-        this.segmentXhr_.abort();
-      }
-      if (this.playlists) {
-        this.playlists.dispose();
-      }
-      videojs.Flash.prototype.dispose.call(this);
-    };
-
-    // load the MediaSource into the player
-    this.mediaSource.addEventListener('sourceopen', videojs.bind(this, function() {
-      // construct the video data buffer and set the appropriate MIME type
-      var
-        player = this.player(),
-        sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"'),
-        oldMediaPlaylist;
-
-      this.sourceBuffer = sourceBuffer;
-      sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
-
-      this.mediaIndex = 0;
-      this.playlists =
-        new videojs.Hls.PlaylistLoader(this.src_, player.options().hls.withCredentials);
-      this.playlists.on('loadedmetadata', videojs.bind(this, function() {
-        oldMediaPlaylist = this.playlists.media();
-
-        // periodically check if new data needs to be downloaded or
-        // buffered data should be appended to the source buffer
-        this.fillBuffer();
-        player.on('timeupdate', videojs.bind(this, this.fillBuffer));
-        player.on('timeupdate', videojs.bind(this, this.drainBuffer));
-        player.on('waiting', videojs.bind(this, this.drainBuffer));
-
-        player.trigger('loadedmetadata');
-      }));
-      this.playlists.on('error', videojs.bind(this, function() {
-        player.error(this.playlists.error);
-      }));
-      this.playlists.on('loadedplaylist', videojs.bind(this, function() {
-        var updatedPlaylist = this.playlists.media();
-
-        if (!updatedPlaylist) {
-          // do nothing before an initial media playlist has been activated
-          return;
-        }
-
-        updateDuration(this.playlists.media());
-        this.mediaIndex = translateMediaIndex(this.mediaIndex,
-                                                    oldMediaPlaylist,
-                                                    updatedPlaylist);
-        oldMediaPlaylist = updatedPlaylist;
-      }));
-      this.playlists.on('mediachange', function() {
-        player.trigger('mediachange');
-      });
-    }));
-  };
-
-var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
-
-videojs.Hls = videojs.Flash.extend({
-  init: function(player, options, ready) {
-    var
-      source = options.source,
-      settings = player.options();
-
-    player.hls = this;
-    delete options.source;
-    options.swf = settings.flash.swf;
-    videojs.Flash.call(this, player, options, ready);
-    options.source = source;
-    this.bytesReceived = 0;
-
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
   }
 });
+
+// Add HLS to the standard tech order
+videojs.options.techOrder.unshift('hls');
 
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
 
 videojs.Hls.prototype.src = function(src) {
   var
-    player = this.player(),
     self = this,
     mediaSource,
     source;
@@ -425,7 +91,13 @@ videojs.Hls.prototype.src = function(src) {
       type: "video/flv"
     };
     this.mediaSource = mediaSource;
-    initSource.call(this, player);
+    
+    this.segmentBuffer_ = [];
+    this.segmentParser_ = new videojs.Hls.SegmentParser();
+
+    // load the MediaSource into the player
+    this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
+
     this.player().ready(function() {
       // do nothing if the tech has been disposed already
       // this can occur if someone sets the src in player.ready(), for instance
@@ -437,12 +109,163 @@ videojs.Hls.prototype.src = function(src) {
   }
 };
 
+videojs.Hls.prototype.handleSourceOpen = function() {
+  // construct the video data buffer and set the appropriate MIME type
+  var
+    player = this.player(),
+    settings = player.options().hls || {},
+    sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"'),
+    oldMediaPlaylist;
+
+  this.sourceBuffer = sourceBuffer;
+  sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
+
+  this.mediaIndex = 0;
+  this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
+
+  this.playlists.on('loadedmetadata', videojs.bind(this, function() {
+    oldMediaPlaylist = this.playlists.media();
+
+    // periodically check if new data needs to be downloaded or
+    // buffered data should be appended to the source buffer
+    this.fillBuffer();
+    player.on('timeupdate', videojs.bind(this, this.fillBuffer));
+    player.on('timeupdate', videojs.bind(this, this.drainBuffer));
+    player.on('waiting', videojs.bind(this, this.drainBuffer));
+
+    player.trigger('loadedmetadata');
+  }));
+
+  this.playlists.on('error', videojs.bind(this, function() {
+    player.error(this.playlists.error);
+  }));
+
+  this.playlists.on('loadedplaylist', videojs.bind(this, function() {
+    var updatedPlaylist = this.playlists.media();
+
+    if (!updatedPlaylist) {
+      // do nothing before an initial media playlist has been activated
+      return;
+    }
+
+    this.updateDuration(this.playlists.media());
+    this.mediaIndex = videojs.Hls.translateMediaIndex(this.mediaIndex, oldMediaPlaylist, updatedPlaylist);
+    oldMediaPlaylist = updatedPlaylist;
+  }));
+
+  this.playlists.on('mediachange', function() {
+    player.trigger('mediachange');
+  });
+};
+
 videojs.Hls.prototype.duration = function() {
   var playlists = this.playlists;
   if (playlists) {
-    return totalDuration(playlists.media());
+    return videojs.Hls.getPlaylistTotalDuration(playlists.media());
   }
   return 0;
+};
+
+/**
+ * Update the player duration
+ */
+videojs.Hls.prototype.updateDuration = function(playlist) {
+  var player = this.player(),
+      oldDuration = player.duration(),
+      newDuration = videojs.Hls.getPlaylistTotalDuration(playlist);
+
+  // if the duration has changed, invalidate the cached value
+  if (oldDuration !== newDuration) {
+    player.trigger('durationchange');
+  }
+};
+
+/**
+ * Abort all outstanding work and cleanup.
+ */
+videojs.Hls.prototype.dispose = function() {
+  if (this.segmentXhr_) {
+    this.segmentXhr_.onreadystatechange = null;
+    this.segmentXhr_.abort();
+  }
+  if (this.playlists) {
+    this.playlists.dispose();
+  }
+  videojs.Flash.prototype.dispose.call(this);
+};
+
+/**
+ * Chooses the appropriate media playlist based on the current
+ * bandwidth estimate and the player size.
+ * @return the highest bitrate playlist less than the currently detected
+ * bandwidth, accounting for some amount of bandwidth variance
+ */
+videojs.Hls.prototype.selectPlaylist = function () {
+  var
+    player = this.player(),
+    effectiveBitrate,
+    sortedPlaylists = this.playlists.master.playlists.slice(),
+    bandwidthPlaylists = [],
+    i = sortedPlaylists.length,
+    variant,
+    bandwidthBestVariant,
+    resolutionBestVariant;
+
+  sortedPlaylists.sort(videojs.Hls.comparePlaylistBandwidth);
+
+  // filter out any variant that has greater effective bitrate
+  // than the current estimated bandwidth
+  while (i--) {
+    variant = sortedPlaylists[i];
+
+    // ignore playlists without bandwidth information
+    if (!variant.attributes || !variant.attributes.BANDWIDTH) {
+      continue;
+    }
+
+    effectiveBitrate = variant.attributes.BANDWIDTH * bandwidthVariance;
+
+    if (effectiveBitrate < player.hls.bandwidth) {
+      bandwidthPlaylists.push(variant);
+
+      // since the playlists are sorted in ascending order by
+      // bandwidth, the first viable variant is the best
+      if (!bandwidthBestVariant) {
+        bandwidthBestVariant = variant;
+      }
+    }
+  }
+
+  i = bandwidthPlaylists.length;
+
+  // sort variants by resolution
+  bandwidthPlaylists.sort(videojs.Hls.comparePlaylistResolution);
+
+  // iterate through the bandwidth-filtered playlists and find
+  // best rendition by player dimension
+  while (i--) {
+    variant = bandwidthPlaylists[i];
+
+    // ignore playlists without resolution information
+    if (!variant.attributes ||
+        !variant.attributes.RESOLUTION ||
+        !variant.attributes.RESOLUTION.width ||
+        !variant.attributes.RESOLUTION.height) {
+      continue;
+    }
+
+    // since the playlists are sorted, the first variant that has
+    // dimensions less than or equal to the player size is the
+    // best
+    if (variant.attributes.RESOLUTION.width <= player.width() &&
+        variant.attributes.RESOLUTION.height <= player.height()) {
+      resolutionBestVariant = variant;
+      break;
+    }
+  }
+
+  // fallback chain of variants
+  return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
 };
 
 /**
@@ -455,6 +278,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   var
     self = this,
     player = this.player(),
+    settings = player.options().hls || {},
     buffered = player.buffered(),
     bufferedTime = 0,
     segment,
@@ -504,7 +328,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   this.segmentXhr_ = videojs.Hls.xhr({
     url: segmentUri,
     responseType: 'arraybuffer',
-    withCredentials: player.options().hls.withCredentials
+    withCredentials: settings.withCredentials
   }, function(error, url) {
     var tags;
 
@@ -591,7 +415,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   segment = playlist.segments[mediaIndex];
 
   event = event || {};
-  segmentOffset = duration(playlist, 0, mediaIndex) * 1000;
+  segmentOffset = videojs.Hls.getPlaylistDuration(playlist, 0, mediaIndex) * 1000;
 
   // abort() clears any data queued in the source buffer so wait
   // until it empties before calling it when a discontinuity is
@@ -639,7 +463,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   }
 };
 
-
 /**
  * Whether the browser has built-in HLS support.
  */
@@ -667,7 +490,182 @@ videojs.Hls.isSupported = function() {
 };
 
 videojs.Hls.canPlaySource = function(srcObj) {
+  var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
   return mpegurlRE.test(srcObj.type);
+};
+
+/**
+ * Calculate the duration of a playlist from a given start index to a given
+ * end index.
+ * @param playlist {object} a media playlist object
+ * @param startIndex {number} an inclusive lower boundary for the playlist.
+ * Defaults to 0.
+ * @param endIndex {number} an exclusive upper boundary for the playlist.
+ * Defaults to playlist length.
+ * @return {number} the duration between the start index and end index.
+ */
+videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
+  var dur = 0,
+      segment,
+      i;
+
+  startIndex = startIndex || 0;
+  endIndex = endIndex !== undefined ? endIndex : (playlist.segments || []).length;
+  i = endIndex - 1;
+
+  for (; i >= startIndex; i--) {
+    segment = playlist.segments[i];
+    dur += segment.duration || playlist.targetDuration || 0;
+  }
+
+  return dur;
+};
+
+/**
+ * Calculate the total duration for a playlist based on segment metadata.
+ * @param playlist {object} a media playlist object
+ * @return {number} the currently known duration, in seconds
+ */
+videojs.Hls.getPlaylistTotalDuration = function(playlist) {
+  if (!playlist) {
+    return 0;
+  }
+
+  // if present, use the duration specified in the playlist
+  if (playlist.totalDuration) {
+    return playlist.totalDuration;
+  }
+
+  // duration should be Infinity for live playlists
+  if (!playlist.endList) {
+    return window.Infinity;
+  }
+
+  return videojs.Hls.getPlaylistDuration(playlist);
+};
+
+/**
+ * Determine the media index in one playlist that corresponds to a
+ * specified media index in another. This function can be used to
+ * calculate a new segment position when a playlist is reloaded or a
+ * variant playlist is becoming active.
+ * @param mediaIndex {number} the index into the original playlist
+ * to translate
+ * @param original {object} the playlist to translate the media
+ * index from
+ * @param update {object} the playlist to translate the media index
+ * to
+ * @param {number} the corresponding media index in the updated
+ * playlist
+ */
+videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
+  var
+    i,
+    originalSegment;
+
+  // no segments have been loaded from the original playlist
+  if (mediaIndex === 0) {
+    return 0;
+  }
+  if (!(update && update.segments)) {
+    // let the media index be zero when there are no segments defined
+    return 0;
+  }
+
+  // try to sync based on URI
+  i = update.segments.length;
+  originalSegment = original.segments[mediaIndex - 1];
+  while (i--) {
+    if (originalSegment.uri === update.segments[i].uri) {
+      return i + 1;
+    }
+  }
+
+  // sync on media sequence
+  return (original.mediaSequence + mediaIndex) - update.mediaSequence;
+};
+
+/**
+ * TODO - Document this great feature.
+ *
+ * @param playlist
+ * @param time
+ * @returns int
+ */
+videojs.Hls.getMediaIndexByTime = function(playlist, time) {
+  var index, counter, timeRanges, currentSegmentRange;
+
+  timeRanges = [];
+  for (index = 0; index < playlist.segments.length; index++) {
+    currentSegmentRange = {};
+    currentSegmentRange.start = (index === 0) ? 0 : timeRanges[index - 1].end;
+    currentSegmentRange.end = currentSegmentRange.start + playlist.segments[index].duration;
+    timeRanges.push(currentSegmentRange);
+  }
+
+  for (counter = 0; counter < timeRanges.length; counter++) {
+    if (time >= timeRanges[counter].start && time < timeRanges[counter].end) {
+      return counter;
+    }
+  }
+
+  return -1;
+};
+
+/**
+ * A comparator function to sort two playlist object by bandwidth.
+ * @param left {object} a media playlist object
+ * @param right {object} a media playlist object
+ * @return {number} Greater than zero if the bandwidth attribute of
+ * left is greater than the corresponding attribute of right. Less
+ * than zero if the bandwidth of right is greater than left and
+ * exactly zero if the two are equal.
+ */
+videojs.Hls.comparePlaylistBandwidth = function(left, right) {
+  var leftBandwidth, rightBandwidth;
+  if (left.attributes && left.attributes.BANDWIDTH) {
+    leftBandwidth = left.attributes.BANDWIDTH;
+  }
+  leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
+  if (right.attributes && right.attributes.BANDWIDTH) {
+    rightBandwidth = right.attributes.BANDWIDTH;
+  }
+  rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
+
+  return leftBandwidth - rightBandwidth;
+};
+
+/**
+ * A comparator function to sort two playlist object by resolution (width).
+ * @param left {object} a media playlist object
+ * @param right {object} a media playlist object
+ * @return {number} Greater than zero if the resolution.width attribute of
+ * left is greater than the corresponding attribute of right. Less
+ * than zero if the resolution.width of right is greater than left and
+ * exactly zero if the two are equal.
+ */
+videojs.Hls.comparePlaylistResolution = function(left, right) {
+  var leftWidth, rightWidth;
+
+  if (left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
+    leftWidth = left.attributes.RESOLUTION.width;
+  }
+
+  leftWidth = leftWidth || window.Number.MAX_VALUE;
+
+  if (right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
+    rightWidth = right.attributes.RESOLUTION.width;
+  }
+
+  rightWidth = rightWidth || window.Number.MAX_VALUE;
+
+  // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
+  // have the same media dimensions/ resolution
+  if (leftWidth === rightWidth && left.attributes.BANDWIDTH && right.attributes.BANDWIDTH) {
+    return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
+  } else {
+    return leftWidth - rightWidth;
+  }
 };
 
 /**
@@ -708,8 +706,5 @@ resolveUrl = videojs.Hls.resolveUrl = function(basePath, path) {
   }
   return result;
 };
-
-// Add HLS to the standard tech order
-videojs.options.techOrder.unshift('hls');
 
 })(window, window.videojs, document);
