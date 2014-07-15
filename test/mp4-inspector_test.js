@@ -67,7 +67,55 @@ var
     0, 0, 0, 0,
     0, 0, 0, 0,
     0x40, 0, 0, 0
-  ];
+  ],
+
+  mvhd0 = box('mvhd',
+             0x00, // version 0
+             0x00, 0x00, 0x00, // flags
+             0x00, 0x00, 0x00, 0x01, // creation_time
+             0x00, 0x00, 0x00, 0x02, // modification_time
+             0x00, 0x00, 0x00, 0x3c, // timescale
+             0x00, 0x00, 0x02, 0x58, // 600 = 0x258 duration
+             0x00, 0x01, 0x00, 0x00, // 1.0 rate
+             0x01, 0x00, // 1.0 volume
+             0x00, 0x00, // reserved
+             0x00, 0x00, 0x00, 0x00, // reserved
+             0x00, 0x00, 0x00, 0x00, // reserved
+             unityMatrix,
+             0x00, 0x00, 0x00, 0x00,
+             0x00, 0x00, 0x00, 0x00,
+             0x00, 0x00, 0x00, 0x00,
+             0x00, 0x00, 0x00, 0x00,
+             0x00, 0x00, 0x00, 0x00,
+             0x00, 0x00, 0x00, 0x00, // pre_defined
+             0x00, 0x00, 0x00, 0x02),
+
+  tkhd0 = box('tkhd',
+              0x00, // version 0
+              0x00, 0x00, 0x00, // flags
+              0x00, 0x00, 0x00, 0x02, // creation_time
+              0x00, 0x00, 0x00, 0x03, // modification_time
+              0x00, 0x00, 0x00, 0x01, // track_ID
+              0x00, 0x00, 0x00, 0x00, // reserved
+              0x00, 0x00, 0x02, 0x58, // 600 = 0x258 duration
+              0x00, 0x00, 0x00, 0x00,
+              0x00, 0x00, 0x00, 0x00, // reserved
+              0x00, 0x00, // layer
+              0x00, 0x00, // alternate_group
+              0x00, 0x00, // non-audio track volume
+              0x00, 0x00, // reserved
+              unityMatrix,
+              0x00, 0x00, 0x01, 0x2c, // 300 = 0x12c width
+              0x00, 0x00, 0x00, 0x96), // 150 = 0x96 height
+  mdhd0 = box('mdhd',
+              0x00, // version 1
+              0x00, 0x00, 0x00, // flags
+              0x00, 0x00, 0x00, 0x02, // creation_time
+              0x00, 0x00, 0x00, 0x03, // modification_time
+              0x00, 0x00, 0x00, 0x3c, // timescale
+              0x00, 0x00, 0x02, 0x58, // 600 = 0x258 duration
+              0x15, 0xc7, // 'eng' language
+              0x00, 0x00);
 
 module('MP4 Inspector');
 
@@ -125,7 +173,7 @@ test('can parse an mdat', function() {
   deepEqual(videojs.inspectMp4(mdat), [{
       size: 12,
       type: 'mdat',
-      data: mdat.subarray(mdat.byteLength - 4)
+      byteLength: 4
     }], 'parsed an mdat');
 });
 
@@ -146,6 +194,56 @@ test('can parse a free or skip', function() {
       type: 'skip',
       data: skip.subarray(skip.byteLength - 4)
     }], 'parsed a skip');
+});
+
+test('can parse a version 0 mvhd', function() {
+  deepEqual(videojs.inspectMp4(new Uint8Array(mvhd0)), [{
+    type: 'mvhd',
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    creationTime: 1,
+    modificationTime: 2,
+    timescale: 60,
+    duration: 600,
+    rate: 1,
+    volume: 1,
+    matrix: new Uint32Array(unityMatrix),
+    size: 108,
+    nextTrackId: 2
+  }]);
+});
+
+test('can parse a version 0 tkhd', function() {
+  deepEqual(videojs.inspectMp4(new Uint8Array(tkhd0)), [{
+    type: 'tkhd',
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    creationTime: 2,
+    modificationTime: 3,
+    size: 92,
+    trackId: 1,
+    duration: 600,
+    layer: 0,
+    alternateGroup: 0,
+    volume: 0,
+    matrix: new Uint32Array(unityMatrix),
+    width: 300,
+    height: 150
+  }]);
+});
+
+test('can parse a version 0 mdhd', function() {
+  deepEqual(videojs.inspectMp4(new Uint8Array(mdhd0)), [{
+    type: 'mdhd',
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    creationTime: 2,
+    modificationTime: 3,
+    size: 32,
+    timescale: 60,
+    duration: 600,
+    language: 'eng'
+  }]);
 });
 
 test('can parse a moov', function() {
