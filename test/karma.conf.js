@@ -87,6 +87,7 @@ module.exports = function(config) {
       '../src/stream.js',
       '../src/m3u8/m3u8-parser.js',
       '../src/playlist-loader.js',
+      '../src/playlist-selector.js',
       '../tmp/manifests.js',
       '../tmp/expected.js',
       'tsSegment-bc.js',
