@@ -58,8 +58,8 @@
           <h2>Comparison</h2>
           <div class="result-wrapper">
             <h3>videojs-contrib-hls</h3>
-            <ol class="vjs-boxes">
-            </ol>
+            <pre class="vjs-boxes">
+            </pre>
           </div>
           <div class="result-wrapper">
             <h3>Working</h3>
@@ -104,6 +104,8 @@
       Hls: {}
     };
   </script>
+  <script src="../../src/stream.js"></script>
+  <script src="../../src/transmuxer.js"></script>
   <script src="js/mp4-inspector.js"></script>
 
   <script src="../../src/bin-utils.js"></script>
@@ -129,14 +131,20 @@
     original.addEventListener('change', function() {
       var reader = new FileReader();
       reader.addEventListener('loadend', function() {
+        var segment = new Uint8Array(reader.result),
+            transmuxer = new videojs.Hls.Transmuxer(),
+            hex = '';
 
-        var mp2t = new Uint8Array(reader.result);
+        transmuxer.push(segment);
 
         // clear old boxes info
-        vjsBoxes.innerHTML = '';
+        vjsBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(transmuxer.mp4), null, ' ');
 
         // write out the result
-        // vjsOutput.innerHTML = hex;
+        hex += '<pre>';
+        hex += videojs.Hls.utils.hexDump(transmuxer.mp4);
+        hex += '</pre>';
+        vjsOutput.innerHTML = hex;
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
@@ -144,13 +152,14 @@
     working.addEventListener('change', function() {
       var reader = new FileReader();
       reader.addEventListener('loadend', function() {
-        var hex = '<pre>',
+        var hex = '',
             bytes = new Uint8Array(reader.result);
 
         // clear old box info
         workingBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(bytes), null, ' ');
 
         // output the hex dump
+        hex += '<pre>';
         hex += videojs.Hls.utils.hexDump(bytes);
         hex += '</pre>';
         workingOutput.innerHTML = hex;

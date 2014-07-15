@@ -54,6 +54,7 @@ module.exports = function(config) {
       '../src/playlist.js',
       '../src/playlist-loader.js',
       '../src/decrypter.js',
+      '../src/transmuxer.js',
       '../tmp/manifests.js',
       '../tmp/expected.js',
       'tsSegment-bc.js',
