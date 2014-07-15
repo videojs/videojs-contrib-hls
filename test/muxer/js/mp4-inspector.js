@@ -71,9 +71,15 @@ var
 
       return result;
     },
+    mdat: function(data) {
+      return {
+        byteLength: data.byteLength
+      };
+    },
     mdhd: function(data) {
       var
         view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        i = 4,
         language,
         result = {
           version: view.getUint8(0),
@@ -81,14 +87,27 @@ var
           language: ''
         };
       if (result.version === 1) {
-        result.creationTime = view.getUint32(8); // truncating top 4 bytes
-        result.modificationTime = view.getUint32(16); // truncating top 4 bytes
-        result.timescale = view.getUint32(20);
-        result.duration = view.getUint32(28); // truncating top 4 bytes
+        i += 4;
+        result.creationTime = view.getUint32(i); // truncating top 4 bytes
+        i += 8;
+        result.modificationTime = view.getUint32(i); // truncating top 4 bytes
+        i += 4;
+        result.timescale = view.getUint32(i);
+        i += 8;
+        result.duration = view.getUint32(i); // truncating top 4 bytes
+      } else {
+        result.creationTime = view.getUint32(i);
+        i += 4;
+        result.modificationTime = view.getUint32(i);
+        i += 4;
+        result.timescale = view.getUint32(i);
+        i += 4;
+        result.duration = view.getUint32(i);
       }
+      i += 4;
       // language is stored as an ISO-639-2/T code in an array of three 5-bit fields
       // each field is the packed difference between its ASCII value and 0x60
-      language = view.getUint16(32);
+      language = view.getUint16(i);
       result.language += String.fromCharCode((language >> 10) + 0x60);
       result.language += String.fromCharCode(((language & 0x03c0) >> 5) + 0x60);
       result.language += String.fromCharCode((language & 0x1f) + 0x60);
@@ -113,21 +132,43 @@ var
     mvhd: function(data) {
       var
         view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        i = 4,
         result = {
           version: view.getUint8(0),
-          flags: new Uint8Array(data.subarray(1, 4)),
-          // convert fixed-point, base 16 back to a number
-          rate: view.getUint16(32) + (view.getUint16(34) / 16),
-          volume: view.getUint8(36) + (view.getUint8(37) / 8),
-          matrix: new Uint32Array(data.subarray(48, 84)),
-          nextTrackId: view.getUint32(108)
+          flags: new Uint8Array(data.subarray(1, 4))
         };
+
       if (result.version === 1) {
-        result.creationTime = view.getUint32(8); // truncating top 4 bytes
-        result.modificationTime = view.getUint32(16); // truncating top 4 bytes
-        result.timescale = view.getUint32(20);
-        result.duration = view.getUint32(28); // truncating top 4 bytes
+        i += 4;
+        result.creationTime = view.getUint32(i); // truncating top 4 bytes
+        i += 8;
+        result.modificationTime = view.getUint32(i); // truncating top 4 bytes
+        i += 4;
+        result.timescale = view.getUint32(i);
+        i += 8
+        result.duration = view.getUint32(i); // truncating top 4 bytes
+      } else {
+        result.creationTime = view.getUint32(i);
+        i += 4;
+        result.modificationTime = view.getUint32(i);
+        i += 4;
+        result.timescale = view.getUint32(i);
+        i += 4;
+        result.duration = view.getUint32(i);
       }
+      i += 4;
+
+      // convert fixed-point, base 16 back to a number
+      result.rate = view.getUint16(i) + (view.getUint16(i + 2) / 16);
+      i += 4;
+      result.volume = view.getUint8(i) + (view.getUint8(i + 1) / 8);
+      i += 2;
+      i += 2;
+      i += 2 * 4;
+      result.matrix = new Uint32Array(data.subarray(i, i + (9 * 4)));
+      i += 9 * 4;
+      i += 6 * 4;
+      result.nextTrackId = view.getUint32(i);
       return result;
     },
     pdin: function(data) {
@@ -172,23 +213,46 @@ var
     tkhd: function(data) {
       var
         view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        i = 4,
         result = {
           version: view.getUint8(0),
           flags: new Uint8Array(data.subarray(1, 4)),
-          layer: view.getUint16(44),
-          alternateGroup: view.getUint16(46),
-          // convert fixed-point, base 16 back to a number
-          volume: view.getUint8(48) + (view.getUint8(49) / 8),
-          matrix: new Uint32Array(data.subarray(52, 88)),
-          width: view.getUint32(88),
-          height: view.getUint32(92)
         };
       if (result.version === 1) {
-        result.creationTime = view.getUint32(8); // truncating top 4 bytes
-        result.modificationTime = view.getUint32(16); // truncating top 4 bytes
-        result.trackId = view.getUint32(20);
-        result.duration = view.getUint32(32); // truncating top 4 bytes
+        i += 4;
+        result.creationTime = view.getUint32(i); // truncating top 4 bytes
+        i += 8;
+        result.modificationTime = view.getUint32(i); // truncating top 4 bytes
+        i += 4;
+        result.trackId = view.getUint32(i);
+        i += 4;
+        i += 8;
+        result.duration = view.getUint32(i); // truncating top 4 bytes
+      } else {
+        result.creationTime = view.getUint32(i);
+        i += 4;
+        result.modificationTime = view.getUint32(i);
+        i += 4;
+        result.trackId = view.getUint32(i);
+        i += 4;
+        i += 4;
+        result.duration = view.getUint32(i);
       }
+      i += 4;
+      i += 2 * 4;
+      result.layer = view.getUint16(i);
+      i += 2;
+      result.alternateGroup = view.getUint16(i);
+      i += 2;
+      // convert fixed-point, base 16 back to a number
+      result.volume = view.getUint8(i) + (view.getUint8(i + 1) / 8);
+      i += 2;
+      i += 2;
+      result.matrix = new Uint32Array(data.subarray(i, i + (9 * 4)));
+      i += 9 * 4;
+      result.width = view.getUint32(i);
+      i += 4;
+      result.height = view.getUint32(i);
       return result;
     }
   };
