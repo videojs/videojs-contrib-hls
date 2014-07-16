@@ -70,7 +70,7 @@ PacketStream.prototype = new videojs.Hls.Stream();
  * forms of the individual packets.
  */
 ParseStream = function() {
-  var parsePsi, parsePat, parsePmt, self;
+  var parsePsi, parsePat, parsePmt, parsePes, self;
   PacketStream.prototype.init.call(this);
   self = this;
 
@@ -141,6 +141,51 @@ ParseStream = function() {
       // skip past the elementary stream descriptors, if present
       offset += ((payload[offset + 3] & 0x0F) << 8 | payload[offset + 4]) + 5;
     }
+
+    // record the map on the packet as well
+    pmt.programMapTable = self.programMapTable;
+  };
+
+  parsePes = function(payload, pes) {
+    var dataAlignmentIndicator, ptsDtsFlags;
+    // find out if this packets starts a new keyframe
+    dataAlignmentIndicator = (payload[6] & 0x04) !== 0;
+    // PES packets may be annotated with a PTS value, or a PTS value
+    // and a DTS value. Determine what combination of values is
+    // available to work with.
+    ptsDtsFlags = payload[7];
+
+    // PTS and DTS are normally stored as a 33-bit number.  Javascript
+    // performs all bitwise operations on 32-bit integers but it's
+    // convenient to convert from 90ns to 1ms time scale anyway. So
+    // what we are going to do instead is drop the least significant
+    // bit (in effect, dividing by two) then we can divide by 45 (45 *
+    // 2 = 90) to get ms.
+    if (ptsDtsFlags & 0xC0) {
+      // the PTS and DTS are not written out directly. For information
+      // on how they are encoded, see
+      // http://dvd.sourceforge.net/dvdinfo/pes-hdr.html
+      pes.pts = (payload[9] & 0x0E) << 28
+        | (payload[10] & 0xFF) << 21
+        | (payload[11] & 0xFE) << 13
+        | (payload[12] & 0xFF) <<  6
+        | (payload[13] & 0xFE) >>>  2;
+      pes.pts /= 45;
+      pes.dts = pes.pts;
+      if (ptsDtsFlags & 0x40) {
+        pes.dts = (payload[14] & 0x0E ) << 28
+          | (payload[15] & 0xFF ) << 21
+          | (payload[16] & 0xFE ) << 13
+          | (payload[17] & 0xFF ) << 6
+          | (payload[18] & 0xFE ) >>> 2;
+        pes.dts /= 45;
+      }
+    }
+
+    // the data section starts immediately after the PES header.
+    // pes_header_data_length specifies the number of header bytes
+    // that follow the last byte of the field.
+    pes.data = payload.subarray(9 + payload[8]);
   };
 
   /**
@@ -149,8 +194,7 @@ ParseStream = function() {
   this.push = function(packet) {
     var
       result = {},
-      offset = 4,
-      stream;
+      offset = 4;
     // make sure packet is aligned on a sync byte
     if (packet[0] !== 0x47) {
       return this.trigger('error', 'mis-aligned packet');
@@ -178,8 +222,9 @@ ParseStream = function() {
       result.type = 'pmt';
       parsePsi(packet.subarray(offset), result);
     } else {
-      result.stream = this.programMapTable[result.pid];
+      result.streamType = this.programMapTable[result.pid];
       result.type = 'pes';
+      parsePes(packet.subarray(offset), result);
     }
 
     this.trigger('data', result);
