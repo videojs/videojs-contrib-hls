@@ -407,7 +407,7 @@ test('selects a playlist after segment downloads', function() {
 });
 
 test('moves to the next segment if there is a network error', function() {
-  var mediaIndex;
+  var segmentIndex;
 
   player.src({
     src: 'manifest/master.m3u8',
@@ -418,11 +418,11 @@ test('moves to the next segment if there is a network error', function() {
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
 
-  mediaIndex = player.hls.mediaIndex;
+  segmentIndex = player.hls.segmentIndex;
   player.trigger('timeupdate');
 
   requests[2].respond(400);
-  strictEqual(mediaIndex + 1, player.hls.mediaIndex, 'media index is incremented');
+  strictEqual(segmentIndex + 1, player.hls.segmentIndex, 'segment index is incremented');
 });
 
 test('updates the duration after switching playlists', function() {
@@ -656,7 +656,7 @@ test('stops downloading segments at the end of the playlist', function() {
   openMediaSource(player);
   standardXHRResponse(requests[0]);
   requests = [];
-  player.hls.mediaIndex = 4;
+  player.hls.segmentIndex = 4;
   player.trigger('timeupdate');
 
   strictEqual(requests.length, 0, 'no request is made');
@@ -866,7 +866,7 @@ test('duration is Infinity for live playlists', function() {
   ok((' ' + player.el().className + ' ').indexOf(' vjs-live ') >= 0, 'added vjs-live class');
 });
 
-test('updates the media index when a playlist reloads', function() {
+test('updates the segment index when a playlist reloads', function() {
   player.src({
     src: 'http://example.com/live-updating.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -883,7 +883,7 @@ test('updates the media index when a playlist reloads', function() {
                       '2.ts\n');
   standardXHRResponse(requests[1]);
   // play the stream until 2.ts is playing
-  player.hls.mediaIndex = 3;
+  player.hls.segmentIndex = 3;
 
   // reload the updated playlist
   player.hls.playlists.media = function() {
@@ -899,10 +899,10 @@ test('updates the media index when a playlist reloads', function() {
   };
   player.hls.playlists.trigger('loadedplaylist');
 
-  strictEqual(player.hls.mediaIndex, 2, 'mediaIndex is updated after the reload');
+  strictEqual(player.hls.segmentIndex, 2, 'segmentIndex is updated after the reload');
 });
 
-test('mediaIndex is zero before the first segment loads', function() {
+test('segmentIndex is zero before the first segment loads', function() {
   window.manifests['first-seg-load'] =
     '#EXTM3U\n' +
     '#EXTINF:10,\n' +
@@ -913,7 +913,7 @@ test('mediaIndex is zero before the first segment loads', function() {
   });
   openMediaSource(player);
 
-  strictEqual(player.hls.mediaIndex, 0, 'mediaIndex is zero');
+  strictEqual(player.hls.segmentIndex, 0, 'segmentIndex is zero');
 });
 
 test('reloads out-of-date live playlists when switching variants', function() {
@@ -935,7 +935,7 @@ test('reloads out-of-date live playlists when switching variants', function() {
   };
   // playing segment 15 on playlist zero
   player.hls.media = player.hls.master.playlists[0];
-  player.mediaIndex = 1;
+  player.segmentIndex = 1;
   window.manifests['variant-update'] = '#EXTM3U\n' +
     '#EXT-X-MEDIA-SEQUENCE:16\n' +
     '#EXTINF:10,\n' +
@@ -950,7 +950,7 @@ test('reloads out-of-date live playlists when switching variants', function() {
   // timeupdate downloads segment 16 then switches playlists
   player.trigger('timeupdate');
 
-  strictEqual(player.mediaIndex, 1, 'mediaIndex points at the next segment');
+  strictEqual(player.segmentIndex, 1, 'segmentIndex points at the next segment');
 });
 
 test('if withCredentials option is used, withCredentials is set on the XHR object', function() {
@@ -1221,7 +1221,7 @@ test('calls ended() on the media source at the end of a playlist', function() {
   strictEqual(endOfStreams, 1, 'ended media source');
 });
 
-test('calling play() at the end of a video resets the media index', function() {
+test('calling play() at the end of a video resets the segment index', function() {
   player.src({
     src: 'http://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1234,12 +1234,12 @@ test('calling play() at the end of a video resets the media index', function() {
                            '#EXT-X-ENDLIST\n');
   standardXHRResponse(requests.shift());
 
-  strictEqual(player.hls.mediaIndex, 1, 'index is 1 after the first segment');
+  strictEqual(player.hls.segmentIndex, 1, 'index is 1 after the first segment');
   player.hls.ended = function() {
     return true;
   };
   player.play();
-  strictEqual(player.hls.mediaIndex, 0, 'index is 1 after the first segment');
+  strictEqual(player.hls.segmentIndex, 0, 'index is 1 after the first segment');
 });
 
 })(window, window.videojs);
