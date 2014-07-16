@@ -86,6 +86,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     player = this.player(),
     settings = player.options().hls || {},
     sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"'),
+    // keep a copy of the current media playlist so it can be compared later
     oldMediaPlaylist;
 
   // set up the sourceBuffer
@@ -94,9 +95,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
   // start at the first segment
   this.segmentIndex = 0;
-  // load the master playlist and/or first media playlist
+  // load the master playlist and first media playlist
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
+  // when the first media playlist is loaded initialize the buffer listeners
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     oldMediaPlaylist = this.playlists.media();
 
@@ -107,23 +109,23 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     player.on('timeupdate', videojs.bind(this, this.drainBuffer));
     player.on('waiting', videojs.bind(this, this.drainBuffer));
 
-    // this might not be needed. The event already fires...a lot
+    // this might not be needed. The event seems to already fire more than expected
+    // even without this. Might be a swf issue.
     player.trigger('loadedmetadata');
-  }));
-
-  this.playlists.on('error', videojs.bind(this, function() {
-    player.error(this.playlists.error);
   }));
 
   this.playlists.on('loadedplaylist', videojs.bind(this, function() {
     var updatedPlaylist = this.playlists.media();
 
+    // do nothing before an initial media playlist has been activated
     if (!updatedPlaylist) {
-      // do nothing before an initial media playlist has been activated
       return;
     }
 
+    // update the player duration
     this.updateDuration(this.playlists.media());
+    // update the current segment index for the new playlist
+    // in case the indexes have been updated
     this.segmentIndex = videojs.Hls.translateSegmentIndex(this.segmentIndex, oldMediaPlaylist, updatedPlaylist);
     oldMediaPlaylist = updatedPlaylist;
   }));
@@ -131,6 +133,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   this.playlists.on('mediachange', function() {
     player.trigger('mediachange');
   });
+
+  this.playlists.on('error', videojs.bind(this, function() {
+    player.error(this.playlists.error);
+  }));
 };
 
 /**
@@ -614,7 +620,7 @@ videojs.Hls.translateSegmentIndex = function(segmentIndex, original, update) {
     }
   }
 
-  // assume the indexes match between variants and sync on media sequence
+  // sync based on media sequence -- the number of segments before this playlist
   return (original.mediaSequence + segmentIndex) - update.mediaSequence;
 };
 
