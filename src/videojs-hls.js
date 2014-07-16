@@ -16,26 +16,31 @@ var
 
 videojs.Hls = videojs.Flash.extend({
   init: function(player, options, ready) {
-    var
-      source = options.source,
-      settings = player.options();
+    var source;
 
-    player.hls = this;
+    // initialize Flash but remove the source first so it doesn't load it
+    source = options.source;
     delete options.source;
-    options.swf = settings.flash.swf;
+    options.swf = player.options().flash.swf;
     videojs.Flash.call(this, player, options, ready);
-    options.source = source;
+
     this.bytesReceived = 0;
+
+    // this is a remnant of when this was a plugin that could be removed
+    // after docs are updated and after we make sure any data that's needed 
+    // externally is still available some how
+    player.hls = this;
 
     // TODO: After video.js#1347 is pulled in remove these lines
     this.currentTime = videojs.Hls.prototype.currentTime;
     this.setCurrentTime = videojs.Hls.prototype.setCurrentTime;
 
-    videojs.Hls.prototype.src.call(this, options.source && options.source.src);
+    // Set the provided source
+    videojs.Hls.prototype.src.call(this, source && source.src);
   }
 });
 
-// Add HLS to the standard tech order
+// Add HLS to the front of the tech selection array
 videojs.options.techOrder.unshift('hls');
 
 // the desired length of video to maintain in the buffer, in seconds
@@ -50,6 +55,7 @@ videojs.Hls.prototype.src = function(src) {
   if (src) {
     this.src_ = src;
 
+    // initialize the media source
     mediaSource = new videojs.MediaSource();
     source = {
       src: videojs.URL.createObjectURL(mediaSource),
@@ -60,16 +66,12 @@ videojs.Hls.prototype.src = function(src) {
     this.segmentBuffer_ = [];
     this.segmentParser_ = new videojs.Hls.SegmentParser();
 
-    // load the MediaSource into the player
+    // listen for when the MediaSource is ready to receive data
     this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
 
-    this.player().ready(function() {
-      // do nothing if the tech has been disposed already
-      // this can occur if someone sets the src in player.ready(), for instance
-      if (!tech.el()) {
-        return;
-      }
-      tech.el().vjs_src(source.src);
+    // make sure the swf is available before passing in the source
+    this.ready(function() {
+      this.el().vjs_src(source.src);
     });
   }
 };
@@ -82,10 +84,12 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"'),
     oldMediaPlaylist;
 
+  // set up the sourceBuffer
   this.sourceBuffer = sourceBuffer;
   sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
 
   this.mediaIndex = 0;
+  // load the master playlist and/or first media playlist
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
@@ -242,7 +246,7 @@ videojs.Hls.prototype.selectPlaylist = function () {
 
     effectiveBitrate = variant.attributes.BANDWIDTH * bandwidthVariance;
 
-    if (effectiveBitrate < player.hls.bandwidth) {
+    if (effectiveBitrate < this.bandwidth) {
       bandwidthPlaylists.push(variant);
 
       // since the playlists are sorted in ascending order by
@@ -589,12 +593,13 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
   if (mediaIndex === 0) {
     return 0;
   }
-  if (!(update && update.segments)) {
-    // let the media index be zero when there are no segments defined
+
+  // let the media index be zero when there are no segments defined
+  if (!update || !update.segments) {
     return 0;
   }
 
-  // try to sync based on URI
+  // try to sync based on URI for live streams where the index may be shifting
   i = update.segments.length;
   originalSegment = original.segments[mediaIndex - 1];
   while (i--) {
@@ -603,7 +608,7 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
     }
   }
 
-  // sync on media sequence
+  // assume the indexes match between variants and sync on media sequence
   return (original.mediaSequence + mediaIndex) - update.mediaSequence;
 };
 
