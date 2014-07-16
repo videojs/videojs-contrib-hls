@@ -48,7 +48,6 @@ videojs.Hls.GOAL_BUFFER_LENGTH = 30;
 
 videojs.Hls.prototype.src = function(src) {
   var
-    tech = this,
     mediaSource,
     source;
 
@@ -69,9 +68,12 @@ videojs.Hls.prototype.src = function(src) {
     // listen for when the MediaSource is ready to receive data
     this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
 
-    // make sure the swf is available before passing in the source
-    this.ready(function() {
-      this.el().vjs_src(source.src);
+    // After the upgrade to video.js 4.6.4 (swf 4.4.2) this should be simplified
+    // to `this.ready`. Using the player ready introduces a possible issue
+    // with disposing, at least until videojs/video.js#1350 is pulled in.
+    var tech = this;
+    this.player().ready(function() {
+      tech.el().vjs_src(source.src);
     });
   }
 };
