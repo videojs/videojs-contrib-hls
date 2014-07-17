@@ -32,6 +32,7 @@ module.exports = function(grunt) {
               'src/stream.js',
               'src/m3u8/m3u8-parser.js',
               'src/xhr.js',
+              'src/playlist.js',
               'src/playlist-loader.js'
             ],
         dest: 'dist/videojs.hls.js'

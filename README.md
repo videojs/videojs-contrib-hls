@@ -97,7 +97,7 @@ will kick off an asynchronous load of the specified media
 playlist. Once it has been retreived, it will become the active media
 playlist.
 
-#### player.hls.mediaIndex
+#### player.hls.segmentIndex
 Type: `number`
 
 The index of the next video segment to be downloaded from
