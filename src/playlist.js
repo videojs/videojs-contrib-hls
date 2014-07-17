@@ -17,71 +17,56 @@
    * bandwidth, accounting for some amount of bandwidth variance
    */
   videojs.Hls.Playlist.selectPlaylist = function (playlists, data) {
-    var firstVariant, bandwidthBestVariant, resolutionBestVariant;
+    var lowestVariant, bandwidthBestVariant, resolutionBestVariant;
 
+    // make a copy of the playlist array so we're not editing the original
+    playlists = playlists.slice();
     data = data || {};
 
-    // store the original first variant to fallback to
-    firstVariant = playlists[0];
-
-    // sort by bandwidth and filter out variants higher than the bandwidth
-    playlists = videojs.Hls.Playlist.sortByBandwidth(playlists, data.bandwidth);
-    // since the playlists are sorted in ascending order by
-    // bandwidth, the first viable variant is the best
-    bandwidthBestVariant = playlists[0];
-
-    // sort the resulting playlists by resolution, excluding any that are too big
-    playlists = videojs.Hls.Playlist.sortByResolution(playlists, data.width, data.height);
-    resolutionBestVariant = playlists[0];
+    // sort by bandwidth
+    playlists.sort(videojs.Hls.Playlist.compareBandwidth);
+    // store the lowest variant as a fallback
+    lowestVariant = playlists[0];
+    // filter out bandwidths that are too high
+    playlists = videojs.Hls.Playlist.filterByBandwidth(playlists, data.bandwidth);
+    // select the highest bandwidth variant
+    bandwidthBestVariant = playlists[playlists.length-1];
+    // sort the resulting playlists by resolution
+    playlists.sort(videojs.Hls.Playlist.compareResolution);
+    // filter out any that are too big
+    playlists = videojs.Hls.Playlist.filterByResolution(playlists, data.width, data.height);
+    // pick the highest resolution available
+    resolutionBestVariant = playlists[playlists.length-1];
 
     // fallback chain of variants
-    return resolutionBestVariant || bandwidthBestVariant || firstVariant;
+    return resolutionBestVariant || bandwidthBestVariant || lowestVariant;
   };
 
-  videojs.Hls.Playlist.sortByResolution = function(playlists, maxWidth, maxHeight){
-    var i, filtered, variant;
-
-    // make a copy of the playlist array so we're not editing the original
-    playlists = playlists.slice();
-
-    maxWidth = maxWidth || window.Infinity;
-    maxHeight = maxHeight || window.Infinity;
-
-    // sort variants by resolution
-    playlists.sort(videojs.Hls.Playlist.compareResolution);
-
-    // iterate through the bandwidth-filtered playlists and find
-    // best rendition by player dimension
-    filtered = [];
-    i = playlists.length;
-    while (i--) {
-      variant = playlists[i];
-
-      // ignore playlists without resolution information
-      if (!variant.attributes ||
-          !variant.attributes.RESOLUTION ||
-          !variant.attributes.RESOLUTION.width ||
-          !variant.attributes.RESOLUTION.height) {
-        continue;
-      }
-
-      // since the playlists are sorted, the first variant that has
-      // dimensions less than or equal to the player size is the
-      // best
-      if (variant.attributes.RESOLUTION.width <= maxWidth &&
-          variant.attributes.RESOLUTION.height <= maxHeight) {
-        filtered.push(variant);
-      }
+  /**
+   * A comparator function to sort two playlist object by bandwidth.
+   * @param left {object} a media playlist object
+   * @param right {object} a media playlist object
+   * @return {number} Greater than zero if the bandwidth attribute of
+   * left is greater than the corresponding attribute of right. Less
+   * than zero if the bandwidth of right is greater than left and
+   * exactly zero if the two are equal.
+   */
+  videojs.Hls.Playlist.compareBandwidth = function(left, right) {
+    var leftBandwidth, rightBandwidth;
+    if (left.attributes && left.attributes.BANDWIDTH) {
+      leftBandwidth = left.attributes.BANDWIDTH;
     }
+    leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
+    if (right.attributes && right.attributes.BANDWIDTH) {
+      rightBandwidth = right.attributes.BANDWIDTH;
+    }
+    rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
 
-    return filtered;
+    return leftBandwidth - rightBandwidth;
   };
 
-  videojs.Hls.Playlist.sortByBandwidth = function(playlists, maxBandwidth){
-    var i, variant, effectiveBitrate, bandwidthVariance, filtered;
-
-    // make a copy of the playlist array so we're not editing the original
-    playlists = playlists.slice();
+  videojs.Hls.Playlist.filterByBandwidth = function(playlists, maxBandwidth){
+    var i, j, variant, bandwidthVariance, filtered;
 
     // default to no max bandwidth
     maxBandwidth = maxBandwidth || window.Infinity;
@@ -90,28 +75,21 @@
     // temporary flucations in client bandwidth
     bandwidthVariance = 1.1;
 
-    // sorty by bandwidth
-    playlists.sort(videojs.Hls.Playlist.compareBandwidth);
-
     // filter out any variant that has greater effective bitrate
     // than the current estimated bandwidth
     filtered = [];
-    i = playlists.length;
-    while (i--) {
+    j = playlists.length;
+    for (i=0; i<j; i++) {
       variant = playlists[i];
 
-      if (!variant.attributes || !variant.attributes.BANDWIDTH) {
-        continue;
-      }
-
-      effectiveBitrate = variant.attributes.BANDWIDTH * bandwidthVariance;
-
-      if (effectiveBitrate < maxBandwidth) {
-        filtered.push(variant);
+      if (variant.attributes && variant.attributes.BANDWIDTH) {
+        if ((variant.attributes.BANDWIDTH * bandwidthVariance) < maxBandwidth) {
+          filtered.push(variant);
+        }
       }
     }
 
-    return playlists;
+    return filtered;
   };
 
   /**
@@ -147,27 +125,31 @@
     }
   };
 
-  /**
-   * A comparator function to sort two playlist object by bandwidth.
-   * @param left {object} a media playlist object
-   * @param right {object} a media playlist object
-   * @return {number} Greater than zero if the bandwidth attribute of
-   * left is greater than the corresponding attribute of right. Less
-   * than zero if the bandwidth of right is greater than left and
-   * exactly zero if the two are equal.
-   */
-  videojs.Hls.Playlist.compareBandwidth = function(left, right) {
-    var leftBandwidth, rightBandwidth;
-    if (left.attributes && left.attributes.BANDWIDTH) {
-      leftBandwidth = left.attributes.BANDWIDTH;
-    }
-    leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
-    if (right.attributes && right.attributes.BANDWIDTH) {
-      rightBandwidth = right.attributes.BANDWIDTH;
-    }
-    rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
+  videojs.Hls.Playlist.filterByResolution = function(playlists, maxWidth, maxHeight){
+    var i, j, filtered, variant;
 
-    return leftBandwidth - rightBandwidth;
+    maxWidth = maxWidth || window.Infinity;
+    maxHeight = maxHeight || window.Infinity;
+
+    // iterate through the bandwidth-filtered playlists and find
+    // best rendition by player dimension
+    filtered = [];
+    j = playlists.length;
+    for (i=0; i<j; i++) {
+      variant = playlists[i];
+
+      // ignore playlists without resolution information
+      if (variant.attributes && 
+          variant.attributes.RESOLUTION &&
+          variant.attributes.RESOLUTION.width &&
+          variant.attributes.RESOLUTION.height &&
+          variant.attributes.RESOLUTION.width <= maxWidth &&
+          variant.attributes.RESOLUTION.height <= maxHeight) {
+            filtered.push(variant);
+      }
+    }
+
+    return filtered;
   };
 
   /**
