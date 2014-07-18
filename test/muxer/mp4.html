@@ -106,6 +106,7 @@
   </script>
   <script src="../../src/stream.js"></script>
   <script src="../../src/transmuxer.js"></script>
+  <script src="../../src/mp4-generator.js"></script>
   <script src="js/mp4-inspector.js"></script>
 
   <script src="../../src/bin-utils.js"></script>
@@ -118,13 +119,9 @@
         workingBoxes = document.querySelector('.working-boxes'),
 
         vjsOutput = document.querySelector('.vjs-hls-output'),
-        workingOutput = document.querySelector('.working-output'),
+        workingOutput = document.querySelector('.working-output');
 
-        tagTypes = {
-          0x08: 'audio',
-          0x09: 'video',
-          0x12: 'metadata'
-        };
+    // webkit dash-mp4 mime: 'video/mp4;codecs=avc1.4d0020,mp4a.40.2'
 
     videojs.log = console.log.bind(console);
 
@@ -132,19 +129,43 @@
       var reader = new FileReader();
       reader.addEventListener('loadend', function() {
         var segment = new Uint8Array(reader.result),
-            transmuxer = new videojs.Hls.Transmuxer(),
+            packetizer = new videojs.mp2t.PacketStream(),
+            parser = new videojs.mp2t.ParseStream(),
             hex = '';
 
-        transmuxer.push(segment);
+        packetizer.pipe(parser);
+        packetizer.push(segment);
 
         // clear old boxes info
-        vjsBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(transmuxer.mp4), null, ' ');
 
         // write out the result
         hex += '<pre>';
-        hex += videojs.Hls.utils.hexDump(transmuxer.mp4);
+        // hex += videojs.Hls.utils.hexDump(transmuxer.mp4);
         hex += '</pre>';
         vjsOutput.innerHTML = hex;
+
+        // XXX media source testing
+
+        vjsBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(videojs.mp4.initSegment()), null, ' ');
+
+        var video = document.createElement('video');
+        var mediaSource = new MediaSource();
+        mediaSource.addEventListener('sourceopen', function() {
+          var buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d0020,mp4a.40.2');
+          buffer.addEventListener('updatestart', console.log.bind(console));
+          buffer.addEventListener('updateend', console.log.bind(console));
+          buffer.addEventListener('error', console.log.bind(console));
+          buffer.appendBuffer(videojs.mp4.initSegment());
+          console.log('done', mediaSource, buffer, video.error);
+          window.vjsMediaSource = mediaSource;
+          window.vjsSourceBuffer = buffer;
+          window.vjsVideo = video;
+        });
+        mediaSource.addEventListener('error', console.log.bind(console));
+        mediaSource.addEventListener('opened', console.log.bind(console));
+        mediaSource.addEventListener('closed', console.log.bind(console));
+        mediaSource.addEventListener('sourceended', console.log.bind(console));
+        video.src = URL.createObjectURL(mediaSource);
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);

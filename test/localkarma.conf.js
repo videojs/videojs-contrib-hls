@@ -52,12 +52,13 @@ module.exports = function(config) {
       '../src/m3u8/m3u8-parser.js',
       '../src/playlist-loader.js',
       '../src/transmuxer.js',
+      '../src/mp4-generator.js',
       '../tmp/manifests.js',
       '../tmp/expected.js',
       'tsSegment-bc.js',
       '../src/bin-utils.js',
+      '../test/muxer/js/mp4-inspector.js',
       '../test/*.js',
-      '../test/muxer/js/mp4-inspector.js'
       ],
 
     plugins: [

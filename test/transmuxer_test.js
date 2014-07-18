@@ -24,9 +24,7 @@ var
   PacketStream = videojs.mp2t.PacketStream,
   packetStream,
   ParseStream = videojs.mp2t.ParseStream,
-  parseStream,
-  Transmuxer = videojs.mp2t.Transmuxer,
-  transmuxer;
+  parseStream;
 
 module('MP2T Packet Stream', {
   setup: function() {
@@ -392,19 +390,6 @@ test('parses an elementary stream packet without a pts or dts', function() {
   equal(0x01, packet.data[1], 'parsed the second data byte');
   ok(!packet.pts, 'did not parse a pts');
   ok(!packet.dts, 'did not parse a dts');
-});
-
-module('MP4 Transmuxer', {
-  setup: function() {
-    transmuxer = new Transmuxer();
-  }
-});
-
-test('can mux an empty mp2t', function() {
-  transmuxer.push(new Uint8Array());
-
-  ok(transmuxer.mp4, 'produced a non-null result');
-  strictEqual(transmuxer.mp4.byteLength, 0, 'produced an empty mp4');
 });
 
 })(window, window.videojs);

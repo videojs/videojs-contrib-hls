@@ -108,7 +108,7 @@ var
               0x00, 0x00, 0x01, 0x2c, // 300 = 0x12c width
               0x00, 0x00, 0x00, 0x96), // 150 = 0x96 height
   mdhd0 = box('mdhd',
-              0x00, // version 1
+              0x00, // version 0
               0x00, 0x00, 0x00, // flags
               0x00, 0x00, 0x00, 0x02, // creation_time
               0x00, 0x00, 0x00, 0x03, // modification_time
@@ -137,14 +137,14 @@ test('can parse a Box', function() {
 
 test('can parse an ftyp', function() {
   deepEqual(videojs.inspectMp4(new Uint8Array(box('ftyp',
-    0x00, 0x00, 0x00, 0x01, // major brand
+    0x61, 0x76, 0x63, 0x31, // major brand
     0x00, 0x00, 0x00, 0x02, // minor version
     0x00, 0x00, 0x00, 0x03, // compatible brands
     0x00, 0x00, 0x00, 0x04 // compatible brands
   ))), [{
     type: 'ftyp',
     size: 4 * 6,
-    majorBrand: 1,
+    majorBrand: 'avc1',
     minorVersion: 2,
     compatibleBrands: [3, 4]
   }], 'parsed an ftyp');
@@ -401,40 +401,128 @@ test('can parse a moov', function() {
             size: 24,
             boxes: [{
               type: 'dref',
+              version: 1,
+              flags: new Uint8Array([0, 0, 0]),
               dataReferences: [],
               size: 16
-            }]}, {
-              type: 'stbl',
-              size: 72,
-              boxes: [{
-                type: 'stsd',
-                sampleDescriptions: [],
-                size: 16
-              }, {
-                type: 'stts',
-                timeToSamples: [],
-                size: 16
-              }, {
-                type: 'stsc',
-                sampleToChunks: [],
-                size: 16
-              }, {
-                type: 'stco',
-                chunkOffsets: [],
-                size: 16
-              }]
+            }]
+          }, {
+            type: 'stbl',
+            size: 72,
+            boxes: [{
+              type: 'stsd',
+              size: 16,
+              version: 1,
+              flags: new Uint8Array([0, 0, 0]),
+              sampleDescriptions: [],
+            }, {
+              type: 'stts',
+              timeToSamples: [],
+              size: 16
+            }, {
+              type: 'stsc',
+              sampleToChunks: [],
+              size: 16
+            }, {
+              type: 'stco',
+              chunkOffsets: [],
+              size: 16
             }]
           }]
         }]
       }]
-    }], 'parsed a moov');
+    }]
+  }], 'parsed a moov');
+});
+
+test('can parse an mvex', function() {
+  var mvex =
+    box('mvex',
+        box('trex',
+            0x00, // version
+            0x00, 0x00, 0x00, // flags
+            0x00, 0x00, 0x00, 0x01, // track_ID
+            0x00, 0x00, 0x00, 0x01, // default_sample_description_index
+            0x00, 0x00, 0x00, 0x02, // default_sample_duration
+            0x00, 0x00, 0x00, 0x03, // default_sample_size
+            0x00, 0x61, 0x00, 0x01)); // default_sample_flags
+  deepEqual(videojs.inspectMp4(new Uint8Array(mvex)), [{
+    type: 'mvex',
+    size: 40,
+    boxes: [{
+      type: 'trex',
+      size: 32,
+      version: 0,
+      flags: new Uint8Array([0, 0, 0]),
+      trackId: 1,
+      defaultSampleDescriptionIndex: 1,
+      defaultSampleDuration: 2,
+      defaultSampleSize: 3,
+      sampleDependsOn: 0,
+      sampleIsDependedOn: 1,
+      sampleHasRedundancy: 2,
+      samplePaddingValue: 0,
+      sampleIsDifferenceSample: true,
+      sampleDegradationPriority: 1
+    }]
+  }], 'parsed an mvex');
+});
+
+test('can parse a video stsd', function() {
+  var data = box('stsd',
+                 0x00, // version 0
+                 0x00, 0x00, 0x00, // flags
+                 0x00, 0x00, 0x00, 0x01,
+                 box('avc1',
+                     0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, // reserved
+                     0x00, 0x01, // data_reference_index
+                     0x00, 0x00, // pre_defined
+                     0x00, 0x00, // reserved
+                     0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00, // pre_defined
+                     0x01, 0x2c, // width = 300
+                     0x00, 0x96, // height = 150
+                     0x00, 0x48, 0x00, 0x00, // horizresolution
+                     0x00, 0x48, 0x00, 0x00, // vertresolution
+                     0x00, 0x00, 0x00, 0x00, // reserved
+                     0x00, 0x01, // frame_count
+                     0x04,
+                     typeBytes('avc1'),
+                     0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, // compressorname
+                     0x00, 0x18, // depth = 24
+                     0x11, 0x11)); // pre_defined
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)), [{
+    type: 'stsd',
+    size: 102,
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    sampleDescriptions: [{
+      type: 'avc1',
+      size: 86,
+      dataReferenceIndex: 1,
+      width: 300,
+      height: 150,
+      horizresolution: 72,
+      vertresolution: 72,
+      frameCount: 1,
+      depth: 24
+    }]
+  }]);
 });
 
 test('can parse a series of boxes', function() {
   var ftyp = [
     0x00, 0x00, 0x00, 0x18 // size 4 * 6 = 24
   ].concat(typeBytes('ftyp')).concat([
-    0x00, 0x00, 0x00, 0x01, // major brand
+    0x69, 0x73, 0x6f, 0x6d, // major brand
     0x00, 0x00, 0x00, 0x02, // minor version
     0x00, 0x00, 0x00, 0x03, // compatible brands
     0x00, 0x00, 0x00, 0x04, // compatible brands
@@ -444,13 +532,13 @@ test('can parse a series of boxes', function() {
             [{
               type: 'ftyp',
               size: 4 * 6,
-              majorBrand: 1,
+              majorBrand: 'isom',
               minorVersion: 2,
               compatibleBrands: [3, 4]
             },{
               type: 'ftyp',
               size: 4 * 6,
-              majorBrand: 1,
+              majorBrand: 'isom',
               minorVersion: 2,
               compatibleBrands: [3, 4]
             }],
