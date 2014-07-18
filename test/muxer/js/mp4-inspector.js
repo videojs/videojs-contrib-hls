@@ -19,11 +19,26 @@ var
 
   // registry of handlers for individual mp4 box types
   parse = {
+    // codingname, not a first-class box type. stsd entries share the
+    // same format as real boxes so the parsing infrastructure can be
+    // shared
+    avc1: function(data) {
+      var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      return {
+        dataReferenceIndex: view.getUint16(6),
+        width:  view.getUint16(24),
+        height: view.getUint16(26),
+        horizresolution: view.getUint16(28) + (view.getUint16(30) / 16),
+        vertresolution: view.getUint16(32) + (view.getUint16(34) / 16),
+        frameCount: view.getUint16(40),
+        depth: view.getUint16(74)
+      };
+    },
     ftyp: function(data) {
       var
         view = new DataView(data.buffer, data.byteOffset, data.byteLength),
         result = {
-          majorBrand: view.getUint32(0),
+          majorBrand: parseType(data.subarray(0, 4)),
           minorVersion: view.getUint32(4),
           compatibleBrands: []
         },
@@ -41,6 +56,8 @@ var
     },
     dref: function(data) {
       return {
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4)),
         dataReferences: []
       };
     },
@@ -129,6 +146,11 @@ var
         boxes: videojs.inspectMp4(data)
       };
     },
+    mvex: function(data) {
+      return {
+        boxes: videojs.inspectMp4(data)
+      };
+    },
     mvhd: function(data) {
       var
         view = new DataView(data.buffer, data.byteOffset, data.byteLength),
@@ -185,6 +207,23 @@ var
         boxes: videojs.inspectMp4(data)
       };
     },
+    trex: function(data) {
+      var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      return {
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4)),
+        trackId: view.getUint32(4),
+        defaultSampleDescriptionIndex: view.getUint32(8),
+        defaultSampleDuration: view.getUint32(12),
+        defaultSampleSize: view.getUint32(16),
+        sampleDependsOn: data[20] & 0x03,
+        sampleIsDependedOn: (data[21] & 0xc0) >> 6,
+        sampleHasRedundancy: (data[21] & 0x30) >> 4,
+        samplePaddingValue: (data[21] & 0x0e) >> 1,
+        sampleIsDifferenceSample: !!(data[21] & 0x01),
+        sampleDegradationPriority: view.getUint16(22)
+      };
+    },
     stbl: function(data) {
       return {
         boxes: videojs.inspectMp4(data)
@@ -202,7 +241,9 @@ var
     },
     stsd: function(data) {
       return {
-        sampleDescriptions: []
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4)),
+        sampleDescriptions: videojs.inspectMp4(data.subarray(8))
       };
     },
     stts: function(data) {

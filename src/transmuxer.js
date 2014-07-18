@@ -1,4 +1,11 @@
 /**
+ * video-js-hls
+ *
+ * Copyright (c) 2014 Brightcove
+ * All rights reserved.
+ */
+
+/**
  * A stream-based mp2t to mp4 converter. This utility is used to
  * deliver mp4s to a SourceBuffer on platforms that support native
  * Media Source Extensions. The equivalent process for Flash-based
@@ -7,7 +14,7 @@
 (function(window, videojs, undefined) {
 'use strict';
 
-var PacketStream, ParseStream, Transmuxer, MP2T_PACKET_LENGTH;
+var PacketStream, ParseStream, MP2T_PACKET_LENGTH;
 
 MP2T_PACKET_LENGTH = 188; // bytes
 
@@ -232,20 +239,11 @@ ParseStream = function() {
 };
 ParseStream.prototype = new videojs.Hls.Stream();
 
-Transmuxer = function() {
-  Transmuxer.prototype.init.call(this);
-  this.push = function() {
-    this.mp4 = new Uint8Array();
-  };
-};
-Transmuxer.prototype = new videojs.Hls.Stream();
-
 window.videojs.mp2t = {
   PAT_PID: 0x0000,
   MP2T_PACKET_LENGTH: MP2T_PACKET_LENGTH,
   H264_STREAM_TYPE: 0x1b,
   ADTS_STREAM_TYPE: 0x0f,
-  Transmuxer: Transmuxer,
   PacketStream: PacketStream,
   ParseStream: ParseStream
 };
