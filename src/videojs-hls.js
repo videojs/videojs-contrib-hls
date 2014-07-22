@@ -208,6 +208,9 @@ videojs.Hls.prototype.dispose = function() {
   if (this.playlists) {
     this.playlists.dispose();
   }
+  if (this.sourceBuffer) {
+    this.sourceBuffer.abort();
+  }
   videojs.Flash.prototype.dispose.call(this);
 };
 
