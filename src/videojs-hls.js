@@ -608,11 +608,14 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
 };
 
 /**
- * TODO - Document this great feature.
+ * Determine the media index in one playlist by a time in seconds. This
+ * function iterates through the segments of a playlist and creates TimeRange
+ * objects for each and then returns the most appropriate segment index by
+ * checking the time value versus each range.
  *
- * @param playlist
- * @param time
- * @returns int
+ * @param playlist {object} The playlist of the segments being searched.
+ * @param time {number} The time in seconds of what segment you want.
+ * @returns {number} The media index, or -1 if none appropriate.
  */
 videojs.Hls.getMediaIndexByTime = function(playlist, time) {
   var index, counter, timeRanges, currentSegmentRange;
