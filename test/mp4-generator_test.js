@@ -78,29 +78,48 @@ test('generates a moov', function() {
 
   minf = boxes[0].boxes[1].boxes[1].boxes[2];
   equal(minf.type, 'minf', 'generate an minf type');
-  equal(minf.boxes.length, 2, 'generates two minf sub boxes');
+  equal(minf.boxes.length, 3, 'generates three minf sub boxes');
+
+  equal(minf.boxes[0].type, 'vmhd', 'generates a vmhd type');
+  deepEqual({
+    type: 'vmhd',
+    size: 20,
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    graphicsmode: 0,
+    opcolor: new Uint16Array([0, 0, 0])
+  }, minf.boxes[0], 'generates a vhmd');
+
+  equal(minf.boxes[1].type, 'dinf', 'generates a dinf type');
   deepEqual({
     type: 'dinf',
-    size: 24,
+    size: 36,
     boxes: [{
       type: 'dref',
-      size: 16,
+      size: 28,
       version: 0,
       flags: new Uint8Array([0, 0, 0]),
-      dataReferences: []
+      dataReferences: [{
+        type: 'url ',
+        size: 12,
+        version: 0,
+        flags: new Uint8Array([0, 0, 1])
+      }]
     }]
-  }, minf.boxes[0], 'generates a dinf');
+  }, minf.boxes[1], 'generates a dinf');
 
-  equal(minf.boxes[1].type, 'stbl', 'generates an stbl type');
+  equal(minf.boxes[2].type, 'stbl', 'generates an stbl type');
   deepEqual({
     type: 'stbl',
-    size: 134,
+    size: 233,
     boxes: [{
       type: 'stsd',
-      size: 102,
+      size: 157,
       version: 0,
       flags: new Uint8Array([0, 0, 0]),
       sampleDescriptions: [{
+        type: 'avc1',
+        size: 141,
         dataReferenceIndex: 1,
         width: 600,
         height: 300,
@@ -108,23 +127,57 @@ test('generates a moov', function() {
         vertresolution: 72,
         frameCount: 1,
         depth: 24,
-        size: 86,
-        type: 'avc1'
+        config: [{
+          type: 'avcC',
+          size: 35,
+          configurationVersion: 1,
+          avcProfileIndication: 0x4d,
+          profileCompatibility: 0x40,
+          avcLevelIndication: 0x20,
+          lengthSizeMinusOne: 3,
+          sps: [new Uint8Array([
+            0x67, 0x4d, 0x40, 0x20,
+            0x96, 0x52, 0x80, 0xa0,
+            0x0b, 0x76, 0x02, 0x05
+          ])],
+          pps: [new Uint8Array([
+            0x68, 0xef, 0x38, 0x80
+          ])]
+        }, {
+          type: 'btrt',
+          size: 20,
+          bufferSizeDB: 1875072,
+          maxBitrate: 3000000,
+          avgBitrate: 3000000
+        }]
       }]
     }, {
       type: 'stts',
-      size: 8,
+      size: 16,
+      version: 0,
+      flags: new Uint8Array([0, 0, 0]),
       timeToSamples: []
     }, {
       type: 'stsc',
-      size: 8,
+      size: 16,
+      version: 0,
+      flags: new Uint8Array([0, 0, 0]),
       sampleToChunks: []
     }, {
+      type: 'stsz',
+      version: 0,
+      size: 20,
+      flags: new Uint8Array([0, 0, 0]),
+      sampleSize: 0,
+      entries: []
+    }, {
       type: 'stco',
-      size: 8,
+      size: 16,
+      version: 0,
+      flags: new Uint8Array([0, 0, 0]),
       chunkOffsets: []
     }]
-  }, minf.boxes[1], 'generates a stbl');
+  }, minf.boxes[2], 'generates a stbl');
 
 
   mvex = boxes[0].boxes[2];
@@ -160,6 +213,7 @@ test('generates an initialization segment', function() {
   equal(init.length, 2, 'generated two boxes');
   equal(init[0].type, 'ftyp', 'generated a ftyp box');
   equal(init[1].type, 'moov', 'generated a moov box');
+  equal(init[1].boxes[0].duration, 0xffffffff, 'wrote a maximum duration');
 });
 
 

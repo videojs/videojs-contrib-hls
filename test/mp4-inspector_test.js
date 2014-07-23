@@ -105,8 +105,8 @@ var
               0x00, 0x00, // non-audio track volume
               0x00, 0x00, // reserved
               unityMatrix,
-              0x00, 0x00, 0x01, 0x2c, // 300 = 0x12c width
-              0x00, 0x00, 0x00, 0x96), // 150 = 0x96 height
+              0x01, 0x2c, 0x00, 0x00, // 300 in 16.16 fixed point
+              0x00, 0x96, 0x00, 0x00), // 150 in 16.16 fixed point
   mdhd0 = box('mdhd',
               0x00, // version 0
               0x00, 0x00, 0x00, // flags
@@ -201,8 +201,8 @@ test('can parse a version 0 mvhd', function() {
     type: 'mvhd',
     version: 0,
     flags: new Uint8Array([0, 0, 0]),
-    creationTime: 1,
-    modificationTime: 2,
+    creationTime: new Date(1000 - 2082844800000),
+    modificationTime: new Date(2000 - 2082844800000),
     timescale: 60,
     duration: 600,
     rate: 1,
@@ -218,8 +218,8 @@ test('can parse a version 0 tkhd', function() {
     type: 'tkhd',
     version: 0,
     flags: new Uint8Array([0, 0, 0]),
-    creationTime: 2,
-    modificationTime: 3,
+    creationTime: new Date(2000 - 2082844800000),
+    modificationTime: new Date(3000 - 2082844800000),
     size: 92,
     trackId: 1,
     duration: 600,
@@ -237,8 +237,8 @@ test('can parse a version 0 mdhd', function() {
     type: 'mdhd',
     version: 0,
     flags: new Uint8Array([0, 0, 0]),
-    creationTime: 2,
-    modificationTime: 3,
+    creationTime: new Date(2000 - 2082844800000),
+    modificationTime: new Date(3000 - 2082844800000),
     size: 32,
     timescale: 60,
     duration: 600,
@@ -291,8 +291,8 @@ test('can parse a moov', function() {
                 0x00, 0x00, // non-audio track volume
                 0x00, 0x00, // reserved
                 unityMatrix,
-                0x00, 0x00, 0x01, 0x2c, // 300 = 0x12c width
-                0x00, 0x00, 0x00, 0x96), // 150 = 0x96 height
+                0x01, 0x2c, 0x00, 0x00, // 300 in 16.16 fixed-point
+                0x00, 0x96, 0x00, 0x00), // 150 in 16.16 fixed-point
             box('mdia',
                 box('mdhd',
                     0x01, // version 1
@@ -320,7 +320,10 @@ test('can parse a moov', function() {
                         box('dref',
                             0x01, // version 1
                             0x00, 0x00, 0x00, // flags
-                            0x00, 0x00, 0x00, 0x00)), // entry_count
+                            0x00, 0x00, 0x00, 0x01, // entry_count
+                            box('url ',
+                            0x00, // version
+                            0x00, 0x00, 0x01))), // flags
                     box('stbl',
                         box('stsd',
                             0x01, // version 1
@@ -329,25 +332,32 @@ test('can parse a moov', function() {
                         box('stts',
                             0x01, // version 1
                             0x00, 0x00, 0x00, // flags
-                            0x00, 0x00, 0x00, 0x00), // entry_count
+                            0x00, 0x00, 0x00, 0x01, // entry_count
+                            0x00, 0x00, 0x00, 0x01, // sample_count
+                            0x00, 0x00, 0x00, 0x01), // sample_delta
                         box('stsc',
                             0x01, // version 1
                             0x00, 0x00, 0x00, // flags
-                            0x00, 0x00, 0x00, 0x00), // entry_count
+                            0x00, 0x00, 0x00, 0x01, // entry_count
+                            0x00, 0x00, 0x00, 0x02, // first_chunk
+                            0x00, 0x00, 0x00, 0x03, // samples_per_chunk
+                            0x00, 0x00, 0x00, 0x01), // sample_description_index
                         box('stco',
                             0x01, // version 1
                             0x00, 0x00, 0x00, // flags
-                            0x00, 0x00, 0x00, 0x00)))))); // entry_count;
+                            0x00, 0x00, 0x00, 0x01, // entry_count
+                            0x00, 0x00, 0x00, 0x01)))))); // chunk_offset
+
 
   deepEqual(videojs.inspectMp4(new Uint8Array(data)), [{
-    size: 433,
     type: 'moov',
+    size: 469,
     boxes: [{
       type: 'mvhd',
       version: 1,
       flags: new Uint8Array([0, 0, 0]),
-      creationTime: 1,
-      modificationTime: 2,
+      creationTime: new Date(1000 - 2082844800000),
+      modificationTime: new Date(2000 - 2082844800000),
       timescale: 60,
       duration: 600,
       rate: 1,
@@ -357,13 +367,13 @@ test('can parse a moov', function() {
       nextTrackId: 2
     }, {
       type: 'trak',
-      size: 305,
+      size: 341,
       boxes: [{
         type: 'tkhd',
         flags: new Uint8Array([0, 0, 0]),
         version: 1,
-        creationTime: 2,
-        modificationTime: 3,
+        creationTime: new Date(2000 - 2082844800000),
+        modificationTime: new Date(3000 - 2082844800000),
         size: 104,
         trackId: 1,
         duration: 600,
@@ -375,13 +385,13 @@ test('can parse a moov', function() {
         height: 150
       }, {
         type: 'mdia',
-        size: 193,
+        size: 229,
         boxes: [{
           type: 'mdhd',
           version: 1,
           flags: new Uint8Array([0, 0, 0]),
-          creationTime: 2,
-          modificationTime: 3,
+          creationTime: new Date(2000 - 2082844800000),
+          modificationTime: new Date(3000 - 2082844800000),
           timescale: 60,
           duration: 600,
           language: 'eng',
@@ -395,20 +405,25 @@ test('can parse a moov', function() {
           size: 37
         }, {
           type: 'minf',
-          size: 104,
+          size: 140,
           boxes: [{
             type: 'dinf',
-            size: 24,
+            size: 36,
             boxes: [{
               type: 'dref',
+              size: 28,
               version: 1,
               flags: new Uint8Array([0, 0, 0]),
-              dataReferences: [],
-              size: 16
+              dataReferences: [{
+                type: 'url ',
+                size: 12,
+                version: 0,
+                flags: new Uint8Array([0, 0, 1])
+              }],
             }]
           }, {
             type: 'stbl',
-            size: 72,
+            size: 96,
             boxes: [{
               type: 'stsd',
               size: 16,
@@ -417,16 +432,29 @@ test('can parse a moov', function() {
               sampleDescriptions: [],
             }, {
               type: 'stts',
-              timeToSamples: [],
-              size: 16
+              size: 24,
+              version: 1,
+              flags: new Uint8Array([0, 0, 0]),
+              timeToSamples: [{
+                sampleCount: 1,
+                sampleDelta: 1
+              }]
             }, {
               type: 'stsc',
-              sampleToChunks: [],
-              size: 16
+              version: 1,
+              flags: new Uint8Array([0, 0, 0]),
+              sampleToChunks: [{
+                firstChunk: 2,
+                samplesPerChunk: 3,
+                sampleDescriptionIndex: 1
+              }],
+              size: 28
             }, {
               type: 'stco',
-              chunkOffsets: [],
-              size: 16
+              size: 20,
+              version: 1,
+              flags: new Uint8Array([0, 0, 0]),
+              chunkOffsets: [1]
             }]
           }]
         }]
@@ -498,24 +526,100 @@ test('can parse a video stsd', function() {
                      0x00, 0x00, 0x00, 0x00,
                      0x00, 0x00, 0x00, // compressorname
                      0x00, 0x18, // depth = 24
-                     0x11, 0x11)); // pre_defined
+                     0x11, 0x11, // pre_defined
+                     box('avcC',
+                        0x01, // configurationVersion
+                        0x00, // AVCProfileIndication??
+                        0x00, // profile_compatibility
+                        0x00, // AVCLevelIndication
+                        0x1c, // lengthSizeMinusOne
+                        0xe1, // numOfSequenceParameterSets
+                        0x00, 0x01, // sequenceParameterSetLength
+                        0x00, // "SPS"
+                        0x02, // numOfPictureParameterSets
+                        0x00, 0x02, // pictureParameterSetLength
+                        0x01, 0x02, // "PPS"
+                        0x00, 0x01, // pictureParameterSetLength
+                        0xff), // "PPS"
+                     box('btrt',
+                        0x00, 0x00, 0x00, 0x00, // bufferSizeDB
+                        0x00, 0x00, 0x00, 0x01, // maxBitrate
+                        0x00, 0x00, 0x00, 0x01))); // avgBitrate
   deepEqual(videojs.inspectMp4(new Uint8Array(data)), [{
     type: 'stsd',
-    size: 102,
+    size: 147,
     version: 0,
     flags: new Uint8Array([0, 0, 0]),
     sampleDescriptions: [{
       type: 'avc1',
-      size: 86,
+      size: 131,
       dataReferenceIndex: 1,
       width: 300,
       height: 150,
       horizresolution: 72,
       vertresolution: 72,
       frameCount: 1,
-      depth: 24
+      depth: 24,
+      config: [{
+        type: 'avcC',
+        size: 25,
+        configurationVersion: 1,
+        avcProfileIndication: 0,
+        profileCompatibility: 0,
+        avcLevelIndication: 0,
+        lengthSizeMinusOne: 0,
+        sps: [new Uint8Array(1)],
+        pps: [new Uint8Array([1, 2]),
+              new Uint8Array([0xff])]
+      }, {
+        type: 'btrt',
+        size: 20,
+        bufferSizeDB: 0,
+        maxBitrate: 1,
+        avgBitrate: 1
+      }]
     }]
   }]);
+});
+
+test('can parse a vmhd', function() {
+  var data = box('vmhd',
+                 0x00, // version
+                 0x00, 0x00, 0x00, // flags
+                 0x00, 0x00, // graphicsmode
+                 0x00, 0x00,
+                 0x00, 0x00,
+                 0x00, 0x00); // opcolor
+
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)),
+            [{
+              type: 'vmhd',
+              size: 20,
+              version: 0,
+              flags: new Uint8Array([0, 0, 0]),
+              graphicsmode: 0,
+              opcolor: new Uint16Array([0, 0, 0])
+            }]);
+});
+
+test('can parse an stsz', function() {
+  var data = box('stsz',
+                 0x00, // version
+                 0x00, 0x00, 0x00, // flags
+                 0x00, 0x00, 0x00, 0x00, // sample_size
+                 0x00, 0x00, 0x00, 0x03, // sample_count
+                 0x00, 0x00, 0x00, 0x01, // entry_size
+                 0x00, 0x00, 0x00, 0x02, // entry_size
+                 0x00, 0x00, 0x00, 0x03); // entry_size
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)),
+            [{
+              type: 'stsz',
+              size: 32,
+              version: 0,
+              flags: new Uint8Array([0, 0, 0]),
+              sampleSize: 0,
+              entries: [1, 2, 3]
+            }]);
 });
 
 test('can parse a series of boxes', function() {

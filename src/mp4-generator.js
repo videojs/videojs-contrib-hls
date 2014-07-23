@@ -2,7 +2,8 @@
 'use strict';
 
 var box, dinf, ftyp, minf, moov, mvex, mvhd, trak, tkhd, mdia, mdhd, hdlr, stbl,
-    stsd, types, MAJOR_BRAND, MINOR_VERSION, VIDEO_HDLR, DREF, TREX, Uint8Array, DataView;
+    stsd, types, MAJOR_BRAND, MINOR_VERSION, VIDEO_HDLR, VMHD, DREF, STCO, STSC, STSZ, STTS, TREX,
+    Uint8Array, DataView;
 
 Uint8Array = window.Uint8Array;
 DataView = window.DataView;
@@ -12,6 +13,8 @@ DataView = window.DataView;
   var i;
   types = {
     avc1: [], // codingname
+    avcC: [],
+    btrt: [],
     dinf: [],
     dref: [],
     ftyp: [],
@@ -26,10 +29,12 @@ DataView = window.DataView;
     stco: [],
     stsc: [],
     stsd: [],
+    stsz: [],
     stts: [],
     trak: [],
     trex: [],
-    tkhd: []
+    tkhd: [],
+    vmhd: []
   };
 
   for (i in types) {
@@ -65,7 +70,11 @@ DataView = window.DataView;
   DREF = new Uint8Array([
     0x00, // version 0
     0x00, 0x00, 0x00, // flags
-    0x00, 0x00, 0x00, 0x00 // entry_count
+    0x00, 0x00, 0x00, 0x01, // entry_count
+    0x00, 0x00, 0x00, 0x0c, // entry_size
+    0x75, 0x72, 0x6c, 0x20, // 'url' type
+    0x00, // version 0
+    0x00, 0x00, 0x01 // entry_flags
   ]);
   TREX = new Uint8Array([
     0x00, // version 0
@@ -75,6 +84,27 @@ DataView = window.DataView;
     0x00, 0x00, 0x00, 0x00, // default_sample_duration
     0x00, 0x00, 0x00, 0x00, // default_sample_size
     0x00, 0x01, 0x00, 0x01 // default_sample_flags
+  ]);
+  STCO = new Uint8Array([
+    0x00, // version
+    0x00, 0x00, 0x00, // flags
+    0x00, 0x00, 0x00, 0x00 // entry_count
+  ]);
+  STSC = STCO;
+  STSZ = new Uint8Array([
+    0x00, // version
+    0x00, 0x00, 0x00, // flags
+    0x00, 0x00, 0x00, 0x00, // sample_size
+    0x00, 0x00, 0x00, 0x00, // sample_count
+  ]);
+  STTS = STCO;
+  VMHD = new Uint8Array([
+    0x00, // version
+    0x00, 0x00, 0x00, // flags
+    0x00, 0x00, // graphicsmode
+    0x00, 0x00,
+    0x00, 0x00,
+    0x00, 0x00 // opcolor
   ]);
 })();
 
@@ -120,7 +150,8 @@ mdhd = function(duration) {
     0x00, 0x00, 0x00, // flags
     0x00, 0x00, 0x00, 0x02, // creation_time
     0x00, 0x00, 0x00, 0x03, // modification_time
-    0x00, 0x00, 0x00, 0x3c, // timescale
+    0x00, 0x01, 0x5f, 0x90, // timescale, 90,000 "ticks" per second
+
     (duration & 0xFF000000) >> 24,
     (duration & 0xFF0000) >> 16,
     (duration & 0xFF00) >> 8,
@@ -133,7 +164,7 @@ mdia = function(duration, width, height) {
   return box(types.mdia, mdhd(duration), hdlr(), minf(width, height));
 };
 minf = function(width, height) {
-  return box(types.minf, dinf(), stbl(width, height));
+  return box(types.minf, box(types.vmhd, VMHD), dinf(), stbl(width, height));
 };
 moov = function(duration, width, height) {
   return box(types.moov, mvhd(duration), trak(duration, width, height), mvex());
@@ -148,7 +179,7 @@ mvhd = function(duration) {
       0x00, 0x00, 0x00, // flags
       0x00, 0x00, 0x00, 0x01, // creation_time
       0x00, 0x00, 0x00, 0x02, // modification_time
-      0x00, 0x00, 0x00, 0x01, // timescale, 1 "tick" per second
+      0x00, 0x01, 0x5f, 0x90, // timescale, 90,000 "ticks" per second
       (duration & 0xFF000000) >> 24,
       (duration & 0xFF0000) >> 16,
       (duration & 0xFF00) >> 8,
@@ -181,9 +212,10 @@ mvhd = function(duration) {
 stbl = function(width, height) {
   return box(types.stbl,
              stsd(width, height),
-             box(types.stts),
-             box(types.stsc),
-             box(types.stco));
+             box(types.stts, STTS),
+             box(types.stsc, STSC),
+             box(types.stsz, STSZ),
+             box(types.stco, STCO));
 };
 
 stsd = function(width, height) {
@@ -218,7 +250,26 @@ stsd = function(width, height) {
       0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, // compressorname
       0x00, 0x18, // depth = 24
-      0x11, 0x11]))); // pre_defined = -1
+      0x11, 0x11]), // pre_defined = -1
+        box(types.avcC, new Uint8Array([
+          0x01, // configurationVersion
+          0x4d, // AVCProfileIndication??
+          0x40, // profile_compatibility
+          0x20, // AVCLevelIndication
+          0xff, // lengthSizeMinusOne
+          0xe1, // numOfSequenceParameterSets
+          0x00, 0x0c, // sequenceParameterSetLength
+          0x67, 0x4d, 0x40, 0x20,
+          0x96, 0x52, 0x80, 0xa0,
+          0x0b, 0x76, 0x02, 0x05, // SPS
+          0x01, // numOfPictureParameterSets
+          0x00, 0x04, // pictureParameterSetLength
+          0x68, 0xef, 0x38, 0x80])), // "PPS"
+        box(types.btrt, new Uint8Array([
+          0x00, 0x1c, 0x9c, 0x80, // bufferSizeDB
+          0x00, 0x2d, 0xc6, 0xc0, // maxBitrate
+          0x00, 0x2d, 0xc6, 0xc0])) // avgBitrate
+        ));
 };
 
 tkhd = function(duration, width, height) {
@@ -248,14 +299,12 @@ tkhd = function(duration, width, height) {
     0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
     0x40, 0x00, 0x00, 0x00, // transformation: unity matrix
-    (width & 0xFF000000) >> 24,
-    (width & 0xFF0000) >> 16,
     (width & 0xFF00) >> 8,
-    width & 0xFF, // width
-    (height & 0xFF000000) >> 24,
-    (height & 0xFF0000) >> 16,
+    width & 0xFF,
+    0x00, 0x00, // width
     (height & 0xFF00) >> 8,
-    height & 0xFF // height
+    height & 0xFF,
+    0x00, 0x00 // height
   ]));
 };
 
@@ -269,7 +318,7 @@ window.videojs.mp4 = {
   initSegment: function() {
     var
       fileType = ftyp(),
-      movie = moov(1, 1280, 720),
+      movie = moov(0xffffffff, 1280, 720),
       result = new Uint8Array(fileType.byteLength + movie.byteLength);
 
     result.set(fileType);

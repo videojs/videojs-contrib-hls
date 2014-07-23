@@ -16,6 +16,9 @@ var
     result += String.fromCharCode(buffer[3]);
     return result;
   },
+  parseMp4Date = function(seconds) {
+    return new Date(seconds * 1000 - 2082844800000);
+  },
 
   // registry of handlers for individual mp4 box types
   parse = {
@@ -31,7 +34,53 @@ var
         horizresolution: view.getUint16(28) + (view.getUint16(30) / 16),
         vertresolution: view.getUint16(32) + (view.getUint16(34) / 16),
         frameCount: view.getUint16(40),
-        depth: view.getUint16(74)
+        depth: view.getUint16(74),
+        config: videojs.inspectMp4(data.subarray(78, data.byteLength))
+      };
+    },
+    avcC: function(data) {
+      var
+        view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        result = {
+          configurationVersion: data[0],
+          avcProfileIndication: data[1],
+          profileCompatibility: data[2],
+          avcLevelIndication: data[3],
+          lengthSizeMinusOne: data[4] & 0x03,
+          sps: [],
+          pps: []
+        },
+        numOfSequenceParameterSets = data[5] & 0x1f,
+        numOfPictureParameterSets,
+        nalSize,
+        offset,
+        i;
+
+      // iterate past any SPSs
+      offset = 6;
+      for (i = 0; i < numOfSequenceParameterSets; i++) {
+        nalSize = view.getUint16(offset);
+        offset += 2;
+        result.sps.push(data.subarray(offset, offset + nalSize));
+        offset += nalSize;
+      }
+      // iterate past any PPSs
+      numOfPictureParameterSets = data[offset];
+      offset++;
+      for (i = 0; i < numOfPictureParameterSets; i++) {
+        nalSize = view.getUint16(offset);
+        offset += 2;
+        result.pps.push(data.subarray(offset, offset + nalSize));
+        offset += nalSize;
+      }
+      return result;
+    },
+    btrt: function(data) {
+      var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      return {
+        bufferSizeDB: view.getUint32(0),
+        maxBitrate: view.getUint32(4),
+        avgBitrate: view.getUint32(8)
       };
     },
     ftyp: function(data) {
@@ -58,7 +107,7 @@ var
       return {
         version: data[0],
         flags: new Uint8Array(data.subarray(1, 4)),
-        dataReferences: []
+        dataReferences: videojs.inspectMp4(data.subarray(8))
       };
     },
     hdlr: function(data) {
@@ -105,17 +154,17 @@ var
         };
       if (result.version === 1) {
         i += 4;
-        result.creationTime = view.getUint32(i); // truncating top 4 bytes
+        result.creationTime = parseMp4Date(view.getUint32(i)); // truncating top 4 bytes
         i += 8;
-        result.modificationTime = view.getUint32(i); // truncating top 4 bytes
+        result.modificationTime = parseMp4Date(view.getUint32(i)); // truncating top 4 bytes
         i += 4;
         result.timescale = view.getUint32(i);
         i += 8;
         result.duration = view.getUint32(i); // truncating top 4 bytes
       } else {
-        result.creationTime = view.getUint32(i);
+        result.creationTime = parseMp4Date(view.getUint32(i));
         i += 4;
-        result.modificationTime = view.getUint32(i);
+        result.modificationTime = parseMp4Date(view.getUint32(i));
         i += 4;
         result.timescale = view.getUint32(i);
         i += 4;
@@ -162,17 +211,17 @@ var
 
       if (result.version === 1) {
         i += 4;
-        result.creationTime = view.getUint32(i); // truncating top 4 bytes
+        result.creationTime = parseMp4Date(view.getUint32(i)); // truncating top 4 bytes
         i += 8;
-        result.modificationTime = view.getUint32(i); // truncating top 4 bytes
+        result.modificationTime = parseMp4Date(view.getUint32(i)); // truncating top 4 bytes
         i += 4;
         result.timescale = view.getUint32(i);
         i += 8
         result.duration = view.getUint32(i); // truncating top 4 bytes
       } else {
-        result.creationTime = view.getUint32(i);
+        result.creationTime = parseMp4Date(view.getUint32(i));
         i += 4;
-        result.modificationTime = view.getUint32(i);
+        result.modificationTime = parseMp4Date(view.getUint32(i));
         i += 4;
         result.timescale = view.getUint32(i);
         i += 4;
@@ -230,14 +279,38 @@ var
       };
     },
     stco: function(data) {
-      return {
-        chunkOffsets: []
-      };
+      var
+        view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        result = {
+          version: data[0],
+          flags: new Uint8Array(data.subarray(1, 4)),
+          chunkOffsets: []
+        },
+        entryCount = view.getUint32(4),
+        i;
+      for (i = 8; entryCount; i += 4, entryCount--) {
+        result.chunkOffsets.push(view.getUint32(i));
+      }
+      return result;
     },
     stsc: function(data) {
-      return {
-        sampleToChunks: []
-      };
+      var
+        view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        entryCount = view.getUint32(4),
+        result = {
+          version: data[0],
+          flags: new Uint8Array(data.subarray(1, 4)),
+          sampleToChunks: []
+        },
+        i;
+      for (i = 8; entryCount; i += 12, entryCount--) {
+        result.sampleToChunks.push({
+          firstChunk: view.getUint32(i),
+          samplesPerChunk: view.getUint32(i + 4),
+          sampleDescriptionIndex: view.getUint32(i + 8)
+        });
+      }
+      return result;
     },
     stsd: function(data) {
       return {
@@ -246,10 +319,39 @@ var
         sampleDescriptions: videojs.inspectMp4(data.subarray(8))
       };
     },
+    stsz: function(data) {
+      var
+        view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        result = {
+          version: data[0],
+          flags: new Uint8Array(data.subarray(1, 4)),
+          sampleSize: view.getUint32(4),
+          entries: []
+        },
+        i;
+      for (i = 12; i < data.byteLength; i += 4) {
+        result.entries.push(view.getUint32(i));
+      }
+      return result;
+    },
     stts: function(data) {
-      return {
-        timeToSamples: []
-      };
+      var
+        view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        result = {
+          version: data[0],
+          flags: new Uint8Array(data.subarray(1, 4)),
+          timeToSamples: []
+        },
+        entryCount = view.getUint32(4),
+        i;
+
+      for (i = 8; entryCount; i += 8, entryCount--) {
+        result.timeToSamples.push({
+          sampleCount: view.getUint32(i),
+          sampleDelta: view.getUint32(i + 4)
+        });
+      }
+      return result;
     },
     tkhd: function(data) {
       var
@@ -261,18 +363,18 @@ var
         };
       if (result.version === 1) {
         i += 4;
-        result.creationTime = view.getUint32(i); // truncating top 4 bytes
+        result.creationTime = parseMp4Date(view.getUint32(i)); // truncating top 4 bytes
         i += 8;
-        result.modificationTime = view.getUint32(i); // truncating top 4 bytes
+        result.modificationTime = parseMp4Date(view.getUint32(i)); // truncating top 4 bytes
         i += 4;
         result.trackId = view.getUint32(i);
         i += 4;
         i += 8;
         result.duration = view.getUint32(i); // truncating top 4 bytes
       } else {
-        result.creationTime = view.getUint32(i);
+        result.creationTime = parseMp4Date(view.getUint32(i));
         i += 4;
-        result.modificationTime = view.getUint32(i);
+        result.modificationTime = parseMp4Date(view.getUint32(i));
         i += 4;
         result.trackId = view.getUint32(i);
         i += 4;
@@ -291,10 +393,27 @@ var
       i += 2;
       result.matrix = new Uint32Array(data.subarray(i, i + (9 * 4)));
       i += 9 * 4;
-      result.width = view.getUint32(i);
+      result.width = view.getUint16(i) + (view.getUint16(i + 2) / 16);
       i += 4;
-      result.height = view.getUint32(i);
+      result.height = view.getUint16(i) + (view.getUint16(i + 2) / 16);
       return result;
+    },
+    'url ': function(data) {
+      return {
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4))
+      };
+    },
+    vmhd: function(data) {
+      var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      return {
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4)),
+        graphicsmode: view.getUint16(4),
+        opcolor: new Uint16Array([view.getUint16(6),
+                                  view.getUint16(8),
+                                  view.getUint16(10)])
+      };
     }
   };
 
