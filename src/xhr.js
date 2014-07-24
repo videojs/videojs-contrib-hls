@@ -2,7 +2,7 @@
   /**
    * Creates and sends an XMLHttpRequest.
    * TODO - expose video.js core's XHR and use that instead
-   * 
+   *
    * @param options {string | object} if this argument is a string, it
    * is intrepreted as a URL and a simple GET request is
    * inititated. If it is an object, it should contain a `url`

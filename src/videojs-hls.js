@@ -56,7 +56,7 @@ videojs.Hls.prototype.src = function(src) {
       type: "video/flv"
     };
     this.mediaSource = mediaSource;
-    
+
     this.segmentBuffer_ = [];
     this.segmentParser_ = new videojs.Hls.SegmentParser();
 
