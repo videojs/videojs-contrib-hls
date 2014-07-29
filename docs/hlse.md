@@ -7,7 +7,7 @@ echo -n "hello" | pkcs7 | openssl enc -aes-128-cbc > hello.encrypted
 
 # encrypt some text and get the bytes in a format that can be easily used for
 # testing in javascript
-echo -n "hello" | ~/Projects/pkcs7/lib/cli.js | openssl enc -aes-128-cbc | xxd -i
+echo -n "hello" | pkcs7 | openssl enc -aes-128-cbc | xxd -i
 ```
 
 Later, you can decrypt it:
