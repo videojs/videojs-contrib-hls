@@ -52,9 +52,7 @@ var AES, decrypt;
  * @param key {Array} The key as an array of 4, 6 or 8 words.
  */
 AES = function (key) {
-  if (!this._tables[0][0][0]) {
-    this._precompute();
-  }
+  this._precompute();
   
   var i, j, tmp,
     encKey, decKey,
@@ -212,27 +210,40 @@ AES.prototype = {
   }
 };
 
-decrypt = function(encrypted, key) {
+decrypt = function(encrypted, key, initVector) {
   var
-    view = new DataView(encrypted.buffer),
-    decrypted = new AES(key)
-      // convert big-endian input to platform byte order for decryption
-      .decrypt(new Uint32Array([
-        view.getUint32(0),
-        view.getUint32(4),
-        view.getUint32(8),
-        view.getUint32(12)
-      ])),
-    bytes = new Uint8Array(encrypted.byteLength);
+    encryptedView = new DataView(encrypted.buffer),
+    platformEndian = new Uint32Array(encrypted.byteLength / 4),
+    decipher = new AES(key),
+    decrypted = new Uint8Array(encrypted.byteLength),
+    decryptedView = new DataView(decrypted.buffer),
+    decryptedBlock,
+    word, byte;
 
-  // convert platform byte order back to big-endian for unpadding
-  view = new DataView(bytes.buffer);
-  view.setUint32(0, decrypted[0]);
-  view.setUint32(4, decrypted[1]);
-  view.setUint32(8, decrypted[2]);
-  view.setUint32(12, decrypted[3]);
+  // convert big-endian input to platform byte order for decryption
+  for (byte = 0; byte < encrypted.byteLength; byte += 4) {
+    platformEndian[byte >>> 2] = encryptedView.getUint32(byte);
+  }
+  // decrypt four word sequences, applying cipher-block chaining (CBC)
+  // to each decrypted block
+  for (word = 0; word < platformEndian.length; word += 4) {
+    // decrypt the block
+    decryptedBlock = decipher.decrypt(platformEndian.subarray(word, word + 4));
 
-  return unpad(bytes);
+    // XOR with the IV, and restore network byte-order to obtain the
+    // plaintext
+    byte = word << 2;
+    decryptedView.setUint32(byte, decryptedBlock[0] ^ initVector[0]);
+    decryptedView.setUint32(byte + 4, decryptedBlock[1] ^ initVector[1]);
+    decryptedView.setUint32(byte + 8, decryptedBlock[2] ^ initVector[2]);
+    decryptedView.setUint32(byte + 12, decryptedBlock[3] ^ initVector[3]);
+
+    // setup the IV for the next round
+    initVector = platformEndian.subarray(word, word + 4);
+  }
+
+  // remove any padding
+  return unpad(decrypted);
 };
 
 // exports
