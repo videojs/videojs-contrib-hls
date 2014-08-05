@@ -195,11 +195,7 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   this.sourceBuffer.abort();
 
   // cancel outstanding requests and buffer appends
-  if (this.segmentXhr_) {
-    this.segmentXhr_.onreadystatechange = null;
-    this.segmentXhr_.abort();
-    this.segmentXhr_ = null;
-  }
+  this.cancelSegmentXhr();
 
   // fetch new encryption keys, if necessary
   if (keyXhr) {
@@ -244,11 +240,8 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
  * state suitable for switching to a different video.
  */
 videojs.Hls.prototype.resetSrc_ = function() {
-  if (this.segmentXhr_) {
-    this.segmentXhr_.onreadystatechange = null;
-    this.segmentXhr_.abort();
-    this.segmentXhr_ = null;
-  }
+  this.cancelSegmentXhr();
+
   if (keyXhr) {
     keyXhr.onreadystatechange = null;
     keyXhr.abort();
@@ -256,6 +249,15 @@ videojs.Hls.prototype.resetSrc_ = function() {
   }
   if (this.sourceBuffer) {
     this.sourceBuffer.abort();
+  }
+};
+
+videojs.Hls.prototype.cancelSegmentXhr = function() {
+  if (this.segmentXhr_) {
+    // Prevent error handler from running.
+    this.segmentXhr_.onreadystatechange = null;
+    this.segmentXhr_.abort();
+    this.segmentXhr_ = null;
   }
 };
 
