@@ -383,7 +383,18 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     tech.bandwidth = (this.response.byteLength / tech.segmentXhrTime) * 8 * 1000;
 
 
-    // @@@
+    /*
+      Pre-segment switching:
+
+      Say, we have a video with a low and a high bandwidth channel and the segments are 10 seconds long.
+      The current implementation will always play the first segment of the low bandwidth channel - no matter how great
+      the network conditions are. This is because Hls.loadSegment() checks for the best playlist *after* playing a
+      segment. Since mid-segment switching is not supported we always end up with 10 seconds of low bandwidth video
+      material.
+
+      The code below solves this problem by checking for the best playlist *before* playing a
+      segment ("pre-segment switching").
+    */
     bestPlayList = tech.selectPlaylist();
     if( bestPlayList !== tech.playlists.media() )
     {
