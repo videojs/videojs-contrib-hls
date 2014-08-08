@@ -350,7 +350,7 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     responseType: 'arraybuffer',
     withCredentials: settings.withCredentials
   }, function(error, url) {
-    var tags;
+    var tags, bestPlayList;
 
     // the segment request is no longer outstanding
     tech.segmentXhr_ = null;
@@ -381,6 +381,17 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     // calculate the download bandwidth
     tech.segmentXhrTime = (+new Date()) - startTime;
     tech.bandwidth = (this.response.byteLength / tech.segmentXhrTime) * 8 * 1000;
+
+
+    // @@@
+    bestPlayList = tech.selectPlaylist();
+    if( bestPlayList !== tech.playlists.media() )
+    {
+        tech.playlists.media(bestPlayList);
+        return;
+    }
+
+
     tech.bytesReceived += this.response.byteLength;
 
     // transmux the segment data from MP2T to FLV

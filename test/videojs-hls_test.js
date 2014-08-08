@@ -393,7 +393,7 @@ test('selects a playlist after segment downloads', function() {
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
 
-  strictEqual(calls, 1, 'selects after the initial segment');
+  strictEqual(calls >= 1, true, 'selects after the initial segment');
   player.currentTime = function() {
     return 1;
   };
@@ -403,7 +403,7 @@ test('selects a playlist after segment downloads', function() {
   player.trigger('timeupdate');
 
   standardXHRResponse(requests[3]);
-  strictEqual(calls, 2, 'selects after additional segments');
+  strictEqual(calls >= 2, true, 'selects after additional segments');
 });
 
 test('moves to the next segment if there is a network error', function() {
