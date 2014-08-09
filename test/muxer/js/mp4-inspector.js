@@ -185,7 +185,22 @@ var
         boxes: videojs.inspectMp4(data)
       };
     },
+    mfhd: function(data) {
+      return {
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4)),
+        sequenceNumber: (data[4] << 24) |
+          (data[5] << 16) |
+          (data[6] << 8) |
+          (data[7])
+      };
+    },
     minf: function(data) {
+      return {
+        boxes: videojs.inspectMp4(data)
+      };
+    },
+    moof: function(data) {
       return {
         boxes: videojs.inspectMp4(data)
       };
@@ -249,28 +264,6 @@ var
         flags: new Uint8Array(data.subarray(1, 4)),
         rate: view.getUint32(4),
         initialDelay: view.getUint32(8)
-      };
-    },
-    trak: function(data) {
-      return {
-        boxes: videojs.inspectMp4(data)
-      };
-    },
-    trex: function(data) {
-      var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-      return {
-        version: data[0],
-        flags: new Uint8Array(data.subarray(1, 4)),
-        trackId: view.getUint32(4),
-        defaultSampleDescriptionIndex: view.getUint32(8),
-        defaultSampleDuration: view.getUint32(12),
-        defaultSampleSize: view.getUint32(16),
-        sampleDependsOn: data[20] & 0x03,
-        sampleIsDependedOn: (data[21] & 0xc0) >> 6,
-        sampleHasRedundancy: (data[21] & 0x30) >> 4,
-        samplePaddingValue: (data[21] & 0x0e) >> 1,
-        sampleIsDifferenceSample: !!(data[21] & 0x01),
-        sampleDegradationPriority: view.getUint16(22)
       };
     },
     stbl: function(data) {
@@ -353,6 +346,44 @@ var
       }
       return result;
     },
+    tfhd: function(data) {
+      var
+        view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        result = {
+          version: data[0],
+          flags: new Uint8Array(data.subarray(1, 4)),
+          trackId: view.getUint32(4)
+        },
+        baseDataOffsetPresent = result.flags[2] & 0x01,
+        sampleDescriptionIndexPresent = result.flags[2] & 0x02,
+        defaultSampleDurationPresent = result.flags[2] & 0x08,
+        defaultSampleSizePresent = result.flags[2] & 0x10,
+        defaultSampleFlagsPresent = result.flags[2] & 0x20,
+        i;
+
+      i = 8;
+      if (baseDataOffsetPresent) {
+        i += 4; // truncate top 4 bytes
+        result.baseDataOffset = view.getUint32(12);
+        i += 4;
+      }
+      if (sampleDescriptionIndexPresent) {
+        result.sampleDescriptionIndex = view.getUint32(i);
+        i += 4;
+      }
+      if (defaultSampleDurationPresent) {
+        result.defaultSampleDuration = view.getUint32(i);
+        i += 4;
+      }
+      if (defaultSampleSizePresent) {
+        result.defaultSampleSize = view.getUint32(i);
+        i += 4;
+      }
+      if (defaultSampleFlagsPresent) {
+        result.defaultSampleFlags = view.getUint32(i);
+      }
+      return result;
+    },
     tkhd: function(data) {
       var
         view = new DataView(data.buffer, data.byteOffset, data.byteLength),
@@ -397,6 +428,33 @@ var
       i += 4;
       result.height = view.getUint16(i) + (view.getUint16(i + 2) / 16);
       return result;
+    },
+    traf: function(data) {
+      return {
+        boxes: videojs.inspectMp4(data)
+      };
+    },
+    trak: function(data) {
+      return {
+        boxes: videojs.inspectMp4(data)
+      };
+    },
+    trex: function(data) {
+      var view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      return {
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4)),
+        trackId: view.getUint32(4),
+        defaultSampleDescriptionIndex: view.getUint32(8),
+        defaultSampleDuration: view.getUint32(12),
+        defaultSampleSize: view.getUint32(16),
+        sampleDependsOn: data[20] & 0x03,
+        sampleIsDependedOn: (data[21] & 0xc0) >> 6,
+        sampleHasRedundancy: (data[21] & 0x30) >> 4,
+        samplePaddingValue: (data[21] & 0x0e) >> 1,
+        sampleIsDifferenceSample: !!(data[21] & 0x01),
+        sampleDegradationPriority: view.getUint16(22)
+      };
     },
     'url ': function(data) {
       return {

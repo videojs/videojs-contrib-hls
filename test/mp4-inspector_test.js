@@ -622,6 +622,53 @@ test('can parse an stsz', function() {
             }]);
 });
 
+test('can parse a moof', function() {
+  var data = box('moof',
+                 box('mfhd',
+                     0x00, // version
+                     0x00, 0x00, 0x00, // flags
+                     0x00, 0x00, 0x00, 0x04), // sequence_number
+                 box('traf',
+                     box('tfhd',
+                        0x00, // version
+                        0x00, 0x00, 0x3b, // flags
+                        0x00, 0x00, 0x00, 0x01, // track_ID
+                        0x00, 0x00, 0x00, 0x00,
+                        0x00, 0x00, 0x00, 0x01, // base_data_offset
+                        0x00, 0x00, 0x00, 0x02, // sample_description_index
+                        0x00, 0x00, 0x00, 0x03, // default_sample_duration,
+                        0x00, 0x00, 0x00, 0x04, // default_sample_size
+                        0x00, 0x00, 0x00, 0x05))); // default_sample_flags
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)),
+            [{
+              type: 'moof',
+              size: 72,
+              boxes: [{
+                type: 'mfhd',
+                size: 16,
+                version: 0,
+                flags: new Uint8Array([0, 0, 0]),
+                sequenceNumber: 4
+              },
+              {
+                type: 'traf',
+                size: 48,
+                boxes: [{
+                  type: 'tfhd',
+                  version: 0,
+                  size: 40,
+                  flags: new Uint8Array([0, 0, 0x3b]),
+                  trackId: 1,
+                  baseDataOffset: 1,
+                  sampleDescriptionIndex: 2,
+                  defaultSampleDuration: 3,
+                  defaultSampleSize: 4,
+                  defaultSampleFlags: 5
+                }]
+              }]
+            }]);
+});
+
 test('can parse a series of boxes', function() {
   var ftyp = [
     0x00, 0x00, 0x00, 0x18 // size 4 * 6 = 24

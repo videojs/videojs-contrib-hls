@@ -146,6 +146,26 @@
 
         // XXX media source testing
 
+        var video = document.createElement('video');
+        var mediaSource = new MediaSource();
+        mediaSource.addEventListener('sourceopen', function() {
+          var buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d');
+          buffer.addEventListener('updatestart', console.log.bind(console));
+          buffer.addEventListener('updateend', console.log.bind(console));
+          buffer.addEventListener('error', console.log.bind(console));
+          buffer.appendBuffer(videojs.mp4.initSegment());
+          console.log('done');
+          window.vjsMediaSource = mediaSource;
+          window.vjsSourceBuffer = buffer;
+          window.vjsVideo = video;
+        });
+        mediaSource.addEventListener('error', console.log.bind(console));
+        mediaSource.addEventListener('opened', console.log.bind(console));
+        mediaSource.addEventListener('closed', console.log.bind(console));
+        mediaSource.addEventListener('sourceended', console.log.bind(console));
+        video.src = URL.createObjectURL(mediaSource);
+        video.addEventListener('error', console.log.bind(console));
+
         vjsBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(videojs.mp4.initSegment()), null, ' ');
       });
       reader.readAsArrayBuffer(this.files[0]);
@@ -168,25 +188,6 @@
 
         // XXX Media Sources Testing
 
-        var video = document.createElement('video');
-        var mediaSource = new MediaSource();
-        mediaSource.addEventListener('sourceopen', function() {
-          var buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d0020,mp4a.40.2');
-          buffer.addEventListener('updatestart', console.log.bind(console));
-          buffer.addEventListener('updateend', console.log.bind(console));
-          buffer.addEventListener('error', console.log.bind(console));
-          buffer.appendBuffer(bytes);
-          console.log('done');
-          window.vjsMediaSource = mediaSource;
-          window.vjsSourceBuffer = buffer;
-          window.vjsVideo = video;
-        });
-        mediaSource.addEventListener('error', console.log.bind(console));
-        mediaSource.addEventListener('opened', console.log.bind(console));
-        mediaSource.addEventListener('closed', console.log.bind(console));
-        mediaSource.addEventListener('sourceended', console.log.bind(console));
-        video.src = URL.createObjectURL(mediaSource);
-        video.addEventListener('error', console.log.bind(console));
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
