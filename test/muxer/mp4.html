@@ -119,9 +119,33 @@
         workingBoxes = document.querySelector('.working-boxes'),
 
         vjsOutput = document.querySelector('.vjs-hls-output'),
-        workingOutput = document.querySelector('.working-output');
+        workingOutput = document.querySelector('.working-output'),
 
-    // webkit dash-mp4 mime: 'video/mp4;codecs=avc1.4d0020,mp4a.40.2'
+        video = document.createElement('video'),
+        mediaSource = new MediaSource(),
+
+        logevent = function(event) {
+          console.log(event.type);
+        };
+
+    mediaSource.addEventListener('sourceopen', function() {
+      var
+        buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d'),
+        one = false;
+      buffer.addEventListener('updatestart', logevent);
+      buffer.addEventListener('updateend', logevent);
+      buffer.addEventListener('error', logevent);
+      window.vjsMediaSource = mediaSource;
+      window.vjsSourceBuffer = buffer;
+      window.vjsVideo = video;
+    });
+    mediaSource.addEventListener('error', logevent);
+    mediaSource.addEventListener('opened', logevent);
+    mediaSource.addEventListener('closed', logevent);
+    mediaSource.addEventListener('sourceended', logevent);
+    video.src = URL.createObjectURL(mediaSource);
+    video.addEventListener('error', console.log.bind(console));
+
 
     videojs.log = console.log.bind(console);
 
@@ -146,26 +170,6 @@
 
         // XXX media source testing
 
-        var video = document.createElement('video');
-        var mediaSource = new MediaSource();
-        mediaSource.addEventListener('sourceopen', function() {
-          var buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d');
-          buffer.addEventListener('updatestart', console.log.bind(console));
-          buffer.addEventListener('updateend', console.log.bind(console));
-          buffer.addEventListener('error', console.log.bind(console));
-          buffer.appendBuffer(videojs.mp4.initSegment());
-          console.log('done');
-          window.vjsMediaSource = mediaSource;
-          window.vjsSourceBuffer = buffer;
-          window.vjsVideo = video;
-        });
-        mediaSource.addEventListener('error', console.log.bind(console));
-        mediaSource.addEventListener('opened', console.log.bind(console));
-        mediaSource.addEventListener('closed', console.log.bind(console));
-        mediaSource.addEventListener('sourceended', console.log.bind(console));
-        video.src = URL.createObjectURL(mediaSource);
-        video.addEventListener('error', console.log.bind(console));
-
         vjsBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(videojs.mp4.initSegment()), null, ' ');
       });
       reader.readAsArrayBuffer(this.files[0]);
@@ -187,7 +191,8 @@
         workingOutput.innerHTML = hex;
 
         // XXX Media Sources Testing
-
+        window.vjsSourceBuffer.appendBuffer(bytes);
+        console.log('appended bytes');
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
