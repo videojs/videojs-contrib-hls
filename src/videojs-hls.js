@@ -282,7 +282,7 @@ videojs.Hls.prototype.selectPlaylist = function () {
   }
 
   // fallback chain of variants
-  return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+  return  bandwidthBestVariant || resolutionBestVariant || sortedPlaylists[0];
 };
 
 /**
