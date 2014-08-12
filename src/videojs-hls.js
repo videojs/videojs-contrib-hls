@@ -124,7 +124,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     // update the player duration
     this.updateDuration(this.playlists.media());
     // update the current segment index for the new playlist
-    // in case the indexes have been updated
+    // in case the indexes have been updated, like in a live scenario
     this.segmentIndex = videojs.Hls.Playlist.translateSegmentIndex(this.segmentIndex, oldMediaPlaylist, updatedPlaylist);
     oldMediaPlaylist = updatedPlaylist;
   }));
@@ -226,7 +226,7 @@ videojs.Hls.prototype.dispose = function() {
   videojs.Flash.prototype.dispose.call(this);
 };
 
-videojs.Hls.prototype.selectPlaylist = function(){
+videojs.Hls.prototype.selectPlaylist = function() {
   return this.playlistSelector(this.playlists.master.playlists.slice(), {
     bandwidth: this.bandwidth, 
     width: this.player().width(),

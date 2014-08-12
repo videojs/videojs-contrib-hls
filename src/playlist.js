@@ -232,9 +232,10 @@
    * @return {number} the duration between the start index and end index.
    */
   videojs.Hls.Playlist.getDuration = function(playlist, startIndex, endIndex) {
-    var dur = 0,
-        segment,
-        i;
+    var 
+      dur = 0,
+      segment,
+      i;
 
     startIndex = startIndex || 0;
     endIndex = endIndex !== undefined ? endIndex : (playlist.segments || []).length;
