@@ -1152,6 +1152,15 @@ test('has no effect if native HLS is available', function() {
   player.dispose();
 });
 
+test('is not supported on browsers without typed arrays', function() {
+  var oldArray = window.Uint8Array;
+  delete window.Uint8Array;
+  ok(!videojs.Hls.isSupported(), 'HLS is not supported');
+
+  // cleanup
+  window.Uint8Array = oldArray;
+});
+
 test('tracks the bytes downloaded', function() {
   player.src({
     src: 'http://example.com/media.m3u8',
