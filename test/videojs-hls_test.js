@@ -160,14 +160,15 @@ module('HLS', {
 
 test('starts playing if autoplay is specified', function() {
   var plays = 0;
-  player.play = function() {
-    plays++;
-  };
   player.options().autoplay = true;
   player.src({
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  // make sure play() is called *after* the media source opens
+  player.play = function() {
+    plays++;
+  };
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
