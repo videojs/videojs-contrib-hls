@@ -121,6 +121,13 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   this.playlists.on('mediachange', function() {
     player.trigger('mediachange');
   });
+
+  // if autoplay is enabled, begin playback. This is duplicative of
+  // code in video.js but is required because play() must be invoked
+  // *after* the media source has opened.
+  if (player.options().autoplay) {
+    player.play();
+  }
 };
 
 /**
