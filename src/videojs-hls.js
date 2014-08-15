@@ -513,9 +513,15 @@ videojs.Hls.supportsNativeHls = (function() {
 })();
 
 videojs.Hls.isSupported = function() {
+
+  // Only use the HLS tech if native HLS isn't available
   return !videojs.Hls.supportsNativeHls &&
+    // Flash must be supported for the fallback to work
     videojs.Flash.isSupported() &&
-    videojs.MediaSource;
+    // Media sources must be available to stream bytes to Flash
+    videojs.MediaSource &&
+    // Typed arrays are used to repackage the segments
+    window.Uint8Array;
 };
 
 videojs.Hls.canPlaySource = function(srcObj) {
