@@ -1154,7 +1154,7 @@ test('has no effect if native HLS is available', function() {
 
 test('is not supported on browsers without typed arrays', function() {
   var oldArray = window.Uint8Array;
-  delete window.Uint8Array;
+  window.Uint8Array = null;
   ok(!videojs.Hls.isSupported(), 'HLS is not supported');
 
   // cleanup
