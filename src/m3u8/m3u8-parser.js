@@ -1,6 +1,6 @@
 /**
  * Utilities for parsing M3U8 files. If the entire manifest is available,
- * `Parser` will create a object representation with enough detail for managing
+ * `Parser` will create an object representation with enough detail for managing
  * playback. `ParseStream` and `LineStream` are lower-level parsing primitives
  * that do not assume the entirety of the manifest is ready and expose a
  * ReadableStream-like interface.
@@ -8,27 +8,41 @@
 (function(videojs, parseInt, isFinite, mergeOptions, undefined) {
   var
     noop = function() {},
+
+    // "forgiving" attribute list psuedo-grammar:
+    // attributes -> keyvalue (',' keyvalue)*
+    // keyvalue   -> key '=' value
+    // key        -> [^=]*
+    // value      -> '"' [^"]* '"' | [^,]*
+    attributeSeparator = (function() {
+      var
+        key = '[^=]*',
+        value = '"[^"]*"|[^,]*',
+        keyvalue = '(?:' + key + ')=(?:' + value + ')';
+
+      return new RegExp('(?:^|,)(' + keyvalue + ')');
+    })(),
     parseAttributes = function(attributes) {
       var
-        attrs = attributes.split(','),
+        // split the string using attributes as the separator
+        attrs = attributes.split(attributeSeparator),
         i = attrs.length,
         result = {},
         attr;
 
       while (i--) {
-        attr = attrs[i].split('=');
-        attr[0] = attr[0].replace(/^\s+|\s+$/g, '');
-
-        // This is not sexy, but gives us the resulting object we want.
-        if (attr[1]) {
-          attr[1] = attr[1].replace(/^\s+|\s+$/g, '');
-          if (attr[1].indexOf('"') !== -1) {
-            attr[1] = attr[1].split('"')[1];
-          }
-          result[attr[0]] = attr[1];
-        } else {
-          attrs[i - 1] = attrs[i - 1] + ',' + attr[0];
+        // filter out unmatched portions of the string
+        if (attrs[i] === '') {
+          continue;
         }
+
+        // split the key and value
+        attr = /([^=]*)=(.*)/.exec(attrs[i]).slice(1);
+        // trim whitespace and remove optional quotes around the value
+        attr[0] = attr[0].replace(/^\s+|\s+$/g, '');
+        attr[1] = attr[1].replace(/^\s+|\s+$/g, '');
+        attr[1] = attr[1].replace(/^['"](.*)['"]$/g, '$1');
+        result[attr[0]] = attr[1];
       }
       return result;
     },
@@ -281,6 +295,27 @@
       });
       return;
     }
+    match = (/^#EXT-X-KEY:?(.*)$/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'key'
+      };
+      if (match[1]) {
+        event.attributes = parseAttributes(match[1]);
+        // parse the IV string into a Uint32Array
+        if (event.attributes.IV) {
+          event.attributes.IV = event.attributes.IV.match(/.{8}/g);
+          event.attributes.IV[0] = parseInt(event.attributes.IV[0], 16);
+          event.attributes.IV[1] = parseInt(event.attributes.IV[1], 16);
+          event.attributes.IV[2] = parseInt(event.attributes.IV[2], 16);
+          event.attributes.IV[3] = parseInt(event.attributes.IV[3], 16);
+          event.attributes.IV = new Uint32Array(event.attributes.IV);
+        }
+      }
+      this.trigger('data', event);
+      return;
+    }
 
     // unknown tag type
     this.trigger('data', {
@@ -311,7 +346,8 @@
     var
       self = this,
       uris = [],
-      currentUri = {};
+      currentUri = {},
+      key;
     Parser.prototype.init.call(this);
 
     this.lineStream = new LineStream();
@@ -372,6 +408,36 @@
 
               this.manifest.segments = uris;
 
+            },
+            'key': function() {
+              if (!entry.attributes) {
+                this.trigger('warn', {
+                  message: 'ignoring key declaration without attribute list'
+                });
+                return;
+              }
+              // clear the active encryption key
+              if (entry.attributes.METHOD === 'NONE') {
+                key = null;
+                return;
+              }
+              if (!entry.attributes.URI) {
+                this.trigger('warn', {
+                  message: 'ignoring key declaration without URI'
+                });
+                return;
+              }
+              if (!entry.attributes.METHOD) {
+                this.trigger('warn', {
+                  message: 'defaulting key method to AES-128'
+                });
+              }
+
+              // setup an encryption key for upcoming segments
+              key = {
+                method: entry.attributes.METHOD || 'AES-128',
+                uri: entry.attributes.URI
+              };
             },
             'media-sequence': function() {
               if (!isFinite(entry.number)) {
@@ -441,6 +507,10 @@
               message: 'defaulting segment duration to the target duration'
             });
             currentUri.duration = this.manifest.targetDuration;
+          }
+          // annotate with encryption information, if necessary
+          if (key) {
+            currentUri.key = key;
           }
 
           // prepare for the next URI
