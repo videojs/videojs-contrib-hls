@@ -247,7 +247,6 @@ decrypt = function(encrypted, key, initVector) {
 };
 
 // exports
-videojs.hls = videojs.util.mergeOptions(videojs.hls, {
-  decrypt: decrypt
-});
+videojs.Hls.decrypt = decrypt;
+
 })(window, window.videojs, window.pkcs7.unpad);

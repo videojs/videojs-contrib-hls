@@ -46,7 +46,7 @@ test('decrypts a single AES-128 with PKCS7 block', function() {
       0x82, 0xa8, 0xf0, 0x67]);
 
   deepEqual('howdy folks',
-            stringFromBytes(videojs.hls.decrypt(encrypted, key, initVector)),
+            stringFromBytes(videojs.Hls.decrypt(encrypted, key, initVector)),
             'decrypted with a byte array key');
 });
 
@@ -68,7 +68,7 @@ test('decrypts multiple AES-128 blocks with CBC', function() {
     ]);
 
   deepEqual('0123456789abcdef01234',
-            stringFromBytes(videojs.hls.decrypt(encrypted, key, initVector)),
+            stringFromBytes(videojs.Hls.decrypt(encrypted, key, initVector)),
             'decrypted multiple blocks');
 });
 
