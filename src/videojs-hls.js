@@ -412,23 +412,15 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     tech.bandwidth = (this.response.byteLength / tech.segmentXhrTime) * 8 * 1000;
     tech.bytesReceived += this.response.byteLength;
 
-    // transmux the segment data from MP2T to FLV
-    tech.segmentParser_.parseSegmentBinaryData(new Uint8Array(this.response));
-    tech.segmentParser_.flushTags();
-
     // package up all the work to append the segment
     // if the segment is the start of a timestamp discontinuity,
     // we have to wait until the sourcebuffer is empty before
     // aborting the source buffer processing
-    tags = [];
-    while (tech.segmentParser_.tagsAvailable()) {
-      tags.push(tech.segmentParser_.getNextTag());
-    }
     tech.segmentBuffer_.push({
       mediaIndex: tech.mediaIndex,
       playlist: tech.playlists.media(),
       offset: offset,
-      tags: tags
+      bytes: this.response
     });
     tech.drainBuffer();
 
@@ -447,6 +439,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     playlist,
     offset,
     tags,
+    bytes,
     segment,
 
     ptsTime,
@@ -460,7 +453,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   mediaIndex = segmentBuffer[0].mediaIndex;
   playlist = segmentBuffer[0].playlist;
   offset = segmentBuffer[0].offset;
-  tags = segmentBuffer[0].tags;
+  bytes = segmentBuffer[0].bytes;
   segment = playlist.segments[mediaIndex];
 
   if (segment.key) {
@@ -487,6 +480,15 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     this.sourceBuffer.abort();
     // tell the SWF where playback is continuing in the stitched timeline
     this.el().vjs_setProperty('currentTime', segmentOffset * 0.001);
+  }
+
+  // transmux the segment data from MP2T to FLV
+  this.segmentParser_.parseSegmentBinaryData(new Uint8Array(bytes));
+  this.segmentParser_.flushTags();
+
+  tags = [];
+  while (this.segmentParser_.tagsAvailable()) {
+    tags.push(this.segmentParser_.getNextTag());
   }
 
   // if we're refilling the buffer after a seek, scan through the muxed
