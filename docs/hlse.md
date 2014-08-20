@@ -6,7 +6,7 @@ The [HLS spec](http://tools.ietf.org/html/draft-pantos-http-live-streaming-13#se
 # since this is for testing, skip the key salting so the output is stable
 # using -nosalt outside of testing is a terrible idea!
 echo -n "hello" | pkcs7 | \
-openssl enc -aes-128-cbc -nopad -nosalt -k $KEY -iv $IV > hello.encrypted
+openssl enc -aes-128-cbc -nopad -nosalt -K $KEY -iv $IV > hello.encrypted
 
 # xxd is a handy way of translating binary into a format easily consumed by
 # javascript
@@ -16,5 +16,5 @@ xxd -i hello.encrypted
 Later, you can decrypt it:
 
 ```sh
-openssl enc -d -nopad -aes-128-cbc -k $KEY -iv $IV
+openssl enc -d -nopad -aes-128-cbc -K $KEY -iv $IV
 ```

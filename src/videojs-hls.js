@@ -379,8 +379,6 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     responseType: 'arraybuffer',
     withCredentials: settings.withCredentials
   }, function(error, url) {
-    var tags;
-
     // the segment request is no longer outstanding
     tech.segmentXhr_ = null;
 
@@ -420,7 +418,7 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       mediaIndex: tech.mediaIndex,
       playlist: tech.playlists.media(),
       offset: offset,
-      bytes: this.response
+      bytes: new Uint8Array(this.response)
     });
     tech.drainBuffer();
 
@@ -464,6 +462,14 @@ videojs.Hls.prototype.drainBuffer = function(event) {
       return segmentBuffer.shift();
     } else if (!segment.key.bytes) {
       return;
+    } else {
+      // if the media sequence is greater than 2^32, the IV will be incorrect
+      // assuming 10s segments, that would be about 1300 years
+      bytes = videojs.Hls.decrypt(bytes,
+                                  segment.key.bytes,
+                                  new Uint32Array([
+                                    0, 0, 0,
+                                    mediaIndex + playlist.mediaSequence]));
     }
   }
 
@@ -483,7 +489,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   }
 
   // transmux the segment data from MP2T to FLV
-  this.segmentParser_.parseSegmentBinaryData(new Uint8Array(bytes));
+  this.segmentParser_.parseSegmentBinaryData(bytes);
   this.segmentParser_.flushTags();
 
   tags = [];
@@ -528,7 +534,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 };
 
 videojs.Hls.prototype.fetchKeys = function(playlist, index) {
-  var i, key, tech, player, settings;
+  var i, key, tech, player, settings, view;
 
   // if there is a pending XHR or no segments, don't do anything
   if (keyXhr || !playlist.segments) {
@@ -559,7 +565,13 @@ videojs.Hls.prototype.fetchKeys = function(playlist, index) {
           return;
         }
 
-        key.bytes = this.response || new Uint8Array([1]);
+        view = new DataView(this.response);
+        key.bytes = new Uint32Array([
+          view.getUint32(0),
+          view.getUint32(4),
+          view.getUint32(8),
+          view.getUint32(12)
+        ]);
         tech.fetchKeys(playlist, i++, url);
       });
       break;

@@ -214,11 +214,12 @@ decrypt = function(encrypted, key, initVector) {
   var
     encryptedView = new DataView(encrypted.buffer),
     platformEndian = new Uint32Array(encrypted.byteLength / 4),
-    decipher = new AES(key),
+    decipher = new AES(Array.prototype.slice.call(key)),
     decrypted = new Uint8Array(encrypted.byteLength),
     decryptedView = new DataView(decrypted.buffer),
     decryptedBlock,
-    word, byte;
+    word,
+    byte;
 
   // convert big-endian input to platform byte order for decryption
   for (byte = 0; byte < encrypted.byteLength; byte += 4) {

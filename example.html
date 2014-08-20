@@ -27,6 +27,11 @@
   <script src="src/stream.js"></script>
   <script src="src/m3u8/m3u8-parser.js"></script>
   <script src="src/playlist-loader.js"></script>
+
+  <script src="node_modules/pkcs7/dist/pkcs7.unpad.js"></script>
+  <script src="src/decrypter.js"></script>
+
+  <script src="src/bin-utils.js"></script>
   
   <!-- example MPEG2-TS segments -->
   <!-- bipbop -->
@@ -58,8 +63,11 @@
          width="600"
          controls>
     <source
-       src="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8"
+        src="http://solutions.brightcove.com/jwhisenant/hls/encrypted/brightcove/oceans/oceans_aes-remote-key.m3u8"
        type="application/x-mpegURL">
+    <!--<source-->
+       <!--src="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8"-->
+       <!--type="application/x-mpegURL">-->
   </video>
   <script>
     videojs.options.flash.swf = 'node_modules/video.js/dist/video-js/video-js.swf';

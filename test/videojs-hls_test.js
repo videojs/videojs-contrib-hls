@@ -29,6 +29,7 @@ var
   oldSourceBuffer,
   oldFlashSupported,
   oldNativeHlsSupport,
+  oldDecrypt,
   requests,
   xhr,
 
@@ -135,6 +136,11 @@ module('HLS', {
 
     oldNativeHlsSupport = videojs.Hls.supportsNativeHls;
 
+    oldDecrypt = videojs.Hls.decrypt;
+    videojs.Hls.decrypt = function() {
+      return new Uint8Array([0]);
+    };
+
     // fake XHRs
     xhr = sinon.useFakeXMLHttpRequest();
     requests = [];
@@ -152,6 +158,7 @@ module('HLS', {
     videojs.MediaSource.open = oldMediaSourceOpen;
     videojs.Hls.SegmentParser = oldSegmentParser;
     videojs.Hls.supportsNativeHls = oldNativeHlsSupport;
+    videojs.Hls.decrypt = oldDecrypt;
     videojs.SourceBuffer = oldSourceBuffer;
     window.setTimeout = oldSetTimeout;
     xhr.restore();
@@ -1334,11 +1341,15 @@ test('a new keys XHR is created when a previous key XHR finishes', function() {
       }]
     };
   };
+  // we're inject the media playlist, so drop the request
+  requests.shift();
 
   player.hls.playlists.trigger('loadedplaylist');
-  requests.pop().respond(200, new Uint8Array([1]).buffer);
-  strictEqual(requests.length, 2, 'a key XHR is created');
-  strictEqual(requests[1].url, player.hls.playlists.media().segments[1].key.uri, 'a key XHR is created with the correct uri');
+  // key response
+  requests[0].response = new Uint32Array([0, 0, 0, 0]).buffer;
+  requests.shift().respond(200, null, '');
+  strictEqual(requests.length, 1, 'a key XHR is created');
+  strictEqual(requests[0].url, player.hls.playlists.media().segments[1].key.uri, 'a key XHR is created with the correct uri');
 
   player.hls.playlists.media = oldMedia;
 });
@@ -1527,7 +1538,9 @@ test('skip segments if key requests fail more than once', function() {
   requests.pop().respond(404);
 
   // key for second segment
-  standardXHRResponse(requests.pop());
+  requests[0].response = new Uint32Array([0,0,0,0]).buffer;
+  requests[0].respond(200, null, '');
+  requests.shift();
 
   equal(bytes.length, 1, 'bytes from the ts segments should not be added');
 
@@ -1541,6 +1554,76 @@ test('skip segments if key requests fail more than once', function() {
 
   equal(bytes.length, 2, 'bytes from the second ts segment should be added');
   equal(bytes[1], 1, 'the bytes from the second segment are added and not the first');
+});
+
+test('the key is supplied to the decrypter in the correct format', function() {
+  var keys = [];
+
+  player.src({
+    src: 'https://example.com/encrypted-media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  requests.pop().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXT-X-MEDIA-SEQUENCE:5\n' +
+                         '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
+                         '#EXTINF:2.833,\n' +
+                         'http://media.example.com/fileSequence52-A.ts\n' +
+                         '#EXTINF:15.0,\n' +
+                         'http://media.example.com/fileSequence52-B.ts\n');
+
+
+  videojs.Hls.decrypt = function(bytes, key) {
+    keys.push(key);
+    return new Uint8Array([0]);
+  };
+
+  requests[0].response = new Uint32Array([0,1,2,3]).buffer;
+  requests[0].respond(200, null, '');
+  requests.shift();
+  standardXHRResponse(requests.pop());
+
+  equal(keys.length, 1, 'only one call to decrypt was made');
+  deepEqual(keys[0],
+            new Uint32Array([0, 0x01000000, 0x02000000, 0x03000000]),
+            'passed the specified segment key');
+
+});
+test('supplies the media sequence of current segment as the IV by default, if no IV is specified', function() {
+  var ivs = [];
+
+  player.src({
+    src: 'https://example.com/encrypted-media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  requests.pop().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXT-X-MEDIA-SEQUENCE:5\n' +
+                         '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
+                         '#EXTINF:2.833,\n' +
+                         'http://media.example.com/fileSequence52-A.ts\n' +
+                         '#EXTINF:15.0,\n' +
+                         'http://media.example.com/fileSequence52-B.ts\n');
+
+
+  videojs.Hls.decrypt = function(bytes, key, iv) {
+    ivs.push(iv);
+    return new Uint8Array([0]);
+  };
+
+  requests[0].response = new Uint32Array([0,0,0,0]).buffer;
+  requests[0].respond(200, null, '');
+  requests.shift();
+  standardXHRResponse(requests.pop());
+
+  equal(ivs.length, 1, 'only one call to decrypt was made');
+  deepEqual(ivs[0],
+        new Uint32Array([0, 0, 0, 5]),
+        'the IV for the segment is the media sequence');
 });
 
 })(window, window.videojs);

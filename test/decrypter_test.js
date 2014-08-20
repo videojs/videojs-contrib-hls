@@ -36,7 +36,7 @@ module('Decryption');
 
 test('decrypts a single AES-128 with PKCS7 block', function() {
   var
-    key =  [0, 0, 0, 0],
+    key =  new Uint32Array([0, 0, 0, 0]),
     initVector = key,
     // the string "howdy folks" encrypted
     encrypted = new Uint8Array([
@@ -52,7 +52,7 @@ test('decrypts a single AES-128 with PKCS7 block', function() {
 
 test('decrypts multiple AES-128 blocks with CBC', function() {
   var
-    key = [0, 0, 0, 0],
+    key = new Uint32Array([0, 0, 0, 0]),
     initVector = key,
     // the string "0123456789abcdef01234" encrypted
     encrypted = new Uint8Array([
