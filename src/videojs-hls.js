@@ -171,9 +171,7 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   this.sourceBuffer.abort();
 
   // cancel outstanding requests and buffer appends
-  if (this.segmentXhr_) {
-    this.segmentXhr_.abort();
-  }
+  this.cancelSegmentXhr();
 
   // clear out any buffered segments
   this.segmentBuffer_ = [];
@@ -204,14 +202,20 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
   }
 };
 
+videojs.Hls.prototype.cancelSegmentXhr = function() {
+  if (this.segmentXhr_) {
+    // Prevent error handler from running.
+    this.segmentXhr_.onreadystatechange = null;
+    this.segmentXhr_.abort();
+    this.segmentXhr_ = null;
+  }
+};
+
 /**
  * Abort all outstanding work and cleanup.
  */
 videojs.Hls.prototype.dispose = function() {
-  if (this.segmentXhr_) {
-    this.segmentXhr_.onreadystatechange = null;
-    this.segmentXhr_.abort();
-  }
+  this.cancelSegmentXhr();
   if (this.playlists) {
     this.playlists.dispose();
   }
