@@ -1626,4 +1626,42 @@ test('supplies the media sequence of current segment as the IV by default, if no
         'the IV for the segment is the media sequence');
 });
 
+test('switching playlists with an outstanding key request does not stall playback', function() {
+  var media = '#EXTM3U\n' +
+    '#EXT-X-MEDIA-SEQUENCE:5\n' +
+    '#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n' +
+    '#EXTINF:2.833,\n' +
+    'http://media.example.com/fileSequence52-A.ts\n' +
+    '#EXTINF:15.0,\n' +
+    'http://media.example.com/fileSequence52-B.ts\n';
+  player.src({
+    src: 'https://example.com/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  // master playlist
+  standardXHRResponse(requests.shift());
+  // media playlist
+  requests.shift().respond(200, null, media);
+  // mock out media switching from this point on
+  player.hls.playlists.media = function() {
+    return player.hls.playlists.master.playlists[0];
+  };
+  // don't respond to the initial key request
+  requests.shift();
+  // first segment of the original media playlist
+  standardXHRResponse(requests.shift());
+
+  // "switch" media
+  player.hls.playlists.trigger('mediachange');
+
+  player.trigger('timeupdate');
+
+  ok(requests.length, 'made a request');
+  equal(requests[0].url,
+        'https://priv.example.com/key.php?r=52',
+        'requested the segment and key');
+});
+
 })(window, window.videojs);

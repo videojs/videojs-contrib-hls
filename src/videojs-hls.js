@@ -127,9 +127,16 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     this.fetchKeys(updatedPlaylist, this.mediaIndex);
   }));
 
-  this.playlists.on('mediachange', function() {
+  this.playlists.on('mediachange', videojs.bind(this, function() {
+    // abort outstanding key requests and check if new keys need to be retrieved
+    if (keyXhr) {
+      keyXhr.abort();
+      keyXhr = null;
+      this.fetchKeys(this.playlists.media(), this.mediaIndex);
+    }
+
     player.trigger('mediachange');
-  });
+  }));
 
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
