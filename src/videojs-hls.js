@@ -557,13 +557,13 @@ videojs.Hls.prototype.fetchKeys = function(playlist, index) {
     key = playlist.segments[i].key;
     if (key && !key.bytes && !keyFailed(key)) {
       keyXhr = videojs.Hls.xhr({
-        url: key.uri,
+        url: resolveUrl(playlist.uri, key.uri),
         responseType: 'arraybuffer',
         withCredentials: settings.withCredentials
       }, function(err, url) {
         keyXhr = null;
 
-        if (err) {
+        if (err || !this.response || this.response.byteLength !== 16) {
           key.retries = key.retries || 0;
           key.retries++;
           if (!this.aborted) {

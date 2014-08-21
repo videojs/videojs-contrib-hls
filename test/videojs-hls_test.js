@@ -1664,4 +1664,68 @@ test('switching playlists with an outstanding key request does not stall playbac
         'requested the segment and key');
 });
 
+test('resovles relative key URLs against the playlist', function() {
+  player.src({
+    src: 'https://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:5\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="key.php?r=52"\n' +
+                           '#EXTINF:2.833,\n' +
+                           'http://media.example.com/fileSequence52-A.ts\n');
+  equal(requests[0].url, 'https://example.com/key.php?r=52', 'resolves the key URL');
+});
+
+test('treats invalid keys as a key request failure', function() {
+  var tags = [{ pts: 0, bytes: 0 }], bytes = [];
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  window.videojs.SourceBuffer = function() {
+    this.appendBuffer = function(chunk) {
+      bytes.push(chunk);
+    };
+  };
+  player.src({
+    src: 'https://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:5\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n' +
+                           '#EXTINF:2.833,\n' +
+                           'http://media.example.com/fileSequence52-A.ts\n' +
+                           '#EXT-X-KEY:METHOD=NONE\n' +
+                           '#EXTINF:15.0,\n' +
+                           'http://media.example.com/fileSequence52-B.ts\n');
+  // keys should be 16 bytes long
+  requests[0].response = new Uint8Array(1).buffer;
+  requests.shift().respond(200, null, '');
+  // segment request
+  standardXHRResponse(requests.shift());
+
+  equal(requests[0].url, 'https://priv.example.com/key.php?r=52', 'retries the key');
+
+  // the retried response is invalid, too
+  requests[0].response = new Uint8Array(1);
+  requests.shift().respond(200, null, '');
+
+  // the first segment should be dropped and playback moves on
+  player.trigger('timeupdate');
+  equal(bytes.length, 1, 'did not append bytes');
+  equal(bytes[0], 'flv', 'appended the flv header');
+
+  tags.length = 0;
+  tags.push({ pts: 1, bytes: 1 });
+  // second segment request
+  standardXHRResponse(requests.shift());
+
+  equal(bytes.length, 2, 'appended bytes');
+  equal(1, bytes[1], 'skipped to the second segment');
+});
+
 })(window, window.videojs);
