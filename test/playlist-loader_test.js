@@ -551,4 +551,15 @@
     loader.media('low.m3u8');
     strictEqual(mediaChanges, 2, 'ignored a no-op media change');
   });
+
+  test('does not misintrepret playlists missing newlines at the end', function() {
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                             '#EXTINF:10,\n' +
+                             'low-0.ts\n' +
+                             '#EXT-X-ENDLIST'); // no newline
+     ok(loader.media().endList, 'flushed the final line of input');
+  });
 })(window);
