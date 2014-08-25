@@ -43,10 +43,20 @@
         <section>
           <h2>Inputs</h2>
           <form id="inputs">
-            <label>
-              Your original MP2T segment:
-              <input type="file" id="original">
-            </label>
+            <fieldset>
+              <label>
+                Your original MP2T segment:
+                <input type="file" id="original">
+              </label>
+              <label>
+                Key (optional):
+                <input type="text" id="key">
+              </label>
+              <label>
+                IV (optional):
+                <input type="text" id="iv">
+              </label>
+            </fieldset>
             <label>
               A working, FLV version of the underlying stream
               produced by another tool:
@@ -105,11 +115,15 @@
   <script src="../../src/h264-stream.js"></script>
   <script src="../../src/aac-stream.js"></script>
   <script src="../../src/segment-parser.js"></script>
+  <script src="../../node_modules/pkcs7/dist/pkcs7.unpad.js"></script>
+  <script src="../../src/decrypter.js"></script>
   
   <script src="../../src/bin-utils.js"></script>
   <script>
     var inputs = document.getElementById('inputs'),
         original = document.getElementById('original'),
+        key = document.getElementById('key'),
+        iv = document.getElementById('iv'),
         working = document.getElementById('working'),
 
         vjsTags = document.querySelector('.vjs-tags'),
@@ -132,6 +146,7 @@
         var parser = new videojs.Hls.SegmentParser(),
             tags = [parser.getFlvHeader()],
             tag,
+            bytes,
             hex,
             li,
             byteLength = 0,
@@ -142,7 +157,20 @@
         // clear old tag info
         vjsTags.innerHTML = '';
 
-        parser.parseSegmentBinaryData(new Uint8Array(reader.result));
+        // optionally, decrypt the segment
+        if (key.value && iv.value) {
+          bytes = videojs.Hls.decrypt(new Uint8Array(reader.result),
+                                      key.value.match(/([0-9a-f]{8})/gi).map(function(e) {
+                                        return parseInt(e, 16);
+                                      }),
+                                      iv.value.match(/([0-9a-f]{8})/gi).map(function(e) {
+                                        return parseInt(e, 16);
+                                      }));
+        } else {
+          bytes = new Uint8Array(reader.result);
+        }
+
+        parser.parseSegmentBinaryData(bytes);
 
         // collect all the tags
         while (parser.tagsAvailable()) {

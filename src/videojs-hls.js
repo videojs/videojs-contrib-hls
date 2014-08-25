@@ -12,7 +12,14 @@ var
   // a fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.1,
+  keyXhr,
+  keyFailed,
   resolveUrl;
+
+// returns true if a key has failed to download within a certain amount of retries
+keyFailed = function(key) {
+  return key.retries && key.retries >= 2;
+};
 
 videojs.Hls = videojs.Flash.extend({
   init: function(player, options, ready) {
@@ -116,11 +123,20 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     this.updateDuration(this.playlists.media());
     this.mediaIndex = videojs.Hls.translateMediaIndex(this.mediaIndex, oldMediaPlaylist, updatedPlaylist);
     oldMediaPlaylist = updatedPlaylist;
+
+    this.fetchKeys(updatedPlaylist, this.mediaIndex);
   }));
 
-  this.playlists.on('mediachange', function() {
+  this.playlists.on('mediachange', videojs.bind(this, function() {
+    // abort outstanding key requests and check if new keys need to be retrieved
+    if (keyXhr) {
+      keyXhr.abort();
+      keyXhr = null;
+      this.fetchKeys(this.playlists.media(), this.mediaIndex);
+    }
+
     player.trigger('mediachange');
-  });
+  }));
 
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
@@ -175,6 +191,14 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
     this.segmentXhr_.abort();
   }
 
+  // fetch new encryption keys, if necessary
+  if (keyXhr) {
+    keyXhr.aborted = true;
+    keyXhr.abort();
+    keyXhr = null;
+    this.fetchKeys(this.playlists.media(), this.mediaIndex);
+  }
+
   // clear out any buffered segments
   this.segmentBuffer_ = [];
 
@@ -211,6 +235,11 @@ videojs.Hls.prototype.dispose = function() {
   if (this.segmentXhr_) {
     this.segmentXhr_.onreadystatechange = null;
     this.segmentXhr_.abort();
+  }
+  if (keyXhr) {
+    keyXhr.onreadystatechange = null;
+    keyXhr.abort();
+    keyXhr = null;
   }
   if (this.playlists) {
     this.playlists.dispose();
@@ -357,8 +386,6 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     responseType: 'arraybuffer',
     withCredentials: settings.withCredentials
   }, function(error, url) {
-    var tags;
-
     // the segment request is no longer outstanding
     tech.segmentXhr_ = null;
 
@@ -390,23 +417,15 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     tech.bandwidth = (this.response.byteLength / tech.segmentXhrTime) * 8 * 1000;
     tech.bytesReceived += this.response.byteLength;
 
-    // transmux the segment data from MP2T to FLV
-    tech.segmentParser_.parseSegmentBinaryData(new Uint8Array(this.response));
-    tech.segmentParser_.flushTags();
-
     // package up all the work to append the segment
     // if the segment is the start of a timestamp discontinuity,
     // we have to wait until the sourcebuffer is empty before
     // aborting the source buffer processing
-    tags = [];
-    while (tech.segmentParser_.tagsAvailable()) {
-      tags.push(tech.segmentParser_.getNextTag());
-    }
     tech.segmentBuffer_.push({
       mediaIndex: tech.mediaIndex,
       playlist: tech.playlists.media(),
       offset: offset,
-      tags: tags
+      bytes: new Uint8Array(this.response)
     });
     tech.drainBuffer();
 
@@ -425,6 +444,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     playlist,
     offset,
     tags,
+    bytes,
     segment,
 
     ptsTime,
@@ -438,8 +458,27 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   mediaIndex = segmentBuffer[0].mediaIndex;
   playlist = segmentBuffer[0].playlist;
   offset = segmentBuffer[0].offset;
-  tags = segmentBuffer[0].tags;
+  bytes = segmentBuffer[0].bytes;
   segment = playlist.segments[mediaIndex];
+
+  if (segment.key) {
+    // this is an encrypted segment
+    // if the key download failed, we want to skip this segment
+    // but if the key hasn't downloaded yet, we want to try again later
+    if (keyFailed(segment.key)) {
+      return segmentBuffer.shift();
+    } else if (!segment.key.bytes) {
+      return;
+    } else {
+      // if the media sequence is greater than 2^32, the IV will be incorrect
+      // assuming 10s segments, that would be about 1300 years
+      bytes = videojs.Hls.decrypt(bytes,
+                                  segment.key.bytes,
+                                  new Uint32Array([
+                                    0, 0, 0,
+                                    mediaIndex + playlist.mediaSequence]));
+    }
+  }
 
   event = event || {};
   segmentOffset = videojs.Hls.getPlaylistDuration(playlist, 0, mediaIndex) * 1000;
@@ -454,6 +493,15 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     this.sourceBuffer.abort();
     // tell the SWF where playback is continuing in the stitched timeline
     this.el().vjs_setProperty('currentTime', segmentOffset * 0.001);
+  }
+
+  // transmux the segment data from MP2T to FLV
+  this.segmentParser_.parseSegmentBinaryData(bytes);
+  this.segmentParser_.flushTags();
+
+  tags = [];
+  while (this.segmentParser_.tagsAvailable()) {
+    tags.push(this.segmentParser_.getNextTag());
   }
 
   // if we're refilling the buffer after a seek, scan through the muxed
@@ -490,6 +538,53 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   if (mediaIndex + 1 === playlist.segments.length) {
     this.mediaSource.endOfStream();
   }
+};
+
+videojs.Hls.prototype.fetchKeys = function(playlist, index) {
+  var i, key, tech, player, settings, view;
+
+  // if there is a pending XHR or no segments, don't do anything
+  if (keyXhr || !playlist.segments) {
+    return;
+  }
+
+  tech = this;
+  player = this.player();
+  settings = player.options().hls || {};
+
+  // jshint -W083
+  for (i = index; i < playlist.segments.length; i++) {
+    key = playlist.segments[i].key;
+    if (key && !key.bytes && !keyFailed(key)) {
+      keyXhr = videojs.Hls.xhr({
+        url: resolveUrl(playlist.uri, key.uri),
+        responseType: 'arraybuffer',
+        withCredentials: settings.withCredentials
+      }, function(err, url) {
+        keyXhr = null;
+
+        if (err || !this.response || this.response.byteLength !== 16) {
+          key.retries = key.retries || 0;
+          key.retries++;
+          if (!this.aborted) {
+            tech.fetchKeys(playlist, i);
+          }
+          return;
+        }
+
+        view = new DataView(this.response);
+        key.bytes = new Uint32Array([
+          view.getUint32(0),
+          view.getUint32(4),
+          view.getUint32(8),
+          view.getUint32(12)
+        ]);
+        tech.fetchKeys(playlist, i++, url);
+      });
+      break;
+    }
+  }
+  // jshint +W083
 };
 
 /**

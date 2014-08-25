@@ -512,6 +512,94 @@
     strictEqual(element.tagType, 'endlist', 'the tag type is stream-inf');
   });
 
+  // #EXT-X-KEY
+  test('parses valid #EXT-X-KEY tags', function() {
+    var
+      manifest = '#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n',
+      element;
+    parseStream.on('data', function(elem) {
+      element = elem;
+    });
+    lineStream.push(manifest);
+
+    ok(element, 'an event was triggered');
+    deepEqual(element, {
+      type: 'tag',
+      tagType: 'key',
+      attributes: {
+        METHOD: 'AES-128',
+        URI: 'https://priv.example.com/key.php?r=52'
+      }
+    }, 'parsed a valid key');
+
+    manifest = '#EXT-X-KEY:URI="https://example.com/key#1",METHOD=FutureType-1024\n';
+    lineStream.push(manifest);
+    ok(element, 'an event was triggered');
+    deepEqual(element, {
+      type: 'tag',
+      tagType: 'key',
+      attributes: {
+        METHOD: 'FutureType-1024',
+        URI: 'https://example.com/key#1'
+      }
+    }, 'parsed the attribute list independent of order');
+
+    manifest = '#EXT-X-KEY:IV=1234567890abcdef1234567890abcdef\n';
+    lineStream.push(manifest);
+    ok(element.attributes.IV, 'detected an IV attribute');
+    deepEqual(element.attributes.IV, new Uint32Array([
+      0x12345678,
+      0x90abcdef,
+      0x12345678,
+      0x90abcdef
+    ]), 'parsed an IV value');
+  });
+
+  test('parses minimal #EXT-X-KEY tags', function() {
+    var
+      manifest = '#EXT-X-KEY:\n',
+      element;
+    parseStream.on('data', function(elem) {
+      element = elem;
+    });
+    lineStream.push(manifest);
+
+    ok(element, 'an event was triggered');
+    deepEqual(element, {
+      type: 'tag',
+      tagType: 'key'
+    }, 'parsed a minimal key tag');
+  });
+
+  test('parses lightly-broken #EXT-X-KEY tags', function() {
+    var
+      manifest = '#EXT-X-KEY:URI=\'https://example.com/single-quote\',METHOD=AES-128\n',
+      element;
+    parseStream.on('data', function(elem) {
+      element = elem;
+    });
+    lineStream.push(manifest);
+
+    strictEqual(element.attributes.URI,
+                'https://example.com/single-quote',
+                'parsed a single-quoted uri');
+
+    element = null;
+    manifest = '#EXT-X-KEYURI="https://example.com/key",METHOD=AES-128\n';
+    lineStream.push(manifest);
+    strictEqual(element.tagType, 'key', 'parsed the tag type');
+    strictEqual(element.attributes.URI,
+                'https://example.com/key',
+                'inferred a colon after the tag type');
+
+    element = null;
+    manifest = '#EXT-X-KEY:  URI =  "https://example.com/key",METHOD=AES-128\n';
+    lineStream.push(manifest);
+    strictEqual(element.attributes.URI,
+                'https://example.com/key',
+                'trims and removes quotes around the URI');
+  });
+
   test('ignores empty lines', function() {
     var
       manifest = '\n',

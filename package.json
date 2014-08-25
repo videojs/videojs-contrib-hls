@@ -37,6 +37,7 @@
     "video.js": "^4.7.2"
   },
   "dependencies": {
+    "pkcs7": "^0.2.2",
     "videojs-contrib-media-sources": "^0.3.0"
   }
 }
