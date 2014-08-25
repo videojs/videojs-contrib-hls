@@ -74,6 +74,7 @@
 
           parser = new videojs.m3u8.Parser();
           parser.push(xhr.responseText);
+          parser.end();
           parser.manifest.uri = url;
 
           // merge this playlist into the master
@@ -232,6 +233,7 @@
 
         parser = new videojs.m3u8.Parser();
         parser.push(this.responseText);
+        parser.end();
 
         loader.state = 'HAVE_MASTER';
 
