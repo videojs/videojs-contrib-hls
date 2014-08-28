@@ -190,7 +190,7 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   if (this.segmentXhr_) {
     var mediaIndexBeforeAbort = this.mediaIndex;
     this.segmentXhr_.abort();
-    if (mediaIndexBeforeAbort != this.mediaIndex) {
+    if (mediaIndexBeforeAbort !== this.mediaIndex) {
       this.mediaIndex = mediaIndexBeforeAbort;
     }
   }
