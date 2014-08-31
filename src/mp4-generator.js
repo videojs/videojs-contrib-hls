@@ -1,7 +1,7 @@
 (function(window, videojs, undefined) {
 'use strict';
 
-var box, dinf, ftyp, minf, moov, mvex, mvhd, trak, tkhd, mdia, mdhd, hdlr, stbl,
+var box, dinf, ftyp, minf, moof, moov, mvex, mvhd, trak, tkhd, mdia, mdhd, hdlr, stbl,
     stsd, types, MAJOR_BRAND, MINOR_VERSION, VIDEO_HDLR, VMHD, DREF, STCO, STSC, STSZ, STTS, TREX,
     Uint8Array, DataView;
 
@@ -21,7 +21,9 @@ DataView = window.DataView;
     hdlr: [],
     mdhd: [],
     mdia: [],
+    mfhd: [],
     minf: [],
+    moof: [],
     moov: [],
     mvex: [],
     mvhd: [],
@@ -31,6 +33,8 @@ DataView = window.DataView;
     stsd: [],
     stsz: [],
     stts: [],
+    tfhd: [],
+    traf: [],
     trak: [],
     trex: [],
     tkhd: [],
@@ -165,6 +169,26 @@ mdia = function(duration, width, height) {
 };
 minf = function(width, height) {
   return box(types.minf, box(types.vmhd, VMHD), dinf(), stbl(width, height));
+};
+moof = function(tracks) {
+  var
+    trafCall = [],
+    i = tracks.length;
+  // build tfhd boxes for each track fragment
+  while (i--) {
+    trafCall[i] = box(types.tfhd, new Uint8Array([
+      0x00, // version 0
+      0x00, 0x00, 0x00, // flags
+      (tracks[i].trackId & 0xFF000000) >> 24,
+      (tracks[i].trackId & 0xFF0000) >> 16,
+      (tracks[i].trackId & 0xFF00) >> 8,
+      (tracks[i].trackId & 0xFF),
+    ]));
+  }
+  trafCall.unshift(types.traf);
+  return box(types.moof,
+             box(types.mfhd),
+             box.apply(null, trafCall));
 };
 moov = function(duration, width, height) {
   return box(types.moov, mvhd(duration), trak(duration, width, height), mvex());
@@ -314,6 +338,7 @@ trak = function(duration, width, height) {
 
 window.videojs.mp4 = {
   ftyp: ftyp,
+  moof: moof,
   moov: moov,
   initSegment: function() {
     var
