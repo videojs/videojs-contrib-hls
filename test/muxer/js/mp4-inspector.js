@@ -456,6 +456,70 @@ var
         sampleDegradationPriority: view.getUint16(22)
       };
     },
+    trun: function(data) {
+      var
+        result = {
+          version: data[0],
+          flags: new Uint8Array(data.subarray(1, 4)),
+          samples: []
+        },
+        view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        dataOffsetPresent = result.flags[2] & 0x01,
+        firstSampleFlagsPresent = result.flags[2] & 0x04,
+        sampleDurationPresent = result.flags[1] & 0x01,
+        sampleSizePresent = result.flags[1] & 0x02,
+        sampleFlagsPresent = result.flags[1] & 0x04,
+        sampleCompositionTimeOffsetPresent = result.flags[1] & 0x08,
+        sampleCount = view.getUint32(4),
+        offset = 8,
+        sample;
+
+      if (dataOffsetPresent) {
+        result.dataOffset = view.getUint32(offset);
+        offset += 4;
+      }
+      if (firstSampleFlagsPresent && sampleCount) {
+        sample = {
+          flags: view.getUint32(offset)
+        };
+        offset += 4;
+        if (sampleDurationPresent) {
+          sample.duration = view.getUint32(offset);
+          offset += 4;
+        }
+        if (sampleSizePresent) {
+          sample.size = view.getUint32(offset);
+          offset += 4;
+        }
+        if (sampleCompositionTimeOffsetPresent) {
+          sample.compositionTimeOffset = view.getUint32(offset);
+          offset += 4;
+        }
+        result.samples.push(sample);
+        sampleCount--;
+      };
+      while (sampleCount--) {
+        sample = {};
+        if (sampleFlagsPresent) {
+          sample.flags = view.getUint32(offset);
+          offset += 4;
+        }
+        if (sampleDurationPresent) {
+          sample.duration = view.getUint32(offset);
+          offset += 4;
+        }
+        if (sampleSizePresent) {
+          sample.size = view.getUint32(offset);
+          offset += 4;
+        }
+        if (sampleCompositionTimeOffsetPresent) {
+          sample.compositionTimeOffset = view.getUint32(offset);
+          offset += 4;
+        }
+        result.samples.push(sample);
+      }
+      return result;
+    },
     'url ': function(data) {
       return {
         version: data[0],

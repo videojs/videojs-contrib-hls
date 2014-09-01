@@ -669,6 +669,41 @@ test('can parse a moof', function() {
             }]);
 });
 
+test('can parse a trun', function() {
+  var data = box('trun',
+                0x00, // version
+                0x00, 0x0b, 0x05, // flags
+                0x00, 0x00, 0x00, 0x02, // sample_count
+                0x00, 0x00, 0x00, 0x01, // data_offset
+                0x01, 0x02, 0x03, 0x04, // first_sample_flags
+
+                0x00, 0x00, 0x00, 0x09, // sample_duration
+                0x00, 0x00, 0x00, 0xff, // sample_size
+                0x00, 0x00, 0x00, 0x00, // sample_composition_time_offset
+
+                0x00, 0x00, 0x00, 0x08, // sample_duration
+                0x00, 0x00, 0x00, 0xfe, // sample_size
+                0x00, 0x00, 0x00, 0x00); // sample_composition_time_offset
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)),
+            [{
+              type: 'trun',
+              version: 0,
+              size: 48,
+              flags: new Uint8Array([0, 0x0b, 0x05]),
+              dataOffset: 1,
+              samples: [{
+                duration: 9,
+                size: 0xff,
+                flags: 0x01020304,
+                compositionTimeOffset: 0
+              }, {
+                duration: 8,
+                size: 0xfe,
+                compositionTimeOffset: 0
+              }]
+            }]);
+});
+
 test('can parse a series of boxes', function() {
   var ftyp = [
     0x00, 0x00, 0x00, 0x18 // size 4 * 6 = 24
