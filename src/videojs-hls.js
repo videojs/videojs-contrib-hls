@@ -188,7 +188,9 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
 
   // cancel outstanding requests and buffer appends
   if (this.segmentXhr_) {
+    this.segmentXhr_.onreadystatechange = null;
     this.segmentXhr_.abort();
+    this.segmentXhr_ = null;
   }
 
   // fetch new encryption keys, if necessary
