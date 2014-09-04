@@ -1231,7 +1231,7 @@ test('can be disposed before finishing initialization', function() {
   ok(readyHandlers.length > 0, 'registered a ready handler');
   try {
     while (readyHandlers.length) {
-      readyHandlers.shift()();
+      readyHandlers.shift().call(player);
     }
     ok(true, 'did not throw an exception');
   } catch (e) {
