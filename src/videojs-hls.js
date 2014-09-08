@@ -510,11 +510,11 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   if (typeof offset === 'number') {
     ptsTime = offset - segmentOffset + tags[0].pts;
 
-    while (tags[i] != undefined && tags[i].pts < ptsTime) {
+    while (tags[i] !== undefined && tags[i].pts < ptsTime) {
       i++;
     }
 
-    if (tags[i] == undefined) {
+    if (tags[i] === undefined) {
       i--;
     }
 
