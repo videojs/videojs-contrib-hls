@@ -195,6 +195,7 @@ bandwidth and viewport dimensions.
     - [Best RESOLUTION variant] OR [Best BANDWIDTH variant] OR [inital playlist in manifest]
 
 ## Release History
+- 0.9.0: support segment level AES-128 encryption
 - 0.8.0: support for EXT-X-DISCONTINUITY
 - 0.7.0: convert the HLS plugin to a tech
 - 0.6.0:
