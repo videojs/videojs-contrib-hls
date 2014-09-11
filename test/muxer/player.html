@@ -93,7 +93,7 @@
         var onMediaSourceOpen = function() {
           console.log('on media open');
           ms.removeEventListener('sourceopen', onMediaSourceOpen);
-          var sourceBuffer = ms.addSourceBuffer('video/mp4;codecs="avc1.64001f,mp4a.40.2');
+          var sourceBuffer = ms.addSourceBuffer('video/mp4;codecs="avc1.4D400D"');
           sourceBuffer.appendBuffer(bytes);  
         };
 
