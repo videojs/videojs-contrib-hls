@@ -155,6 +155,11 @@ videojs.Hls.prototype.play = function() {
     this.mediaIndex = 0;
   }
 
+  var player = this.player(),
+  settings = player.options();
+  
+  player.muted(settings.muted);
+
   // delegate back to the Flash implementation
   return videojs.Flash.prototype.play.apply(this, arguments);
 };
