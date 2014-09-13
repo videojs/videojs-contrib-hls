@@ -335,8 +335,8 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     segment,
     segmentUri;
 
-  // if there is a request already in flight, do nothing
-  if (this.segmentXhr_) {
+  // if there is a request already in flight, do nothing, unless we are seeking
+  if (this.segmentXhr_ && offset !== 'number') {
     return;
   }
 
