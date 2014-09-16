@@ -1126,6 +1126,22 @@ test('disposes the playlist loader', function() {
   strictEqual(disposes, 1, 'disposed playlist loader');
 });
 
+test('aborts the source buffer on disposal', function() {
+  var aborts = 0, player;
+  player = createPlayer();
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.hls.sourceBuffer.abort = function() {
+    aborts++;
+  };
+
+  player.dispose();
+  strictEqual(aborts, 1, 'aborted the source buffer');
+});
+
 test('only supports HLS MIME types', function() {
   ok(videojs.Hls.canPlaySource({
     type: 'aPplicatiOn/x-MPegUrl'
@@ -1687,6 +1703,7 @@ test('treats invalid keys as a key request failure', function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
     };
+    this.abort = function() {};
   };
   player.src({
     src: 'https://example.com/media.m3u8',
