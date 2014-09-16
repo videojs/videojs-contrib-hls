@@ -32,7 +32,9 @@ module.exports = function(grunt) {
               'src/stream.js',
               'src/m3u8/m3u8-parser.js',
               'src/xhr.js',
-              'src/playlist-loader.js'
+              'src/playlist-loader.js',
+              'node_modules/pkcs7/dist/pkcs7.unpad.js',
+              'src/decrypter.js'
             ],
         dest: 'dist/videojs.hls.js'
       }
