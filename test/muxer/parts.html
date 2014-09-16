@@ -126,7 +126,7 @@
             console.log("START");
             window.MediaSource = window.MediaSource || window.WebKitMediaSource;
 
-            ms = new MediaSource();
+            ms = new window.MediaSource();
 
             video = document.querySelector('video');
             video.src = window.URL.createObjectURL(ms);
