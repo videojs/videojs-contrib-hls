@@ -1119,7 +1119,7 @@ asyncTest('handles xhr timeouts correctly', function (assert) {
     start();
   }, 10 * 1000);
   videojs.Hls.xhr({
-    url: 'http://google.com:81',
+    url: 'http://example.com',
     timeout: 1
   }, function(error) {
     assert.strictEqual(error, 'timeout', 'called with timeout error');
