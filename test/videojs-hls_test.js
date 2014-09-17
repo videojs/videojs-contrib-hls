@@ -145,6 +145,9 @@ module('HLS', {
     xhr = sinon.useFakeXMLHttpRequest();
     requests = [];
     xhr.onCreate = function(xhr) {
+      // we set this here since sinon doesn't
+      // it is needed to force ontimeout usage
+      xhr.timeout = 0;
       requests.push(xhr);
     };
 
@@ -1106,6 +1109,23 @@ test('resets the switching algorithm if a request times out', function() {
   strictEqual(player.hls.playlists.media(),
               player.hls.playlists.master.playlists[1],
               'reset to the lowest bitrate playlist');
+});
+
+asyncTest('handles xhr timeouts correctly', function (assert) {
+  var testTimeout = setTimeout(function() {
+    // since we are faking xhr, the test will hang if we don't
+    // manually end it (ontimeout will never be called)
+    ok(false, 'request was not completed');
+    start();
+  }, 10 * 1000);
+  videojs.Hls.xhr({
+    url: 'http://google.com:81',
+    timeout: 1
+  }, function(error, url) {
+    assert.strictEqual(error, 'timeout', 'called with timeout error');
+    clearTimeout(testTimeout);
+    start();
+  });
 });
 
 test('disposes the playlist loader', function() {
