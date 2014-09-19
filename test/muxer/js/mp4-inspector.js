@@ -373,6 +373,9 @@ var
       }
       return result;
     },
+    styp: function(data) {
+      return parse.ftyp(data);
+    },
     tfhd: function(data) {
       var
         view = new DataView(data.buffer, data.byteOffset, data.byteLength),

@@ -582,6 +582,21 @@ test('can parse a video stsd', function() {
   }]);
 });
 
+test('can parse an styp', function() {
+  deepEqual(videojs.inspectMp4(new Uint8Array(box('styp',
+    0x61, 0x76, 0x63, 0x31, // major brand
+    0x00, 0x00, 0x00, 0x02, // minor version
+    0x00, 0x00, 0x00, 0x03, // compatible brands
+    0x00, 0x00, 0x00, 0x04 // compatible brands
+  ))), [{
+    type: 'styp',
+    size: 4 * 6,
+    majorBrand: 'avc1',
+    minorVersion: 2,
+    compatibleBrands: [3, 4]
+  }], 'parsed an ftyp');
+});
+
 test('can parse a vmhd', function() {
   var data = box('vmhd',
                  0x00, // version
