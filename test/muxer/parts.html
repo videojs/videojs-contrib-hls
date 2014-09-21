@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="css/main.css">
 
   <script src="js/vendor/modernizr-2.6.2.min.js"></script>
+  <script src="min-m4s.js"></script>
 </head>
 <body>
   <!--[if lt IE 7]>
@@ -60,37 +61,36 @@
 
 
         function closed() {
-            window.alert("MediaSource Closed.");
+            console.log("MediaSource Closed.");
         }
 
-        function append(buffer, bytes) {
-            if ("append" in buffer) {
-                buffer.append(bytes);
-            } else if ("appendBuffer" in buffer) {
-                buffer.appendBuffer(bytes);
-            }
-        }
-
+        var done = false;
         function loadFragment() {
+            if (done) {
+         return;
+        }
              console.log("LOAD FRAGMENT");
+            /*
             var req = new XMLHttpRequest();
             req.responseType = "arraybuffer";
-            req.open("GET", "./0.m4s", true);
+            req.open("GET", "../fixtures/dash/1-avc1.42c00d.m4s", true);
+            */
 
               
-            req.onload = function () {
+            //req.onload = function () {
                 console.log("FRAGMENT DONE LOADING");
 
-                append(sourceBuffer, new Uint8Array(req.response));
-                video.play();
-            };
+          sourceBuffer.appendBuffer(new Uint8Array(m4s));
+          done = true;
+            //};
 
+            /*
             req.onerror = function () {
                 window.alert("Could not load fragment.");
             };
 
             req.send();
-        
+            */
         }
 
         function loadInit() {
@@ -98,12 +98,12 @@
             console.log("LOAD INIT");
             var req = new XMLHttpRequest();
             req.responseType = "arraybuffer";
-            req.open("GET", "./Header.m4s", true);
+            req.open("GET", "../fixtures/dash/init.mp4", true);
 
             req.onload = function () {
                 console.log("INIT DONE LOADING");
-                append(sourceBuffer, new Uint8Array(req.response));
-                loadFragment();
+                sourceBuffer.appendBuffer(new Uint8Array(req.response));
+                sourceBuffer.addEventListener('update', loadFragment);
             };
 
             req.onerror = function () {
@@ -117,8 +117,11 @@
         function opened() {
           
             console.log("OPENED");
-            sourceBuffer = ms.addSourceBuffer('video/mp4;codecs="avc1.4D400D"');
+            sourceBuffer = ms.addSourceBuffer('video/mp4;codecs="avc1.42c00d"');
 
+            sourceBuffer.addEventListener('updateend', console.log.bind(console));
+            sourceBuffer.addEventListener('updatestart', console.log.bind(console));
+            sourceBuffer.addEventListener('update', console.log.bind(console));
             loadInit();
         }
 
@@ -136,6 +139,9 @@
 
             ms.addEventListener('sourceopen', opened, false);
             ms.addEventListener('sourceclose', closed, false);
+
+            ms.addEventListener('update', console.log.bind(console));
+            ms.addEventListener('updateend', console.log.bind(console));
         }
         load();
     </script>
