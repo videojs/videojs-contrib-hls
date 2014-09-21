@@ -594,7 +594,7 @@ test('can parse an styp', function() {
     majorBrand: 'avc1',
     minorVersion: 2,
     compatibleBrands: [3, 4]
-  }], 'parsed an ftyp');
+  }], 'parsed an styp');
 });
 
 test('can parse a vmhd', function() {
@@ -764,6 +764,21 @@ test('can parse a sidx', function(){
                 sapDeltaTime: 5
                 }]
              
+            }]);
+});
+
+test('can parse a tfdt', function() {
+  var data = box('tfdt',
+                 0x00, // version
+                 0x00, 0x00, 0x00, // flags
+                 0x01, 0x02, 0x03, 0x04); // baseMediaDecodeTime
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)),
+            [{
+              type: 'tfdt',
+              version: 0,
+              size: 16,
+              flags: new Uint8Array([0, 0, 0]),
+              baseMediaDecodeTime: 0x01020304
             }]);
 });
 

@@ -376,6 +376,13 @@ var
     styp: function(data) {
       return parse.ftyp(data);
     },
+    tfdt: function(data) {
+      return {
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4)),
+        baseMediaDecodeTime: data[4] << 24 | data[5] << 16 | data[6] << 8 | data[7]
+      };
+    },
     tfhd: function(data) {
       var
         view = new DataView(data.buffer, data.byteOffset, data.byteLength),
