@@ -710,6 +710,41 @@ test('cancels outstanding XHRs when seeking', function() {
   strictEqual(requests.length, 3, 'opened new XHR');
 });
 
+test('when outstanding XHRs are cancelled, they get aborted properly', function() {
+  var readystatechanges = 0;
+
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests[0]);
+  player.hls.media = {
+    segments: [{
+      uri: '0.ts',
+      duration: 10
+    }, {
+      uri: '1.ts',
+      duration: 10
+    }]
+  };
+
+  // trigger a segment download request
+  player.trigger('timeupdate');
+
+  player.hls.segmentXhr_.onreadystatechange = function() {
+    readystatechanges++;
+  };
+
+  // attempt to seek while the download is in progress
+  player.currentTime(12);
+
+  ok(requests[1].aborted, 'XHR aborted');
+  strictEqual(requests.length, 3, 'opened new XHR');
+  notEqual(player.hls.segmentXhr_.url, requests[1].url, 'the segment xhr is nulled out');
+  strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
+});
+
 test('flushes the parser after each segment', function() {
   var flushes = 0;
   // mock out the segment parser

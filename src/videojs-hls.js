@@ -237,6 +237,7 @@ videojs.Hls.prototype.dispose = function() {
   if (this.segmentXhr_) {
     this.segmentXhr_.onreadystatechange = null;
     this.segmentXhr_.abort();
+    this.segmentXhr_ = null;
   }
   if (keyXhr) {
     keyXhr.onreadystatechange = null;
