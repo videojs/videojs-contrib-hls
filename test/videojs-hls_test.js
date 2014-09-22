@@ -1199,6 +1199,60 @@ test('disposes the playlist loader', function() {
   strictEqual(disposes, 1, 'disposed playlist loader');
 });
 
+test('remove event handlers on dispose', function() {
+  var player,
+      handlers = [],
+      timeupdateOff = 0,
+      waitingOff = 0,
+      oldOff,
+      type,
+      handler,
+      i;
+
+  player = createPlayer();
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  oldOff = player.off;
+  player.off = function(type, handler) {
+    handlers.push([type, handler]);
+
+    if (type === 'timeupdate') {
+      timeupdateOff++;
+    } else if (type === 'waiting') {
+      waitingOff++;
+    }
+
+    oldOff.call(player, type, handler);
+  };
+
+  player.dispose();
+
+  equal(timeupdateOff, 2, 'both fillBuffer and drainBuffer handlers were removed');
+  equal(waitingOff, 1, 'drainBuffer handler was removed');
+
+  for (i = 0; i < handlers.length; i++) {
+    type = handlers[i][0];
+    handler = handlers[i][1];
+
+    if (handler === player.hls.fillBuffer) {
+      equal(type, 'timeupdate', 'fillBuffer\'s timeupdate handler was removed');
+    } else if (handler === player.hls.drainBuffer) {
+      if (type === 'timeupdate') {
+        ok(type, 'drainBuffer\'s timeupdate handler was removed');
+      } else if (type === 'waiting') {
+        ok(type, 'drainBuffer\'s waiting handler was removed');
+      } else {
+        ok(false, 'drainBuffer handler was removed that wasn\'t timeupdate or waiting');
+      }
+    }
+  }
+
+  player.off = oldOff;
+});
+
 test('aborts the source buffer on disposal', function() {
   var aborts = 0, player;
   player = createPlayer();
