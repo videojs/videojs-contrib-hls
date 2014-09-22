@@ -741,13 +741,14 @@ test('when outstanding XHRs are cancelled, they get aborted properly', function(
 
   ok(requests[1].aborted, 'XHR aborted');
   strictEqual(requests.length, 3, 'opened new XHR');
-  notEqual(player.hls.segmentXhr_.url, requests[1].url, 'the segment xhr is nulled out');
+  notEqual(player.hls.segmentXhr_.url, requests[1].url, 'a new segment is request that is not the aborted one');
   strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
 });
 
 test('segmentXhr is properly nulled out when dispose is called', function() {
-  var readystatechanges = 0,
-      oldDispose = videojs.Flash.prototype.dispose;
+  var
+    readystatechanges = 0,
+    oldDispose = videojs.Flash.prototype.dispose;
   videojs.Flash.prototype.dispose = function() {};
 
   player.src({
@@ -756,15 +757,6 @@ test('segmentXhr is properly nulled out when dispose is called', function() {
   });
   openMediaSource(player);
   standardXHRResponse(requests[0]);
-  player.hls.media = {
-    segments: [{
-      uri: '0.ts',
-      duration: 10
-    }, {
-      uri: '1.ts',
-      duration: 10
-    }]
-  };
 
   // trigger a segment download request
   player.trigger('timeupdate');
@@ -1200,14 +1192,15 @@ test('disposes the playlist loader', function() {
 });
 
 test('remove event handlers on dispose', function() {
-  var player,
-      handlers = [],
-      timeupdateOff = 0,
-      waitingOff = 0,
-      oldOff,
-      type,
-      handler,
-      i;
+  var
+    player,
+    handlers = [],
+    timeupdateOff = 0,
+    waitingOff = 0,
+    oldOff,
+    type,
+    handler,
+    i;
 
   player = createPlayer();
   player.src({
