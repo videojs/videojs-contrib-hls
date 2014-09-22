@@ -710,6 +710,62 @@ test('cancels outstanding XHRs when seeking', function() {
   strictEqual(requests.length, 3, 'opened new XHR');
 });
 
+test('when outstanding XHRs are cancelled, they get aborted properly', function() {
+  var readystatechanges = 0;
+
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests[0]);
+
+  // trigger a segment download request
+  player.trigger('timeupdate');
+
+  player.hls.segmentXhr_.onreadystatechange = function() {
+    readystatechanges++;
+  };
+
+  // attempt to seek while the download is in progress
+  player.currentTime(12);
+
+  ok(requests[1].aborted, 'XHR aborted');
+  strictEqual(requests.length, 3, 'opened new XHR');
+  notEqual(player.hls.segmentXhr_.url, requests[1].url, 'a new segment is request that is not the aborted one');
+  strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
+});
+
+test('segmentXhr is properly nulled out when dispose is called', function() {
+  var
+    readystatechanges = 0,
+    oldDispose = videojs.Flash.prototype.dispose;
+  videojs.Flash.prototype.dispose = function() {};
+
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests[0]);
+
+  // trigger a segment download request
+  player.trigger('timeupdate');
+
+  player.hls.segmentXhr_.onreadystatechange = function() {
+    readystatechanges++;
+  };
+
+  player.hls.dispose();
+
+  ok(requests[1].aborted, 'XHR aborted');
+  strictEqual(requests.length, 2, 'did not open a new XHR');
+  equal(player.hls.segmentXhr_, null, 'the segment xhr is nulled out');
+  strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
+
+  videojs.Flash.prototype.dispose = oldDispose;
+});
+
 test('flushes the parser after each segment', function() {
   var flushes = 0;
   // mock out the segment parser
@@ -1126,6 +1182,40 @@ test('disposes the playlist loader', function() {
   strictEqual(disposes, 1, 'disposed playlist loader');
 });
 
+test('remove event handlers on dispose', function() {
+  var
+    player,
+    onhandlers = 0,
+    offhandlers = 0,
+    oldOn,
+    oldOff;
+
+  player = createPlayer();
+  oldOn = player.on;
+  oldOff = player.off;
+  player.on = function(type, handler) {
+    onhandlers++;
+    oldOn.call(player, type, handler);
+  };
+  player.off = function(type, handler) {
+    offhandlers++;
+    oldOff.call(player, type, handler);
+  };
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.hls.playlists.trigger('loadedmetadata');
+
+  player.dispose();
+
+  equal(offhandlers, onhandlers, 'the amount of on and off handlers is the same');
+
+  player.off = oldOff;
+  player.on = oldOn;
+});
+
 test('aborts the source buffer on disposal', function() {
   var aborts = 0, player;
   player = createPlayer();
@@ -1247,7 +1337,7 @@ test('can be disposed before finishing initialization', function() {
   ok(readyHandlers.length > 0, 'registered a ready handler');
   try {
     while (readyHandlers.length) {
-      readyHandlers.shift()();
+      readyHandlers.shift().call(player);
     }
     ok(true, 'did not throw an exception');
   } catch (e) {

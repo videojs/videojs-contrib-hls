@@ -188,7 +188,9 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
 
   // cancel outstanding requests and buffer appends
   if (this.segmentXhr_) {
+    this.segmentXhr_.onreadystatechange = null;
     this.segmentXhr_.abort();
+    this.segmentXhr_ = null;
   }
 
   // fetch new encryption keys, if necessary
@@ -232,9 +234,17 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
  * Abort all outstanding work and cleanup.
  */
 videojs.Hls.prototype.dispose = function() {
+  var player = this.player();
+
+  // remove event handlers
+  player.off('timeupdate', this.fillBuffer);
+  player.off('timeupdate', this.drainBuffer);
+  player.off('waiting', this.drainBuffer);
+
   if (this.segmentXhr_) {
     this.segmentXhr_.onreadystatechange = null;
     this.segmentXhr_.abort();
+    this.segmentXhr_ = null;
   }
   if (keyXhr) {
     keyXhr.onreadystatechange = null;
