@@ -745,6 +745,44 @@ test('when outstanding XHRs are cancelled, they get aborted properly', function(
   strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
 });
 
+test('segmentXhr is properly nulled out when dispose is called', function() {
+  var readystatechanges = 0,
+      oldDispose = videojs.Flash.prototype.dispose;
+  videojs.Flash.prototype.dispose = function() {};
+
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests[0]);
+  player.hls.media = {
+    segments: [{
+      uri: '0.ts',
+      duration: 10
+    }, {
+      uri: '1.ts',
+      duration: 10
+    }]
+  };
+
+  // trigger a segment download request
+  player.trigger('timeupdate');
+
+  player.hls.segmentXhr_.onreadystatechange = function() {
+    readystatechanges++;
+  };
+
+  player.hls.dispose();
+
+  ok(requests[1].aborted, 'XHR aborted');
+  strictEqual(requests.length, 2, 'did not open a new XHR');
+  equal(player.hls.segmentXhr_, null, 'the segment xhr is nulled out');
+  strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
+
+  videojs.Flash.prototype.dispose = oldDispose;
+});
+
 test('flushes the parser after each segment', function() {
   var flushes = 0;
   // mock out the segment parser
