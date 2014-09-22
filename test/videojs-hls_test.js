@@ -719,15 +719,6 @@ test('when outstanding XHRs are cancelled, they get aborted properly', function(
   });
   openMediaSource(player);
   standardXHRResponse(requests[0]);
-  player.hls.media = {
-    segments: [{
-      uri: '0.ts',
-      duration: 10
-    }, {
-      uri: '1.ts',
-      duration: 10
-    }]
-  };
 
   // trigger a segment download request
   player.trigger('timeupdate');
