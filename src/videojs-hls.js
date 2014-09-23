@@ -100,7 +100,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
-    this.fillBuffer();
+    //this.fillBuffer();
     player.on('timeupdate', videojs.bind(this, this.fillBuffer));
     player.on('timeupdate', videojs.bind(this, this.drainBuffer));
     player.on('waiting', videojs.bind(this, this.drainBuffer));
@@ -112,6 +112,8 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     player.error(this.playlists.error);
   }));
 
+  var firstPlLoad = true;
+  var secondPlLoad = false;
   this.playlists.on('loadedplaylist', videojs.bind(this, function() {
     var updatedPlaylist = this.playlists.media();
 
@@ -120,11 +122,27 @@ videojs.Hls.prototype.handleSourceOpen = function() {
       return;
     }
 
+    if (updatedPlaylist.calculatedbandwidth) {
+      this.bandwidth = updatedPlaylist.calculatedbandwidth;
+      this.playlists.media(this.selectPlaylist());
+    }
+    if (firstPlLoad) {
+      firstPlLoad = false;
+      secondPlLoad = true;
+      return;
+    } else if (secondPlLoad) {
+      secondPlLoad = false;
+      this.mediaSource.sourceBuffers[0].abort()
+      this.fillBuffer();
+      //this.playlists.trigger('loadedmetadata');
+    }
+
     this.updateDuration(this.playlists.media());
     this.mediaIndex = videojs.Hls.translateMediaIndex(this.mediaIndex, oldMediaPlaylist, updatedPlaylist);
     oldMediaPlaylist = updatedPlaylist;
 
     this.fetchKeys(updatedPlaylist, this.mediaIndex);
+
   }));
 
   this.playlists.on('mediachange', videojs.bind(this, function() {
