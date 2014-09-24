@@ -96,11 +96,26 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
+    var selectedPlaylist,
+        loaderHandler;
+
     oldMediaPlaylist = this.playlists.media();
+
+    this.bandwidth = oldMediaPlaylist.calculatedbandwidth || this.bandwidth;
+    selectedPlaylist = this.selectPlaylist();
+    if (selectedPlaylist === oldMediaPlaylist) {
+      this.fillBuffer();
+    } else {
+      this.playlists.media(selectedPlaylist);
+      loaderHandler = videojs.bind(this, function() {
+        this.fillBuffer();
+        this.playlists.off('loadedplaylist', loaderHandler);
+      });
+      this.playlists.on('loadedplaylist', loaderHandler);
+    }
 
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
-    //this.fillBuffer();
     player.on('timeupdate', videojs.bind(this, this.fillBuffer));
     player.on('timeupdate', videojs.bind(this, this.drainBuffer));
     player.on('waiting', videojs.bind(this, this.drainBuffer));
@@ -120,21 +135,6 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     if (!updatedPlaylist) {
       // do nothing before an initial media playlist has been activated
       return;
-    }
-
-    if (updatedPlaylist.calculatedbandwidth) {
-      this.bandwidth = updatedPlaylist.calculatedbandwidth;
-      this.playlists.media(this.selectPlaylist());
-    }
-    if (firstPlLoad) {
-      firstPlLoad = false;
-      secondPlLoad = true;
-      return;
-    } else if (secondPlLoad) {
-      secondPlLoad = false;
-      this.mediaSource.sourceBuffers[0].abort()
-      this.fillBuffer();
-      //this.playlists.trigger('loadedmetadata');
     }
 
     this.updateDuration(this.playlists.media());
