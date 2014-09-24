@@ -1111,21 +1111,17 @@ test('resets the switching algorithm if a request times out', function() {
               'reset to the lowest bitrate playlist');
 });
 
-asyncTest('handles xhr timeouts correctly', function (assert) {
-  var testTimeout = setTimeout(function() {
-    // since we are faking xhr, the test will hang if we don't
-    // manually end it (ontimeout will never be called)
-    ok(false, 'request was not completed');
-    start();
-  }, 10 * 1000);
+test('handles xhr timeouts correctly', function (assert) {
+  expect(1);
+  var clock = sinon.useFakeTimers();
   videojs.Hls.xhr({
     url: 'http://example.com',
     timeout: 1
   }, function(error) {
     assert.strictEqual(error, 'timeout', 'called with timeout error');
-    clearTimeout(testTimeout);
-    start();
   });
+  clock.tick(1);
+  clock.restore();
 });
 
 test('disposes the playlist loader', function() {
