@@ -2,7 +2,7 @@
 'use strict';
 
 var box, dinf, ftyp, minf, moof, moov, mvex, mvhd, trak, tkhd, mdia, mdhd, hdlr, stbl,
-    stsd, types, MAJOR_BRAND, MINOR_VERSION, VIDEO_HDLR, VMHD, DREF, STCO, STSC, STSZ, STTS, TREX,
+    stsd, styp, types, MAJOR_BRAND, MINOR_VERSION, VIDEO_HDLR, AUDIO_HDLR, HDLR_TYPES, VMHD, DREF, STCO, STSC, STSZ, STTS, TREX,
     Uint8Array, DataView;
 
 Uint8Array = window.Uint8Array;
@@ -72,7 +72,7 @@ DataView = window.DataView;
     0x6f, 0x48, 0x61, 0x6e,
     0x64, 0x6c, 0x65, 0x72, 0x00 // name: 'VideoHandler'
   ]);
-  SOUND_HDLR = new Uint8Array([
+  AUDIO_HDLR = new Uint8Array([
     0x00, // version 0
     0x00, 0x00, 0x00, // flags
     0x00, 0x00, 0x00, 0x00, // pre_defined
@@ -80,10 +80,14 @@ DataView = window.DataView;
     0x00, 0x00, 0x00, 0x00, // reserved
     0x00, 0x00, 0x00, 0x00, // reserved
     0x00, 0x00, 0x00, 0x00, // reserved
-    0x56, 0x69, 0x64, 0x65,
-    0x6f, 0x48, 0x61, 0x6e,
-    0x73, 0x6f, 0x75, 0x6e, 0x00 // name: 'VideoHandler'
+    0x53, 0x6f, 0x75, 0x6e,
+    0x64, 0x48, 0x61, 0x6e,
+    0x64, 0x6c, 0x65, 0x72, 0x00 // name: 'SoundHandler'
   ]);
+  HDLR_TYPES = {
+    "video":VIDEO_HDLR,
+    "audio": AUDIO_HDLR
+  };
   DREF = new Uint8Array([
     0x00, // version 0
     0x00, 0x00, 0x00, // flags
@@ -158,8 +162,8 @@ ftyp = function() {
   return box(types.ftyp, MAJOR_BRAND, MINOR_VERSION, MAJOR_BRAND);
 };
 
-hdlr = function() {
-  return box(types.hdlr, VIDEO_HDLR);
+hdlr = function(type) {
+  return box(types.hdlr, HDLR_TYPES[type]);
 };
 mdhd = function(duration) {
   return box(types.mdhd, new Uint8Array([
@@ -177,8 +181,8 @@ mdhd = function(duration) {
     0x00, 0x00
   ]));
 };
-mdia = function(duration, width, height) {
-  return box(types.mdia, mdhd(duration), hdlr(), minf(width, height));
+mdia = function(duration, width, height, type) {
+  return box(types.mdia, mdhd(duration), hdlr(type), minf(width, height));
 };
 minf = function(width, height) {
   return box(types.minf, box(types.vmhd, VMHD), dinf(), stbl(width, height));
@@ -203,8 +207,8 @@ moof = function(tracks) {
              box(types.mfhd),
              box.apply(null, trafCall));
 };
-moov = function(duration, width, height) {
-  return box(types.moov, mvhd(duration), trak(duration, width, height), mvex());
+moov = function(duration, width, height, type) {
+  return box(types.moov, mvhd(duration), trak(duration, width, height, type), mvex());
 };
 mvex = function() {
   return box(types.mvex, box(types.trex, TREX));
@@ -349,8 +353,8 @@ tkhd = function(duration, width, height) {
   ]));
 };
 
-trak = function(duration, width, height) {
-  return box(types.trak, tkhd(duration, width, height), mdia(duration, width, height));
+trak = function(duration, width, height, type) {
+  return box(types.trak, tkhd(duration, width, height), mdia(duration, width, height, type));
 };
 
 window.videojs.mp4 = {
@@ -360,7 +364,7 @@ window.videojs.mp4 = {
   initSegment: function() {
     var
       fileType = ftyp(),
-      movie = moov(0xffffffff, 1280, 720),
+      movie = moov(0xffffffff, 1280, 720, "video"),
       result = new Uint8Array(fileType.byteLength + movie.byteLength);
 
     result.set(fileType);

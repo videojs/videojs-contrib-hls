@@ -41,7 +41,7 @@ test('generates a BSMFF ftyp', function() {
 
 test('generates a moov', function() {
   var boxes, mvhd, tkhd, mdhd, hdlr, minf, mvex,
-    data = mp4.moov(100, 600, 300);
+    data = mp4.moov(100, 600, 300, "video");
 
   ok(data, 'box is not null');
 
@@ -202,6 +202,34 @@ test('generates a moov', function() {
       sampleDegradationPriority: 1
     }]
   }, mvex, 'writes a movie extends box');
+});
+
+test('generates a sound hdlr', function() {
+  var boxes, hdlr,
+    data = mp4.moov(100, 600, 300, "audio");
+
+  ok(data, 'box is not null');
+
+  boxes = inspectMp4(data);
+
+  hdlr = boxes[0].boxes[1].boxes[1].boxes[1];
+  equal(hdlr.type, 'hdlr', 'generate an hdlr type');
+  equal(hdlr.handlerType, 'soun', 'wrote a sound handler');
+  equal(hdlr.name, 'SoundHandler', 'wrote the handler name');
+});
+
+test('generates a video hdlr', function() {
+  var boxes, hdlr,
+    data = mp4.moov(100, 600, 300, "video");
+
+  ok(data, 'box is not null');
+
+  boxes = inspectMp4(data);
+
+  hdlr = boxes[0].boxes[1].boxes[1].boxes[1];
+  equal(hdlr.type, 'hdlr', 'generate an hdlr type');
+  equal(hdlr.handlerType, 'vide', 'wrote a video handler');
+  equal(hdlr.name, 'VideoHandler', 'wrote the handler name');
 });
 
 test('generates an initialization segment', function() {
