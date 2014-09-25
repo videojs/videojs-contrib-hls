@@ -104,6 +104,9 @@ ParseStream = function() {
   };
 
   parsePat = function(payload, pat) {
+    pat.section_number = payload[7];
+    pat.last_section_number = payload[8];
+
     // skip the PSI header and parse the first PMT entry
     self.pmtPid = (payload[10] & 0x1F) << 8 | payload[11];
     pat.pmtPid = self.pmtPid;
@@ -119,6 +122,9 @@ ParseStream = function() {
    */
   parsePmt = function(payload, pmt) {
     var tableEnd, programInfoLength, offset;
+
+    pmt.section_number = payload[6];
+    pmt.last_section_number = payload[7];
 
     // PMTs can be sent ahead of the time when they should actually
     // take effect. We don't believe this should ever be the case
@@ -154,9 +160,14 @@ ParseStream = function() {
   };
 
   parsePes = function(payload, pes) {
-    var dataAlignmentIndicator, ptsDtsFlags;
+    var ptsDtsFlags,
+        pesLength;
+
+    // PES packet length
+    pesLength = payload[4] << 8 | payload[5];
+
     // find out if this packets starts a new keyframe
-    dataAlignmentIndicator = (payload[6] & 0x04) !== 0;
+    pes.dataAlignmentIndicator = (payload[6] & 0x04) !== 0;
     // PES packets may be annotated with a PTS value, or a PTS value
     // and a DTS value. Determine what combination of values is
     // available to work with.
@@ -238,6 +249,10 @@ ParseStream = function() {
   };
 };
 ParseStream.prototype = new videojs.Hls.Stream();
+ParseStream.STREAM_TYPES  = {
+  h264: 0x1b,
+  adts: 0x0f
+};
 
 window.videojs.mp2t = {
   PAT_PID: 0x0000,
