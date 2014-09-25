@@ -14,9 +14,12 @@
 (function(window, videojs, undefined) {
 'use strict';
 
-var PacketStream, ParseStream, MP2T_PACKET_LENGTH;
+var PacketStream, ParseStream, ProgramStream, Transmuxer, MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4;
 
 MP2T_PACKET_LENGTH = 188; // bytes
+H264_STREAM_TYPE = 0x1b;
+ADTS_STREAM_TYPE = 0x0f;
+mp4 = videojs.mp4;
 
 /**
  * Splits an incoming stream of binary data into MP2T packets.
@@ -78,7 +81,7 @@ PacketStream.prototype = new videojs.Hls.Stream();
  */
 ParseStream = function() {
   var parsePsi, parsePat, parsePmt, parsePes, self;
-  PacketStream.prototype.init.call(this);
+  ParseStream.prototype.init.call(this);
   self = this;
 
   this.programMapTable = {};
@@ -160,11 +163,12 @@ ParseStream = function() {
   };
 
   parsePes = function(payload, pes) {
-    var ptsDtsFlags,
-        pesLength;
+    var ptsDtsFlags;
 
-    // PES packet length
-    pesLength = payload[4] << 8 | payload[5];
+    if (!pes.payloadUnitStartIndicator) {
+      pes.data = payload;
+      return;
+    }
 
     // find out if this packets starts a new keyframe
     pes.dataAlignmentIndicator = (payload[6] & 0x04) !== 0;
@@ -224,10 +228,11 @@ ParseStream = function() {
     result.pid <<= 8;
     result.pid |= packet[2];
 
-    // if an adaption field is present, its length is specified by
-    // the fifth byte of the PES header. The adaptation field is
-    // used to specify some forms of timing and control data that we
-    // do not currently use.
+    // if an adaption field is present, its length is specified by the
+    // fifth byte of the TS packet header. The adaptation field is
+    // used to add stuffing to PES packets that don't fill a complete
+    // TS packet, and to specify some forms of timing and control data
+    // that we do not currently use.
     if (((packet[3] & 0x30) >>> 4) > 0x01) {
       offset += packet[offset] + 1;
     }
@@ -254,12 +259,129 @@ ParseStream.STREAM_TYPES  = {
   adts: 0x0f
 };
 
+ProgramStream = function() {
+  var
+    // PES packet fragments
+    video = {
+      data: [],
+      size: 0
+    },
+    audio = {
+      data: [],
+      size: 0
+    },
+    flushStream = function(stream, type) {
+      var
+        event = {
+          type: type,
+          data: new Uint8Array(stream.size)
+        },
+        i = 0,
+        fragment;
+
+      // do nothing if there is no buffered data
+      if (!stream.data.length) {
+        return;
+      }
+
+      // reassemble the packet
+      while (stream.data.length) {
+        fragment = stream.data.shift();
+
+        event.data.set(fragment.data, i);
+        i += fragment.data.byteLength;
+      }
+      stream.size = 0;
+
+      self.trigger('data', event);
+    },
+    self;
+
+  ProgramStream.prototype.init.call(this);
+  self = this;
+
+  this.push = function(data) {
+    ({
+      pat: function() {
+        self.trigger('data', data);
+      },
+      pes: function() {
+        var stream, streamType;
+
+        if (data.streamType === H264_STREAM_TYPE) {
+          stream = video;
+          streamType = 'video';
+        } else {
+          stream = audio;
+          streamType = 'audio';
+        }
+
+        // if a new packet is starting, we can flush the completed
+        // packet
+        if (data.payloadUnitStartIndicator) {
+          flushStream(stream, streamType);
+        }
+
+        // buffer this fragment until we are sure we've received the
+        // complete payload
+        stream.data.push(data);
+        stream.size += data.data.byteLength;
+      },
+      pmt: function() {
+        self.trigger('data', data);
+      }
+    })[data.type]();
+  };
+
+  /**
+   * Flush any remaining input. Video PES packets may be of variable
+   * length. Normally, the start of a new video packet can trigger the
+   * finalization of the previous packet. That is not possible if no
+   * more video is forthcoming, however. In that case, some other
+   * mechanism (like the end of the file) has to be employed. When it is
+   * clear that no additional data is forthcoming, calling this method
+   * will flush the buffered packets.
+   */
+  this.end = function() {
+    flushStream(video, 'video');
+    flushStream(audio, 'audio');
+  };
+};
+ProgramStream.prototype = new videojs.Hls.Stream();
+
+Transmuxer = function() {
+  var self = this, packetStream, parseStream, programStream;
+  Transmuxer.prototype.init.call(this);
+
+  // set up the parsing pipeline
+  packetStream = new PacketStream();
+  parseStream = new ParseStream();
+  programStream = new ProgramStream();
+
+  packetStream.pipe(parseStream);
+  parseStream.pipe(programStream);
+
+  programStream.on('data', function(data) {
+    self.trigger('data', data);
+  });
+
+  // feed incoming data to the front of the parsing pipeline
+  this.push = function(data) {
+    packetStream.push(data);
+  };
+  // flush any buffered data
+  this.end = programStream.end;
+};
+Transmuxer.prototype = new videojs.Hls.Stream();
+
 window.videojs.mp2t = {
   PAT_PID: 0x0000,
   MP2T_PACKET_LENGTH: MP2T_PACKET_LENGTH,
-  H264_STREAM_TYPE: 0x1b,
-  ADTS_STREAM_TYPE: 0x0f,
+  H264_STREAM_TYPE: H264_STREAM_TYPE,
+  ADTS_STREAM_TYPE: ADTS_STREAM_TYPE,
   PacketStream: PacketStream,
-  ParseStream: ParseStream
+  ParseStream: ParseStream,
+  ProgramStream: ProgramStream,
+  Transmuxer: Transmuxer
 };
 })(window, window.videojs);
