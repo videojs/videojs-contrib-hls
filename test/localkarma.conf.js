@@ -56,6 +56,7 @@ module.exports = function(config) {
       '../src/decrypter.js',
       '../src/transmuxer.js',
       '../src/mp4-generator.js',
+      '../src/transmuxer.js',
       '../tmp/manifests.js',
       '../tmp/expected.js',
       'tsSegment-bc.js',

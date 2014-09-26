@@ -105,8 +105,8 @@
     };
   </script>
   <script src="../../src/stream.js"></script>
-  <script src="../../src/transmuxer.js"></script>
   <script src="../../src/mp4-generator.js"></script>
+  <script src="../../src/transmuxer.js"></script>
   <script src="js/mp4-inspector.js"></script>
 
   <script src="../../src/bin-utils.js"></script>
@@ -153,24 +153,25 @@
       var reader = new FileReader();
       reader.addEventListener('loadend', function() {
         var segment = new Uint8Array(reader.result),
-            packetizer = new videojs.mp2t.PacketStream(),
-            parser = new videojs.mp2t.ParseStream(),
+            transmuxer = new videojs.mp2t.Transmuxer(),
             hex = '';
 
-        packetizer.pipe(parser);
-        packetizer.push(segment);
 
-        // clear old boxes info
+        transmuxer.on('data', function(data) {
+          if (data) {
+            console.log(data);
+          }
+        });
+        transmuxer.push(segment);
+        transmuxer.end();
 
         // write out the result
         hex += '<pre>';
-        hex += videojs.Hls.utils.hexDump(videojs.mp4.initSegment());
+        hex += 'nothing to see here';
         hex += '</pre>';
         vjsOutput.innerHTML = hex;
 
-        // XXX media source testing
-
-        vjsBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(videojs.mp4.initSegment()), null, ' ');
+        vjsBoxes.innerHTML = 'nothing to see here';
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
