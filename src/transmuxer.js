@@ -14,7 +14,7 @@
 (function(window, videojs, undefined) {
 'use strict';
 
-var PacketStream, ParseStream, ProgramStream, Transmuxer, MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4;
+var PacketStream, ParseStream, ProgramStream, Transmuxer, AacStream, H264Stream, MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4;
 
 MP2T_PACKET_LENGTH = 188; // bytes
 H264_STREAM_TYPE = 0x1b;
@@ -273,14 +273,21 @@ ProgramStream = function() {
       data: [],
       size: 0
     },
-    flushStream = function(stream, type) {
+    flushStream = function(stream, type, pes) {
       var
         event = {
           type: type,
-          data: new Uint8Array(stream.size)
+          data: new Uint8Array(stream.size),
         },
         i = 0,
         fragment;
+
+      // move over data from PES into Stream frame
+      event.pts = pes.pts;
+      event.dts = pes.dts;
+      event.pid = pes.pid;
+      event.dataAlignmentIndicator = pes.dataAlignmentIndicator;
+      event.payloadUnitStartIndicator = pes.payloadUnitStartIndicator
 
       // do nothing if there is no buffered data
       if (!stream.data.length) {
@@ -323,7 +330,7 @@ ProgramStream = function() {
         // if a new packet is starting, we can flush the completed
         // packet
         if (data.payloadUnitStartIndicator) {
-          flushStream(stream, streamType);
+          flushStream(stream, streamType, data);
         }
 
         // buffer this fragment until we are sure we've received the
@@ -369,28 +376,69 @@ ProgramStream = function() {
    * will flush the buffered packets.
    */
   this.end = function() {
+    debugger
     flushStream(video, 'video');
     flushStream(audio, 'audio');
   };
 };
 ProgramStream.prototype = new videojs.Hls.Stream();
 
+/*
+ * Accepts a ProgramStream and emits data events with parsed
+ * AAC Audio Frames of the individual packets.
+ */
+AacStream = function() {
+  var  self;
+  AacStream.prototype.init.call(this);
+  self = this;
+
+  this.push = function(packet) {
+    if (packet.type == "audio") {
+      console.log('AAC Stream Push!');
+      this.trigger('data', packet);
+    }
+  };
+};
+AacStream.prototype = new videojs.Hls.Stream();
+
+/**
+ * Accepts a ProgramStream and emits data events with parsed
+ * AAC Audio Frames of the individual packets.
+ */
+H264Stream = function() {
+  var self;
+  H264Stream.prototype.init.call(this);
+  self = this;
+
+  this.push = function(packet) {
+    if (packet.type == "video") {
+      console.log('h264 Stream Push!');
+      this.trigger('data', packet);
+    }
+  };
+};
+H264Stream.prototype = new videojs.Hls.Stream();
+
+
 Transmuxer = function() {
-  var self = this, packetStream, parseStream, programStream;
+  var self = this, packetStream, parseStream, programStream, aacStream, h264Stream;
   Transmuxer.prototype.init.call(this);
 
   // set up the parsing pipeline
   packetStream = new PacketStream();
   parseStream = new ParseStream();
   programStream = new ProgramStream();
+  aacStream = new AacStream();
+  h264Stream = new H264Stream();
 
   packetStream.pipe(parseStream);
   parseStream.pipe(programStream);
+  programStream.pipe(aacStream);
 
   // generate an init segment
   this.initSegment = mp4.initSegment();
 
-  programStream.on('data', function(data) {
+  aacStream.on('data', function(data) {
     self.trigger('data', data);
   });
 
@@ -411,6 +459,8 @@ window.videojs.mp2t = {
   PacketStream: PacketStream,
   ParseStream: ParseStream,
   ProgramStream: ProgramStream,
-  Transmuxer: Transmuxer
+  Transmuxer: Transmuxer,
+  AacStream: AacStream,
+  H264Stream: H264Stream
 };
 })(window, window.videojs);

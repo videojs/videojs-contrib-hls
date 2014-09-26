@@ -63,8 +63,7 @@
           </div>
           <div class="result-wrapper">
             <h3>Working</h3>
-            <pre class="working-boxes">
-            </pre>
+            <pre class="working-boxes"></pre>
           </div>
         </section>
         <section>
@@ -107,6 +106,8 @@
   <script src="../../src/stream.js"></script>
   <script src="../../src/mp4-generator.js"></script>
   <script src="../../src/transmuxer.js"></script>
+  <script src="../../src/flv-tag.js"></script>
+  <script src="../../src/exp-golomb.js"></script>
   <script src="js/mp4-inspector.js"></script>
 
   <script src="../../src/bin-utils.js"></script>
@@ -123,6 +124,7 @@
 
         video = document.createElement('video'),
         mediaSource = new MediaSource(),
+        FlvTag = videojs.Hls.FlvTag;
 
         logevent = function(event) {
           console.log(event.type);
@@ -150,12 +152,16 @@
     videojs.log = console.log.bind(console);
 
     original.addEventListener('change', function() {
-      var reader = new FileReader();
+      var reader = new FileReader(),
+        videoSegments= [],
+        audioSegments = [],
+        videoBuffer = [],
+        audioBuffer = [];
+
       reader.addEventListener('loadend', function() {
         var segment = new Uint8Array(reader.result),
             transmuxer = new videojs.mp2t.Transmuxer(),
             hex = '';
-
 
         transmuxer.on('data', function(data) {
           if (data) {
@@ -182,6 +188,8 @@
         var hex = '',
             bytes = new Uint8Array(reader.result);
 
+
+        console.log("boxes", videojs.inspectMp4(bytes));
         // clear old box info
         workingBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(bytes), null, ' ');
 

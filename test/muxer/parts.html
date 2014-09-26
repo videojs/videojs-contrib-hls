@@ -14,7 +14,15 @@
   <link rel="stylesheet" href="css/main.css">
 
   <script src="js/vendor/modernizr-2.6.2.min.js"></script>
-  <script src="min-m4s.js"></script>
+
+  <script>
+    window.videojs = window.videojs || {
+      Hls: {}
+    };
+  </script>
+  <!--<script src="min-m4s.js"></script>-->
+  <script src="./js/mdat.js"></script>
+  <script src="../../src/mp4-generator.js"></script>
 </head>
 <body>
   <!--[if lt IE 7]>
@@ -50,15 +58,14 @@
     </footer>
   </div>
 
-    
 
-    
+
+
 
     <script>
         var ms,
             sourceBuffer,
             video;
-
 
         function closed() {
             console.log("MediaSource Closed.");
@@ -66,41 +73,41 @@
 
         var done = false;
         function loadFragment() {
-            if (done) {
-         return;
-        }
-             console.log("LOAD FRAGMENT");
-            /*
-            var req = new XMLHttpRequest();
-            req.responseType = "arraybuffer";
-            req.open("GET", "../fixtures/dash/1-avc1.42c00d.m4s", true);
-            */
+          if (done) {
+            return;
+          }
 
-              
-            //req.onload = function () {
-                console.log("FRAGMENT DONE LOADING");
+          console.log("LOAD FRAGMENT");
 
-          sourceBuffer.appendBuffer(new Uint8Array(m4s));
+          var moov = videojs.mp4.moov(100, 600, 300, "video");
+          var moof = videojs.mp4.moof([{trackId: 1}]);
+          var frag = Array.prototype.slice.call(moov);
+              frag = frag.concat(Array.prototype.slice.call(moof));
+              frag = frag.concat(Array.prototype.slice.call(mdat));
+
+
+
+          sourceBuffer.appendBuffer( new Uint8Array( frag ) );
+        
           done = true;
-            //};
 
-            /*
-            req.onerror = function () {
-                window.alert("Could not load fragment.");
-            };
+        }
 
-            req.send();
-            */
+        function loadMdat(){
+            console.log('mdat', mdat);
+            setTimeout( function(){
+                sourceBuffer.appendBuffer(new Uint8Amdat);
+            },0);
+
         }
 
         function loadInit() {
-            
             console.log("LOAD INIT");
             var req = new XMLHttpRequest();
             req.responseType = "arraybuffer";
-            req.open("GET", "../fixtures/dash/init.mp4", true);
+            req.open("GET", "./ts2/Header.m4s", true);
 
-            req.onload = function () {
+            req.onload = function() {
                 console.log("INIT DONE LOADING");
                 sourceBuffer.appendBuffer(new Uint8Array(req.response));
                 sourceBuffer.addEventListener('update', loadFragment);
@@ -111,11 +118,11 @@
             };
 
             req.send();
-        
+
         }
 
         function opened() {
-          
+
             console.log("OPENED");
             sourceBuffer = ms.addSourceBuffer('video/mp4;codecs="avc1.42c00d"');
 
