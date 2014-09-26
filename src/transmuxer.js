@@ -282,12 +282,15 @@ ProgramStream = function() {
         i = 0,
         fragment;
 
-      // move over data from PES into Stream frame
-      event.pts = pes.pts;
-      event.dts = pes.dts;
-      event.pid = pes.pid;
-      event.dataAlignmentIndicator = pes.dataAlignmentIndicator;
-      event.payloadUnitStartIndicator = pes.payloadUnitStartIndicator
+      if ( pes !== undefined) {
+        // move over data from PES into Stream frame
+        event.pes = {};
+        event.pes.pts = pes.pts;
+        event.pes.dts = pes.dts;
+        event.pes.pid = pes.pid;
+        event.pes.dataAlignmentIndicator = pes.dataAlignmentIndicator;
+        event.pes.payloadUnitStartIndicator = pes.payloadUnitStartIndicator
+      }
 
       // do nothing if there is no buffered data
       if (!stream.data.length) {
@@ -376,7 +379,6 @@ ProgramStream = function() {
    * will flush the buffered packets.
    */
   this.end = function() {
-    debugger
     flushStream(video, 'video');
     flushStream(audio, 'audio');
   };
@@ -394,7 +396,6 @@ AacStream = function() {
 
   this.push = function(packet) {
     if (packet.type == "audio") {
-      console.log('AAC Stream Push!');
       this.trigger('data', packet);
     }
   };
@@ -412,7 +413,6 @@ H264Stream = function() {
 
   this.push = function(packet) {
     if (packet.type == "video") {
-      console.log('h264 Stream Push!');
       this.trigger('data', packet);
     }
   };
@@ -434,6 +434,7 @@ Transmuxer = function() {
   packetStream.pipe(parseStream);
   parseStream.pipe(programStream);
   programStream.pipe(aacStream);
+  programStream.pipe(h264Stream);
 
   // generate an init segment
   this.initSegment = mp4.initSegment();
@@ -441,7 +442,9 @@ Transmuxer = function() {
   aacStream.on('data', function(data) {
     self.trigger('data', data);
   });
-
+  h264Stream.on('data', function(data) {
+    self.trigger('data', data);
+  });
   // feed incoming data to the front of the parsing pipeline
   this.push = function(data) {
     packetStream.push(data);
