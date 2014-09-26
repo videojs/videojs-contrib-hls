@@ -27,6 +27,8 @@ var
   parseStream,
   ProgramStream = videojs.mp2t.ProgramStream,
   programStream,
+  Transmuxer = videojs.mp2t.Transmuxer,
+  transmuxer,
 
   MP2T_PACKET_LENGTH = videojs.mp2t.MP2T_PACKET_LENGTH,
   H264_STREAM_TYPE = videojs.mp2t.H264_STREAM_TYPE,
@@ -473,10 +475,15 @@ packetize = function(data) {
 };
 
 test('parses metadata events from PSI packets', function() {
-  var metadatas = 0, datas = 0;
+  var
+    metadatas = [],
+    datas = 0,
+    sortById = function(left, right) {
+      return left.id - right.id;
+    };
   programStream.on('data', function(data) {
-    if (data.type === 'pat' || data.type === 'pmt') {
-      metadatas++;
+    if (data.type === 'metadata') {
+      metadatas.push(data);
     }
     datas++;
   });
@@ -484,11 +491,23 @@ test('parses metadata events from PSI packets', function() {
     type: 'pat'
   });
   programStream.push({
-    type: 'pmt'
+    type: 'pmt',
+    programMapTable: {
+      1: 0x1b,
+      2: 0x0f
+    }
   });
 
-  equal(2, datas, 'data fired');
-  equal(2, metadatas, 'metadata generated');
+  equal(1, datas, 'data fired');
+  equal(1, metadatas.length, 'metadata generated');
+  metadatas[0].tracks.sort(sortById);
+  deepEqual(metadatas[0].tracks, [{
+    id: 1,
+    codec: 'avc'
+  }, {
+    id: 2,
+    codec: 'adts'
+  }], 'identified two tracks');
 });
 
 test('parses standalone program stream packets', function() {
@@ -607,6 +626,32 @@ test('flushes the buffered packets when a new one of that type is started', func
   equal(1, packets[1].data.byteLength, 'parsed the video payload');
   equal('audio', packets[2].type, 'identified audio data');
   equal(7, packets[2].data.byteLength, 'parsed the audio payload');
+});
+
+module('Transmuxer', {
+  setup: function() {
+    transmuxer = new Transmuxer();
+  }
+});
+
+test('generates an init segment', function() {
+  transmuxer.push(packetize(PAT));
+  transmuxer.push(packetize(PMT));
+  transmuxer.push(packetize(standalonePes));
+
+  ok(transmuxer.initSegment, 'has an init segment');
+});
+
+test('parses an example mp2t file and generates media segments', function() {
+  var segments = [];
+  transmuxer.on('data', function(segment) {
+    segments.push(segment);
+  });
+  transmuxer.push(window.bcSegment);
+  transmuxer.end();
+
+  ok(segments.length, 'generated media segments');
+  console.log(segments);
 });
 
 })(window, window.videojs);

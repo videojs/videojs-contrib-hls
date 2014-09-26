@@ -259,6 +259,9 @@ ParseStream.STREAM_TYPES  = {
   adts: 0x0f
 };
 
+/**
+ * Reconsistutes program stream packets from multiple transport stream packets.
+ */
 ProgramStream = function() {
   var
     // PES packet fragments
@@ -303,7 +306,8 @@ ProgramStream = function() {
   this.push = function(data) {
     ({
       pat: function() {
-        self.trigger('data', data);
+        // we have to wait for the PMT to arrive as well before we
+        // have any meaningful metadata
       },
       pes: function() {
         var stream, streamType;
@@ -328,7 +332,29 @@ ProgramStream = function() {
         stream.size += data.data.byteLength;
       },
       pmt: function() {
-        self.trigger('data', data);
+        var
+          event = {
+            type: 'metadata',
+            tracks: []
+          },
+          programMapTable = data.programMapTable,
+          k,
+          track;
+
+        // translate streams to tracks
+        for (k in programMapTable) {
+          if (programMapTable.hasOwnProperty(k)) {
+            track = {};
+            track.id = +k;
+            if (programMapTable[k] === H264_STREAM_TYPE) {
+              track.codec = 'avc';
+            } else if (programMapTable[k] === ADTS_STREAM_TYPE) {
+              track.codec = 'adts';
+            }
+            event.tracks.push(track);
+          }
+        }
+        self.trigger('data', event);
       }
     })[data.type]();
   };
@@ -360,6 +386,9 @@ Transmuxer = function() {
 
   packetStream.pipe(parseStream);
   parseStream.pipe(programStream);
+
+  // generate an init segment
+  this.initSegment = mp4.initSegment();
 
   programStream.on('data', function(data) {
     self.trigger('data', data);
