@@ -177,22 +177,22 @@ configured. Easy [instructions are
 available](http://enable-cors.org/server.html) for popular webservers
 and most CDNs should have no trouble turning CORS on for your account.
 
-## MBR Rendition Selection Logic
-In situations where manifests have multiple renditions, the player will
-go through the following algorithm to determine the best rendition by
-bandwidth and viewport dimensions.
+## Adaptive Switching Behavior
+The HLS tech tries to ensure the highest-quality viewing experience 
+possible, given the available bandwidth and encodings. This doesn't
+always mean using the highest-bitrate rendition available-- if the player
+is 300px by 150px, it would be a big waste of bandwidth to download a 4k
+stream. By default, the player attempts to load the highest-bitrate 
+variant that is less than the most recently detected segment bandwidth,
+with one condition: if there are multiple variants with dimensions greater
+than the current player size, it will only switch up one size greater 
+than the current player size.
 
-- Start on index 0 as defined in the HLS Spec (link above)
-- On a successful load complete per segment determine the following;
-    - player.hls.bandwidth set to value as segment byte size over download time
-    - Viewport width/height as determined by player.width()/player.height()
-    - Playlists mapped and sorted by BANDWIDTH less than or equal to 1.1x player.hls.bandwidth
-    - Best playlist variant by BANDWIDTH determined
-    - Subset of bandwidth appropriate renditions mapped
-    - Subset validated for RESOLUTION attributes less than or equal to player dimensions
-    - Best playlist variant by RESOLUTION determined
-- Result is as follows;
-    - [Best RESOLUTION variant] OR [Best BANDWIDTH variant] OR [inital playlist in manifest]
+If you'd like your player to use a different set of priorities, it's 
+possible to completely replace the rendition selection logic. For 
+instance, you could always choose the most appropriate rendition by 
+resolution, even though this might mean more stalls during playback.
+See the documentation on `player.hls.selectPlaylist` for more details.
 
 ## Release History
 - 0.9.0: support segment level AES-128 encryption
