@@ -289,7 +289,7 @@ ProgramStream = function() {
         event.pes.dts = pes.dts;
         event.pes.pid = pes.pid;
         event.pes.dataAlignmentIndicator = pes.dataAlignmentIndicator;
-        event.pes.payloadUnitStartIndicator = pes.payloadUnitStartIndicator
+        event.pes.payloadUnitStartIndicator = pes.payloadUnitStartIndicator;
       }
 
       // do nothing if there is no buffered data
@@ -395,7 +395,7 @@ AacStream = function() {
   self = this;
 
   this.push = function(packet) {
-    if (packet.type == "audio") {
+    if (packet.type === 'audio') {
       this.trigger('data', packet);
     }
   };
@@ -412,7 +412,7 @@ H264Stream = function() {
   self = this;
 
   this.push = function(packet) {
-    if (packet.type == "video") {
+    if (packet.type === 'video') {
       this.trigger('data', packet);
     }
   };
