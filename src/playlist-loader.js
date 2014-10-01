@@ -58,6 +58,8 @@
         haveMetadata = function(error, xhr, url) {
           var parser, refreshDelay, update;
 
+          loader.bandwidth = request.bandwidth || xhr.bandwidth;
+          console.log('have meta', request.bandwidth, xhr.bandwidth);
           // any in-flight request is now finished
           request = null;
 

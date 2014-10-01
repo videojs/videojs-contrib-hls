@@ -98,6 +98,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     oldMediaPlaylist = this.playlists.media();
 
+    console.log('---');
+    console.log('loaded meta', this.bandwidth);
+    console.log('---');
+
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
     this.fillBuffer();
@@ -117,8 +121,16 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     if (!updatedPlaylist) {
       // do nothing before an initial media playlist has been activated
+
+      // TODO - Not necessarily true if I have a bandwidth value.
+      // tech.playlists.media(tech.selectPlaylist());
       return;
     }
+
+    console.log('---');
+    console.log('loaded playlist', this.bandwidth);
+    console.log(this.playlists.media());
+    console.log('---');
 
     this.updateDuration(this.playlists.media());
     this.mediaIndex = videojs.Hls.translateMediaIndex(this.mediaIndex, oldMediaPlaylist, updatedPlaylist);
@@ -128,6 +140,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   }));
 
   this.playlists.on('mediachange', videojs.bind(this, function() {
+    console.log('mediachange');
     // abort outstanding key requests and check if new keys need to be retrieved
     if (keyXhr) {
       keyXhr.abort();
@@ -330,6 +343,7 @@ videojs.Hls.prototype.selectPlaylist = function () {
     }
   }
 
+  console.log('playlist selected');
   // fallback chain of variants
   return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
 };
@@ -430,6 +444,13 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     tech.bandwidth = (this.response.byteLength / tech.segmentXhrTime) * 8 * 1000;
     tech.bytesReceived += this.response.byteLength;
 
+    console.log('compare values');
+    console.log('xhrTime', tech.segmentXhrTime, this.roundTripTime);
+    console.log('bw', tech.bandwidth, this.bandwidth);
+    console.log('bytesReceived', tech.bytesReceived, this.bytesReceived);
+    console.log('---');
+
+
     // package up all the work to append the segment
     // if the segment is the start of a timestamp discontinuity,
     // we have to wait until the sourcebuffer is empty before
@@ -446,6 +467,7 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
 
     // figure out what stream the next segment should be downloaded from
     // with the updated bandwidth information
+    console.log('select playlist');
     tech.playlists.media(tech.selectPlaylist());
   });
 };
