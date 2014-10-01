@@ -144,7 +144,40 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   }));
 
   this.playlists.on('playlistchange', videojs.bind(this, function() {
-    console.log('congrats, you changed playlists');
+    console.log('congrats, you changed playlists', this.playlists.media().segments[this.mediaIndex-1]);
+    // determine if we need to switch mid-segment //
+    // remaining time in current segment vs. playhead time
+    // downloadTime for segment && segment+1
+    // if that value is > (downloadTime) continue.
+    // else don't do anything because you will start downloading
+    // the new rendition at the next segment complete anyway
+
+    var currentSegmentInNewPlaylist, nextSegmentinNewPlaylist,
+      currentSegmentDuration, newPlaylistBitrate, currentSegmentDownloadTime,
+      nextSegmentDuration, nextSegmentDownloadTime, timeRemaining;
+
+    newPlaylistBitrate = this.playlists.media().attributes['BANDWIDTH'];
+
+    currentSegmentInNewPlaylist = this.playlists.media().segments[this.mediaIndex-1];
+    nextSegmentinNewPlaylist = this.playlists.media().segments[this.mediaIndex];
+
+    // If at last segment, no need to continue //
+    if (nextSegmentinNewPlaylist) {
+      currentSegmentDuration = currentSegmentInNewPlaylist.duration;
+      currentSegmentDownloadTime = ((currentSegmentDuration * newPlaylistBitrate) * 1000) / this.bandwidth;
+      nextSegmentDuration = nextSegmentinNewPlaylist.duration;
+      nextSegmentDownloadTime = ((nextSegmentDuration * newPlaylistBitrate) * 1000) / this.bandwidth;
+
+      timeRemaining = 10; //
+
+      console.log('currSegDownTime', currentSegmentDownloadTime);
+      console.log('nextSegDownTime', nextSegmentDownloadTime);
+
+      if( (currentSegmentDownloadTime + nextSegmentDownloadTime) < timeRemaining) {
+        console.log('yo - switch bro');
+      }
+    }
+
   }));
 
   // if autoplay is enabled, begin playback. This is duplicative of
