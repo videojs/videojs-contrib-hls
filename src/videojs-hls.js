@@ -121,16 +121,8 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     if (!updatedPlaylist) {
       // do nothing before an initial media playlist has been activated
-
-      // TODO - Not necessarily true if I have a bandwidth value.
-      // tech.playlists.media(tech.selectPlaylist());
       return;
     }
-
-    console.log('---');
-    console.log('loaded playlist', this.bandwidth);
-    console.log(this.playlists.media());
-    console.log('---');
 
     this.updateDuration(this.playlists.media());
     this.mediaIndex = videojs.Hls.translateMediaIndex(this.mediaIndex, oldMediaPlaylist, updatedPlaylist);
@@ -400,12 +392,20 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   this.loadSegment(segmentUri, offset);
 };
 
+// Encapsulate the setBandwidth routine for future expansion
+videojs.Hls.prototype.setBandwidthByXHR = function(xhr) {
+  var tech = this;
+  // calculate the download bandwidth
+  tech.segmentXhrTime = xhr.roundTripTime;
+  tech.bandwidth = xhr.bandwidth;
+  tech.bytesReceived += xhr.bytesReceived;
+};
+
 videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
   var
     tech = this,
     player = this.player(),
-    settings = player.options().hls || {},
-    startTime = +new Date();
+    settings = player.options().hls || {};
 
   // request the next segment
   this.segmentXhr_ = videojs.Hls.xhr({
@@ -439,17 +439,7 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       return;
     }
 
-    // calculate the download bandwidth
-    tech.segmentXhrTime = (+new Date()) - startTime;
-    tech.bandwidth = (this.response.byteLength / tech.segmentXhrTime) * 8 * 1000;
-    tech.bytesReceived += this.response.byteLength;
-
-    console.log('compare values');
-    console.log('xhrTime', tech.segmentXhrTime, this.roundTripTime);
-    console.log('bw', tech.bandwidth, this.bandwidth);
-    console.log('bytesReceived', tech.bytesReceived, this.bytesReceived);
-    console.log('---');
-
+    tech.setBandwidthByXHR(this);
 
     // package up all the work to append the segment
     // if the segment is the start of a timestamp discontinuity,
