@@ -143,6 +143,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     player.trigger('mediachange');
   }));
 
+  this.playlists.on('playlistchange', videojs.bind(this, function() {
+    console.log('congrats, you changed playlists');
+  }));
+
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
   // *after* the media source has opened.
@@ -280,7 +284,9 @@ videojs.Hls.prototype.selectPlaylist = function () {
     i = sortedPlaylists.length,
     variant,
     bandwidthBestVariant,
-    resolutionBestVariant;
+    resolutionBestVariant,
+    currentVariant = this.playlists.media(),
+    respondingVariant;
 
   sortedPlaylists.sort(videojs.Hls.comparePlaylistBandwidth);
 
@@ -336,8 +342,17 @@ videojs.Hls.prototype.selectPlaylist = function () {
   }
 
   console.log('playlist selected');
+  // if this value changed, we should notify the tech //
+  // compare my current variant with what will be the new one and notify
+  // tech if there is a change
+  respondingVariant = resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+
+  if (currentVariant !== respondingVariant) {
+    this.playlists.trigger('playlistchange');
+  }
+
   // fallback chain of variants
-  return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+  return respondingVariant;
 };
 
 /**
@@ -389,7 +404,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     segmentUri = resolveUrl(resolveUrl(this.src_, this.playlists.media().uri || ''), segment.uri);
   }
 
-  this.loadSegment(segmentUri, offset);
+  this.loadSegment(segmentUri, offset, videojs.bind(this, this.onSegmentLoadComplete));
 };
 
 // Encapsulate the setBandwidth routine for future expansion
@@ -401,7 +416,41 @@ videojs.Hls.prototype.setBandwidthByXHR = function(xhr) {
   tech.bytesReceived += xhr.bytesReceived;
 };
 
-videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
+
+videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
+  var tech = this;
+
+  tech.setBandwidthByXHR(xhr);
+
+  // package up all the work to append the segment
+  // if the segment is the start of a timestamp discontinuity,
+  // we have to wait until the sourcebuffer is empty before
+  // aborting the source buffer processing
+  tech.segmentBuffer_.push({
+    mediaIndex: tech.mediaIndex,
+    playlist: tech.playlists.media(),
+    offset: offset,
+    bytes: new Uint8Array(xhr.response)
+  });
+  tech.drainBuffer();
+
+  tech.mediaIndex++;
+
+  // figure out what stream the next segment should be downloaded from
+  // with the updated bandwidth information
+  tech.playlists.media(tech.selectPlaylist());
+
+  // figure out if we need to download this segment in a better rendition
+};
+
+videojs.Hls.prototype.midSegmentSwitch = function() {
+  // Steps
+  // Determine if Necessary
+  // Get new segment data
+  // Get the player to that data
+};
+
+videojs.Hls.prototype.loadSegment = function(segmentUri, offset, callback) {
   var
     tech = this,
     player = this.player(),
@@ -439,26 +488,10 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       return;
     }
 
-    tech.setBandwidthByXHR(this);
-
-    // package up all the work to append the segment
-    // if the segment is the start of a timestamp discontinuity,
-    // we have to wait until the sourcebuffer is empty before
-    // aborting the source buffer processing
-    tech.segmentBuffer_.push({
-      mediaIndex: tech.mediaIndex,
-      playlist: tech.playlists.media(),
-      offset: offset,
-      bytes: new Uint8Array(this.response)
-    });
-    tech.drainBuffer();
-
-    tech.mediaIndex++;
-
-    // figure out what stream the next segment should be downloaded from
-    // with the updated bandwidth information
-    console.log('select playlist');
-    tech.playlists.media(tech.selectPlaylist());
+    /// this point down configuable callback ///
+    if (callback) {
+      callback(this, offset);
+    }
   });
 };
 
