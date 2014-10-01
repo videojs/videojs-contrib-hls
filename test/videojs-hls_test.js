@@ -145,9 +145,6 @@ module('HLS', {
     xhr = sinon.useFakeXMLHttpRequest();
     requests = [];
     xhr.onCreate = function(xhr) {
-      // we set this here since sinon doesn't
-      // it is needed to force ontimeout usage
-      xhr.timeout = 0;
       requests.push(xhr);
     };
 
