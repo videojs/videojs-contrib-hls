@@ -643,7 +643,7 @@ test('generates an init segment', function() {
 });
 
 test('parses an example mp2t file and generates media segments', function() {
-  var segments = [];
+  var segments = [], i, segment;
   transmuxer.on('data', function(segment) {
     segments.push(segment);
   });
@@ -651,6 +651,10 @@ test('parses an example mp2t file and generates media segments', function() {
   transmuxer.end();
 
   ok(segments.length, 'generated media segments');
+  i = segments.length;
+  while (i--) {
+    segment = videojs.inspectMp4(segments[i].data);
+  }
   console.log(segments);
 });
 
