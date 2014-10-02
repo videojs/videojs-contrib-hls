@@ -264,5 +264,15 @@ test('generates a minimal moof', function() {
   equal(moof[0].boxes[1].boxes[1].trackId, 2, 'wrote the second track id');
 });
 
+test('generates an mdat', function() {
+  var
+    data = mp4.mdat(new Uint8Array([1, 2, 3, 4])),
+    mdat = videojs.inspectMp4(data);
+
+  equal(mdat.length, 1, 'generated one box');
+  equal(mdat[0].type, 'mdat', 'generated an mdat box');
+  deepEqual(mdat[0].byteLength, 4, 'encapsulated the data');
+});
+
 
 })(window, window.videojs);

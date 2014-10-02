@@ -1,7 +1,7 @@
 (function(window, videojs, undefined) {
 'use strict';
 
-var box, dinf, ftyp, minf, moof, moov, mvex, mvhd, trak, tkhd, mdia, mdhd, hdlr, stbl,
+var box, dinf, ftyp, mdat, minf, moof, moov, mvex, mvhd, trak, tkhd, mdia, mdhd, hdlr, stbl,
     stsd, styp, types, MAJOR_BRAND, MINOR_VERSION, VIDEO_HDLR, AUDIO_HDLR, HDLR_TYPES, VMHD, DREF, STCO, STSC, STSZ, STTS, TREX,
     Uint8Array, DataView;
 
@@ -19,6 +19,7 @@ DataView = window.DataView;
     dref: [],
     ftyp: [],
     hdlr: [],
+    mdat: [],
     mdhd: [],
     mdia: [],
     mfhd: [],
@@ -164,6 +165,9 @@ ftyp = function() {
 
 hdlr = function(type) {
   return box(types.hdlr, HDLR_TYPES[type]);
+};
+mdat = function(data) {
+  return box(types.mdat, data);
 };
 mdhd = function(duration) {
   return box(types.mdhd, new Uint8Array([
@@ -359,6 +363,7 @@ trak = function(duration, width, height, type) {
 
 window.videojs.mp4 = {
   ftyp: ftyp,
+  mdat: mdat,
   moof: moof,
   moov: moov,
   initSegment: function() {
