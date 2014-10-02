@@ -376,10 +376,11 @@ test('calculates the bandwidth after downloading a segment', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
-  standardXHRResponse(requests[1]);
 
   // set the request time to be a bit earlier so our bandwidth calculations are NaN
   requests[1].requestTime = (new Date())-100;
+
+  standardXHRResponse(requests[1]);
 
   ok(player.hls.bandwidth, 'bandwidth is calculated');
   ok(player.hls.bandwidth > 0,
