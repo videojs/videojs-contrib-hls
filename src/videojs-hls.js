@@ -148,11 +148,8 @@ videojs.Hls.prototype.handleSourceOpen = function() {
       this.fetchKeys(this.playlists.media(), this.mediaIndex);
     }
 
-    player.trigger('mediachange');
-  }));
-
-  this.playlists.on('playlistchange', videojs.bind(this, function() {
-    console.log('congrats, you changed playlists', this.playlists.media().segments[this.mediaIndex-1]);
+    // - start import
+    console.log('congrats, you changed playlists', this.playlists.media());
     // determine if we need to switch mid-segment //
     // remaining time in current segment vs. playhead time
     // downloadTime for segment && segment+1
@@ -160,32 +157,51 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     // else don't do anything because you will start downloading
     // the new rendition at the next segment complete anyway
 
-    var currentSegmentInNewPlaylist, nextSegmentinNewPlaylist,
+    var tech, currentSegmentInNewPlaylist, nextSegmentinNewPlaylist,
       currentSegmentDuration, newPlaylistBitrate, currentSegmentDownloadTime,
-      nextSegmentDuration, nextSegmentDownloadTime, timeRemaining;
+      nextSegmentDuration, nextSegmentDownloadTime, timeRemaining, segmentUri;
+
+    tech = this;
 
     newPlaylistBitrate = this.playlists.media().attributes['BANDWIDTH'];
 
     currentSegmentInNewPlaylist = this.playlists.media().segments[this.mediaIndex-1];
     nextSegmentinNewPlaylist = this.playlists.media().segments[this.mediaIndex];
 
-    // If at last segment, no need to continue //
-    if (nextSegmentinNewPlaylist) {
-      currentSegmentDuration = currentSegmentInNewPlaylist.duration;
-      currentSegmentDownloadTime = ((currentSegmentDuration * newPlaylistBitrate) * 1000) / this.bandwidth;
-      nextSegmentDuration = nextSegmentinNewPlaylist.duration;
-      nextSegmentDownloadTime = ((nextSegmentDuration * newPlaylistBitrate) * 1000) / this.bandwidth;
+    // If at last segment, or we dont know what the bitrate of the playlist, no need to continue //
+    if (nextSegmentinNewPlaylist && newPlaylistBitrate) {
+      currentSegmentDuration = currentSegmentInNewPlaylist.duration * 1000;
+      currentSegmentDownloadTime = ((currentSegmentDuration * newPlaylistBitrate) * 1000) / (this.bandwidth * 8);
+      nextSegmentDuration = nextSegmentinNewPlaylist.duration * 1000;
+      nextSegmentDownloadTime = ((nextSegmentDuration * newPlaylistBitrate) * 1000) / (this.bandwidth * 8);
 
-      timeRemaining = 10; //
+      timeRemaining = 10000;
+      console.log('newPlaylistBitrate', newPlaylistBitrate);
+      console.log('currentSegmentDuration', currentSegmentDuration);
+      console.log('currentSegmentDownloadTime', currentSegmentDownloadTime);
+      console.log('bandwidth', this.bandwidth);
 
-      console.log('currSegDownTime', currentSegmentDownloadTime);
-      console.log('nextSegDownTime', nextSegmentDownloadTime);
+      var onSwitchedSegmentLoadComplete = function(xhr) {
+        console.log('got your super sexy segment', player.currentTime());
+        player.currentTime(player.currentTime());
+      };
+
+      // LoadSegment with custom callback //
+      // resolve the segment URL relative to the playlist
+      if (this.playlists.media().uri === this.playlists.master.uri) {
+        segmentUri = resolveUrl(this.playlists.master.uri, currentSegmentInNewPlaylist.uri);
+      } else {
+        segmentUri = resolveUrl(resolveUrl(this.playlists.master.uri, this.playlists.media().uri || ''), currentSegmentInNewPlaylist.uri);
+      }
 
       if( (currentSegmentDownloadTime + nextSegmentDownloadTime) < timeRemaining) {
-        console.log('yo - switch bro');
+        console.log('yo - switch bro', player.currentTime());
+        this.loadSegment(segmentUri, null, onSwitchedSegmentLoadComplete);
       }
     }
+    // - end import
 
+    player.trigger('mediachange');
   }));
 
   // if autoplay is enabled, begin playback. This is duplicative of
@@ -540,7 +556,6 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset, callback) {
       return;
     }
 
-    /// this point down configuable callback ///
     if (callback) {
       callback(this, offset);
     }
