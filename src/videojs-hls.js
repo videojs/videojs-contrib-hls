@@ -106,10 +106,6 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     oldMediaPlaylist = this.playlists.media();
 
-    console.log('---');
-    console.log('loaded meta', this.bandwidth);
-    console.log('---');
-
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
     this.fillBuffer();
@@ -140,7 +136,6 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   }));
 
   this.playlists.on('mediachange', videojs.bind(this, function() {
-    console.log('mediachange');
     // abort outstanding key requests and check if new keys need to be retrieved
     if (keyXhr) {
       keyXhr.abort();
@@ -149,7 +144,6 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     }
 
     // - start import
-    console.log('congrats, you changed playlists', this.playlists.media());
     // determine if we need to switch mid-segment //
     // remaining time in current segment vs. playhead time
     // downloadTime for segment && segment+1
@@ -184,13 +178,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
         nextSegmentDownloadTime = ((nextSegmentDuration * newPlaylistBitrate) * 1000) / (this.bandwidth * 8);
 
         timeRemaining = 10000;
-        console.log('newPlaylistBitrate', newPlaylistBitrate);
-        console.log('currentSegmentDuration', currentSegmentDuration);
-        console.log('currentSegmentDownloadTime', currentSegmentDownloadTime);
-        console.log('bandwidth', this.bandwidth);
-
         var onSwitchedSegmentLoadComplete = function(xhr) {
-          console.log('got your super sexy segment', player.currentTime());
           player.currentTime(player.currentTime());
           console.log(xhr);
         };
@@ -204,7 +192,6 @@ videojs.Hls.prototype.handleSourceOpen = function() {
         }
 
         if( (currentSegmentDownloadTime + nextSegmentDownloadTime) < timeRemaining) {
-          console.log('yo - switch bro', player.currentTime());
           this.loadSegment(segmentUri, null, onSwitchedSegmentLoadComplete);
         }
       }
@@ -419,7 +406,6 @@ videojs.Hls.prototype.selectPlaylist = function () {
     }
   }
 
-  console.log('playlist selected');
   // if this value changed, we should notify the tech //
   // compare my current variant with what will be the new one and notify
   // tech if there is a change
