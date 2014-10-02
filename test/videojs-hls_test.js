@@ -378,6 +378,9 @@ test('calculates the bandwidth after downloading a segment', function() {
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
 
+  // set the request time to be a bit earlier so our bandwidth calculations are NaN
+  requests[1].requestTime = (new Date())-100;
+
   ok(player.hls.bandwidth, 'bandwidth is calculated');
   ok(player.hls.bandwidth > 0,
      'bandwidth is positive: ' + player.hls.bandwidth);
