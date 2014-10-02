@@ -78,6 +78,11 @@
           parser.end();
           parser.manifest.uri = url;
 
+          if (xhr.playliststarttime) {
+            parser.manifest.loadingtime = xhr.playlistendtime - xhr.playliststarttime;
+            parser.manifest.calculatedbandwidth = (xhr.responseText.length / parser.manifest.loadingtime) * 8 * 1000;
+          }
+
           // merge this playlist into the master
           update = updateMaster(loader.master, parser.manifest);
           refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
@@ -244,6 +249,8 @@
         // loaded a master playlist
         if (parser.manifest.playlists) {
           loader.master = parser.manifest;
+          loader.master.loadingtime = (+new Date()) - starttime;
+          loader.master.calculatedbandwidth = (this.responseText.length / loader.master.loadingtime) * 8 * 1000;
 
           // setup by-URI lookups
           i = loader.master.playlists.length;
@@ -256,6 +263,8 @@
             withCredentials: withCredentials
           }, function(error) {
             // pass along the URL specified in the master playlist
+            this.playliststarttime = playliststarttime;
+            this.playlistendtime = +new Date();
             haveMetadata(error,
                          this,
                          parser.manifest.playlists[0].uri);
@@ -263,6 +272,7 @@
               loader.trigger('loadedmetadata');
             }
           });
+          var playliststarttime = +new Date();
           return loader.trigger('loadedplaylist');
         }
 
@@ -278,6 +288,7 @@
         haveMetadata(null, this, srcUrl);
         return loader.trigger('loadedmetadata');
       });
+      var starttime = +new Date();
     };
   PlaylistLoader.prototype = new videojs.Hls.Stream();
 
