@@ -157,50 +157,60 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     // else don't do anything because you will start downloading
     // the new rendition at the next segment complete anyway
 
-    var tech, currentSegmentInNewPlaylist, nextSegmentinNewPlaylist,
+    var tech, playlist, currentSegmentInNewPlaylist, nextSegmentinNewPlaylist,
       currentSegmentDuration, newPlaylistBitrate, currentSegmentDownloadTime,
-      nextSegmentDuration, nextSegmentDownloadTime, timeRemaining, segmentUri;
+      nextSegmentDuration, nextSegmentDownloadTime, timeRemaining, segmentUri,
+      currentIndex;
 
     tech = this;
+    playlist = this.playlists.media();
 
-    newPlaylistBitrate = this.playlists.media().attributes['BANDWIDTH'];
+    if (playlist) {
+      newPlaylistBitrate = playlist.attributes['BANDWIDTH'];
 
-    currentSegmentInNewPlaylist = this.playlists.media().segments[this.mediaIndex-1];
-    nextSegmentinNewPlaylist = this.playlists.media().segments[this.mediaIndex];
-
-    // If at last segment, or we dont know what the bitrate of the playlist, no need to continue //
-    if (nextSegmentinNewPlaylist && newPlaylistBitrate) {
-      currentSegmentDuration = currentSegmentInNewPlaylist.duration * 1000;
-      currentSegmentDownloadTime = ((currentSegmentDuration * newPlaylistBitrate) * 1000) / (this.bandwidth * 8);
-      nextSegmentDuration = nextSegmentinNewPlaylist.duration * 1000;
-      nextSegmentDownloadTime = ((nextSegmentDuration * newPlaylistBitrate) * 1000) / (this.bandwidth * 8);
-
-      timeRemaining = 10000;
-      console.log('newPlaylistBitrate', newPlaylistBitrate);
-      console.log('currentSegmentDuration', currentSegmentDuration);
-      console.log('currentSegmentDownloadTime', currentSegmentDownloadTime);
-      console.log('bandwidth', this.bandwidth);
-
-      var onSwitchedSegmentLoadComplete = function(xhr) {
-        console.log('got your super sexy segment', player.currentTime());
-        player.currentTime(player.currentTime());
-      };
-
-      // LoadSegment with custom callback //
-      // resolve the segment URL relative to the playlist
-      if (this.playlists.media().uri === this.playlists.master.uri) {
-        segmentUri = resolveUrl(this.playlists.master.uri, currentSegmentInNewPlaylist.uri);
-      } else {
-        segmentUri = resolveUrl(resolveUrl(this.playlists.master.uri, this.playlists.media().uri || ''), currentSegmentInNewPlaylist.uri);
+      currentIndex = this.mediaIndex -1;
+      if (currentIndex < 0) {
+        currentIndex = 0;
       }
 
-      if( (currentSegmentDownloadTime + nextSegmentDownloadTime) < timeRemaining) {
-        console.log('yo - switch bro', player.currentTime());
-        this.loadSegment(segmentUri, null, onSwitchedSegmentLoadComplete);
+      currentSegmentInNewPlaylist = playlist.segments[currentIndex];
+      nextSegmentinNewPlaylist = playlist.segments[currentIndex + 1];
+
+      // If at last segment, or we dont know what the bitrate of the playlist, no need to continue //
+      if (nextSegmentinNewPlaylist && newPlaylistBitrate) {
+        currentSegmentDuration = currentSegmentInNewPlaylist.duration * 1000;
+        currentSegmentDownloadTime = ((currentSegmentDuration * newPlaylistBitrate) * 1000) / (this.bandwidth * 8);
+        nextSegmentDuration = nextSegmentinNewPlaylist.duration * 1000;
+        nextSegmentDownloadTime = ((nextSegmentDuration * newPlaylistBitrate) * 1000) / (this.bandwidth * 8);
+
+        timeRemaining = 10000;
+        console.log('newPlaylistBitrate', newPlaylistBitrate);
+        console.log('currentSegmentDuration', currentSegmentDuration);
+        console.log('currentSegmentDownloadTime', currentSegmentDownloadTime);
+        console.log('bandwidth', this.bandwidth);
+
+        var onSwitchedSegmentLoadComplete = function(xhr) {
+          console.log('got your super sexy segment', player.currentTime());
+          player.currentTime(player.currentTime());
+          console.log(xhr);
+        };
+
+        // LoadSegment with custom callback //
+        // resolve the segment URL relative to the playlist
+        if (playlist.uri === this.playlists.master.uri) {
+          segmentUri = resolveUrl(this.playlists.master.uri, currentSegmentInNewPlaylist.uri);
+        } else {
+          segmentUri = resolveUrl(resolveUrl(this.playlists.master.uri, playlist.uri || ''), currentSegmentInNewPlaylist.uri);
+        }
+
+        if( (currentSegmentDownloadTime + nextSegmentDownloadTime) < timeRemaining) {
+          console.log('yo - switch bro', player.currentTime());
+          this.loadSegment(segmentUri, null, onSwitchedSegmentLoadComplete);
+        }
       }
+      // - end import
+
     }
-    // - end import
-
     player.trigger('mediachange');
   }));
 
