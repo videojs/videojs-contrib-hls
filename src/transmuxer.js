@@ -390,12 +390,96 @@ ProgramStream.prototype = new videojs.Hls.Stream();
  * AAC Audio Frames of the individual packets.
  */
 AacStream = function() {
-  var  self;
+  var  self, adtsSampleingRates, extraData;
   AacStream.prototype.init.call(this);
-  self = this;
+  self = this,
+  adtsSampleingRates = [
+    96000, 88200,
+    64000, 48000,
+    44100, 32000,
+    24000, 22050,
+    16000, 12000
+  ],
+
 
   this.push = function(packet) {
     if (packet.type == "audio") {
+      var adtsProtectionAbsent, // :Boolean
+        adtsObjectType, // :int
+        adtsSampleingIndex, // :int
+        adtsChanelConfig, // :int
+        adtsFrameSize, // :int
+        adtsSampleCount, // :int
+        adtsDuration, // :int
+        aacFrame, // :Frame = null;
+
+        newExtraData,
+        next_pts = packet.pes.pts,
+        data = packet.data;
+
+      // byte 0
+      if (0xFF !== data[0]) {
+        console.assert(false, 'Error no ATDS header found');
+      }
+
+      // byte 1
+      adtsProtectionAbsent = !!(data[1] & 0x01);
+
+      // byte 2
+      adtsObjectType = ((data[2] & 0xC0) >>> 6) + 1;
+      adtsSampleingIndex = ((data[2] & 0x3C) >>> 2);
+      adtsChanelConfig = ((data[2] & 0x01) << 2);
+
+      // byte 3
+      adtsChanelConfig |= ((data[3] & 0xC0) >>> 6);
+      adtsFrameSize = ((data[3] & 0x03) << 11);
+
+      // byte 4
+      adtsFrameSize |= (data[4] << 3);
+
+      // byte 5
+      adtsFrameSize |= ((data[5] & 0xE0) >>> 5);
+      adtsFrameSize -= (adtsProtectionAbsent ? 7 : 9);
+
+      // byte 6
+      adtsSampleCount = ((data[6] & 0x03) + 1) * 1024;
+      adtsDuration = (adtsSampleCount * 1000) / adtsSampleingRates[adtsSampleingIndex];
+
+      // newExtraData = (adtsObjectType << 11) |
+      //                (adtsSampleingIndex << 7) |
+      //                (adtsChanelConfig << 3);
+      // if (newExtraData !== extraData) {
+        aacFrame = {};
+        aacFrame.pts = next_pts;
+        aacFrame.dts = next_pts;
+        aacFrame.bytes = new Uint8Array();
+
+        // AAC is always 10
+        aacFrame.audiocodecid = 10;
+        aacFrame.stereo = (2 === adtsChanelConfig);
+        aacFrame.audiosamplerate = adtsSampleingRates[adtsSampleingIndex];
+        // Is AAC always 16 bit?
+        aacFrame.audiosamplesize = 16;
+
+        extraData = newExtraData;
+
+        aacFrame.pts = aacFrame.dts;
+        // For audio, DTS is always the same as PTS. We want to set the DTS
+        // however so we can compare with video DTS to determine approximate
+        // packet order
+        aacFrame.pts = next_pts;
+        //aacFrame.view.setUint16(aacFrame.position, newExtraData);
+        //aacFrame.position += 2;
+        //aacFrame.length = Math.max(aacFrame.length, aacFrame.position);
+
+        //byte 7
+
+        //this.tags.push(aacFrame);
+      // }
+
+      aacFrame.bytes = packet.data.subarray(7, packet.data.length);
+      packet.frame = aacFrame;
+      console.log(packet);
       this.trigger('data', packet);
     }
   };
