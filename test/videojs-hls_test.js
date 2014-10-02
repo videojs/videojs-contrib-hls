@@ -1207,7 +1207,10 @@ test('remove event handlers on dispose', function() {
     oldOn.call(player, type, handler);
   };
   player.off = function(type, handler) {
-    offhandlers++;
+    // ignore the top-level videojs removals that aren't relevant to HLS
+    if (type && type !== 'dispose') {
+      offhandlers++;
+    }
     oldOff.call(player, type, handler);
   };
   player.src({
