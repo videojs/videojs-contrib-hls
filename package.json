@@ -35,7 +35,7 @@
     "karma-sauce-launcher": "~0.1.8",
     "qunitjs": "^1.15.0",
     "sinon": "1.10.2",
-    "video.js": "^4.7.2"
+    "video.js": "^4.9.0"
   },
   "dependencies": {
     "pkcs7": "^0.2.2",
