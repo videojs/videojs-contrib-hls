@@ -240,6 +240,7 @@
   test('emits an error if a media refresh fails', function() {
     var
       errors = 0,
+      errorResponseText = 'custom error message',
       loader = new videojs.Hls.PlaylistLoader('live.m3u8');
 
     loader.on('error', function() {
@@ -251,10 +252,11 @@
                            '#EXTINF:10,\n' +
                            '0.ts\n');
     clock.tick(10 * 1000); // trigger a refresh
-    requests.pop().respond(500);
+    requests.pop().respond(500, null, errorResponseText);
 
     strictEqual(errors, 1, 'emitted an error');
     strictEqual(loader.error.status, 500, 'captured the status code');
+    strictEqual(loader.error.responseText, errorResponseText, 'captured the responseText');
   });
 
   test('switches media playlists when requested', function() {
