@@ -643,7 +643,7 @@ test('generates an init segment', function() {
 });
 
 test('parses an example mp2t file and generates media segments', function() {
-  var segments = [], i, segment;
+  var segments = [], i, boxes;
   transmuxer.on('data', function(segment) {
     segments.push(segment);
   });
@@ -653,9 +653,14 @@ test('parses an example mp2t file and generates media segments', function() {
   ok(segments.length, 'generated media segments');
   i = segments.length;
   while (i--) {
-    segment = videojs.inspectMp4(segments[i].data);
+    boxes = videojs.inspectMp4(segments[i].data);
+    equal(boxes.length, 2, 'segments are composed of two boxes');
+    equal(boxes[0].type, 'moof', 'first box is a moof');
+    equal(boxes[0].boxes.length, 2, 'moof has three children');
+    equal(boxes[0].boxes[0].type, 'mfhd', 'mfhd is a child of the moof');
+    equal(boxes[0].boxes[1].type, 'traf', 'traf is a child of the moof');
+    equal(boxes[1].type, 'mdat', 'second box is an mdat');
   }
-  console.log(segments);
 });
 
 })(window, window.videojs);

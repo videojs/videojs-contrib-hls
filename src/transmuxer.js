@@ -440,10 +440,19 @@ Transmuxer = function() {
   this.initSegment = mp4.initSegment();
 
   aacStream.on('data', function(data) {
-    self.trigger('data', data);
   });
   h264Stream.on('data', function(data) {
-    self.trigger('data', data);
+    var
+      moof = mp4.moof([]),
+      mdat = mp4.mdat(data.data),
+      boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
+
+    boxes.set(moof);
+    boxes.set(mdat, moof.byteLength);
+
+    self.trigger('data', {
+      data: boxes
+    });
   });
   // feed incoming data to the front of the parsing pipeline
   this.push = function(data) {
