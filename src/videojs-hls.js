@@ -54,31 +54,39 @@ videojs.Hls.prototype.src = function(src) {
     mediaSource,
     source;
 
-  if (src) {
-    this.src_ = src;
-
-    mediaSource = new videojs.MediaSource();
-    source = {
-      src: videojs.URL.createObjectURL(mediaSource),
-      type: "video/flv"
-    };
-    this.mediaSource = mediaSource;
-
-    this.segmentBuffer_ = [];
-    this.segmentParser_ = new videojs.Hls.SegmentParser();
-
-    // load the MediaSource into the player
-    this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
-
-    this.player().ready(function() {
-      // do nothing if the tech has been disposed already
-      // this can occur if someone sets the src in player.ready(), for instance
-      if (!tech.el()) {
-        return;
-      }
-      tech.el().vjs_src(source.src);
-    });
+  // do nothing if the src is falsey
+  if (!src) {
+    return;
   }
+
+  // if there is already a source loaded, clean it up
+  if (this.src_) {
+    this.resetSrc_();
+  }
+
+  this.src_ = src;
+
+  mediaSource = new videojs.MediaSource();
+  source = {
+    src: videojs.URL.createObjectURL(mediaSource),
+    type: "video/flv"
+  };
+  this.mediaSource = mediaSource;
+
+  this.segmentBuffer_ = [];
+  this.segmentParser_ = new videojs.Hls.SegmentParser();
+
+  // load the MediaSource into the player
+  this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
+
+  this.player().ready(function() {
+    // do nothing if the tech has been disposed already
+    // this can occur if someone sets the src in player.ready(), for instance
+    if (!tech.el()) {
+      return;
+    }
+    tech.el().vjs_src(source.src);
+  });
 };
 
 videojs.Hls.prototype.handleSourceOpen = function() {
@@ -231,16 +239,11 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
 };
 
 /**
- * Abort all outstanding work and cleanup.
+ * Clear all buffers and reset any state relevant to the current
+ * source. After this function is called, the tech should be in a
+ * state suitable for switching to a different video.
  */
-videojs.Hls.prototype.dispose = function() {
-  var player = this.player();
-
-  // remove event handlers
-  player.off('timeupdate', this.fillBuffer);
-  player.off('timeupdate', this.drainBuffer);
-  player.off('waiting', this.drainBuffer);
-
+videojs.Hls.prototype.resetSrc_ = function() {
   if (this.segmentXhr_) {
     this.segmentXhr_.onreadystatechange = null;
     this.segmentXhr_.abort();
@@ -251,12 +254,28 @@ videojs.Hls.prototype.dispose = function() {
     keyXhr.abort();
     keyXhr = null;
   }
-  if (this.playlists) {
-    this.playlists.dispose();
-  }
   if (this.sourceBuffer) {
     this.sourceBuffer.abort();
   }
+};
+
+/**
+ * Abort all outstanding work and cleanup.
+ */
+videojs.Hls.prototype.dispose = function() {
+  var player = this.player();
+
+  // remove event handlers
+  player.off('timeupdate', this.fillBuffer);
+  player.off('timeupdate', this.drainBuffer);
+  player.off('waiting', this.drainBuffer);
+
+  if (this.playlists) {
+    this.playlists.dispose();
+  }
+
+  this.resetSrc_();
+
   videojs.Flash.prototype.dispose.call(this);
 };
 
