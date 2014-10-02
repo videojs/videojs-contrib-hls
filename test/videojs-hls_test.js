@@ -293,7 +293,9 @@ test('recognizes domain-relative URLs', function() {
 });
 
 test('re-initializes the tech for each source', function() {
-  var firstPlaylists, secondPlaylists, firstMSE, secondMSE;
+  var firstPlaylists, secondPlaylists, firstMSE, secondMSE, aborts;
+
+  aborts = 0;
 
   player.src({
     src: 'manifest/master.m3u8',
@@ -302,6 +304,11 @@ test('re-initializes the tech for each source', function() {
   openMediaSource(player);
   firstPlaylists = player.hls.playlists;
   firstMSE = player.hls.mediaSource;
+  player.hls.sourceBuffer.abort = function() {
+    aborts++;
+  };
+  standardXHRResponse(requests.shift());
+  standardXHRResponse(requests.shift());
 
   player.src({
     src: 'manifest/master.m3u8',
@@ -311,6 +318,8 @@ test('re-initializes the tech for each source', function() {
   secondPlaylists = player.hls.playlists;
   secondMSE = player.hls.mediaSource;
 
+  equal(1, aborts, 'aborted the old source buffer');
+  ok(requests[0].aborted, 'aborted the old segment request');
   notStrictEqual(firstPlaylists, secondPlaylists, 'the playlist object is not reused');
   notStrictEqual(firstMSE, secondMSE, 'the media source object is not reused');
 });
