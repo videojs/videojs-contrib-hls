@@ -246,7 +246,7 @@ test('generates an initialization segment', function() {
 
 test('generates a minimal moof', function() {
   var
-    data = mp4.moof([{
+    data = mp4.moof(7, [{
       trackId: 1
     }, {
       trackId: 2
@@ -257,6 +257,7 @@ test('generates a minimal moof', function() {
   equal(moof[0].type, 'moof', 'generated a moof box');
   equal(moof[0].boxes.length, 2, 'generated two child boxes');
   equal(moof[0].boxes[0].type, 'mfhd', 'generated an mfhd box');
+  equal(moof[0].boxes[0].sequenceNumber, 7, 'included the sequence_number');
   equal(moof[0].boxes[1].type, 'traf', 'generated a traf box');
   equal(moof[0].boxes[1].boxes.length, 2, 'generated two fragment headers');
   equal(moof[0].boxes[1].boxes[0].type, 'tfhd', 'generated a tfhd box');
@@ -273,6 +274,5 @@ test('generates an mdat', function() {
   equal(mdat[0].type, 'mdat', 'generated an mdat box');
   deepEqual(mdat[0].byteLength, 4, 'encapsulated the data');
 });
-
 
 })(window, window.videojs);

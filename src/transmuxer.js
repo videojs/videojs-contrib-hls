@@ -421,7 +421,10 @@ H264Stream.prototype = new videojs.Hls.Stream();
 
 
 Transmuxer = function() {
-  var self = this, packetStream, parseStream, programStream, aacStream, h264Stream;
+  var
+    self = this,
+    sequenceNumber = 0,
+    packetStream, parseStream, programStream, aacStream, h264Stream;
   Transmuxer.prototype.init.call(this);
 
   // set up the parsing pipeline
@@ -443,9 +446,14 @@ Transmuxer = function() {
   });
   h264Stream.on('data', function(data) {
     var
-      moof = mp4.moof([]),
+      moof = mp4.moof(sequenceNumber, []),
       mdat = mp4.mdat(data.data),
+      // it would be great to allocate this array up front instead of
+      // throwing away hundreds of media segment fragments
       boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
+
+    // bump the sequence number for next time
+    sequenceNumber++;
 
     boxes.set(moof);
     boxes.set(mdat, moof.byteLength);
