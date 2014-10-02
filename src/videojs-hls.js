@@ -165,9 +165,9 @@ videojs.Hls.prototype.handleSourceOpen = function() {
       // If at last segment, or we dont know what the bitrate of the playlist, no need to continue //
       if (nextSegmentinNewPlaylist && newPlaylistBitrate) {
         currentSegmentDuration = currentSegmentInNewPlaylist.duration * 1000;
-        currentSegmentDownloadTime = ((currentSegmentDuration * newPlaylistBitrate) * 1000) / (this.bandwidth * 8);
+        currentSegmentDownloadTime = (currentSegmentDuration * newPlaylistBitrate)  / (this.bandwidth * 8);
         nextSegmentDuration = nextSegmentinNewPlaylist.duration * 1000;
-        nextSegmentDownloadTime = ((nextSegmentDuration * newPlaylistBitrate) * 1000) / (this.bandwidth * 8);
+        nextSegmentDownloadTime = (nextSegmentDuration * newPlaylistBitrate) / (this.bandwidth * 8);
 
         timeRemaining = 10000;
         var onSwitchedSegmentLoadComplete = function(xhr) {
