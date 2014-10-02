@@ -1,7 +1,7 @@
 (function(window, videojs, undefined) {
 'use strict';
 
-var box, dinf, ftyp, mdat, minf, moof, moov, mvex, mvhd, trak, tkhd, mdia, mdhd, hdlr, stbl,
+var box, dinf, ftyp, mdat, mfhd, minf, moof, moov, mvex, mvhd, trak, tkhd, mdia, mdhd, hdlr, stbl,
     stsd, styp, types, MAJOR_BRAND, MINOR_VERSION, VIDEO_HDLR, AUDIO_HDLR, HDLR_TYPES, VMHD, DREF, STCO, STSC, STSZ, STTS, TREX,
     Uint8Array, DataView;
 
@@ -188,10 +188,20 @@ mdhd = function(duration) {
 mdia = function(duration, width, height, type) {
   return box(types.mdia, mdhd(duration), hdlr(type), minf(width, height));
 };
+mfhd = function(sequenceNumber) {
+  return box(types.mfhd, new Uint8Array([
+    0x00,
+    0x00, 0x00, 0x00, // flags
+    (sequenceNumber & 0xFF000000) >> 24,
+    (sequenceNumber & 0xFF0000) >> 16,
+    (sequenceNumber & 0xFF00) >> 8,
+    sequenceNumber & 0xFF, // sequence_number
+  ]));
+};
 minf = function(width, height) {
   return box(types.minf, box(types.vmhd, VMHD), dinf(), stbl(width, height));
 };
-moof = function(tracks) {
+moof = function(sequenceNumber, tracks) {
   var
     trafCall = [],
     i = tracks.length;
@@ -208,7 +218,7 @@ moof = function(tracks) {
   }
   trafCall.unshift(types.traf);
   return box(types.moof,
-             box(types.mfhd),
+             mfhd(sequenceNumber),
              box.apply(null, trafCall));
 };
 moov = function(duration, width, height, type) {
