@@ -209,6 +209,7 @@ window.videojs.Hls.AacStream = function() {
             return;
           }
           bytesToCopy = (end - offset) < adtsFrameSize ? (end - offset) : adtsFrameSize;
+          console.log('bytes to copy: ', bytesToCopy, data.subarray(offset, offset+bytesToCopy));
           aacFrame.writeBytes(data, offset, bytesToCopy);
           offset += bytesToCopy;
           adtsFrameSize -= bytesToCopy;

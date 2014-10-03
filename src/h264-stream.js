@@ -326,7 +326,7 @@
         // data is empty so there's nothing to write
         return;
       }
-
+      debugger
       // scan through the bytes until we find the start code (0x000001) for a
       // NAL unit and then begin writing it out
       // strip NAL start codes as we go

@@ -404,7 +404,8 @@ AacStream = function() {
 
   this.push = function(packet) {
 
-    if (packet.type == "audio") {
+    if (packet.type == "audio" && packet.pes != undefined) {
+
       var adtsProtectionAbsent, // :Boolean
         adtsObjectType, // :int
         adtsSampleingIndex, // :int
@@ -481,8 +482,10 @@ AacStream = function() {
       aacFrame.bytes = packet.data.subarray(7, packet.data.length);
       packet.frame = aacFrame;
       console.log(packet);
-    if (packet.type === 'audio') {
-      this.trigger('data', packet);
+
+      if (packet.type === 'audio') {
+        this.trigger('data', packet);
+      }
     }
   };
 };
@@ -498,7 +501,9 @@ H264Stream = function() {
   self = this;
 
   this.push = function(packet) {
-    if (packet.type === 'video') {
+
+    if (packet.type == "video") {
+      debugger
       this.trigger('data', packet);
     }
   };
