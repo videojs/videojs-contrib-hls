@@ -289,7 +289,7 @@ ProgramStream = function() {
         event.pes.dts = pes.dts;
         event.pes.pid = pes.pid;
         event.pes.dataAlignmentIndicator = pes.dataAlignmentIndicator;
-        event.pes.payloadUnitStartIndicator = pes.payloadUnitStartIndicator
+        event.pes.payloadUnitStartIndicator = pes.payloadUnitStartIndicator;
       }
 
       // do nothing if there is no buffered data
@@ -403,6 +403,7 @@ AacStream = function() {
 
 
   this.push = function(packet) {
+
     if (packet.type == "audio") {
       var adtsProtectionAbsent, // :Boolean
         adtsObjectType, // :int
@@ -480,6 +481,7 @@ AacStream = function() {
       aacFrame.bytes = packet.data.subarray(7, packet.data.length);
       packet.frame = aacFrame;
       console.log(packet);
+    if (packet.type === 'audio') {
       this.trigger('data', packet);
     }
   };
@@ -496,7 +498,7 @@ H264Stream = function() {
   self = this;
 
   this.push = function(packet) {
-    if (packet.type == "video") {
+    if (packet.type === 'video') {
       this.trigger('data', packet);
     }
   };
@@ -505,7 +507,10 @@ H264Stream.prototype = new videojs.Hls.Stream();
 
 
 Transmuxer = function() {
-  var self = this, packetStream, parseStream, programStream, aacStream, h264Stream;
+  var
+    self = this,
+    sequenceNumber = 0,
+    packetStream, parseStream, programStream, aacStream, h264Stream;
   Transmuxer.prototype.init.call(this);
 
   // set up the parsing pipeline
@@ -524,10 +529,24 @@ Transmuxer = function() {
   this.initSegment = mp4.initSegment();
 
   aacStream.on('data', function(data) {
-    self.trigger('data', data);
   });
   h264Stream.on('data', function(data) {
-    self.trigger('data', data);
+    var
+      moof = mp4.moof(sequenceNumber, []),
+      mdat = mp4.mdat(data.data),
+      // it would be great to allocate this array up front instead of
+      // throwing away hundreds of media segment fragments
+      boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
+
+    // bump the sequence number for next time
+    sequenceNumber++;
+
+    boxes.set(moof);
+    boxes.set(mdat, moof.byteLength);
+
+    self.trigger('data', {
+      data: boxes
+    });
   });
   // feed incoming data to the front of the parsing pipeline
   this.push = function(data) {
