@@ -145,16 +145,15 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     var tech, playlist, currentSegmentInNewPlaylist, nextSegmentinNewPlaylist,
       currentSegmentDuration, newPlaylistBitrate, currentSegmentDownloadTime,
-      nextSegmentDuration, nextSegmentDownloadTime, timeRemaining, segmentUri,
-      currentIndex;
+      nextSegmentDuration, nextSegmentDownloadTime, segmentUri, currentIndex;
 
     tech = this;
-    playlist = this.playlists.media();
+    playlist = tech.playlists.media();
 
     if (playlist) {
-      newPlaylistBitrate = playlist.attributes['BANDWIDTH'];
+      newPlaylistBitrate = playlist.attributes.BANDWIDTH;
 
-      currentIndex = this.mediaIndex -1;
+      currentIndex = tech.mediaIndex -1;
       if (currentIndex < 0) {
         currentIndex = 0;
       }
@@ -165,31 +164,28 @@ videojs.Hls.prototype.handleSourceOpen = function() {
       // If at last segment, or we dont know what the bitrate of the playlist, no need to continue //
       if (nextSegmentinNewPlaylist && newPlaylistBitrate) {
         currentSegmentDuration = currentSegmentInNewPlaylist.duration * 1000;
-        currentSegmentDownloadTime = (currentSegmentDuration * newPlaylistBitrate)  / (this.bandwidth * 8);
+        currentSegmentDownloadTime = (currentSegmentDuration * newPlaylistBitrate)  / (tech.bandwidth * 8);
         nextSegmentDuration = nextSegmentinNewPlaylist.duration * 1000;
-        nextSegmentDownloadTime = (nextSegmentDuration * newPlaylistBitrate) / (this.bandwidth * 8);
-
-        timeRemaining = 10000;
-        var onSwitchedSegmentLoadComplete = function(xhr) {
-          player.currentTime(player.currentTime());
-          console.log(xhr);
-        };
+        nextSegmentDownloadTime = (nextSegmentDuration * newPlaylistBitrate) / (tech.bandwidth * 8);
 
         // LoadSegment with custom callback //
         // resolve the segment URL relative to the playlist
-        if (playlist.uri === this.playlists.master.uri) {
-          segmentUri = resolveUrl(this.playlists.master.uri, currentSegmentInNewPlaylist.uri);
+        if (playlist.uri === tech.playlists.master.uri) {
+          segmentUri = resolveUrl(tech.playlists.master.uri, currentSegmentInNewPlaylist.uri);
         } else {
-          segmentUri = resolveUrl(resolveUrl(this.playlists.master.uri, playlist.uri || ''), currentSegmentInNewPlaylist.uri);
+          segmentUri = resolveUrl(resolveUrl(tech.playlists.master.uri, playlist.uri || ''), currentSegmentInNewPlaylist.uri);
         }
 
-        if( (currentSegmentDownloadTime + nextSegmentDownloadTime) < timeRemaining) {
-          this.loadSegment(segmentUri, null, onSwitchedSegmentLoadComplete);
+        // Determine the buffer needed versus the time to download to insure
+        // playback will not be stopped as a result of additional overhead
+        // then load the new rendition segment and fire midSegmentSwitch handler
+        if( (currentSegmentDownloadTime + nextSegmentDownloadTime) < tech.getSwitchBuffer()) {
+          tech.loadSegment(segmentUri, null, videojs.bind(this, tech.midSegmentSwitch));
         }
       }
-      // - end import
 
     }
+
     player.trigger('mediachange');
   }));
 
@@ -199,6 +195,24 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   if (player.options().autoplay) {
     player.play();
   }
+};
+
+/**
+ * Calculate the buffer needed to justify a mid-segment switch
+ * @returns Number Time in milliseconds
+ */
+videojs.Hls.prototype.getSwitchBuffer = function() {
+  var tech, timeRanges, playerCurrentTimeInMilliseconds,
+    currentSegmentStartTime, nextSegmentDuration;
+
+  tech = this;
+  timeRanges = videojs.Hls.getSegmentTimeRangesByPlaylist(this.playlists.media());
+
+  playerCurrentTimeInMilliseconds = tech.player().currentTime() * 1000;
+  currentSegmentStartTime = timeRanges[tech.mediaIndex-1].start;
+  nextSegmentDuration = timeRanges[tech.mediaIndex].end - timeRanges[tech.mediaIndex].start;
+
+  return playerCurrentTimeInMilliseconds + currentSegmentStartTime + nextSegmentDuration;
 };
 
 /**
@@ -493,6 +507,13 @@ videojs.Hls.prototype.midSegmentSwitch = function() {
   // Determine if Necessary
   // Get new segment data
   // Get the player to that data
+  // NOTE: Currently this is passed an XHR //
+
+  // Seek to current time
+  // Under the hood this purges the current buffer and restocks with the
+  // new rendition's segment similar to a 'normal' seek
+  var player = this.player();
+  player.currentTime(player.currentTime());
 };
 
 videojs.Hls.prototype.loadSegment = function(segmentUri, offset, callback) {
@@ -605,6 +626,9 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   while (this.segmentParser_.tagsAvailable()) {
     tags.push(this.segmentParser_.getNextTag());
   }
+
+  // TODO - figure out a better way to track this
+  this.currentSegmentStartTime = (tags[0]) ? tags[0].frameTime : 0;
 
   // if we're refilling the buffer after a seek, scan through the muxed
   // FLV tags until we find the one that is closest to the desired
@@ -828,15 +852,10 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
  * @returns {number} The media index, or -1 if none appropriate.
  */
 videojs.Hls.getMediaIndexByTime = function(playlist, time) {
-  var index, counter, timeRanges, currentSegmentRange;
+  var counter, timeRanges, tech;
 
-  timeRanges = [];
-  for (index = 0; index < playlist.segments.length; index++) {
-    currentSegmentRange = {};
-    currentSegmentRange.start = (index === 0) ? 0 : timeRanges[index - 1].end;
-    currentSegmentRange.end = currentSegmentRange.start + playlist.segments[index].duration;
-    timeRanges.push(currentSegmentRange);
-  }
+  tech = this;
+  timeRanges = tech.getSegmentTimeRangesByPlaylist(playlist);
 
   for (counter = 0; counter < timeRanges.length; counter++) {
     if (time >= timeRanges[counter].start && time < timeRanges[counter].end) {
@@ -845,6 +864,19 @@ videojs.Hls.getMediaIndexByTime = function(playlist, time) {
   }
 
   return -1;
+};
+
+videojs.Hls.getSegmentTimeRangesByPlaylist = function(playlist) {
+  var index, timeRanges, currentSegmentRange;
+
+  timeRanges = [];
+  for (index = 0; index < playlist.segments.length; index++) {
+    currentSegmentRange = {};
+    currentSegmentRange.start = (index === 0) ? 0 : timeRanges[index - 1].end;
+    currentSegmentRange.end = currentSegmentRange.start + playlist.segments[index].duration;
+    timeRanges.push(currentSegmentRange);
+  }
+  return timeRanges;
 };
 
 /**
