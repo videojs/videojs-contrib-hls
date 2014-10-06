@@ -1108,20 +1108,6 @@ test('resets the switching algorithm if a request times out', function() {
               'reset to the lowest bitrate playlist');
 });
 
-test('handles xhr timeouts correctly', function () {
-  var error;
-  var clock = sinon.useFakeTimers();
-  videojs.Hls.xhr({
-    url: 'http://example.com',
-    timeout: 1
-  }, function(innerError) {
-    error = innerError;
-  });
-  clock.tick(1);
-  strictEqual(error, 'timeout', 'called with timeout error');
-  clock.restore();
-});
-
 test('disposes the playlist loader', function() {
   var disposes = 0, player, loaderDispose;
   player = createPlayer();
