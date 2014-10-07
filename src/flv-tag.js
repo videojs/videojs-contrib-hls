@@ -331,24 +331,6 @@ hls.FlvTag.isVideoFrame = function(tag) {
 hls.FlvTag.isMetaData = function(tag) {
   return hls.FlvTag.METADATA_TAG === tag[0];
 };
-
-// (tag:ByteArray):Boolean {
-hls.FlvTag.isKeyFrame = function(tag) {
-  if (hls.FlvTag.isVideoFrame(tag)) {
-    return tag[11] === 0x17;
-  }
-
-  if (hls.FlvTag.isAudioFrame(tag)) {
-    return true;
-  }
-
-  if (hls.FlvTag.isMetaData(tag)) {
-    return true;
-  }
-
-  return false;
-};
-
 // (tag:ByteArray):uint {
 hls.FlvTag.frameTime = function(tag) {
   var pts = tag[ 4] << 16; // :uint
