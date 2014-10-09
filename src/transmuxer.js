@@ -481,11 +481,9 @@ AacStream = function() {
 
       aacFrame.bytes = packet.data.subarray(7, packet.data.length);
       packet.frame = aacFrame;
-      console.log(packet);
 
-      if (packet.type === 'audio') {
-        this.trigger('data', packet);
-      }
+      this.trigger('data', packet);
+
     }
   };
 };
@@ -501,10 +499,41 @@ H264Stream = function() {
   self = this;
 
   this.push = function(packet) {
+    var nals = [],
+        nal,
+        nalType,
+        offset = 0,
+        data = packet.data,
+        start,
+        end;
 
     if (packet.type == "video") {
-      debugger
-      this.trigger('data', packet);
+      // Check each byte and see if its a 1
+      // if it is a 1 check the previous two
+      // to see if they are 0
+      while (offset < data.length){
+        if ( data[offset] == 1 && data[offset-1] == 0 && data[offset-2] == 0) {
+
+          if ( data[offset-3] === 0 ){
+            end = offset - 3
+          }else{
+            end = offset - 2
+          }
+
+          if ( end ){
+            nal = {};
+            nal.data = data.subarray(start, end)
+            nalType = nal.data[0] & 0x1F;
+            nal.type = nalType;
+            nals.push(nal);
+          }
+
+          start = offset + 1
+        }
+        offset++;
+      }
+
+      this.trigger('data', nals);
     }
   };
 };
@@ -536,22 +565,24 @@ Transmuxer = function() {
   aacStream.on('data', function(data) {
   });
   h264Stream.on('data', function(data) {
-    var
-      moof = mp4.moof(sequenceNumber, []),
-      mdat = mp4.mdat(data.data),
-      // it would be great to allocate this array up front instead of
-      // throwing away hundreds of media segment fragments
-      boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
-
-    // bump the sequence number for next time
-    sequenceNumber++;
-
-    boxes.set(moof);
-    boxes.set(mdat, moof.byteLength);
-
-    self.trigger('data', {
-      data: boxes
-    });
+    console.log('h264 data', data);
+    // var
+    //   moof = mp4.moof(sequenceNumber, []),
+    //   mdat = mp4.mdat(data.data),
+    //   // it would be great to allocate this array up front instead of
+    //   // throwing away hundreds of media segment fragments
+    //   boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
+    //
+    //
+    // // bump the sequence number for next time
+    // sequenceNumber++;
+    //
+    // boxes.set(moof);
+    // boxes.set(mdat, moof.byteLength);
+    //
+    // self.trigger('data', {
+    //   data: boxes
+    // });
   });
   // feed incoming data to the front of the parsing pipeline
   this.push = function(data) {
