@@ -14,7 +14,7 @@
 (function(window, videojs, undefined) {
 'use strict';
 
-var PacketStream, ParseStream, ProgramStream, Transmuxer, AacStream, H264Stream, MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4;
+var PacketStream, ParseStream, ProgramStream, Transmuxer, AacStream, H264Stream, MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4, NALUnitType, H264ExtraData = window.videojs.Hls.H264ExtraData;
 
 MP2T_PACKET_LENGTH = 188; // bytes
 H264_STREAM_TYPE = 0x1b;
@@ -505,15 +505,28 @@ H264Stream = function() {
         offset = 0,
         data = packet.data,
         start,
-        end;
+        end,
+        buildNal = function(data, start, end){
+          var nal = {};
+          nal.data = data.subarray(start, end)
+          nalType = nal.data[0] & 0x1F;
+          nal.type = nalType;
+          if ( nal.type === NALUnitType.slice_layer_without_partitioning_rbsp_idr ) {
+            // this is a new idr. in the old code this would be a key frame and they would get
+            // Extradata
+            var newExtraData = new H264ExtraData();
+
+          }
+          return nal;
+        };
 
     if (packet.type == "video") {
       // Check each byte and see if its a 1
       // if it is a 1 check the previous two
       // to see if they are 0
       while (offset < data.length){
-        if ( data[offset] == 1 && data[offset-1] == 0 && data[offset-2] == 0) {
-
+        if ( data[offset] === 1 && data[offset-1] === 0 && data[offset-2] === 0) {
+          // if there is one more preceding 0, account for it in the offset
           if ( data[offset-3] === 0 ){
             end = offset - 3
           }else{
@@ -521,18 +534,18 @@ H264Stream = function() {
           }
 
           if ( end ){
-            nal = {};
-            nal.data = data.subarray(start, end)
-            nalType = nal.data[0] & 0x1F;
-            nal.type = nalType;
+            nal = buildNal(data, start, end)
             nals.push(nal);
           }
 
           start = offset + 1
         }
+        
         offset++;
       }
-
+      //grab the last chunk because we probably ran to the end
+      nal = buildNal(data, start, offset)
+      nals.push(nal);
       this.trigger('data', nals);
     }
   };
@@ -605,4 +618,34 @@ window.videojs.mp2t = {
   AacStream: AacStream,
   H264Stream: H264Stream
 };
+
+/**
+ * Network Abstraction Layer (NAL) units are the packets of an H264
+ * stream. NAL units are divided into types based on their payload
+ * data. Each type has a unique numeric identifier.
+ *
+ *              NAL unit
+ * |- NAL header -|------ RBSP ------|
+ *
+ * NAL unit: Network abstraction layer unit. The combination of a NAL
+ * header and an RBSP.
+ * NAL header: the encapsulation unit for transport-specific metadata in
+ * an h264 stream. Exactly one byte.
+ */
+// incomplete, see Table 7.1 of ITU-T H.264 for 12-32
+window.videojs.Hls.NALUnitType = NALUnitType = {
+  unspecified: 0,
+  slice_layer_without_partitioning_rbsp_non_idr: 1,
+  slice_data_partition_a_layer_rbsp: 2,
+  slice_data_partition_b_layer_rbsp: 3,
+  slice_data_partition_c_layer_rbsp: 4,
+  slice_layer_without_partitioning_rbsp_idr: 5,
+  sei_rbsp: 6,
+  seq_parameter_set_rbsp: 7,
+  pic_parameter_set_rbsp: 8,
+  access_unit_delimiter_rbsp: 9,
+  end_of_seq_rbsp: 10,
+  end_of_stream_rbsp: 11
+};
+
 })(window, window.videojs);
