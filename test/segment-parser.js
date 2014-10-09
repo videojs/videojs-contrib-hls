@@ -341,14 +341,22 @@
       currentPts = tag.pts;
 
       // generic flv headers
-      ok(type === 8 || type === 9 || type === 18,
-         'the type field specifies audio, video or script');
+      switch (type) {
+        case 8: ok(true, 'the type is audio');
+        break;
+        case 9: ok(true, 'the type is video');
+        break;
+        case 18: ok(true, 'the type is script');
+        break;
+        default: ok(false, 'the type (' + type + ') is unrecognized');
+      }
 
       byte = (tag.view.getUint32(1) & 0xFFFFFF00) >>> 8;
       equal(tag.bytes.byteLength - 11 - 4, byte, 'the size field is correct');
 
       byte = tag.view.getUint32(5) & 0xFFFFFF00;
-      ok(byte >= lastTime, 'the timestamp for the tag is greater than zero');
+      ok(byte >= lastTime,
+         'timestamp is increasing. last pts: ' + lastTime + ' this pts: ' + byte);
       lastTime = byte;
 
       // tag type-specific headers
