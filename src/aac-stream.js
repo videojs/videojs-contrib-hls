@@ -23,6 +23,7 @@ window.videojs.Hls.AacStream = function() {
     pts_offset, // :int
     state, // :uint
     pes_length, // :int
+    lastMetaPts,
 
     adtsProtectionAbsent, // :Boolean
     adtsObjectType, // :int
@@ -42,6 +43,11 @@ window.videojs.Hls.AacStream = function() {
 
     // on the first invocation, capture the starting PTS value
     pts_offset = pts;
+
+    // keep track of the last time a metadata tag was written out
+    // set the initial value so metadata will be generated before any
+    // payload data
+    lastMetaPts = pts - 1000;
 
     // on subsequent invocations, calculate the PTS based on the starting offset
     this.setNextTimeStamp = function(pts, pes_size, dataAligned) {
@@ -157,7 +163,11 @@ window.videojs.Hls.AacStream = function() {
         newExtraData = (adtsObjectType << 11) |
                        (adtsSampleingIndex << 7) |
                        (adtsChanelConfig << 3);
-        if (newExtraData !== extraData) {
+
+        // write out metadata tags every 1 second so that the decoder
+        // is re-initialized quickly after seeking into a different
+        // audio configuration
+        if (newExtraData !== extraData || next_pts - lastMetaPts >= 1000) {
           aacFrame = new FlvTag(FlvTag.METADATA_TAG);
           aacFrame.pts = next_pts;
           aacFrame.dts = next_pts;
@@ -173,16 +183,19 @@ window.videojs.Hls.AacStream = function() {
 
           extraData = newExtraData;
           aacFrame = new FlvTag(FlvTag.AUDIO_TAG, true);
-          aacFrame.pts = aacFrame.dts;
           // For audio, DTS is always the same as PTS. We want to set the DTS
           // however so we can compare with video DTS to determine approximate
           // packet order
           aacFrame.pts = next_pts;
+          aacFrame.dts = aacFrame.pts;
+
           aacFrame.view.setUint16(aacFrame.position, newExtraData);
           aacFrame.position += 2;
           aacFrame.length = Math.max(aacFrame.length, aacFrame.position);
 
           this.tags.push(aacFrame);
+
+          lastMetaPts = next_pts;
         }
 
         // Skip the checksum if there is one

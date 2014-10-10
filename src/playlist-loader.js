@@ -67,6 +67,7 @@
             loader.error = {
               status: xhr.status,
               message: 'HLS playlist request error at URL: ' + url,
+              responseText: xhr.responseText,
               code: (xhr.status >= 500) ? 4 : 2
             };
             return loader.trigger('error');
@@ -228,6 +229,7 @@
           loader.error = {
             status: this.status,
             message: 'HLS playlist request error at URL: ' + srcUrl,
+            responseText: this.responseText,
             code: 2 // MEDIA_ERR_NETWORK
           };
           return loader.trigger('error');

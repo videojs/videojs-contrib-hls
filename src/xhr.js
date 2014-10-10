@@ -43,20 +43,12 @@
       request.withCredentials = true;
     }
     if (options.timeout) {
-      if (request.timeout === 0) {
-        request.timeout = options.timeout;
-        request.ontimeout = function() {
+      abortTimeout = window.setTimeout(function() {
+        if (request.readyState !== 4) {
           request.timedout = true;
-        };
-      } else {
-        // polyfill XHR2 by aborting after the timeout
-        abortTimeout = window.setTimeout(function() {
-          if (request.readyState !== 4) {
-            request.timedout = true;
-            request.abort();
-          }
-        }, options.timeout);
-      }
+          request.abort();
+        }
+      }, options.timeout);
     }
 
     request.onreadystatechange = function() {
