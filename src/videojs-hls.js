@@ -677,7 +677,7 @@ videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
 
   for (; i >= startIndex; i--) {
     segment = playlist.segments[i];
-    dur += segment.duration || playlist.targetDuration || 0;
+    dur += (segment.duration !== undefined ? segment.duration : playlist.targetDuration || 0);
   }
 
   return dur;
