@@ -92,7 +92,7 @@ hls.FlvTag = function(type, extraData) {
       end;
     length = length || bytes.byteLength;
     end = start + length;
-
+    console.log('h264 flv', bytes.subarray(start, end));
     prepareWrite(this, length);
     this.bytes.set(bytes.subarray(start, end), this.position);
 
@@ -143,6 +143,7 @@ hls.FlvTag = function(type, extraData) {
     adHoc = this.length;
     this.length += 4;
     this.position = this.length;
+    console.log('start nal')
   };
 
   // (nal:ByteArray = null):void
@@ -167,6 +168,7 @@ hls.FlvTag = function(type, extraData) {
         // Add the tag to the NAL unit
         nalContainer.push(this.bytes.subarray(nalStart, nalStart + nalLength));
       }
+      console.log('end nal')
     }
 
     adHoc = 0;

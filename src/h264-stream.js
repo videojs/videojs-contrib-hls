@@ -296,13 +296,13 @@
 
         if (h264Frame.keyFrame) {
           // Push extra data on every IDR frame in case we did a stream change + seek
+          console.log('pts', h264Frame.pts)
           this.tags.push(oldExtraData.metaDataTag(h264Frame.pts));
           this.tags.push(oldExtraData.extraDataTag(h264Frame.pts));
         }
 
         h264Frame.endNalUnit();
         this.tags.push(h264Frame);
-
       }
 
       h264Frame = null;
@@ -326,7 +326,7 @@
         // data is empty so there's nothing to write
         return;
       }
-      debugger
+
       // scan through the bytes until we find the start code (0x000001) for a
       // NAL unit and then begin writing it out
       // strip NAL start codes as we go
@@ -441,9 +441,11 @@
 
           switch (nalUnitType) {
           case NALUnitType.seq_parameter_set_rbsp:
+            console.log('end sps');
             h264Frame.endNalUnit(newExtraData.sps);
             break;
           case NALUnitType.pic_parameter_set_rbsp:
+            console.log('end pps');
             h264Frame.endNalUnit(newExtraData.pps);
             break;
           case NALUnitType.slice_layer_without_partitioning_rbsp_idr:

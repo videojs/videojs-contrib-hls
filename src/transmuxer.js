@@ -515,7 +515,7 @@ H264Stream = function() {
             // this is a new idr. in the old code this would be a key frame and they would get
             // Extradata
             var newExtraData = new H264ExtraData();
-
+            debugger
           }
           return nal;
         };
@@ -540,7 +540,7 @@ H264Stream = function() {
 
           start = offset + 1
         }
-        
+
         offset++;
       }
       //grab the last chunk because we probably ran to the end
