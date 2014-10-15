@@ -260,10 +260,10 @@ videojs.Hls.prototype.getSwitchBuffer = function() {
   playerCurrentTimeInMilliseconds = tech.player().currentTime() * 1000;
   currentIndex = Math.max(tech.mediaIndex-1,0);
   currentSegmentStartTime = timeRanges[currentIndex].start;
-  currentSegmentRemainingPlaybackTime = playerCurrentTimeInMilliseconds - currentSegmentStartTime;
-  nextSegmentDuration = timeRanges[currentIndex + 1].end - timeRanges[currentIndex + 1].start;
+  currentSegmentRemainingPlaybackTime = ((timeRanges[currentIndex].end - (playerCurrentTimeInMilliseconds - currentSegmentStartTime)) * 1000);
+  nextSegmentDuration = ((timeRanges[currentIndex + 1].end - timeRanges[currentIndex + 1].start) * 1000);
 
-  return currentSegmentRemainingPlaybackTime + nextSegmentDuration;
+  return currentSegmentRemainingPlaybackTime;
 };
 
 /**
