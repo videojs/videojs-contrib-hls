@@ -14,8 +14,34 @@ var
   bandwidthVariance = 1.1,
   keyXhr,
   keyFailed,
+  getTagsForSegment,
   getTagsTillKeyframeMinTime,
   resolveUrl;
+
+getTagsForSegment = function(tech, xhr, segmentItem) {
+  var tag, tags, bytes, first;
+
+  bytes = new Uint8Array(xhr.response);
+  tags = [];
+  first = true;
+
+  tech.setBandwidthByXHR(xhr);
+
+  tech.segmentParser_.parseSegmentBinaryData(bytes);
+  tech.segmentParser_.flushTags();
+
+  while (tech.segmentParser_.tagsAvailable()) {
+    tag = tech.segmentParser_.getNextTag();
+    if (!first) {
+      associatedSegment.offset = null;
+      first = false;
+    }
+    tag.associatedSegment = videojs.util.mergeOptions({}, segmentItem);
+    tags.push(tag);
+  }
+
+  return tags;
+};
 
 // returns true if a key has failed to download within a certain amount of retries
 keyFailed = function(key) {
@@ -94,6 +120,7 @@ videojs.Hls.prototype.src = function(src) {
   this.mediaSource = mediaSource;
 
   this.segmentBuffer_ = [];
+  this.tagsBuffer_ = [];
   this.segmentParser_ = new videojs.Hls.SegmentParser();
 
   // load the MediaSource into the player
@@ -514,7 +541,7 @@ videojs.Hls.prototype.setBandwidthByXHR = function(xhr) {
 videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
   var tech = this,
       tags,
-      bytes = new Uint8Array(xhr.response),
+      //bytes = new Uint8Array(xhr.response),
       segmentItem;
 
   tech.setBandwidthByXHR(xhr);
@@ -528,26 +555,21 @@ videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
     playlist: tech.playlists.media(),
     offset: offset
   };
-  tech.segmentBuffer_.push(segmentItem);
+  //tech.segmentBuffer_.push(segmentItem);
 
   // transmux the segment data from MP2T to FLV
-  this.segmentParser_.parseSegmentBinaryData(bytes);
-  this.segmentParser_.flushTags();
+  //this.segmentParser_.parseSegmentBinaryData(bytes);
+  //this.segmentParser_.flushTags();
 
-  tags = [];
-  while (this.segmentParser_.tagsAvailable()) {
-    tags.push(this.segmentParser_.getNextTag());
-  }
-
-  var l = tech.tagsBuffer_.length;
-  tech.tagsBuffer_ = tech.tagsBuffer_.concat(tags);
-  console.log('##################################', l, tech.tagsBuffer_.length, segmentItem.playlist.uri, segmentItem.mediaIndex);
-  //while(tags.length) {
-    //var slice = (getTagsTillKeyframeMinTime(tags, 1000));
-    //console.log(slice.length, tags.length, (slice.slice(-1)[0].dts - slice[0].dts)/1000 );
-    //tags.splice(0, slice.length);
+  //tags = [];
+  //while (this.segmentParser_.tagsAvailable()) {
+    //tags.push(this.segmentParser_.getNextTag());
   //}
-  //tech.tagsBuffer_.push(segmentItem);
+
+  tags = getTagsForSegment(tech, xhr, segmentItem);
+
+  tech.tagsBuffer_ = tech.tagsBuffer_.concat(tags);
+  //console.log('##################################', l, tech.tagsBuffer_.length, segmentItem.playlist.uri, segmentItem.mediaIndex);
 
   tech.drainBuffer();
 
@@ -574,41 +596,29 @@ videojs.Hls.prototype.midSegmentSwitch = function(xhr, offset) {
   //console.log(this.mediaIndex, xhr.url);
 
   var tags = [],
-      bytes = new Uint8Array(xhr.response),
       segmentItem,
+      newSegmentSlice,
+      currentTagsSlice,
       tech = this;
-
-  tech.setBandwidthByXHR(xhr);
 
   segmentItem = {
     mediaIndex: tech.mediaIndex,
     playlist: tech.playlists.media(),
     offset: offset
   };
-  tech.segmentBuffer_.push(segmentItem);
 
-  // transmux the segment data from MP2T to FLV
-  this.segmentParser_.parseSegmentBinaryData(bytes);
-  this.segmentParser_.flushTags();
+  tags = getTagsForSegment(tech, xhr, segmentItem);
 
-  while (this.segmentParser_.tagsAvailable()) {
-    tags.push(this.segmentParser_.getNextTag());
+  if (tech.tagsBuffer_.length !== 0) {
+    newSegmentSlice = getTagsTillKeyframeMinTime(tags, tech.tagsBuffer_[0].dts);
+  } else {
+    newSegmentSlice = [];
   }
+  currentTagsSlice = getTagsTillKeyframeMinTime(tech.tagsBuffer_, tags.slice(-1)[0].dts);
 
-  var slice = getTagsTillKeyframeMinTime(tags, tech.tagsBuffer_[0].dts);
-  var slice2 = getTagsTillKeyframeMinTime(tech.tagsBuffer_, tags.slice(-1)[0].dts);
-  console.log('################## mid', xhr.url);
-  console.log(tags.length, slice.length, slice2.length, tech.tagsBuffer_.length);
-  console.log(tags[0].dts, slice[0].dts, slice.slice(-1)[0].dts, tech.tagsBuffer_[0].dts);
-  console.log(tags.slice(-1)[0].dts, slice2.slice(-1)[0].dts);
-  console.log('##################');
-
-  tags.splice(0, slice.length);
-  tech.tagsBuffer_.splice(0, slice2.length);
+  tags.splice(0, newSegmentSlice.length);
+  tech.tagsBuffer_.splice(0, currentTagsSlice.length);
   tech.tagsBuffer_ = tags.concat(tech.tagsBuffer_);
-
-  //console.log('mid', player.currentTime());
-  //player.currentTime(player.currentTime());
 };
 
 videojs.Hls.prototype.loadSegment = function(segmentUri, offset, callback) {
@@ -663,7 +673,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     offset,
     tags,
     bytes,
-    segment,
+    segment = {},
 
     ptsTime,
     segmentOffset,
@@ -674,14 +684,9 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     return;
   }
 
-  if (!segmentBuffer.length) {
-    return;
-  }
-
-  mediaIndex = segmentBuffer[0].mediaIndex;
-  playlist = segmentBuffer[0].playlist;
-  offset = segmentBuffer[0].offset;
-  bytes = segmentBuffer[0].bytes;
+  mediaIndex = tagsBuffer[0].associatedSegment.mediaIndex;
+  playlist = tagsBuffer[0].associatedSegment.playlist;
+  offset = tagsBuffer[0].associatedSegment.offset;
   segment = playlist.segments[mediaIndex];
 
   if (segment.key) {
@@ -718,33 +723,39 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     this.el().vjs_setProperty('currentTime', segmentOffset * 0.001);
   }
 
-  tags = getTagsTillKeyframeMinTime(tagsBuffer, 1500);
-  tagsBuffer.splice(0, tags.length);
-  var tag = tags.slice(-1)[0];
-  console.log(tags.length, tag.dts, tag.pts, tagsBuffer.length);
+  tags = tagsBuffer;
 
   // TODO - figure out a better way to track this
   this.currentSegmentStartTime = (tags[0]) ? tags[0].frameTime : 0;
 
-  /*
   // if we're refilling the buffer after a seek, scan through the muxed
   // FLV tags until we find the one that is closest to the desired
   // playback time
   if (typeof offset === 'number') {
     ptsTime = offset - segmentOffset + tags[0].pts;
 
-    while (tags[i].pts < ptsTime) {
-      i++;
+    for (; i < tags.length; i++) {
+      if (tags[i].pts > ptsTime) {
+        break;
+      }
+    }
+    console.log('###', i, tags.length);
+    if (i === tags.length) {
+      i--;
     }
 
     // tell the SWF where we will be seeking to
     this.el().vjs_setProperty('currentTime', (tags[i].pts - tags[0].pts + segmentOffset) * 0.001);
 
-    tags = tags.slice(i);
+    tags.splice(0, i + 1);
 
     this.lastSeekedTime_ = null;
   }
-  */
+
+  tags = getTagsTillKeyframeMinTime(tagsBuffer, 1500);
+  tagsBuffer.splice(0, tags.length);
+  var tag = tags.slice(-1)[0];
+  //console.log(tags.length, tag.dts, tag.pts, tagsBuffer.length);
 
   for (i = 0; i < tags.length; i++) {
     // queue up the bytes to be appended to the SourceBuffer
