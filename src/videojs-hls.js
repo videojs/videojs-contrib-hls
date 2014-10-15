@@ -161,11 +161,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     if (playlist) {
       newPlaylistBitrate = playlist.attributes.BANDWIDTH;
 
-      currentIndex = tech.mediaIndex -1;
-      if (currentIndex < 0) {
-        currentIndex = 0;
-      }
-
+      currentIndex = Math.max(tech.mediaIndex-1,0);
       currentSegmentInNewPlaylist = playlist.segments[currentIndex];
       nextSegmentinNewPlaylist = playlist.segments[currentIndex + 1];
 
@@ -187,11 +183,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
         // Determine the buffer needed versus the time to download to insure
         // playback will not be stopped as a result of additional overhead
         // then load the new rendition segment and fire midSegmentSwitch handler
-        if( (currentSegmentDownloadTime + nextSegmentDownloadTime) < tech.getSwitchBuffer()) {
+        if ((currentSegmentDownloadTime + nextSegmentDownloadTime) < tech.getSwitchBuffer()) {
           tech.loadSegment(segmentUri, null, videojs.bind(this, tech.midSegmentSwitch));
         }
       }
-
     }
 
     player.trigger('mediachange');
