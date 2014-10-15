@@ -63,15 +63,17 @@ videojs.Hls = videojs.Flash.extend({
 
 // given a list of tags, will give you back the list of tags till the next keyframe (exclusive)
 getTagsTillKeyframeMinTime = function(tags, threshold) {
-  var i = 0,
+  var i = 1,
       firsttag,
       tag,
       newtags = [];
 
   firsttag = tags[0];
+  newtags.push(firsttag);
+
   for (; i < tags.length; i++) {
     tag = tags[i];
-    if (tag.keyFrame && (tag.dts - firsttag.dts) >= threshold ) {
+    if (tag.discontinuity || tag.keyFrame && (tag.dts - firsttag.dts) >= threshold ) {
       break;
     }
     newtags.push(tag);
