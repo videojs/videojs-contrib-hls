@@ -1117,6 +1117,73 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
   strictEqual(setTime, 10, 'updated the time after crossing the discontinuity');
 });
 
+test('respects discontinuities in the middle of tag slices', function() {
+  var aborts = 0;
+
+  player.src({
+    src: 'disc.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.hls.sourceBuffer.abort = function() {
+    aborts++;
+  };
+
+  requests.pop().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXTINF:10,0\n' +
+                         '1.ts\n' +
+                         '#EXT-X-DISCONTINUITY\n' +
+                         '#EXTINF:10,0\n' +
+                         '2.ts\n');
+  parsedTags.length = 0;
+  parsedTags.push({
+    dts: 0,
+    bytes: 0,
+    pts: 0
+  }, {
+    keyFrame: true,
+    dts: 1500,
+    pts: 1500,
+    bytes: 1
+  }, {
+    dts: 3000,
+    pts: 3000,
+    bytes: 2
+  }, {
+    keyFrame: true,
+    dts: 4500,
+    pts: 4500,
+    bytes: 3
+  }, {
+    dts: 5000,
+    pts: 5000,
+    bytes: 4
+  }, {
+    keyFrame: true,
+    dts: 6000,
+    pts: 6000,
+    bytes: 5
+  });
+  requests[0].response = new ArrayBuffer(5);
+  requests.shift().respond(200, null, '');
+  parsedTags.push({
+    keyFrame: true,
+    dts: 6500,
+    pts: 6500,
+    bytes: 6,
+    discontinuity: true
+  });
+  player.trigger('timeupdate');
+  requests[0].response = new ArrayBuffer(7);
+  requests.shift().respond(200, null, '');
+  player.trigger('timeupdate');
+  equal(aborts, 0, 'an abort was not made');
+  player.trigger('waiting');
+  equal(aborts, 1, 'an abort was made');
+});
+
 test('clears the segment buffer on seek', function() {
   var aborts = 0, currentTime, bufferEnd, oldCurrentTime;
 
@@ -1635,7 +1702,7 @@ test('retries key requests once upon failure', function() {
 test('skip segments if key requests fail more than once', function() {
   var bytes = [];
   parsedTags.length = 0;
-  parsedTags.push({ pats: 0, bytes: 0 });
+  parsedTags.push({ pts: 0, bytes: 0 });
 
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
