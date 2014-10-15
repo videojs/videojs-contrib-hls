@@ -33,7 +33,7 @@ getTagsForSegment = function(tech, xhr, segmentItem) {
   while (tech.segmentParser_.tagsAvailable()) {
     tag = tech.segmentParser_.getNextTag();
     if (!first) {
-      associatedSegment.offset = null;
+      //segmentItem.offset = null;
       first = false;
     }
     tag.associatedSegment = videojs.util.mergeOptions({}, segmentItem);
@@ -569,7 +569,6 @@ videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
   tags = getTagsForSegment(tech, xhr, segmentItem);
 
   tech.tagsBuffer_ = tech.tagsBuffer_.concat(tags);
-  //console.log('##################################', l, tech.tagsBuffer_.length, segmentItem.playlist.uri, segmentItem.mediaIndex);
 
   tech.drainBuffer();
 
@@ -593,7 +592,6 @@ videojs.Hls.prototype.midSegmentSwitch = function(xhr, offset) {
   // Under the hood this purges the current buffer and restocks with the
   // new rendition's segment similar to a 'normal' seek
   //var player = this.player();
-  //console.log(this.mediaIndex, xhr.url);
 
   var tags = [],
       segmentItem,
@@ -739,7 +737,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
         break;
       }
     }
-    console.log('###', i, tags.length);
     if (i === tags.length) {
       i--;
     }
@@ -754,8 +751,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   tags = getTagsTillKeyframeMinTime(tagsBuffer, 1500);
   tagsBuffer.splice(0, tags.length);
-  var tag = tags.slice(-1)[0];
-  //console.log(tags.length, tag.dts, tag.pts, tagsBuffer.length);
 
   for (i = 0; i < tags.length; i++) {
     // queue up the bytes to be appended to the SourceBuffer
