@@ -1101,6 +1101,16 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
   standardXHRResponse(requests.pop());
   strictEqual(aborts, 0, 'no aborts before the buffer empties');
 
+  // TODO this is horrific
+  player.hls.tagsBuffer_ = [{
+    keyFrame: true,
+    dts: 1500,
+    associatedSegment: {
+      mediaIndex: 1,
+      playlist: player.hls.playlists.media()
+    }
+  }];
+
   // pretend the buffer has emptied
   player.trigger('waiting');
   strictEqual(aborts, 1, 'aborted before appending the new segment');
@@ -1379,6 +1389,17 @@ test('calls ended() on the media source at the end of a playlist', function() {
                            '#EXT-X-ENDLIST\n');
   // segment response
   requests[0].response = new ArrayBuffer(17);
+
+  // TODO this is horrific
+  player.hls.tagsBuffer_ = [{
+    keyFrame: true,
+    dts: 1500,
+    associatedSegment: {
+      mediaIndex: 0,
+      playlist: player.hls.playlists.media()
+    }
+  }];
+
   requests.shift().respond(200, null, '');
 
   strictEqual(endOfStreams, 1, 'ended media source');

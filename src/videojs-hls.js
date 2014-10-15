@@ -25,15 +25,13 @@ getTagsForSegment = function(tech, xhr, segmentItem) {
   tags = [];
   first = true;
 
-  tech.setBandwidthByXHR(xhr);
-
   tech.segmentParser_.parseSegmentBinaryData(bytes);
   tech.segmentParser_.flushTags();
 
   while (tech.segmentParser_.tagsAvailable()) {
     tag = tech.segmentParser_.getNextTag();
     if (!first) {
-      //segmentItem.offset = null;
+      segmentItem.offset = null;
       first = false;
     }
     tag.associatedSegment = videojs.util.mergeOptions({}, segmentItem);
@@ -544,8 +542,6 @@ videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
       //bytes = new Uint8Array(xhr.response),
       segmentItem;
 
-  tech.setBandwidthByXHR(xhr);
-
   // package up all the work to append the segment
   // if the segment is the start of a timestamp discontinuity,
   // we have to wait until the sourcebuffer is empty before
@@ -566,6 +562,7 @@ videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
     //tags.push(this.segmentParser_.getNextTag());
   //}
 
+  tech.setBandwidthByXHR(xhr);
   tags = getTagsForSegment(tech, xhr, segmentItem);
 
   tech.tagsBuffer_ = tech.tagsBuffer_.concat(tags);
@@ -605,6 +602,7 @@ videojs.Hls.prototype.midSegmentSwitch = function(xhr, offset) {
     offset: offset
   };
 
+  tech.setBandwidthByXHR(xhr);
   tags = getTagsForSegment(tech, xhr, segmentItem);
 
   if (tech.tagsBuffer_.length !== 0) {
@@ -723,17 +721,15 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   tags = tagsBuffer;
 
-  // TODO - figure out a better way to track this
-  this.currentSegmentStartTime = (tags[0]) ? tags[0].frameTime : 0;
-
   // if we're refilling the buffer after a seek, scan through the muxed
   // FLV tags until we find the one that is closest to the desired
   // playback time
   if (typeof offset === 'number') {
     ptsTime = offset - segmentOffset + tags[0].pts;
 
+    // TODO rethink this logic
     for (; i < tags.length; i++) {
-      if (tags[i].pts > ptsTime) {
+      if (tags[i].pts >= ptsTime) {
         break;
       }
     }
@@ -744,7 +740,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     // tell the SWF where we will be seeking to
     this.el().vjs_setProperty('currentTime', (tags[i].pts - tags[0].pts + segmentOffset) * 0.001);
 
-    tags.splice(0, i + 1);
+    tags.splice(0, i);
 
     this.lastSeekedTime_ = null;
   }
@@ -760,11 +756,9 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     this.sourceBuffer.appendBuffer(tags[i].bytes, this.player());
   }
 
-  // we're done processing this segment
-  segmentBuffer.shift();
-
   // transition the sourcebuffer to the ended state if we've hit the end of
   // the playlist
+  console.log(mediaIndex, playlist.segments.length);
   if (mediaIndex + 1 === playlist.segments.length) {
     this.mediaSource.endOfStream();
   }
