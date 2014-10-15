@@ -210,23 +210,18 @@ videojs.Hls.prototype.handleSourceOpen = function() {
  * @returns Number Time in milliseconds
  */
 videojs.Hls.prototype.getSwitchBuffer = function() {
-  var tech, timeRanges, playerCurrentTimeInMilliseconds,
-    currentSegmentStartTime, nextSegmentDuration, currentIndex;
+  var tech, timeRanges, playerCurrentTimeInMilliseconds, currentSegmentStartTime,
+    currentSegmentRemainingPlaybackTime, nextSegmentDuration, currentIndex;
 
   tech = this;
   timeRanges = videojs.Hls.getSegmentTimeRangesByPlaylist(this.playlists.media());
-
   playerCurrentTimeInMilliseconds = tech.player().currentTime() * 1000;
-
-  currentIndex = tech.mediaIndex - 1;
-  if (currentIndex < 0) {
-    currentIndex = 0;
-  }
-
+  currentIndex = Math.max(tech.mediaIndex-1,0);
   currentSegmentStartTime = timeRanges[currentIndex].start;
+  currentSegmentRemainingPlaybackTime = playerCurrentTimeInMilliseconds - currentSegmentStartTime;
   nextSegmentDuration = timeRanges[currentIndex + 1].end - timeRanges[currentIndex + 1].start;
 
-  return playerCurrentTimeInMilliseconds + currentSegmentStartTime + nextSegmentDuration;
+  return currentSegmentRemainingPlaybackTime + nextSegmentDuration;
 };
 
 /**
