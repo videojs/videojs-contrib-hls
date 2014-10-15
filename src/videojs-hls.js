@@ -18,23 +18,17 @@ var
   getTagsTillKeyframeMinTime,
   resolveUrl;
 
-getTagsForSegment = function(tech, xhr, segmentItem) {
-  var tag, tags, bytes, first;
+getTagsForSegment = function(tech, xhr) {
+  var tag, tags, bytes, segment;
 
   bytes = new Uint8Array(xhr.response);
   tags = [];
-  first = true;
 
   tech.segmentParser_.parseSegmentBinaryData(bytes);
   tech.segmentParser_.flushTags();
 
   while (tech.segmentParser_.tagsAvailable()) {
     tag = tech.segmentParser_.getNextTag();
-    if (!first) {
-      segmentItem.offset = null;
-      first = false;
-    }
-    tag.associatedSegment = videojs.util.mergeOptions({}, segmentItem);
     tags.push(tag);
   }
 
@@ -539,31 +533,47 @@ videojs.Hls.prototype.setBandwidthByXHR = function(xhr) {
 videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
   var tech = this,
       tags,
-      //bytes = new Uint8Array(xhr.response),
-      segmentItem;
-
-  // package up all the work to append the segment
-  // if the segment is the start of a timestamp discontinuity,
-  // we have to wait until the sourcebuffer is empty before
-  // aborting the source buffer processing
-  segmentItem = {
-    mediaIndex: tech.mediaIndex,
-    playlist: tech.playlists.media(),
-    offset: offset
-  };
-  //tech.segmentBuffer_.push(segmentItem);
-
-  // transmux the segment data from MP2T to FLV
-  //this.segmentParser_.parseSegmentBinaryData(bytes);
-  //this.segmentParser_.flushTags();
-
-  //tags = [];
-  //while (this.segmentParser_.tagsAvailable()) {
-    //tags.push(this.segmentParser_.getNextTag());
-  //}
+      mediaIndex = tech.mediaIndex,
+      playlist = tech.playlists.media(),
+      ptsTime,
+      i,
+      segmentOffset;
 
   tech.setBandwidthByXHR(xhr);
-  tags = getTagsForSegment(tech, xhr, segmentItem);
+  tags = getTagsForSegment(tech, xhr);
+
+  segmentOffset = videojs.Hls.getPlaylistDuration(playlist, 0, mediaIndex) * 1000;
+
+  if (playlist.segments[mediaIndex].discontinuity) {
+    tags[0].offset = segmentOffset;
+    tags[0].discontinuity = true;
+  }
+
+  if (typeof offset === 'number') {
+    // if we're refilling the buffer after a seek, scan through the muxed
+    // FLV tags until we find the one that is closest to the desired
+    // playback time
+    ptsTime = offset - segmentOffset + tags[0].pts;
+
+    // TODO rethink this logic
+    for (i = 0; i < tags.length; i++) {
+      if (tags[i].pts >= ptsTime) {
+        break;
+      }
+    }
+    if (i === tags.length) {
+      i--;
+    }
+
+    // tell the SWF where we will be seeking to
+    tags[i].offset = tags[i].pts - tags[0].pts + segmentOffset;
+
+    tags.splice(0, i);
+
+    this.lastSeekedTime_ = null;
+  }
+
+  tags[tags.length - 1].end = mediaIndex + 1 === playlist.segments.length;
 
   tech.tagsBuffer_ = tech.tagsBuffer_.concat(tags);
 
@@ -603,7 +613,7 @@ videojs.Hls.prototype.midSegmentSwitch = function(xhr, offset) {
   };
 
   tech.setBandwidthByXHR(xhr);
-  tags = getTagsForSegment(tech, xhr, segmentItem);
+  tags = getTagsForSegment(tech, xhr);
 
   if (tech.tagsBuffer_.length !== 0) {
     newSegmentSlice = getTagsTillKeyframeMinTime(tags, tech.tagsBuffer_[0].dts);
@@ -664,88 +674,53 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset, callback) {
 videojs.Hls.prototype.drainBuffer = function(event) {
   var
     i = 0,
-    mediaIndex,
-    playlist,
-    offset,
     tags,
     bytes,
-    segment = {},
-
-    ptsTime,
-    segmentOffset,
-    tagsBuffer = this.tagsBuffer_,
-    segmentBuffer = this.segmentBuffer_;
+    tagsBuffer = this.tagsBuffer_;
 
   if (!tagsBuffer.length) {
     return;
   }
 
-  mediaIndex = tagsBuffer[0].associatedSegment.mediaIndex;
-  playlist = tagsBuffer[0].associatedSegment.playlist;
-  offset = tagsBuffer[0].associatedSegment.offset;
-  segment = playlist.segments[mediaIndex];
-
-  if (segment.key) {
-    // this is an encrypted segment
-    // if the key download failed, we want to skip this segment
-    // but if the key hasn't downloaded yet, we want to try again later
-    if (keyFailed(segment.key)) {
-      return segmentBuffer.shift();
-    } else if (!segment.key.bytes) {
-      return;
-    } else {
-      // if the media sequence is greater than 2^32, the IV will be incorrect
-      // assuming 10s segments, that would be about 1300 years
-      bytes = videojs.Hls.decrypt(bytes,
-                                  segment.key.bytes,
-                                  new Uint32Array([
-                                    0, 0, 0,
-                                    mediaIndex + playlist.mediaSequence]));
-    }
-  }
+  //if (segment.key) {
+    //// this is an encrypted segment
+    //// if the key download failed, we want to skip this segment
+    //// but if the key hasn't downloaded yet, we want to try again later
+    //if (keyFailed(segment.key)) {
+      //return segmentBuffer.shift();
+    //} else if (!segment.key.bytes) {
+      //return;
+    //} else {
+      //// if the media sequence is greater than 2^32, the IV will be incorrect
+      //// assuming 10s segments, that would be about 1300 years
+      //bytes = videojs.Hls.decrypt(bytes,
+                                  //segment.key.bytes,
+                                  //new Uint32Array([
+                                    //0, 0, 0,
+                                    //mediaIndex + playlist.mediaSequence]));
+    //}
+  //}
 
   event = event || {};
-  segmentOffset = videojs.Hls.getPlaylistDuration(playlist, 0, mediaIndex) * 1000;
+
+  tags = getTagsTillKeyframeMinTime(tagsBuffer, 1500);
 
   // abort() clears any data queued in the source buffer so wait
   // until it empties before calling it when a discontinuity is
   // next in the buffer
-  if (segment.discontinuity) {
+  if (tags[0].discontinuity) {
     if (event.type !== 'waiting') {
       return;
     }
+
     this.sourceBuffer.abort();
+  }
+
+  if (tags[0].offset) {
     // tell the SWF where playback is continuing in the stitched timeline
-    this.el().vjs_setProperty('currentTime', segmentOffset * 0.001);
+    this.el().vjs_setProperty('currentTime', tags[0].offset * 0.001);
   }
 
-  tags = tagsBuffer;
-
-  // if we're refilling the buffer after a seek, scan through the muxed
-  // FLV tags until we find the one that is closest to the desired
-  // playback time
-  if (typeof offset === 'number') {
-    ptsTime = offset - segmentOffset + tags[0].pts;
-
-    // TODO rethink this logic
-    for (; i < tags.length; i++) {
-      if (tags[i].pts >= ptsTime) {
-        break;
-      }
-    }
-    if (i === tags.length) {
-      i--;
-    }
-
-    // tell the SWF where we will be seeking to
-    this.el().vjs_setProperty('currentTime', (tags[i].pts - tags[0].pts + segmentOffset) * 0.001);
-
-    tags.splice(0, i);
-
-    this.lastSeekedTime_ = null;
-  }
-
-  tags = getTagsTillKeyframeMinTime(tagsBuffer, 1500);
   tagsBuffer.splice(0, tags.length);
 
   for (i = 0; i < tags.length; i++) {
@@ -758,8 +733,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   // transition the sourcebuffer to the ended state if we've hit the end of
   // the playlist
-  console.log(mediaIndex, playlist.segments.length);
-  if (mediaIndex + 1 === playlist.segments.length) {
+  if (tags[i - 1].end) {
     this.mediaSource.endOfStream();
   }
 };

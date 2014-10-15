@@ -31,6 +31,7 @@ var
   oldNativeHlsSupport,
   oldDecrypt,
   requests,
+  parsedTags,
   xhr,
 
   createPlayer = function(options) {
@@ -83,6 +84,7 @@ var
       contentType = 'application/vnd.apple.mpegurl';
     } else if (/\.ts/.test(request.url)) {
       contentType = 'video/MP2T';
+      parsedTags.push({});
     }
 
     request.response = new Uint8Array([1]).buffer;
@@ -147,6 +149,9 @@ module('HLS', {
     xhr.onCreate = function(xhr) {
       requests.push(xhr);
     };
+
+    parsedTags = [{}];
+    videojs.Hls.SegmentParser = mockSegmentParser(parsedTags);
 
     // create the test player
     player = createPlayer();
@@ -790,7 +795,12 @@ test('flushes the parser after each segment', function() {
     this.flushTags = function() {
       flushes++;
     };
-    this.tagsAvailable = function() {};
+    this.tagsAvailable = function() {
+      return parsedTags.length;
+    };
+    this.getNextTag = function() {
+      return parsedTags.shift();
+    }
   };
 
   player.src({
@@ -806,11 +816,9 @@ test('flushes the parser after each segment', function() {
 
 test('drops tags before the target timestamp when seeking', function() {
   var i = 10,
-      tags = [],
       bytes = [];
 
   // mock out the parser and source buffer
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
@@ -819,7 +827,8 @@ test('drops tags before the target timestamp when seeking', function() {
   };
 
   // push a tag into the buffer
-  tags.push({ pts: 0, bytes: 0 });
+  parsedTags.length = 0;
+  parsedTags.push({ pts: 0, bytes: 0 });
 
   player.src({
     src: 'manifest/media.m3u8',
@@ -832,13 +841,14 @@ test('drops tags before the target timestamp when seeking', function() {
   // mock out a new segment of FLV tags
   bytes = [];
   while (i--) {
-    tags.unshift({
+    parsedTags.unshift({
       pts: i * 1000,
       bytes: i
     });
   }
   player.currentTime(7);
-  standardXHRResponse(requests[2]);
+  requests[2].response = new ArrayBuffer(5);
+  requests[2].respond(200, null, '');
 
   deepEqual(bytes, [7,8,9], 'three tags are appended');
 });
@@ -846,12 +856,12 @@ test('drops tags before the target timestamp when seeking', function() {
 test('calls abort() on the SourceBuffer before seeking', function() {
   var
     aborts = 0,
-    bytes = [],
-    tags = [{ pts: 0, bytes: 0 }];
+    bytes = [];
 
+  parsedTags.length = 0;
+  parsedTags.push({ pts: 0, bytes: 0 });
 
   // track calls to abort()
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
@@ -872,8 +882,8 @@ test('calls abort() on the SourceBuffer before seeking', function() {
 
   // drainBuffer() uses the first PTS value to account for any timestamp discontinuities in the stream
   // adding a tag with a PTS of zero looks like a stream with no discontinuities
-  tags.push({ pts: 0, bytes: 0 });
-  tags.push({ pts: 7000, bytes: 7 });
+  parsedTags.push({ pts: 0, bytes: 0 });
+  parsedTags.push({ pts: 7000, bytes: 7 });
   // seek to 7s
   player.currentTime(7);
   standardXHRResponse(requests[2]);
@@ -1101,16 +1111,6 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
   standardXHRResponse(requests.pop());
   strictEqual(aborts, 0, 'no aborts before the buffer empties');
 
-  // TODO this is horrific
-  player.hls.tagsBuffer_ = [{
-    keyFrame: true,
-    dts: 1500,
-    associatedSegment: {
-      mediaIndex: 1,
-      playlist: player.hls.playlists.media()
-    }
-  }];
-
   // pretend the buffer has emptied
   player.trigger('waiting');
   strictEqual(aborts, 1, 'aborted before appending the new segment');
@@ -1118,10 +1118,9 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
 });
 
 test('clears the segment buffer on seek', function() {
-  var aborts = 0, tags = [], currentTime, bufferEnd, oldCurrentTime;
+  var aborts = 0, currentTime, bufferEnd, oldCurrentTime;
 
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
-
+  parsedTags.length = 0;
   player.src({
     src: 'disc.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1159,7 +1158,7 @@ test('clears the segment buffer on seek', function() {
 
   // seek back to the beginning
   player.currentTime(0);
-  tags.push({ pts: 0, bytes: 0 });
+  parsedTags.push({ pts: 0, bytes: 0 });
   standardXHRResponse(requests.pop());
   strictEqual(aborts, 1, 'aborted once for the seek');
 
@@ -1326,6 +1325,7 @@ test('tracks the bytes downloaded', function() {
 
   // transmit some more
   requests[0].response = new ArrayBuffer(5);
+  parsedTags.push({});
   requests.shift().respond(200, null, '');
 
   strictEqual(player.hls.bytesReceived, 22, 'tracked more bytes');
@@ -1389,16 +1389,6 @@ test('calls ended() on the media source at the end of a playlist', function() {
                            '#EXT-X-ENDLIST\n');
   // segment response
   requests[0].response = new ArrayBuffer(17);
-
-  // TODO this is horrific
-  player.hls.tagsBuffer_ = [{
-    keyFrame: true,
-    dts: 1500,
-    associatedSegment: {
-      mediaIndex: 0,
-      playlist: player.hls.playlists.media()
-    }
-  }];
 
   requests.shift().respond(200, null, '');
 
@@ -1643,10 +1633,10 @@ test('retries key requests once upon failure', function() {
 });
 
 test('skip segments if key requests fail more than once', function() {
-  var bytes = [],
-      tags = [{ pats: 0, bytes: 0 }];
+  var bytes = [];
+  parsedTags.length = 0;
+  parsedTags.push({ pats: 0, bytes: 0 });
 
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
@@ -1689,8 +1679,8 @@ test('skip segments if key requests fail more than once', function() {
 
   player.trigger('timeupdate');
 
-  tags.length = 0;
-  tags.push({pts: 0, bytes: 1});
+  parsedTags.length = 0;
+  parsedTags.push({pts: 0, bytes: 1});
 
   // second segment
   standardXHRResponse(requests.pop());
@@ -1824,8 +1814,11 @@ test('resovles relative key URLs against the playlist', function() {
 });
 
 test('treats invalid keys as a key request failure', function() {
-  var tags = [{ pts: 0, bytes: 0 }], bytes = [];
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  var bytes = [];
+
+  parsedTags.length = 0;
+  parsedTags.push({ pts: 0, bytes: 0 });
+
   window.videojs.SourceBuffer = function() {
     this.appendBuffer = function(chunk) {
       bytes.push(chunk);
@@ -1863,8 +1856,8 @@ test('treats invalid keys as a key request failure', function() {
   equal(bytes.length, 1, 'did not append bytes');
   equal(bytes[0], 'flv', 'appended the flv header');
 
-  tags.length = 0;
-  tags.push({ pts: 1, bytes: 1 });
+  parsedTags.length = 0;
+  parsedTags.push({ pts: 1, bytes: 1 });
   // second segment request
   standardXHRResponse(requests.shift());
 

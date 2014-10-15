@@ -57,7 +57,9 @@ hls.FlvTag = function(type, extraData) {
   }
 
   this.keyFrame = false; // :Boolean
-  this.associatedSegment = undefined;
+  this.end = undefined;
+  this.offset = undefined;
+  this.discontinuity = undefined;
 
   switch(type) {
   case hls.FlvTag.VIDEO_TAG:
