@@ -385,6 +385,10 @@ test('calculates the bandwidth after downloading a segment', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  // set the request time to be a bit earlier so our bandwidth calculations are NaN
+  requests[1].requestTime = (new Date())-100;
+
   standardXHRResponse(requests[1]);
 
   ok(player.hls.bandwidth, 'bandwidth is calculated');
@@ -1207,7 +1211,10 @@ test('remove event handlers on dispose', function() {
     oldOn.call(player, type, handler);
   };
   player.off = function(type, handler) {
-    offhandlers++;
+    // ignore the top-level videojs removals that aren't relevant to HLS
+    if (type && type !== 'dispose') {
+      offhandlers++;
+    }
     oldOff.call(player, type, handler);
   };
   player.src({
