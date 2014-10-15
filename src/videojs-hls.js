@@ -252,15 +252,15 @@ videojs.Hls.prototype.handleSourceOpen = function() {
  * @returns Number Time in milliseconds
  */
 videojs.Hls.prototype.getSwitchBuffer = function() {
-  var tech, timeRanges, playerCurrentTimeInMilliseconds, currentSegmentStartTime,
+  var tech, timeRanges, currentTime, currentSegmentStartTime,
     currentSegmentRemainingPlaybackTime, nextSegmentDuration, currentIndex;
 
   tech = this;
   timeRanges = videojs.Hls.getSegmentTimeRangesByPlaylist(this.playlists.media());
-  playerCurrentTimeInMilliseconds = tech.player().currentTime() * 1000;
+  currentTime = tech.player().currentTime();
   currentIndex = Math.max(tech.mediaIndex-1,0);
   currentSegmentStartTime = timeRanges[currentIndex].start;
-  currentSegmentRemainingPlaybackTime = ((timeRanges[currentIndex].end - (playerCurrentTimeInMilliseconds - currentSegmentStartTime)) * 1000);
+  currentSegmentRemainingPlaybackTime = ((timeRanges[currentIndex].end - (currentTime - currentSegmentStartTime)) * 1000);
   nextSegmentDuration = ((timeRanges[currentIndex + 1].end - timeRanges[currentIndex + 1].start) * 1000);
 
   return currentSegmentRemainingPlaybackTime;
