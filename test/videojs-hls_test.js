@@ -1307,7 +1307,8 @@ test('remove event handlers on dispose', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.hls.playlists.trigger('loadedmetadata');
+  standardXHRResponse(requests.pop());
+  standardXHRResponse(requests.pop());
 
   player.dispose();
 
@@ -2120,6 +2121,54 @@ test('if there is enough time for new segment, but not for current segment, do a
 
   ok(requests.shift().aborted, 'request for low-1 was aborted');
   equal(requests.shift().url, 'http://example.com/high-1.ts', 'the first segment is re-downloaded in higher rendition');
+});
+
+test('do not mid-segment switch down', function() {
+  player.src({
+    src: 'http://example.com/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  requests.shift().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                         'high.m3u8\n' +
+                         '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                         'low.m3u8\n');
+
+  // respond to low.m3u8
+  requests.shift().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                         '#EXTINF:10,\n' +
+                         'high-0.ts\n' +
+                         '#EXTINF:10,\n' +
+                         'high-1.ts\n' +
+                         '#EXT-X-ENDLIST\n');
+
+  player.hls.selectPlaylist = function() {
+    return player.hls.playlists.master.playlists['low.m3u8'];
+  };
+
+  // respond to high-0
+  standardXHRResponse(requests.shift());
+
+  // a request for low.m3u8 was made, followed by a request for high-1
+  equal(requests[1].url, 'http://example.com/high-1.ts', 'a request for high-1 was made');
+
+  // respond to low.m3u8
+  requests.shift().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                         '#EXTINF:10,\n' +
+                         'low-0.ts\n' +
+                         '#EXTINF:10,\n' +
+                         'low-1.ts\n' +
+                         '#EXT-X-ENDLIST\n');
+
+  ok(!requests.shift().aborted, 'request for high-1 was not aborted');
+  equal(requests.length, 0, 'no additional requests were made');
 });
 
 })(window, window.videojs);

@@ -139,6 +139,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     player = this.player(),
     settings = player.options().hls || {},
     sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"'),
+    oldbandwidth,
     oldMediaPlaylist;
 
   this.sourceBuffer = sourceBuffer;
@@ -149,6 +150,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     oldMediaPlaylist = this.playlists.media();
+
+    if (oldMediaPlaylist.attributes && oldMediaPlaylist.attributes.BANDWIDTH) {
+      oldbandwidth = oldMediaPlaylist.attributes.BANDWIDTH;
+    }
 
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
@@ -203,14 +208,19 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     playlist = tech.playlists.media();
 
     if (playlist) {
+      // don't optimize segment selection if we have no bandwidth information
+      if (!playlist.attributes || !playlist.attributes.BANDWIDTH) {
+        return;
+      }
+
       newPlaylistBitrate = playlist.attributes.BANDWIDTH;
 
-      currentIndex = Math.max(tech.mediaIndex-1,0);
+      currentIndex = Math.max(tech.mediaIndex - 1, 0);
       currentSegmentInNewPlaylist = playlist.segments[currentIndex];
       nextSegmentinNewPlaylist = playlist.segments[currentIndex + 1];
 
-      // If at last segment, or we dont know what the bitrate of the playlist, no need to continue //
-      if (nextSegmentinNewPlaylist && newPlaylistBitrate) {
+      // If at last segment no need to continue //
+      if (nextSegmentinNewPlaylist) {
         currentSegmentDuration = currentSegmentInNewPlaylist.duration;
         currentSegmentDownloadTime = (currentSegmentDuration * newPlaylistBitrate)  / tech.bandwidth;
         nextSegmentDuration = nextSegmentinNewPlaylist.duration;
@@ -222,6 +232,12 @@ videojs.Hls.prototype.handleSourceOpen = function() {
         // then load the new rendition segment and fire midSegmentSwitch handler
 
         if ((currentSegmentDownloadTime + nextSegmentDownloadTime) * 1000 < tech.remainingSegmentTime()) {
+          // don't mid-segment switch down
+          if (newPlaylistBitrate < oldbandwidth) {
+            oldbandwidth = newPlaylistBitrate;
+            return;
+          }
+
           // LoadSegment with custom callback //
           // resolve the segment URL relative to the playlist
           if (playlist.uri === tech.playlists.master.uri) {
@@ -237,6 +253,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
           }
 
           tech.loadSegment(segmentUri, null, videojs.bind(this, tech.midSegmentSwitch));
+
         } else if (nextSegmentDownloadTime * 1000 <= tech.remainingSegmentTime()) {
 
           // LoadSegment with custom callback //
@@ -256,6 +273,8 @@ videojs.Hls.prototype.handleSourceOpen = function() {
           tech.loadSegment(segmentUri, null, videojs.bind(this, tech.onSegmentLoadComplete));
         }
       }
+
+      oldbandwidth = newPlaylistBitrate;
     }
 
     player.trigger('mediachange');
