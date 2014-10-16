@@ -69,7 +69,10 @@ getTagsTillKeyframeMinTime = function(tags, threshold) {
       newtags = [];
 
   firsttag = tags[0];
-  newtags.push(firsttag);
+
+  if (firsttag) {
+    newtags.push(firsttag);
+  }
 
   for (; i < tags.length; i++) {
     tag = tags[i];
