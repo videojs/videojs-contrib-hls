@@ -609,23 +609,23 @@ videojs.Hls.prototype.midSegmentSwitch = function(xhr, offset) {
       segmentItem,
       newSegmentSlice,
       currentTagsSlice,
-      tech = this;
-
-  segmentItem = {
-    mediaIndex: tech.mediaIndex,
-    playlist: tech.playlists.media(),
-    offset: offset
-  };
+      tech = this,
+      el = this.player().el();
 
   tech.setBandwidthByXHR(xhr);
   tags = getTagsForSegment(tech, xhr);
 
+  if (!(/vjs-has-started/).test(el.className)) {
+    tech.tagsBuffer_ = [];
+    tech.sourceBuffer.abort();
+  }
+
   if (tech.tagsBuffer_.length !== 0) {
-    newSegmentSlice = getTagsTillKeyframeMinTime(tags, tech.tagsBuffer_[0].dts);
+    newSegmentSlice = getTagsTillKeyframeMinTime(tags, Math.floor(tech.tagsBuffer_[0].dts));
   } else {
     newSegmentSlice = [];
   }
-  currentTagsSlice = getTagsTillKeyframeMinTime(tech.tagsBuffer_, tags.slice(-1)[0].dts);
+  currentTagsSlice = getTagsTillKeyframeMinTime(tech.tagsBuffer_, tags[tags.length - 1].dts);
 
   tags.splice(0, newSegmentSlice.length);
   tech.tagsBuffer_.splice(0, currentTagsSlice.length);
