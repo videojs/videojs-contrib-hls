@@ -74,7 +74,7 @@
         this.responseTime = new Date().getTime();
         this.roundTripTime = this.responseTime - this.requestTime;
         this.bytesReceived = this.response.byteLength || this.response.length;
-        this.bandwidth = parseInt((this.bytesReceived / this.roundTripTime) * 8 * 1000,10);
+        this.bandwidth = Math.floor((this.bytesReceived / this.roundTripTime) * 8 * 1000);
       }
 
       return callback.call(this, false, url);

@@ -211,24 +211,49 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
       // If at last segment, or we dont know what the bitrate of the playlist, no need to continue //
       if (nextSegmentinNewPlaylist && newPlaylistBitrate) {
-        currentSegmentDuration = currentSegmentInNewPlaylist.duration * 1000;
-        currentSegmentDownloadTime = (currentSegmentDuration * newPlaylistBitrate)  / (tech.bandwidth * 8);
-        nextSegmentDuration = nextSegmentinNewPlaylist.duration * 1000;
-        nextSegmentDownloadTime = (nextSegmentDuration * newPlaylistBitrate) / (tech.bandwidth * 8);
+        currentSegmentDuration = currentSegmentInNewPlaylist.duration;
+        currentSegmentDownloadTime = (currentSegmentDuration * newPlaylistBitrate)  / tech.bandwidth;
+        nextSegmentDuration = nextSegmentinNewPlaylist.duration;
+        nextSegmentDownloadTime = (nextSegmentDuration * newPlaylistBitrate) / tech.bandwidth;
 
-        // LoadSegment with custom callback //
-        // resolve the segment URL relative to the playlist
-        if (playlist.uri === tech.playlists.master.uri) {
-          segmentUri = resolveUrl(tech.playlists.master.uri, currentSegmentInNewPlaylist.uri);
-        } else {
-          segmentUri = resolveUrl(resolveUrl(tech.playlists.master.uri, playlist.uri || ''), currentSegmentInNewPlaylist.uri);
-        }
 
         // Determine the buffer needed versus the time to download to insure
         // playback will not be stopped as a result of additional overhead
         // then load the new rendition segment and fire midSegmentSwitch handler
-        if ((currentSegmentDownloadTime + nextSegmentDownloadTime) < tech.remainingSegmentTime()) {
+
+        if ((currentSegmentDownloadTime + nextSegmentDownloadTime) * 1000 < tech.remainingSegmentTime()) {
+          // LoadSegment with custom callback //
+          // resolve the segment URL relative to the playlist
+          if (playlist.uri === tech.playlists.master.uri) {
+            segmentUri = resolveUrl(tech.playlists.master.uri, currentSegmentInNewPlaylist.uri);
+          } else {
+            segmentUri = resolveUrl(resolveUrl(tech.playlists.master.uri, playlist.uri || ''), currentSegmentInNewPlaylist.uri);
+          }
+
+          if (tech.segmentXhr_) {
+            tech.segmentXhr_.onreadystatechange = null;
+            tech.segmentXhr_.abort();
+            tech.segmentXhr_ = null;
+          }
+
           tech.loadSegment(segmentUri, null, videojs.bind(this, tech.midSegmentSwitch));
+        } else if (nextSegmentDownloadTime * 1000 <= tech.remainingSegmentTime()) {
+
+          // LoadSegment with custom callback //
+          // resolve the segment URL relative to the playlist
+          if (playlist.uri === tech.playlists.master.uri) {
+            segmentUri = resolveUrl(tech.playlists.master.uri, nextSegmentinNewPlaylist.uri);
+          } else {
+            segmentUri = resolveUrl(resolveUrl(tech.playlists.master.uri, playlist.uri || ''), nextSegmentinNewPlaylist.uri);
+          }
+
+          if (tech.segmentXhr_) {
+            tech.segmentXhr_.onreadystatechange = null;
+            tech.segmentXhr_.abort();
+            tech.segmentXhr_ = null;
+          }
+
+          tech.loadSegment(segmentUri, null, videojs.bind(this, tech.onSegmentLoadComplete));
         }
       }
     }
@@ -590,7 +615,7 @@ videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
   // with the updated bandwidth information
   tech.playlists.media(tech.selectPlaylist());
 
-  // figure out if we need to download this segment in a better rendition
+  tech.fillBuffer();
 };
 
 videojs.Hls.prototype.midSegmentSwitch = function(xhr, offset) {
