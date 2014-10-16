@@ -227,7 +227,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
         // Determine the buffer needed versus the time to download to insure
         // playback will not be stopped as a result of additional overhead
         // then load the new rendition segment and fire midSegmentSwitch handler
-        if ((currentSegmentDownloadTime + nextSegmentDownloadTime) < tech.getSwitchBuffer()) {
+        if ((currentSegmentDownloadTime + nextSegmentDownloadTime) < tech.remainingSegmentTime()) {
           tech.loadSegment(segmentUri, null, videojs.bind(this, tech.midSegmentSwitch));
         }
       }
@@ -248,7 +248,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
  * Calculate the buffer needed to justify a mid-segment switch
  * @returns Number Time in milliseconds
  */
-videojs.Hls.prototype.getSwitchBuffer = function() {
+videojs.Hls.prototype.remainingSegmentTime = function() {
   var tech, timeRanges, currentTime, currentSegmentStartTime,
     currentSegmentRemainingPlaybackTime, nextSegmentDuration, currentIndex;
 

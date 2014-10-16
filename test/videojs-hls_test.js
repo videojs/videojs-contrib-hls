@@ -1932,4 +1932,42 @@ test('treats invalid keys as a key request failure', function() {
   equal(1, bytes[1], 'skipped to the second segment');
 });
 
+test('remainingSegmentTime returns time available for midsegment switch', function() {
+  var switchBuffer, currentTime, mediaPlaylist;
+  currentTime = 0;
+
+  player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.currentTime = function() {
+    return currentTime;
+  };
+  standardXHRResponse(requests.pop());
+  standardXHRResponse(requests.pop());
+
+  mediaPlaylist = player.hls.playlists.media();
+
+  switchBuffer = player.hls.remainingSegmentTime();
+  equal(switchBuffer, mediaPlaylist.targetDuration * 1000, 'at beginning of segment, switch buffer is segment length, or 10s');
+
+  currentTime = 3;
+  player.trigger('timeupdate');
+  switchBuffer = player.hls.remainingSegmentTime();
+  equal(switchBuffer, mediaPlaylist.targetDuration * 1000 - 3000, '3 seconds in, we have 7 seconds left');
+});
+
+test('we try to load a new segment on mediachange, if midsegment switching opportunity is available', function() {
+  player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.pop());
+  standardXHRResponse(requests.pop());
+
+  console.log(player.hls.playlists);
+});
+
 })(window, window.videojs);
