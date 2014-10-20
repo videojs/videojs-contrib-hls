@@ -442,8 +442,6 @@ Transmuxer = function() {
   // generate an init segment
   this.initSegment = mp4.initSegment();
 
-  aacStream.on('data', function(data) {
-  });
   h264Stream.on('data', function(data) {
     var
       moof = mp4.moof(sequenceNumber, []),

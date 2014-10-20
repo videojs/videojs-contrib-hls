@@ -646,7 +646,7 @@ test('parses an example mp2t file and generates media segments', function() {
   var
     segments = [],
     sequenceNumber = window.Infinity,
-    i, boxes, mfhd, traf, mdat;
+    i, boxes, mfhd, traf;
   transmuxer.on('data', function(segment) {
     segments.push(segment);
   });
