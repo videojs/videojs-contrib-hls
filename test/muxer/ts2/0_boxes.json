@@ -1,0 +1,258 @@
+[
+ {
+  "type": "styp"
+ },
+ {
+  "type": "sidx"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ },
+ {
+  "boxes": [
+   {
+    "type": "mfhd"
+   },
+   {
+    "boxes": [
+     {
+      "type": "tfhd"
+     },
+     {
+      "type": "tfdt"
+     },
+     {
+      "type": "trun"
+     }
+    ],
+    "type": "traf"
+   }
+  ],
+  "type": "moof"
+ },
+ {
+  "type": "mdat"
+ }
+]

@@ -165,11 +165,11 @@
 
         transmuxer.on('data', function(data) {
           if (data) {
-            console.log(data);
+            //console.log(data);
           }
         });
         transmuxer.push(segment);
-        transmuxer.end();
+        //transmuxer.end();
 
         // write out the result
         hex += '<pre>';

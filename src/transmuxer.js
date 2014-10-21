@@ -14,7 +14,7 @@
 (function(window, videojs, undefined) {
 'use strict';
 
-var PacketStream, ParseStream, ProgramStream, Transmuxer, AacStream, H264Stream, MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4;
+var PacketStream, ParseStream, ProgramStream, Transmuxer, AacStream, H264Stream, MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4, NALUnitType, H264ExtraData = window.videojs.Hls.H264ExtraData;
 
 MP2T_PACKET_LENGTH = 188; // bytes
 H264_STREAM_TYPE = 0x1b;
@@ -390,13 +390,100 @@ ProgramStream.prototype = new videojs.Hls.Stream();
  * AAC Audio Frames of the individual packets.
  */
 AacStream = function() {
-  var  self;
+  var  self, adtsSampleingRates, extraData;
   AacStream.prototype.init.call(this);
-  self = this;
+  self = this,
+  adtsSampleingRates = [
+    96000, 88200,
+    64000, 48000,
+    44100, 32000,
+    24000, 22050,
+    16000, 12000
+  ],
+
 
   this.push = function(packet) {
-    if (packet.type === 'audio') {
+
+    if (packet.type == "audio" && packet.pes != undefined) {
+
+      var adtsProtectionAbsent, // :Boolean
+        adtsObjectType, // :int
+        adtsSampleingIndex, // :int
+        adtsChanelConfig, // :int
+        adtsFrameSize, // :int
+        adtsSampleCount, // :int
+        adtsDuration, // :int
+        aacFrame, // :Frame = null;
+
+        newExtraData,
+        next_pts = packet.pes.pts,
+        data = packet.data;
+
+      // byte 0
+      if (0xFF !== data[0]) {
+        console.assert(false, 'Error no ATDS header found');
+      }
+
+      // byte 1
+      adtsProtectionAbsent = !!(data[1] & 0x01);
+
+      // byte 2
+      adtsObjectType = ((data[2] & 0xC0) >>> 6) + 1;
+      adtsSampleingIndex = ((data[2] & 0x3C) >>> 2);
+      adtsChanelConfig = ((data[2] & 0x01) << 2);
+
+      // byte 3
+      adtsChanelConfig |= ((data[3] & 0xC0) >>> 6);
+      adtsFrameSize = ((data[3] & 0x03) << 11);
+
+      // byte 4
+      adtsFrameSize |= (data[4] << 3);
+
+      // byte 5
+      adtsFrameSize |= ((data[5] & 0xE0) >>> 5);
+      adtsFrameSize -= (adtsProtectionAbsent ? 7 : 9);
+
+      // byte 6
+      adtsSampleCount = ((data[6] & 0x03) + 1) * 1024;
+      adtsDuration = (adtsSampleCount * 1000) / adtsSampleingRates[adtsSampleingIndex];
+
+      // newExtraData = (adtsObjectType << 11) |
+      //                (adtsSampleingIndex << 7) |
+      //                (adtsChanelConfig << 3);
+      // if (newExtraData !== extraData) {
+        aacFrame = {};
+        aacFrame.pts = next_pts;
+        aacFrame.dts = next_pts;
+        aacFrame.bytes = new Uint8Array();
+
+        // AAC is always 10
+        aacFrame.audiocodecid = 10;
+        aacFrame.stereo = (2 === adtsChanelConfig);
+        aacFrame.audiosamplerate = adtsSampleingRates[adtsSampleingIndex];
+        // Is AAC always 16 bit?
+        aacFrame.audiosamplesize = 16;
+
+        extraData = newExtraData;
+
+        aacFrame.pts = aacFrame.dts;
+        // For audio, DTS is always the same as PTS. We want to set the DTS
+        // however so we can compare with video DTS to determine approximate
+        // packet order
+        aacFrame.pts = next_pts;
+        //aacFrame.view.setUint16(aacFrame.position, newExtraData);
+        //aacFrame.position += 2;
+        //aacFrame.length = Math.max(aacFrame.length, aacFrame.position);
+
+        //byte 7
+
+        //this.tags.push(aacFrame);
+      // }
+
+      aacFrame.bytes = packet.data.subarray(7, packet.data.length);
+      packet.frame = aacFrame;
+
       this.trigger('data', packet);
+
     }
   };
 };
@@ -412,8 +499,54 @@ H264Stream = function() {
   self = this;
 
   this.push = function(packet) {
-    if (packet.type === 'video') {
-      this.trigger('data', packet);
+    var nals = [],
+        nal,
+        nalType,
+        offset = 0,
+        data = packet.data,
+        start,
+        end,
+        buildNal = function(data, start, end){
+          var nal = {};
+          nal.data = data.subarray(start, end)
+          nalType = nal.data[0] & 0x1F;
+          nal.type = nalType;
+          if ( nal.type === NALUnitType.slice_layer_without_partitioning_rbsp_idr ) {
+            // this is a new idr. in the old code this would be a key frame and they would get
+            // Extradata
+            var newExtraData = new H264ExtraData();
+            debugger
+          }
+          return nal;
+        };
+
+    if (packet.type == "video") {
+      // Check each byte and see if its a 1
+      // if it is a 1 check the previous two
+      // to see if they are 0
+      while (offset < data.length){
+        if ( data[offset] === 1 && data[offset-1] === 0 && data[offset-2] === 0) {
+          // if there is one more preceding 0, account for it in the offset
+          if ( data[offset-3] === 0 ){
+            end = offset - 3
+          }else{
+            end = offset - 2
+          }
+
+          if ( end ){
+            nal = buildNal(data, start, end)
+            nals.push(nal);
+          }
+
+          start = offset + 1
+        }
+
+        offset++;
+      }
+      //grab the last chunk because we probably ran to the end
+      nal = buildNal(data, start, offset)
+      nals.push(nal);
+      this.trigger('data', nals);
     }
   };
 };
@@ -443,22 +576,24 @@ Transmuxer = function() {
   this.initSegment = mp4.initSegment();
 
   h264Stream.on('data', function(data) {
-    var
-      moof = mp4.moof(sequenceNumber, []),
-      mdat = mp4.mdat(data.data),
-      // it would be great to allocate this array up front instead of
-      // throwing away hundreds of media segment fragments
-      boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
-
-    // bump the sequence number for next time
-    sequenceNumber++;
-
-    boxes.set(moof);
-    boxes.set(mdat, moof.byteLength);
-
-    self.trigger('data', {
-      data: boxes
-    });
+    console.log('h264 data', data);
+    // var
+    //   moof = mp4.moof(sequenceNumber, []),
+    //   mdat = mp4.mdat(data.data),
+    //   // it would be great to allocate this array up front instead of
+    //   // throwing away hundreds of media segment fragments
+    //   boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
+    //
+    //
+    // // bump the sequence number for next time
+    // sequenceNumber++;
+    //
+    // boxes.set(moof);
+    // boxes.set(mdat, moof.byteLength);
+    //
+    // self.trigger('data', {
+    //   data: boxes
+    // });
   });
   // feed incoming data to the front of the parsing pipeline
   this.push = function(data) {
@@ -481,4 +616,34 @@ window.videojs.mp2t = {
   AacStream: AacStream,
   H264Stream: H264Stream
 };
+
+/**
+ * Network Abstraction Layer (NAL) units are the packets of an H264
+ * stream. NAL units are divided into types based on their payload
+ * data. Each type has a unique numeric identifier.
+ *
+ *              NAL unit
+ * |- NAL header -|------ RBSP ------|
+ *
+ * NAL unit: Network abstraction layer unit. The combination of a NAL
+ * header and an RBSP.
+ * NAL header: the encapsulation unit for transport-specific metadata in
+ * an h264 stream. Exactly one byte.
+ */
+// incomplete, see Table 7.1 of ITU-T H.264 for 12-32
+window.videojs.Hls.NALUnitType = NALUnitType = {
+  unspecified: 0,
+  slice_layer_without_partitioning_rbsp_non_idr: 1,
+  slice_data_partition_a_layer_rbsp: 2,
+  slice_data_partition_b_layer_rbsp: 3,
+  slice_data_partition_c_layer_rbsp: 4,
+  slice_layer_without_partitioning_rbsp_idr: 5,
+  sei_rbsp: 6,
+  seq_parameter_set_rbsp: 7,
+  pic_parameter_set_rbsp: 8,
+  access_unit_delimiter_rbsp: 9,
+  end_of_seq_rbsp: 10,
+  end_of_stream_rbsp: 11
+};
+
 })(window, window.videojs);
