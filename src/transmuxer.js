@@ -124,10 +124,7 @@ ParseStream = function() {
    * fields parsed from the PMT.
    */
   parsePmt = function(payload, pmt) {
-    var tableEnd, programInfoLength, offset;
-
-    pmt.section_number = payload[6];
-    pmt.last_section_number = payload[7];
+    var sectionLength, tableEnd, programInfoLength, offset;
 
     // PMTs can be sent ahead of the time when they should actually
     // take effect. We don't believe this should ever be the case
@@ -141,9 +138,11 @@ ParseStream = function() {
     // overwrite any existing program map table
     self.programMapTable = {};
 
-    // the mapping table ends right before the 32-bit CRC
-    tableEnd = payload.byteLength - 4;
-    // to determine where the table starts, we have to figure out how
+    // the mapping table ends at the end of the current section
+    sectionLength = (payload[1] & 0x0f) << 8 | payload[2];
+    tableEnd = 3 + sectionLength - 4;
+
+    // to determine where the table is, we have to figure out how
     // long the program info descriptors are
     programInfoLength = (payload[10] & 0x0f) << 8 | payload[11];
 
@@ -273,7 +272,7 @@ ProgramStream = function() {
       data: [],
       size: 0
     },
-    flushStream = function(stream, type, pes) {
+    flushStream = function(stream, type) {
       var
         event = {
           type: type,
@@ -281,16 +280,6 @@ ProgramStream = function() {
         },
         i = 0,
         fragment;
-
-      if ( pes !== undefined) {
-        // move over data from PES into Stream frame
-        event.pes = {};
-        event.pes.pts = pes.pts;
-        event.pes.dts = pes.dts;
-        event.pes.pid = pes.pid;
-        event.pes.dataAlignmentIndicator = pes.dataAlignmentIndicator;
-        event.pes.payloadUnitStartIndicator = pes.payloadUnitStartIndicator;
-      }
 
       // do nothing if there is no buffered data
       if (!stream.data.length) {
@@ -333,7 +322,7 @@ ProgramStream = function() {
         // if a new packet is starting, we can flush the completed
         // packet
         if (data.payloadUnitStartIndicator) {
-          flushStream(stream, streamType, data);
+          flushStream(stream, streamType);
         }
 
         // buffer this fragment until we are sure we've received the
@@ -358,8 +347,10 @@ ProgramStream = function() {
             track.id = +k;
             if (programMapTable[k] === H264_STREAM_TYPE) {
               track.codec = 'avc';
+              track.type = 'video';
             } else if (programMapTable[k] === ADTS_STREAM_TYPE) {
               track.codec = 'adts';
+              track.type = 'audio';
             }
             event.tracks.push(track);
           }
@@ -412,9 +403,18 @@ H264Stream = function() {
   self = this;
 
   this.push = function(packet) {
-    if (packet.type === 'video') {
-      this.trigger('data', packet);
+    if (packet.type !== 'video') {
+      return;
     }
+    switch (packet.data[0]) {
+    case 0x09:
+      packet.nalUnitType = 'access_unit_delimiter_rbsp';
+      break;
+
+    default:
+      break;
+    }
+    this.trigger('data', packet);
   };
 };
 H264Stream.prototype = new videojs.Hls.Stream();
@@ -424,7 +424,14 @@ Transmuxer = function() {
   var
     self = this,
     sequenceNumber = 0,
-    packetStream, parseStream, programStream, aacStream, h264Stream;
+    initialized = false,
+    videoSamples = [],
+    videoSamplesSize = 0,
+
+    packetStream, parseStream, programStream, aacStream, h264Stream,
+
+    flushVideo;
+
   Transmuxer.prototype.init.call(this);
 
   // set up the parsing pipeline
@@ -439,16 +446,26 @@ Transmuxer = function() {
   programStream.pipe(aacStream);
   programStream.pipe(h264Stream);
 
-  // generate an init segment
-  this.initSegment = mp4.initSegment();
+  // helper functions
+  flushVideo = function() {
+    var moof, mdat, boxes, i, data;
 
-  h264Stream.on('data', function(data) {
-    var
-      moof = mp4.moof(sequenceNumber, []),
-      mdat = mp4.mdat(data.data),
-      // it would be great to allocate this array up front instead of
-      // throwing away hundreds of media segment fragments
-      boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
+    moof = mp4.moof(sequenceNumber, []);
+
+    // concatenate the video data and construct the mdat
+    data = new Uint8Array(videoSamplesSize);
+    i = 0;
+    while (videoSamples.length) {
+      data.set(videoSamples[0].data, i);
+      i += videoSamples[0].data.byteLength;
+      videoSamples.shift();
+    }
+    videoSamplesSize = 0;
+    mdat = mp4.mdat(data);
+
+    // it would be great to allocate this array up front instead of
+    // throwing away hundreds of media segment fragments
+    boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
 
     // bump the sequence number for next time
     sequenceNumber++;
@@ -459,13 +476,41 @@ Transmuxer = function() {
     self.trigger('data', {
       data: boxes
     });
+  };
+
+  // handle incoming data events
+  h264Stream.on('data', function(data) {
+    // if this chunk starts a new access unit, flush the data we've been buffering
+    if (data.nalUnitType === 'access_unit_delimiter_rbsp' &&
+        videoSamples.length) {
+      flushVideo();
+    }
+
+    // buffer video until we encounter a new access unit (aka the next frame)
+    videoSamples.push(data);
+    videoSamplesSize += data.data.byteLength;
   });
+  programStream.on('data', function(data) {
+    // generate init segments based on stream metadata
+    if (!initialized && data.type === 'metadata') {
+      self.trigger('data', {
+        data: mp4.initSegment(data.tracks)
+      });
+      initialized = true;
+    }
+  });
+
   // feed incoming data to the front of the parsing pipeline
   this.push = function(data) {
     packetStream.push(data);
   };
   // flush any buffered data
-  this.end = programStream.end;
+  this.end = function() {
+    programStream.end();
+    if (videoSamples.length) {
+      flushVideo();
+    }
+  };
 };
 Transmuxer.prototype = new videojs.Hls.Stream();
 

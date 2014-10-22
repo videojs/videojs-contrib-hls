@@ -221,8 +221,19 @@ moof = function(sequenceNumber, tracks) {
              mfhd(sequenceNumber),
              box.apply(null, trafCall));
 };
-moov = function(duration, width, height, type) {
-  return box(types.moov, mvhd(duration), trak(duration, width, height, type), mvex());
+/**
+ * @param tracks... (optional) {array} the tracks associated with this movie
+ */
+moov = function(tracks) {
+  var
+    i = tracks.length,
+    boxes = [];
+
+  while (i--) {
+    boxes[i] = trak(tracks[i]);
+  }
+
+  return box.apply(null, [types.moov, mvhd(0xffffffff)].concat(boxes).concat(mvex()));
 };
 mvex = function() {
   return box(types.mvex, box(types.trex, TREX));
@@ -331,18 +342,21 @@ styp = function() {
   return box(types.styp, MAJOR_BRAND, MINOR_VERSION, MAJOR_BRAND);
 };
 
-tkhd = function(duration, width, height) {
+tkhd = function(track) {
   return box(types.tkhd, new Uint8Array([
     0x00, // version 0
     0x00, 0x00, 0x00, // flags
     0x00, 0x00, 0x00, 0x00, // creation_time
     0x00, 0x00, 0x00, 0x00, // modification_time
-    0x00, 0x00, 0x00, 0x01, // track_ID
+    (track.id & 0xFF000000) >> 24,
+    (track.id & 0xFF0000) >> 16,
+    (track.id & 0xFF00) >> 8,
+    track.id & 0xFF, // track_ID
     0x00, 0x00, 0x00, 0x00, // reserved
-    (duration & 0xFF000000) >> 24,
-    (duration & 0xFF0000) >> 16,
-    (duration & 0xFF00) >> 8,
-    duration & 0xFF, // duration
+    (track.duration & 0xFF000000) >> 24,
+    (track.duration & 0xFF0000) >> 16,
+    (track.duration & 0xFF00) >> 8,
+    track.duration & 0xFF, // duration
     0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, // reserved
     0x00, 0x00, // layer
@@ -358,17 +372,25 @@ tkhd = function(duration, width, height) {
     0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
     0x40, 0x00, 0x00, 0x00, // transformation: unity matrix
-    (width & 0xFF00) >> 8,
-    width & 0xFF,
+    (track.width & 0xFF00) >> 8,
+    track.width & 0xFF,
     0x00, 0x00, // width
-    (height & 0xFF00) >> 8,
-    height & 0xFF,
+    (track.height & 0xFF00) >> 8,
+    track.height & 0xFF,
     0x00, 0x00 // height
   ]));
 };
 
-trak = function(duration, width, height, type) {
-  return box(types.trak, tkhd(duration, width, height), mdia(duration, width, height, type));
+/**
+ * Generate a track box.
+ * @param track {object} a track definition
+ * @return {Uint8Array} the track box
+ */
+trak = function(track) {
+  track.duration = track.duration || 0xffffffff;
+  return box(types.trak,
+             tkhd(track),
+             mdia(track.duration, track.width, track.height, track.type));
 };
 
 window.videojs.mp4 = {
@@ -376,12 +398,13 @@ window.videojs.mp4 = {
   mdat: mdat,
   moof: moof,
   moov: moov,
-  initSegment: function() {
+  initSegment: function(tracks) {
     var
       fileType = ftyp(),
-      movie = moov(0xffffffff, 1280, 720, "video"),
-      result = new Uint8Array(fileType.byteLength + movie.byteLength);
+      movie = moov(tracks),
+      result;
 
+    result = new Uint8Array(fileType.byteLength + movie.byteLength);
     result.set(fileType);
     result.set(movie, fileType.byteLength);
     return result;

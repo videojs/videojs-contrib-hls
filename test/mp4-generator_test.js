@@ -41,7 +41,13 @@ test('generates a BSMFF ftyp', function() {
 
 test('generates a moov', function() {
   var boxes, mvhd, tkhd, mdhd, hdlr, minf, mvex,
-    data = mp4.moov(100, 600, 300, "video");
+    data = mp4.moov([{
+      id: 7,
+      duration: 100,
+      width: 600,
+      height: 300,
+      type: 'video'
+    }]);
 
   ok(data, 'box is not null');
 
@@ -53,12 +59,13 @@ test('generates a moov', function() {
 
   mvhd = boxes[0].boxes[0];
   equal(mvhd.type, 'mvhd', 'generated a mvhd');
-  equal(mvhd.duration, 100, 'wrote the movie header duration');
+  equal(mvhd.duration, 0xffffffff, 'wrote the maximum movie header duration');
 
   equal(boxes[0].boxes[1].type, 'trak', 'generated a trak');
   equal(boxes[0].boxes[1].boxes.length, 2, 'generated two track sub boxes');
   tkhd = boxes[0].boxes[1].boxes[0];
   equal(tkhd.type, 'tkhd', 'generated a tkhd');
+  equal(tkhd.trackId, 7, 'wrote the track id');
   equal(tkhd.duration, 100, 'wrote duration into the track header');
   equal(tkhd.width, 600, 'wrote width into the track header');
   equal(tkhd.height, 300, 'wrote height into the track header');
@@ -69,7 +76,7 @@ test('generates a moov', function() {
   mdhd = boxes[0].boxes[1].boxes[1].boxes[0];
   equal(mdhd.type, 'mdhd', 'generate an mdhd type');
   equal(mdhd.language, 'und', 'wrote undetermined language');
-  equal(mdhd.duration, 100, 'wrote duraiton into the media header');
+  equal(mdhd.duration, 100, 'wrote duration into the media header');
 
   hdlr = boxes[0].boxes[1].boxes[1].boxes[1];
   equal(hdlr.type, 'hdlr', 'generate an hdlr type');
@@ -206,7 +213,12 @@ test('generates a moov', function() {
 
 test('generates a sound hdlr', function() {
   var boxes, hdlr,
-    data = mp4.moov(100, 600, 300, "audio");
+    data = mp4.moov([{
+      duration:100,
+      width: 600,
+      height: 300,
+      type: 'audio'
+    }]);
 
   ok(data, 'box is not null');
 
@@ -220,7 +232,12 @@ test('generates a sound hdlr', function() {
 
 test('generates a video hdlr', function() {
   var boxes, hdlr,
-    data = mp4.moov(100, 600, 300, "video");
+    data = mp4.moov([{
+      duration: 100,
+      width: 600,
+      height: 300,
+      type: 'video'
+    }]);
 
   ok(data, 'box is not null');
 
@@ -234,14 +251,40 @@ test('generates a video hdlr', function() {
 
 test('generates an initialization segment', function() {
   var
-    data = mp4.initSegment(),
-    init;
+    data = mp4.initSegment([{
+      id: 1,
+      width: 600,
+      height: 300,
+      type: 'video'
+    }, {
+      id: 2,
+      type: 'audio'
+    }]),
+    init, mvhd, trak1, trak2, mvex;
 
   init = videojs.inspectMp4(data);
   equal(init.length, 2, 'generated two boxes');
   equal(init[0].type, 'ftyp', 'generated a ftyp box');
   equal(init[1].type, 'moov', 'generated a moov box');
   equal(init[1].boxes[0].duration, 0xffffffff, 'wrote a maximum duration');
+
+  mvhd = init[1].boxes[0];
+  equal(mvhd.type, 'mvhd', 'wrote an mvhd');
+
+  trak1 = init[1].boxes[1];
+  equal(trak1.type, 'trak', 'wrote a trak');
+  equal(trak1.boxes[0].trackId, 1, 'wrote the first track id');
+  equal(trak1.boxes[0].width, 600, 'wrote the first track width');
+  equal(trak1.boxes[0].height, 300, 'wrote the first track height');
+  equal(trak1.boxes[1].boxes[1].handlerType, 'vide', 'wrote the first track type');
+
+  trak2 = init[1].boxes[2];
+  equal(trak2.type, 'trak', 'wrote a trak');
+  equal(trak2.boxes[0].trackId, 2, 'wrote the second track id');
+  equal(trak2.boxes[1].boxes[1].handlerType, 'soun', 'wrote the second track type');
+
+  mvex = init[1].boxes[3];
+  equal(mvex.type, 'mvex', 'wrote an mvex');
 });
 
 test('generates a minimal moof', function() {
