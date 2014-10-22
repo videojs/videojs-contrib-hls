@@ -27,6 +27,8 @@ var
   parseStream,
   ProgramStream = videojs.mp2t.ProgramStream,
   programStream,
+  H264Stream = videojs.mp2t.H264Stream,
+  h264Stream,
   Transmuxer = videojs.mp2t.Transmuxer,
   transmuxer,
 
@@ -37,7 +39,9 @@ var
 
   PAT,
   PMT,
-  standalonePes;
+  standalonePes,
+
+  videoPes;
 
 module('MP2T Packet Stream', {
   setup: function() {
@@ -261,8 +265,8 @@ PMT = [
   0x40, 0x10,
   // tsc:01 afc:01 cc:0000 pointer_field:0000 0000
   0x50, 0x00,
-  // tid:0000 0000 ssi:0 0:0 r:00 sl:0000 0010 1111
-  0x00, 0x00, 0x2f,
+  // tid:0000 0010 ssi:0 0:0 r:00 sl:0000 0001 0111
+  0x02, 0x00, 0x17,
   // pn:0000 0000 0000 0001
   0x00, 0x01,
   // r:00 vn:00 000 cni:1 sn:0000 0000 lsn:0000 0000
@@ -292,12 +296,13 @@ test('parse the elementary streams from a program map table', function() {
   });
   parseStream.pmtPid = 0x0010;
 
-  parseStream.push(new Uint8Array(PMT));
+  parseStream.push(new Uint8Array(PMT.concat(0, 0, 0, 0, 0)));
 
   ok(packet, 'parsed a packet');
   ok(parseStream.programMapTable, 'parsed a program map');
   strictEqual(0x1b, parseStream.programMapTable[0x11], 'associated h264 with pid 0x11');
   strictEqual(0x0f, parseStream.programMapTable[0x12], 'associated adts with pid 0x12');
+  strictEqual(parseStream.programMapTable[0], undefined, 'ignored trailing stuffing bytes');
   deepEqual(parseStream.programMapTable, packet.programMapTable, 'recorded the PMT');
 });
 
@@ -386,57 +391,62 @@ test('parses an elementary stream packet with a pts and dts', function() {
   equal(2 / 90, packet.dts, 'parsed the dts');
 });
 
-standalonePes = [
-  0x47, // sync byte
-  // tei:0 pusi:1 tp:0 pid:0 0000 0001 0001
-  0x40, 0x11,
-  // tsc:01 afc:11 cc:0000
-  0x70,
-  // afl:1010 1100
-  0xac,
-  // di:0 rai:0 espi:0 pf:0 of:0 spf:0 tpdf:0 afef:0
-  0x00,
-  // stuffing_bytes (171 bytes)
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+// helper function to create video PES packets
+videoPes = function(data) {
+  if (data.length !== 2) {
+    throw new Error('video PES only accepts 2 byte payloads');
+  }
+  return [
+    0x47, // sync byte
+    // tei:0 pusi:1 tp:0 pid:0 0000 0001 0001
+    0x40, 0x11,
+    // tsc:01 afc:11 cc:0000
+    0x70,
+    // afl:1010 1100
+    0xac,
+    // di:0 rai:0 espi:0 pf:0 of:0 spf:0 tpdf:0 afef:0
+    0x00,
+    // stuffing_bytes (171 bytes)
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  0xff, 0xff, 0xff,
-  // pscp:0000 0000 0000 0000 0000 0001
-  0x00, 0x00, 0x01,
-  // sid:0000 0000 ppl:0000 0000 0000 0101
-  0x00, 0x00, 0x05,
-  // 10 psc:00 pp:0 dai:1 c:0 ooc:0
-  0x84,
-  // pdf:00 ef:1 erf:0 dtmf:0 acif:0 pcf:0 pef:0
-  0x20,
-  // phdl:0000 0000
-  0x00,
-  // "data":1010 1111 0000 0001
-  0xaf, 0x01
-];
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff,
+    // pscp:0000 0000 0000 0000 0000 0001
+    0x00, 0x00, 0x01,
+    // sid:0000 0000 ppl:0000 0000 0000 0101
+    0x00, 0x00, 0x05,
+    // 10 psc:00 pp:0 dai:1 c:0 ooc:0
+    0x84,
+    // pdf:00 ef:1 erf:0 dtmf:0 acif:0 pcf:0 pef:0
+    0x20,
+    // phdl:0000 0000
+    0x00
+  ].concat(data);
+};
+standalonePes = videoPes([0xaf, 0x01]);
 
 test('parses an elementary stream packet without a pts or dts', function() {
 
@@ -503,10 +513,12 @@ test('parses metadata events from PSI packets', function() {
   metadatas[0].tracks.sort(sortById);
   deepEqual(metadatas[0].tracks, [{
     id: 1,
-    codec: 'avc'
+    codec: 'avc',
+    type: 'video'
   }, {
     id: 2,
-    codec: 'adts'
+    codec: 'adts',
+    type: 'audio'
   }], 'identified two tracks');
 });
 
@@ -628,6 +640,26 @@ test('flushes the buffered packets when a new one of that type is started', func
   equal(7, packets[2].data.byteLength, 'parsed the audio payload');
 });
 
+module('H264 Stream', {
+  setup: function() {
+    h264Stream = new H264Stream();
+  }
+});
+test('parses nal unit types', function() {
+  var data;
+  h264Stream.on('data', function(event) {
+    data = event;
+  });
+
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([0x09])
+  });
+
+  ok(data, 'generated a data event');
+  equal(data.nalUnitType, 'access_unit_delimiter_rbsp', 'identified an access unit delimiter');
+});
+
 module('Transmuxer', {
   setup: function() {
     transmuxer = new Transmuxer();
@@ -635,11 +667,48 @@ module('Transmuxer', {
 });
 
 test('generates an init segment', function() {
+  var segments = [];
+  transmuxer.on('data', function(segment) {
+    segments.push(segment);
+  });
   transmuxer.push(packetize(PAT));
   transmuxer.push(packetize(PMT));
   transmuxer.push(packetize(standalonePes));
+  transmuxer.end();
 
-  ok(transmuxer.initSegment, 'has an init segment');
+  equal(segments.length, 2, 'has an init segment');
+});
+
+test('buffers video samples until an access unit', function() {
+  var samples = [], boxes;
+  transmuxer.on('data', function(data) {
+    samples.push(data);
+  });
+  transmuxer.push(packetize(PAT));
+  transmuxer.push(packetize(PMT));
+
+  // buffer a NAL
+  transmuxer.push(packetize(videoPes([0x09, 0x01])));
+  transmuxer.push(packetize(videoPes([0x00, 0x02])));
+
+  // an access_unit_delimiter_rbsp should flush the buffer
+  transmuxer.push(packetize(videoPes([0x09, 0x03])));
+  transmuxer.push(packetize(videoPes([0x00, 0x04])));
+  equal(samples.length, 2, 'emitted two events');
+  boxes = videojs.inspectMp4(samples[1].data);
+  equal(boxes.length, 2, 'generated two boxes');
+  equal(boxes[0].type, 'moof', 'the first box is a moof');
+  equal(boxes[1].type, 'mdat', 'the second box is a mdat');
+  deepEqual(new Uint8Array(samples[1].data.subarray(samples[1].data.length - 4)),
+            new Uint8Array([0x09, 0x01, 0x00, 0x02]),
+            'concatenated NALs into an mdat');
+
+  // flush the last access unit
+  transmuxer.end();
+  equal(samples.length, 3, 'flushed the final access unit');
+  deepEqual(new Uint8Array(samples[2].data.subarray(samples[2].data.length - 4)),
+            new Uint8Array([0x09, 0x03, 0x00, 0x04]),
+            'concatenated NALs into an mdat');
 });
 
 test('parses an example mp2t file and generates media segments', function() {
@@ -653,23 +722,32 @@ test('parses an example mp2t file and generates media segments', function() {
   transmuxer.push(window.bcSegment);
   transmuxer.end();
 
-  ok(segments.length, 'generated media segments');
-  i = segments.length;
-  while (i--) {
-    boxes = videojs.inspectMp4(segments[i].data);
-    equal(boxes.length, 2, 'segments are composed of two boxes');
-    equal(boxes[0].type, 'moof', 'first box is a moof');
-    equal(boxes[0].boxes.length, 2, 'the moof has two children');
+  equal(segments.length, 2, 'generated two segments');
 
-    mfhd = boxes[0].boxes[0];
+  boxes = videojs.inspectMp4(segments[0].data);
+  equal(boxes.length, 2, 'init segments are composed of two boxes');
+  equal(boxes[0].type, 'ftyp', 'the first box is an ftyp');
+  equal(boxes[1].type, 'moov', 'the second box is a moov');
+  equal(boxes[1].boxes[0].type, 'mvhd', 'generated an mvhd');
+  equal(boxes[1].boxes[1].type, 'trak', 'generated a trak');
+  equal(boxes[1].boxes[2].type, 'trak', 'generated a second trak');
+  equal(boxes[1].boxes[3].type, 'mvex', 'generated an mvex');
+
+  boxes = videojs.inspectMp4(segments[1].data);
+  ok(boxes.length > 0, 'media segments are not empty');
+  ok(boxes.length % 2 === 0, 'media segments are composed of pairs of boxes');
+  for (i = 0; i < boxes.length; i += 2) {
+    equal(boxes[i].type, 'moof', 'first box is a moof');
+    equal(boxes[i].boxes.length, 2, 'the moof has two children');
+
+    mfhd = boxes[i].boxes[0];
     equal(mfhd.type, 'mfhd', 'mfhd is a child of the moof');
     ok(mfhd.sequenceNumber < sequenceNumber, 'sequence numbers are increasing');
     sequenceNumber = mfhd.sequenceNumber;
 
-    traf = boxes[0].boxes[1];
+    traf = boxes[i].boxes[1];
     equal(traf.type, 'traf', 'traf is a child of the moof');
-
-    equal(boxes[1].type, 'mdat', 'second box is an mdat');
+    equal(boxes[i + 1].type, 'mdat', 'second box is an mdat');
   }
 });
 

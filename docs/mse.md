@@ -9,8 +9,18 @@ Chrome 36.
 ## ISO Base Media File Format (BMFF)
 
 ### Init Segment
+A working initialization segment is outlined below. It may be possible
+to trim this structure down further.
+
 - `ftyp`
 - `moov`
+  - `mvhd`
+  - `trak`
+    - `tkhd`
+    - `mdia`
+      - `mdhd`
+      - `hdlr`
+      - `minf`
   - `mvex`
 
 ### Media Segment
@@ -22,7 +32,7 @@ movie data is outlined below:
   - `traf`
     - `tfhd`
     - `tfdt`
-    - `trun`
+    - `trun` containing samples
 - `mdat`
 
 ### Structure
