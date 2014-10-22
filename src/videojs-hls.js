@@ -736,8 +736,8 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
 
   // try to sync based on URI
   i = update.segments.length;
-  if ( mediaIndex < 1 || mediaIndex > origSegmentLength ) {
-    mediaIndex = origSegmentLength;
+  if ( mediaIndex < 1 || mediaIndex > original.segments.length ) {
+    mediaIndex = original.segments.length;
   }
   originalSegment = original.segments[mediaIndex - 1];
   while (i--) {
