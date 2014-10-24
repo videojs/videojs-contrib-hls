@@ -750,6 +750,18 @@ test('parses nal unit types', function() {
   h264Stream.end();
   ok(data, 'generated a data event');
   equal(data.nalUnitType, 'seq_parameter_set_rbsp', 'identified a sequence parameter set');
+
+  data = null;
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x00, 0x00, 0x00, 0x01,
+      0x08, 0x01
+    ])
+  });
+  h264Stream.end();
+  ok(data, 'generated a data event');
+  equal(data.nalUnitType, 'pic_parameter_set_rbsp', 'identified a picture parameter set');
 });
 
 module('Transmuxer', {
@@ -775,7 +787,7 @@ test('generates an init segment', function() {
   ], true)));
   transmuxer.end();
 
-  equal(segments.length, 2, 'has an init segment');
+  equal(segments.length, 1, 'has an init segment');
 });
 
 test('buffers video samples until ended', function() {

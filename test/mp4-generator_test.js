@@ -46,7 +46,12 @@ test('generates a moov', function() {
       duration: 100,
       width: 600,
       height: 300,
-      type: 'video'
+      type: 'video',
+      profileIdc: 3,
+      levelIdc: 5,
+      profileCompatibility: 7,
+      sps: [new Uint8Array([0, 1, 2]), new Uint8Array([3, 4, 5])],
+      pps: [new Uint8Array([6, 7, 8])]
     }]);
 
   ok(data, 'box is not null');
@@ -60,6 +65,7 @@ test('generates a moov', function() {
   mvhd = boxes[0].boxes[0];
   equal(mvhd.type, 'mvhd', 'generated a mvhd');
   equal(mvhd.duration, 0xffffffff, 'wrote the maximum movie header duration');
+  equal(mvhd.nextTrackId, 0xffffffff, 'wrote the max next track id');
 
   equal(boxes[0].boxes[1].type, 'trak', 'generated a trak');
   equal(boxes[0].boxes[1].boxes.length, 2, 'generated two track sub boxes');
@@ -119,15 +125,15 @@ test('generates a moov', function() {
   equal(minf.boxes[2].type, 'stbl', 'generates an stbl type');
   deepEqual({
     type: 'stbl',
-    size: 233,
+    size: 228,
     boxes: [{
       type: 'stsd',
-      size: 157,
+      size: 152,
       version: 0,
       flags: new Uint8Array([0, 0, 0]),
       sampleDescriptions: [{
         type: 'avc1',
-        size: 141,
+        size: 136,
         dataReferenceIndex: 1,
         width: 600,
         height: 300,
@@ -137,19 +143,19 @@ test('generates a moov', function() {
         depth: 24,
         config: [{
           type: 'avcC',
-          size: 35,
+          size: 30,
           configurationVersion: 1,
-          avcProfileIndication: 0x4d,
-          profileCompatibility: 0x40,
-          avcLevelIndication: 0x20,
+          avcProfileIndication: 3,
+          avcLevelIndication: 5,
+          profileCompatibility: 7,
           lengthSizeMinusOne: 3,
           sps: [new Uint8Array([
-            0x67, 0x4d, 0x40, 0x20,
-            0x96, 0x52, 0x80, 0xa0,
-            0x0b, 0x76, 0x02, 0x05
+            0, 1, 2
+          ]), new Uint8Array([
+            3, 4, 5
           ])],
           pps: [new Uint8Array([
-            0x68, 0xef, 0x38, 0x80
+            6, 7, 8
           ])]
         }, {
           type: 'btrt',
@@ -198,7 +204,7 @@ test('generates a moov', function() {
       size: 32,
       version: 0,
       flags: new Uint8Array([0, 0, 0]),
-      trackId: 1,
+      trackId: 7,
       defaultSampleDescriptionIndex: 1,
       defaultSampleDuration: 0,
       defaultSampleSize: 0,
@@ -237,7 +243,9 @@ test('generates a video hdlr', function() {
       duration: 100,
       width: 600,
       height: 300,
-      type: 'video'
+      type: 'video',
+      sps: [],
+      pps: []
     }]);
 
   ok(data, 'box is not null');
@@ -256,7 +264,9 @@ test('generates an initialization segment', function() {
       id: 1,
       width: 600,
       height: 300,
-      type: 'video'
+      type: 'video',
+      sps: [new Uint8Array([0])],
+      pps: [new Uint8Array([1])]
     }, {
       id: 2,
       type: 'audio'
