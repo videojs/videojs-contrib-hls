@@ -92,7 +92,7 @@ test('generates a moov', function() {
     type: 'vmhd',
     size: 20,
     version: 0,
-    flags: new Uint8Array([0, 0, 0]),
+    flags: new Uint8Array([0, 0, 1]),
     graphicsmode: 0,
     opcolor: new Uint16Array([0, 0, 0])
   }, minf.boxes[0], 'generates a vhmd');
