@@ -93,7 +93,7 @@ var
         },
         i = 8;
       while (i < data.byteLength) {
-        result.compatibleBrands.push(view.getUint32(i));
+        result.compatibleBrands.push(parseType(data.subarray(i, i + 4)));
         i += 4;
       }
       return result;

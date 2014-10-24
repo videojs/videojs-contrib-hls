@@ -139,14 +139,14 @@ test('can parse an ftyp', function() {
   deepEqual(videojs.inspectMp4(new Uint8Array(box('ftyp',
     0x61, 0x76, 0x63, 0x31, // major brand
     0x00, 0x00, 0x00, 0x02, // minor version
-    0x00, 0x00, 0x00, 0x03, // compatible brands
-    0x00, 0x00, 0x00, 0x04 // compatible brands
+    98, 111, 111, 112, // compatible brands
+    98, 101, 101, 112 // compatible brands
   ))), [{
     type: 'ftyp',
     size: 4 * 6,
     majorBrand: 'avc1',
     minorVersion: 2,
-    compatibleBrands: [3, 4]
+    compatibleBrands: ['boop', 'beep']
   }], 'parsed an ftyp');
 });
 
@@ -586,14 +586,13 @@ test('can parse an styp', function() {
   deepEqual(videojs.inspectMp4(new Uint8Array(box('styp',
     0x61, 0x76, 0x63, 0x31, // major brand
     0x00, 0x00, 0x00, 0x02, // minor version
-    0x00, 0x00, 0x00, 0x03, // compatible brands
-    0x00, 0x00, 0x00, 0x04 // compatible brands
+    98, 111, 111, 112 // compatible brands
   ))), [{
     type: 'styp',
-    size: 4 * 6,
+    size: 4 * 5,
     majorBrand: 'avc1',
     minorVersion: 2,
-    compatibleBrands: [3, 4]
+    compatibleBrands: ['boop']
   }], 'parsed an styp');
 });
 
@@ -788,8 +787,8 @@ test('can parse a series of boxes', function() {
   ].concat(typeBytes('ftyp')).concat([
     0x69, 0x73, 0x6f, 0x6d, // major brand
     0x00, 0x00, 0x00, 0x02, // minor version
-    0x00, 0x00, 0x00, 0x03, // compatible brands
-    0x00, 0x00, 0x00, 0x04, // compatible brands
+    98, 101, 101, 112, // compatible brands
+    98, 111, 111, 112, // compatible brands
   ]);
 
   deepEqual(videojs.inspectMp4(new Uint8Array(ftyp.concat(ftyp))),
@@ -798,13 +797,13 @@ test('can parse a series of boxes', function() {
               size: 4 * 6,
               majorBrand: 'isom',
               minorVersion: 2,
-              compatibleBrands: [3, 4]
+              compatibleBrands: ['beep', 'boop']
             },{
               type: 'ftyp',
               size: 4 * 6,
               majorBrand: 'isom',
               minorVersion: 2,
-              compatibleBrands: [3, 4]
+              compatibleBrands: ['beep', 'boop']
             }],
             'parsed two boxes in series');
 
