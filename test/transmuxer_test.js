@@ -40,6 +40,7 @@ var
   PAT,
   PMT,
   standalonePes,
+  validateTrack,
 
   videoPes;
 
@@ -392,48 +393,31 @@ test('parses an elementary stream packet with a pts and dts', function() {
 });
 
 // helper function to create video PES packets
-videoPes = function(data) {
-  if (data.length !== 2) {
-    throw new Error('video PES only accepts 2 byte payloads');
+videoPes = function(data, first) {
+  var
+    adaptationFieldLength = 188 - data.length - (first ? 18 : 17),
+    result = [
+      // sync byte
+      0x47,
+      // tei:0 pusi:1 tp:0 pid:0 0000 0001 0001
+      0x40, 0x11,
+      // tsc:01 afc:11 cc:0000
+      0x70
+    ].concat([
+      // afl
+      adaptationFieldLength & 0xff,
+      // di:0 rai:0 espi:0 pf:0 of:0 spf:0 tpdf:0 afef:0
+      0x00
+    ]),
+    i;
+
+  i = adaptationFieldLength - 1;
+  while (i--) {
+    // stuffing_bytes
+    result.push(0xff);
   }
-  return [
-    0x47, // sync byte
-    // tei:0 pusi:1 tp:0 pid:0 0000 0001 0001
-    0x40, 0x11,
-    // tsc:01 afc:11 cc:0000
-    0x70,
-    // afl:1010 1100
-    0xac,
-    // di:0 rai:0 espi:0 pf:0 of:0 spf:0 tpdf:0 afef:0
-    0x00,
-    // stuffing_bytes (171 bytes)
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff,
+  result = result.concat([
     // pscp:0000 0000 0000 0000 0000 0001
     0x00, 0x00, 0x01,
     // sid:0000 0000 ppl:0000 0000 0000 0101
@@ -444,9 +428,17 @@ videoPes = function(data) {
     0x20,
     // phdl:0000 0000
     0x00
-  ].concat(data);
+  ]);
+  if (first) {
+    result.push(0x00);
+  }
+  result = result.concat([
+    // NAL unit start code
+    0x00, 0x00, 0x01
+  ].concat(data));
+  return result;
 };
-standalonePes = videoPes([0xaf, 0x01]);
+standalonePes = videoPes([0xaf, 0x01], true);
 
 test('parses an elementary stream packet without a pts or dts', function() {
 
@@ -465,9 +457,9 @@ test('parses an elementary stream packet without a pts or dts', function() {
   ok(packet, 'parsed a packet');
   equal('pes', packet.type, 'recognized a PES packet');
   equal(0x1b, packet.streamType, 'tracked the stream_type');
-  equal(2, packet.data.byteLength, 'parsed two data bytes');
-  equal(0xaf, packet.data[0], 'parsed the first data byte');
-  equal(0x01, packet.data[1], 'parsed the second data byte');
+  equal(2 + 4, packet.data.byteLength, 'parsed two data bytes');
+  equal(0xaf, packet.data[packet.data.length - 2], 'parsed the first data byte');
+  equal(0x01, packet.data[packet.data.length - 1], 'parsed the second data byte');
   ok(!packet.pts, 'did not parse a pts');
   ok(!packet.dts, 'did not parse a dts');
 });
@@ -645,6 +637,85 @@ module('H264 Stream', {
     h264Stream = new H264Stream();
   }
 });
+
+test('unpacks nal units from simple byte stream framing', function() {
+  var data;
+  h264Stream.on('data', function(event) {
+    data = event;
+  });
+
+  // the simplest byte stream framing:
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x00, 0x00, 0x00, 0x01,
+      0x09, 0x07,
+      0x00, 0x00, 0x01
+    ])
+  });
+
+  ok(data, 'generated a data event');
+  equal(data.nalUnitType, 'access_unit_delimiter_rbsp', 'identified an access unit delimiter');
+  equal(data.data.length, 2, 'calculated nal unit length');
+  equal(data.data[1], 7, 'read a payload byte');
+});
+
+test('unpacks nal units from byte streams split across pushes', function() {
+  var data;
+  h264Stream.on('data', function(event) {
+    data = event;
+  });
+
+  // handles byte streams split across pushes
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x00, 0x00, 0x00, 0x01,
+      0x09])
+  });
+  ok(!data, 'buffers NAL units across events');
+
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x07,
+      0x00, 0x00, 0x01
+    ])
+  });
+  ok(data, 'generated a data event');
+  equal(data.nalUnitType, 'access_unit_delimiter_rbsp', 'identified an access unit delimiter');
+  equal(data.data.length, 2, 'calculated nal unit length');
+  equal(data.data[1], 7, 'read a payload byte');
+});
+
+test('unpacks nal units from byte streams with split sync points', function() {
+  var data;
+  h264Stream.on('data', function(event) {
+    data = event;
+  });
+
+  // handles sync points split across pushes
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x00, 0x00, 0x00, 0x01,
+      0x09, 0x07,
+      0x00])
+  });
+  ok(!data, 'buffers NAL units across events');
+
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x00, 0x01
+    ])
+  });
+  ok(data, 'generated a data event');
+  equal(data.nalUnitType, 'access_unit_delimiter_rbsp', 'identified an access unit delimiter');
+  equal(data.data.length, 2, 'calculated nal unit length');
+  equal(data.data[1], 7, 'read a payload byte');
+});
+
 test('parses nal unit types', function() {
   var data;
   h264Stream.on('data', function(event) {
@@ -653,11 +724,32 @@ test('parses nal unit types', function() {
 
   h264Stream.push({
     type: 'video',
-    data: new Uint8Array([0x09])
+    data: new Uint8Array([
+      0x00, 0x00, 0x00, 0x01,
+      0x09
+    ])
   });
+  h264Stream.end();
 
   ok(data, 'generated a data event');
   equal(data.nalUnitType, 'access_unit_delimiter_rbsp', 'identified an access unit delimiter');
+
+  data = null;
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x00, 0x00, 0x00, 0x01,
+      0x07,
+      0x27, 0x42, 0xe0, 0x0b,
+      0xa9, 0x18, 0x60, 0x9d,
+      0x80, 0x35, 0x06, 0x01,
+      0x06, 0xb6, 0xc2, 0xb5,
+      0xef, 0x7c, 0x04
+    ])
+  });
+  h264Stream.end();
+  ok(data, 'generated a data event');
+  equal(data.nalUnitType, 'seq_parameter_set_rbsp', 'identified a sequence parameter set');
 });
 
 module('Transmuxer', {
@@ -673,13 +765,20 @@ test('generates an init segment', function() {
   });
   transmuxer.push(packetize(PAT));
   transmuxer.push(packetize(PMT));
-  transmuxer.push(packetize(standalonePes));
+  transmuxer.push(packetize(videoPes([
+    0x07,
+    0x27, 0x42, 0xe0, 0x0b,
+    0xa9, 0x18, 0x60, 0x9d,
+    0x80, 0x53, 0x06, 0x01,
+    0x06, 0xb6, 0xc2, 0xb5,
+    0xef, 0x7c, 0x04
+  ], true)));
   transmuxer.end();
 
   equal(segments.length, 2, 'has an init segment');
 });
 
-test('buffers video samples until an access unit', function() {
+test('buffers video samples until ended', function() {
   var samples = [], boxes;
   transmuxer.on('data', function(data) {
     samples.push(data);
@@ -688,34 +787,68 @@ test('buffers video samples until an access unit', function() {
   transmuxer.push(packetize(PMT));
 
   // buffer a NAL
-  transmuxer.push(packetize(videoPes([0x09, 0x01])));
+  transmuxer.push(packetize(videoPes([0x09, 0x01], true)));
   transmuxer.push(packetize(videoPes([0x00, 0x02])));
 
-  // an access_unit_delimiter_rbsp should flush the buffer
+  // add an access_unit_delimiter_rbsp
   transmuxer.push(packetize(videoPes([0x09, 0x03])));
   transmuxer.push(packetize(videoPes([0x00, 0x04])));
-  equal(samples.length, 2, 'emitted two events');
-  boxes = videojs.inspectMp4(samples[1].data);
+  transmuxer.push(packetize(videoPes([0x00, 0x05])));
+
+  // flush everything
+  transmuxer.end();
+  equal(samples.length, 1, 'emitted one event');
+  boxes = videojs.inspectMp4(samples[0].data);
   equal(boxes.length, 2, 'generated two boxes');
   equal(boxes[0].type, 'moof', 'the first box is a moof');
   equal(boxes[1].type, 'mdat', 'the second box is a mdat');
-  deepEqual(new Uint8Array(samples[1].data.subarray(samples[1].data.length - 4)),
-            new Uint8Array([0x09, 0x01, 0x00, 0x02]),
-            'concatenated NALs into an mdat');
-
-  // flush the last access unit
-  transmuxer.end();
-  equal(samples.length, 3, 'flushed the final access unit');
-  deepEqual(new Uint8Array(samples[2].data.subarray(samples[2].data.length - 4)),
-            new Uint8Array([0x09, 0x03, 0x00, 0x04]),
+  deepEqual(new Uint8Array(samples[0].data.subarray(samples[0].data.length - 10)),
+            new Uint8Array([
+              0x09, 0x01,
+              0x00, 0x02,
+              0x09, 0x03,
+              0x00, 0x04,
+              0x00, 0x05]),
             'concatenated NALs into an mdat');
 });
+
+validateTrack = function(track, metadata) {
+  var mdia, handlerType;
+  equal(track.type, 'trak', 'wrote the track type');
+  equal(track.boxes.length, 2, 'wrote track children');
+  equal(track.boxes[0].type, 'tkhd', 'wrote the track header');
+  if (metadata) {
+    if (metadata.trackId) {
+      equal(track.boxes[0].trackId, metadata.trackId, 'wrote the track id');
+    }
+    if (metadata.width) {
+      equal(track.boxes[0].width, metadata.width, 'wrote the width');
+    }
+    if (metadata.height) {
+      equal(track.boxes[0].height, metadata.height, 'wrote the height');
+    }
+  }
+
+  mdia = track.boxes[1];
+  equal(mdia.type, 'mdia', 'wrote the media');
+  equal(mdia.boxes.length, 3, 'wrote the mdia children');
+
+  equal(mdia.boxes[0].type, 'mdhd', 'wrote the media header');
+  equal(mdia.boxes[0].language, 'und', 'the language is undefined');
+  equal(mdia.boxes[0].duration, 0xffffffff, 'the duration is at maximum');
+
+  equal(mdia.boxes[1].type, 'hdlr', 'wrote the media handler');
+  handlerType = mdia.boxes[1].handlerType;
+
+  equal(mdia.boxes[2].type, 'minf', 'wrote the media info');
+};
 
 test('parses an example mp2t file and generates media segments', function() {
   var
     segments = [],
     sequenceNumber = window.Infinity,
     i, boxes, mfhd, traf;
+
   transmuxer.on('data', function(segment) {
     segments.push(segment);
   });
@@ -729,8 +862,14 @@ test('parses an example mp2t file and generates media segments', function() {
   equal(boxes[0].type, 'ftyp', 'the first box is an ftyp');
   equal(boxes[1].type, 'moov', 'the second box is a moov');
   equal(boxes[1].boxes[0].type, 'mvhd', 'generated an mvhd');
-  equal(boxes[1].boxes[1].type, 'trak', 'generated a trak');
-  equal(boxes[1].boxes[2].type, 'trak', 'generated a second trak');
+  validateTrack(boxes[1].boxes[1], {
+    trackId: 256,
+    width: 388,
+    height: 300
+  });
+  validateTrack(boxes[1].boxes[2], {
+    trackId: 257
+  });
   equal(boxes[1].boxes[3].type, 'mvex', 'generated an mvex');
 
   boxes = videojs.inspectMp4(segments[1].data);

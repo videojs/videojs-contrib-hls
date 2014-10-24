@@ -14,7 +14,7 @@
 (function(window, videojs, undefined) {
 'use strict';
 
-var PacketStream, ParseStream, ProgramStream, Transmuxer, AacStream, H264Stream, MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4;
+var PacketStream, ParseStream, ProgramStream, Transmuxer, AacStream, H264Stream, NalByteStream, MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4;
 
 MP2T_PACKET_LENGTH = 188; // bytes
 H264_STREAM_TYPE = 0x1b;
@@ -285,6 +285,7 @@ ProgramStream = function() {
       if (!stream.data.length) {
         return;
       }
+      event.trackId = stream.data[0].pid;
 
       // reassemble the packet
       while (stream.data.length) {
@@ -394,11 +395,84 @@ AacStream = function() {
 AacStream.prototype = new videojs.Hls.Stream();
 
 /**
+ * Accepts a NAL unit byte stream and unpacks the embedded NAL units.
+ */
+NalByteStream = function() {
+  var
+    i = 6,
+    // the first NAL unit is prefixed by an extra zero byte
+    syncPoint = 1,
+    buffer;
+  NalByteStream.prototype.init.call(this);
+
+  this.push = function(data) {
+    var swapBuffer;
+
+    if (!buffer) {
+      buffer = data.data;
+    } else {
+      swapBuffer = new Uint8Array(buffer.byteLength + data.data.byteLength);
+      swapBuffer.set(buffer);
+      swapBuffer.set(data.data, buffer.byteLength);
+      buffer = swapBuffer;
+    }
+
+    // scan for synchronization byte sequences (0x00 00 01)
+
+    // a match looks like this:
+    // 0 0 1 .. NAL .. 0 0 1
+    // ^ sync point        ^ i
+    while (i < buffer.byteLength) {
+      switch (buffer[i]) {
+      case 0:
+        i++;
+        break;
+      case 1:
+        // skip past non-sync sequences
+        if (buffer[i - 1] !== 0 ||
+            buffer[i - 2] !== 0) {
+          i += 3;
+          break;
+        }
+
+        // deliver the NAL unit
+        this.trigger('data', buffer.subarray(syncPoint + 3, i - 2));
+        syncPoint = i - 2;
+        i += 3;
+        break;
+      default:
+        i += 3;
+        break;
+      }
+    }
+    // filter out the NAL units that were delivered
+    buffer = buffer.subarray(syncPoint);
+    i -= syncPoint;
+    syncPoint = 0;
+  };
+
+  this.end = function() {
+    // deliver the last buffered NAL unit
+    if (buffer.byteLength > 3) {
+      this.trigger('data', buffer.subarray(syncPoint + 3));
+    }
+  };
+};
+NalByteStream.prototype = new videojs.Hls.Stream();
+
+/**
  * Accepts a ProgramStream and emits data events with parsed
  * AAC Audio Frames of the individual packets.
  */
 H264Stream = function() {
-  var self;
+  var
+    nalByteStream = new NalByteStream(),
+    self,
+    trackId,
+
+    readSequenceParameterSet,
+    skipScalingList;
+
   H264Stream.prototype.init.call(this);
   self = this;
 
@@ -406,16 +480,159 @@ H264Stream = function() {
     if (packet.type !== 'video') {
       return;
     }
-    switch (packet.data[0]) {
+    trackId = packet.trackId;
+
+    nalByteStream.push(packet);
+  };
+
+  nalByteStream.on('data', function(data) {
+    var event = {
+      trackId: trackId,
+      data: data
+    };
+    switch (data[0] & 0x1f) {
     case 0x09:
-      packet.nalUnitType = 'access_unit_delimiter_rbsp';
+      event.nalUnitType = 'access_unit_delimiter_rbsp';
+      break;
+
+    case 0x07:
+      event.nalUnitType = 'seq_parameter_set_rbsp';
+      event.dimensions = readSequenceParameterSet(data.subarray(1));
       break;
 
     default:
       break;
     }
-    this.trigger('data', packet);
+    self.trigger('data', event);
+  });
+
+  this.end = function() {
+    nalByteStream.end();
   };
+
+  /**
+   * Advance the ExpGolomb decoder past a scaling list. The scaling
+   * list is optionally transmitted as part of a sequence parameter
+   * set and is not relevant to transmuxing.
+   * @param count {number} the number of entries in this scaling list
+   * @param expGolombDecoder {object} an ExpGolomb pointed to the
+   * start of a scaling list
+   * @see Recommendation ITU-T H.264, Section 7.3.2.1.1.1
+   */
+  skipScalingList = function(count, expGolombDecoder) {
+    var
+      lastScale = 8,
+      nextScale = 8,
+      j,
+      deltaScale;
+
+    for (j = 0; j < count; j++) {
+      if (nextScale !== 0) {
+        deltaScale = expGolombDecoder.readExpGolomb();
+        nextScale = (lastScale + deltaScale + 256) % 256;
+      }
+
+      lastScale = (nextScale === 0) ? lastScale : nextScale;
+    }
+  };
+
+  /**
+   * Read a sequence parameter set and return some interesting video
+   * properties. A sequence parameter set is the H264 metadata that
+   * describes the properties of upcoming video frames.
+   * @param data {Uint8Array} the bytes of a sequence parameter set
+   * @return {object} an object with width and height properties
+   * specifying the dimensions of the associated video frames.
+   */
+  readSequenceParameterSet = function(data) {
+    var
+      frameCropLeftOffset = 0,
+      frameCropRightOffset = 0,
+      frameCropTopOffset = 0,
+      frameCropBottomOffset = 0,
+      expGolombDecoder, profileIdc, chromaFormatIdc, picOrderCntType,
+      numRefFramesInPicOrderCntCycle, picWidthInMbsMinus1,
+      picHeightInMapUnitsMinus1, frameMbsOnlyFlag,
+      scalingListCount,
+      i;
+
+    expGolombDecoder = new videojs.Hls.ExpGolomb(data);
+    profileIdc = expGolombDecoder.readUnsignedByte(); // profile_idc
+    // constraint_set[0-5]_flag, u(1), reserved_zero_2bits u(2), level_idc u()8
+    expGolombDecoder.skipBits(16);
+    expGolombDecoder.skipUnsignedExpGolomb(); // seq_parameter_set_id
+
+    // some profiles have more optional data we don't need
+    if (profileIdc === 100 ||
+        profileIdc === 110 ||
+        profileIdc === 122 ||
+        profileIdc === 244 ||
+        profileIdc === 44 ||
+        profileIdc === 83 ||
+        profileIdc === 86 ||
+        profileIdc === 118 ||
+        profileIdc === 128) {
+      chromaFormatIdc = expGolombDecoder.readUnsignedExpGolomb();
+      if (chromaFormatIdc === 3) {
+        expGolombDecoder.skipBits(1); // separate_colour_plane_flag
+      }
+      expGolombDecoder.skipUnsignedExpGolomb(); // bit_depth_luma_minus8
+      expGolombDecoder.skipUnsignedExpGolomb(); // bit_depth_chroma_minus8
+      expGolombDecoder.skipBits(1); // qpprime_y_zero_transform_bypass_flag
+      if (expGolombDecoder.readBoolean()) { // seq_scaling_matrix_present_flag
+        scalingListCount = (chromaFormatIdc !== 3) ? 8 : 12;
+        for (i = 0; i < scalingListCount; i++) {
+          if (expGolombDecoder.readBoolean()) { // seq_scaling_list_present_flag[ i ]
+            if (i < 6) {
+              skipScalingList(16, expGolombDecoder);
+            } else {
+              skipScalingList(64, expGolombDecoder);
+            }
+          }
+        }
+      }
+    }
+
+    expGolombDecoder.skipUnsignedExpGolomb(); // log2_max_frame_num_minus4
+    picOrderCntType = expGolombDecoder.readUnsignedExpGolomb();
+
+    if (picOrderCntType === 0) {
+      expGolombDecoder.readUnsignedExpGolomb(); //log2_max_pic_order_cnt_lsb_minus4
+    } else if (picOrderCntType === 1) {
+      expGolombDecoder.skipBits(1); // delta_pic_order_always_zero_flag
+      expGolombDecoder.skipExpGolomb(); // offset_for_non_ref_pic
+      expGolombDecoder.skipExpGolomb(); // offset_for_top_to_bottom_field
+      numRefFramesInPicOrderCntCycle = expGolombDecoder.readUnsignedExpGolomb();
+      for(i = 0; i < numRefFramesInPicOrderCntCycle; i++) {
+        expGolombDecoder.skipExpGolomb(); // offset_for_ref_frame[ i ]
+      }
+    }
+
+    expGolombDecoder.skipUnsignedExpGolomb(); // max_num_ref_frames
+    expGolombDecoder.skipBits(1); // gaps_in_frame_num_value_allowed_flag
+
+    picWidthInMbsMinus1 = expGolombDecoder.readUnsignedExpGolomb();
+    picHeightInMapUnitsMinus1 = expGolombDecoder.readUnsignedExpGolomb();
+
+    frameMbsOnlyFlag = expGolombDecoder.readBits(1);
+    if (frameMbsOnlyFlag === 0) {
+      expGolombDecoder.skipBits(1); // mb_adaptive_frame_field_flag
+    }
+
+    expGolombDecoder.skipBits(1); // direct_8x8_inference_flag
+    if (expGolombDecoder.readBoolean()) { // frame_cropping_flag
+      frameCropLeftOffset = expGolombDecoder.readUnsignedExpGolomb();
+      frameCropRightOffset = expGolombDecoder.readUnsignedExpGolomb();
+      frameCropTopOffset = expGolombDecoder.readUnsignedExpGolomb();
+      frameCropBottomOffset = expGolombDecoder.readUnsignedExpGolomb();
+    }
+
+    return {
+      width: ((picWidthInMbsMinus1 + 1) * 16) - frameCropLeftOffset * 2 - frameCropRightOffset * 2,
+      height: ((2 - frameMbsOnlyFlag) * (picHeightInMapUnitsMinus1 + 1) * 16) - (frameCropTopOffset * 2) - (frameCropBottomOffset * 2)
+    };
+  };
+
 };
 H264Stream.prototype = new videojs.Hls.Stream();
 
@@ -424,9 +641,10 @@ Transmuxer = function() {
   var
     self = this,
     sequenceNumber = 0,
-    initialized = false,
     videoSamples = [],
     videoSamplesSize = 0,
+    tracks,
+    dimensions,
 
     packetStream, parseStream, programStream, aacStream, h264Stream,
 
@@ -445,6 +663,42 @@ Transmuxer = function() {
   parseStream.pipe(programStream);
   programStream.pipe(aacStream);
   programStream.pipe(h264Stream);
+
+  // handle incoming data events
+  h264Stream.on('data', function(data) {
+    var i;
+
+    // if this chunk starts a new access unit, flush the data we've been buffering
+    if (data.nalUnitType === 'access_unit_delimiter_rbsp' &&
+        videoSamples.length) {
+      //flushVideo();
+    }
+    // generate an init segment once all the metadata is available
+    if (data.nalUnitType === 'seq_parameter_set_rbsp' &&
+        !dimensions) {
+      dimensions = data.dimensions;
+
+      i = tracks.length;
+      while (i--) {
+        if (tracks[i].type === 'video') {
+          tracks[i].width = dimensions.width;
+          tracks[i].height = dimensions.height;
+        }
+      }
+      self.trigger('data', {
+        data: videojs.mp4.initSegment(tracks)
+      });
+    }
+
+    // buffer video until we encounter a new access unit (aka the next frame)
+    videoSamples.push(data);
+    videoSamplesSize += data.data.byteLength;
+  });
+  programStream.on('data', function(data) {
+    if (data.type === 'metadata') {
+      tracks = data.tracks;
+    }
+  });
 
   // helper functions
   flushVideo = function() {
@@ -478,28 +732,6 @@ Transmuxer = function() {
     });
   };
 
-  // handle incoming data events
-  h264Stream.on('data', function(data) {
-    // if this chunk starts a new access unit, flush the data we've been buffering
-    if (data.nalUnitType === 'access_unit_delimiter_rbsp' &&
-        videoSamples.length) {
-      flushVideo();
-    }
-
-    // buffer video until we encounter a new access unit (aka the next frame)
-    videoSamples.push(data);
-    videoSamplesSize += data.data.byteLength;
-  });
-  programStream.on('data', function(data) {
-    // generate init segments based on stream metadata
-    if (!initialized && data.type === 'metadata') {
-      self.trigger('data', {
-        data: mp4.initSegment(data.tracks)
-      });
-      initialized = true;
-    }
-  });
-
   // feed incoming data to the front of the parsing pipeline
   this.push = function(data) {
     packetStream.push(data);
@@ -507,6 +739,7 @@ Transmuxer = function() {
   // flush any buffered data
   this.end = function() {
     programStream.end();
+    h264Stream.end();
     if (videoSamples.length) {
       flushVideo();
     }
