@@ -497,7 +497,10 @@ H264Stream = function() {
 
     case 0x07:
       event.nalUnitType = 'seq_parameter_set_rbsp';
-      event.dimensions = readSequenceParameterSet(data.subarray(1));
+      event.config = readSequenceParameterSet(data.subarray(1));
+      break;
+    case 0x08:
+      event.nalUnitType = 'pic_parameter_set_rbsp';
       break;
 
     default:
@@ -541,8 +544,9 @@ H264Stream = function() {
    * properties. A sequence parameter set is the H264 metadata that
    * describes the properties of upcoming video frames.
    * @param data {Uint8Array} the bytes of a sequence parameter set
-   * @return {object} an object with width and height properties
-   * specifying the dimensions of the associated video frames.
+   * @return {object} an object with configuration parsed from the
+   * sequence parameter set, including the dimensions of the
+   * associated video frames.
    */
   readSequenceParameterSet = function(data) {
     var
@@ -550,16 +554,19 @@ H264Stream = function() {
       frameCropRightOffset = 0,
       frameCropTopOffset = 0,
       frameCropBottomOffset = 0,
-      expGolombDecoder, profileIdc, chromaFormatIdc, picOrderCntType,
+      expGolombDecoder, profileIdc, levelIdc, profileCompatibility,
+      chromaFormatIdc, picOrderCntType,
       numRefFramesInPicOrderCntCycle, picWidthInMbsMinus1,
-      picHeightInMapUnitsMinus1, frameMbsOnlyFlag,
+      picHeightInMapUnitsMinus1,
+      frameMbsOnlyFlag,
       scalingListCount,
       i;
 
     expGolombDecoder = new videojs.Hls.ExpGolomb(data);
     profileIdc = expGolombDecoder.readUnsignedByte(); // profile_idc
-    // constraint_set[0-5]_flag, u(1), reserved_zero_2bits u(2), level_idc u()8
-    expGolombDecoder.skipBits(16);
+    profileCompatibility = expGolombDecoder.readBits(5); // constraint_set[0-5]_flag
+    expGolombDecoder.skipBits(3); //  u(1), reserved_zero_2bits u(2)
+    levelIdc = expGolombDecoder.readUnsignedByte(); // level_idc u(8)
     expGolombDecoder.skipUnsignedExpGolomb(); // seq_parameter_set_id
 
     // some profiles have more optional data we don't need
@@ -628,6 +635,9 @@ H264Stream = function() {
     }
 
     return {
+      profileIdc: profileIdc,
+      levelIdc: levelIdc,
+      profileCompatibility: profileCompatibility,
       width: ((picWidthInMbsMinus1 + 1) * 16) - frameCropLeftOffset * 2 - frameCropRightOffset * 2,
       height: ((2 - frameMbsOnlyFlag) * (picHeightInMapUnitsMinus1 + 1) * 16) - (frameCropTopOffset * 2) - (frameCropBottomOffset * 2)
     };
@@ -644,7 +654,8 @@ Transmuxer = function() {
     videoSamples = [],
     videoSamplesSize = 0,
     tracks,
-    dimensions,
+    config,
+    pps,
 
     packetStream, parseStream, programStream, aacStream, h264Stream,
 
@@ -673,21 +684,43 @@ Transmuxer = function() {
         videoSamples.length) {
       //flushVideo();
     }
-    // generate an init segment once all the metadata is available
+    // record the track config
     if (data.nalUnitType === 'seq_parameter_set_rbsp' &&
-        !dimensions) {
-      dimensions = data.dimensions;
+        !config) {
+      config = data.config;
 
       i = tracks.length;
       while (i--) {
         if (tracks[i].type === 'video') {
-          tracks[i].width = dimensions.width;
-          tracks[i].height = dimensions.height;
+          tracks[i].width = config.width;
+          tracks[i].height = config.height;
+          tracks[i].sps = [data.data];
+          tracks[i].profileIdc = config.profileIdc;
+          tracks[i].levelIdc = config.levelIdc;
+          tracks[i].profileCompatibility = config.profileCompatibility;
         }
       }
-      self.trigger('data', {
-        data: videojs.mp4.initSegment(tracks)
-      });
+      // generate an init segment once all the metadata is available
+      if (pps) {
+        self.trigger('data', {
+          data: videojs.mp4.initSegment(tracks)
+        });
+      }
+    }
+    if (data.nalUnitType === 'pic_parameter_set_rbsp' &&
+        !pps) {
+      pps = data.data;i = tracks.length;
+
+      while (i--) {
+        if (tracks[i].type === 'video') {
+          tracks[i].pps = [data.data];
+        }
+      }
+      if (config) {
+        self.trigger('data', {
+          data: videojs.mp4.initSegment(tracks)
+        });
+      }
     }
 
     // buffer video until we encounter a new access unit (aka the next frame)
