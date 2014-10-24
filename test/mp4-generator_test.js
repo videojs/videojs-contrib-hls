@@ -66,6 +66,7 @@ test('generates a moov', function() {
   tkhd = boxes[0].boxes[1].boxes[0];
   equal(tkhd.type, 'tkhd', 'generated a tkhd');
   equal(tkhd.trackId, 7, 'wrote the track id');
+  deepEqual(tkhd.flags, new Uint8Array([0, 0, 7]), 'flags should equal 7');
   equal(tkhd.duration, 100, 'wrote duration into the track header');
   equal(tkhd.width, 600, 'wrote width into the track header');
   equal(tkhd.height, 300, 'wrote height into the track header');

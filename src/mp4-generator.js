@@ -345,7 +345,7 @@ styp = function() {
 tkhd = function(track) {
   return box(types.tkhd, new Uint8Array([
     0x00, // version 0
-    0x00, 0x00, 0x00, // flags
+    0x00, 0x00, 0x07, // flags
     0x00, 0x00, 0x00, 0x00, // creation_time
     0x00, 0x00, 0x00, 0x00, // modification_time
     (track.id & 0xFF000000) >> 24,
