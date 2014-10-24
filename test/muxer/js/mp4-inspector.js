@@ -537,16 +537,16 @@ var
       };
       while (sampleCount--) {
         sample = {};
-        if (sampleFlagsPresent) {
-          sample.flags = view.getUint32(offset);
-          offset += 4;
-        }
         if (sampleDurationPresent) {
           sample.duration = view.getUint32(offset);
           offset += 4;
         }
         if (sampleSizePresent) {
           sample.size = view.getUint32(offset);
+          offset += 4;
+        }
+        if (sampleFlagsPresent) {
+          sample.flags = view.getUint32(offset);
           offset += 4;
         }
         if (sampleCompositionTimeOffsetPresent) {

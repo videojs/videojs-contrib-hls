@@ -737,7 +737,7 @@ Transmuxer = function() {
   flushVideo = function() {
     var moof, mdat, boxes, i, data;
 
-    moof = mp4.moof(sequenceNumber, []);
+    moof = mp4.moof(sequenceNumber, tracks);
 
     // concatenate the video data and construct the mdat
     data = new Uint8Array(videoSamplesSize);

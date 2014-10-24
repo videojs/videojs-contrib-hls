@@ -718,6 +718,32 @@ test('can parse a trun', function() {
             }]);
 });
 
+test('can parse a trun with per-sample flags', function() {
+  var data = box('trun',
+                 0x00, // version
+                 0x00, 0x0f, 0x00, // flags
+                 0x00, 0x00, 0x00, 0x01, // sample_count
+
+                 0x00, 0x00, 0x00, 0x09, // sample_duration
+                 0x00, 0x00, 0x00, 0xff, // sample_size
+                 0x01, 0x02, 0x03, 0x04, // sample_flags
+                 0x00, 0x00, 0x00, 0x00); // sample_composition_time_offset
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)),
+            [{
+              type: 'trun',
+              version: 0,
+              size: 32,
+              flags: new Uint8Array([0, 0x0f, 0x00]),
+              samples: [{
+                duration: 9,
+                size: 0xff,
+                flags: 0x01020304,
+                compositionTimeOffset: 0
+              }]
+            }]);
+
+});
+
 test('can parse a sidx', function(){
   var data = box('sidx',
                 0x00, // version
@@ -762,7 +788,7 @@ test('can parse a sidx', function(){
                 sapType: 1,
                 sapDeltaTime: 5
                 }]
-             
+
             }]);
 });
 

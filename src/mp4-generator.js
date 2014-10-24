@@ -2,7 +2,7 @@
 'use strict';
 
 var box, dinf, ftyp, mdat, mfhd, minf, moof, moov, mvex, mvhd, trak,
-    tkhd, mdia, mdhd, hdlr, stbl, stsd, styp, trex, types,
+    tkhd, mdia, mdhd, hdlr, stbl, stsd, styp, traf, trex, trun, types,
     MAJOR_BRAND, MINOR_VERSION, AVC1_BRAND, VIDEO_HDLR, AUDIO_HDLR,
     HDLR_TYPES, VMHD, DREF, STCO, STSC, STSZ, STTS, Uint8Array,
     DataView;
@@ -40,6 +40,7 @@ DataView = window.DataView;
     tfhd: [],
     traf: [],
     trak: [],
+    trun: [],
     trex: [],
     tkhd: [],
     vmhd: []
@@ -202,23 +203,16 @@ minf = function(track) {
 };
 moof = function(sequenceNumber, tracks) {
   var
-    trafCall = [],
+    trackFragments = [],
     i = tracks.length;
-  // build tfhd boxes for each track fragment
+  // build traf boxes for each track fragment
   while (i--) {
-    trafCall[i] = box(types.tfhd, new Uint8Array([
-      0x00, // version 0
-      0x00, 0x00, 0x00, // flags
-      (tracks[i].trackId & 0xFF000000) >> 24,
-      (tracks[i].trackId & 0xFF0000) >> 16,
-      (tracks[i].trackId & 0xFF00) >> 8,
-      (tracks[i].trackId & 0xFF),
-    ]));
+    trackFragments[i] = traf(tracks[i]);
   }
-  trafCall.unshift(types.traf);
-  return box(types.moof,
-             mfhd(sequenceNumber),
-             box.apply(null, trafCall));
+  return box.apply(null, [
+    types.moof,
+    mfhd(sequenceNumber)
+  ].concat(trackFragments));
 };
 /**
  * @param tracks... (optional) {array} the tracks associated with this movie
@@ -404,6 +398,19 @@ tkhd = function(track) {
   ]));
 };
 
+traf = function(track) {
+  return box(types.traf,
+             box(types.tfhd, new Uint8Array([
+               0x00, // version 0
+               0x00, 0x00, 0x00, // flags
+               (track.id & 0xFF000000) >> 24,
+               (track.id & 0xFF0000) >> 16,
+               (track.id & 0xFF00) >> 8,
+               (track.id & 0xFF),
+             ])),
+             trun(track));
+};
+
 /**
  * Generate a track box.
  * @param track {object} a track definition
@@ -429,6 +436,44 @@ trex = function(track) {
     0x00, 0x00, 0x00, 0x00, // default_sample_size
     0x00, 0x01, 0x00, 0x01 // default_sample_flags
   ]));
+};
+
+trun = function(track) {
+  var bytes, samples, sample, i;
+
+  samples = track.samples || [];
+
+  bytes = [
+    0x00, // version 0
+    0x00, 0x0f, 0x00, // flags
+    (samples.length & 0xFF000000) >>> 24,
+    (samples.length & 0xFF0000) >>> 16,
+    (samples.length & 0xFF00) >>> 8,
+    samples.length & 0xFF // sample_count
+  ];
+
+  for (i = 0; i < samples.length; i++) {
+    sample = samples[i];
+    bytes = bytes.concat([
+      (sample.duration & 0xFF000000) >>> 24,
+      (sample.duration & 0xFF0000) >>> 16,
+      (sample.duration & 0xFF00) >>> 8,
+      sample.duration & 0xFF, // sample_duration
+      (sample.size & 0xFF000000) >>> 24,
+      (sample.size & 0xFF0000) >>> 16,
+      (sample.size & 0xFF00) >>> 8,
+      sample.size & 0xFF, // sample_size
+      (sample.flags & 0xFF000000) >>> 24,
+      (sample.flags & 0xFF0000) >>> 16,
+      (sample.flags & 0xFF00) >>> 8,
+      sample.flags & 0xFF, // sample_flags
+      (sample.compositionTimeOffset & 0xFF000000) >>> 24,
+      (sample.compositionTimeOffset & 0xFF0000) >>> 16,
+      (sample.compositionTimeOffset & 0xFF00) >>> 8,
+      sample.compositionTimeOffset & 0xFF, // sample_composition_time_offset
+    ]);
+  }
+  return box(types.trun, new Uint8Array(bytes));
 };
 
 window.videojs.mp4 = {

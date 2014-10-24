@@ -301,11 +301,21 @@ test('generates an initialization segment', function() {
 test('generates a minimal moof', function() {
   var
     data = mp4.moof(7, [{
-      trackId: 1
-    }, {
-      trackId: 2
+      id: 17,
+      samples: [{
+        duration: 9000,
+        size: 10,
+        flags: 14,
+        compositionTimeOffset: 500
+      }, {
+        duration: 10000,
+        size: 11,
+        flags: 9,
+        compositionTimeOffset: 1000
+      }]
     }]),
-    moof = videojs.inspectMp4(data);
+    moof = videojs.inspectMp4(data),
+    trun;
 
   equal(moof.length, 1, 'generated one box');
   equal(moof[0].type, 'moof', 'generated a moof box');
@@ -313,10 +323,33 @@ test('generates a minimal moof', function() {
   equal(moof[0].boxes[0].type, 'mfhd', 'generated an mfhd box');
   equal(moof[0].boxes[0].sequenceNumber, 7, 'included the sequence_number');
   equal(moof[0].boxes[1].type, 'traf', 'generated a traf box');
-  equal(moof[0].boxes[1].boxes.length, 2, 'generated two fragment headers');
+  equal(moof[0].boxes[1].boxes.length, 2, 'generated track fragment info');
   equal(moof[0].boxes[1].boxes[0].type, 'tfhd', 'generated a tfhd box');
-  equal(moof[0].boxes[1].boxes[0].trackId, 1, 'wrote the first track id');
-  equal(moof[0].boxes[1].boxes[1].trackId, 2, 'wrote the second track id');
+  equal(moof[0].boxes[1].boxes[0].trackId, 17, 'wrote the first track id');
+  equal(moof[0].boxes[1].boxes[0].type, 'tfhd', 'generated a tfhd box');
+  trun = moof[0].boxes[1].boxes[1];
+  equal(trun.type, 'trun', 'generated a trun box');
+  equal(trun.samples.length, 2, 'wrote two samples');
+
+  equal(trun.samples[0].duration, 9000, 'wrote a sample duration');
+  equal(trun.samples[0].size, 10, 'wrote a sample size');
+  equal(trun.samples[0].flags, 14, 'wrote the sample flags');
+  equal(trun.samples[0].compositionTimeOffset, 500, 'wrote the composition time offset');
+
+  equal(trun.samples[1].duration, 10000, 'wrote a sample duration');
+  equal(trun.samples[1].size, 11, 'wrote a sample size');
+  equal(trun.samples[1].flags, 9, 'wrote the sample flags');
+  equal(trun.samples[1].compositionTimeOffset, 1000, 'wrote the composition time offset');
+});
+
+test('can generate a traf without samples', function() {
+  var
+    data = mp4.moof(8, [{
+      trackId: 13
+    }]),
+    moof = videojs.inspectMp4(data);
+
+  equal(moof[0].boxes[1].boxes[1].samples.length, 0, 'generated no samples');
 });
 
 test('generates an mdat', function() {
