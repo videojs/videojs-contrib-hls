@@ -685,19 +685,22 @@ test('can parse a moof', function() {
 
 test('can parse a trun', function() {
   var data = box('trun',
-                0x00, // version
-                0x00, 0x0b, 0x05, // flags
-                0x00, 0x00, 0x00, 0x02, // sample_count
-                0x00, 0x00, 0x00, 0x01, // data_offset
-                0x01, 0x02, 0x03, 0x04, // first_sample_flags
+                 0x00, // version
+                 0x00, 0x0b, 0x05, // flags
+                 0x00, 0x00, 0x00, 0x02, // sample_count
+                 0x00, 0x00, 0x00, 0x01, // data_offset
+                 // first_sample_flags
+                 // r:0000 il:10 sdo:01 sido:10 shr:01 spv:111 snss:1
+                 // dp:1111 1110 1101 1100
+                 0x09, 0x9f, 0xfe, 0xdc,
 
-                0x00, 0x00, 0x00, 0x09, // sample_duration
-                0x00, 0x00, 0x00, 0xff, // sample_size
-                0x00, 0x00, 0x00, 0x00, // sample_composition_time_offset
+                 0x00, 0x00, 0x00, 0x09, // sample_duration
+                 0x00, 0x00, 0x00, 0xff, // sample_size
+                 0x00, 0x00, 0x00, 0x00, // sample_composition_time_offset
 
-                0x00, 0x00, 0x00, 0x08, // sample_duration
-                0x00, 0x00, 0x00, 0xfe, // sample_size
-                0x00, 0x00, 0x00, 0x00); // sample_composition_time_offset
+                 0x00, 0x00, 0x00, 0x08, // sample_duration
+                 0x00, 0x00, 0x00, 0xfe, // sample_size
+                 0x00, 0x00, 0x00, 0x00); // sample_composition_time_offset
   deepEqual(videojs.inspectMp4(new Uint8Array(data)),
             [{
               type: 'trun',
@@ -708,7 +711,15 @@ test('can parse a trun', function() {
               samples: [{
                 duration: 9,
                 size: 0xff,
-                flags: 0x01020304,
+                flags: {
+                  isLeading: 2,
+                  dependsOn: 1,
+                  isDependedOn: 2,
+                  hasRedundancy: 1,
+                  paddingValue: 7,
+                  isNonSyncSample: 1,
+                  degradationPriority: 0xfedc,
+                },
                 compositionTimeOffset: 0
               }, {
                 duration: 8,
@@ -726,7 +737,10 @@ test('can parse a trun with per-sample flags', function() {
 
                  0x00, 0x00, 0x00, 0x09, // sample_duration
                  0x00, 0x00, 0x00, 0xff, // sample_size
-                 0x01, 0x02, 0x03, 0x04, // sample_flags
+                 // sample_flags
+                 // r:0000 il:00 sdo:01, sido:11 shr:00 spv:010 snss:0
+                 // dp: 0001 0010 0011 0100
+                 0x01, 0xc4, 0x12, 0x34,
                  0x00, 0x00, 0x00, 0x00); // sample_composition_time_offset
   deepEqual(videojs.inspectMp4(new Uint8Array(data)),
             [{
@@ -737,7 +751,15 @@ test('can parse a trun with per-sample flags', function() {
               samples: [{
                 duration: 9,
                 size: 0xff,
-                flags: 0x01020304,
+                flags: {
+                  isLeading: 0,
+                  dependsOn: 1,
+                  isDependedOn: 3,
+                  hasRedundancy: 0,
+                  paddingValue: 2,
+                  isNonSyncSample: 0,
+                  degradationPriority: 0x1234
+                },
                 compositionTimeOffset: 0
               }]
             }]);

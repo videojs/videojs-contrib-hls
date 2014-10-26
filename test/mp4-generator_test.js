@@ -305,12 +305,28 @@ test('generates a minimal moof', function() {
       samples: [{
         duration: 9000,
         size: 10,
-        flags: 14,
+        flags: {
+          isLeading: 0,
+          dependsOn: 0,
+          isDependedOn: 0,
+          hasRedundancy: 0,
+          paddingValue: 0,
+          isNonSyncSample: 0,
+          degradationPriority: 14
+        },
         compositionTimeOffset: 500
       }, {
         duration: 10000,
         size: 11,
-        flags: 9,
+        flags: {
+          isLeading: 0,
+          dependsOn: 0,
+          isDependedOn: 0,
+          hasRedundancy: 0,
+          paddingValue: 0,
+          isNonSyncSample: 0,
+          degradationPriority: 9
+        },
         compositionTimeOffset: 1000
       }]
     }]),
@@ -333,12 +349,28 @@ test('generates a minimal moof', function() {
 
   equal(trun.samples[0].duration, 9000, 'wrote a sample duration');
   equal(trun.samples[0].size, 10, 'wrote a sample size');
-  equal(trun.samples[0].flags, 14, 'wrote the sample flags');
+  deepEqual(trun.samples[0].flags, {
+    isLeading: 0,
+    dependsOn: 0,
+    isDependedOn: 0,
+    hasRedundancy: 0,
+    paddingValue: 0,
+    isNonSyncSample: 0,
+    degradationPriority: 14
+  }, 'wrote the sample flags');
   equal(trun.samples[0].compositionTimeOffset, 500, 'wrote the composition time offset');
 
   equal(trun.samples[1].duration, 10000, 'wrote a sample duration');
   equal(trun.samples[1].size, 11, 'wrote a sample size');
-  equal(trun.samples[1].flags, 9, 'wrote the sample flags');
+  deepEqual(trun.samples[1].flags, {
+    isLeading: 0,
+    dependsOn: 0,
+    isDependedOn: 0,
+    hasRedundancy: 0,
+    paddingValue: 0,
+    isNonSyncSample: 0,
+    degradationPriority: 9
+  }, 'wrote the sample flags');
   equal(trun.samples[1].compositionTimeOffset, 1000, 'wrote the composition time offset');
 });
 

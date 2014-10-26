@@ -41,6 +41,7 @@ var
   PMT,
   standalonePes,
   validateTrack,
+  validateTrackFragment,
 
   videoPes;
 
@@ -539,6 +540,9 @@ test('aggregates program stream packets from the transport stream', function() {
   programStream.push({
     type: 'pes',
     streamType: H264_STREAM_TYPE,
+    payloadUnitStartIndicator: true,
+    pts: 7,
+    dts: 8,
     data: new Uint8Array(7)
   });
   equal(0, events.length, 'buffers partial packets');
@@ -551,6 +555,8 @@ test('aggregates program stream packets from the transport stream', function() {
   programStream.end();
   equal(1, events.length, 'built one packet');
   equal('video', events[0].type, 'identified video data');
+  equal(events[0].pts, 7, 'passed along the pts');
+  equal(events[0].dts, 8, 'passed along the dts');
   equal(20, events[0].data.byteLength, 'concatenated transport packets');
 });
 
@@ -762,6 +768,18 @@ test('parses nal unit types', function() {
   h264Stream.end();
   ok(data, 'generated a data event');
   equal(data.nalUnitType, 'pic_parameter_set_rbsp', 'identified a picture parameter set');
+
+  data = null;
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x00, 0x00, 0x00, 0x01,
+      0x05, 0x01
+    ])
+  });
+  h264Stream.end();
+  ok(data, 'generated a data event');
+  equal(data.nalUnitType, 'slice_layer_without_partitioning_rbsp_idr', 'identified a key frame');
 });
 
 module('Transmuxer', {
@@ -855,11 +873,36 @@ validateTrack = function(track, metadata) {
   equal(mdia.boxes[2].type, 'minf', 'wrote the media info');
 };
 
+validateTrackFragment = function(track, metadata) {
+  var tfhd, trun, i, sample;
+  equal(track.type, 'traf', 'wrote a track fragment');
+  tfhd = track.boxes[0];
+  equal(tfhd.type, 'tfhd', 'wrote a track fragment header');
+  equal(tfhd.trackId, metadata.trackId, 'wrote the track id');
+
+  trun = track.boxes[1];
+  ok(trun.samples.length > 0, 'generated media samples');
+  for (i = 0; i < trun.samples.length; i++) {
+    sample = trun.samples[i];
+    ok(sample.duration > 0, 'wrote a positive duration for sample ' + i);
+    ok(sample.size > 0, 'wrote a positive size for sample ' + i);
+    ok(sample.compositionTimeOffset >= 0,
+       'wrote a positive composition time offset for sample ' + i);
+    ok(sample.flags, 'wrote sample flags');
+    equal(sample.flags.isLeading, 0, 'the leading nature is unknown');
+    notEqual(sample.flags.dependsOn, 0, 'sample dependency is not unknown');
+    notEqual(sample.flags.dependsOn, 4, 'sample dependency is valid');
+    equal(sample.flags.isDependedOn, 0, 'dependency of other samples is unknown');
+    equal(sample.flags.hasRedundancy, 0, 'sample redundancy is unknown');
+    equal(sample.flags.degradationPriority, 0, 'sample degradation priority is zero');
+  }
+};
+
 test('parses an example mp2t file and generates media segments', function() {
   var
     segments = [],
     sequenceNumber = window.Infinity,
-    i, boxes, mfhd, traf;
+    i, boxes, mfhd;
 
   transmuxer.on('data', function(segment) {
     segments.push(segment);
@@ -879,10 +922,10 @@ test('parses an example mp2t file and generates media segments', function() {
     width: 388,
     height: 300
   });
-  validateTrack(boxes[1].boxes[2], {
-    trackId: 257
-  });
-  equal(boxes[1].boxes[3].type, 'mvex', 'generated an mvex');
+  // validateTrack(boxes[1].boxes[2], {
+  //   trackId: 257
+  // });
+  // equal(boxes[1].boxes[3].type, 'mvex', 'generated an mvex');
 
   boxes = videojs.inspectMp4(segments[1].data);
   ok(boxes.length > 0, 'media segments are not empty');
@@ -896,8 +939,11 @@ test('parses an example mp2t file and generates media segments', function() {
     ok(mfhd.sequenceNumber < sequenceNumber, 'sequence numbers are increasing');
     sequenceNumber = mfhd.sequenceNumber;
 
-    traf = boxes[i].boxes[1];
-    equal(traf.type, 'traf', 'traf is a child of the moof');
+    validateTrackFragment(boxes[i].boxes[1], {
+      trackId: 256,
+      width: 388,
+      height: 300
+    });
     equal(boxes[i + 1].type, 'mdat', 'second box is an mdat');
   }
 });

@@ -286,6 +286,8 @@ ProgramStream = function() {
         return;
       }
       event.trackId = stream.data[0].pid;
+      event.pts = stream.data[0].pts;
+      event.dts = stream.data[0].dts;
 
       // reassemble the packet
       while (stream.data.length) {
@@ -469,6 +471,8 @@ H264Stream = function() {
     nalByteStream = new NalByteStream(),
     self,
     trackId,
+    currentPts,
+    currentDts,
 
     readSequenceParameterSet,
     skipScalingList;
@@ -481,6 +485,8 @@ H264Stream = function() {
       return;
     }
     trackId = packet.trackId;
+    currentPts = packet.pts;
+    currentDts = packet.dts;
 
     nalByteStream.push(packet);
   };
@@ -488,19 +494,24 @@ H264Stream = function() {
   nalByteStream.on('data', function(data) {
     var event = {
       trackId: trackId,
+      pts: currentPts,
+      dts: currentDts,
       data: data
     };
     switch (data[0] & 0x1f) {
-    case 0x09:
-      event.nalUnitType = 'access_unit_delimiter_rbsp';
-      break;
 
+    case 0x05:
+      event.nalUnitType = 'slice_layer_without_partitioning_rbsp_idr';
+      break;
     case 0x07:
       event.nalUnitType = 'seq_parameter_set_rbsp';
       event.config = readSequenceParameterSet(data.subarray(1));
       break;
     case 0x08:
       event.nalUnitType = 'pic_parameter_set_rbsp';
+      break;
+    case 0x09:
+      event.nalUnitType = 'access_unit_delimiter_rbsp';
       break;
 
     default:
@@ -653,7 +664,7 @@ Transmuxer = function() {
     sequenceNumber = 0,
     videoSamples = [],
     videoSamplesSize = 0,
-    tracks,
+    track,
     config,
     pps,
 
@@ -677,8 +688,6 @@ Transmuxer = function() {
 
   // handle incoming data events
   h264Stream.on('data', function(data) {
-    var i;
-
     // if this chunk starts a new access unit, flush the data we've been buffering
     if (data.nalUnitType === 'access_unit_delimiter_rbsp' &&
         videoSamples.length) {
@@ -689,36 +698,28 @@ Transmuxer = function() {
         !config) {
       config = data.config;
 
-      i = tracks.length;
-      while (i--) {
-        if (tracks[i].type === 'video') {
-          tracks[i].width = config.width;
-          tracks[i].height = config.height;
-          tracks[i].sps = [data.data];
-          tracks[i].profileIdc = config.profileIdc;
-          tracks[i].levelIdc = config.levelIdc;
-          tracks[i].profileCompatibility = config.profileCompatibility;
-        }
-      }
+      track.width = config.width;
+      track.height = config.height;
+      track.sps = [data.data];
+      track.profileIdc = config.profileIdc;
+      track.levelIdc = config.levelIdc;
+      track.profileCompatibility = config.profileCompatibility;
+
       // generate an init segment once all the metadata is available
       if (pps) {
         self.trigger('data', {
-          data: videojs.mp4.initSegment(tracks)
+          data: videojs.mp4.initSegment([track])
         });
       }
     }
     if (data.nalUnitType === 'pic_parameter_set_rbsp' &&
         !pps) {
-      pps = data.data;i = tracks.length;
+      pps = data.data;
+      track.pps = [data.data];
 
-      while (i--) {
-        if (tracks[i].type === 'video') {
-          tracks[i].pps = [data.data];
-        }
-      }
       if (config) {
         self.trigger('data', {
-          data: videojs.mp4.initSegment(tracks)
+          data: videojs.mp4.initSegment([track])
         });
       }
     }
@@ -728,27 +729,79 @@ Transmuxer = function() {
     videoSamplesSize += data.data.byteLength;
   });
   programStream.on('data', function(data) {
+    var i;
     if (data.type === 'metadata') {
-      tracks = data.tracks;
+      i = data.tracks.length;
+      while (i--) {
+        if (data.tracks[i].type === 'video') {
+          track = data.tracks[i];
+          break;
+        }
+      }
     }
   });
 
   // helper functions
   flushVideo = function() {
-    var moof, mdat, boxes, i, data;
-
-    moof = mp4.moof(sequenceNumber, tracks);
+    var startUnit, currentNal, moof, mdat, boxes, i, data, sample;
 
     // concatenate the video data and construct the mdat
+    // first, we have to build the index from byte locations to
+    // samples (i.e. frames) in the video data
     data = new Uint8Array(videoSamplesSize);
+    track.samples = [];
+    sample = {
+      size: 0,
+      flags: {
+        isLeading: 0,
+        dependsOn: 1,
+        isDependedOn: 0,
+        hasRedundancy: 0,
+        degradationPriority: 0
+      }
+    };
     i = 0;
     while (videoSamples.length) {
-      data.set(videoSamples[0].data, i);
-      i += videoSamples[0].data.byteLength;
+      currentNal = videoSamples[0];
+      // flush the sample we've been building when a new sample is started
+      if (currentNal.nalUnitType === 'access_unit_delimiter_rbsp') {
+        if (startUnit) {
+          sample.duration = currentNal.dts - startUnit.dts;
+          track.samples.push(sample);
+        }
+        sample = {
+          size: 0,
+          flags: {
+            isLeading: 0,
+            dependsOn: 1,
+            isDependedOn: 0,
+            hasRedundancy: 0,
+            degradationPriority: 0
+          },
+          compositionTimeOffset: currentNal.pts - currentNal.dts
+        };
+        startUnit = currentNal;
+      }
+      if (currentNal.nalUnitType === 'slice_layer_without_partitioning_rbsp_idr') {
+        // the current sample is a key frame
+        sample.flags.dependsOn = 2;
+
+      }
+      sample.size += currentNal.data.byteLength;
+
+      data.set(currentNal.data, i);
+      i += currentNal.data.byteLength;
       videoSamples.shift();
     }
+    // record the last sample
+    if (track.samples.length) {
+      sample.duration = track.samples[track.samples.length - 1].duration;
+    }
+    track.samples.push(sample);
     videoSamplesSize = 0;
     mdat = mp4.mdat(data);
+
+    moof = mp4.moof(sequenceNumber, [track]);
 
     // it would be great to allocate this array up front instead of
     // throwing away hundreds of media segment fragments
