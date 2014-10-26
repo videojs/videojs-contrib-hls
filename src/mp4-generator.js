@@ -463,10 +463,13 @@ trun = function(track) {
       (sample.size & 0xFF0000) >>> 16,
       (sample.size & 0xFF00) >>> 8,
       sample.size & 0xFF, // sample_size
-      (sample.flags & 0xFF000000) >>> 24,
-      (sample.flags & 0xFF0000) >>> 16,
-      (sample.flags & 0xFF00) >>> 8,
-      sample.flags & 0xFF, // sample_flags
+      (sample.flags.isLeading << 2) | sample.flags.dependsOn,
+      (sample.flags.isDependedOn << 6) |
+        (sample.flags.hasRedundancy << 4) |
+        (sample.flags.paddingValue << 1) |
+        sample.flags.isNonSyncSample,
+      sample.flags.degradationPriority & 0xF0 << 8,
+      sample.flags.degradationPriority & 0x0F, // sample_flags
       (sample.compositionTimeOffset & 0xFF000000) >>> 24,
       (sample.compositionTimeOffset & 0xFF0000) >>> 16,
       (sample.compositionTimeOffset & 0xFF00) >>> 8,
