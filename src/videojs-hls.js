@@ -129,6 +129,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
       this.fillBuffer();
     }
 
+    player.one('play', videojs.bind(this, this.fillBuffer));
     player.on('timeupdate', videojs.bind(this, this.fillBuffer));
     player.on('timeupdate', videojs.bind(this, this.drainBuffer));
     player.on('waiting', videojs.bind(this, this.drainBuffer));
