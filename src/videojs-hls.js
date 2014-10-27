@@ -138,8 +138,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   this.playlists.on('mediachange', videojs.bind(this, function() {
     // abort outstanding key requests and check if new keys need to be retrieved
     if (keyXhr) {
-      keyXhr.abort();
-      keyXhr = null;
+      this.cancelKeyXhr();
       this.fetchKeys(this.playlists.media(), this.mediaIndex);
     }
 
@@ -195,17 +194,12 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   this.sourceBuffer.abort();
 
   // cancel outstanding requests and buffer appends
-  if (this.segmentXhr_) {
-    this.segmentXhr_.onreadystatechange = null;
-    this.segmentXhr_.abort();
-    this.segmentXhr_ = null;
-  }
+  this.cancelSegmentXhr();
 
   // fetch new encryption keys, if necessary
   if (keyXhr) {
     keyXhr.aborted = true;
-    keyXhr.abort();
-    keyXhr = null;
+    this.cancelKeyXhr();
     this.fetchKeys(this.playlists.media(), this.mediaIndex);
   }
 
@@ -244,18 +238,28 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
  * state suitable for switching to a different video.
  */
 videojs.Hls.prototype.resetSrc_ = function() {
-  if (this.segmentXhr_) {
-    this.segmentXhr_.onreadystatechange = null;
-    this.segmentXhr_.abort();
-    this.segmentXhr_ = null;
+  this.cancelSegmentXhr();
+  this.cancelKeyXhr();
+
+  if (this.sourceBuffer) {
+    this.sourceBuffer.abort();
   }
+};
+
+videojs.Hls.prototype.cancelKeyXhr = function() {
   if (keyXhr) {
     keyXhr.onreadystatechange = null;
     keyXhr.abort();
     keyXhr = null;
   }
-  if (this.sourceBuffer) {
-    this.sourceBuffer.abort();
+};
+
+videojs.Hls.prototype.cancelSegmentXhr = function() {
+  if (this.segmentXhr_) {
+    // Prevent error handler from running.
+    this.segmentXhr_.onreadystatechange = null;
+    this.segmentXhr_.abort();
+    this.segmentXhr_ = null;
   }
 };
 
