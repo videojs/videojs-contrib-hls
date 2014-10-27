@@ -113,9 +113,6 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     oldMediaPlaylist = this.playlists.media();
 
-    // periodically check if new data needs to be downloaded or
-    // buffered data should be appended to the source buffer
-
     if (this.bandwidth !== this.playlists.bandwidth ||
         (this.bandwidth && this.bandwidth < this.playlists.bandwidth)) {
       this.bandwidth = this.playlists.bandwidth;
@@ -136,6 +133,9 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     }
 
     player.one('play', videojs.bind(this, this.fillBuffer));
+
+    // periodically check if new data needs to be downloaded or
+    // buffered data should be appended to the source buffer
     player.on('timeupdate', videojs.bind(this, this.fillBuffer));
     player.on('timeupdate', videojs.bind(this, this.drainBuffer));
     player.on('waiting', videojs.bind(this, this.drainBuffer));
