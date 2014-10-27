@@ -113,20 +113,23 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     oldMediaPlaylist = this.playlists.media();
 
-    if (this.bandwidth !== this.playlists.bandwidth ||
-        (this.bandwidth && this.bandwidth < this.playlists.bandwidth)) {
-      this.bandwidth = this.playlists.bandwidth;
+    if (this.bandwidth !== this.playlists.bandwidth) {
+      if (this.bandwidth !== undefined && this.bandwidth < this.playlists.bandwidth) {
+        this.bandwidth = this.playlists.bandwidth;
 
-      selectedPlaylist = this.selectPlaylist();
-      if (selectedPlaylist === oldMediaPlaylist) {
-        this.fillBuffer();
-      } else {
-        this.playlists.media(selectedPlaylist);
-        loaderHandler = videojs.bind(this, function() {
+        selectedPlaylist = this.selectPlaylist();
+        if (selectedPlaylist === oldMediaPlaylist) {
           this.fillBuffer();
-          this.playlists.off('loadedplaylist', loaderHandler);
-        });
-        this.playlists.on('loadedplaylist', loaderHandler);
+        } else {
+          this.playlists.media(selectedPlaylist);
+          loaderHandler = videojs.bind(this, function() {
+            this.fillBuffer();
+            this.playlists.off('loadedplaylist', loaderHandler);
+          });
+          this.playlists.on('loadedplaylist', loaderHandler);
+        }
+      } else {
+        this.fillBuffer();
       }
     } else {
       this.fillBuffer();
