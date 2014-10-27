@@ -101,6 +101,11 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
 
   this.mediaIndex = 0;
+
+  if (this.playlists) {
+    this.playlists.dispose();
+  }
+
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
