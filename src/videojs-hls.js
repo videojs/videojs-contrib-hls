@@ -104,11 +104,31 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
+    var selectedPlaylist, loaderHandler;
+
     oldMediaPlaylist = this.playlists.media();
 
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
-    this.fillBuffer();
+
+    if (this.bandwidth !== this.playlists.bandwidth) {
+      this.bandwidth = this.playlists.bandwidth;
+
+      selectedPlaylist = this.selectPlaylist();
+      if (selectedPlaylist === oldMediaPlaylist) {
+        this.fillBuffer();
+      } else {
+        this.playlists.media(selectedPlaylist);
+        loaderHandler = videojs.bind(this, function() {
+          this.fillBuffer();
+          this.playlists.off('loadedplaylist', loaderHandler);
+        });
+        this.playlists.on('loadedplaylist', loaderHandler);
+      }
+    } else {
+      this.fillBuffer();
+    }
+
     player.on('timeupdate', videojs.bind(this, this.fillBuffer));
     player.on('timeupdate', videojs.bind(this, this.drainBuffer));
     player.on('waiting', videojs.bind(this, this.drainBuffer));
