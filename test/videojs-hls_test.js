@@ -376,7 +376,9 @@ test('downloads a second media playlist before playback', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
   player.hls.bandwidth = 0;
+  requests[1].requestTime = (new Date()) - 100;
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
   standardXHRResponse(requests[3]);
@@ -445,6 +447,8 @@ test('selects a playlist after segment downloads', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
 
@@ -471,6 +475,8 @@ test('moves to the next segment if there is a network error', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests[1]);
 
   mediaIndex = player.hls.mediaIndex;
@@ -524,6 +530,8 @@ test('downloads additional playlists if required', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests[1]);
   // before an m3u8 is downloaded, no segments are available
   player.hls.selectPlaylist = function() {
@@ -1199,6 +1207,8 @@ test('resets the switching algorithm if a request times out', function() {
   });
   openMediaSource(player);
   standardXHRResponse(requests.shift()); // master
+
+  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests.shift()); // media.m3u8
   // simulate a segment timeout
   requests[0].timedout = true;
