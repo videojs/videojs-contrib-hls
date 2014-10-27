@@ -349,6 +349,9 @@ test('downloads media playlists after loading the master', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  // set bandwidth to a high number, so, we don't switch;
+  player.hls.bandwidth = 500000;
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
 
@@ -359,6 +362,37 @@ test('downloads media playlists after loading the master', function() {
               '/manifest/media.m3u8',
               'media playlist requested');
   strictEqual(requests[2].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/00001.ts',
+              'first segment requested');
+});
+
+test('downloads a second media playlist before playback', function() {
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  standardXHRResponse(requests[0]);
+  player.hls.bandwidth = 0;
+  standardXHRResponse(requests[1]);
+  standardXHRResponse(requests[2]);
+  standardXHRResponse(requests[3]);
+
+  strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
+  strictEqual(requests[1].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/media.m3u8',
+              'media playlist requested');
+  strictEqual(requests[2].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/media1.m3u8',
+              'media playlist requested');
+  strictEqual(requests[3].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
               '/manifest/00001.ts',
