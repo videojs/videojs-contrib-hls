@@ -14,7 +14,25 @@ var
   bandwidthVariance = 1.1,
   keyXhr,
   keyFailed,
+  getTagsForSegment,
+  getTagsTillKeyframeMinTime,
   resolveUrl;
+
+getTagsForSegment = function(tech, bytes) {
+  var tag, tags;
+
+  tags = [];
+
+  tech.segmentParser_.parseSegmentBinaryData(bytes);
+  tech.segmentParser_.flushTags();
+
+  while (tech.segmentParser_.tagsAvailable()) {
+    tag = tech.segmentParser_.getNextTag();
+    tags.push(tag);
+  }
+
+  return tags;
+};
 
 // returns true if a key has failed to download within a certain amount of retries
 keyFailed = function(key) {
@@ -41,6 +59,30 @@ videojs.Hls = videojs.Flash.extend({
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
   }
 });
+
+// given a list of tags, will give you back the list of tags till the next keyframe (exclusive)
+getTagsTillKeyframeMinTime = function(tags, threshold) {
+  var i = 1,
+      firsttag,
+      tag,
+      newtags = [];
+
+  firsttag = tags[0];
+
+  if (firsttag) {
+    newtags.push(firsttag);
+  }
+
+  for (; i < tags.length; i++) {
+    tag = tags[i];
+    if (tag.discontinuity || tag.keyFrame && (tag.dts - firsttag.dts) >= threshold ) {
+      break;
+    }
+    newtags.push(tag);
+  }
+
+  return newtags;
+};
 
 // Add HLS to the standard tech order
 videojs.options.techOrder.unshift('hls');
@@ -74,6 +116,7 @@ videojs.Hls.prototype.src = function(src) {
   this.mediaSource = mediaSource;
 
   this.segmentBuffer_ = [];
+  this.tagsBuffer_ = [];
   this.segmentParser_ = new videojs.Hls.SegmentParser();
 
   // load the MediaSource into the player
@@ -95,6 +138,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     player = this.player(),
     settings = player.options().hls || {},
     sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"'),
+    oldbandwidth,
     oldMediaPlaylist;
 
   this.sourceBuffer = sourceBuffer;
@@ -105,6 +149,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     oldMediaPlaylist = this.playlists.media();
+
+    if (oldMediaPlaylist.attributes && oldMediaPlaylist.attributes.BANDWIDTH) {
+      oldbandwidth = oldMediaPlaylist.attributes.BANDWIDTH;
+    }
 
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
@@ -142,6 +190,91 @@ videojs.Hls.prototype.handleSourceOpen = function() {
       this.fetchKeys(this.playlists.media(), this.mediaIndex);
     }
 
+    // - start import
+    // determine if we need to switch mid-segment //
+    // remaining time in current segment vs. playhead time
+    // downloadTime for segment && segment+1
+    // if that value is > (downloadTime) continue.
+    // else don't do anything because you will start downloading
+    // the new rendition at the next segment complete anyway
+
+    var tech, playlist, currentSegmentInNewPlaylist, nextSegmentinNewPlaylist,
+      currentSegmentDuration, newPlaylistBitrate, currentSegmentDownloadTime,
+      nextSegmentDuration, nextSegmentDownloadTime, segmentUri, currentIndex;
+
+    tech = this;
+    playlist = tech.playlists.media();
+
+    if (playlist) {
+      // don't optimize segment selection if we have no bandwidth information
+      if (!playlist.attributes || !playlist.attributes.BANDWIDTH) {
+        return;
+      }
+
+      newPlaylistBitrate = playlist.attributes.BANDWIDTH;
+
+      currentIndex = Math.max(tech.mediaIndex - 1, 0);
+      currentSegmentInNewPlaylist = playlist.segments[currentIndex];
+      nextSegmentinNewPlaylist = playlist.segments[currentIndex + 1];
+
+      // If at last segment no need to continue //
+      if (nextSegmentinNewPlaylist) {
+        currentSegmentDuration = currentSegmentInNewPlaylist.duration;
+        currentSegmentDownloadTime = (currentSegmentDuration * newPlaylistBitrate)  / tech.bandwidth;
+        nextSegmentDuration = nextSegmentinNewPlaylist.duration;
+        nextSegmentDownloadTime = (nextSegmentDuration * newPlaylistBitrate) / tech.bandwidth;
+
+
+        // Determine the buffer needed versus the time to download to insure
+        // playback will not be stopped as a result of additional overhead
+        // then load the new rendition segment and fire midSegmentSwitch handler
+
+        if ((currentSegmentDownloadTime + nextSegmentDownloadTime) * 1000 < tech.remainingSegmentTime()) {
+          // don't mid-segment switch down
+          if (newPlaylistBitrate < oldbandwidth) {
+            oldbandwidth = newPlaylistBitrate;
+            return;
+          }
+
+          // LoadSegment with custom callback //
+          // resolve the segment URL relative to the playlist
+          if (playlist.uri === tech.playlists.master.uri) {
+            segmentUri = resolveUrl(tech.playlists.master.uri, currentSegmentInNewPlaylist.uri);
+          } else {
+            segmentUri = resolveUrl(resolveUrl(tech.playlists.master.uri, playlist.uri || ''), currentSegmentInNewPlaylist.uri);
+          }
+
+          if (tech.segmentXhr_) {
+            tech.segmentXhr_.onreadystatechange = null;
+            tech.segmentXhr_.abort();
+            tech.segmentXhr_ = null;
+          }
+
+          tech.loadSegment(segmentUri, null, videojs.bind(this, tech.midSegmentSwitch));
+
+        } else if (nextSegmentDownloadTime * 1000 <= tech.remainingSegmentTime()) {
+
+          // LoadSegment with custom callback //
+          // resolve the segment URL relative to the playlist
+          if (playlist.uri === tech.playlists.master.uri) {
+            segmentUri = resolveUrl(tech.playlists.master.uri, nextSegmentinNewPlaylist.uri);
+          } else {
+            segmentUri = resolveUrl(resolveUrl(tech.playlists.master.uri, playlist.uri || ''), nextSegmentinNewPlaylist.uri);
+          }
+
+          if (tech.segmentXhr_) {
+            tech.segmentXhr_.onreadystatechange = null;
+            tech.segmentXhr_.abort();
+            tech.segmentXhr_ = null;
+          }
+
+          tech.loadSegment(segmentUri, null, videojs.bind(this, tech.onSegmentLoadComplete));
+        }
+      }
+
+      oldbandwidth = newPlaylistBitrate;
+    }
+
     player.trigger('mediachange');
   }));
 
@@ -151,6 +284,25 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   if (player.options().autoplay) {
     player.play();
   }
+};
+
+/**
+ * Calculate the buffer needed to justify a mid-segment switch
+ * @returns Number Time in milliseconds
+ */
+videojs.Hls.prototype.remainingSegmentTime = function() {
+  var tech, timeRanges, currentTime, currentSegmentStartTime,
+    currentSegmentRemainingPlaybackTime, nextSegmentDuration, currentIndex;
+
+  tech = this;
+  timeRanges = videojs.Hls.getSegmentTimeRangesByPlaylist(this.playlists.media());
+  currentTime = tech.player().currentTime();
+  currentIndex = Math.max(tech.mediaIndex-1,0);
+  currentSegmentStartTime = timeRanges[currentIndex].start;
+  currentSegmentRemainingPlaybackTime = ((timeRanges[currentIndex].end - (currentTime - currentSegmentStartTime)) * 1000);
+  nextSegmentDuration = ((timeRanges[currentIndex + 1].end - timeRanges[currentIndex + 1].start) * 1000);
+
+  return currentSegmentRemainingPlaybackTime;
 };
 
 /**
@@ -205,6 +357,7 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
 
   // clear out any buffered segments
   this.segmentBuffer_ = [];
+  this.tagsBuffer_ = [];
 
   // begin filling the buffer at the new position
   this.fillBuffer(currentTime * 1000);
@@ -298,7 +451,9 @@ videojs.Hls.prototype.selectPlaylist = function () {
     i = sortedPlaylists.length,
     variant,
     bandwidthBestVariant,
-    resolutionBestVariant;
+    resolutionBestVariant,
+    currentVariant = this.playlists.media(),
+    respondingVariant;
 
   sortedPlaylists.sort(videojs.Hls.comparePlaylistBandwidth);
 
@@ -353,8 +508,17 @@ videojs.Hls.prototype.selectPlaylist = function () {
     }
   }
 
+  // if this value changed, we should notify the tech //
+  // compare my current variant with what will be the new one and notify
+  // tech if there is a change
+  respondingVariant = resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+
+  if (currentVariant !== respondingVariant) {
+    this.playlists.trigger('playlistchange');
+  }
+
   // fallback chain of variants
-  return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+  return respondingVariant;
 };
 
 /**
@@ -406,15 +570,120 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     segmentUri = resolveUrl(resolveUrl(this.src_, this.playlists.media().uri || ''), segment.uri);
   }
 
-  this.loadSegment(segmentUri, offset);
+  this.loadSegment(segmentUri, offset, videojs.bind(this, this.onSegmentLoadComplete));
 };
 
-videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
+// Encapsulate the setBandwidth routine for future expansion
+videojs.Hls.prototype.setBandwidthByXHR = function(xhr) {
+  var tech = this;
+  // calculate the download bandwidth
+  tech.segmentXhrTime = xhr.roundTripTime;
+  tech.bandwidth = xhr.bandwidth;
+  tech.bytesReceived += xhr.bytesReceived;
+};
+
+videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
+  var tech = this,
+      tags,
+      mediaIndex = tech.mediaIndex,
+      playlist = tech.playlists.media(),
+      ptsTime,
+      i,
+      segmentOffset;
+
+  tech.setBandwidthByXHR(xhr);
+  tags = getTagsForSegment(tech, new Uint8Array(xhr.response));
+
+  segmentOffset = videojs.Hls.getPlaylistDuration(playlist, 0, mediaIndex) * 1000;
+
+  if (playlist.segments[mediaIndex].discontinuity) {
+    tags[0].offset = segmentOffset;
+    tags[0].discontinuity = true;
+  }
+
+  if (typeof offset === 'number') {
+    // if we're refilling the buffer after a seek, scan through the muxed
+    // FLV tags until we find the one that is closest to the desired
+    // playback time
+    ptsTime = offset - segmentOffset + tags[0].pts;
+
+    // TODO rethink this logic
+    for (i = 0; i < tags.length; i++) {
+      if (tags[i].pts >= ptsTime) {
+        break;
+      }
+    }
+    if (i === tags.length) {
+      i--;
+    }
+
+    // tell the SWF where we will be seeking to
+    tags[i].offset = tags[i].pts - tags[0].pts + segmentOffset;
+
+    tags.splice(0, i);
+
+    this.lastSeekedTime_ = null;
+  }
+
+  tags[tags.length - 1].end = mediaIndex + 1 === playlist.segments.length;
+
+  tech.tagsBuffer_ = tech.tagsBuffer_.concat(tags);
+
+  tech.drainBuffer();
+
+  tech.mediaIndex++;
+
+  // figure out what stream the next segment should be downloaded from
+  // with the updated bandwidth information
+  tech.playlists.media(tech.selectPlaylist());
+
+  tech.fillBuffer();
+};
+
+videojs.Hls.prototype.midSegmentSwitch = function(xhr, offset) {
+  // Steps
+  // Determine if Necessary
+  // Get new segment data
+  // Get the player to that data
+  // NOTE: Currently this is passed an XHR //
+
+  // Seek to current time
+  // Under the hood this purges the current buffer and restocks with the
+  // new rendition's segment similar to a 'normal' seek
+  //var player = this.player();
+
+  var tags = [],
+      segmentItem,
+      newSegmentSlice,
+      currentTagsSlice,
+      tech = this,
+      el = this.player().el();
+
+  tech.setBandwidthByXHR(xhr);
+  tags = getTagsForSegment(tech, new Uint8Array(xhr.response));
+
+  if (!(/vjs-has-started/).test(el.className)) {
+    tech.tagsBuffer_ = [];
+    tech.sourceBuffer.abort();
+  }
+
+  if (tech.tagsBuffer_.length !== 0) {
+    newSegmentSlice = getTagsTillKeyframeMinTime(tags, Math.floor(tech.tagsBuffer_[0].dts));
+  } else {
+    newSegmentSlice = [];
+  }
+  currentTagsSlice = getTagsTillKeyframeMinTime(tech.tagsBuffer_, tags[tags.length - 1].dts);
+
+  tags.splice(0, newSegmentSlice.length);
+  tech.tagsBuffer_.splice(0, currentTagsSlice.length);
+  tech.tagsBuffer_ = tags.concat(tech.tagsBuffer_);
+};
+
+videojs.Hls.prototype.loadSegment = function(segmentUri, offset, callback) {
   var
     tech = this,
     player = this.player(),
-    settings = player.options().hls || {},
-    startTime = +new Date();
+    settings = player.options().hls || {};
 
   // request the next segment
   this.segmentXhr_ = videojs.Hls.xhr({
@@ -448,115 +717,63 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       return;
     }
 
-    // calculate the download bandwidth
-    tech.segmentXhrTime = (+new Date()) - startTime;
-    tech.bandwidth = (this.response.byteLength / tech.segmentXhrTime) * 8 * 1000;
-    tech.bytesReceived += this.response.byteLength;
-
-    // package up all the work to append the segment
-    // if the segment is the start of a timestamp discontinuity,
-    // we have to wait until the sourcebuffer is empty before
-    // aborting the source buffer processing
-    tech.segmentBuffer_.push({
-      mediaIndex: tech.mediaIndex,
-      playlist: tech.playlists.media(),
-      offset: offset,
-      bytes: new Uint8Array(this.response)
-    });
-    tech.drainBuffer();
-
-    tech.mediaIndex++;
-
-    // figure out what stream the next segment should be downloaded from
-    // with the updated bandwidth information
-    tech.playlists.media(tech.selectPlaylist());
+    if (callback) {
+      callback(this, offset);
+    }
   });
 };
 
 videojs.Hls.prototype.drainBuffer = function(event) {
   var
     i = 0,
-    mediaIndex,
-    playlist,
-    offset,
     tags,
     bytes,
-    segment,
+    tagsBuffer = this.tagsBuffer_;
 
-    ptsTime,
-    segmentOffset,
-    segmentBuffer = this.segmentBuffer_;
-
-  if (!segmentBuffer.length) {
+  if (!tagsBuffer.length) {
     return;
   }
 
-  mediaIndex = segmentBuffer[0].mediaIndex;
-  playlist = segmentBuffer[0].playlist;
-  offset = segmentBuffer[0].offset;
-  bytes = segmentBuffer[0].bytes;
-  segment = playlist.segments[mediaIndex];
-
-  if (segment.key) {
-    // this is an encrypted segment
-    // if the key download failed, we want to skip this segment
-    // but if the key hasn't downloaded yet, we want to try again later
-    if (keyFailed(segment.key)) {
-      return segmentBuffer.shift();
-    } else if (!segment.key.bytes) {
-      return;
-    } else {
-      // if the media sequence is greater than 2^32, the IV will be incorrect
-      // assuming 10s segments, that would be about 1300 years
-      bytes = videojs.Hls.decrypt(bytes,
-                                  segment.key.bytes,
-                                  new Uint32Array([
-                                    0, 0, 0,
-                                    mediaIndex + playlist.mediaSequence]));
-    }
-  }
+  //if (segment.key) {
+    //// this is an encrypted segment
+    //// if the key download failed, we want to skip this segment
+    //// but if the key hasn't downloaded yet, we want to try again later
+    //if (keyFailed(segment.key)) {
+      //return segmentBuffer.shift();
+    //} else if (!segment.key.bytes) {
+      //return;
+    //} else {
+      //// if the media sequence is greater than 2^32, the IV will be incorrect
+      //// assuming 10s segments, that would be about 1300 years
+      //bytes = videojs.Hls.decrypt(bytes,
+                                  //segment.key.bytes,
+                                  //new Uint32Array([
+                                    //0, 0, 0,
+                                    //mediaIndex + playlist.mediaSequence]));
+    //}
+  //}
 
   event = event || {};
-  segmentOffset = videojs.Hls.getPlaylistDuration(playlist, 0, mediaIndex) * 1000;
+
+  tags = getTagsTillKeyframeMinTime(tagsBuffer, 1500);
 
   // abort() clears any data queued in the source buffer so wait
   // until it empties before calling it when a discontinuity is
   // next in the buffer
-  if (segment.discontinuity) {
+  if (tags[0].discontinuity) {
     if (event.type !== 'waiting') {
       return;
     }
+
     this.sourceBuffer.abort();
+  }
+
+  if (tags[0].offset) {
     // tell the SWF where playback is continuing in the stitched timeline
-    this.el().vjs_setProperty('currentTime', segmentOffset * 0.001);
+    this.el().vjs_setProperty('currentTime', tags[0].offset * 0.001);
   }
 
-  // transmux the segment data from MP2T to FLV
-  this.segmentParser_.parseSegmentBinaryData(bytes);
-  this.segmentParser_.flushTags();
-
-  tags = [];
-  while (this.segmentParser_.tagsAvailable()) {
-    tags.push(this.segmentParser_.getNextTag());
-  }
-
-  // if we're refilling the buffer after a seek, scan through the muxed
-  // FLV tags until we find the one that is closest to the desired
-  // playback time
-  if (typeof offset === 'number') {
-    ptsTime = offset - segmentOffset + tags[0].pts;
-
-    while (tags[i].pts < ptsTime) {
-      i++;
-    }
-
-    // tell the SWF where we will be seeking to
-    this.el().vjs_setProperty('currentTime', (tags[i].pts - tags[0].pts + segmentOffset) * 0.001);
-
-    tags = tags.slice(i);
-
-    this.lastSeekedTime_ = null;
-  }
+  tagsBuffer.splice(0, tags.length);
 
   for (i = 0; i < tags.length; i++) {
     // queue up the bytes to be appended to the SourceBuffer
@@ -566,12 +783,9 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     this.sourceBuffer.appendBuffer(tags[i].bytes, this.player());
   }
 
-  // we're done processing this segment
-  segmentBuffer.shift();
-
   // transition the sourcebuffer to the ended state if we've hit the end of
   // the playlist
-  if (mediaIndex + 1 === playlist.segments.length) {
+  if (tags[i - 1].end) {
     this.mediaSource.endOfStream();
   }
 };
@@ -762,15 +976,10 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
  * @returns {number} The media index, or -1 if none appropriate.
  */
 videojs.Hls.getMediaIndexByTime = function(playlist, time) {
-  var index, counter, timeRanges, currentSegmentRange;
+  var counter, timeRanges, tech;
 
-  timeRanges = [];
-  for (index = 0; index < playlist.segments.length; index++) {
-    currentSegmentRange = {};
-    currentSegmentRange.start = (index === 0) ? 0 : timeRanges[index - 1].end;
-    currentSegmentRange.end = currentSegmentRange.start + playlist.segments[index].duration;
-    timeRanges.push(currentSegmentRange);
-  }
+  tech = this;
+  timeRanges = tech.getSegmentTimeRangesByPlaylist(playlist);
 
   for (counter = 0; counter < timeRanges.length; counter++) {
     if (time >= timeRanges[counter].start && time < timeRanges[counter].end) {
@@ -779,6 +988,19 @@ videojs.Hls.getMediaIndexByTime = function(playlist, time) {
   }
 
   return -1;
+};
+
+videojs.Hls.getSegmentTimeRangesByPlaylist = function(playlist) {
+  var index, timeRanges, currentSegmentRange;
+
+  timeRanges = [];
+  for (index = 0; index < playlist.segments.length; index++) {
+    currentSegmentRange = {};
+    currentSegmentRange.start = (index === 0) ? 0 : timeRanges[index - 1].end;
+    currentSegmentRange.end = currentSegmentRange.start + playlist.segments[index].duration;
+    timeRanges.push(currentSegmentRange);
+  }
+  return timeRanges;
 };
 
 /**
