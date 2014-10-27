@@ -18,10 +18,9 @@ var
   getTagsTillKeyframeMinTime,
   resolveUrl;
 
-getTagsForSegment = function(tech, xhr) {
-  var tag, tags, bytes, segment;
+getTagsForSegment = function(tech, bytes) {
+  var tag, tags;
 
-  bytes = new Uint8Array(xhr.response);
   tags = [];
 
   tech.segmentParser_.parseSegmentBinaryData(bytes);
@@ -589,7 +588,7 @@ videojs.Hls.prototype.onSegmentLoadComplete = function(xhr, offset) {
       segmentOffset;
 
   tech.setBandwidthByXHR(xhr);
-  tags = getTagsForSegment(tech, xhr);
+  tags = getTagsForSegment(tech, new Uint8Array(xhr.response));
 
   segmentOffset = videojs.Hls.getPlaylistDuration(playlist, 0, mediaIndex) * 1000;
 
@@ -657,7 +656,7 @@ videojs.Hls.prototype.midSegmentSwitch = function(xhr, offset) {
       el = this.player().el();
 
   tech.setBandwidthByXHR(xhr);
-  tags = getTagsForSegment(tech, xhr);
+  tags = getTagsForSegment(tech, new Uint8Array(xhr.response));
 
   if (!(/vjs-has-started/).test(el.className)) {
     tech.tagsBuffer_ = [];
