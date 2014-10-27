@@ -116,7 +116,8 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
 
-    if (this.bandwidth !== this.playlists.bandwidth) {
+    if (this.bandwidth !== this.playlists.bandwidth ||
+        (this.bandwidth && this.bandwidth < this.playlists.bandwidth)) {
       this.bandwidth = this.playlists.bandwidth;
 
       selectedPlaylist = this.selectPlaylist();
