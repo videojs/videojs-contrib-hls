@@ -114,7 +114,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     oldMediaPlaylist = this.playlists.media();
 
     if (this.bandwidth !== this.playlists.bandwidth) {
-      if (this.bandwidth !== undefined && this.bandwidth < this.playlists.bandwidth) {
+      if (this.bandwidth === undefined || this.bandwidth !== undefined && this.bandwidth < this.playlists.bandwidth) {
         this.bandwidth = this.playlists.bandwidth;
 
         selectedPlaylist = this.selectPlaylist();
