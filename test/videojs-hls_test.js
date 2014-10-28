@@ -368,7 +368,7 @@ test('downloads media playlists after loading the master', function() {
               'first segment requested');
 });
 
-test('downloads a second media playlist before playback', function() {
+test('downloads a second media playlist before playback, if bandwidth is high', function() {
   player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -422,7 +422,7 @@ test('calculates the bandwidth after downloading a segment', function() {
 
   standardXHRResponse(requests[0]);
 
-  // set the request time to be a bit earlier so our bandwidth calculations are NaN
+  // set the request time to be a bit earlier so our bandwidth calculations are not NaN
   requests[1].requestTime = (new Date())-100;
 
   standardXHRResponse(requests[1]);
