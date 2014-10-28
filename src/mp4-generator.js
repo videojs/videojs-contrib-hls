@@ -37,6 +37,7 @@ DataView = window.DataView;
     stsz: [],
     stts: [],
     styp: [],
+    tfdt: [],
     tfhd: [],
     traf: [],
     trak: [],
@@ -406,7 +407,12 @@ traf = function(track) {
                (track.id & 0xFF000000) >> 24,
                (track.id & 0xFF0000) >> 16,
                (track.id & 0xFF00) >> 8,
-               (track.id & 0xFF),
+               (track.id & 0xFF) // track_ID
+             ])),
+             box(types.tfdt, new Uint8Array([
+               0x00, // version 0
+               0x00, 0x00, 0x00, // flags
+               0x00, 0x00, 0x00, 0x00 // baseMediaDecodeTime
              ])),
              trun(track));
 };
@@ -445,11 +451,12 @@ trun = function(track) {
 
   bytes = [
     0x00, // version 0
-    0x00, 0x0f, 0x00, // flags
+    0x00, 0x0f, 0x01, // flags
     (samples.length & 0xFF000000) >>> 24,
     (samples.length & 0xFF0000) >>> 16,
     (samples.length & 0xFF00) >>> 8,
-    samples.length & 0xFF // sample_count
+    samples.length & 0xFF, // sample_count
+    0x00, 0x00, 0x00, 0x00 // data_offset
   ];
 
   for (i = 0; i < samples.length; i++) {

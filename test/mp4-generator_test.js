@@ -339,12 +339,19 @@ test('generates a minimal moof', function() {
   equal(moof[0].boxes[0].type, 'mfhd', 'generated an mfhd box');
   equal(moof[0].boxes[0].sequenceNumber, 7, 'included the sequence_number');
   equal(moof[0].boxes[1].type, 'traf', 'generated a traf box');
-  equal(moof[0].boxes[1].boxes.length, 2, 'generated track fragment info');
+  equal(moof[0].boxes[1].boxes.length, 3, 'generated track fragment info');
   equal(moof[0].boxes[1].boxes[0].type, 'tfhd', 'generated a tfhd box');
   equal(moof[0].boxes[1].boxes[0].trackId, 17, 'wrote the first track id');
-  equal(moof[0].boxes[1].boxes[0].type, 'tfhd', 'generated a tfhd box');
-  trun = moof[0].boxes[1].boxes[1];
+  equal(moof[0].boxes[1].boxes[0].baseDataOffset, undefined, 'did not set a base data offset');
+
+  equal(moof[0].boxes[1].boxes[1].type, 'tfdt', 'generated a tfdt box');
+  ok(moof[0].boxes[1].boxes[1].baseMediaDecodeTime >= 0,
+     'media decode time is non-negative');
+
+  trun = moof[0].boxes[1].boxes[2];
   equal(trun.type, 'trun', 'generated a trun box');
+  equal(typeof trun.dataOffset, 'number', 'has a data offset');
+  ok(trun.dataOffset >= 0, 'has a non-negative data offset');
   equal(trun.samples.length, 2, 'wrote two samples');
 
   equal(trun.samples[0].duration, 9000, 'wrote a sample duration');
@@ -381,7 +388,7 @@ test('can generate a traf without samples', function() {
     }]),
     moof = videojs.inspectMp4(data);
 
-  equal(moof[0].boxes[1].boxes[1].samples.length, 0, 'generated no samples');
+  equal(moof[0].boxes[1].boxes[2].samples.length, 0, 'generated no samples');
 });
 
 test('generates an mdat', function() {

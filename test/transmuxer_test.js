@@ -880,7 +880,13 @@ validateTrackFragment = function(track, metadata) {
   equal(tfhd.type, 'tfhd', 'wrote a track fragment header');
   equal(tfhd.trackId, metadata.trackId, 'wrote the track id');
 
-  trun = track.boxes[1];
+  equal(track.boxes[1].type,
+        'tfdt',
+        'wrote a track fragment decode time box');
+  ok(track.boxes[1].baseMediaDecodeTime >= 0, 'base decode time is valid');
+
+  trun = track.boxes[2];
+  ok(trun.dataOffset >= 0, 'set data offset');
   ok(trun.samples.length > 0, 'generated media samples');
   for (i = 0; i < trun.samples.length; i++) {
     sample = trun.samples[i];
