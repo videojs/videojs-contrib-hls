@@ -671,7 +671,7 @@ test('can parse a moof', function() {
                   type: 'tfhd',
                   version: 0,
                   size: 40,
-                  flags: new Uint8Array([0, 0, 0x3b]),
+                  flags: new Uint8Array([0x00, 0, 0x3b]),
                   trackId: 1,
                   baseDataOffset: 1,
                   sampleDescriptionIndex: 2,
