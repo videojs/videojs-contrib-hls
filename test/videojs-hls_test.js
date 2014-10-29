@@ -1269,7 +1269,9 @@ test('remove event handlers on dispose', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.hls.playlists.trigger('loadedmetadata');
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
 
   player.dispose();
 
