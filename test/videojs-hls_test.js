@@ -377,8 +377,10 @@ test('downloads a second media playlist before playback, if bandwidth is high', 
 
   standardXHRResponse(requests[0]);
 
-  player.hls.bandwidth = 0;
-  requests[1].requestTime = (new Date()) - 100;
+  player.hls.playlists.setBandwidthByXHR = function() {
+    player.hls.playlists.bandwidth = 100000;
+  };
+
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
   standardXHRResponse(requests[3]);
