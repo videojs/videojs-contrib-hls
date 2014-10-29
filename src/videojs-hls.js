@@ -110,7 +110,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     var selectedPlaylist, loaderHandler, newBitrate, segmentDuration,
-        segmentDlTime, setupEvents;
+        segmentDlTime, setupEvents, threshold;
 
     setupEvents = function() {
       this.fillBuffer();
@@ -133,7 +133,11 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     segmentDlTime = (segmentDuration * newBitrate) / this.bandwidth;
 
-    if (segmentDlTime <= 1) {
+    // this threshold is to account for having a high latency on the manifest
+    // request which is a somewhat small file.
+    threshold = 10;
+
+    if (segmentDlTime <= threshold) {
       this.playlists.media(selectedPlaylist);
       loaderHandler = videojs.bind(this, function() {
         setupEvents.call(this);
