@@ -127,9 +127,11 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     oldMediaPlaylist = this.playlists.media();
     this.bandwidth = this.playlists.bandwidth;
     selectedPlaylist = this.selectPlaylist();
-    newBitrate = selectedPlaylist.attributes && selectedPlaylist.attributes.BANDWIDTH;
-    segmentDuration = oldMediaPlaylist.segments[this.mediaIndex].duration ||
-                             oldMediaPlaylist.targetDuration;
+    newBitrate = selectedPlaylist.attributes &&
+                 selectedPlaylist.attributes.BANDWIDTH;
+    segmentDuration = oldMediaPlaylist.segments &&
+                      oldMediaPlaylist.segments[this.mediaIndex].duration ||
+                      oldMediaPlaylist.targetDuration;
 
     segmentDlTime = (segmentDuration * newBitrate) / this.bandwidth;
 
