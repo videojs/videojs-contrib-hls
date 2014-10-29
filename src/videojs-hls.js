@@ -109,41 +109,40 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
-    var selectedPlaylist, loaderHandler;
+    var selectedPlaylist, loaderHandler, newBitrate, segmentDuration,
+        segmentDlTime, setupEvents;
+
+    setupEvents = function() {
+      this.fillBuffer();
+
+      // periodically check if new data needs to be downloaded or
+      // buffered data should be appended to the source buffer
+      player.on('timeupdate', videojs.bind(this, this.fillBuffer));
+      player.on('timeupdate', videojs.bind(this, this.drainBuffer));
+      player.on('waiting', videojs.bind(this, this.drainBuffer));
+
+      player.trigger('loadedmetadata');
+    };
 
     oldMediaPlaylist = this.playlists.media();
+    this.bandwidth = this.playlists.bandwidth;
+    selectedPlaylist = this.selectPlaylist();
+    newBitrate = selectedPlaylist.attributes && selectedPlaylist.attributes.BANDWIDTH;
+    segmentDuration = oldMediaPlaylist.segments[this.mediaIndex].duration ||
+                             oldMediaPlaylist.targetDuration;
 
-    if (this.bandwidth !== this.playlists.bandwidth) {
-      if (this.bandwidth === undefined || this.bandwidth !== undefined && this.bandwidth < this.playlists.bandwidth) {
-        this.bandwidth = this.playlists.bandwidth;
+    segmentDlTime = (segmentDuration * newBitrate) / this.bandwidth;
 
-        selectedPlaylist = this.selectPlaylist();
-        if (selectedPlaylist === oldMediaPlaylist) {
-          this.fillBuffer();
-        } else {
-          this.playlists.media(selectedPlaylist);
-          loaderHandler = videojs.bind(this, function() {
-            this.fillBuffer();
-            this.playlists.off('loadedplaylist', loaderHandler);
-          });
-          this.playlists.on('loadedplaylist', loaderHandler);
-        }
-      } else {
-        this.fillBuffer();
-      }
+    if (segmentDlTime <= 1) {
+      this.playlists.media(selectedPlaylist);
+      loaderHandler = videojs.bind(this, function() {
+        setupEvents.call(this);
+        this.playlists.off('loadedplaylist', loaderHandler);
+      });
+      this.playlists.on('loadedplaylist', loaderHandler);
     } else {
-      this.fillBuffer();
+      setupEvents.call(this);
     }
-
-    player.one('play', videojs.bind(this, this.fillBuffer));
-
-    // periodically check if new data needs to be downloaded or
-    // buffered data should be appended to the source buffer
-    player.on('timeupdate', videojs.bind(this, this.fillBuffer));
-    player.on('timeupdate', videojs.bind(this, this.drainBuffer));
-    player.on('waiting', videojs.bind(this, this.drainBuffer));
-
-    player.trigger('loadedmetadata');
   }));
 
   this.playlists.on('error', videojs.bind(this, function() {
