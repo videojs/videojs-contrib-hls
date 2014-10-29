@@ -133,6 +133,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     segmentDlTime = (segmentDuration * newBitrate) / this.bandwidth;
 
+    if (!segmentDlTime) {
+      segmentDlTime = Infinity;
+    }
+
     // this threshold is to account for having a high latency on the manifest
     // request which is a somewhat small file.
     threshold = 10;
