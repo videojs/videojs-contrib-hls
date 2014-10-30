@@ -420,8 +420,6 @@ test('dont downshift if bandwidth is low', function() {
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
 
-  standardXHRResponse(requests[3]);
-
   strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
   strictEqual(requests[1].url,
               window.location.origin +
@@ -433,11 +431,6 @@ test('dont downshift if bandwidth is low', function() {
               window.location.pathname.split('/').slice(0, -1).join('/') +
               '/manifest/media-00001.ts',
               'first segment requested');
-  strictEqual(requests[3].url,
-              window.location.origin +
-              window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/media1.m3u8',
-              'media playlist requested');
 });
 
 test('timeupdates do not check to fill the buffer until a media playlist is ready', function() {
