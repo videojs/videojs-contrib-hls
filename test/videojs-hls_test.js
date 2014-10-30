@@ -260,7 +260,7 @@ test('starts downloading a segment on loadedmetadata', function() {
   strictEqual(requests[1].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/00001.ts',
+              '/manifest/media-00001.ts',
               'the first segment is requested');
 });
 
@@ -349,6 +349,9 @@ test('downloads media playlists after loading the master', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  // set bandwidth to a high number, so, we don't switch;
+  player.hls.bandwidth = 500000;
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
 
@@ -361,7 +364,42 @@ test('downloads media playlists after loading the master', function() {
   strictEqual(requests[2].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/00001.ts',
+              '/manifest/media-00001.ts',
+              'first segment requested');
+});
+
+test('downloads a second media playlist before playback, if bandwidth is high', function() {
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  standardXHRResponse(requests[0]);
+
+  player.hls.playlists.setBandwidth = function() {
+    player.hls.playlists.bandwidth = 100000;
+  };
+
+  standardXHRResponse(requests[1]);
+  standardXHRResponse(requests[2]);
+  standardXHRResponse(requests[3]);
+
+  strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
+  strictEqual(requests[1].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/media.m3u8',
+              'media playlist requested');
+  strictEqual(requests[2].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/media1.m3u8',
+              'media playlist requested');
+  strictEqual(requests[3].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/media1-00001.ts',
               'first segment requested');
 });
 
@@ -385,6 +423,10 @@ test('calculates the bandwidth after downloading a segment', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  // set the request time to be a bit earlier so our bandwidth calculations are not NaN
+  requests[1].requestTime = (new Date())-100;
+
   standardXHRResponse(requests[1]);
 
   ok(player.hls.bandwidth, 'bandwidth is calculated');
@@ -407,10 +449,12 @@ test('selects a playlist after segment downloads', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
 
-  strictEqual(calls, 1, 'selects after the initial segment');
+  strictEqual(calls, 2, 'selects after the initial segment');
   player.currentTime = function() {
     return 1;
   };
@@ -420,7 +464,8 @@ test('selects a playlist after segment downloads', function() {
   player.trigger('timeupdate');
 
   standardXHRResponse(requests[3]);
-  strictEqual(calls, 2, 'selects after additional segments');
+
+  strictEqual(calls, 3, 'selects after additional segments');
 });
 
 test('moves to the next segment if there is a network error', function() {
@@ -433,6 +478,8 @@ test('moves to the next segment if there is a network error', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests[1]);
 
   mediaIndex = player.hls.mediaIndex;
@@ -486,6 +533,8 @@ test('downloads additional playlists if required', function() {
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+
+  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests[1]);
   // before an m3u8 is downloaded, no segments are available
   player.hls.selectPlaylist = function() {
@@ -661,7 +710,7 @@ test('downloads the next segment if the buffer is getting low', function() {
   strictEqual(requests[2].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/00002.ts',
+              '/manifest/media-00002.ts',
               'made segment request');
 });
 
@@ -1161,6 +1210,8 @@ test('resets the switching algorithm if a request times out', function() {
   });
   openMediaSource(player);
   standardXHRResponse(requests.shift()); // master
+
+  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests.shift()); // media.m3u8
   // simulate a segment timeout
   requests[0].timedout = true;
@@ -1207,7 +1258,10 @@ test('remove event handlers on dispose', function() {
     oldOn.call(player, type, handler);
   };
   player.off = function(type, handler) {
-    offhandlers++;
+    // ignore the top-level videojs removals that aren't relevant to HLS
+    if (type && type !== 'dispose') {
+      offhandlers++;
+    }
     oldOff.call(player, type, handler);
   };
   player.src({
@@ -1215,7 +1269,9 @@ test('remove event handlers on dispose', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.hls.playlists.trigger('loadedmetadata');
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
 
   player.dispose();
 

@@ -34,6 +34,7 @@
     request = new window.XMLHttpRequest();
     request.open(options.method, url);
     request.url = url;
+    request.requestTime = new Date().getTime();
 
     if (options.responseType) {
       request.responseType = options.responseType;
@@ -67,6 +68,13 @@
       // request aborted or errored
       if (this.status >= 400 || this.status === 0) {
         return callback.call(this, true, url);
+      }
+
+      if (this.response) {
+        this.responseTime = new Date().getTime();
+        this.roundTripTime = this.responseTime - this.requestTime;
+        this.bytesReceived = this.response.byteLength || this.response.length;
+        this.bandwidth = Math.floor((this.bytesReceived / this.roundTripTime) * 8 * 1000);
       }
 
       return callback.call(this, false, url);

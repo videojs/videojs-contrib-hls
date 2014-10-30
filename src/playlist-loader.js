@@ -58,6 +58,8 @@
         haveMetadata = function(error, xhr, url) {
           var parser, refreshDelay, update;
 
+          loader.setBandwidth(request || xhr);
+
           // any in-flight request is now finished
           request = null;
 
@@ -198,6 +200,10 @@
           haveMetadata(error, this, playlist.uri);
           loader.trigger('mediachange');
         });
+      };
+
+      loader.setBandwidth = function(xhr) {
+        loader.bandwidth = xhr.bandwidth;
       };
 
       // live playlist staleness timeout

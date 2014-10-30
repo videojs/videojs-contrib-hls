@@ -5,19 +5,19 @@
   "segments": [
     {
       "duration": 10,
-      "uri": "00001.ts"
+      "uri": "media-00001.ts"
     },
     {
       "duration": 10,
-      "uri": "00002.ts"
+      "uri": "media-00002.ts"
     },
     {
       "duration": 10,
-      "uri": "00003.ts"
+      "uri": "media-00003.ts"
     },
     {
       "duration": 10,
-      "uri": "00004.ts"
+      "uri": "media-00004.ts"
     }
   ],
   "targetDuration": 10,

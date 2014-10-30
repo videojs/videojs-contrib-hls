@@ -101,19 +101,58 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
 
   this.mediaIndex = 0;
+
+  if (this.playlists) {
+    this.playlists.dispose();
+  }
+
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
+    var selectedPlaylist, loaderHandler, newBitrate, segmentDuration,
+        segmentDlTime, setupEvents, threshold;
+
+    setupEvents = function() {
+      this.fillBuffer();
+
+      // periodically check if new data needs to be downloaded or
+      // buffered data should be appended to the source buffer
+      player.on('timeupdate', videojs.bind(this, this.fillBuffer));
+      player.on('timeupdate', videojs.bind(this, this.drainBuffer));
+      player.on('waiting', videojs.bind(this, this.drainBuffer));
+
+      player.trigger('loadedmetadata');
+    };
+
     oldMediaPlaylist = this.playlists.media();
+    this.bandwidth = this.playlists.bandwidth;
+    selectedPlaylist = this.selectPlaylist();
+    newBitrate = selectedPlaylist.attributes &&
+                 selectedPlaylist.attributes.BANDWIDTH;
+    segmentDuration = oldMediaPlaylist.segments &&
+                      oldMediaPlaylist.segments[this.mediaIndex].duration ||
+                      oldMediaPlaylist.targetDuration;
 
-    // periodically check if new data needs to be downloaded or
-    // buffered data should be appended to the source buffer
-    this.fillBuffer();
-    player.on('timeupdate', videojs.bind(this, this.fillBuffer));
-    player.on('timeupdate', videojs.bind(this, this.drainBuffer));
-    player.on('waiting', videojs.bind(this, this.drainBuffer));
+    segmentDlTime = (segmentDuration * newBitrate) / this.bandwidth;
 
-    player.trigger('loadedmetadata');
+    if (!segmentDlTime) {
+      segmentDlTime = Infinity;
+    }
+
+    // this threshold is to account for having a high latency on the manifest
+    // request which is a somewhat small file.
+    threshold = 10;
+
+    if (segmentDlTime <= threshold) {
+      this.playlists.media(selectedPlaylist);
+      loaderHandler = videojs.bind(this, function() {
+        setupEvents.call(this);
+        this.playlists.off('loadedplaylist', loaderHandler);
+      });
+      this.playlists.on('loadedplaylist', loaderHandler);
+    } else {
+      setupEvents.call(this);
+    }
   }));
 
   this.playlists.on('error', videojs.bind(this, function() {
@@ -409,12 +448,27 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   this.loadSegment(segmentUri, offset);
 };
 
+/*
+ * Sets `bandwidth`, `segmentXhrTime`, and appends to the `bytesReceived.
+ * Expects an object with:
+ *  * `roundTripTime` - the round trip time for the request we're setting the time for
+ *  * `bandwidth` - the bandwidth we want to set
+ *  * `bytesReceived` - amount of bytes downloaded
+ * `bandwidth` is the only required property.
+ */
+videojs.Hls.prototype.setBandwidth = function(xhr) {
+  var tech = this;
+  // calculate the download bandwidth
+  tech.segmentXhrTime = xhr.roundTripTime;
+  tech.bandwidth = xhr.bandwidth;
+  tech.bytesReceived += xhr.bytesReceived || 0;
+};
+
 videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
   var
     tech = this,
     player = this.player(),
-    settings = player.options().hls || {},
-    startTime = +new Date();
+    settings = player.options().hls || {};
 
   // request the next segment
   this.segmentXhr_ = videojs.Hls.xhr({
@@ -448,10 +502,7 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       return;
     }
 
-    // calculate the download bandwidth
-    tech.segmentXhrTime = (+new Date()) - startTime;
-    tech.bandwidth = (this.response.byteLength / tech.segmentXhrTime) * 8 * 1000;
-    tech.bytesReceived += this.response.byteLength;
+    tech.setBandwidth(this);
 
     // package up all the work to append the segment
     // if the segment is the start of a timestamp discontinuity,
