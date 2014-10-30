@@ -448,13 +448,20 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   this.loadSegment(segmentUri, offset);
 };
 
-// Encapsulate the setBandwidth routine for future expansion
-videojs.Hls.prototype.setBandwidthByXHR = function(xhr) {
+/*
+ * Sets `bandwidth`, `segmentXhrTime`, and appends to the `bytesReceived.
+ * Expects an object with:
+ *  * `roundTripTime` - the round trip time for the request we're setting the time for
+ *  * `bandwidth` - the bandwidth we want to set
+ *  * `bytesReceived` - amount of bytes downloaded
+ * `bandwidth` is the only required property.
+ */
+videojs.Hls.prototype.setBandwidth = function(xhr) {
   var tech = this;
   // calculate the download bandwidth
   tech.segmentXhrTime = xhr.roundTripTime;
   tech.bandwidth = xhr.bandwidth;
-  tech.bytesReceived += xhr.bytesReceived;
+  tech.bytesReceived += xhr.bytesReceived || 0;
 };
 
 videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
@@ -495,7 +502,7 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       return;
     }
 
-    tech.setBandwidthByXHR(this);
+    tech.setBandwidth(this);
 
     // package up all the work to append the segment
     // if the segment is the start of a timestamp discontinuity,

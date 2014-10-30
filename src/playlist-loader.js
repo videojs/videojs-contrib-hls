@@ -58,7 +58,7 @@
         haveMetadata = function(error, xhr, url) {
           var parser, refreshDelay, update;
 
-          loader.setBandwidthByXHR(request || xhr);
+          loader.setBandwidth(request || xhr);
 
           // any in-flight request is now finished
           request = null;
@@ -202,7 +202,7 @@
         });
       };
 
-      loader.setBandwidthByXHR = function(xhr) {
+      loader.setBandwidth = function(xhr) {
         loader.bandwidth = xhr.bandwidth;
       };
 
