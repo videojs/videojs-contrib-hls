@@ -260,7 +260,7 @@ test('starts downloading a segment on loadedmetadata', function() {
   strictEqual(requests[1].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/00001.ts',
+              '/manifest/media-00001.ts',
               'the first segment is requested');
 });
 
@@ -364,7 +364,7 @@ test('downloads media playlists after loading the master', function() {
   strictEqual(requests[2].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/00001.ts',
+              '/manifest/media-00001.ts',
               'first segment requested');
 });
 
@@ -399,7 +399,7 @@ test('downloads a second media playlist before playback, if bandwidth is high', 
   strictEqual(requests[3].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/00001.ts',
+              '/manifest/media1-00001.ts',
               'first segment requested');
 });
 
@@ -710,7 +710,7 @@ test('downloads the next segment if the buffer is getting low', function() {
   strictEqual(requests[2].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/00002.ts',
+              '/manifest/media-00002.ts',
               'made segment request');
 });
 
