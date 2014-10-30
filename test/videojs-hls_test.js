@@ -368,7 +368,7 @@ test('downloads media playlists after loading the master', function() {
               'first segment requested');
 });
 
-test('downloads a second media playlist before playback, if bandwidth is high', function() {
+test('upshift if initial bandwidth is high', function() {
   player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -378,11 +378,12 @@ test('downloads a second media playlist before playback, if bandwidth is high', 
   standardXHRResponse(requests[0]);
 
   player.hls.playlists.setBandwidth = function() {
-    player.hls.playlists.bandwidth = 100000;
+    player.hls.playlists.bandwidth = 1000000000;
   };
 
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
+
   standardXHRResponse(requests[3]);
 
   strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
@@ -394,13 +395,49 @@ test('downloads a second media playlist before playback, if bandwidth is high', 
   strictEqual(requests[2].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/media1.m3u8',
+              '/manifest/media3.m3u8',
               'media playlist requested');
   strictEqual(requests[3].url,
               window.location.origin +
               window.location.pathname.split('/').slice(0, -1).join('/') +
-              '/manifest/media1-00001.ts',
+              '/manifest/media3-00001.ts',
               'first segment requested');
+});
+
+test('dont downshift if bandwidth is low', function() {
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  standardXHRResponse(requests[0]);
+
+  player.hls.playlists.setBandwidth = function() {
+    player.hls.playlists.bandwidth = 100;
+  };
+
+  standardXHRResponse(requests[1]);
+  standardXHRResponse(requests[2]);
+
+  standardXHRResponse(requests[3]);
+
+  strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
+  strictEqual(requests[1].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/media.m3u8',
+              'media playlist requested');
+  strictEqual(requests[2].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/media-00001.ts',
+              'first segment requested');
+  strictEqual(requests[3].url,
+              window.location.origin +
+              window.location.pathname.split('/').slice(0, -1).join('/') +
+              '/manifest/media1.m3u8',
+              'media playlist requested');
 });
 
 test('timeupdates do not check to fill the buffer until a media playlist is ready', function() {
