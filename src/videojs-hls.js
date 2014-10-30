@@ -109,7 +109,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
-    var selectedPlaylist, loaderHandler, newBitrate, segmentDuration,
+    var selectedPlaylist, loaderHandler, oldBitrate, newBitrate, segmentDuration,
         segmentDlTime, setupEvents, threshold;
 
     setupEvents = function() {
@@ -127,8 +127,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     oldMediaPlaylist = this.playlists.media();
     this.bandwidth = this.playlists.bandwidth;
     selectedPlaylist = this.selectPlaylist();
+    oldBitrate = oldMediaPlaylist.attributes &&
+                 oldMediaPlaylist.attributes.BANDWIDTH || 0;
     newBitrate = selectedPlaylist.attributes &&
-                 selectedPlaylist.attributes.BANDWIDTH;
+                 selectedPlaylist.attributes.BANDWIDTH || 0;
     segmentDuration = oldMediaPlaylist.segments &&
                       oldMediaPlaylist.segments[this.mediaIndex].duration ||
                       oldMediaPlaylist.targetDuration;
@@ -143,7 +145,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     // request which is a somewhat small file.
     threshold = 10;
 
-    if (segmentDlTime <= threshold) {
+    if (newBitrate > oldBitrate && segmentDlTime <= threshold) {
       this.playlists.media(selectedPlaylist);
       loaderHandler = videojs.bind(this, function() {
         setupEvents.call(this);
