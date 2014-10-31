@@ -195,6 +195,7 @@ resolution, even though this might mean more stalls during playback.
 See the documentation on `player.hls.selectPlaylist` for more details.
 
 ## Release History
+- 0.10.0: optimistic initial bitrate selection
 - 0.9.0: support segment level AES-128 encryption
 - 0.8.0: support for EXT-X-DISCONTINUITY
 - 0.7.0: convert the HLS plugin to a tech
