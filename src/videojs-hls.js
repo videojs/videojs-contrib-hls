@@ -141,6 +141,13 @@ videojs.Hls.prototype.handleSourceOpen = function() {
       segmentDlTime = Infinity;
     }
 
+    if(this.duration() === Infinity) {
+      var lookback = Math.round(30 / segmentDuration);
+      if (selectedPlaylist.segments.length > lookback) {
+        this.mediaIndex = selectedPlaylist.segments.length - lookback;
+      }
+    }
+
     // this threshold is to account for having a high latency on the manifest
     // request which is a somewhat small file.
     threshold = 10;
@@ -801,7 +808,7 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
   }
 
   // sync on media sequence
-  return (original.mediaSequence + mediaIndex) - update.mediaSequence;
+  return (update.mediaSequence + mediaIndex) - original.mediaSequence;
 };
 
 /**
