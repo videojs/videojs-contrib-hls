@@ -828,6 +828,7 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
     return videojs.Hls.setMediaIndexForLive(update) + 1;
   }
 
+  // sync
   return translatedMediaIndex;
 };
 
