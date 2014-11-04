@@ -802,8 +802,10 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
 
   // sync on media sequence
   var ret = (original.mediaSequence + mediaIndex) - update.mediaSequence;
-  if(ret < 0) 
+  if(ret < 0) {
       ret = 0;
+  }
+  
   return ret; 
 };
 
