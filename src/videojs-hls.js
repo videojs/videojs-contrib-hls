@@ -155,6 +155,8 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     } else {
       setupEvents.call(this);
     }
+
+    this.trigger('bandwidthupdate');
   }));
 
   this.playlists.on('error', videojs.bind(this, function() {
@@ -464,6 +466,8 @@ videojs.Hls.prototype.setBandwidth = function(xhr) {
   tech.segmentXhrTime = xhr.roundTripTime;
   tech.bandwidth = xhr.bandwidth;
   tech.bytesReceived += xhr.bytesReceived || 0;
+
+  tech.trigger('bandwidthupdate');
 };
 
 videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
