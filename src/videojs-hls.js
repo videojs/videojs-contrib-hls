@@ -801,7 +801,10 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
   }
 
   // sync on media sequence
-  return (original.mediaSequence + mediaIndex) - update.mediaSequence;
+  var ret = (original.mediaSequence + mediaIndex) - update.mediaSequence;
+  if(ret < 0) 
+      ret = 0;
+  return ret; 
 };
 
 /**
