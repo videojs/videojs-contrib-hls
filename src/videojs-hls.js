@@ -125,8 +125,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     };
 
     oldMediaPlaylist = this.playlists.media();
-    this.bandwidth = this.playlists.bandwidth;
-    this.trigger('bandwidthupdate');
+    this.setBandwidth(this.playlists);
 
     selectedPlaylist = this.selectPlaylist();
     oldBitrate = oldMediaPlaylist.attributes &&
