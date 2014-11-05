@@ -126,6 +126,8 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     oldMediaPlaylist = this.playlists.media();
     this.bandwidth = this.playlists.bandwidth;
+    this.trigger('bandwidthupdate');
+
     selectedPlaylist = this.selectPlaylist();
     oldBitrate = oldMediaPlaylist.attributes &&
                  oldMediaPlaylist.attributes.BANDWIDTH || 0;
@@ -155,8 +157,6 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     } else {
       setupEvents.call(this);
     }
-
-    this.trigger('bandwidthupdate');
   }));
 
   this.playlists.on('error', videojs.bind(this, function() {
