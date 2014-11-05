@@ -141,11 +141,14 @@ videojs.Hls.prototype.handleSourceOpen = function() {
       segmentDlTime = Infinity;
     }
 
-    if(this.duration() === Infinity) {
-      var lookback = Math.round(30 / segmentDuration);
-      if (selectedPlaylist.segments.length > lookback) {
-        this.mediaIndex = selectedPlaylist.segments.length - lookback;
+    if(this.duration() === Infinity && this.mediaIndex === 0) {
+      var i = selectedPlaylist.segments.length - 1;
+      var tailDuration = 0;
+      while (tailDuration < 30 && i > 0) {
+        tailDuration += selectedPlaylist.segments[i].duration;
+        i--;
       }
+      this.mediaIndex = i;
     }
 
     // this threshold is to account for having a high latency on the manifest
