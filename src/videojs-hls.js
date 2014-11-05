@@ -141,7 +141,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
       segmentDlTime = Infinity;
     }
 
-    if(this.duration() === Infinity && this.mediaIndex === 0) {
+    if(this.duration === Infinity && this.mediaIndex === 0 && selectedPlaylist.segments) {
       var i = selectedPlaylist.segments.length - 1;
       var tailDuration = 0;
       while (tailDuration < 30 && i > 0) {
