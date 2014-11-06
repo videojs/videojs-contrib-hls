@@ -125,7 +125,8 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     };
 
     oldMediaPlaylist = this.playlists.media();
-    this.bandwidth = this.playlists.bandwidth;
+    this.setBandwidth(this.playlists);
+
     selectedPlaylist = this.selectPlaylist();
     oldBitrate = oldMediaPlaylist.attributes &&
                  oldMediaPlaylist.attributes.BANDWIDTH || 0;
@@ -464,6 +465,8 @@ videojs.Hls.prototype.setBandwidth = function(xhr) {
   tech.segmentXhrTime = xhr.roundTripTime;
   tech.bandwidth = xhr.bandwidth;
   tech.bytesReceived += xhr.bytesReceived || 0;
+
+  tech.trigger('bandwidthupdate');
 };
 
 videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
