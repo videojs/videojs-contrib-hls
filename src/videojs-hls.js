@@ -110,7 +110,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     var selectedPlaylist, loaderHandler, oldBitrate, newBitrate, segmentDuration,
-        segmentDlTime, setupEvents, threshold;
+        segmentDlTime, setupEvents, threshold, tailIterator, tailDuration;
 
     setupEvents = function() {
       this.fillBuffer();
@@ -142,14 +142,14 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     }
 
     // start live playlists 30 seconds before the current time
-    if(this.duration() === Infinity && this.mediaIndex === 0 && selectedPlaylist.segments) {
-      var i = selectedPlaylist.segments.length - 1,
-          tailDuration = 0;
-      do {
-        tailDuration += selectedPlaylist.segments[i].duration;
-        i--;
-      } while (tailDuration < 30 && i > 0);
-      this.mediaIndex = i;
+    if (this.duration() === Infinity && this.mediaIndex === 0 && selectedPlaylist.segments) {
+      tailIterator = selectedPlaylist.segments.length - 1;
+      tailDuration = 0;
+      while (tailDuration < 30 && tailIterator > 0) {
+        tailDuration += selectedPlaylist.segments[tailIterator].duration;
+        tailIterator--;
+      }
+      this.mediaIndex = tailIterator;
     }
 
     // this threshold is to account for having a high latency on the manifest
