@@ -143,10 +143,10 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     // start live playlists 30 seconds before the current time
     if (this.duration() === Infinity && this.mediaIndex === 0 && selectedPlaylist.segments) {
-      tailIterator = selectedPlaylist.segments.length - 1;
+      tailIterator = selectedPlaylist.segments.length;
       tailDuration = 0;
       while (tailDuration < 30 && tailIterator > 0) {
-        tailDuration += selectedPlaylist.segments[tailIterator].duration;
+        tailDuration += selectedPlaylist.segments[tailIterator - 1].duration;
         tailIterator--;
       }
       this.mediaIndex = tailIterator;

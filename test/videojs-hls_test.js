@@ -1065,7 +1065,7 @@ test('live playlist starts 30s before live', function() {
 
   player.hls.playlists.trigger('loadedmetadata');
 
-  strictEqual(player.hls.mediaIndex, 5, 'mediaIndex is updated after the reload');
+  strictEqual(player.hls.mediaIndex, 6, 'mediaIndex is updated after the reload');
 });
 
 test('mediaIndex is zero before the first segment loads', function() {
