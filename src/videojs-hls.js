@@ -89,6 +89,18 @@ videojs.Hls.prototype.src = function(src) {
   });
 };
 
+videojs.Hls.setMediaIndexForLive = function(selectedPlaylist) {
+  var tailIterator = selectedPlaylist.segments.length,
+      tailDuration = 0;
+
+  while (tailDuration < 30 && tailIterator > 0) {
+    tailDuration += selectedPlaylist.segments[tailIterator - 1].duration;
+    tailIterator--;
+  }
+
+  return tailIterator;
+}
+
 videojs.Hls.prototype.handleSourceOpen = function() {
   // construct the video data buffer and set the appropriate MIME type
   var
@@ -110,7 +122,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     var selectedPlaylist, loaderHandler, oldBitrate, newBitrate, segmentDuration,
-        segmentDlTime, setupEvents, threshold, tailIterator, tailDuration;
+        segmentDlTime, setupEvents, threshold;
 
     setupEvents = function() {
       this.fillBuffer();
@@ -143,13 +155,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     // start live playlists 30 seconds before the current time
     if (this.duration() === Infinity && this.mediaIndex === 0 && selectedPlaylist.segments) {
-      tailIterator = selectedPlaylist.segments.length;
-      tailDuration = 0;
-      while (tailDuration < 30 && tailIterator > 0) {
-        tailDuration += selectedPlaylist.segments[tailIterator - 1].duration;
-        tailIterator--;
-      }
-      this.mediaIndex = tailIterator;
+      this.mediaIndex = videojs.Hls.setMediaIndexForLive(selectedPlaylist);
     }
 
     // this threshold is to account for having a high latency on the manifest
@@ -791,7 +797,8 @@ videojs.Hls.getPlaylistTotalDuration = function(playlist) {
 videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
   var
     i,
-    originalSegment;
+    originalSegment,
+    translatedMediaIndex;
 
   // no segments have been loaded from the original playlist
   if (mediaIndex === 0) {
@@ -802,17 +809,15 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
     return 0;
   }
 
-  // try to sync based on URI
-  i = update.segments.length;
-  originalSegment = original.segments[mediaIndex - 1];
-  while (i--) {
-    if (originalSegment.uri === update.segments[i].uri) {
-      return i + 1;
-    }
+  translatedMediaIndex = (mediaIndex + (original.mediaSequence - update.mediaSequence))
+
+  if (update.duration() === Infinity && translatedMediaIndex >= update.segments.length) {
+    // recalculate the live point if the streams are too far out of sync
+    return videojs.Hls.setMediaIndexForLive(update) + 1;
   }
 
   // sync on media sequence
-  return (update.mediaSequence + mediaIndex) - original.mediaSequence;
+  return translatedMediaIndex;
 };
 
 /**
