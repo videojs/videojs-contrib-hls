@@ -61,7 +61,7 @@ videojs.Hls.prototype.src = function(src) {
 
   // if there is already a source loaded, clean it up
   if (this.src_) {
-    this.resetSrc_();
+    this.reset_();
   }
 
   this.src_ = src;
@@ -305,10 +305,7 @@ videojs.Hls.prototype.cancelSegmentXhr = function() {
   }
 };
 
-/**
- * Abort all outstanding work and cleanup.
- */
-videojs.Hls.prototype.dispose = function() {
+videojs.Hls.prototype.reset_ = function () {
   var player = this.player();
 
   // remove event handlers
@@ -321,7 +318,13 @@ videojs.Hls.prototype.dispose = function() {
   }
 
   this.resetSrc_();
+};
 
+/**
+ * Abort all outstanding work and cleanup.
+ */
+videojs.Hls.prototype.dispose = function() {
+  this.reset_();
   videojs.Flash.prototype.dispose.call(this);
 };
 

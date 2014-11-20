@@ -293,9 +293,23 @@ test('recognizes domain-relative URLs', function() {
 });
 
 test('re-initializes the tech for each source', function() {
-  var firstPlaylists, secondPlaylists, firstMSE, secondMSE, aborts;
+  var firstPlaylists, secondPlaylists, firstMSE, secondMSE, oldOn, oldOff, onhandlers = 0, offhandlers = 0, aborts = 0;
 
-  aborts = 0;
+  oldOn = player.on;
+  oldOff = player.off;
+  player.on = function(type, handler) {
+    if (type in {'timeupdate': true, 'waiting': true}) {
+      onhandlers++;
+    }
+    oldOn.call(player, type, handler);
+  };
+  player.off = function(type, handler) {
+    // ignore the top-level videojs removals that aren't relevant to HLS
+    if (type in {'timeupdate': true, 'waiting': true}) {
+      offhandlers++;
+    }
+    oldOff.call(player, type, handler);
+  };
 
   player.src({
     src: 'manifest/master.m3u8',
@@ -322,6 +336,12 @@ test('re-initializes the tech for each source', function() {
   ok(requests[0].aborted, 'aborted the old segment request');
   notStrictEqual(firstPlaylists, secondPlaylists, 'the playlist object is not reused');
   notStrictEqual(firstMSE, secondMSE, 'the media source object is not reused');
+
+
+  equal(offhandlers, onhandlers, 'the amount of on and off handlers is the same');
+
+  player.off = oldOff;
+  player.on = oldOn;
 });
 
 test('triggers an error when a master playlist request errors', function() {
