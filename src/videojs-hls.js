@@ -99,7 +99,7 @@ videojs.Hls.setMediaIndexForLive = function(selectedPlaylist) {
   }
 
   return tailIterator;
-}
+};
 
 videojs.Hls.prototype.handleSourceOpen = function() {
   // construct the video data buffer and set the appropriate MIME type
@@ -795,23 +795,32 @@ videojs.Hls.getPlaylistTotalDuration = function(playlist) {
  * playlist
  */
 videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
-  var
-    i,
-    originalSegment,
-    translatedMediaIndex;
+  var i,
+      originalSegment,
+      translatedMediaIndex;
 
   // no segments have been loaded from the original playlist
   if (mediaIndex === 0) {
     return 0;
   }
+
   if (!(update && update.segments)) {
     // let the media index be zero when there are no segments defined
     return 0;
   }
 
-  translatedMediaIndex = (mediaIndex + (original.mediaSequence - update.mediaSequence))
+  // try to sync based on URI
+  i = update.segments.length;
+  originalSegment = original.segments[mediaIndex - 1];
+  while (i--) {
+    if (originalSegment.uri === update.segments[i].uri) {
+      return i + 1;
+    }
+  }
 
-  if (update.duration() === Infinity && translatedMediaIndex >= update.segments.length) {
+  translatedMediaIndex = (mediaIndex + (original.mediaSequence - update.mediaSequence));
+
+  if (update.duration === Infinity && translatedMediaIndex >= update.segments.length) {
     // recalculate the live point if the streams are too far out of sync
     return videojs.Hls.setMediaIndexForLive(update) + 1;
   }
