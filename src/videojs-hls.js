@@ -820,7 +820,7 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
 
   translatedMediaIndex = (mediaIndex + (original.mediaSequence - update.mediaSequence));
 
-  if (update.duration === Infinity && translatedMediaIndex >= update.segments.length) {
+  if (translatedMediaIndex >= update.segments.length || translatedMediaIndex < 0) {
     // recalculate the live point if the streams are too far out of sync
     return videojs.Hls.setMediaIndexForLive(update) + 1;
   }
