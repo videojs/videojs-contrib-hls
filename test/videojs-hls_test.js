@@ -1054,6 +1054,20 @@ test('updates the media index when a playlist reloads', function() {
   strictEqual(player.hls.mediaIndex, 2, 'mediaIndex is updated after the reload');
 });
 
+test('live playlist starts 30s before live', function() {
+  player.src({
+    src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  standardXHRResponse(requests[0]);
+
+  player.hls.playlists.trigger('loadedmetadata');
+
+  strictEqual(player.hls.mediaIndex, 6, 'mediaIndex is updated after the reload');
+});
+
 test('mediaIndex is zero before the first segment loads', function() {
   window.manifests['first-seg-load'] =
     '#EXTM3U\n' +
