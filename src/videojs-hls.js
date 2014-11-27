@@ -89,6 +89,18 @@ videojs.Hls.prototype.src = function(src) {
   });
 };
 
+videojs.Hls.setMediaIndexForLive = function(selectedPlaylist) {
+  var tailIterator = selectedPlaylist.segments.length,
+      tailDuration = 0;
+
+  while (tailDuration < 30 && tailIterator > 0) {
+    tailDuration += selectedPlaylist.segments[tailIterator - 1].duration;
+    tailIterator--;
+  }
+
+  return tailIterator;
+};
+
 videojs.Hls.prototype.handleSourceOpen = function() {
   // construct the video data buffer and set the appropriate MIME type
   var
@@ -125,7 +137,8 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     };
 
     oldMediaPlaylist = this.playlists.media();
-    this.bandwidth = this.playlists.bandwidth;
+    this.setBandwidth(this.playlists);
+
     selectedPlaylist = this.selectPlaylist();
     oldBitrate = oldMediaPlaylist.attributes &&
                  oldMediaPlaylist.attributes.BANDWIDTH || 0;
@@ -139,6 +152,11 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     if (!segmentDlTime) {
       segmentDlTime = Infinity;
+    }
+
+    // start live playlists 30 seconds before the current time
+    if (this.duration() === Infinity && this.mediaIndex === 0 && selectedPlaylist.segments) {
+      this.mediaIndex = videojs.Hls.setMediaIndexForLive(selectedPlaylist);
     }
 
     // this threshold is to account for having a high latency on the manifest
@@ -464,6 +482,8 @@ videojs.Hls.prototype.setBandwidth = function(xhr) {
   tech.segmentXhrTime = xhr.roundTripTime;
   tech.bandwidth = xhr.bandwidth;
   tech.bytesReceived += xhr.bytesReceived || 0;
+
+  tech.trigger('bandwidthupdate');
 };
 
 videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
@@ -778,14 +798,15 @@ videojs.Hls.getPlaylistTotalDuration = function(playlist) {
  * playlist
  */
 videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
-  var
-    i,
-    originalSegment;
+  var i,
+      originalSegment,
+      translatedMediaIndex;
 
   // no segments have been loaded from the original playlist
   if (mediaIndex === 0) {
     return 0;
   }
+
   if (!(update && update.segments)) {
     // let the media index be zero when there are no segments defined
     return 0;
@@ -800,13 +821,15 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
     }
   }
 
-  // sync on media sequence
-  var ret = (original.mediaSequence + mediaIndex) - update.mediaSequence;
-  if(ret < 0) {
-      ret = 0;
+  translatedMediaIndex = (mediaIndex + (original.mediaSequence - update.mediaSequence));
+
+  if (translatedMediaIndex >= update.segments.length || translatedMediaIndex < 0) {
+    // recalculate the live point if the streams are too far out of sync
+    return videojs.Hls.setMediaIndexForLive(update) + 1;
   }
-  
-  return ret; 
+
+  // sync on media sequence
+  return translatedMediaIndex;
 };
 
 /**
