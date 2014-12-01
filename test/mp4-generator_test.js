@@ -307,8 +307,8 @@ test('generates a minimal moof', function() {
         size: 10,
         flags: {
           isLeading: 0,
-          dependsOn: 0,
-          isDependedOn: 0,
+          dependsOn: 2,
+          isDependedOn: 1,
           hasRedundancy: 0,
           paddingValue: 0,
           isNonSyncSample: 0,
@@ -320,7 +320,7 @@ test('generates a minimal moof', function() {
         size: 11,
         flags: {
           isLeading: 0,
-          dependsOn: 0,
+          dependsOn: 1,
           isDependedOn: 0,
           hasRedundancy: 0,
           paddingValue: 0,
@@ -331,7 +331,8 @@ test('generates a minimal moof', function() {
       }]
     }]),
     moof = videojs.inspectMp4(data),
-    trun;
+    trun,
+    sdtp;
 
   equal(moof.length, 1, 'generated one box');
   equal(moof[0].type, 'moof', 'generated a moof box');
@@ -339,7 +340,7 @@ test('generates a minimal moof', function() {
   equal(moof[0].boxes[0].type, 'mfhd', 'generated an mfhd box');
   equal(moof[0].boxes[0].sequenceNumber, 7, 'included the sequence_number');
   equal(moof[0].boxes[1].type, 'traf', 'generated a traf box');
-  equal(moof[0].boxes[1].boxes.length, 3, 'generated track fragment info');
+  equal(moof[0].boxes[1].boxes.length, 4, 'generated track fragment info');
   equal(moof[0].boxes[1].boxes[0].type, 'tfhd', 'generated a tfhd box');
   equal(moof[0].boxes[1].boxes[0].trackId, 17, 'wrote the first track id');
   equal(moof[0].boxes[1].boxes[0].baseDataOffset, undefined, 'did not set a base data offset');
@@ -358,8 +359,8 @@ test('generates a minimal moof', function() {
   equal(trun.samples[0].size, 10, 'wrote a sample size');
   deepEqual(trun.samples[0].flags, {
     isLeading: 0,
-    dependsOn: 0,
-    isDependedOn: 0,
+    dependsOn: 2,
+    isDependedOn: 1,
     hasRedundancy: 0,
     paddingValue: 0,
     isNonSyncSample: 0,
@@ -371,7 +372,7 @@ test('generates a minimal moof', function() {
   equal(trun.samples[1].size, 11, 'wrote a sample size');
   deepEqual(trun.samples[1].flags, {
     isLeading: 0,
-    dependsOn: 0,
+    dependsOn: 1,
     isDependedOn: 0,
     hasRedundancy: 0,
     paddingValue: 0,
@@ -379,6 +380,20 @@ test('generates a minimal moof', function() {
     degradationPriority: 9
   }, 'wrote the sample flags');
   equal(trun.samples[1].compositionTimeOffset, 1000, 'wrote the composition time offset');
+
+  sdtp = moof[0].boxes[1].boxes[3];
+  equal(sdtp.type, 'sdtp', 'generated an sdtp box');
+  equal(sdtp.samples.length, 2, 'wrote two samples');
+  deepEqual(sdtp.samples[0], {
+      dependsOn: 2,
+      isDependedOn: 1,
+      hasRedundancy: 0
+  }, 'wrote the sample data table');
+  deepEqual(sdtp.samples[1], {
+    dependsOn: 1,
+    isDependedOn: 0,
+    hasRedundancy: 0
+  }, 'wrote the sample data table');
 });
 
 test('can generate a traf without samples', function() {

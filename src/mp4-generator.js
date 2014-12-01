@@ -2,10 +2,10 @@
 'use strict';
 
 var box, dinf, ftyp, mdat, mfhd, minf, moof, moov, mvex, mvhd, trak,
-    tkhd, mdia, mdhd, hdlr, stbl, stsd, styp, traf, trex, trun, types,
-    MAJOR_BRAND, MINOR_VERSION, AVC1_BRAND, VIDEO_HDLR, AUDIO_HDLR,
-    HDLR_TYPES, VMHD, DREF, STCO, STSC, STSZ, STTS, Uint8Array,
-    DataView;
+    tkhd, mdia, mdhd, hdlr, sdtp, stbl, stsd, styp, traf, trex, trun,
+    types, MAJOR_BRAND, MINOR_VERSION, AVC1_BRAND, VIDEO_HDLR,
+    AUDIO_HDLR, HDLR_TYPES, VMHD, DREF, STCO, STSC, STSZ, STTS,
+    Uint8Array, DataView;
 
 Uint8Array = window.Uint8Array;
 DataView = window.DataView;
@@ -30,6 +30,7 @@ DataView = window.DataView;
     moov: [],
     mvex: [],
     mvhd: [],
+    sdtp: [],
     stbl: [],
     stco: [],
     stsc: [],
@@ -276,6 +277,27 @@ mvhd = function(duration) {
   return box(types.mvhd, bytes);
 };
 
+sdtp = function(track) {
+  var
+    samples = track.samples || [],
+    bytes = new Uint8Array(4 + samples.length),
+    sample,
+    i;
+
+  // leave the full box header (4 bytes) all zero
+
+  // write the sample table
+  for (i = 0; i < samples.length; i++) {
+    sample = samples[i];
+    bytes[i + 4] = (sample.flags.dependsOn << 4) |
+      (sample.flags.isDependedOn << 2) |
+      (sample.flags.hasRedundancy);
+  }
+
+  return box(types.sdtp,
+             bytes);
+};
+
 stbl = function(track) {
   return box(types.stbl,
              stsd(track),
@@ -414,7 +436,8 @@ traf = function(track) {
                0x00, 0x00, 0x00, // flags
                0x00, 0x00, 0x00, 0x00 // baseMediaDecodeTime
              ])),
-             trun(track));
+             trun(track),
+             sdtp(track));
 };
 
 /**

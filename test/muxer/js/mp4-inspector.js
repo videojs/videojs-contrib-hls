@@ -287,9 +287,9 @@ var
 
       for (i = 4; i < data.byteLength; i++) {
         result.samples.push({
-          sampleDependsOn: (data[i] & 0x30) >> 4,
-          sampleIsDependedOn: (data[i] & 0x0c) >> 2,
-          sampleHasRedundancy: data[i] & 0x03
+          dependsOn: (data[i] & 0x30) >> 4,
+          isDependedOn: (data[i] & 0x0c) >> 2,
+          hasRedundancy: data[i] & 0x03
         });
       }
       return result;
