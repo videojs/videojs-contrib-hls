@@ -766,6 +766,33 @@ test('can parse a trun with per-sample flags', function() {
 
 });
 
+test('can parse an sdtp', function() {
+  var data = box('sdtp',
+                 0x00, // version
+                 0x00, 0x00, 0x00, // flags
+                 // reserved + sample_depends_on +
+                 // sample_is_dependend_on + sample_has_redundancy
+                 0x15,
+                 // reserved + sample_depends_on +
+                 // sample_is_dependend_on + sample_has_redundancy
+                 0x27);
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)), [{
+    type: 'sdtp',
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    size: 14,
+    samples: [{
+      sampleDependsOn: 1,
+      sampleIsDependedOn: 1,
+      sampleHasRedundancy: 1
+    }, {
+      sampleDependsOn: 2,
+      sampleIsDependedOn: 1,
+      sampleHasRedundancy: 3
+    }]
+  }]);
+});
+
 test('can parse a sidx', function(){
   var data = box('sidx',
                 0x00, // version

@@ -277,6 +277,23 @@ var
         initialDelay: view.getUint32(8)
       };
     },
+    sdtp: function(data) {
+      var
+        result = {
+          version: data[0],
+          flags: new Uint8Array(data.subarray(1, 4)),
+          samples: []
+        }, i;
+
+      for (i = 4; i < data.byteLength; i++) {
+        result.samples.push({
+          sampleDependsOn: (data[i] & 0x30) >> 4,
+          sampleIsDependedOn: (data[i] & 0x0c) >> 2,
+          sampleHasRedundancy: data[i] & 0x03
+        });
+      }
+      return result;
+    },
     sidx: function(data) {
       var view = new DataView(data.buffer, data.byteOffset, data.byteLength),
           result = {
@@ -301,7 +318,7 @@ var
           sapDeltaTime: view.getUint32(i + 8) & 0x0FFFFFFF
         });
       }
-      
+
       return result;
     },
     stbl: function(data) {
