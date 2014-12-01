@@ -353,6 +353,7 @@ test('generates a minimal moof', function() {
   equal(trun.type, 'trun', 'generated a trun box');
   equal(typeof trun.dataOffset, 'number', 'has a data offset');
   ok(trun.dataOffset >= 0, 'has a non-negative data offset');
+  equal(trun.dataOffset, moof[0].size + 8, 'sets the data offset past the mdat header');
   equal(trun.samples.length, 2, 'wrote two samples');
 
   equal(trun.samples[0].duration, 9000, 'wrote a sample duration');

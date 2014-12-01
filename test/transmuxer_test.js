@@ -888,6 +888,12 @@ validateTrackFragment = function(track, metadata) {
 
   trun = track.boxes[2];
   ok(trun.dataOffset >= 0, 'set data offset');
+  equal(trun.dataOffset,
+        trun.size +
+        16 + // mfhd size
+        8 + // moof header size
+        8, // mdat header size
+        'uses movie fragment relative addressing');
   ok(trun.samples.length > 0, 'generated media samples');
   for (i = 0; i < trun.samples.length; i++) {
     sample = trun.samples[i];

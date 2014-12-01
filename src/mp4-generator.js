@@ -422,6 +422,7 @@ tkhd = function(track) {
 };
 
 traf = function(track) {
+  var sampleDependencyTable = sdtp(track);
   return box(types.traf,
              box(types.tfhd, new Uint8Array([
                0x00, // version 0
@@ -436,8 +437,15 @@ traf = function(track) {
                0x00, 0x00, 0x00, // flags
                0x00, 0x00, 0x00, 0x00 // baseMediaDecodeTime
              ])),
-             trun(track),
-             sdtp(track));
+             trun(track,
+                  sdtp.length +
+                  16 + // tfhd
+                  16 + // tfdt
+                  8 +  // traf header
+                  16 + // mfhd
+                  8 +  // moof header
+                  8),  // mdat header
+             sampleDependencyTable);
 };
 
 /**
@@ -467,10 +475,11 @@ trex = function(track) {
   ]));
 };
 
-trun = function(track) {
+trun = function(track, offset) {
   var bytes, samples, sample, i;
 
   samples = track.samples || [];
+  offset += 8 + 12 + (16 * samples.length);
 
   bytes = [
     0x00, // version 0
@@ -479,7 +488,10 @@ trun = function(track) {
     (samples.length & 0xFF0000) >>> 16,
     (samples.length & 0xFF00) >>> 8,
     samples.length & 0xFF, // sample_count
-    0x00, 0x00, 0x00, 0x00 // data_offset
+    (offset & 0xFF000000) >>> 24,
+    (offset & 0xFF0000) >>> 16,
+    (offset & 0xFF00) >>> 8,
+    offset & 0xFF // data_offset
   ];
 
   for (i = 0; i < samples.length; i++) {
@@ -503,7 +515,7 @@ trun = function(track) {
       (sample.compositionTimeOffset & 0xFF000000) >>> 24,
       (sample.compositionTimeOffset & 0xFF0000) >>> 16,
       (sample.compositionTimeOffset & 0xFF00) >>> 8,
-      sample.compositionTimeOffset & 0xFF, // sample_composition_time_offset
+      sample.compositionTimeOffset & 0xFF // sample_composition_time_offset
     ]);
   }
   return box(types.trun, new Uint8Array(bytes));
