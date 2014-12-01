@@ -782,13 +782,13 @@ test('can parse an sdtp', function() {
     flags: new Uint8Array([0, 0, 0]),
     size: 14,
     samples: [{
-      sampleDependsOn: 1,
-      sampleIsDependedOn: 1,
-      sampleHasRedundancy: 1
+      dependsOn: 1,
+      isDependedOn: 1,
+      hasRedundancy: 1
     }, {
-      sampleDependsOn: 2,
-      sampleIsDependedOn: 1,
-      sampleHasRedundancy: 3
+      dependsOn: 2,
+      isDependedOn: 1,
+      hasRedundancy: 3
     }]
   }]);
 });

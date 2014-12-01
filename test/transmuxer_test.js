@@ -874,8 +874,9 @@ validateTrack = function(track, metadata) {
 };
 
 validateTrackFragment = function(track, metadata) {
-  var tfhd, trun, i, sample;
+  var tfhd, trun, sdtp, i, sample;
   equal(track.type, 'traf', 'wrote a track fragment');
+  equal(track.boxes.length, 4, 'wrote four track fragment children');
   tfhd = track.boxes[0];
   equal(tfhd.type, 'tfhd', 'wrote a track fragment header');
   equal(tfhd.trackId, metadata.trackId, 'wrote the track id');
@@ -901,6 +902,24 @@ validateTrackFragment = function(track, metadata) {
     equal(sample.flags.isDependedOn, 0, 'dependency of other samples is unknown');
     equal(sample.flags.hasRedundancy, 0, 'sample redundancy is unknown');
     equal(sample.flags.degradationPriority, 0, 'sample degradation priority is zero');
+  }
+
+  sdtp = track.boxes[3];
+  equal(trun.samples.length,
+        sdtp.samples.length,
+        'wrote an equal number of trun and sdtp samples');
+  for (i = 0; i < sdtp.samples.length; i++) {
+    sample = sdtp.samples[i];
+    notEqual(sample.dependsOn, 0, 'sample dependency is not unknown');
+    equal(trun.samples[i].flags.dependsOn,
+          sample.dependsOn,
+          'wrote a consistent dependsOn');
+    equal(trun.samples[i].flags.isDependedOn,
+          sample.isDependedOn,
+          'wrote a consistent isDependedOn');
+    equal(trun.samples[i].flags.hasRedundancy,
+          sample.hasRedundancy,
+          'wrote a consistent hasRedundancy');
   }
 };
 
