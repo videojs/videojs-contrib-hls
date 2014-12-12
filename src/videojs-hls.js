@@ -92,7 +92,7 @@ videojs.Hls.prototype.src = function(src) {
 videojs.Hls.setMediaIndexForLive = function(selectedPlaylist) {
   var tailIterator = selectedPlaylist.segments.length,
       tailDuration = 0,
-      targetTail = selectedPlaylist.targetDuration ? selectedPlaylist.targetDuration * 3 : 30;
+      targetTail = (selectedPlaylist.targetDuration || 10) * 3;
 
   while (tailDuration < targetTail && tailIterator > 0) {
     tailDuration += selectedPlaylist.segments[tailIterator - 1].duration;
