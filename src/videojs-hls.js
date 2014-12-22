@@ -221,6 +221,11 @@ videojs.Hls.prototype.play = function() {
     this.mediaIndex = 0;
   }
 
+  var player = this.player(),
+  settings = player.options();
+  
+  player.muted(settings.muted);
+
   // delegate back to the Flash implementation
   return videojs.Flash.prototype.play.apply(this, arguments);
 };
@@ -430,8 +435,8 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     segment,
     segmentUri;
 
-  // if there is a request already in flight, do nothing
-  if (this.segmentXhr_) {
+  // if there is a request already in flight and we are not seeking, do nothing
+  if (this.segmentXhr_ && offset !== 'number') {
     return;
   }
 
