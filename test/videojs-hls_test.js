@@ -1944,4 +1944,22 @@ test('treats invalid keys as a key request failure', function() {
   equal(1, bytes[1], 'skipped to the second segment');
 });
 
+test('live stream should not call endOfStream', function(){
+  player.src({
+    src: 'https://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  requests[0].respond(200, null,
+                      '#EXTM3U\n' +
+                      '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                      '#EXTINF:1\n' +
+                      '0.ts\n'
+                     );
+  requests[1].response = window.bcSegment;
+  requests[1].respondd(200, null, "");
+  equal("open", player.hls.mediaSource.readyState,
+        "media source should be in open state, not ended state for live stream after the last segment in m3u8 downloaded");
+});
+
 })(window, window.videojs);
