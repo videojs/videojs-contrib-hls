@@ -1957,7 +1957,7 @@ test('live stream should not call endOfStream', function(){
                       '0.ts\n'
                      );
   requests[1].response = window.bcSegment;
-  requests[1].respondd(200, null, "");
+  requests[1].respond(200, null, "");
   equal("open", player.hls.mediaSource.readyState,
         "media source should be in open state, not ended state for live stream after the last segment in m3u8 downloaded");
 });
