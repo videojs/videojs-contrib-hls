@@ -29,6 +29,8 @@ var
   programStream,
   H264Stream = videojs.mp2t.H264Stream,
   h264Stream,
+  VideoSegmentStream = videojs.mp2t.VideoSegmentStream,
+  videoSegmentStream,
   Transmuxer = videojs.mp2t.Transmuxer,
   transmuxer,
 
@@ -782,6 +784,103 @@ test('parses nal unit types', function() {
   equal(data.nalUnitType, 'slice_layer_without_partitioning_rbsp_idr', 'identified a key frame');
 });
 
+// MP4 expects H264 (aka AVC) data to be in storage format. Storage
+// format is optimized for reliable, random-access media in contrast
+// to the byte stream format that retransmits metadata regularly to
+// allow decoders to quickly begin operation from wherever in the
+// broadcast they begin receiving.
+// Details on the byte stream format can be found in Annex B of
+// Recommendation ITU-T H.264.
+// The storage format is described in ISO/IEC 14496-15
+test('strips byte stream framing during parsing', function() {
+  var data = [];
+  h264Stream.on('data', function(event) {
+    data.push(event);
+  });
+
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      // -- NAL unit start
+      // zero_byte
+      0x00,
+      // start_code_prefix_one_3bytes
+      0x00, 0x00, 0x01,
+      // nal_unit_type (picture parameter set)
+      0x08,
+      // fake data
+      0x01, 0x02, 0x03, 0x04,
+      0x05, 0x06, 0x07,
+      // trailing_zero_8bits * 5
+      0x00, 0x00, 0x00, 0x00,
+      0x00,
+
+      // -- NAL unit start
+      // zero_byte
+      0x00,
+      // start_code_prefix_one_3bytes
+      0x00, 0x00, 0x01,
+      // nal_unit_type (access_unit_delimiter_rbsp)
+      0x09,
+      // fake data
+      0x06, 0x05, 0x04, 0x03,
+      0x02, 0x01, 0x00
+    ])
+  });
+  h264Stream.end();
+
+  equal(data.length, 2, 'parsed two NAL units');
+  deepEqual(new Uint8Array([
+    0x08,
+    0x01, 0x02, 0x03, 0x04,
+    0x05, 0x06, 0x07
+  ]), data[0].data, 'parsed the first NAL unit');
+  deepEqual(new Uint8Array([
+    0x09,
+    0x06, 0x05, 0x04, 0x03,
+    0x02, 0x01, 0x00
+  ]), data[1].data, 'parsed the second NAL unit');
+});
+
+module('VideoSegmentStream', {
+  setup: function() {
+    videoSegmentStream = new VideoSegmentStream({});
+  }
+});
+
+// see ISO/IEC 14496-15, Section 5 "AVC elementary streams and sample definitions"
+test('concatenates NAL units into AVC elementary streams', function() {
+  var segment, boxes;
+  videoSegmentStream.on('data', function(data) {
+    segment = data;
+  });
+  videoSegmentStream.push({
+    data: new Uint8Array([
+      0x08,
+      0x01, 0x02, 0x03
+    ])
+  });
+  videoSegmentStream.push({
+    data: new Uint8Array([
+      0x08,
+      0x04, 0x03, 0x02, 0x01, 0x00
+    ])
+  });
+  videoSegmentStream.end();
+
+  ok(segment, 'generated a data event');
+  boxes = videojs.inspectMp4(segment);
+  equal(boxes[1].byteLength,
+        (4 + 4) + (4 + 6),
+        'wrote the correct number of bytes');
+  deepEqual(new Uint8Array(segment.subarray(boxes[0].size + 8)), new Uint8Array([
+    0, 0, 0, 4,
+    0x08, 0x01, 0x02, 0x03,
+    0, 0, 0, 6,
+    0x08, 0x04, 0x03, 0x02, 0x01, 0x00
+  ]), 'wrote an AVC stream into the mdat');
+});
+
 module('Transmuxer', {
   setup: function() {
     transmuxer = new Transmuxer();
@@ -832,12 +931,17 @@ test('buffers video samples until ended', function() {
   equal(boxes.length, 2, 'generated two boxes');
   equal(boxes[0].type, 'moof', 'the first box is a moof');
   equal(boxes[1].type, 'mdat', 'the second box is a mdat');
-  deepEqual(new Uint8Array(samples[0].data.subarray(samples[0].data.length - 10)),
+  deepEqual(new Uint8Array(samples[0].data.subarray(boxes[0].size + 8)),
             new Uint8Array([
+              0, 0, 0, 2,
               0x09, 0x01,
+              0, 0, 0, 2,
               0x00, 0x02,
+              0, 0, 0, 2,
               0x09, 0x03,
+              0, 0, 0, 2,
               0x00, 0x04,
+              0, 0, 0, 2,
               0x00, 0x05]),
             'concatenated NALs into an mdat');
 });
@@ -873,8 +977,8 @@ validateTrack = function(track, metadata) {
   equal(mdia.boxes[2].type, 'minf', 'wrote the media info');
 };
 
-validateTrackFragment = function(track, metadata) {
-  var tfhd, trun, sdtp, i, sample;
+validateTrackFragment = function(track, segment, metadata) {
+  var tfhd, trun, sdtp, i, j, sample, nalUnitType;
   equal(track.type, 'traf', 'wrote a track fragment');
   equal(track.boxes.length, 4, 'wrote four track fragment children');
   tfhd = track.boxes[0];
@@ -884,18 +988,15 @@ validateTrackFragment = function(track, metadata) {
   equal(track.boxes[1].type,
         'tfdt',
         'wrote a track fragment decode time box');
-  ok(track.boxes[1].baseMediaDecodeTime >= 0, 'base decode time is valid');
+  ok(track.boxes[1].baseMediaDecodeTime >= 0, 'base decode time is non-negative');
 
   trun = track.boxes[2];
   ok(trun.dataOffset >= 0, 'set data offset');
   equal(trun.dataOffset,
-        trun.size +
-        16 + // mfhd size
-        8 + // moof header size
-        8, // mdat header size
-        'uses movie fragment relative addressing');
+        metadata.mdatOffset + 8,
+        'trun data offset is the size of the moof');
   ok(trun.samples.length > 0, 'generated media samples');
-  for (i = 0; i < trun.samples.length; i++) {
+  for (i = 0, j = trun.dataOffset; i < trun.samples.length; i++) {
     sample = trun.samples[i];
     ok(sample.duration > 0, 'wrote a positive duration for sample ' + i);
     ok(sample.size > 0, 'wrote a positive size for sample ' + i);
@@ -903,11 +1004,17 @@ validateTrackFragment = function(track, metadata) {
        'wrote a positive composition time offset for sample ' + i);
     ok(sample.flags, 'wrote sample flags');
     equal(sample.flags.isLeading, 0, 'the leading nature is unknown');
+
     notEqual(sample.flags.dependsOn, 0, 'sample dependency is not unknown');
     notEqual(sample.flags.dependsOn, 4, 'sample dependency is valid');
+    nalUnitType = segment[j + 4] & 0x1F;
+    equal(nalUnitType, 9, 'samples begin with an access_unit_delimiter_rbsp');
+
     equal(sample.flags.isDependedOn, 0, 'dependency of other samples is unknown');
     equal(sample.flags.hasRedundancy, 0, 'sample redundancy is unknown');
     equal(sample.flags.degradationPriority, 0, 'sample degradation priority is zero');
+
+    j += sample.size; // advance to the next sample in the mdat
   }
 
   sdtp = track.boxes[3];
@@ -970,12 +1077,13 @@ test('parses an example mp2t file and generates media segments', function() {
     ok(mfhd.sequenceNumber < sequenceNumber, 'sequence numbers are increasing');
     sequenceNumber = mfhd.sequenceNumber;
 
-    validateTrackFragment(boxes[i].boxes[1], {
+    equal(boxes[i + 1].type, 'mdat', 'second box is an mdat');
+    validateTrackFragment(boxes[i].boxes[1], segments[1].data, {
       trackId: 256,
       width: 388,
-      height: 300
+      height: 300,
+      mdatOffset: boxes[0].size
     });
-    equal(boxes[i + 1].type, 'mdat', 'second box is an mdat');
   }
 });
 
