@@ -168,13 +168,17 @@ test('can parse a pdin', function() {
 
 test('can parse an mdat', function() {
   var mdat = new Uint8Array(box('mdat',
+      0, 0, 0, 4, // length
       0x01, 0x02, 0x03, 0x04 // data
     ));
   deepEqual(videojs.inspectMp4(mdat), [{
-      size: 12,
-      type: 'mdat',
-      byteLength: 4
-    }], 'parsed an mdat');
+    size: 16,
+    type: 'mdat',
+    nals: [
+      'slice_layer_without_partitioning_rbsp'
+    ],
+    byteLength: 8
+  }], 'parsed an mdat');
 });
 
 test('can parse a free or skip', function() {

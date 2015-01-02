@@ -30,6 +30,41 @@ var
       degradationPriority: (flags[2] << 8) | flags[3]
     };
   },
+  nalParse = function(avcStream) {
+    var
+      avcView = new DataView(avcStream.buffer, avcStream.byteOffset, avcStream.byteLength),
+      result = [],
+      i,
+      length;
+    for (i = 0; i < avcStream.length; i += length) {
+      length = avcView.getUint32(i);
+      i += 4;
+      switch(avcStream[i] & 0x1F) {
+      case 0x01:
+        result.push('slice_layer_without_partitioning_rbsp');
+        break;
+      case 0x05:
+        result.push('slice_layer_without_partitioning_rbsp_idr');
+        break;
+      case 0x06:
+        result.push('sei_rbsp');
+        break;
+      case 0x07:
+        result.push('seq_parameter_set_rbsp');
+        break;
+      case 0x08:
+        result.push('pic_parameter_set_rbsp');
+        break;
+      case 0x09:
+        result.push('access_unit_delimiter_rbsp');
+        break;
+      default:
+        result.push(avcStream[i] & 0x1F);
+        break;
+      }
+    }
+    return result;
+  },
 
   // registry of handlers for individual mp4 box types
   parse = {
@@ -150,7 +185,8 @@ var
     },
     mdat: function(data) {
       return {
-        byteLength: data.byteLength
+        byteLength: data.byteLength,
+        nals: nalParse(data)
       };
     },
     mdhd: function(data) {
