@@ -47,3 +47,29 @@ track
     sample
 
 movie fragment -> track fragment -> [samples]
+
+### Sample Data Offsets
+Movie-fragment Relative Addressing: all trun data offsets are relative
+to the containing moof (?).
+
+Without default-base-is-moof, the base data offset for each trun in
+trafs after the first is the *end* of the previous traf.
+
+#### iso5/DASH Style
+moof
+|- traf (default-base-is-moof)
+|  |- trun_0 <size of moof> + 0
+|   `- trun_1 <size of moof> + 100
+`- traf (default-base-is-moof)
+   `- trun_2 <size of moof> + 300
+mdat
+|- samples_for_trun_0 (100 bytes)
+|- samples_for_trun_1 (200 bytes)
+`- samples_for_trun_2
+
+#### Single Track Style
+moof
+`- traf
+   `- trun_0 <size of moof> + 0
+mdat
+`- samples_for_trun_0
