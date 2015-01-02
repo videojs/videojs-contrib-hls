@@ -365,7 +365,7 @@ stsd = function(track) {
           track.profileIdc, // AVCProfileIndication
           track.profileCompatibility, // profile_compatibility
           track.levelIdc, // AVCLevelIndication
-          0xff // lengthSizeMinusOne
+          0xff // lengthSizeMinusOne, hard-coded to 4 bytes
         ].concat([
           track.sps.length // numOfSequenceParameterSets
         ]).concat(sequenceParameterSets).concat([
@@ -438,7 +438,7 @@ traf = function(track) {
                0x00, 0x00, 0x00, 0x00 // baseMediaDecodeTime
              ])),
              trun(track,
-                  sdtp.length +
+                  sampleDependencyTable.length +
                   16 + // tfhd
                   16 + // tfdt
                   8 +  // traf header
