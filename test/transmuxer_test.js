@@ -834,12 +834,12 @@ test('strips byte stream framing during parsing', function() {
     0x08,
     0x01, 0x02, 0x03, 0x04,
     0x05, 0x06, 0x07
-  ]), data[0].data, 'parsed the first NAL unit');
+  ]), new Uint8Array(data[0].data), 'parsed the first NAL unit');
   deepEqual(new Uint8Array([
     0x09,
     0x06, 0x05, 0x04, 0x03,
     0x02, 0x01, 0x00
-  ]), data[1].data, 'parsed the second NAL unit');
+  ]), new Uint8Array(data[1].data), 'parsed the second NAL unit');
 });
 
 module('VideoSegmentStream', {
@@ -879,6 +879,36 @@ test('concatenates NAL units into AVC elementary streams', function() {
     0, 0, 0, 6,
     0x08, 0x04, 0x03, 0x02, 0x01, 0x00
   ]), 'wrote an AVC stream into the mdat');
+});
+
+test('scales DTS values from milliseconds to 90kHz', function() {
+  var segment, boxes, samples;
+  videoSegmentStream.on('data', function(data) {
+    segment = data;
+  });
+  videoSegmentStream.push({
+    data: new Uint8Array([0x09, 0x01]),
+    nalUnitType: 'access_unit_delimiter_rbsp',
+    dts: 1
+  });
+  videoSegmentStream.push({
+    data: new Uint8Array([0x09, 0x01]),
+    nalUnitType: 'access_unit_delimiter_rbsp',
+    dts: 2
+  });
+  videoSegmentStream.push({
+    data: new Uint8Array([0x09, 0x01]),
+    nalUnitType: 'access_unit_delimiter_rbsp',
+    dts: 4
+  });
+  videoSegmentStream.end();
+
+  boxes = videojs.inspectMp4(segment);
+  samples = boxes[0].boxes[1].boxes[2].samples;
+  equal(samples.length, 3, 'generated two samples');
+  equal(samples[0].duration, 1 * 90, 'multiplied DTS duration by 90');
+  equal(samples[1].duration, 2 * 90, 'multiplied DTS duration by 90');
+  equal(samples[2].duration, 2 * 90, 'inferred the final sample duration');
 });
 
 module('Transmuxer', {
