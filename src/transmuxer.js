@@ -721,7 +721,9 @@ VideoSegmentStream = function(track) {
       // flush the sample we've been building when a new sample is started
       if (currentNal.nalUnitType === 'access_unit_delimiter_rbsp') {
         if (startUnit) {
-          sample.duration = currentNal.dts - startUnit.dts;
+          // convert the duration to 90kHZ timescale to match the
+          // timescales specified in the init segment
+          sample.duration = (currentNal.dts - startUnit.dts) * 90;
           track.samples.push(sample);
         }
         sample = {

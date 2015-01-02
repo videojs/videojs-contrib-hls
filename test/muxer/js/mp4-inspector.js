@@ -107,7 +107,7 @@ var
       for (i = 0; i < numOfSequenceParameterSets; i++) {
         nalSize = view.getUint16(offset);
         offset += 2;
-        result.sps.push(data.subarray(offset, offset + nalSize));
+        result.sps.push(new Uint8Array(data.subarray(offset, offset + nalSize)));
         offset += nalSize;
       }
       // iterate past any PPSs
@@ -116,7 +116,7 @@ var
       for (i = 0; i < numOfPictureParameterSets; i++) {
         nalSize = view.getUint16(offset);
         offset += 2;
-        result.pps.push(data.subarray(offset, offset + nalSize));
+        result.pps.push(new Uint8Array(data.subarray(offset, offset + nalSize)));
         offset += nalSize;
       }
       return result;
