@@ -44,10 +44,21 @@
         if (!callbacks) {
           return;
         }
-        args = Array.prototype.slice.call(arguments, 1);
-        length = callbacks.length;
-        for (i = 0; i < length; ++i) {
-          callbacks[i].apply(this, args);
+        // Slicing the arguments on every invocation of this method
+        // can add a significant amount of overhead. Avoid the
+        // intermediate object creation for the common case of a
+        // single callback argument
+        if (arguments.length === 2) {
+          length = callbacks.length;
+          for (i = 0; i < length; ++i) {
+            callbacks[i].call(this, arguments[1]);
+          }
+        } else {
+          args = Array.prototype.slice.call(arguments, 1);
+          length = callbacks.length;
+          for (i = 0; i < length; ++i) {
+            callbacks[i].apply(this, args);
+          }
         }
       };
       /**
