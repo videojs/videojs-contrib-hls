@@ -15,7 +15,7 @@
 'use strict';
 
 var
-  PacketStream, ParseStream, ProgramStream, VideoSegmentStream,
+  TransportPacketStream, TransportParseStream, ElementaryStream, VideoSegmentStream,
   Transmuxer, AacStream, H264Stream, NalByteStream,
   MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4;
 
@@ -25,14 +25,15 @@ ADTS_STREAM_TYPE = 0x0f;
 mp4 = videojs.mp4;
 
 /**
- * Splits an incoming stream of binary data into MP2T packets.
+ * Splits an incoming stream of binary data into MPEG-2 Transport
+ * Stream packets.
  */
-PacketStream = function() {
+TransportPacketStream = function() {
   var
     buffer = new Uint8Array(MP2T_PACKET_LENGTH),
     end = 0;
 
-  PacketStream.prototype.init.call(this);
+  TransportPacketStream.prototype.init.call(this);
 
   /**
    * Deliver new bytes to the stream.
@@ -76,15 +77,15 @@ PacketStream = function() {
     }
   };
 };
-PacketStream.prototype = new videojs.Hls.Stream();
+TransportPacketStream.prototype = new videojs.Hls.Stream();
 
 /**
- * Accepts an MP2T PacketStream and emits data events with parsed
- * forms of the individual packets.
+ * Accepts an MP2T TransportPacketStream and emits data events with parsed
+ * forms of the individual transport stream packets.
  */
-ParseStream = function() {
+TransportParseStream = function() {
   var parsePsi, parsePat, parsePmt, parsePes, self;
-  ParseStream.prototype.init.call(this);
+  TransportParseStream.prototype.init.call(this);
   self = this;
 
   this.programMapTable = {};
@@ -255,16 +256,21 @@ ParseStream = function() {
     this.trigger('data', result);
   };
 };
-ParseStream.prototype = new videojs.Hls.Stream();
-ParseStream.STREAM_TYPES  = {
+TransportParseStream.prototype = new videojs.Hls.Stream();
+TransportParseStream.STREAM_TYPES  = {
   h264: 0x1b,
   adts: 0x0f
 };
 
 /**
- * Reconsistutes program stream packets from multiple transport stream packets.
+ * Reconsistutes program elementary stream (PES) packets from parsed
+ * transport stream packets. That is, if you pipe an
+ * mp2t.TransportParseStream into a mp2t.ElementaryStream, the output
+ * events will be events which capture the bytes for individual PES
+ * packets plus relevant metadata that has been extracted from the
+ * container.
  */
-ProgramStream = function() {
+ElementaryStream = function() {
   var
     // PES packet fragments
     video = {
@@ -305,7 +311,7 @@ ProgramStream = function() {
     },
     self;
 
-  ProgramStream.prototype.init.call(this);
+  ElementaryStream.prototype.init.call(this);
   self = this;
 
   this.push = function(data) {
@@ -380,10 +386,10 @@ ProgramStream = function() {
     flushStream(audio, 'audio');
   };
 };
-ProgramStream.prototype = new videojs.Hls.Stream();
+ElementaryStream.prototype = new videojs.Hls.Stream();
 
 /*
- * Accepts a ProgramStream and emits data events with parsed
+ * Accepts a ElementaryStream and emits data events with parsed
  * AAC Audio Frames of the individual packets.
  */
 AacStream = function() {
@@ -486,7 +492,7 @@ NalByteStream = function() {
 NalByteStream.prototype = new videojs.Hls.Stream();
 
 /**
- * Accepts input from a ProgramStream and produces H.264 NAL unit data
+ * Accepts input from a ElementaryStream and produces H.264 NAL unit data
  * events.
  */
 H264Stream = function() {
@@ -681,6 +687,9 @@ H264Stream = function() {
 H264Stream.prototype = new videojs.Hls.Stream();
 
 /**
+ * Constructs a single-track, ISO BMFF media segment from H264 data
+ * events. The output of this stream can be fed to a SourceBuffer
+ * configured with a suitable initialization segment.
  * @param track {object} track metadata configuration
  */
 VideoSegmentStream = function(track) {
@@ -778,6 +787,14 @@ VideoSegmentStream = function(track) {
 };
 VideoSegmentStream.prototype = new videojs.Hls.Stream();
 
+/**
+ * A Stream that expects MP2T binary data as input and produces
+ * corresponding media segments, suitable for use with Media Source
+ * Extension (MSE) implementations that support the ISO BMFF byte
+ * stream format, like Chrome.
+ * @see test/muxer/mse-demo.html for sample usage of a Transmuxer with
+ * MSE
+ */
 Transmuxer = function() {
   var
     self = this,
@@ -785,21 +802,21 @@ Transmuxer = function() {
     config,
     pps,
 
-    packetStream, parseStream, programStream, aacStream, h264Stream, videoSegmentStream;
+    packetStream, parseStream, elementaryStream, aacStream, h264Stream, videoSegmentStream;
 
   Transmuxer.prototype.init.call(this);
 
   // set up the parsing pipeline
-  packetStream = new PacketStream();
-  parseStream = new ParseStream();
-  programStream = new ProgramStream();
+  packetStream = new TransportPacketStream();
+  parseStream = new TransportParseStream();
+  elementaryStream = new ElementaryStream();
   aacStream = new AacStream();
   h264Stream = new H264Stream();
 
   packetStream.pipe(parseStream);
-  parseStream.pipe(programStream);
-  programStream.pipe(aacStream);
-  programStream.pipe(h264Stream);
+  parseStream.pipe(elementaryStream);
+  elementaryStream.pipe(aacStream);
+  elementaryStream.pipe(h264Stream);
 
   // handle incoming data events
   h264Stream.on('data', function(data) {
@@ -835,7 +852,7 @@ Transmuxer = function() {
     }
   });
   // hook up the video segment stream once track metadata is delivered
-  programStream.on('data', function(data) {
+  elementaryStream.on('data', function(data) {
     var i, triggerData = function(segment) {
       self.trigger('data', {
         data: segment
@@ -863,7 +880,7 @@ Transmuxer = function() {
   };
   // flush any buffered data
   this.end = function() {
-    programStream.end();
+    elementaryStream.end();
     h264Stream.end();
     videoSegmentStream.end();
   };
@@ -875,9 +892,9 @@ window.videojs.mp2t = {
   MP2T_PACKET_LENGTH: MP2T_PACKET_LENGTH,
   H264_STREAM_TYPE: H264_STREAM_TYPE,
   ADTS_STREAM_TYPE: ADTS_STREAM_TYPE,
-  PacketStream: PacketStream,
-  ParseStream: ParseStream,
-  ProgramStream: ProgramStream,
+  TransportPacketStream: TransportPacketStream,
+  TransportParseStream: TransportParseStream,
+  ElementaryStream: ElementaryStream,
   VideoSegmentStream: VideoSegmentStream,
   Transmuxer: Transmuxer,
   AacStream: AacStream,
