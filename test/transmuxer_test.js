@@ -21,12 +21,12 @@
   throws(block, [expected], [message])
 */
 var
-  PacketStream = videojs.mp2t.PacketStream,
-  packetStream,
-  ParseStream = videojs.mp2t.ParseStream,
-  parseStream,
-  ProgramStream = videojs.mp2t.ProgramStream,
-  programStream,
+  TransportPacketStream = videojs.mp2t.TransportPacketStream,
+  transportPacketStream,
+  TransportParseStream = videojs.mp2t.TransportParseStream,
+  transportParseStream,
+  ElementaryStream = videojs.mp2t.ElementaryStream,
+  elementaryStream,
   H264Stream = videojs.mp2t.H264Stream,
   h264Stream,
   VideoSegmentStream = videojs.mp2t.VideoSegmentStream,
@@ -49,20 +49,20 @@ var
 
 module('MP2T Packet Stream', {
   setup: function() {
-    packetStream = new PacketStream();
+    transportPacketStream = new TransportPacketStream();
   }
 });
 
 test('empty input does not error', function() {
-  packetStream.push(new Uint8Array([]));
+  transportPacketStream.push(new Uint8Array([]));
   ok(true, 'did not throw');
 });
 test('parses a generic packet', function() {
   var datas = [];
-  packetStream.on('data', function(event) {
+  transportPacketStream.on('data', function(event) {
     datas.push(event);
   });
-  packetStream.push(new Uint8Array(188));
+  transportPacketStream.push(new Uint8Array(188));
 
   equal(1, datas.length, 'fired one event');
   equal(datas[0].byteLength, 188, 'delivered the packet');
@@ -70,14 +70,14 @@ test('parses a generic packet', function() {
 
 test('buffers partial packets', function() {
   var datas = [];
-  packetStream.on('data', function(event) {
+  transportPacketStream.on('data', function(event) {
     datas.push(event);
   });
-  packetStream.push(new Uint8Array(187));
+  transportPacketStream.push(new Uint8Array(187));
 
   equal(0, datas.length, 'did not fire an event');
 
-  packetStream.push(new Uint8Array(189));
+  transportPacketStream.push(new Uint8Array(189));
   equal(2, datas.length, 'fired events');
   equal(188, datas[0].byteLength, 'parsed the first packet');
   equal(188, datas[1].byteLength, 'parsed the second packet');
@@ -85,11 +85,11 @@ test('buffers partial packets', function() {
 
 test('parses multiple packets delivered at once', function() {
   var datas = [];
-  packetStream.on('data', function(event) {
+  transportPacketStream.on('data', function(event) {
     datas.push(event);
   });
 
-  packetStream.push(new Uint8Array(188 * 3));
+  transportPacketStream.push(new Uint8Array(188 * 3));
   equal(3, datas.length, 'fired three events');
   equal(188, datas[0].byteLength, 'parsed the first packet');
   equal(188, datas[1].byteLength, 'parsed the second packet');
@@ -98,46 +98,46 @@ test('parses multiple packets delivered at once', function() {
 
 test('buffers extra after multiple packets', function() {
   var datas = [];
-  packetStream.on('data', function(event) {
+  transportPacketStream.on('data', function(event) {
     datas.push(event);
   });
 
-  packetStream.push(new Uint8Array(188 * 2 + 10));
+  transportPacketStream.push(new Uint8Array(188 * 2 + 10));
   equal(2, datas.length, 'fired two events');
   equal(188, datas[0].byteLength, 'parsed the first packet');
   equal(188, datas[1].byteLength, 'parsed the second packet');
 
-  packetStream.push(new Uint8Array(178));
+  transportPacketStream.push(new Uint8Array(178));
   equal(3, datas.length, 'fired a final event');
   equal(188, datas[2].length, 'parsed the finel packet');
 });
 
-module('MP2T ParseStream', {
+module('MP2T TransportParseStream', {
   setup: function() {
-    packetStream = new PacketStream();
-    parseStream = new ParseStream();
+    transportPacketStream = new TransportPacketStream();
+    transportParseStream = new TransportParseStream();
 
-    packetStream.pipe(parseStream);
+    transportPacketStream.pipe(transportParseStream);
   }
 });
 
 test('emits an error on an invalid packet', function() {
   var errors = [];
-  parseStream.on('error', function(error) {
+  transportParseStream.on('error', function(error) {
     errors.push(error);
   });
-  parseStream.push(new Uint8Array(188));
+  transportParseStream.push(new Uint8Array(188));
 
   equal(1, errors.length, 'emitted an error');
 });
 
 test('parses generic packet properties', function() {
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
 
-  parseStream.push(new Uint8Array([
+  transportParseStream.push(new Uint8Array([
     0x47, // sync byte
     // tei:0 pusi:1 tp:0 pid:0 0000 0000 0001 tsc:01 afc:10 cc:11 padding: 00
     0x40, 0x01, 0x6c
@@ -148,11 +148,11 @@ test('parses generic packet properties', function() {
 
 test('parses piped data events', function() {
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
 
-  parseStream.push(new Uint8Array([
+  transportParseStream.push(new Uint8Array([
     0x47, // sync byte
     // tei:0 pusi:1 tp:0 pid:0 0000 0000 0001 tsc:01 afc:10 cc:11 padding: 00
     0x40, 0x01, 0x6c
@@ -163,11 +163,11 @@ test('parses piped data events', function() {
 
 test('parses a data packet with adaptation fields', function() {
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
 
-  parseStream.push(new Uint8Array([
+  transportParseStream.push(new Uint8Array([
     0x47, // sync byte
     // tei:0 pusi:1 tp:0 pid:0 0000 0000 0000 tsc:01 afc:10 cc:11 afl:00 0000 00 stuffing:00 0000 00 pscp:00 0001 padding:0000
     0x40, 0x00, 0x6c, 0x00, 0x00, 0x10
@@ -177,16 +177,16 @@ test('parses a data packet with adaptation fields', function() {
 
 test('parses a PES packet', function() {
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
 
   // setup a program map table
-  parseStream.programMapTable = {
+  transportParseStream.programMapTable = {
     0x0010: videojs.mp2t.H264_STREAM_TYPE
   };
 
-  parseStream.push(new Uint8Array([
+  transportParseStream.push(new Uint8Array([
     0x47, // sync byte
     // tei:0 pusi:1 tp:0 pid:0 0000 0000 0010 tsc:01 afc:01 cc:11 padding:00
     0x40, 0x02, 0x5c
@@ -196,16 +196,16 @@ test('parses a PES packet', function() {
 
 test('parses packets with variable length adaptation fields and a payload', function() {
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
 
   // setup a program map table
-  parseStream.programMapTable = {
+  transportParseStream.programMapTable = {
     0x0010: videojs.mp2t.H264_STREAM_TYPE
   };
 
-  parseStream.push(new Uint8Array([
+  transportParseStream.push(new Uint8Array([
     0x47, // sync byte
     // tei:0 pusi:1 tp:0 pid:0 0000 0000 0010 tsc:01 afc:11 cc:11 afl:00 0000 11 stuffing:00 0000 0000 00 pscp:00 0001
     0x40, 0x02, 0x7c, 0x0c, 0x00, 0x01
@@ -254,13 +254,13 @@ PAT = [
 
 test('parses the program map table pid from the program association table (PAT)', function() {
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
 
-  parseStream.push(new Uint8Array(PAT));
+  transportParseStream.push(new Uint8Array(PAT));
   ok(packet, 'parsed a packet');
-  strictEqual(0x0010, parseStream.pmtPid, 'parsed PMT pid');
+  strictEqual(0x0010, transportParseStream.pmtPid, 'parsed PMT pid');
 });
 
 PMT = [
@@ -295,32 +295,32 @@ PMT = [
 
 test('parse the elementary streams from a program map table', function() {
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
-  parseStream.pmtPid = 0x0010;
+  transportParseStream.pmtPid = 0x0010;
 
-  parseStream.push(new Uint8Array(PMT.concat(0, 0, 0, 0, 0)));
+  transportParseStream.push(new Uint8Array(PMT.concat(0, 0, 0, 0, 0)));
 
   ok(packet, 'parsed a packet');
-  ok(parseStream.programMapTable, 'parsed a program map');
-  strictEqual(0x1b, parseStream.programMapTable[0x11], 'associated h264 with pid 0x11');
-  strictEqual(0x0f, parseStream.programMapTable[0x12], 'associated adts with pid 0x12');
-  strictEqual(parseStream.programMapTable[0], undefined, 'ignored trailing stuffing bytes');
-  deepEqual(parseStream.programMapTable, packet.programMapTable, 'recorded the PMT');
+  ok(transportParseStream.programMapTable, 'parsed a program map');
+  strictEqual(0x1b, transportParseStream.programMapTable[0x11], 'associated h264 with pid 0x11');
+  strictEqual(0x0f, transportParseStream.programMapTable[0x12], 'associated adts with pid 0x12');
+  strictEqual(transportParseStream.programMapTable[0], undefined, 'ignored trailing stuffing bytes');
+  deepEqual(transportParseStream.programMapTable, packet.programMapTable, 'recorded the PMT');
 });
 
 test('parses an elementary stream packet with just a pts', function() {
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
 
-  parseStream.programMapTable = {
+  transportParseStream.programMapTable = {
     0x11: 0x1b // pid 0x11 is h264 data
   };
 
-  parseStream.push(new Uint8Array([
+  transportParseStream.push(new Uint8Array([
     0x47, // sync byte
     // tei:0 pusi:1 tp:0 pid:0 0000 0001 0001
     0x40, 0x11,
@@ -352,15 +352,15 @@ test('parses an elementary stream packet with just a pts', function() {
 
 test('parses an elementary stream packet with a pts and dts', function() {
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
 
-  parseStream.programMapTable = {
+  transportParseStream.programMapTable = {
     0x11: 0x1b // pid 0x11 is h264 data
   };
 
-  parseStream.push(new Uint8Array([
+  transportParseStream.push(new Uint8Array([
     0x47, // sync byte
     // tei:0 pusi:1 tp:0 pid:0 0000 0001 0001
     0x40, 0x11,
@@ -446,16 +446,16 @@ standalonePes = videoPes([0xaf, 0x01], true);
 test('parses an elementary stream packet without a pts or dts', function() {
 
   var packet;
-  parseStream.on('data', function(data) {
+  transportParseStream.on('data', function(data) {
     packet = data;
   });
 
   // pid 0x11 is h264 data
-  parseStream.programMapTable = {
+  transportParseStream.programMapTable = {
     0x11: H264_STREAM_TYPE
   };
 
-  parseStream.push(new Uint8Array(standalonePes));
+  transportParseStream.push(new Uint8Array(standalonePes));
 
   ok(packet, 'parsed a packet');
   equal('pes', packet.type, 'recognized a PES packet');
@@ -467,9 +467,9 @@ test('parses an elementary stream packet without a pts or dts', function() {
   ok(!packet.dts, 'did not parse a dts');
 });
 
-module('MP2T ProgramStream', {
+module('MP2T ElementaryStream', {
   setup: function() {
-    programStream = new ProgramStream();
+    elementaryStream = new ElementaryStream();
   }
 });
 
@@ -486,16 +486,16 @@ test('parses metadata events from PSI packets', function() {
     sortById = function(left, right) {
       return left.id - right.id;
     };
-  programStream.on('data', function(data) {
+  elementaryStream.on('data', function(data) {
     if (data.type === 'metadata') {
       metadatas.push(data);
     }
     datas++;
   });
-  programStream.push({
+  elementaryStream.push({
     type: 'pat'
   });
-  programStream.push({
+  elementaryStream.push({
     type: 'pmt',
     programMapTable: {
       1: 0x1b,
@@ -519,14 +519,14 @@ test('parses metadata events from PSI packets', function() {
 
 test('parses standalone program stream packets', function() {
   var packets = [];
-  programStream.on('data', function(packet) {
+  elementaryStream.on('data', function(packet) {
     packets.push(packet);
   });
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     data: new Uint8Array(19)
   });
-  programStream.end();
+  elementaryStream.end();
 
   equal(1, packets.length, 'built one packet');
   equal('audio', packets[0].type, 'identified audio data');
@@ -535,11 +535,11 @@ test('parses standalone program stream packets', function() {
 
 test('aggregates program stream packets from the transport stream', function() {
   var events = [];
-  programStream.on('data', function(event) {
+  elementaryStream.on('data', function(event) {
     events.push(event);
   });
 
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     streamType: H264_STREAM_TYPE,
     payloadUnitStartIndicator: true,
@@ -549,12 +549,12 @@ test('aggregates program stream packets from the transport stream', function() {
   });
   equal(0, events.length, 'buffers partial packets');
 
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     streamType: H264_STREAM_TYPE,
     data: new Uint8Array(13)
   });
-  programStream.end();
+  elementaryStream.end();
   equal(1, events.length, 'built one packet');
   equal('video', events[0].type, 'identified video data');
   equal(events[0].pts, 7, 'passed along the pts');
@@ -564,17 +564,17 @@ test('aggregates program stream packets from the transport stream', function() {
 
 test('buffers audio and video program streams individually', function() {
   var events = [];
-  programStream.on('data', function(event) {
+  elementaryStream.on('data', function(event) {
     events.push(event);
   });
 
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     payloadUnitStartIndicator: true,
     streamType: H264_STREAM_TYPE,
     data: new Uint8Array(1)
   });
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     payloadUnitStartIndicator: true,
     streamType: ADTS_STREAM_TYPE,
@@ -582,17 +582,17 @@ test('buffers audio and video program streams individually', function() {
   });
   equal(0, events.length, 'buffers partial packets');
 
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     streamType: H264_STREAM_TYPE,
     data: new Uint8Array(1)
   });
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     streamType: ADTS_STREAM_TYPE,
     data: new Uint8Array(1)
   });
-  programStream.end();
+  elementaryStream.end();
   equal(2, events.length, 'parsed a complete packet');
   equal('video', events[0].type, 'identified video data');
   equal('audio', events[1].type, 'identified audio data');
@@ -600,29 +600,29 @@ test('buffers audio and video program streams individually', function() {
 
 test('flushes the buffered packets when a new one of that type is started', function() {
   var packets = [];
-  programStream.on('data', function(packet) {
+  elementaryStream.on('data', function(packet) {
     packets.push(packet);
   });
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     payloadUnitStartIndicator: true,
     streamType: H264_STREAM_TYPE,
     data: new Uint8Array(1)
   });
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     payloadUnitStartIndicator: true,
     streamType: ADTS_STREAM_TYPE,
     data: new Uint8Array(7)
   });
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     streamType: H264_STREAM_TYPE,
     data: new Uint8Array(1)
   });
   equal(0, packets.length, 'buffers packets by type');
 
-  programStream.push({
+  elementaryStream.push({
     type: 'pes',
     payloadUnitStartIndicator: true,
     streamType: H264_STREAM_TYPE,
@@ -632,7 +632,7 @@ test('flushes the buffered packets when a new one of that type is started', func
   equal('video', packets[0].type, 'identified video data');
   equal(2, packets[0].data.byteLength, 'concatenated packets');
 
-  programStream.end();
+  elementaryStream.end();
   equal(3, packets.length, 'built tow more packets');
   equal('video', packets[1].type, 'identified video data');
   equal(1, packets[1].data.byteLength, 'parsed the video payload');
