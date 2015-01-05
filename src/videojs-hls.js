@@ -644,7 +644,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   // transition the sourcebuffer to the ended state if we've hit the end of
   // the playlist
-  if (mediaIndex + 1 === playlist.segments.length) {
+  if (this.duration() !== Infinity && mediaIndex + 1 === playlist.segments.length) {
     this.mediaSource.endOfStream();
   }
 };
