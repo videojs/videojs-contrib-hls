@@ -618,6 +618,21 @@ test('selects a playlist below the current bandwidth', function() {
               'the low bitrate stream is selected');
 });
 
+test('scales the bandwidth estimate for the first segment', function() {
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  requests[0].bandwidth = 500;
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                           '#EXT-X-TARGETDURATION:10\n');
+  equal(player.hls.bandwidth, 500 * 5, 'scaled the bandwidth estimate by 5');
+});
+
 test('raises the minimum bitrate for a stream proportionially', function() {
   var playlist;
   player.src({

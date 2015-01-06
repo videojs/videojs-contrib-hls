@@ -1,7 +1,7 @@
 (function(window, document) {
   'use strict';
   var segmentDuration = 9, // seconds
-      segmentCount = 100,
+      segmentCount = 10,
       duration = segmentDuration * segmentCount,
       propagationDelay = 0.5,
 
@@ -171,13 +171,21 @@
           return currentTime;
         };
 
+        bandwidths.sort(function(left, right) {
+          return left.time - right.time;
+        });
+
         // respond to the playlist requests
+        requests[0].bandwidth = bandwidths[0].bandwidth;
         requests.shift().respond(200, null, master);
+        requests[0].bandwidth = bandwidths[0].bandwidth;
         requests[0].respond(200, null, playlistResponse(+requests[0].url.match(/\d+$/)));
         requests.shift();
 
-        bandwidths.sort(function(left, right) {
-          return left.time - right.time;
+        // record the measured bandwidth for the playlist requests
+        results.effectiveBandwidth.push({
+          time: 0,
+          bandwidth: player.hls.bandwidth
         });
 
         // pre-calculate the bandwidth at each second
