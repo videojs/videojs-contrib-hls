@@ -138,7 +138,14 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     };
 
     oldMediaPlaylist = this.playlists.media();
-    this.setBandwidth(this.playlists);
+    // the bandwidth estimate for the first segment is based on round trip
+    // time for the master playlist. the master playlist is almost always
+    // tiny so the round trip time is dominated by latency and so the
+    // computed bandwidth is much lower than steady-state. to account for
+    // this, we scale the bandwidth estimate from the master playlist.
+    this.setBandwidth({
+      bandwidth: this.playlists.bandwidth * 5
+    });
 
     selectedPlaylist = this.selectPlaylist();
     oldBitrate = oldMediaPlaylist.attributes &&
