@@ -31,6 +31,8 @@ var
   h264Stream,
   VideoSegmentStream = videojs.mp2t.VideoSegmentStream,
   videoSegmentStream,
+  AacStream = videojs.mp2t.AacStream,
+  aacStream,
   Transmuxer = videojs.mp2t.Transmuxer,
   transmuxer,
 
@@ -524,6 +526,10 @@ test('parses standalone program stream packets', function() {
   });
   elementaryStream.push({
     type: 'pes',
+    streamType: ADTS_STREAM_TYPE,
+    payloadUnitStartIndicator: true,
+    pts: 7,
+    dts: 8,
     data: new Uint8Array(19)
   });
   elementaryStream.end();
@@ -638,6 +644,25 @@ test('flushes the buffered packets when a new one of that type is started', func
   equal(1, packets[1].data.byteLength, 'parsed the video payload');
   equal('audio', packets[2].type, 'identified audio data');
   equal(7, packets[2].data.byteLength, 'parsed the audio payload');
+});
+
+test('drops packets with unknown stream types', function() {
+  var packets = [];
+  elementaryStream.on('data', function(packet) {
+    packets.push(packet);
+  });
+  elementaryStream.push({
+    type: 'pes',
+    payloadUnitStartIndicator: true,
+    data: new Uint8Array(1)
+  });
+  elementaryStream.push({
+    type: 'pes',
+    payloadUnitStartIndicator: true,
+    data: new Uint8Array(1)
+  });
+
+  equal(packets.length, 0, 'ignored unknown packets');
 });
 
 module('H264 Stream', {
@@ -910,6 +935,36 @@ test('scales DTS values from milliseconds to 90kHz', function() {
   equal(samples[1].duration, 2 * 90, 'multiplied DTS duration by 90');
   equal(samples[2].duration, 2 * 90, 'inferred the final sample duration');
 });
+
+module('AAC Stream', {
+  setup: function() {
+    aacStream = new AacStream();
+  }
+});
+
+test('generates AAC frame events from ADTS bytes', function() {
+  var frames = [];
+  aacStream.on('data', function(frame) {
+    frames.push(frame);
+  });
+  aacStream.push({
+    type: 'audio',
+    data: new Uint8Array([
+      0xff, 0xf1, // no CRC
+      0x00, // AAC Main, 44.1KHz
+      0xfc, 0x01, 0x20, // frame length 9 bytes
+      0x00, // one AAC per ADTS frame
+      0x12, 0x34, // AAC payload
+      0x56, 0x78 // extra junk that should be ignored
+    ])
+  });
+
+  equal(frames.length, 1, 'generated one frame');
+  deepEqual(frames[0].data, new Uint8Array([0x12, 0x34]), 'extracted AAC frame');
+});
+
+// not handled: ADTS with CRC
+// ADTS with payload broken across push events
 
 module('Transmuxer', {
   setup: function() {

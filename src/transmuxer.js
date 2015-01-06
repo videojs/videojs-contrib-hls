@@ -323,12 +323,18 @@ ElementaryStream = function() {
       pes: function() {
         var stream, streamType;
 
-        if (data.streamType === H264_STREAM_TYPE) {
+        switch (data.streamType) {
+        case H264_STREAM_TYPE:
           stream = video;
           streamType = 'video';
-        } else {
+          break;
+        case ADTS_STREAM_TYPE:
           stream = audio;
           streamType = 'audio';
+          break;
+        default:
+          // ignore unknown stream types
+          return;
         }
 
         // if a new packet is starting, we can flush the completed
@@ -390,16 +396,61 @@ ElementaryStream.prototype = new videojs.Hls.Stream();
 
 /*
  * Accepts a ElementaryStream and emits data events with parsed
- * AAC Audio Frames of the individual packets.
+ * AAC Audio Frames of the individual packets. Input audio in ADTS
+ * format is unpacked and re-emitted as AAC frames.
+ *
+ * @see http://wiki.multimedia.cx/index.php?title=ADTS
+ * @see http://wiki.multimedia.cx/?title=Understanding_AAC
  */
 AacStream = function() {
-  var  self;
+  var i = 1, self, buffer;
   AacStream.prototype.init.call(this);
   self = this;
 
   this.push = function(packet) {
-    if (packet.type === 'audio') {
-      this.trigger('data', packet);
+    var frameLength;
+
+    if (packet.type !== 'audio') {
+      // ignore non-audio data
+      return;
+    }
+
+    buffer = packet.data;
+
+    // find ADTS frame sync sequences
+    // ADTS frames start with 12 byte-aligned ones
+    while (i < buffer.length) {
+      switch (buffer[i] & 0xf0) {
+      case 0xf0:
+        // skip past non-sync sequences
+        if (buffer[i - 1] !== 0xff) {
+          i++;
+          break;
+        }
+
+        // parse the ADTS header
+
+        // frame length is a 13 bit integer starting 16 bits from the
+        // end of the sync sequence
+        frameLength = ((buffer[i + 2] & 0x03) << 11) |
+          (buffer[i + 3] << 3) |
+          ((buffer[i + 4] & 0xe0) >> 5);
+
+        // deliver the AAC frame
+        this.trigger('data', {
+          data: buffer.subarray(i + 6, i + frameLength - 1)
+        });
+
+        // move to one byte beyond the frame length to continue
+        // searching for sync sequences
+        i += frameLength;
+        break;
+      default:
+        // the top four bytes are not all ones so the end of the
+        // closest possible start sequence is at least two bytes ahead
+        i += 2;
+        break;
+      }
     }
   };
 };
@@ -437,6 +488,8 @@ NalByteStream = function() {
     // 0 0 1 .. NAL .. 0 0 0
     // ^ sync point        ^ i
     while (i < buffer.byteLength) {
+      // look at the current byte to determine if we've hit the end of
+      // a NAL unit boundary
       switch (buffer[i]) {
       case 0:
         // skip past non-sync sequences
@@ -472,6 +525,8 @@ NalByteStream = function() {
         i += 3;
         break;
       default:
+        // the current byte isn't a one or zero, so it cannot be part
+        // of a sync sequence
         i += 3;
         break;
       }
