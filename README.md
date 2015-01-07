@@ -113,8 +113,15 @@ This value is updated after each segment download completes.
 Type: `number`
 
 The number of bits downloaded per second in the last segment download.
-This value is used by the default implementation of `selectPlaylist` 
+This value is used by the default implementation of `selectPlaylist`
 to select an appropriate bitrate to play.
+
+Before the first video segment has been downloaded, it's hard to
+estimate bandwidth accurately. The HLS tech uses a heuristic based on
+the playlist download times to do this estimation by default. If you
+have a more accurate source of bandwidth information, you can override
+this value as soon as the HLS tech has loaded to provide an initial
+bandwidth estimate.
 
 #### player.hls.bytesReceived
 Type: `number`

@@ -348,10 +348,9 @@ test('downloads media playlists after loading the master', function() {
   });
   openMediaSource(player);
 
+  // set bandwidth to an appropriate number so we don't switch
+  player.hls.bandwidth = 200000;
   standardXHRResponse(requests[0]);
-
-  // set bandwidth to a high number, so, we don't switch;
-  player.hls.bandwidth = 500000;
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
 
@@ -507,9 +506,8 @@ test('moves to the next segment if there is a network error', function() {
   });
   openMediaSource(player);
 
+  player.hls.bandwidth = 20000;
   standardXHRResponse(requests[0]);
-
-  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests[1]);
 
   mediaIndex = player.hls.mediaIndex;
@@ -562,9 +560,9 @@ test('downloads additional playlists if required', function() {
   });
   openMediaSource(player);
 
+  player.hls.bandwidth = 20000;
   standardXHRResponse(requests[0]);
 
-  player.hls.bandwidth = 3000000;
   standardXHRResponse(requests[1]);
   // before an m3u8 is downloaded, no segments are available
   player.hls.selectPlaylist = function() {
@@ -579,7 +577,9 @@ test('downloads additional playlists if required', function() {
   // the playlist selection is revisited after a new segment is downloaded
   player.trigger('timeupdate');
 
-  standardXHRResponse(requests[2]);
+  requests[2].bandwidth = 3000000;
+  requests[2].response = new Uint8Array([0]);
+  requests[2].respond(200, null, '');
   standardXHRResponse(requests[3]);
 
   strictEqual(4, requests.length, 'requests were made');
@@ -631,6 +631,22 @@ test('scales the bandwidth estimate for the first segment', function() {
                            '#EXT-X-PLAYLIST-TYPE:VOD\n' +
                            '#EXT-X-TARGETDURATION:10\n');
   equal(player.hls.bandwidth, 500 * 5, 'scaled the bandwidth estimate by 5');
+});
+
+test('allows initial bandwidth to be provided', function() {
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.hls.bandwidth = 500;
+  openMediaSource(player);
+
+  requests[0].bandwidth = 1;
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                           '#EXT-X-TARGETDURATION:10\n');
+  equal(player.hls.bandwidth, 500, 'prefers user-specified intial bandwidth');
 });
 
 test('raises the minimum bitrate for a stream proportionially', function() {
@@ -1268,9 +1284,9 @@ test('resets the switching algorithm if a request times out', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  standardXHRResponse(requests.shift()); // master
+  player.hls.bandwidth = 20000;
 
-  player.hls.bandwidth = 3000000;
+  standardXHRResponse(requests.shift()); // master
   standardXHRResponse(requests.shift()); // media.m3u8
   // simulate a segment timeout
   requests[0].timedout = true;
