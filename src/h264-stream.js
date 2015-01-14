@@ -1,11 +1,3 @@
-/*
- * h264-stream
- *
- *
- * Copyright (c) 2013 Brightcove
- * All rights reserved.
- */
-
 (function(window) {
   var
     ExpGolomb = window.videojs.Hls.ExpGolomb,
