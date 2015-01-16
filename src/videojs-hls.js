@@ -487,7 +487,7 @@ videojs.Hls.prototype.resolveSegmentUrl = function(segmentRelativeUrl) {
   } else {
     segmentUrl = resolveUrl(resolveUrl(this.src_, this.playlists.media().uri || ''), segmentRelativeUrl);
   }
-  return segmentUrl
+  return segmentUrl;
 };
 
 /*
