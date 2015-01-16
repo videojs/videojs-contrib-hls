@@ -474,13 +474,20 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   }
 
   // resolve the segment URL relative to the playlist
-  if (this.playlists.media().uri === this.src_) {
-    segmentUri = resolveUrl(this.src_, segment.uri);
-  } else {
-    segmentUri = resolveUrl(resolveUrl(this.src_, this.playlists.media().uri || ''), segment.uri);
-  }
+  segmentUri = this.resolveSegmentUrl(segment.uri);
 
   this.loadSegment(segmentUri, offset);
+};
+
+videojs.Hls.prototype.resolveSegmentUrl = function(segmentRelativeUrl) {
+  var segmentUrl;
+    // resolve the segment URL relative to the playlist
+  if (this.playlists.media().uri === this.src_) {
+    segmentUrl = resolveUrl(this.src_, segmentRelativeUrl);
+  } else {
+    segmentUrl = resolveUrl(resolveUrl(this.src_, this.playlists.media().uri || ''), segmentRelativeUrl);
+  }
+  return segmentUrl
 };
 
 /*
@@ -681,7 +688,7 @@ videojs.Hls.prototype.fetchKeys = function(playlist, index) {
     key = playlist.segments[i].key;
     if (key && !key.bytes && !keyFailed(key)) {
       keyXhr = videojs.Hls.xhr({
-        url: resolveUrl(playlist.uri, key.uri),
+        url: this.resolveSegmentUrl(key.uri),
         responseType: 'arraybuffer',
         withCredentials: settings.withCredentials
       }, function(err, url) {
