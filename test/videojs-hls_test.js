@@ -1186,7 +1186,7 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
   var aborts = 0, setTime, currentTime, bufferEnd;
 
   player.src({
-    src: 'disc.m3u8',
+    src: 'discontinuity.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
@@ -1233,7 +1233,7 @@ test('clears the segment buffer on seek', function() {
   videojs.Hls.SegmentParser = mockSegmentParser(tags);
 
   player.src({
-    src: 'disc.m3u8',
+    src: 'discontinuity.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
@@ -1261,14 +1261,14 @@ test('clears the segment buffer on seek', function() {
   standardXHRResponse(requests.pop());
 
   // play to 6s to trigger the next segment request
-  currentTime = 6;
+  currentTime = 1;
   bufferEnd = 10;
   player.trigger('timeupdate');
 
   standardXHRResponse(requests.pop());
 
-  // seek back to the beginning
-  player.currentTime(0);
+  // seek to the discontinuity
+  player.currentTime(10);
   tags.push({ pts: 0, bytes: 0 });
   standardXHRResponse(requests.pop());
   strictEqual(aborts, 1, 'aborted once for the seek');

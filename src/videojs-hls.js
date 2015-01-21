@@ -611,12 +611,17 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   // until it empties before calling it when a discontinuity is
   // next in the buffer
   if (segment.discontinuity) {
-    if (event.type !== 'waiting') {
+    if (event.type === 'waiting') {
+      this.sourceBuffer.abort();
+      // tell the SWF where playback is continuing in the stitched timeline
+      this.el().vjs_setProperty('currentTime', segmentOffset * 0.001);
+    } else if (event.type === 'timeupdate') {
+      return;
+    } else if (typeof offset !== 'number') {
+      //if the discontinuity is reached under normal conditions, ie not a seek,
+      //the buffer already contains data and does not need to be refilled,
       return;
     }
-    this.sourceBuffer.abort();
-    // tell the SWF where playback is continuing in the stitched timeline
-    this.el().vjs_setProperty('currentTime', segmentOffset * 0.001);
   }
 
   // transmux the segment data from MP2T to FLV
