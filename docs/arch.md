@@ -9,7 +9,7 @@ HLS has two primary characteristics that distinguish it from other video formats
 
 A standard HLS stream consists of a *Master Playlist* which references one or more *Media Playlists*. Each Media Playlist contains references one or more sequential video segments. All these components form a logical hierarchy that informs the player of the different quality levels of the video available and how to address the individual segments of video at each of those levels:
 
-!(HLS Format)[hls-format.png]
+![HLS Format](hls-format.png)
 
 HLS streams can be delivered in two different modes: a "static" mode for videos that can be played back from any point, often referred to as video-on-demand (VOD); or a "live" mode where later portions of the video become available as time goes by. In the static mode, the Master and Media playlists are fixed. The player is guaranteed that the set of video segments referenced by those playlists will not change over time.
 
@@ -27,7 +27,7 @@ This project has three primary duties:
 ### Playlist Management
 The [playlist loader](../src/playlist-loader.js) handles all of the details of requesting, parsing, updating, and switching playlists at runtime. It's operation is described by this state diagram:
 
-!(Playlist Loader States)[playlist-loaders-states.png]
+![Playlist Loader States](playlist-loader-states.png)
 
 During VOD playback, the loader will move quickly to the HAVE_METADATA state and then stay there unless a quality switch request sends it to SWITCHING_MEDIA while it fetches an alternate playlist. The loader enters the HAVE_CURRENT_METADATA when a live stream is detected and it's time to refresh the current media playlist to find out about new video segments.
 
