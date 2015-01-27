@@ -12,6 +12,10 @@
   "scripts": {
     "test": "grunt test"
   },
+  "keywords": [
+    "videojs",
+    "videojs-plugin"
+  ],
   "devDependencies": {
     "grunt": "~0.4.1",
     "grunt-concurrent": "0.4.3",
