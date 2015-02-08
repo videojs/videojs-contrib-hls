@@ -1612,6 +1612,48 @@ test('calling fetchKeys() when a new playlist is loaded will create an XHR', fun
   player.hls.playlists.media = oldMedia;
 });
 
+test('fetchKeys() resolves URLs relative to the master playlist', function() {
+  player.src({
+    src: 'video/master-encrypted.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=17\n' +
+                           'playlist/playlist.m3u8\n' +
+                           '#EXT-X-ENDLIST\n');
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-TARGETDURATION:15\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
+                           '#EXTINF:2.833,\n' +
+                           'http://media.example.com/fileSequence1.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+
+  equal(requests.length, 2, 'requested two URLs');
+  ok((/video\/playlist\/keys\/key\.php$/).test(requests[0].url),
+     'resolves multiple relative paths');
+});
+
+test('fetchKeys() resolves URLs relative to their containing playlist', function() {
+  player.src({
+    src: 'video/media-encrypted.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-TARGETDURATION:15\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
+                           '#EXTINF:2.833,\n' +
+                           'http://media.example.com/fileSequence1.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+  equal(requests.length, 2, 'requested two URLs');
+  ok((/video\/keys\/key\.php$/).test(requests[0].url),
+     'resolves multiple relative paths');
+});
+
 test('a new keys XHR is created when a previous key XHR finishes', function() {
   player.src({
     src: 'https://example.com/encrypted-media.m3u8',
