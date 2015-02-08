@@ -1,10 +1,8 @@
 /*
  * videojs-hls
- *
- * Copyright (c) 2014 Brightcove
- * All rights reserved.
+ * The main file for the HLS project.
+ * License: https://github.com/videojs/videojs-contrib-hls/blob/master/LICENSE
  */
-
 (function(window, videojs, document, undefined) {
 'use strict';
 
