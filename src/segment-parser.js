@@ -96,7 +96,7 @@
        } else {
          return aacStream;
        }
-     }
+     };
 
     /**
      * Returns whether a call to `getNextTag()` will be successful.
