@@ -11,6 +11,7 @@ var
 
 window.videojs.Hls.AacStream = function() {
   var
+    hls = window.videojs.Hls,
     next_pts, // :uint
     pts_offset, // :int
     state, // :uint
@@ -160,7 +161,7 @@ window.videojs.Hls.AacStream = function() {
         // is re-initialized quickly after seeking into a different
         // audio configuration
         if (newExtraData !== extraData || next_pts - lastMetaPts >= 1000) {
-          aacFrame = new FlvTag(FlvTag.METADATA_TAG);
+          aacFrame = new FlvTag(FlvTag.METADATA_TAG, undefined, hls.FlvTag.AAC_AUDIO);
           aacFrame.pts = next_pts;
           aacFrame.dts = next_pts;
 
@@ -174,7 +175,7 @@ window.videojs.Hls.AacStream = function() {
           this.tags.push(aacFrame);
 
           extraData = newExtraData;
-          aacFrame = new FlvTag(FlvTag.AUDIO_TAG, true);
+          aacFrame = new FlvTag(FlvTag.AUDIO_TAG, true, hls.FlvTag.AAC_AUDIO);
           // For audio, DTS is always the same as PTS. We want to set the DTS
           // however so we can compare with video DTS to determine approximate
           // packet order
@@ -203,7 +204,7 @@ window.videojs.Hls.AacStream = function() {
           }
         }
 
-        aacFrame = new FlvTag(FlvTag.AUDIO_TAG);
+        aacFrame = new FlvTag(FlvTag.AUDIO_TAG, undefined, hls.FlvTag.AAC_AUDIO);
         aacFrame.pts = next_pts;
         aacFrame.dts = next_pts;
         state = 8;

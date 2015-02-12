@@ -4,8 +4,10 @@
     FlvTag = videojs.Hls.FlvTag,
     H264Stream = videojs.Hls.H264Stream,
     AacStream = videojs.Hls.AacStream,
+    Mp3Stream = videojs.Hls.Mp3Stream,
     MP2T_PACKET_LENGTH,
-    STREAM_TYPES;
+    STREAM_TYPES,
+    audioStreamType;
 
   /**
    * An object that incrementally transmuxes MPEG2 Trasport Stream
@@ -18,7 +20,8 @@
       streamBuffer = new Uint8Array(MP2T_PACKET_LENGTH),
       streamBufferByteCount = 0,
       h264Stream = new H264Stream(),
-      aacStream = new AacStream();
+      aacStream = new AacStream(),
+      mp3Stream = new Mp3Stream();
 
     // expose the stream metadata
     self.stream = {
@@ -85,12 +88,24 @@
     };
 
     /**
+     * Returns the correct audio stream for this Transport Stream
+     */
+     self.getAudioStream = function() {
+       if (STREAM_TYPES.mp3 === audioStreamType) {
+         return mp3Stream;
+       } else {
+         return aacStream;
+       }
+     }
+
+    /**
      * Returns whether a call to `getNextTag()` will be successful.
      * @return {boolean} whether there is at least one transmuxed FLV
      * tag ready
      */
     self.tagsAvailable = function() { // :int {
-      return h264Stream.tags.length + aacStream.tags.length;
+      var audioStream = self.getAudioStream();
+      return h264Stream.tags.length + audioStream.tags.length;
     };
 
     /**
@@ -98,17 +113,18 @@
      * @returns {object} the next tag to decoded.
      */
     self.getNextTag = function() {
-      var tag;
+      var tag,
+          audioStream = self.getAudioStream();
 
       if (!h264Stream.tags.length) {
         // only audio tags remain
-        tag = aacStream.tags.shift();
-      } else if (!aacStream.tags.length) {
+        tag = audioStream.tags.shift();
+      } else if (!audioStream.tags.length) {
         // only video tags remain
         tag = h264Stream.tags.shift();
-      } else if (aacStream.tags[0].dts < h264Stream.tags[0].dts) {
+      } else if (audioStream.tags[0].dts < h264Stream.tags[0].dts) {
         // audio should be decoded next
-        tag = aacStream.tags.shift();
+        tag = audioStream.tags.shift();
       } else {
         // video should be decoded next
         tag = h264Stream.tags.shift();
@@ -287,7 +303,8 @@
           self.stream.pmtPid = (data[offset + 2] & 0x1F) << 8 | data[offset + 3];
         }
       } else if (pid === self.stream.programMapTable[STREAM_TYPES.h264] ||
-                 pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
+                 pid === self.stream.programMapTable[STREAM_TYPES.adts] ||
+                 pid === self.stream.programMapTable[STREAM_TYPES.mp3]) {
         if (pusi) {
           // comment out for speed
           if (0x00 !== data[offset + 0] || 0x00 !== data[offset + 1] || 0x01 !== data[offset + 2]) {
@@ -339,11 +356,17 @@
             aacStream.setNextTimeStamp(pts,
                                        pesPacketSize,
                                        dataAlignmentIndicator);
+          } else if (pid === self.stream.programMapTable[STREAM_TYPES.mp3]) {
+            mp3Stream.setNextTimeStamp(pts,
+                                       pesPacketSize,
+                                       dataAlignmentIndicator);
           }
         }
 
         if (pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
           aacStream.writeBytes(data, offset, end - offset);
+        } else if (pid === self.stream.programMapTable[STREAM_TYPES.mp3]) {
+          mp3Stream.writeBytes(data, offset, end - offset);
         } else if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
           h264Stream.writeBytes(data, offset, end - offset);
         }
@@ -392,11 +415,18 @@
             } else if (streamType === STREAM_TYPES.adts) {
               if (self.stream.programMapTable[streamType] &&
                   self.stream.programMapTable[streamType] !== elementaryPID) {
-                throw new Error("Program has more than 1 audio Stream");
+                throw new Error("Program has more than 1 aac audio Stream");
               }
               self.stream.programMapTable[streamType] = elementaryPID;
+              audioStreamType = streamType;
+            } else if (streamType === STREAM_TYPES.mp3) {
+              if (self.stream.programMapTable[streamType] &&
+                  self.stream.programMapTable[streamType] !== elementaryPID) {
+                throw new Error("Program has more than 1 mp3 audio Stream");
+              }
+              self.stream.programMapTable[streamType] = elementaryPID;
+              audioStreamType = streamType;
             }
-            // TODO add support for MP3 audio
 
             // the length of the entry descriptor
             ESInfolength = (data[offset + 3] & 0x0F) << 8 | data[offset + 4];
@@ -426,7 +456,7 @@
         return h264Stream.tags.length;
       },
       aacTags: function() {
-        return aacStream.tags.length;
+        return self.getAudioStream().tags.length;
       }
     };
   };
@@ -435,7 +465,8 @@
   videojs.Hls.SegmentParser.MP2T_PACKET_LENGTH = MP2T_PACKET_LENGTH = 188;
   videojs.Hls.SegmentParser.STREAM_TYPES = STREAM_TYPES = {
     h264: 0x1b,
-    adts: 0x0f
+    adts: 0x0f,
+    mp3:  0x03
   };
 
 })(window);
