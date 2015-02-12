@@ -70,6 +70,7 @@ test('starting PTS values can be negative', function() {
       nalUnitTypes.access_unit_delimiter_rbsp
     ]);
 
+  h264Stream.setTimeStampOffset(-100);
   h264Stream.setNextTimeStamp(-100, -100, true);
   h264Stream.writeBytes(accessUnitDelimiter, 0, accessUnitDelimiter.byteLength);
   h264Stream.setNextTimeStamp(-99, -99, true);
