@@ -18,7 +18,10 @@
       streamBuffer = new Uint8Array(MP2T_PACKET_LENGTH),
       streamBufferByteCount = 0,
       h264Stream = new H264Stream(),
-      aacStream = new AacStream();
+      aacStream = new AacStream(),
+      h264HasTimeStampOffset = false,
+      aacHasTimeStampOffset = false,
+      timeStampOffset;
 
     // expose the stream metadata
     self.stream = {
@@ -332,10 +335,24 @@
           offset += pesHeaderLength;
 
           if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
+            if (!h264HasTimeStampOffset) {
+              h264HasTimeStampOffset = true;
+              if (timeStampOffset === undefined) {
+                timeStampOffset = pts;
+              }
+              h264Stream.setTimeStampOffset(timeStampOffset);
+            }
             h264Stream.setNextTimeStamp(pts,
                                         dts,
                                         dataAlignmentIndicator);
           } else if (pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
+            if (!aacHasTimeStampOffset) {
+              aacHasTimeStampOffset = true;
+              if (timeStampOffset === undefined) {
+                timeStampOffset = pts;
+              }
+              aacStream.setTimeStampOffset(timeStampOffset);
+            }
             aacStream.setNextTimeStamp(pts,
                                        pesPacketSize,
                                        dataAlignmentIndicator);
