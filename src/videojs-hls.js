@@ -356,12 +356,22 @@ videojs.Hls.prototype.dispose = function() {
 };
 
 /**
+ * Sets the variant playlist that should be used.
+ * @param variant (optional) {int or string} the index or key of the variant to
+ * select from `playlists.master.playlists`. If not supplied, automatically
+ * choose the best variant for the given bandwidth and resolution.
+ */
+videojs.Hls.prototype.setVariant = function(variant) {
+  this.selectedVariant = variant;
+};
+
+/**
  * Chooses the appropriate media playlist based on the current
  * bandwidth estimate and the player size.
  * @return the highest bitrate playlist less than the currently detected
  * bandwidth, accounting for some amount of bandwidth variance
  */
-videojs.Hls.prototype.selectPlaylist = function () {
+videojs.Hls.prototype.selectPlaylist = function() {
   var
     player = this.player(),
     effectiveBitrate,
@@ -371,6 +381,14 @@ videojs.Hls.prototype.selectPlaylist = function () {
     variant,
     bandwidthBestVariant,
     resolutionBestVariant;
+
+  // if a variant has been selected, use it
+  if (this.selectedVariant !== undefined) {
+    variant = this.playlists.master.playlists[this.selectedVariant];
+    if (variant !== undefined) {
+      return variant;
+    }
+  }
 
   sortedPlaylists.sort(videojs.Hls.comparePlaylistBandwidth);
 
