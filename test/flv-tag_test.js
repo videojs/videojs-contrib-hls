@@ -57,4 +57,18 @@ test('writeBytes grows the internal byte array dynamically', function() {
   }
 });
 
+test('audio type handled correctly', function(){
+  var mp3Tag = new FlvTag(FlvTag.AUDIO_TAG, undefined, FlvTag.MP3_AUDIO), 
+      aacTag = new FlvTag(FlvTag.AUDIO_TAG, undefined, FlvTag.AAC_AUDIO); 
+
+  equal(mp3Tag.length, 12, 'mp3 tag length is 12');
+  equal(aacTag.length, 13, 'aac tag length is 13');
+
+  mp3Tag.finalize();
+  aacTag.finalize();
+  equal(mp3Tag.bytes[11], 0x2F, 'mp3 is set to 44khz 16 bit stereo');
+  equal(aacTag.bytes[11], 0xAF, 'aac is set to 44khz 16 bit stereo');
+  equal(aacTag.bytes[12], 0x01, 'aac no extra data set to 1');
+});
+
 })(this);  
