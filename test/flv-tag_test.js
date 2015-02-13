@@ -61,14 +61,14 @@ test('audio type handled correctly', function(){
   var mp3Tag = new FlvTag(FlvTag.AUDIO_TAG, undefined, FlvTag.MP3_AUDIO), 
       aacTag = new FlvTag(FlvTag.AUDIO_TAG, undefined, FlvTag.AAC_AUDIO); 
 
-  equal(12, mp3Tag.length, 'mp3 tag length is 12');
-  equal(13, aacTag.length, 'aac tag length is 13');
+  equal(mp3Tag.length, 12, 'mp3 tag length is 12');
+  equal(aacTag.length, 13, 'aac tag length is 13');
 
   mp3Tag.finalize();
   aacTag.finalize();
   equal(mp3Tag.bytes[11], 0x2F, 'mp3 is set to 44khz 16 bit stereo');
   equal(aacTag.bytes[11], 0xAF, 'aac is set to 44khz 16 bit stereo');
-  equal(aacTag.bytes[12], 0x01, 'aac extra data is 0x00');
+  equal(aacTag.bytes[12], 0x01, 'aac no extra data set to 1');
 });
 
 })(this);  
