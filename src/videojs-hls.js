@@ -601,11 +601,13 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     } else {
       // if the media sequence is greater than 2^32, the IV will be incorrect
       // assuming 10s segments, that would be about 1300 years
+      var theIv = segment.key.iv;
+      if (theIv === null) {
+        theIv = new Uint32Array([0, 0, 0, mediaIndex + playlist.mediaSequence]);
+      }
       bytes = videojs.Hls.decrypt(bytes,
                                   segment.key.bytes,
-                                  new Uint32Array([
-                                    0, 0, 0,
-                                    mediaIndex + playlist.mediaSequence]));
+                                  theIv);
     }
   }
 

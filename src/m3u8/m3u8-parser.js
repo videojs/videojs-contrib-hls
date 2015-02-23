@@ -305,6 +305,9 @@
         event.attributes = parseAttributes(match[1]);
         // parse the IV string into a Uint32Array
         if (event.attributes.IV) {
+          if (event.attributes.IV.substring(0,2) == '0x')
+            event.attributes.IV = event.attributes.IV.substring(2);
+
           event.attributes.IV = event.attributes.IV.match(/.{8}/g);
           event.attributes.IV[0] = parseInt(event.attributes.IV[0], 16);
           event.attributes.IV[1] = parseInt(event.attributes.IV[1], 16);
@@ -436,7 +439,8 @@
               // setup an encryption key for upcoming segments
               key = {
                 method: entry.attributes.METHOD || 'AES-128',
-                uri: entry.attributes.URI
+                uri: entry.attributes.URI,
+                iv: entry.attributes.IV || null
               };
             },
             'media-sequence': function() {
