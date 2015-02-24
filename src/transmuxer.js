@@ -16,12 +16,29 @@
 
 var
   TransportPacketStream, TransportParseStream, ElementaryStream, VideoSegmentStream,
-  Transmuxer, AacStream, H264Stream, NalByteStream,
-  MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE, mp4;
+  AudioSegmentStream, Transmuxer, AacStream, H264Stream, NalByteStream,
+  MP2T_PACKET_LENGTH, H264_STREAM_TYPE, ADTS_STREAM_TYPE,
+  ADTS_SAMPLING_FREQUENCIES, mp4;
 
 MP2T_PACKET_LENGTH = 188; // bytes
 H264_STREAM_TYPE = 0x1b;
 ADTS_STREAM_TYPE = 0x0f;
+ADTS_SAMPLING_FREQUENCIES = [
+  96000,
+  88200,
+  64000,
+  48000,
+  44100,
+  32000,
+  24000,
+  22050,
+  16000,
+  12000,
+  11025,
+  8000,
+  7350
+];
+  
 mp4 = videojs.mp4;
 
 /**
@@ -438,6 +455,11 @@ AacStream = function() {
 
         // deliver the AAC frame
         this.trigger('data', {
+          channelcount: ((buffer[i + 1] & 1) << 3) | 
+            ((buffer[i + 2] & 0xc0) >> 6),
+          samplerate: ADTS_SAMPLING_FREQUENCIES[(buffer[i + 1] & 0x3c) >> 2],
+          // assume ISO/IEC 14496-12 AudioSampleEntry default of 16
+          samplesize: 16,
           data: buffer.subarray(i + 6, i + frameLength - 1)
         });
 
@@ -455,6 +477,62 @@ AacStream = function() {
   };
 };
 AacStream.prototype = new videojs.Hls.Stream();
+
+/**
+ * Constructs a single-track, ISO BMFF media segment from AAC data
+ * events. The output of this stream can be fed to a SourceBuffer
+ * configured with a suitable initialization segment.
+ */
+// TODO: share common code with VideoSegmentStream
+AudioSegmentStream = function(track) {
+  var aacFrames = [], aacFramesLength = 0, sequenceNumber = 0;
+  AudioSegmentStream.prototype.init.call(this);
+
+  this.push = function(data) {
+    // buffer audio data until end() is called
+    aacFrames.push(data);
+    aacFramesLength += data.data.byteLength;
+  };
+
+  this.end = function() {
+    var boxes, currentFrame, data, sample, i, mdat, moof;
+    // return early if no audio data has been observed
+    if (aacFramesLength === 0) {
+      return;
+    }
+
+    // concatenate the audio data to constuct the mdat
+    data = new Uint8Array(aacFramesLength);
+    track.samples = [];
+    while (aacFramesLength.length) {
+      currentFrame = aacFrames[0];
+      sample = {
+        size: currentFrame.data.byteLength,
+        duration: 1024 // FIXME calculate for realz
+      };
+      track.samples.push(sample);
+
+      data.set(currentFrame.data, i);
+      i += currentFrame.data.byteLength;
+      
+      aacFrames.shift();
+    }
+    aacFramesLength = 0;
+    mdat = mp4.mdat(data);
+
+    moof = mp4.moof(sequenceNumber, [track]);
+    boxes = new Uint8Array(moof.byteLength + mdat.byteLength);
+
+    // bump the sequence number for next time
+    sequenceNumber++;
+
+    boxes.set(moof);
+    boxes.set(mdat, moof.byteLength);
+
+    this.trigger('data', boxes);
+  };
+};
+AudioSegmentStream.prototype = new videojs.Hls.Stream();
 
 /**
  * Accepts a NAL unit byte stream and unpacks the embedded NAL units.
@@ -539,7 +617,7 @@ NalByteStream = function() {
 
   this.end = function() {
     // deliver the last buffered NAL unit
-    if (buffer.byteLength > 3) {
+    if (buffer && buffer.byteLength > 3) {
       this.trigger('data', buffer.subarray(syncPoint + 3));
     }
   };
@@ -763,12 +841,19 @@ VideoSegmentStream = function(track) {
   this.end = function() {
     var startUnit, currentNal, moof, mdat, boxes, i, data, view, sample;
 
+    // return early if no video data has been observed
+    if (nalUnitsLength === 0) {
+      return;
+    }
+
     // concatenate the video data and construct the mdat
     // first, we have to build the index from byte locations to
     // samples (that is, frames) in the video data
     data = new Uint8Array(nalUnitsLength + (4 * nalUnits.length));
     view = new DataView(data.buffer);
     track.samples = [];
+
+    // see ISO/IEC 14496-12:2012, section 8.6.4.3
     sample = {
       size: 0,
       flags: {
@@ -853,11 +938,14 @@ VideoSegmentStream.prototype = new videojs.Hls.Stream();
 Transmuxer = function() {
   var
     self = this,
-    track,
+    videoTrack,
+    audioTrack,
     config,
     pps,
 
-    packetStream, parseStream, elementaryStream, aacStream, h264Stream, videoSegmentStream;
+    packetStream, parseStream, elementaryStream,
+    aacStream, h264Stream, 
+    videoSegmentStream, audioSegmentStream;
 
   Transmuxer.prototype.init.call(this);
 
@@ -880,50 +968,77 @@ Transmuxer = function() {
         !config) {
       config = data.config;
 
-      track.width = config.width;
-      track.height = config.height;
-      track.sps = [data.data];
-      track.profileIdc = config.profileIdc;
-      track.levelIdc = config.levelIdc;
-      track.profileCompatibility = config.profileCompatibility;
+      videoTrack.width = config.width;
+      videoTrack.height = config.height;
+      videoTrack.sps = [data.data];
+      videoTrack.profileIdc = config.profileIdc;
+      videoTrack.levelIdc = config.levelIdc;
+      videoTrack.profileCompatibility = config.profileCompatibility;
 
       // generate an init segment once all the metadata is available
       if (pps) {
         self.trigger('data', {
-          data: videojs.mp4.initSegment([track])
+          type: 'video',
+          data: videojs.mp4.initSegment([videoTrack])
         });
       }
     }
     if (data.nalUnitType === 'pic_parameter_set_rbsp' &&
         !pps) {
       pps = data.data;
-      track.pps = [data.data];
+      videoTrack.pps = [data.data];
 
       if (config) {
         self.trigger('data', {
-          data: videojs.mp4.initSegment([track])
+          type: 'video',
+          data: videojs.mp4.initSegment([videoTrack])
         });
       }
     }
   });
-  // hook up the video segment stream once track metadata is delivered
-  elementaryStream.on('data', function(data) {
-    var i, triggerData = function(segment) {
+  // generate an init segment based on the first audio sample
+  aacStream.on('data', function(data) {
+    if (audioTrack && audioTrack.channelcount === undefined) {
+      audioTrack.channelcount = data.channelcount;
+      audioTrack.samplerate = data.samplerate;
+      audioTrack.samplesize = data.samplesize;
       self.trigger('data', {
-        data: segment
+        type: 'audio',
+        data: videojs.mp4.initSegment([audioTrack])
       });
+    }
+  });
+  // hook up the segment streams once track metadata is delivered
+  elementaryStream.on('data', function(data) {
+    var i, triggerData = function(type) {
+      return function(segment) {
+        self.trigger('data', {
+          type: type,
+          data: segment
+        });
+      };
     };
     if (data.type === 'metadata') {
       i = data.tracks.length;
+
+      // scan the tracks listed in the metadata
       while (i--) {
-        if (data.tracks[i].type === 'video') {
-          track = data.tracks[i];
-          if (!videoSegmentStream) {
-            videoSegmentStream = new VideoSegmentStream(track);
-            h264Stream.pipe(videoSegmentStream);
-            videoSegmentStream.on('data', triggerData);
-          }
+
+        // hook up the video segment stream to the first track with h264 data
+        if (data.tracks[i].type === 'video' && !videoSegmentStream) {
+          videoTrack = data.tracks[i];
+          videoSegmentStream = new VideoSegmentStream(videoTrack);
+          h264Stream.pipe(videoSegmentStream);
+          videoSegmentStream.on('data', triggerData('video'));
           break;
+        }
+
+        // hook up the audio segment stream to the first track with aac data
+        if (data.tracks[i].type === 'audio' && !audioSegmentStream) {
+          audioTrack = data.tracks[i];
+          audioSegmentStream = new AudioSegmentStream(audioTrack);
+          aacStream.pipe(audioSegmentStream);
+          audioSegmentStream.on('data', triggerData('audio'));
         }
       }
     }
@@ -938,6 +1053,7 @@ Transmuxer = function() {
     elementaryStream.end();
     h264Stream.end();
     videoSegmentStream.end();
+    audioSegmentStream.end();
   };
 };
 Transmuxer.prototype = new videojs.Hls.Stream();

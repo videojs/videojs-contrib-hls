@@ -47,7 +47,9 @@ var
   validateTrack,
   validateTrackFragment,
 
-  videoPes;
+  transportPacket,
+  videoPes,
+  audioPes;
 
 module('MP2T Packet Stream', {
   setup: function() {
@@ -397,15 +399,22 @@ test('parses an elementary stream packet with a pts and dts', function() {
   equal(2 / 90, packet.dts, 'parsed the dts');
 });
 
-// helper function to create video PES packets
-videoPes = function(data, first) {
+/**
+ * Helper function to create transport stream PES packets
+ * @param pid {uint8} - the program identifier (PID)
+ * @param data {arraylike} - the payload bytes
+ * @payload first {boolean} - true if this PES should be a payload
+ * unit start
+ */
+transportPacket = function(pid, data, first) {
   var
-    adaptationFieldLength = 188 - data.length - (first ? 18 : 17),
+    adaptationFieldLength = 188 - data.length - (first ? 15 : 14),
+    // transport_packet(), Rec. ITU-T H.222.0, Table 2-2
     result = [
       // sync byte
       0x47,
       // tei:0 pusi:1 tp:0 pid:0 0000 0001 0001
-      0x40, 0x11,
+      0x40, pid,
       // tsc:01 afc:11 cc:0000
       0x70
     ].concat([
@@ -422,6 +431,7 @@ videoPes = function(data, first) {
     result.push(0xff);
   }
 
+  // PES_packet(), Rec. ITU-T H.222.0, Table 2-21
   result = result.concat([
     // pscp:0000 0000 0000 0000 0000 0001
     0x00, 0x00, 0x01,
@@ -437,13 +447,40 @@ videoPes = function(data, first) {
   if (first) {
     result.push(0x00);
   }
-  result = result.concat([
+  return result.concat(data);
+};
+
+/**
+ * Helper function to create video PES packets
+ * @param data {arraylike} - the payload bytes
+ * @payload first {boolean} - true if this PES should be a payload
+ * unit start
+ */
+videoPes = function(data, first) {
+  return transportPacket(0x11, [
     // NAL unit start code
     0x00, 0x00, 0x01
-  ].concat(data));
-  return result;
+  ].concat(data), first);
 };
 standalonePes = videoPes([0xaf, 0x01], true);
+
+/**
+ * Helper function to create audio PES packets
+ * @param data {arraylike} - the payload bytes
+ * @payload first {boolean} - true if this PES should be a payload
+ * unit start
+ */
+audioPes = function(data, first) {
+  var frameLength = data.length + 7;
+  return transportPacket(0x12, [
+    0xff, 0xf1,                            // no CRC
+    0x10,                                  // AAC Main, 44.1KHz
+    0xb0 | ((frameLength & 0x1800) >> 11), // 2 channels
+    (frameLength & 0x7f8) >> 3,
+    ((frameLength & 0x07) << 5) + 7,       // frame length in bytes
+    0x00                                   // one AAC per ADTS frame
+  ].concat(data), first);
+};
 
 test('parses an elementary stream packet without a pts or dts', function() {
 
@@ -950,17 +987,24 @@ test('generates AAC frame events from ADTS bytes', function() {
   aacStream.push({
     type: 'audio',
     data: new Uint8Array([
-      0xff, 0xf1, // no CRC
-      0x00, // AAC Main, 44.1KHz
-      0xfc, 0x01, 0x20, // frame length 9 bytes
-      0x00, // one AAC per ADTS frame
-      0x12, 0x34, // AAC payload
-      0x56, 0x78 // extra junk that should be ignored
+      0xff, 0xf1,       // no CRC
+      0x10,             // AAC Main, 44.1KHz
+      0xbc, 0x01, 0x20, // 2 channels, frame length 9 bytes
+      0x00,             // one AAC per ADTS frame
+      0x12, 0x34,       // AAC payload
+      0x56, 0x78        // extra junk that should be ignored
     ])
   });
 
   equal(frames.length, 1, 'generated one frame');
   deepEqual(frames[0].data, new Uint8Array([0x12, 0x34]), 'extracted AAC frame');
+  equal(frames[0].channelcount, 2, 'parsed channelcount');
+  equal(frames[0].samplerate, 44100, 'parsed samplerate');
+
+  // Chrome only supports 8, 16, and 32 bit sample sizes. Assuming the
+  // default value of 16 in ISO/IEC 14496-12 AudioSampleEntry is
+  // acceptable.
+  equal(frames[0].samplesize, 16, 'parsed samplesize');
 });
 
 // not handled: ADTS with CRC
@@ -972,7 +1016,7 @@ module('Transmuxer', {
   }
 });
 
-test('generates an init segment', function() {
+test('generates a video init segment', function() {
   var segments = [];
   transmuxer.on('data', function(segment) {
     segments.push(segment);
@@ -980,16 +1024,38 @@ test('generates an init segment', function() {
   transmuxer.push(packetize(PAT));
   transmuxer.push(packetize(PMT));
   transmuxer.push(packetize(videoPes([
-    0x07,
+      0x08, 0x01 // pic_parameter_set_rbsp
+  ], true)));
+  transmuxer.push(packetize(videoPes([
+    0x07, // seq_parameter_set_rbsp
     0x27, 0x42, 0xe0, 0x0b,
     0xa9, 0x18, 0x60, 0x9d,
     0x80, 0x53, 0x06, 0x01,
     0x06, 0xb6, 0xc2, 0xb5,
     0xef, 0x7c, 0x04
+  ], false)));
+  transmuxer.end();
+
+  equal(segments.length, 2, 'generated init and media segments');
+  ok(segments[0].data, 'wrote data in the init segment');
+  equal(segments[0].type, 'video', 'video is the segment type');
+});
+
+test('generates an audio init segment', function() {
+  var segments = [];
+  transmuxer.on('data', function(segment) {
+    segments.push(segment);
+  });
+  transmuxer.push(packetize(PAT));
+  transmuxer.push(packetize(PMT));
+  transmuxer.push(packetize(audioPes([
+    0x00, 0x01
   ], true)));
   transmuxer.end();
 
-  equal(segments.length, 1, 'has an init segment');
+  equal(segments.length, 2, 'generated init and media segments');
+  ok(segments[0].data, 'wrote data in the init segment');
+  equal(segments[0].type, 'audio', 'audio is the segment type');
 });
 
 test('buffers video samples until ended', function() {
@@ -1123,20 +1189,26 @@ validateTrackFragment = function(track, segment, metadata) {
 
 test('parses an example mp2t file and generates media segments', function() {
   var
-    segments = [],
+    videoSegments = [],
+    audioSegments = [],
     sequenceNumber = window.Infinity,
     i, boxes, mfhd;
 
   transmuxer.on('data', function(segment) {
-    segments.push(segment);
+    if (segment.type === 'video') {
+      videoSegments.push(segment);
+    } else if (segment.type === 'audio') {
+      audioSegments.push(segment);
+    }
   });
   transmuxer.push(window.bcSegment);
   transmuxer.end();
 
-  equal(segments.length, 2, 'generated two segments');
+  equal(videoSegments.length, 2, 'generated two video segments');
+  equal(audioSegments.length, 2, 'generated two audio segments');
 
-  boxes = videojs.inspectMp4(segments[0].data);
-  equal(boxes.length, 2, 'init segments are composed of two boxes');
+  boxes = videojs.inspectMp4(videoSegments[0].data);
+  equal(boxes.length, 2, 'video init segments are composed of two boxes');
   equal(boxes[0].type, 'ftyp', 'the first box is an ftyp');
   equal(boxes[1].type, 'moov', 'the second box is a moov');
   equal(boxes[1].boxes[0].type, 'mvhd', 'generated an mvhd');
@@ -1150,9 +1222,9 @@ test('parses an example mp2t file and generates media segments', function() {
   // });
   // equal(boxes[1].boxes[3].type, 'mvex', 'generated an mvex');
 
-  boxes = videojs.inspectMp4(segments[1].data);
-  ok(boxes.length > 0, 'media segments are not empty');
-  ok(boxes.length % 2 === 0, 'media segments are composed of pairs of boxes');
+  boxes = videojs.inspectMp4(videoSegments[1].data);
+  ok(boxes.length > 0, 'video media segments are not empty');
+  ok(boxes.length % 2 === 0, 'video media segments are composed of pairs of boxes');
   for (i = 0; i < boxes.length; i += 2) {
     equal(boxes[i].type, 'moof', 'first box is a moof');
     equal(boxes[i].boxes.length, 2, 'the moof has two children');
@@ -1163,7 +1235,7 @@ test('parses an example mp2t file and generates media segments', function() {
     sequenceNumber = mfhd.sequenceNumber;
 
     equal(boxes[i + 1].type, 'mdat', 'second box is an mdat');
-    validateTrackFragment(boxes[i].boxes[1], segments[1].data, {
+    validateTrackFragment(boxes[i].boxes[1], videoSegments[1].data, {
       trackId: 256,
       width: 388,
       height: 300,

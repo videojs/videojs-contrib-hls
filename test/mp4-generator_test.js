@@ -22,7 +22,11 @@
 */
 var
   mp4 = videojs.mp4,
-  inspectMp4 = videojs.inspectMp4;
+  inspectMp4 = videojs.inspectMp4,
+  validateMvhd, validateTrak, validateTkhd, validateMdia,
+  validateMdhd, validateHdlr, validateMinf, validateDinf,
+  validateStbl, validateStsd, validateMvex,
+  validateVideoSample, validateAudioSample;
 
 module('MP4 Generator');
 
@@ -39,72 +43,90 @@ test('generates a BSMFF ftyp', function() {
   equal(boxes[0].minorVersion, 1, 'minor version is one');
 });
 
-test('generates a moov', function() {
-  var boxes, mvhd, tkhd, mdhd, hdlr, minf, mvex,
-    data = mp4.moov([{
-      id: 7,
-      duration: 100,
-      width: 600,
-      height: 300,
-      type: 'video',
-      profileIdc: 3,
-      levelIdc: 5,
-      profileCompatibility: 7,
-      sps: [new Uint8Array([0, 1, 2]), new Uint8Array([3, 4, 5])],
-      pps: [new Uint8Array([6, 7, 8])]
-    }]);
-
-  ok(data, 'box is not null');
-
-  boxes = inspectMp4(data);
-  equal(boxes.length, 1, 'generated a single box');
-  equal(boxes[0].type, 'moov', 'generated a moov type');
-  equal(boxes[0].size, data.byteLength, 'generated size');
-  equal(boxes[0].boxes.length, 3, 'generated three sub boxes');
-
-  mvhd = boxes[0].boxes[0];
+validateMvhd = function(mvhd) {
   equal(mvhd.type, 'mvhd', 'generated a mvhd');
   equal(mvhd.duration, 0xffffffff, 'wrote the maximum movie header duration');
   equal(mvhd.nextTrackId, 0xffffffff, 'wrote the max next track id');
+};
 
-  equal(boxes[0].boxes[1].type, 'trak', 'generated a trak');
-  equal(boxes[0].boxes[1].boxes.length, 2, 'generated two track sub boxes');
-  tkhd = boxes[0].boxes[1].boxes[0];
+validateTrak = function(trak, expected) {
+  expected = expected || {};
+  equal(trak.type, 'trak', 'generated a trak');
+  equal(trak.boxes.length, 2, 'generated two track sub boxes');
+
+  validateTkhd(trak.boxes[0], expected);
+  validateMdia(trak.boxes[1], expected);
+};
+
+validateTkhd = function(tkhd, expected) {
   equal(tkhd.type, 'tkhd', 'generated a tkhd');
   equal(tkhd.trackId, 7, 'wrote the track id');
   deepEqual(tkhd.flags, new Uint8Array([0, 0, 7]), 'flags should equal 7');
-  equal(tkhd.duration, 100, 'wrote duration into the track header');
-  equal(tkhd.width, 600, 'wrote width into the track header');
-  equal(tkhd.height, 300, 'wrote height into the track header');
+  equal(tkhd.duration,
+        expected.duration || Math.pow(2, 32) - 1,
+        'wrote duration into the track header');
+  equal(tkhd.width, expected.width || 0, 'wrote width into the track header');
+  equal(tkhd.height, expected.height || 0, 'wrote height into the track header');
+  equal(tkhd.volume, 1, 'set volume to 1');
+};
 
-  equal(boxes[0].boxes[1].boxes[1].type, 'mdia', 'generated an mdia type');
-  equal(boxes[0].boxes[1].boxes[1].boxes.length, 3, 'generated three track media sub boxes');
+validateMdia = function(mdia, expected) {
+  equal(mdia.type, 'mdia', 'generated an mdia type');
+  equal(mdia.boxes.length, 3, 'generated three track media sub boxes');
 
-  mdhd = boxes[0].boxes[1].boxes[1].boxes[0];
+  validateMdhd(mdia.boxes[0], expected);
+  validateHdlr(mdia.boxes[1], expected);
+  validateMinf(mdia.boxes[2], expected);
+};
+
+validateMdhd = function(mdhd, expected) {
   equal(mdhd.type, 'mdhd', 'generate an mdhd type');
   equal(mdhd.language, 'und', 'wrote undetermined language');
-  equal(mdhd.duration, 100, 'wrote duration into the media header');
+  equal(mdhd.timescale, expected.timescale || 90000, 'wrote the timescale');
+  equal(mdhd.duration,
+        expected.duration || Math.pow(2, 32) - 1,
+        'wrote duration into the media header');
+};
 
-  hdlr = boxes[0].boxes[1].boxes[1].boxes[1];
+validateHdlr = function(hdlr, expected) {
   equal(hdlr.type, 'hdlr', 'generate an hdlr type');
-  equal(hdlr.handlerType, 'vide', 'wrote a video handler');
-  equal(hdlr.name, 'VideoHandler', 'wrote the handler name');
+  if (expected.type !== 'audio') {
+    equal(hdlr.handlerType, 'vide', 'wrote a video handler');
+    equal(hdlr.name, 'VideoHandler', 'wrote the handler name');
+  } else {
+    equal(hdlr.handlerType, 'soun', 'wrote a sound handler');
+    equal(hdlr.name, 'SoundHandler', 'wrote the sound handler name');
+  }
+};
 
-  minf = boxes[0].boxes[1].boxes[1].boxes[2];
+validateMinf = function(minf, expected) {
   equal(minf.type, 'minf', 'generate an minf type');
   equal(minf.boxes.length, 3, 'generates three minf sub boxes');
 
-  equal(minf.boxes[0].type, 'vmhd', 'generates a vmhd type');
-  deepEqual({
-    type: 'vmhd',
-    size: 20,
-    version: 0,
-    flags: new Uint8Array([0, 0, 1]),
-    graphicsmode: 0,
-    opcolor: new Uint16Array([0, 0, 0])
-  }, minf.boxes[0], 'generates a vhmd');
+  if (expected.type !== 'audio') {
+    deepEqual({
+      type: 'vmhd',
+      size: 20,
+      version: 0,
+      flags: new Uint8Array([0, 0, 1]),
+      graphicsmode: 0,
+      opcolor: new Uint16Array([0, 0, 0])
+    }, minf.boxes[0], 'generates a vhmd');
+  } else {
+    deepEqual({
+      type: 'smhd',
+      size: 16,
+      version: 0,
+      flags: new Uint8Array([0, 0, 0]),
+      balance: 0
+    }, minf.boxes[0], 'generates an smhd');
+  }
 
-  equal(minf.boxes[1].type, 'dinf', 'generates a dinf type');
+  validateDinf(minf.boxes[1]);
+  validateStbl(minf.boxes[2], expected);
+};
+
+validateDinf = function(dinf) {
   deepEqual({
     type: 'dinf',
     size: 36,
@@ -120,82 +142,123 @@ test('generates a moov', function() {
         flags: new Uint8Array([0, 0, 1])
       }]
     }]
-  }, minf.boxes[1], 'generates a dinf');
+  }, dinf, 'generates a dinf');
+};
 
-  equal(minf.boxes[2].type, 'stbl', 'generates an stbl type');
+validateStbl = function(stbl, expected) {
+  equal(stbl.type, 'stbl', 'generates an stbl type');
+  equal(stbl.boxes.length, 5, 'generated five stbl child boxes');
+
+  validateStsd(stbl.boxes[0], expected);
   deepEqual({
-    type: 'stbl',
-    size: 228,
-    boxes: [{
-      type: 'stsd',
-      size: 152,
-      version: 0,
-      flags: new Uint8Array([0, 0, 0]),
-      sampleDescriptions: [{
-        type: 'avc1',
-        size: 136,
-        dataReferenceIndex: 1,
-        width: 600,
-        height: 300,
-        horizresolution: 72,
-        vertresolution: 72,
-        frameCount: 1,
-        depth: 24,
-        config: [{
-          type: 'avcC',
-          size: 30,
-          configurationVersion: 1,
-          avcProfileIndication: 3,
-          avcLevelIndication: 5,
-          profileCompatibility: 7,
-          lengthSizeMinusOne: 3,
-          sps: [new Uint8Array([
-            0, 1, 2
-          ]), new Uint8Array([
-            3, 4, 5
-          ])],
-          pps: [new Uint8Array([
-            6, 7, 8
-          ])]
-        }, {
-          type: 'btrt',
-          size: 20,
-          bufferSizeDB: 1875072,
-          maxBitrate: 3000000,
-          avgBitrate: 3000000
-        }]
-      }]
+    type: 'stts',
+    size: 16,
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    timeToSamples: []
+  }, stbl.boxes[1], 'generated an stts');
+  deepEqual({
+    type: 'stsc',
+    size: 16,
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    sampleToChunks: []
+  }, stbl.boxes[2], 'generated an stsc');
+  deepEqual({
+    type: 'stsz',
+    version: 0,
+    size: 20,
+    flags: new Uint8Array([0, 0, 0]),
+    sampleSize: 0,
+    entries: []
+  }, stbl.boxes[3], 'generated an stsz');
+  deepEqual({
+    type: 'stco',
+    size: 16,
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    chunkOffsets: []
+  }, stbl.boxes[4], 'generated and stco');
+};
+
+validateStsd = function(stsd, expected) {
+  equal(stsd.type, 'stsd', 'generated an stsd');
+  equal(stsd.sampleDescriptions.length, 1, 'generated one sample');
+  if (expected.type !== 'audio') {
+    validateVideoSample(stsd.sampleDescriptions[0]);
+  } else {
+    validateAudioSample(stsd.sampleDescriptions[0]);
+  }
+};
+
+validateVideoSample = function(sample) {
+  deepEqual(sample, {
+    type: 'avc1',
+    size: 136,
+    dataReferenceIndex: 1,
+    width: 600,
+    height: 300,
+    horizresolution: 72,
+    vertresolution: 72,
+    frameCount: 1,
+    depth: 24,
+    config: [{
+      type: 'avcC',
+      size: 30,
+      configurationVersion: 1,
+      avcProfileIndication: 3,
+      avcLevelIndication: 5,
+      profileCompatibility: 7,
+      lengthSizeMinusOne: 3,
+      sps: [new Uint8Array([
+        0, 1, 2
+      ]), new Uint8Array([
+        3, 4, 5
+      ])],
+      pps: [new Uint8Array([
+        6, 7, 8
+      ])]
     }, {
-      type: 'stts',
-      size: 16,
-      version: 0,
-      flags: new Uint8Array([0, 0, 0]),
-      timeToSamples: []
-    }, {
-      type: 'stsc',
-      size: 16,
-      version: 0,
-      flags: new Uint8Array([0, 0, 0]),
-      sampleToChunks: []
-    }, {
-      type: 'stsz',
-      version: 0,
+      type: 'btrt',
       size: 20,
-      flags: new Uint8Array([0, 0, 0]),
-      sampleSize: 0,
-      entries: []
-    }, {
-      type: 'stco',
-      size: 16,
+      bufferSizeDB: 1875072,
+      maxBitrate: 3000000,
+      avgBitrate: 3000000
+    }]
+  }, 'generated a video sample');
+};
+
+validateAudioSample = function(sample) {
+  deepEqual(sample, {
+    type: 'mp4a',
+    size: 75,
+    dataReferenceIndex: 1,
+    channelcount: 2,
+    samplesize: 16,
+    samplerate: 48000,
+    streamDescriptor: {
+      type: 'esds',
       version: 0,
       flags: new Uint8Array([0, 0, 0]),
-      chunkOffsets: []
-    }]
-  }, minf.boxes[2], 'generates a stbl');
+      size: 39,
+      esId: 0,
+      streamPriority: 0,
+      // these values were hard-coded based on a working audio init segment
+      decoderConfig: {
+        avgBitrate: 56000,
+        maxBitrate: 56000,
+        bufferSize: 1536,
+        objectProfileIndication: 64,
+        streamType: 5
+      }
+    }
+  }, 'generated an audio sample');
+};
 
-
-  mvex = boxes[0].boxes[2];
-  equal(mvex.type, 'mvex', 'generates an mvex type');
+validateMvex = function(mvex, options) {
+  options = options || {
+    sampleDegradationPriority: 1
+  };
   deepEqual({
     type: 'mvex',
     size: 40,
@@ -213,17 +276,75 @@ test('generates a moov', function() {
       sampleHasRedundancy: 0,
       samplePaddingValue: 0,
       sampleIsDifferenceSample: true,
-      sampleDegradationPriority: 1
+      sampleDegradationPriority: options.sampleDegradationPriority
     }]
   }, mvex, 'writes a movie extends box');
+};
+
+test('generates a video moov', function() {
+  var
+    boxes,
+    data = mp4.moov([{
+      id: 7,
+      duration: 100,
+      width: 600,
+      height: 300,
+      type: 'video',
+      profileIdc: 3,
+      levelIdc: 5,
+      profileCompatibility: 7,
+      sps: [new Uint8Array([0, 1, 2]), new Uint8Array([3, 4, 5])],
+      pps: [new Uint8Array([6, 7, 8])]
+    }]);
+
+  ok(data, 'box is not null');
+  boxes = inspectMp4(data);
+  equal(boxes.length, 1, 'generated a single box');
+  equal(boxes[0].type, 'moov', 'generated a moov type');
+  equal(boxes[0].size, data.byteLength, 'generated size');
+  equal(boxes[0].boxes.length, 3, 'generated three sub boxes');
+
+  validateMvhd(boxes[0].boxes[0]);
+  validateTrak(boxes[0].boxes[1], {
+    duration: 100,
+    width: 600,
+    height: 300
+  });
+  validateMvex(boxes[0].boxes[2]);
+});
+
+test('generates an audio moov', function() {
+  var
+    data = mp4.moov([{
+      id: 7,
+      type: 'audio',
+      channelcount: 2,
+      samplerate: 48000,
+      samplesize: 16
+    }]),
+    boxes;
+
+  ok(data, 'box is not null');
+  boxes = inspectMp4(data);
+  equal(boxes.length, 1, 'generated a single box');
+  equal(boxes[0].type, 'moov', 'generated a moov type');
+  equal(boxes[0].size, data.byteLength, 'generated size');
+  equal(boxes[0].boxes.length, 3, 'generated three sub boxes');
+
+  validateMvhd(boxes[0].boxes[0]);
+  validateTrak(boxes[0].boxes[1], {
+    type: 'audio',
+    timescale: 48000
+  });
+  validateMvex(boxes[0].boxes[2], {
+    sampleDegradationPriority: 0
+  });
 });
 
 test('generates a sound hdlr', function() {
   var boxes, hdlr,
     data = mp4.moov([{
       duration:100,
-      width: 600,
-      height: 300,
       type: 'audio'
     }]);
 

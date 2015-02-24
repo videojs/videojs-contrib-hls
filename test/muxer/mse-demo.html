@@ -76,27 +76,41 @@
 
     // setup the media source
     mediaSource.addEventListener('sourceopen', function() {
-      var buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d'),
+      var videoBuffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d'),
+          audioBuffer = mediaSource.addSourceBuffer('audio/mp4;codecs=mp4a.40.2'),
           transmuxer = new videojs.mp2t.Transmuxer(),
-          segments = [];
+          videoSegments = [],
+          audioSegments = [];
 
       // expose the machinery for debugging
       window.vjsMediaSource = mediaSource;
-      window.vjsSourceBuffer = buffer;
+      window.vjsSourceBuffer = videoBuffer;
       window.vjsVideo = demo;
 
       // transmux the MPEG-TS data to BMFF segments
       transmuxer.on('data', function(segment) {
-        segments.push(segment);
+        if (segment.type === 'video') {
+          videoSegments.push(segment);
+        } else {
+          audioSegments.push(segment);
+        }
       });
       transmuxer.push(hazeVideo);
       transmuxer.end();
 
       // buffer up the video data
-      buffer.appendBuffer(segments.shift().data);
-      buffer.addEventListener('updateend', function() {
-        if (segments.length) {
-          buffer.appendBuffer(segments.shift().data);
+      videoBuffer.appendBuffer(videoSegments.shift().data);
+      videoBuffer.addEventListener('updateend', function() {
+        if (videoSegments.length) {
+          videoBuffer.appendBuffer(videoSegments.shift().data);
+        }
+      });
+
+      // buffer up the audio data
+      audioBuffer.appendBuffer(audioSegments.shift().data);
+      audioBuffer.addEventListener('updateend', function() {
+        if (audioSegments.length) {
+          audioBuffer.appendBuffer(audioSegments.shift().data);
         }
       });
     });

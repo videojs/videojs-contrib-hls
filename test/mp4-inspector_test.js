@@ -586,6 +586,75 @@ test('can parse a video stsd', function() {
   }]);
 });
 
+test('can parse an audio stsd', function() {
+  var data = box('stsd',
+                 0x00,                         // version 0
+                 0x00, 0x00, 0x00,             // flags
+                 0x00, 0x00, 0x00, 0x01,       // entry_count
+                 box('mp4a',
+                     0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00,         // reserved
+                     0x00, 0x01,               // data_reference_index
+                     0x00, 0x00, 0x00, 0x00,
+                     0x00, 0x00, 0x00, 0x00,   // reserved
+                     0x00, 0x02,               // channelcount
+                     0x00, 0x10,               // samplesize
+                     0x00, 0x00,               // pre_defined
+                     0x00, 0x00,               // reserved
+                     0xbb, 0x80, 0x00, 0x00, // samplerate, fixed-point 16.16
+                     box('esds',
+                         0x00, // version 0
+                         0x00, 0x00, 0x00, // flags
+                         0x03, // tag, ES_DescrTag
+                         0x00, // length
+                         0x00, 0x01, // ES_ID
+                         0x00, // streamDependenceFlag, URL_Flag, reserved, streamPriority
+
+                         // DecoderConfigDescriptor
+                         0x04, // tag, DecoderConfigDescrTag
+                         0x0d, // length
+                         0x40, // objectProfileIndication, AAC Main
+                         0x15, // streamType, AudioStream. upstream, reserved
+                         0x00, 0x00, 0xff, // bufferSizeDB
+                         0x00, 0x00, 0x00, 0xff, // maxBitrate
+                         0x00, 0x00, 0x00, 0xaa, // avgBitrate
+
+                         // DecoderSpecificInfo
+                         0x05, // tag, DecoderSpecificInfoTag
+                         0x02, // length
+                         0x11, 0x90, 0x06, 0x01, 0x02))); // decoder specific info
+
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)), [{
+    version: 0,
+    flags: new Uint8Array([0, 0, 0]),
+    type: 'stsd',
+    size: 91,
+    sampleDescriptions: [{
+      type: 'mp4a',
+      dataReferenceIndex: 1,
+      channelcount: 2,
+      samplesize: 16,
+      samplerate: 48000,
+      size: 75,
+      streamDescriptor: {
+        type: 'esds',
+        version: 0,
+        size: 39,
+        flags: new Uint8Array([0, 0, 0]),
+        esId: 1,
+        streamPriority: 0,
+        decoderConfig: {
+          objectProfileIndication: 0x40,
+          streamType: 0x05,
+          bufferSize: 0xff,
+          maxBitrate: 0xff,
+          avgBitrate: 0xaa
+        }
+      }
+    }]
+  }], 'parsed an audio stsd');
+});
+
 test('can parse an styp', function() {
   deepEqual(videojs.inspectMp4(new Uint8Array(box('styp',
     0x61, 0x76, 0x63, 0x31, // major brand
@@ -843,6 +912,24 @@ test('can parse a sidx', function(){
                 }]
 
             }]);
+});
+
+test('can parse an smhd', function() {
+  var data = box('smhd',
+                 0x00,             // version
+                 0x00, 0x00, 0x00, // flags
+                 0x00, 0xff,       // balance, fixed-point 8.8
+                 0x00, 0x00);      // reserved
+
+  deepEqual(videojs.inspectMp4(new Uint8Array(data)),
+            [{
+              type: 'smhd',
+              size: 16,
+              version: 0,
+              flags: new Uint8Array([0, 0, 0]),
+              balance: 0xff / Math.pow(2, 8)
+            }],
+            'parsed an smhd');
 });
 
 test('can parse a tfdt', function() {

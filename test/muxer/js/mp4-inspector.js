@@ -129,6 +129,27 @@ var
         avgBitrate: view.getUint32(8)
       };
     },
+    esds: function(data) {
+      return {
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4)),
+        esId: (data[6] << 8) | data[7],
+        streamPriority: data[8] & 0x1f,
+        decoderConfig: {
+          objectProfileIndication: data[11],
+          streamType: (data[12] >>> 2) & 0x3f,
+          bufferSize: (data[13] << 16) | (data[14] << 8) | data[15],
+          maxBitrate: (data[16] << 24) |
+            (data[17] << 16) |
+            (data[18] <<  8) |
+            data[19],
+          avgBitrate: (data[20] << 24) |
+            (data[21] << 16) |
+            (data[22] <<  8) |
+            data[23]
+        }
+      };
+    },
     ftyp: function(data) {
       var
         view = new DataView(data.buffer, data.byteOffset, data.byteLength),
@@ -247,6 +268,30 @@ var
         boxes: videojs.inspectMp4(data)
       };
     },
+    // codingname, not a first-class box type. stsd entries share the
+    // same format as real boxes so the parsing infrastructure can be
+    // shared
+    mp4a: function(data) {
+      var
+        view = new DataView(data.buffer, data.byteOffset, data.byteLength),
+        result = {
+          // 6 bytes reserved
+          dataReferenceIndex: view.getUint16(6),
+          // 4 + 4 bytes reserved
+          channelcount: view.getUint16(16),
+          samplesize: view.getUint16(18),
+          // 2 bytes pre_defined
+          // 2 bytes reserved
+          samplerate: view.getUint16(24) + (view.getUint16(26) / 65536)
+        };
+
+      // if there are more bytes to process, assume this is an ISO/IEC
+      // 14496-14 MP4AudioSampleEntry and parse the ESDBox
+      if (data.byteLength > 28) {
+        result.streamDescriptor = videojs.inspectMp4(data.subarray(28))[0];
+      }
+      return result;
+    },
     moof: function(data) {
       return {
         boxes: videojs.inspectMp4(data)
@@ -356,6 +401,13 @@ var
       }
 
       return result;
+    },
+    smhd: function(data) {
+      return {
+        version: data[0],
+        flags: new Uint8Array(data.subarray(1, 4)),
+        balance: data[4] + (data[5] / 256)
+      };
     },
     stbl: function(data) {
       return {

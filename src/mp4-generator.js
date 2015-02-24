@@ -4,7 +4,7 @@
 var box, dinf, ftyp, mdat, mfhd, minf, moof, moov, mvex, mvhd, trak,
     tkhd, mdia, mdhd, hdlr, sdtp, stbl, stsd, styp, traf, trex, trun,
     types, MAJOR_BRAND, MINOR_VERSION, AVC1_BRAND, VIDEO_HDLR,
-    AUDIO_HDLR, HDLR_TYPES, VMHD, DREF, STCO, STSC, STSZ, STTS,
+    AUDIO_HDLR, HDLR_TYPES, ESDS, VMHD, SMHD, DREF, STCO, STSC, STSZ, STTS,
     Uint8Array, DataView;
 
 Uint8Array = window.Uint8Array;
@@ -19,6 +19,7 @@ DataView = window.DataView;
     btrt: [],
     dinf: [],
     dref: [],
+    esds: [],
     ftyp: [],
     hdlr: [],
     mdat: [],
@@ -28,9 +29,11 @@ DataView = window.DataView;
     minf: [],
     moof: [],
     moov: [],
+    mp4a: [], // codingname
     mvex: [],
     mvhd: [],
     sdtp: [],
+    smhd: [],
     stbl: [],
     stco: [],
     stsc: [],
@@ -109,6 +112,39 @@ DataView = window.DataView;
     0x00, // version 0
     0x00, 0x00, 0x01 // entry_flags
   ]);
+  ESDS = new Uint8Array([
+    0x00, // version
+    0x00, 0x00, 0x00, // flags
+
+    // ES_Descriptor
+    0x03, // tag, ES_DescrTag
+    0x19, // length
+    0x00, 0x00, // ES_ID
+    0x00, // streamDependenceFlag, URL_flag, reserved, streamPriority
+
+    // DecoderConfigDescriptor
+    0x04, // tag, DecoderConfigDescrTag
+    0x11, // length
+    0x40, // object type
+    0x15,  // streamType
+    0x00, 0x06, 0x00, // bufferSizeDB
+    0x00, 0x00, 0xda, 0xc0, // maxBitrate
+    0x00, 0x00, 0xda, 0xc0, // avgBitrate
+
+    // DecoderSpecificInfo
+    0x05, // tag, DecoderSpecificInfoTag
+    0x02, // length
+    // ISO/IEC 14496-3, AudioSpecificConfig
+    0x11, // AudioObjectType, AAC LC.
+    0x90, // samplingFrequencyIndex, 8 -> 16000. channelConfig, 2 -> stereo.
+    0x06, 0x01, 0x02 // GASpecificConfig
+  ]);
+  SMHD = new Uint8Array([
+    0x00,             // version
+    0x00, 0x00, 0x00, // flags
+    0x00, 0x00,       // balance, 0 means centered
+    0x00, 0x00        // reserved
+  ]);
   STCO = new Uint8Array([
     0x00, // version
     0x00, 0x00, 0x00, // flags
@@ -171,24 +207,35 @@ hdlr = function(type) {
 mdat = function(data) {
   return box(types.mdat, data);
 };
-mdhd = function(duration) {
-  return box(types.mdhd, new Uint8Array([
-    0x00, // version 0
-    0x00, 0x00, 0x00, // flags
+mdhd = function(track) {
+  var result = new Uint8Array([
+    0x00,                   // version 0
+    0x00, 0x00, 0x00,       // flags
     0x00, 0x00, 0x00, 0x02, // creation_time
     0x00, 0x00, 0x00, 0x03, // modification_time
     0x00, 0x01, 0x5f, 0x90, // timescale, 90,000 "ticks" per second
 
-    (duration & 0xFF000000) >> 24,
-    (duration & 0xFF0000) >> 16,
-    (duration & 0xFF00) >> 8,
-    duration & 0xFF, // duration
-    0x55, 0xc4, // 'und' language (undetermined)
+    (track.duration >>> 24),
+    (track.duration >>> 16) & 0xFF,
+    (track.duration >>>  8) & 0xFF,
+    track.duration & 0xFF,  // duration
+    0x55, 0xc4,             // 'und' language (undetermined)
     0x00, 0x00
-  ]));
+  ]);
+
+  // Use the sample rate from the track metadata, when it is
+  // defined. The sample rate can be parsed out of an ADTS header, for
+  // instance.
+  if (track.samplerate) {
+    result[12] = (track.samplerate >>> 24);
+    result[13] = (track.samplerate >>> 16) & 0xFF;
+    result[14] = (track.samplerate >>>  8) & 0xFF;
+    result[15] = (track.samplerate)        & 0xFF;
+  }
+  return box(types.mdhd, result);
 };
 mdia = function(track) {
-  return box(types.mdia, mdhd(track.duration), hdlr(track.type), minf(track));
+  return box(types.mdia, mdhd(track), hdlr(track.type), minf(track));
 };
 mfhd = function(sequenceNumber) {
   return box(types.mfhd, new Uint8Array([
@@ -201,7 +248,10 @@ mfhd = function(sequenceNumber) {
   ]));
 };
 minf = function(track) {
-  return box(types.minf, box(types.vmhd, VMHD), dinf(), stbl(track));
+  return box(types.minf,
+             track.type === 'video' ? box(types.vmhd, VMHD) : box(types.smhd, SMHD),
+             dinf(),
+             stbl(track));
 };
 moof = function(sequenceNumber, tracks) {
   var
@@ -217,7 +267,9 @@ moof = function(sequenceNumber, tracks) {
   ].concat(trackFragments));
 };
 /**
- * @param tracks... (optional) {array} the tracks associated with this movie
+ * Returns a movie box.
+ * @param tracks {array} the tracks associated with this movie
+ * @see ISO/IEC 14496-12:2012(E), section 8.2.1
  */
 moov = function(tracks) {
   var
@@ -307,32 +359,36 @@ stbl = function(track) {
              box(types.stco, STCO));
 };
 
-stsd = function(track) {
-  var sequenceParameterSets = [], pictureParameterSets = [], i;
+(function() {
+  var videoSample, audioSample;
 
-  if (track.type === 'audio') {
-    return box(types.stsd);
-  }
+  stsd = function(track) {
 
-  // assemble the SPSs
-  for (i = 0; i < track.sps.length; i++) {
-    sequenceParameterSets.push((track.sps[i].byteLength & 0xFF00) >>> 8);
-    sequenceParameterSets.push((track.sps[i].byteLength & 0xFF)); // sequenceParameterSetLength
-    sequenceParameterSets = sequenceParameterSets.concat(Array.prototype.slice.call(track.sps[i])); // SPS
-  }
+    return box(types.stsd, new Uint8Array([
+      0x00, // version 0
+      0x00, 0x00, 0x00, // flags
+      0x00, 0x00, 0x00, 0x01
+    ]), track.type === 'video' ? videoSample(track) : audioSample(track));
+  };
 
-  // assemble the PPSs
-  for (i = 0; i < track.pps.length; i++) {
-    pictureParameterSets.push((track.pps[i].byteLength & 0xFF00) >>> 8);
-    pictureParameterSets.push((track.pps[i].byteLength & 0xFF));
-    pictureParameterSets = pictureParameterSets.concat(Array.prototype.slice.call(track.pps[i]));
-  }
+  videoSample = function(track) {
+    var sequenceParameterSets = [], pictureParameterSets = [], i;
 
-  return box(types.stsd, new Uint8Array([
-    0x00, // version 0
-    0x00, 0x00, 0x00, // flags
-    0x00, 0x00, 0x00, 0x01]),
-    box(types.avc1, new Uint8Array([
+    // assemble the SPSs
+    for (i = 0; i < track.sps.length; i++) {
+      sequenceParameterSets.push((track.sps[i].byteLength & 0xFF00) >>> 8);
+      sequenceParameterSets.push((track.sps[i].byteLength & 0xFF)); // sequenceParameterSetLength
+      sequenceParameterSets = sequenceParameterSets.concat(Array.prototype.slice.call(track.sps[i])); // SPS
+    }
+
+    // assemble the PPSs
+    for (i = 0; i < track.pps.length; i++) {
+      pictureParameterSets.push((track.pps[i].byteLength & 0xFF00) >>> 8);
+      pictureParameterSets.push((track.pps[i].byteLength & 0xFF));
+      pictureParameterSets = pictureParameterSets.concat(Array.prototype.slice.call(track.pps[i]));
+    }
+
+    return box(types.avc1, new Uint8Array([
       0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, // reserved
       0x00, 0x01, // data_reference_index
@@ -359,31 +415,60 @@ stsd = function(track) {
       0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, // compressorname
       0x00, 0x18, // depth = 24
-      0x11, 0x11]), // pre_defined = -1
-        box(types.avcC, new Uint8Array([
-          0x01, // configurationVersion
-          track.profileIdc, // AVCProfileIndication
-          track.profileCompatibility, // profile_compatibility
-          track.levelIdc, // AVCLevelIndication
-          0xff // lengthSizeMinusOne, hard-coded to 4 bytes
-        ].concat([
-          track.sps.length // numOfSequenceParameterSets
-        ]).concat(sequenceParameterSets).concat([
-          track.pps.length // numOfPictureParameterSets
-        ]).concat(pictureParameterSets))), // "PPS"
-        box(types.btrt, new Uint8Array([
-          0x00, 0x1c, 0x9c, 0x80, // bufferSizeDB
-          0x00, 0x2d, 0xc6, 0xc0, // maxBitrate
-          0x00, 0x2d, 0xc6, 0xc0])) // avgBitrate
-        ));
-};
+      0x11, 0x11 // pre_defined = -1
+    ]), box(types.avcC, new Uint8Array([
+      0x01, // configurationVersion
+      track.profileIdc, // AVCProfileIndication
+      track.profileCompatibility, // profile_compatibility
+      track.levelIdc, // AVCLevelIndication
+      0xff // lengthSizeMinusOne, hard-coded to 4 bytes
+    ].concat([
+      track.sps.length // numOfSequenceParameterSets
+    ]).concat(sequenceParameterSets).concat([
+      track.pps.length // numOfPictureParameterSets
+    ]).concat(pictureParameterSets))), // "PPS"
+            box(types.btrt, new Uint8Array([
+              0x00, 0x1c, 0x9c, 0x80, // bufferSizeDB
+              0x00, 0x2d, 0xc6, 0xc0, // maxBitrate
+              0x00, 0x2d, 0xc6, 0xc0
+            ])) // avgBitrate
+              );
+  };
+
+  audioSample = function(track) {
+    return box(types.mp4a, new Uint8Array([
+
+      // SampleEntry, ISO/IEC 14496-12
+      0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, // reserved
+      0x00, 0x01, // data_reference_index
+
+      // AudioSampleEntry, ISO/IEC 14496-12
+      0x00, 0x00, 0x00, 0x00, // reserved
+      0x00, 0x00, 0x00, 0x00, // reserved
+      (track.channelcount & 0xff00) >> 8,
+      (track.channelcount & 0xff), // channelcount
+
+      (track.samplesize & 0xff00) >> 8,
+      (track.samplesize & 0xff), // samplesize
+      0x00, 0x00, // pre_defined
+      0x00, 0x00, // reserved
+
+      (track.samplerate & 0xff00) >> 8,
+      (track.samplerate & 0xff),
+      0x00, 0x00 // samplerate, 16.16
+
+      // MP4AudioSampleEntry, ISO/IEC 14496-14
+    ]), box(types.esds, ESDS));
+  };
+})();
 
 styp = function() {
   return box(types.styp, MAJOR_BRAND, MINOR_VERSION, MAJOR_BRAND);
 };
 
 tkhd = function(track) {
-  return box(types.tkhd, new Uint8Array([
+  var result = new Uint8Array([
     0x00, // version 0
     0x00, 0x00, 0x07, // flags
     0x00, 0x00, 0x00, 0x00, // creation_time
@@ -401,7 +486,7 @@ tkhd = function(track) {
     0x00, 0x00, 0x00, 0x00, // reserved
     0x00, 0x00, // layer
     0x00, 0x00, // alternate_group
-    0x00, 0x00, // non-audio track volume
+    0x01, 0x00, // non-audio track volume
     0x00, 0x00, // reserved
     0x00, 0x01, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
@@ -418,7 +503,9 @@ tkhd = function(track) {
     (track.height & 0xFF00) >> 8,
     track.height & 0xFF,
     0x00, 0x00 // height
-  ]));
+  ]);
+
+  return box(types.tkhd, result);
 };
 
 traf = function(track) {
@@ -461,7 +548,7 @@ trak = function(track) {
 };
 
 trex = function(track) {
-  return box(types.trex, new Uint8Array([
+  var result = new Uint8Array([
     0x00, // version 0
     0x00, 0x00, 0x00, // flags
     (track.id & 0xFF000000) >> 24,
@@ -472,7 +559,16 @@ trex = function(track) {
     0x00, 0x00, 0x00, 0x00, // default_sample_duration
     0x00, 0x00, 0x00, 0x00, // default_sample_size
     0x00, 0x01, 0x00, 0x01 // default_sample_flags
-  ]));
+  ]);
+  // the last two bytes of default_sample_flags is the sample
+  // degradation priority, a hint about the importance of this sample
+  // relative to others. Lower the degradation priority for all sample
+  // types other than video.
+  if (track.type !== 'video') {
+    result[result.length - 1] = 0x00;
+  }
+
+  return box(types.trex, result);
 };
 
 trun = function(track, offset) {

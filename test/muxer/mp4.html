@@ -181,8 +181,8 @@
 
     mediaSource.addEventListener('sourceopen', function() {
       var
-        buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d'),
-        one = false;
+        // buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d');
+        buffer = mediaSource.addSourceBuffer('audio/mp4;codecs=mp4a.40.2');
       buffer.addEventListener('updatestart', logevent);
       buffer.addEventListener('updateend', logevent);
       buffer.addEventListener('error', logevent);
@@ -211,27 +211,43 @@
         var segment = new Uint8Array(reader.result),
             transmuxer = new videojs.mp2t.Transmuxer(),
             events = [],
+            i = 0,
+            bytesLength = 0,
+            init = false,
             bytes,
             hex = '';
 
         transmuxer.on('data', function(data) {
-          if (data) {
+          if (data && data.type === 'audio') {
             events.push(data.data);
+            bytesLength += data.data.byteLength;
+
+            // XXX Media Sources Testing
+            if (!init) {
+              vjsParsed = videojs.inspectMp4(data.data);
+              console.log('appended tmuxed output');
+              window.vjsSourceBuffer.appendBuffer(data.data);
+              init = true;
+            }
           }
         });
         transmuxer.push(segment);
         transmuxer.end();
 
-        bytes = new Uint8Array(events[0].byteLength + events[1].byteLength);
-        bytes.set(events[0]);
-        bytes.set(events[1], events[0].byteLength);
+        bytes = new Uint8Array(bytesLength);
+        i = 0;
+        while (events.length) {
+          bytes.set(events[0], i);
+          i += events[0].byteLength;
+          events.shift();
+        }
 
-        vjsParsed = videojs.inspectMp4(bytes);
-        console.log('transmuxed', vjsParsed);
+        // vjsParsed = videojs.inspectMp4(bytes);
+        console.log('transmuxed', videojs.inspectMp4(bytes));
         diffParsed();
 
         // clear old box info
-        vjsBoxes.innerHTML = stringify(vjsParsed, null, ' ');
+        vjsBoxes.innerHTML = stringify(videojs.inspectMp4(bytes), null, ' ');
 
         // write out the result
         hex += '<pre>';
@@ -263,8 +279,7 @@
         workingOutput.innerHTML = hex;
 
         // XXX Media Sources Testing
-        window.vjsSourceBuffer.appendBuffer(bytes);
-        console.log('appended bytes');
+        // window.vjsSourceBuffer.appendBuffer(bytes);
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
