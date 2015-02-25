@@ -66,7 +66,15 @@
   };
 
   test('parses simple ID3 metadata out of PES packets', function() {
-    var events = [], id3Bytes, size;
+    var
+      events = [],
+      wxxxPayload = [
+        0x00 // text encoding. ISO-8859-1
+      ].concat(stringToCString('ad tag URL'), // description
+               stringToInts('http://example.com/ad?v=1234&q=7')), // value
+      id3Bytes,
+      size;
+
     metadataStream.on('data', function(event) {
       events.push(event);
     });
@@ -84,9 +92,7 @@
       // frame 0
       // http://id3.org/id3v2.3.0#User_defined_text_information_frame
     ], id3Frame('WXXX',
-                [0x00], // text encoding. ISO-8859-1
-                stringToCString('ad tag URL'), // description
-                stringToInts('http://example.com/ad?v=1234&q=7')), // value
+                wxxxPayload), // value
     // frame 1
     // custom tag
     id3Frame('XINF',
@@ -115,11 +121,17 @@
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 2, 'parsed two frames');
     equal(events[0].frames[0].id, 'WXXX', 'parsed a WXXX frame');
+    deepEqual(new Uint8Array(events[0].frames[0].data),
+              new Uint8Array(wxxxPayload),
+              'attached the frame payload');
     equal(events[0].frames[1].id, 'XINF', 'parsed a user-defined frame');
+    deepEqual(new Uint8Array(events[0].frames[1].data),
+              new Uint8Array([0x04, 0x03, 0x02, 0x01]),
+              'attached the frame payload');
   });
 
   test('skips non-ID3 metadata events', function() {
-    var events = [], id3Bytes, size;
+    var events = [];
     metadataStream.on('data', function(event) {
       events.push(event);
     });
@@ -143,5 +155,7 @@
   // compressed frames
   // encrypted frames
   // frame groups
+  // too large/small tag size values
+  // too large/small frame size values
 
-})(window, videojs);
+})(window, window.videojs);

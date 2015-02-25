@@ -49,13 +49,7 @@
       // http://id3.org/id3v2.3.0#ID3v2_frame_overview
       chunk.frames = [];
       do {
-        chunk.frames.push({
-          id: String.fromCharCode(chunk.data[frameStart]) +
-            String.fromCharCode(chunk.data[frameStart + 1]) +
-            String.fromCharCode(chunk.data[frameStart + 2]) +
-            String.fromCharCode(chunk.data[frameStart + 3])
-        });
-
+        // determine the number of bytes in this frame
         frameSize = (chunk.data[frameStart + 4] << 24) |
                     (chunk.data[frameStart + 5] << 16) |
                     (chunk.data[frameStart + 6] <<  8) |
@@ -63,13 +57,22 @@
         if (frameSize < 1) {
           return videojs.log('Malformed ID3 frame encountered. Skipping metadata parsing.');
         }
+
+        chunk.frames.push({
+          id: String.fromCharCode(chunk.data[frameStart]) +
+            String.fromCharCode(chunk.data[frameStart + 1]) +
+            String.fromCharCode(chunk.data[frameStart + 2]) +
+            String.fromCharCode(chunk.data[frameStart + 3]),
+          data: chunk.data.subarray(frameStart + 10, frameStart + frameSize + 10)
+        });
+
         frameStart += 10; // advance past the frame header
         frameStart += frameSize; // advance past the frame body
-      } while (frameStart < tagSize)
+      } while (frameStart < tagSize);
       this.trigger('data', chunk);
     };
   };
   MetadataStream.prototype = new videojs.Hls.Stream();
 
   videojs.Hls.MetadataStream = MetadataStream;
-})(window, videojs);
+})(window, window.videojs);
