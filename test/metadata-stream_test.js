@@ -25,7 +25,7 @@
 
   module('MetadataStream', {
     setup: function() {
-      // metadataStream = new videojs.Hls.MetadataStream();
+      metadataStream = new videojs.Hls.MetadataStream();
     }
   });
 
@@ -53,23 +53,23 @@
         size = result.length - 10;
 
     // append the fields of the ID3 frame
-    result.concat(Array.prototype.slice.call(arguments, 1));
+    result = result.concat.apply(result, Array.prototype.slice.call(arguments, 1));
 
     // set the size
     size = result.length - 10;
-    result[0] = (size >>> 24);
-    result[1] = (size >>> 16) & 0xff;
-    result[2] = (size >>>  8) & 0xff;
-    result[3] = (size)        & 0xff;
+    result[4] = (size >>> 24);
+    result[5] = (size >>> 16) & 0xff;
+    result[6] = (size >>>  8) & 0xff;
+    result[7] = (size)        & 0xff;
 
     return result;
   };
 
   test('parses simple ID3 metadata out of PES packets', function() {
     var events = [], id3Bytes, size;
-    // metadataStream.on('data', function(event) {
-    //   events.push(event);
-    // });
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
 
     id3Bytes = new Uint8Array(stringToInts('ID3').concat([
       0x03, 0x00,            // version 3.0 of ID3v2 (aka ID3v.2.3.0)
@@ -77,10 +77,9 @@
       0x00, 0x00, 0x00, 0x00, // size. set later
 
       // extended header
-      0x00, 0x00, 0x00, 0x01, // extended header size
+      0x00, 0x00, 0x00, 0x06, // extended header size. no CRC
       0x00, 0x00,             // extended flags
       0x00, 0x00, 0x00, 0x02, // size of padding
-      0xff                    // extended header payload
 
       // frame 0
       // http://id3.org/id3v2.3.0#User_defined_text_information_frame
@@ -99,10 +98,10 @@
 
     // set header size field
     size = id3Bytes.byteLength - 10;
-    id3Bytes[6] = (size >>> 21) & 0xef;
-    id3Bytes[7] = (size >>> 14) & 0xef;
-    id3Bytes[8] = (size >>>  7) & 0xef;
-    id3Bytes[9] = (size)        & 0xef;
+    id3Bytes[6] = (size >>> 21) & 0x7f;
+    id3Bytes[7] = (size >>> 14) & 0x7f;
+    id3Bytes[8] = (size >>>  7) & 0x7f;
+    id3Bytes[9] = (size)        & 0x7f;
 
     metadataStream.push({
       trackId: 7,
@@ -117,6 +116,24 @@
     equal(events[0].frames.length, 2, 'parsed two frames');
     equal(events[0].frames[0].id, 'WXXX', 'parsed a WXXX frame');
     equal(events[0].frames[1].id, 'XINF', 'parsed a user-defined frame');
+  });
+
+  test('skips non-ID3 metadata events', function() {
+    var events = [], id3Bytes, size;
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 1000,
+
+      // header
+      data: new Uint8Array([0])
+    });
+
+    equal(events.length, 0, 'did not emit an event');
   });
 
   // missing cases:
