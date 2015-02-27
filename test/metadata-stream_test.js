@@ -21,7 +21,7 @@
     throws(block, [expected], [message])
   */
 
-  var metadataStream, stringToInts, stringToCString, id3Frame;
+  var metadataStream, stringToInts, stringToCString, id3Tag, id3Frame;
 
   module('MetadataStream', {
     setup: function() {
@@ -44,6 +44,30 @@
   stringToCString = function(string) {
     return stringToInts(string).concat([0x00]);
   };
+
+  id3Tag = function() {
+    var
+      frames = Array.prototype.concat.apply([], Array.prototype.slice.call(arguments)),
+      result = stringToInts('ID3').concat([
+        0x03, 0x00,            // version 3.0 of ID3v2 (aka ID3v.2.3.0)
+        0x40,                  // flags. include an extended header
+        0x00, 0x00, 0x00, 0x00, // size. set later
+
+        // extended header
+        0x00, 0x00, 0x00, 0x06, // extended header size. no CRC
+        0x00, 0x00,             // extended flags
+        0x00, 0x00, 0x00, 0x02  // size of padding
+      ], frames),
+      size;
+
+    size = result.length - 10;
+    result[6] = (size >>> 24) & 0xff;
+    result[7] = (size >>> 16) & 0xff;
+    result[8] = (size >>>  8) & 0xff;
+    result[9] = (size)        & 0xff
+
+    return result;
+  }
 
   id3Frame = function(type) {
     var result = stringToInts(type).concat([
@@ -128,6 +152,8 @@
     deepEqual(new Uint8Array(events[0].frames[1].data),
               new Uint8Array([0x04, 0x03, 0x02, 0x01]),
               'attached the frame payload');
+    equal(events[0].pts, 1000, 'did not modify the PTS');
+    equal(events[0].dts, 1000, 'did not modify the PTS');
   });
 
   test('skips non-ID3 metadata events', function() {
@@ -157,5 +183,101 @@
   // frame groups
   // too large/small tag size values
   // too large/small frame size values
+
+  test('translates PTS and DTS values based on the timestamp offset', function() {
+    var events = [];
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
+
+    metadataStream.timestampOffset = 800;
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+
+      // header
+      data: new Uint8Array(id3Tag(id3Frame('XFFF', [0]), [0x00, 0x00]))
+    });
+
+    equal(events.length, 1, 'emitted an event');
+    equal(events[0].pts, 200, 'translated pts');
+    equal(events[0].dts, 100, 'translated dts');
+  });
+
+  test('parses TXXX tags', function() {
+    var events = [];
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+
+      // header
+      data: new Uint8Array(id3Tag(id3Frame('TXXX',
+                                           0x00,
+                                           stringToCString('get done'),
+                                           stringToInts('{ "key": "value" }')),
+                                  [0x00, 0x00]))
+    });
+
+    equal(events.length, 1, 'parsed one tag');
+    equal(events[0].frames.length, 1, 'parsed one frame');
+    equal(events[0].frames[0].description, 'get done', 'parsed the description');
+    equal(events[0].frames[0].value, '{ "key": "value" }', 'parsed the value');
+  });
+
+  test('parses WXXX tags', function() {
+    var events = [], url = 'http://example.com/path/file?abc=7&d=4#ty';
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+
+      // header
+      data: new Uint8Array(id3Tag(id3Frame('WXXX',
+                                           0x00,
+                                           stringToCString(''),
+                                           stringToInts(url)),
+                                  [0x00, 0x00]))
+    });
+
+    equal(events.length, 1, 'parsed one tag');
+    equal(events[0].frames.length, 1, 'parsed one frame');
+    equal(events[0].frames[0].description, '', 'parsed the description');
+    equal(events[0].frames[0].url, url, 'parsed the value');
+  });
+
+  test('parses TXXX tags with characters that have a single-digit hexadecimal representation', function() {
+    var events = [], value = String.fromCharCode(7);
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+
+      // header
+      data: new Uint8Array(id3Tag(id3Frame('TXXX',
+                                           0x00,
+                                           stringToCString(''),
+                                           stringToInts(value)),
+                                  [0x00, 0x00]))
+    });
+
+    equal(events[0].frames[0].value,
+          value,
+          'parsed the single-digit character');
+  });
 
 })(window, window.videojs);

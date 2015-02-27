@@ -5,16 +5,61 @@
  */
 (function(window, videojs, undefined) {
   'use strict';
-  var defaults = {
-    debug: false
-  }, MetadataStream;
+  var
+    defaults = {
+      debug: false
+    },
+    parseString = function(bytes, start, end) {
+      var i, result = '';
+      for (i = start; i < end; i++) {
+        result += '%' + ('00' + bytes[i].toString(16)).slice(-2);
+      }
+      return window.decodeURIComponent(result);
+    },
+    tagParsers = {
+      'TXXX': function(tag) {
+        var i;
+        if (tag.data[0] !== 3) {
+          // ignore frames with unrecognized character encodings
+          return;
+        }
+
+        for (i = 1; i < tag.data.length; i++) {
+          if (tag.data[i] === 0) {
+            // parse the text fields
+            tag.description = parseString(tag.data, 1, i);
+            tag.value = parseString(tag.data, i + 1, tag.data.length);
+            break;
+          }
+        }
+      },
+      'WXXX': function(tag) {
+        var i;
+        if (tag.data[0] !== 3) {
+          // ignore frames with unrecognized character encodings
+          return;
+        }
+
+        for (i = 1; i < tag.data.length; i++) {
+          if (tag.data[i] === 0) {
+            // parse the description and URL fields
+            tag.description = parseString(tag.data, 1, i);
+            tag.url = parseString(tag.data, i + 1, tag.data.length);
+            break;
+          }
+        }
+      }
+    },
+    MetadataStream;
 
   MetadataStream = function(options) {
-    var settings = videojs.util.mergeOptions(defaults, options);
+    var settings = {
+      debug: !!(options && options.debug)
+    };
     MetadataStream.prototype.init.call(this);
 
     this.push = function(chunk) {
-      var tagSize, frameStart, frameSize;
+      var tagSize, frameStart, frameSize, frame;
 
       // ignore events that don't look like ID3 data
       if (chunk.data.length < 10 ||
@@ -45,6 +90,13 @@
                    (chunk.data[19]);
       }
 
+      // adjust the PTS values to align with the video and audio
+      // streams
+      if (this.timestampOffset) {
+        chunk.pts -= this.timestampOffset;
+        chunk.dts -= this.timestampOffset;
+      }
+
       // parse one or more ID3 frames
       // http://id3.org/id3v2.3.0#ID3v2_frame_overview
       chunk.frames = [];
@@ -58,13 +110,17 @@
           return videojs.log('Malformed ID3 frame encountered. Skipping metadata parsing.');
         }
 
-        chunk.frames.push({
+        frame = {
           id: String.fromCharCode(chunk.data[frameStart]) +
             String.fromCharCode(chunk.data[frameStart + 1]) +
             String.fromCharCode(chunk.data[frameStart + 2]) +
             String.fromCharCode(chunk.data[frameStart + 3]),
           data: chunk.data.subarray(frameStart + 10, frameStart + frameSize + 10)
-        });
+        };
+        if (tagParsers[frame.id]) {
+          tagParsers[frame.id](frame);
+        }
+        chunk.frames.push(frame);
 
         frameStart += 10; // advance past the frame header
         frameStart += frameSize; // advance past the frame body
