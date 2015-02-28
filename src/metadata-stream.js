@@ -6,9 +6,6 @@
 (function(window, videojs, undefined) {
   'use strict';
   var
-    defaults = {
-      debug: false
-    },
     parseString = function(bytes, start, end) {
       var i, result = '';
       for (i = start; i < end; i++) {
@@ -54,9 +51,23 @@
 
   MetadataStream = function(options) {
     var settings = {
-      debug: !!(options && options.debug)
-    };
+      debug: !!(options && options.debug),
+
+      // the bytes of the program-level descriptor field in MP2T
+      // see ISO/IEC 13818-1:2013 (E), section 2.6 "Program and
+      // program element descriptors"
+      descriptor: options && options.descriptor
+    }, i;
     MetadataStream.prototype.init.call(this);
+
+    // calculate the text track in-band metadata track dispatch type
+    // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track
+    this.dispatchType = videojs.Hls.SegmentParser.STREAM_TYPES.metadata.toString(16);
+    if (settings.descriptor) {
+      for (i = 0; i < settings.descriptor.length; i++) {
+        this.dispatchType += ('00' + settings.descriptor[i].toString(16)).slice(-2);
+      }
+    }
 
     this.push = function(chunk) {
       var tagSize, frameStart, frameSize, frame;

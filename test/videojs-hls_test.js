@@ -110,6 +110,9 @@ var
       this.getNextTag = function() {
         return tags.shift();
       };
+      this.metadataStream = {
+        on: Function.prototype
+      };
     };
   };
 
@@ -897,6 +900,9 @@ test('flushes the parser after each segment', function() {
       flushes++;
     };
     this.tagsAvailable = function() {};
+    this.metadataStream = {
+      on: Function.prototype
+    };
   };
 
   player.src({
@@ -908,6 +914,48 @@ test('flushes the parser after each segment', function() {
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
   strictEqual(flushes, 1, 'tags are flushed at the end of a segment');
+});
+
+test('exposes in-band metadata events as cues', function() {
+  var track;
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    player.hls.segmentParser_.metadataStream.trigger('data', {
+      pts: 2000,
+      dispatchType: '15010203',
+      data: new Uint8Array([]),
+      frames: [{
+        type: 'TXXX',
+        value: 'cue text'
+      }, {
+        type: 'WXXX',
+        url: 'http://example.com'
+      }]
+    });
+  };
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+
+  equal(player.textTracks().length, 1, 'created a text track');
+  track = player.textTracks()[0];
+  equal(track.kind, 'metadata', 'kind is metadata');
+  equal(track.inBandMetadataTrackDispatchType, '15010203', 'set the dispatch type');
+  equal(track.cues.length, 2, 'created two cues');
+  equal(track.cues[0].startTime, 2, 'cue starts at 2 seconds');
+  equal(track.cues[0].endTime, 2, 'cue ends at 2 seconds');
+  equal(track.cues[0].pauseOnExit, false, 'cue does not pause on exit');
+  equal(track.cues[0].text, 'cue text', 'set cue text');
+
+  equal(track.cues[1].startTime, 2, 'cue starts at 2 seconds');
+  equal(track.cues[1].endTime, 2, 'cue ends at 2 seconds');
+  equal(track.cues[1].pauseOnExit, false, 'cue does not pause on exit');
+  equal(track.cues[1].text, 'http://example.com', 'set cue text');
 });
 
 test('drops tags before the target timestamp when seeking', function() {

@@ -64,10 +64,10 @@
     result[6] = (size >>> 24) & 0xff;
     result[7] = (size >>> 16) & 0xff;
     result[8] = (size >>>  8) & 0xff;
-    result[9] = (size)        & 0xff
+    result[9] = (size)        & 0xff;
 
     return result;
-  }
+  };
 
   id3Frame = function(type) {
     var result = stringToInts(type).concat([
@@ -219,7 +219,7 @@
 
       // header
       data: new Uint8Array(id3Tag(id3Frame('TXXX',
-                                           0x00,
+                                           0x03, // utf-8
                                            stringToCString('get done'),
                                            stringToInts('{ "key": "value" }')),
                                   [0x00, 0x00]))
@@ -244,7 +244,7 @@
 
       // header
       data: new Uint8Array(id3Tag(id3Frame('WXXX',
-                                           0x00,
+                                           0x03, // utf-8
                                            stringToCString(''),
                                            stringToInts(url)),
                                   [0x00, 0x00]))
@@ -269,7 +269,7 @@
 
       // header
       data: new Uint8Array(id3Tag(id3Frame('TXXX',
-                                           0x00,
+                                           0x03, // utf-8
                                            stringToCString(''),
                                            stringToInts(value)),
                                   [0x00, 0x00]))
@@ -278,6 +278,15 @@
     equal(events[0].frames[0].value,
           value,
           'parsed the single-digit character');
+  });
+
+  // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track
+  test('constructs the dispatch type', function() {
+    metadataStream = new videojs.Hls.MetadataStream({
+      descriptor: new Uint8Array([0x03, 0x02, 0x01, 0x00])
+    });
+
+    equal(metadataStream.dispatchType, '1503020100', 'built the dispatch type');
   });
 
 })(window, window.videojs);

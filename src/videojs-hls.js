@@ -74,6 +74,29 @@ videojs.Hls.prototype.src = function(src) {
   this.segmentBuffer_ = [];
   this.segmentParser_ = new videojs.Hls.SegmentParser();
 
+  // if the stream contains ID3 metadata, expose that as a metadata
+  // text track
+  (function() {
+    var textTrack;
+
+    tech.segmentParser_.metadataStream.on('data', function(metadata) {
+      var i, frame, time;
+
+      // create the metadata track if this is the first ID3 tag we've
+      // seen
+      if (!textTrack) {
+        textTrack = tech.player().addTextTrack('metadata', 'Timed Metadata');
+        textTrack.inBandMetadataTrackDispatchType = metadata.dispatchType;
+      }
+
+      for (i = 0; i < metadata.frames.length; i++) {
+        frame = metadata.frames[i];
+        time = metadata.pts / 1000;
+        textTrack.addCue(new window.VTTCue(time, time, frame.value || frame.url));
+      }
+    });
+  })();
+
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
 
