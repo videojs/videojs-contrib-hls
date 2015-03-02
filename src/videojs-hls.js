@@ -74,6 +74,44 @@ videojs.Hls.prototype.src = function(src) {
   this.segmentBuffer_ = [];
   this.segmentParser_ = new videojs.Hls.SegmentParser();
 
+  // if the stream contains ID3 metadata, expose that as a metadata
+  // text track
+  (function() {
+    var
+      metadataStream = tech.segmentParser_.metadataStream,
+      textTrack;
+
+    // only expose metadata tracks to video.js versions that support
+    // dynamic text tracks (4.12+)
+    if (!tech.player().addTextTrack) {
+      return;
+    }
+
+    metadataStream.on('data', function(metadata) {
+      var i, frame, time, hexDigit;
+
+      // create the metadata track if this is the first ID3 tag we've
+      // seen
+      if (!textTrack) {
+        textTrack = tech.player().addTextTrack('metadata', 'Timed Metadata');
+
+        // build the dispatch type from the stream descriptor
+        // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track
+        textTrack.inBandMetadataTrackDispatchType = videojs.Hls.SegmentParser.STREAM_TYPES.metadata.toString(16).toUpperCase();
+        for (i = 0; i < metadataStream.descriptor.length; i++) {
+          hexDigit = ('00' + metadataStream.descriptor[i].toString(16).toUpperCase()).slice(-2);
+          textTrack.inBandMetadataTrackDispatchType += hexDigit;
+        }
+      }
+
+      for (i = 0; i < metadata.frames.length; i++) {
+        frame = metadata.frames[i];
+        time = metadata.pts / 1000;
+        textTrack.addCue(new window.VTTCue(time, time, frame.value || frame.url));
+      }
+    });
+  })();
+
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
 

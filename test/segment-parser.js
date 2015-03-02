@@ -29,6 +29,11 @@
 
     extend = window.videojs.util.mergeOptions,
 
+    makePat,
+    makePsi,
+    makePmt,
+    makePacket,
+
     testAudioTag,
     testVideoTag,
     testScriptTag,
@@ -54,123 +59,137 @@
     deepEqual(expectedHeader, header, 'the rest of the header is correct');
   });
 
+  // Create a PMT packet
+  // @return {Array} bytes
+  makePmt = function(options) {
+    var
+      result = [],
+      entryCount = 0,
+      k,
+      sectionLength;
+
+    for (k in options.pids) {
+      entryCount++;
+    }
+    // table_id
+    result.push(0x02);
+    // section_syntax_indicator '0' reserved section_length
+    // 13 + (program_info_length) + (n * 5 + ES_info_length[n])
+    sectionLength = 13 + (5 * entryCount) + 17;
+    result.push(0x80 | (0xF00 & sectionLength >>> 8));
+    result.push(sectionLength & 0xFF);
+    // program_number
+    result.push(0x00);
+    result.push(0x01);
+    // reserved version_number current_next_indicator
+    result.push(0x01);
+    // section_number
+    result.push(0x00);
+    // last_section_number
+    result.push(0x00);
+    // reserved PCR_PID
+    result.push(0xe1);
+    result.push(0x00);
+    // reserved program_info_length
+    result.push(0xf0);
+    result.push(0x11); // hard-coded 17 byte descriptor
+    // program descriptors
+    result = result.concat([
+      0x25, 0x0f, 0xff, 0xff,
+      0x49, 0x44, 0x33, 0x20,
+      0xff, 0x49, 0x44, 0x33,
+      0x20, 0x00, 0x1f, 0x00,
+      0x01
+    ]);
+    for (k in options.pids) {
+      // stream_type
+      result.push(options.pids[k]);
+      // reserved elementary_PID
+      result.push(0xe0 | (k & 0x1f00) >>> 8);
+      result.push(k & 0xff);
+      // reserved ES_info_length
+      result.push(0xf0);
+      result.push(0x00); // ES_info_length = 0
+    }
+    // CRC_32
+    result.push([0x00, 0x00, 0x00, 0x00]); // invalid CRC but we don't check it
+    return result;
+  };
+
+  // Create a PAT packet
+  // @return {Array} bytes
+  makePat = function(options) {
+    var
+      result = [],
+      k;
+
+    // table_id
+    result.push(0x00);
+    // section_syntax_indicator '0' reserved section_length
+    result.push(0x80);
+    result.push(0x0d); // section_length for one program
+    // transport_stream_id
+    result.push(0x00);
+    result.push(0x00);
+    // reserved version_number current_next_indicator
+    result.push(0x01); // current_next_indicator is 1
+    // section_number
+    result.push(0x00);
+    // last_section_number
+    result.push(0x00);
+    for (k in options.programs) {
+      // program_number
+      result.push((k & 0xFF00) >>> 8);
+      result.push(k & 0x00FF);
+      // reserved program_map_pid
+      result.push((options.programs[k] & 0x1f00) >>> 8);
+      result.push(options.programs[k] & 0xff);
+    }
+    return result;
+  };
+
+  // Create a PAT or PMT packet based on the specified options
+  // @return {Array} bytes
+  makePsi = function(options) {
+    var result = [];
+
+    // pointer_field
+    if (options.payloadUnitStartIndicator) {
+      result.push(0x00);
+    }
+    if (options.programs) {
+      return result.concat(makePat(options));
+    }
+    return result.concat(makePmt(options));
+  };
+
+  // Construct an M2TS packet
+  // @return {Array} bytes
+  makePacket = function(options) {
+    var
+      result = [],
+      settings = extend({
+        payloadUnitStartIndicator: true,
+        pid: 0x00
+      }, options);
+
+    // header
+    // sync_byte
+    result.push(0x47);
+    // transport_error_indicator payload_unit_start_indicator transport_priority PID
+    result.push((settings.pid & 0x1f) << 8 | 0x40);
+    result.push(settings.pid & 0xff);
+    // transport_scrambling_control adaptation_field_control continuity_counter
+    result.push(0x10);
+    result = result.concat(makePsi(settings));
+
+    // ensure the resulting packet is the correct size
+    result.length = window.videojs.Hls.SegmentParser.MP2T_PACKET_LENGTH;
+    return result;
+  };
+
   test('parses PMTs with program descriptors', function() {
     var
-      makePmt = function(options) {
-        var
-          result = [],
-          entryCount = 0,
-          k,
-          sectionLength;
-        for (k in options.pids) {
-          entryCount++;
-        }
-        // table_id
-        result.push(0x02);
-        // section_syntax_indicator '0' reserved section_length
-        // 13 + (program_info_length) + (n * 5 + ES_info_length[n])
-        sectionLength = 13 + (5 * entryCount) + 17;
-        result.push(0x80 | (0xF00 & sectionLength >>> 8));
-        result.push(sectionLength & 0xFF);
-        // program_number
-        result.push(0x00);
-        result.push(0x01);
-        // reserved version_number current_next_indicator
-        result.push(0x01);
-        // section_number
-        result.push(0x00);
-        // last_section_number
-        result.push(0x00);
-        // reserved PCR_PID
-        result.push(0xe1);
-        result.push(0x00);
-        // reserved program_info_length
-        result.push(0xf0);
-        result.push(0x11); // hard-coded 17 byte descriptor
-        // program descriptors
-        result = result.concat([
-          0x25, 0x0f, 0xff, 0xff,
-          0x49, 0x44, 0x33, 0x20,
-          0xff, 0x49, 0x44, 0x33,
-          0x20, 0x00, 0x1f, 0x00,
-          0x01
-        ]);
-        for (k in options.pids) {
-          // stream_type
-          result.push(options.pids[k]);
-          // reserved elementary_PID
-          result.push(0xe0 | (k & 0x1f00) >>> 8);
-          result.push(k & 0xff);
-          // reserved ES_info_length
-          result.push(0xf0);
-          result.push(0x00); // ES_info_length = 0
-        }
-        // CRC_32
-        result.push([0x00, 0x00, 0x00, 0x00]); // invalid CRC but we don't check it
-        return result;
-      },
-      makePat = function(options) {
-        var
-          result = [],
-          k;
-        // table_id
-        result.push(0x00);
-        // section_syntax_indicator '0' reserved section_length
-        result.push(0x80);
-        result.push(0x0d); // section_length for one program
-        // transport_stream_id
-        result.push(0x00);
-        result.push(0x00);
-        // reserved version_number current_next_indicator
-        result.push(0x01); // current_next_indicator is 1
-        // section_number
-        result.push(0x00);
-        // last_section_number
-        result.push(0x00);
-        for (k in options.programs) {
-          // program_number
-          result.push((k & 0xFF00) >>> 8);
-          result.push(k & 0x00FF);
-          // reserved program_map_pid
-          result.push((options.programs[k] & 0x1f00) >>> 8);
-          result.push(options.programs[k] & 0xff);
-        }
-        return result;
-      },
-      makePsi = function(options) {
-        var result = [];
-
-        // pointer_field
-        if (options.payloadUnitStartIndicator) {
-          result.push(0x00);
-        }
-        if (options.programs) {
-          return result.concat(makePat(options));
-        }
-        return result.concat(makePmt(options));
-      },
-      makePacket = function(options) {
-        var
-          result = [],
-          settings = extend({
-            payloadUnitStartIndicator: true,
-            pid: 0x00
-          }, options);
-
-        // header
-        // sync_byte
-        result.push(0x47);
-        // transport_error_indicator payload_unit_start_indicator transport_priority PID
-        result.push((settings.pid & 0x1f) << 8 | 0x40);
-        result.push(settings.pid & 0xff);
-        // transport_scrambling_control adaptation_field_control continuity_counter
-        result.push(0x10);
-        result = result.concat(makePsi(settings));
-
-        // ensure the resulting packet is the correct size
-        result.length = window.videojs.Hls.SegmentParser.MP2T_PACKET_LENGTH;
-        return result;
-      },
       h264Type = window.videojs.Hls.SegmentParser.STREAM_TYPES.h264,
       adtsType = window.videojs.Hls.SegmentParser.STREAM_TYPES.adts;
 
@@ -189,6 +208,22 @@
     strictEqual(parser.stream.pmtPid, 0x01, 'PMT PID is 1');
     strictEqual(parser.stream.programMapTable[h264Type], 0x02, 'video is PID 2');
     strictEqual(parser.stream.programMapTable[adtsType], 0x03, 'audio is PID 3');
+  });
+
+  test('recognizes metadata streams', function() {
+    parser.parseSegmentBinaryData(new Uint8Array(makePacket({
+      programs: {
+        0x01: [0x01]
+      }
+    }).concat(makePacket({
+      pid: 0x01,
+      pids: {
+        // Rec. ITU-T H.222.0 (06/2012), Table 2-34
+        0x02: 0x15 // Metadata carried in PES packets
+      }
+    }))));
+
+    equal(parser.stream.programMapTable[0x15], 0x02, 'metadata is PID 2');
   });
 
   test('parses the first bipbop segment', function() {
