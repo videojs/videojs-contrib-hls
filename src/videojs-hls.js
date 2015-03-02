@@ -97,9 +97,9 @@ videojs.Hls.prototype.src = function(src) {
 
         // build the dispatch type from the stream descriptor
         // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track
-        textTrack.inBandMetadataTrackDispatchType = videojs.Hls.SegmentParser.STREAM_TYPES.metadata.toString(16);
+        textTrack.inBandMetadataTrackDispatchType = videojs.Hls.SegmentParser.STREAM_TYPES.metadata.toString(16).toUpperCase();
         for (i = 0; i < metadataStream.descriptor.length; i++) {
-          hexDigit = ('00' + metadataStream.descriptor[i].toString(16)).slice(-2);
+          hexDigit = ('00' + metadataStream.descriptor[i].toString(16).toUpperCase()).slice(-2);
           textTrack.inBandMetadataTrackDispatchType += hexDigit;
         }
       }

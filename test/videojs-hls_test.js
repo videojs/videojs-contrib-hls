@@ -927,7 +927,7 @@ test('exposes in-band metadata events as cues', function() {
   player.hls.segmentParser_.parseSegmentBinaryData = function() {
     // fake out a descriptor
     player.hls.segmentParser_.metadataStream.descriptor = new Uint8Array([
-      1, 2, 3
+      1, 2, 3, 0xbb
     ]);
     // trigger a metadata event
     player.hls.segmentParser_.metadataStream.trigger('data', {
@@ -949,7 +949,7 @@ test('exposes in-band metadata events as cues', function() {
   equal(player.textTracks().length, 1, 'created a text track');
   track = player.textTracks()[0];
   equal(track.kind, 'metadata', 'kind is metadata');
-  equal(track.inBandMetadataTrackDispatchType, '15010203', 'set the dispatch type');
+  equal(track.inBandMetadataTrackDispatchType, '15010203BB', 'set the dispatch type');
   equal(track.cues.length, 2, 'created two cues');
   equal(track.cues[0].startTime, 2, 'cue starts at 2 seconds');
   equal(track.cues[0].endTime, 2, 'cue ends at 2 seconds');
