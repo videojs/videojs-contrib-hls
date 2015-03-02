@@ -81,6 +81,12 @@ videojs.Hls.prototype.src = function(src) {
       metadataStream = tech.segmentParser_.metadataStream,
       textTrack;
 
+    // only expose metadata tracks to video.js versions that support
+    // dynamic text tracks (4.12+)
+    if (!tech.player().addTextTrack) {
+      return;
+    }
+
     metadataStream.on('data', function(metadata) {
       var i, frame, time, hexDigit;
 
