@@ -417,6 +417,10 @@
 
             // the length of the entry descriptor
             ESInfolength = (data[offset + 3] & 0x0F) << 8 | data[offset + 4];
+            // capture the stream descriptor for metadata streams
+            if (streamType === STREAM_TYPES.metadata) {
+              self.metadataStream.descriptor = new Uint8Array(data.subarray(offset + 5, offset + 5 + ESInfolength));
+            }
             // move to the first byte after the end of this entry
             offset += 5 + ESInfolength;
             pmtSectionLength -=  5 + ESInfolength;

@@ -925,9 +925,13 @@ test('exposes in-band metadata events as cues', function() {
   openMediaSource(player);
 
   player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    // fake out a descriptor
+    player.hls.segmentParser_.metadataStream.descriptor = new Uint8Array([
+      1, 2, 3
+    ]);
+    // trigger a metadata event
     player.hls.segmentParser_.metadataStream.trigger('data', {
       pts: 2000,
-      dispatchType: '15010203',
       data: new Uint8Array([]),
       frames: [{
         type: 'TXXX',

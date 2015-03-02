@@ -77,16 +77,25 @@ videojs.Hls.prototype.src = function(src) {
   // if the stream contains ID3 metadata, expose that as a metadata
   // text track
   (function() {
-    var textTrack;
+    var
+      metadataStream = tech.segmentParser_.metadataStream,
+      textTrack;
 
-    tech.segmentParser_.metadataStream.on('data', function(metadata) {
-      var i, frame, time;
+    metadataStream.on('data', function(metadata) {
+      var i, frame, time, hexDigit;
 
       // create the metadata track if this is the first ID3 tag we've
       // seen
       if (!textTrack) {
         textTrack = tech.player().addTextTrack('metadata', 'Timed Metadata');
-        textTrack.inBandMetadataTrackDispatchType = metadata.dispatchType;
+
+        // build the dispatch type from the stream descriptor
+        // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track
+        textTrack.inBandMetadataTrackDispatchType = videojs.Hls.SegmentParser.STREAM_TYPES.metadata.toString(16);
+        for (i = 0; i < metadataStream.descriptor.length; i++) {
+          hexDigit = ('00' + metadataStream.descriptor[i].toString(16)).slice(-2);
+          textTrack.inBandMetadataTrackDispatchType += hexDigit;
+        }
       }
 
       for (i = 0; i < metadata.frames.length; i++) {
