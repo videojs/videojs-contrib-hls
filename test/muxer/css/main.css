@@ -400,3 +400,23 @@ form label {
         page-break-after: avoid;
     }
 }
+
+/**
+ * Diff styling
+ */
+#comparison {
+  white-space: pre;
+}
+#comparison p {
+  white-space: normal;
+}
+ins, del {
+  text-decoration: none;
+}
+ins {
+  background-color: #C6E746;
+}
+
+del {
+  background-color: #EE5757
+}

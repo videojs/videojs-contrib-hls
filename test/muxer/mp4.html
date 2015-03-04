@@ -55,7 +55,15 @@
           </form>
         </section>
         <section>
-          <h2>Comparison</h2>
+          <h2>Comparision</h2>
+          <div id="comparison">
+            A diff of the structure of the two MP4s will appear here
+            once you've specified an input TS file and a known working
+            MP4.
+          </div>
+        </section>
+        <section>
+          <h2>Structure</h2>
           <div class="result-wrapper">
             <h3>videojs-contrib-hls</h3>
             <pre class="vjs-boxes">
@@ -111,10 +119,20 @@
   <script src="js/mp4-inspector.js"></script>
 
   <script src="../../src/bin-utils.js"></script>
+
+  <!-- Include QUnit for object diffs -->
+  <script src="../../node_modules/qunitjs/qunit/qunit.js"></script>
   <script>
     var inputs = document.getElementById('inputs'),
         original = document.getElementById('original'),
         working = document.getElementById('working'),
+
+        // customize JSON.stringify for more readable TypedArrays
+        stringify,
+
+        vjsParsed,
+        workingParsed,
+        diffParsed,
 
         vjsBoxes = document.querySelector('.vjs-boxes'),
         workingBoxes = document.querySelector('.working-boxes'),
@@ -129,6 +147,37 @@
         logevent = function(event) {
           console.log(event.type);
         };
+
+
+    stringify = function(object) {
+      return JSON.stringify(object, function(s, o) {
+        if (o instanceof Uint8Array) {
+          return Array.prototype.slice.call(o).map(function(byte) {
+            return ('00' + byte.toString(16)).slice(-2);
+          });
+        } else if (o instanceof Uint32Array) {
+          return Array.prototype.slice.call(o).map(function(byte) {
+            return ('00000000' + byte.toString(16)).slice(-8);
+          });
+        }
+        return o;
+      }, ' ');
+    };
+
+    // output a diff of the two parsed MP4s
+    diffParsed = function() {
+      var comparison;
+      if (vjsParsed && workingParsed) {
+        comparison = document.querySelector('#comparison')
+        comparison.innerHTML = '<p>A <del>red background</del> indicates ' +
+          'properties present in the transmuxed file but missing from the ' +
+          'working version. A <ins>green background</ins> indicates ' +
+          'properties present in the working version but missing in the ' +
+          'transmuxed output.</p>' +
+          QUnit.diff(stringify(vjsParsed, null, ' '),
+                     stringify(workingParsed, null, ' '));
+      }
+    };
 
     mediaSource.addEventListener('sourceopen', function() {
       var
@@ -177,9 +226,12 @@
         bytes.set(events[0]);
         bytes.set(events[1], events[0].byteLength);
 
-        console.log('transmuxed', videojs.inspectMp4(bytes))
+        vjsParsed = videojs.inspectMp4(bytes);
+        console.log('transmuxed', vjsParsed);
+        diffParsed();
+
         // clear old box info
-        vjsBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(bytes), null, ' ');
+        vjsBoxes.innerHTML = stringify(vjsParsed, null, ' ');
 
         // write out the result
         hex += '<pre>';
@@ -197,9 +249,12 @@
             bytes = new Uint8Array(reader.result);
 
 
-        console.log("boxes", videojs.inspectMp4(bytes));
+        workingParsed = videojs.inspectMp4(bytes);
+        console.log('working', workingParsed);
+        diffParsed();
+
         // clear old box info
-        workingBoxes.innerHTML = JSON.stringify(videojs.inspectMp4(bytes), null, ' ');
+        workingBoxes.innerHTML = stringify(workingParsed, null, ' ');
 
         // output the hex dump
         hex += '<pre>';
