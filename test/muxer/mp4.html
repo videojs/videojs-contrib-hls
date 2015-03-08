@@ -166,17 +166,27 @@
 
     // output a diff of the two parsed MP4s
     diffParsed = function() {
-      var comparison;
-      if (vjsParsed && workingParsed) {
-        comparison = document.querySelector('#comparison')
-        comparison.innerHTML = '<p>A <del>red background</del> indicates ' +
-          'properties present in the transmuxed file but missing from the ' +
-          'working version. A <ins>green background</ins> indicates ' +
-          'properties present in the working version but missing in the ' +
-          'transmuxed output.</p>' +
-          QUnit.diff(stringify(vjsParsed, null, ' '),
-                     stringify(workingParsed, null, ' '));
+      var comparison, diff, transmuxed;
+      if (!vjsParsed || !workingParsed) {
+        // wait until both inputs have been provided
+        return;
       }
+      comparison = document.querySelector('#comparison');
+      if (workingParsed[0].type === 'moof') {
+        diff = '<h3>Media Segment Comparision</h3>';
+        transmuxed = vjsParsed.slice(2);
+      } else {
+        diff = '<h3>Init Segment Comparision</h3>';
+        transmuxed = vjsParsed.slice(0, 2);
+      }
+      diff += '<p>A <del>red background</del> indicates ' +
+        'properties present in the transmuxed file but missing from the ' +
+        'working version. A <ins>green background</ins> indicates ' +
+        'properties present in the working version but missing in the ' +
+        'transmuxed output.</p>';
+      diff += QUnit.diff(stringify(transmuxed, null, ' '),
+                         stringify(workingParsed, null, ' '));
+      comparison.innerHTML = diff;
     };
 
     mediaSource.addEventListener('sourceopen', function() {
@@ -211,49 +221,49 @@
         var segment = new Uint8Array(reader.result),
             transmuxer = new videojs.mp2t.Transmuxer(),
             events = [],
-            i = 0,
             bytesLength = 0,
-            init = false,
+            done = false,
             bytes,
+            i, j,
             hex = '';
 
         transmuxer.on('data', function(data) {
           if (data && data.type === 'audio') {
             events.push(data.data);
             bytesLength += data.data.byteLength;
-
-            // XXX Media Sources Testing
-            if (!init) {
-              vjsParsed = videojs.inspectMp4(data.data);
-              console.log('appended tmuxed output');
-              window.vjsSourceBuffer.appendBuffer(data.data);
-              init = true;
-            }
           }
         });
         transmuxer.push(segment);
         transmuxer.end();
 
         bytes = new Uint8Array(bytesLength);
-        i = 0;
-        while (events.length) {
-          bytes.set(events[0], i);
-          i += events[0].byteLength;
-          events.shift();
+        for (j = 0, i = 0; j < events.length; j++) {
+          bytes.set(events[j], i);
+          i += events[j].byteLength;
         }
 
-        // vjsParsed = videojs.inspectMp4(bytes);
-        console.log('transmuxed', videojs.inspectMp4(bytes));
+        vjsParsed = videojs.inspectMp4(bytes);
+        console.log('transmuxed', vjsParsed);
         diffParsed();
 
         // clear old box info
-        vjsBoxes.innerHTML = stringify(videojs.inspectMp4(bytes), null, ' ');
+        vjsBoxes.innerHTML = stringify(vjsParsed, null, ' ');
 
         // write out the result
         hex += '<pre>';
         hex += 'nothing to see here';
         hex += '</pre>';
         vjsOutput.innerHTML = hex;
+
+        // XXX Media Sources Testing
+        window.vjsSourceBuffer.addEventListener('updateend', function() {
+          if (!done) {
+            window.vjsSourceBuffer.appendBuffer(events[1]);
+            console.log('appended tmuxed output');
+            done = true;
+          }
+        });
+        window.vjsSourceBuffer.appendBuffer(events[0]);
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
