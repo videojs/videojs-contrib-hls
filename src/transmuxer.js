@@ -38,7 +38,7 @@ ADTS_SAMPLING_FREQUENCIES = [
   8000,
   7350
 ];
-  
+
 mp4 = videojs.mp4;
 
 /**
@@ -434,45 +434,27 @@ AacStream = function() {
 
     buffer = packet.data;
 
-    // find ADTS frame sync sequences
-    // ADTS frames start with 12 byte-aligned ones
-    while (i < buffer.length) {
-      switch (buffer[i] & 0xf0) {
-      case 0xf0:
-        // skip past non-sync sequences
-        if (buffer[i - 1] !== 0xff) {
-          i++;
-          break;
-        }
+    // unpack any ADTS frames which have been fully received
+    while (i + 4 < buffer.length) {
+      // frame length is a 13 bit integer starting 16 bits from the
+      // end of the sync sequence
+      frameLength = ((buffer[i + 2] & 0x03) << 11) |
+        (buffer[i + 3] << 3) |
+        ((buffer[i + 4] & 0xe0) >> 5);
 
-        // parse the ADTS header
+      // deliver the AAC frame
+      this.trigger('data', {
+        channelcount: ((buffer[i + 1] & 1) << 3) |
+          ((buffer[i + 2] & 0xc0) >> 6),
+        samplerate: ADTS_SAMPLING_FREQUENCIES[(buffer[i + 1] & 0x3c) >> 2],
+        // assume ISO/IEC 14496-12 AudioSampleEntry default of 16
+        samplesize: 16,
+        data: buffer.subarray(i + 6, i + frameLength - 1)
+      });
 
-        // frame length is a 13 bit integer starting 16 bits from the
-        // end of the sync sequence
-        frameLength = ((buffer[i + 2] & 0x03) << 11) |
-          (buffer[i + 3] << 3) |
-          ((buffer[i + 4] & 0xe0) >> 5);
-
-        // deliver the AAC frame
-        this.trigger('data', {
-          channelcount: ((buffer[i + 1] & 1) << 3) | 
-            ((buffer[i + 2] & 0xc0) >> 6),
-          samplerate: ADTS_SAMPLING_FREQUENCIES[(buffer[i + 1] & 0x3c) >> 2],
-          // assume ISO/IEC 14496-12 AudioSampleEntry default of 16
-          samplesize: 16,
-          data: buffer.subarray(i + 6, i + frameLength - 1)
-        });
-
-        // move to one byte beyond the frame length to continue
-        // searching for sync sequences
-        i += frameLength;
-        break;
-      default:
-        // the top four bytes are not all ones so the end of the
-        // closest possible start sequence is at least two bytes ahead
-        i += 2;
-        break;
-      }
+      // flush the finished frame and try again
+      buffer = buffer.subarray(i + frameLength - 1);
+      i = 1;
     }
   };
 };
@@ -514,7 +496,7 @@ AudioSegmentStream = function(track) {
 
       data.set(currentFrame.data, i);
       i += currentFrame.data.byteLength;
-      
+
       aacFrames.shift();
     }
     aacFramesLength = 0;
@@ -944,7 +926,7 @@ Transmuxer = function() {
     pps,
 
     packetStream, parseStream, elementaryStream,
-    aacStream, h264Stream, 
+    aacStream, h264Stream,
     videoSegmentStream, audioSegmentStream;
 
   Transmuxer.prototype.init.call(this);

@@ -1007,6 +1007,40 @@ test('generates AAC frame events from ADTS bytes', function() {
   equal(frames[0].samplesize, 16, 'parsed samplesize');
 });
 
+test('parses across packets', function() {
+
+  var frames = [];
+  aacStream.on('data', function(frame) {
+    frames.push(frame);
+  });
+  aacStream.push({
+    type: 'audio',
+    data: new Uint8Array([
+      0xff, 0xf1,       // no CRC
+      0x10,             // AAC Main, 44.1KHz
+      0xbc, 0x01, 0x20, // 2 channels, frame length 9 bytes
+      0x00,             // one AAC per ADTS frame
+      0x12, 0x34        // AAC payload 1
+    ])
+  });
+  aacStream.push({
+    type: 'audio',
+    data: new Uint8Array([
+      0xff, 0xf1,       // no CRC
+      0x10,             // AAC Main, 44.1KHz
+      0xbc, 0x01, 0x20, // 2 channels, frame length 9 bytes
+      0x00,             // one AAC per ADTS frame
+      0x9a, 0xbc,       // AAC payload 2
+      0xde, 0xf0        // extra junk that should be ignored
+    ])
+  });
+
+  equal(frames.length, 2, 'parsed two frames');
+  deepEqual(frames[1].data,
+            new Uint8Array([0x9a, 0xbc]),
+            'extracted the second AAC frame');
+});
+
 // not handled: ADTS with CRC
 // ADTS with payload broken across push events
 
