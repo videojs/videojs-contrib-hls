@@ -26,6 +26,7 @@ var
   oldMediaSourceOpen,
   oldSegmentParser,
   oldSetTimeout,
+  oldClearTimeout,
   oldSourceBuffer,
   oldFlashSupported,
   oldNativeHlsSupport,
@@ -146,6 +147,7 @@ module('HLS', {
     // store functionality that some tests need to mock
     oldSegmentParser = videojs.Hls.SegmentParser;
     oldSetTimeout = window.setTimeout;
+    oldClearTimeout = window.clearTimeout;
 
     oldNativeHlsSupport = videojs.Hls.supportsNativeHls;
 
@@ -166,7 +168,6 @@ module('HLS', {
   },
 
   teardown: function() {
-    player.dispose();
     videojs.Flash.isSupported = oldFlashSupported;
     videojs.MediaSource.open = oldMediaSourceOpen;
     videojs.Hls.SegmentParser = oldSegmentParser;
@@ -174,6 +175,8 @@ module('HLS', {
     videojs.Hls.decrypt = oldDecrypt;
     videojs.SourceBuffer = oldSourceBuffer;
     window.setTimeout = oldSetTimeout;
+    window.clearTimeout = oldClearTimeout;
+    player.dispose();
     xhr.restore();
   }
 });
@@ -463,10 +466,14 @@ test('dont downshift if bandwidth is low', function() {
 });
 
 test('starts checking the buffer on init', function() {
-  var player, i, length, callbacks = [], fills = 0, drains = 0;
+  var player, i, calls, callbacks = [], fills = 0, drains = 0;
   // capture timeouts
   window.setTimeout = function(callback) {
     callbacks.push(callback);
+    return callbacks.length - 1;
+  };
+  window.clearTimeout = function(index) {
+    callbacks[index] = Function.prototype;
   };
 
   player = createPlayer();
@@ -482,12 +489,23 @@ test('starts checking the buffer on init', function() {
   });
   ok(callbacks.length > 0, 'set timeouts');
 
-  for (i = 0, length = callbacks.length; i < length; i++) {
-    callbacks[i]();
+  // run the initial set of callbacks. this should cause
+  // fill/drainBuffer to be run
+  calls = callbacks.slice();
+  for (i = 0; i < calls.length; i++) {
+    calls[i]();
   }
   equal(fills, 1, 'called fillBuffer');
   equal(drains, 1, 'called drainBuffer');
+
   player.dispose();
+  // the remaining callbacks do not run any buffer checks
+  calls = callbacks.slice();
+  for (i = 0; i < calls.length; i++) {
+    calls[i]();
+  }
+  equal(fills, 1, 'did not call fillBuffer again');
+  equal(drains, 1, 'did not call drainBuffer again');
 });
 
 test('buffer checks are noops until a media playlist is ready', function() {
