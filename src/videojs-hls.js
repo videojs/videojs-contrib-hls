@@ -384,8 +384,6 @@ videojs.Hls.prototype.cancelSegmentXhr = function() {
  * Abort all outstanding work and cleanup.
  */
 videojs.Hls.prototype.dispose = function() {
-  var player = this.player();
-
   this.stopCheckingBuffer_();
 
   if (this.playlists) {
