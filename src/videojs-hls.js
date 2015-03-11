@@ -10,6 +10,9 @@ var
   // a fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.1,
+
+  // the amount of time to wait between checking the state of the buffer
+  bufferCheckInterval = 500,
   keyXhr,
   keyFailed,
   resolveUrl;
@@ -36,6 +39,11 @@ videojs.Hls = videojs.Flash.extend({
     this.currentTime = videojs.Hls.prototype.currentTime;
     this.setCurrentTime = videojs.Hls.prototype.setCurrentTime;
 
+    // periodically check if new data needs to be downloaded or
+    // buffered data should be appended to the source buffer
+    this.segmentBuffer_ = [];
+    this.startCheckingBuffer_();
+
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
   }
 });
@@ -49,7 +57,10 @@ videojs.Hls.GOAL_BUFFER_LENGTH = 30;
 videojs.Hls.prototype.src = function(src) {
   var
     tech = this,
+    player = this.player(),
+    settings = player.options().hls || {},
     mediaSource,
+    oldMediaPlaylist,
     source;
 
   // do nothing if the src is falsey
@@ -115,45 +126,12 @@ videojs.Hls.prototype.src = function(src) {
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
 
-  this.player().ready(function() {
-    // do nothing if the tech has been disposed already
-    // this can occur if someone sets the src in player.ready(), for instance
-    if (!tech.el()) {
-      return;
-    }
-    tech.el().vjs_src(source.src);
-  });
-};
-
-videojs.Hls.setMediaIndexForLive = function(selectedPlaylist) {
-  var tailIterator = selectedPlaylist.segments.length,
-      tailDuration = 0,
-      targetTail = (selectedPlaylist.targetDuration || 10) * 3;
-
-  while (tailDuration < targetTail && tailIterator > 0) {
-    tailDuration += selectedPlaylist.segments[tailIterator - 1].duration;
-    tailIterator--;
-  }
-
-  return tailIterator;
-};
-
-videojs.Hls.prototype.handleSourceOpen = function() {
-  // construct the video data buffer and set the appropriate MIME type
-  var
-    player = this.player(),
-    settings = player.options().hls || {},
-    sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"'),
-    oldMediaPlaylist;
-
-  this.sourceBuffer = sourceBuffer;
-  sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
-
-  this.mediaIndex = 0;
-
+  // cleanup the old playlist loader, if necessary
   if (this.playlists) {
     this.playlists.dispose();
   }
+
+  this.mediaIndex = 0;
 
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
@@ -164,11 +142,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     setupEvents = function() {
       this.fillBuffer();
 
-      // periodically check if new data needs to be downloaded or
-      // buffered data should be appended to the source buffer
-      player.on('timeupdate', videojs.bind(this, this.fillBuffer));
-      player.on('timeupdate', videojs.bind(this, this.drainBuffer));
-      player.on('waiting', videojs.bind(this, this.drainBuffer));
+
 
       player.trigger('loadedmetadata');
     };
@@ -254,6 +228,39 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
     player.trigger('mediachange');
   }));
+
+  this.player().ready(function() {
+    // do nothing if the tech has been disposed already
+    // this can occur if someone sets the src in player.ready(), for instance
+    if (!tech.el()) {
+      return;
+    }
+    tech.el().vjs_src(source.src);
+  });
+};
+
+videojs.Hls.setMediaIndexForLive = function(selectedPlaylist) {
+  var tailIterator = selectedPlaylist.segments.length,
+      tailDuration = 0,
+      targetTail = (selectedPlaylist.targetDuration || 10) * 3;
+
+  while (tailDuration < targetTail && tailIterator > 0) {
+    tailDuration += selectedPlaylist.segments[tailIterator - 1].duration;
+    tailIterator--;
+  }
+
+  return tailIterator;
+};
+
+videojs.Hls.prototype.handleSourceOpen = function() {
+  // construct the video data buffer and set the appropriate MIME type
+  var
+    player = this.player(),
+    sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
+
+  this.sourceBuffer = sourceBuffer;
+  sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
+
 
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
@@ -377,12 +384,7 @@ videojs.Hls.prototype.cancelSegmentXhr = function() {
  * Abort all outstanding work and cleanup.
  */
 videojs.Hls.prototype.dispose = function() {
-  var player = this.player();
-
-  // remove event handlers
-  player.off('timeupdate', this.fillBuffer);
-  player.off('timeupdate', this.drainBuffer);
-  player.off('waiting', this.drainBuffer);
+  this.stopCheckingBuffer_();
 
   if (this.playlists) {
     this.playlists.dispose();
@@ -468,6 +470,46 @@ videojs.Hls.prototype.selectPlaylist = function () {
 };
 
 /**
+ * Periodically request new segments and append video data.
+ */
+videojs.Hls.prototype.checkBuffer_ = function() {
+  // calling this method directly resets any outstanding buffer checks
+  if (this.checkBufferTimeout_) {
+    window.clearTimeout(this.checkBufferTimeout_);
+    this.checkBufferTimeout_ = null;
+  }
+
+  this.fillBuffer();
+  this.drainBuffer();
+
+  // wait awhile and try again
+  this.checkBufferTimeout_ = window.setTimeout(videojs.bind(this, this.checkBuffer_),
+                                               bufferCheckInterval);
+};
+
+/**
+ * Setup a periodic task to request new segments if necessary and
+ * append bytes into the SourceBuffer.
+ */
+videojs.Hls.prototype.startCheckingBuffer_ = function() {
+  // if the player ever stalls, check if there is video data available
+  // to append immediately
+  this.player().on('waiting', videojs.bind(this, this.drainBuffer));
+
+  this.checkBuffer_();
+};
+
+/**
+ * Stop the periodic task requesting new segments and feeding the
+ * SourceBuffer.
+ */
+videojs.Hls.prototype.stopCheckingBuffer_ = function() {
+  window.clearTimeout(this.checkBufferTimeout_);
+  this.checkBufferTimeout_ = null;
+  this.player().off('waiting', this.drainBuffer);
+};
+
+/**
  * Determines whether there is enough video data currently in the buffer
  * and downloads a new segment if the buffered time is less than the goal.
  * @param offset (optional) {number} the offset into the downloaded segment
@@ -481,6 +523,11 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     segment,
     segmentUri;
 
+  // if a video has not been specified, do nothing
+  if (!player.currentSrc() || !this.playlists) {
+    return;
+  }
+
   // if there is a request already in flight, do nothing
   if (this.segmentXhr_) {
     return;
@@ -488,6 +535,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
 
   // if no segments are available, do nothing
   if (this.playlists.state === "HAVE_NOTHING" ||
+      !this.playlists.media() ||
       !this.playlists.media().segments) {
     return;
   }
