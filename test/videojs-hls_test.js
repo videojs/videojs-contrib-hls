@@ -250,7 +250,6 @@ test('re-initializes the playlist loader when switching sources', function() {
   ok(requests[0].url.indexOf('master.m3u8') >= 0, 'requested only the new playlist');
 });
 
-
 test('sets the duration if one is available on the playlist', function() {
   var calls = 0;
   player.duration = function(value) {
@@ -461,6 +460,34 @@ test('dont downshift if bandwidth is low', function() {
   strictEqual(requests[2].url,
               absoluteUrl('manifest/media-00001.ts'),
               'first segment requested');
+});
+
+test('starts checking the buffer on init', function() {
+  var player, i, length, callbacks = [], fills = 0, drains = 0;
+  // capture timeouts
+  window.setTimeout = function(callback) {
+    callbacks.push(callback);
+  };
+
+  player = createPlayer();
+  player.hls.fillBuffer = function() {
+    fills++;
+  };
+  player.hls.drainBuffer = function() {
+    drains++;
+  };
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  ok(callbacks.length > 0, 'set timeouts');
+
+  for (i = 0, length = callbacks.length; i < length; i++) {
+    callbacks[i]();
+  }
+  equal(fills, 1, 'called fillBuffer');
+  equal(drains, 1, 'called drainBuffer');
+  player.dispose();
 });
 
 test('buffer checks are noops until a media playlist is ready', function() {
