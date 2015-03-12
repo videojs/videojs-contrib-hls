@@ -3,5 +3,7 @@ dist/*
 /node_modules/
 *~
 *.iml
+*.ipr
+*.iws
 *.swp
 tmp/**

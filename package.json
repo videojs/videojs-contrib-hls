@@ -10,7 +10,8 @@
   },
   "license": "Apache 2",
   "scripts": {
-    "test": "grunt test"
+    "test": "grunt test",
+    "prepublish": "grunt"
   },
   "keywords": [
     "videojs",
