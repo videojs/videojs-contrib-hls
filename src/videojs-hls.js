@@ -248,6 +248,10 @@ videojs.Hls.prototype.src = function(src) {
    the current time to go along with it.
  */
 videojs.Hls.getMediaIndexForLive = function(selectedPlaylist) {
+  if (!selectedPlaylist.segments) {
+    return 0;
+  }
+
   var tailIterator = selectedPlaylist.segments.length,
       tailDuration = 0,
       targetTail = (selectedPlaylist.targetDuration || 10) * 3;
