@@ -442,7 +442,7 @@
                 method: entry.attributes.METHOD || 'AES-128',
                 uri: entry.attributes.URI
               };
-	      
+
               if (entry.attributes.IV !== undefined) {
                 key.iv = entry.attributes.IV;
               }
