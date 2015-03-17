@@ -248,10 +248,6 @@ videojs.Hls.prototype.src = function(src) {
    the current time to go along with it.
  */
 videojs.Hls.getMediaIndexForLive = function(selectedPlaylist) {
-  if (!selectedPlaylist.segments) {
-    return 0;
-  }
-
   var tailIterator = selectedPlaylist.segments.length,
       tailDuration = 0,
       targetTail = (selectedPlaylist.targetDuration || 10) * 3;
@@ -291,9 +287,9 @@ videojs.Hls.prototype.play = function() {
     this.mediaIndex = 0;
   }
 
-  if (this.playlists.media() && !this.el().classList.contains('vjs-has-started')) {
+  if (this.playlists.media() && !this.player_.hasClass('vjs-has-started')) {
     this.mediaIndex = videojs.Hls.getMediaIndexForLive(this.playlists.media());
-    this.setCurrentTime(this.setCurrentTimeByMediaIndex(this.playlists.media(), this.mediaIndex));
+    this.setCurrentTime(this.getCurrentTimeByMediaIndex(this.playlists.media(), this.mediaIndex));
   }
 
   // delegate back to the Flash implementation
@@ -990,14 +986,23 @@ videojs.Hls.getMediaIndexByTime = function(playlist, time) {
   return -1;
 };
 
-videojs.Hls.prototype.setCurrentTimeByMediaIndex = function(playlist, mediaIndex) {
+/**
+ * Determine the current time in seconds in one playlist by a media index. This
+ * function iterates through the segments of a playlist up to the specified index
+ * and then returns the time up to that point.
+ *
+ * @param playlist {object} The playlist of the segments being searched.
+ * @param mediaIndex {number} The index of the target segment in the playlist.
+ * @returns {number} The current time to that point, or 0 if none appropriate.
+ */
+videojs.Hls.prototype.getCurrentTimeByMediaIndex = function(playlist, mediaIndex) {
   var index, time = 0;
 
   if (!playlist.segments || mediaIndex === 0) {
     return 0;
   }
 
-  for (index = 0; index < mediaIndex - 1; index++) {
+  for (index = 0; index < mediaIndex; index++) {
     time += playlist.segments[index].duration;
   }
 
