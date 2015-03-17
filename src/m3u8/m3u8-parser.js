@@ -440,9 +440,12 @@
               // setup an encryption key for upcoming segments
               key = {
                 method: entry.attributes.METHOD || 'AES-128',
-                uri: entry.attributes.URI,
-                iv: entry.attributes.IV || null
+                uri: entry.attributes.URI
               };
+	      
+	      if (entry.attributes.IV !== undefined) {
+	      	key.iv = entry.attributes.IV
+	      }
             },
             'media-sequence': function() {
               if (!isFinite(entry.number)) {
