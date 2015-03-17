@@ -443,9 +443,9 @@
                 uri: entry.attributes.URI
               };
 	      
-	      if (entry.attributes.IV !== undefined) {
-	      	key.iv = entry.attributes.IV
-	      }
+              if (entry.attributes.IV !== undefined) {
+                key.iv = entry.attributes.IV;
+              }
             },
             'media-sequence': function() {
               if (!isFinite(entry.number)) {
