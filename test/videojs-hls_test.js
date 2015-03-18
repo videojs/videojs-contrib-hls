@@ -1259,9 +1259,13 @@ test('live playlist starts with correct currentTime value', function() {
   standardXHRResponse(requests[0]);
 
   player.hls.playlists.trigger('loadedmetadata');
+  player.hasClass = function(classname) {
+    return player.el().classList.contains(classname);
+  }
+
   player.hls.play();
 
-  strictEqual(player.currentTime(), 60, 'currentTime is updated at playback');
+  strictEqual(player.currentTime(), 70, 'currentTime is updated at playback');
 });
 
 test('mediaIndex is zero before the first segment loads', function() {
@@ -1735,6 +1739,11 @@ test('calling play() at the end of a video resets the media index', function() {
   player.hls.ended = function() {
     return true;
   };
+
+  player.hasClass = function(classname) {
+    return player.el().classList.contains(classname);
+  }
+
   player.play();
   strictEqual(player.hls.mediaIndex, 0, 'index is 1 after the first segment');
 });
