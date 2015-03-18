@@ -248,6 +248,10 @@ videojs.Hls.prototype.src = function(src) {
    the current time to go along with it.
  */
 videojs.Hls.getMediaIndexForLive = function(selectedPlaylist) {
+  if (!selectedPlaylist.segments) {
+    return 0;
+  }
+
   var tailIterator = selectedPlaylist.segments.length,
       tailDuration = 0,
       targetTail = (selectedPlaylist.targetDuration || 10) * 3;
@@ -287,7 +291,7 @@ videojs.Hls.prototype.play = function() {
     this.mediaIndex = 0;
   }
 
-  if (this.playlists.media() && !this.player_.hasClass('vjs-has-started')) {
+  if (this.playlists.media() && !this.player().hasClass('vjs-has-started')) {
     this.mediaIndex = videojs.Hls.getMediaIndexForLive(this.playlists.media());
     this.setCurrentTime(this.getCurrentTimeByMediaIndex(this.playlists.media(), this.mediaIndex));
   }
