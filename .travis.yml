@@ -1,8 +1,8 @@
 language: node_js
 node_js:
 - '0.10'
-before_script:
-- npm install -g grunt-cli
+install:
+- npm install -g grunt-cli && npm install
 - if [ "${TRAVIS_PULL_REQUEST}" = "false" ]; then curl https://gist.githubusercontent.com/santiycr/5139565/raw/sauce_connect_setup.sh | bash; fi
 notifications:
   hipchat:
