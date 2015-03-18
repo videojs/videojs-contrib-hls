@@ -1261,7 +1261,7 @@ test('live playlist starts with correct currentTime value', function() {
   player.hls.playlists.trigger('loadedmetadata');
   player.hasClass = function(classname) {
     return player.el().classList.contains(classname);
-  }
+  };
 
   player.hls.play();
 
@@ -1742,7 +1742,7 @@ test('calling play() at the end of a video resets the media index', function() {
 
   player.hasClass = function(classname) {
     return player.el().classList.contains(classname);
-  }
+  };
 
   player.play();
   strictEqual(player.hls.mediaIndex, 0, 'index is 1 after the first segment');
