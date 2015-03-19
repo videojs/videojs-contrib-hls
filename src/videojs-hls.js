@@ -291,7 +291,7 @@ videojs.Hls.prototype.play = function() {
     this.mediaIndex = 0;
   }
 
-  if (this.playlists.media() && !this.player().hasClass('vjs-has-started')) {
+  if (this.duration() === Infinity && this.playlists.media() && !this.player().hasClass('vjs-has-started')) {
     this.mediaIndex = videojs.Hls.getMediaIndexForLive(this.playlists.media());
     this.setCurrentTime(this.getCurrentTimeByMediaIndex(this.playlists.media(), this.mediaIndex));
   }
