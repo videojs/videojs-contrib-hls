@@ -40,6 +40,10 @@ HLS stream, code against the regular HTML5 video APIs, and create a
 fast, high-quality video experience across all the big web device
 categories.
 
+Check out the [full documentation](docs/) for details on how HLS works
+and advanced configuration. A description of the [adaptive switching
+behavior](docs/bitrate-switching.md) is available, too.
+
 The videojs-hls tech is still working towards a 1.0 release so it
 may not fit your requirements today. Specifically, there is _no_
 support for:
@@ -197,23 +201,6 @@ headers](https://developer.mozilla.org/en-US/docs/HTTP/Access_control_CORS)
 configured. Easy [instructions are
 available](http://enable-cors.org/server.html) for popular webservers
 and most CDNs should have no trouble turning CORS on for your account.
-
-## Adaptive Switching Behavior
-The HLS tech tries to ensure the highest-quality viewing experience 
-possible, given the available bandwidth and encodings. This doesn't
-always mean using the highest-bitrate rendition available-- if the player
-is 300px by 150px, it would be a big waste of bandwidth to download a 4k
-stream. By default, the player attempts to load the highest-bitrate 
-variant that is less than the most recently detected segment bandwidth,
-with one condition: if there are multiple variants with dimensions greater
-than the current player size, it will only switch up one size greater 
-than the current player size.
-
-If you'd like your player to use a different set of priorities, it's 
-possible to completely replace the rendition selection logic. For 
-instance, you could always choose the most appropriate rendition by 
-resolution, even though this might mean more stalls during playback.
-See the documentation on `player.hls.selectPlaylist` for more details.
 
 ## Release History
 - 0.11.0: embedded ID3 tags are exposed as an in-band metadata track
