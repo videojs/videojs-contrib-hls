@@ -33,6 +33,10 @@ gets used:
 
 ![Final selection](bitrate-switching-4.png)
 
+If it turns out no rendition is acceptable based on the filtering
+described above, the first encoding listed in the master playlist will
+be used.
+
 If you'd like your player to use a different set of priorities, it's 
 possible to completely replace the rendition selection logic. For 
 instance, you could always choose the most appropriate rendition by 
