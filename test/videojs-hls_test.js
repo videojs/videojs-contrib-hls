@@ -1259,9 +1259,6 @@ test('live playlist starts with correct currentTime value', function() {
   standardXHRResponse(requests[0]);
 
   player.hls.playlists.trigger('loadedmetadata');
-  player.hasClass = function(classname) {
-    return player.el().classList.contains(classname);
-  };
 
   player.hls.play();
 
