@@ -164,6 +164,16 @@ videojs.Hls.prototype.src = function(src) {
       });
     }
 
+    // Start live playlists 30 seconds before the current time
+    // This is done using the old playlist because of a race condition
+    // where the playlist selected below may not be loaded quickly
+    // enough to have its segments available for review. When we receive
+    // a loadedplaylist event, we will call translateMediaIndex and
+    // maintain our position at the live point.
+    if (this.duration() === Infinity && this.mediaIndex === 0) {
+      this.mediaIndex = videojs.Hls.getMediaIndexForLive_(oldMediaPlaylist);
+    }
+
     selectedPlaylist = this.selectPlaylist();
     oldBitrate = oldMediaPlaylist.attributes &&
                  oldMediaPlaylist.attributes.BANDWIDTH || 0;
@@ -177,11 +187,6 @@ videojs.Hls.prototype.src = function(src) {
 
     if (!segmentDlTime) {
       segmentDlTime = Infinity;
-    }
-
-    // start live playlists 30 seconds before the current time
-    if (this.duration() === Infinity && this.mediaIndex === 0 && selectedPlaylist.segments) {
-      this.mediaIndex = videojs.Hls.setMediaIndexForLive(selectedPlaylist);
     }
 
     // this threshold is to account for having a high latency on the manifest
@@ -239,7 +244,14 @@ videojs.Hls.prototype.src = function(src) {
   });
 };
 
-videojs.Hls.setMediaIndexForLive = function(selectedPlaylist) {
+/* Returns the media index for the live point in the current playlist, and updates
+   the current time to go along with it.
+ */
+videojs.Hls.getMediaIndexForLive_ = function(selectedPlaylist) {
+  if (!selectedPlaylist.segments) {
+    return 0;
+  }
+
   var tailIterator = selectedPlaylist.segments.length,
       tailDuration = 0,
       targetTail = (selectedPlaylist.targetDuration || 10) * 3;
@@ -277,6 +289,11 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 videojs.Hls.prototype.play = function() {
   if (this.ended()) {
     this.mediaIndex = 0;
+  }
+
+  if (this.duration() === Infinity && this.playlists.media() && !this.player().hasClass('vjs-has-started')) {
+    this.mediaIndex = videojs.Hls.getMediaIndexForLive_(this.playlists.media());
+    this.setCurrentTime(this.getCurrentTimeByMediaIndex_(this.playlists.media(), this.mediaIndex));
   }
 
   // delegate back to the Flash implementation
@@ -936,7 +953,7 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
 
   if (translatedMediaIndex >= update.segments.length || translatedMediaIndex < 0) {
     // recalculate the live point if the streams are too far out of sync
-    return videojs.Hls.setMediaIndexForLive(update) + 1;
+    return videojs.Hls.getMediaIndexForLive_(update) + 1;
   }
 
   // sync on media sequence
@@ -971,6 +988,29 @@ videojs.Hls.getMediaIndexByTime = function(playlist, time) {
   }
 
   return -1;
+};
+
+/**
+ * Determine the current time in seconds in one playlist by a media index. This
+ * function iterates through the segments of a playlist up to the specified index
+ * and then returns the time up to that point.
+ *
+ * @param playlist {object} The playlist of the segments being searched.
+ * @param mediaIndex {number} The index of the target segment in the playlist.
+ * @returns {number} The current time to that point, or 0 if none appropriate.
+ */
+videojs.Hls.prototype.getCurrentTimeByMediaIndex_ = function(playlist, mediaIndex) {
+  var index, time = 0;
+
+  if (!playlist.segments || mediaIndex === 0) {
+    return 0;
+  }
+
+  for (index = 0; index < mediaIndex; index++) {
+    time += playlist.segments[index].duration;
+  }
+
+  return time;
 };
 
 /**

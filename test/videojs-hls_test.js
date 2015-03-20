@@ -1249,6 +1249,22 @@ test('live playlist starts 30s before live', function() {
   strictEqual(player.hls.mediaIndex, 6, 'mediaIndex is updated after the reload');
 });
 
+test('live playlist starts with correct currentTime value', function() {
+  player.src({
+    src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  standardXHRResponse(requests[0]);
+
+  player.hls.playlists.trigger('loadedmetadata');
+
+  player.hls.play();
+
+  strictEqual(player.currentTime(), 70, 'currentTime is updated at playback');
+});
+
 test('mediaIndex is zero before the first segment loads', function() {
   window.manifests['first-seg-load'] =
     '#EXTM3U\n' +
@@ -1720,6 +1736,7 @@ test('calling play() at the end of a video resets the media index', function() {
   player.hls.ended = function() {
     return true;
   };
+
   player.play();
   strictEqual(player.hls.mediaIndex, 0, 'index is 1 after the first segment');
 });
