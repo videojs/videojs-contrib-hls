@@ -1754,7 +1754,12 @@ test('drainBuffer will not proceed with empty source buffer', function() {
   player.hls.segmentBuffer_ = [{mediaIndex: 0, playlist: newMedia, offset: 0, bytes: [0,0,0]}];
 
   player.hls.drainBuffer();
-  deepEqual(player.hls.segmentBuffer_,compareBuffer,'playlist remains unchanged');
+
+  /* Normally, drainBuffer() calls segmentBuffer.shift(), removing a segment from the stack.
+   * Comparing two buffers to ensure no segment was popped verifies that we returned early
+   * from drainBuffer() because sourceBuffer was empty.
+   */
+  deepEqual(player.hls.segmentBuffer_, compareBuffer, 'playlist remains unchanged');
 
   player.hls.playlists.media = oldMedia;
 });
