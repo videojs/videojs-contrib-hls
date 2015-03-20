@@ -1724,6 +1724,41 @@ test('calling play() at the end of a video resets the media index', function() {
   strictEqual(player.hls.mediaIndex, 0, 'index is 1 after the first segment');
 });
 
+test('drainBuffer will not proceed with empty source buffer', function() {
+  var oldMedia, newMedia, compareBuffer;
+  player.src({
+    src: 'https://example.com/encrypted-media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  oldMedia = player.hls.playlists.media;
+  newMedia = {segments: [{
+    key: {
+      'retries': 5
+    },
+    uri: 'http://media.example.com/fileSequence52-A.ts'
+  }, {
+    key: {
+      'method': 'AES-128',
+      'uri': 'https://priv.example.com/key.php?r=53'
+    },
+    uri: 'http://media.example.com/fileSequence53-B.ts'
+  }]};
+  player.hls.playlists.media = function() {
+    return newMedia;
+  };
+
+  player.hls.sourceBuffer = undefined;
+  compareBuffer = [{mediaIndex: 0, playlist: newMedia, offset: 0, bytes: [0,0,0]}];
+  player.hls.segmentBuffer_ = [{mediaIndex: 0, playlist: newMedia, offset: 0, bytes: [0,0,0]}];
+
+  player.hls.drainBuffer();
+  deepEqual(player.hls.segmentBuffer_,compareBuffer,'playlist remains unchanged');
+
+  player.hls.playlists.media = oldMedia;
+});
+
 test('calling fetchKeys() when a new playlist is loaded will create an XHR', function() {
   player.src({
     src: 'https://example.com/encrypted-media.m3u8',
