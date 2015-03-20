@@ -1737,10 +1737,6 @@ test('calling play() at the end of a video resets the media index', function() {
     return true;
   };
 
-  player.hasClass = function(classname) {
-    return player.el().classList.contains(classname);
-  };
-
   player.play();
   strictEqual(player.hls.mediaIndex, 0, 'index is 1 after the first segment');
 });
