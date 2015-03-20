@@ -666,7 +666,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     segmentOffset,
     segmentBuffer = this.segmentBuffer_;
 
-  if (!segmentBuffer.length) {
+  if (!segmentBuffer.length || !this.sourceBuffer) {
     return;
   }
 
