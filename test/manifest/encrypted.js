@@ -35,6 +35,15 @@
       "uri": "http://media.example.com/fileSequence53-A.ts"
     },
     {
+      "duration": 14,
+      "key": {
+        "method": "AES-128",
+        "uri": "https://priv.example.com/key.php?r=54",
+        "iv": new Uint32Array([0, 0, 331, 3063767524])
+      },
+      "uri": "http://media.example.com/fileSequence53-B.ts"
+    },
+    {
       "duration": 15,
       "uri": "http://media.example.com/fileSequence53-B.ts"
     }
