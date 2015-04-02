@@ -203,6 +203,7 @@ available](http://enable-cors.org/server.html) for popular webservers
 and most CDNs should have no trouble turning CORS on for your account.
 
 ## Release History
+- 0.12.0: support for custom IVs with AES-128 encryption
 - 0.11.0: embedded ID3 tags are exposed as an in-band metadata track
 - 0.10.0: optimistic initial bitrate selection
 - 0.9.0: support segment level AES-128 encryption
