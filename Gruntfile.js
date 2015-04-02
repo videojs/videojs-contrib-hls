@@ -203,7 +203,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-concurrent');
   grunt.loadNpmTasks('grunt-contrib-watch');
-  
+
 
   grunt.registerTask('manifests-to-js', 'Wrap the test fixtures and output' +
                      ' so they can be loaded in a browser',
@@ -230,10 +230,10 @@ module.exports = function(grunt) {
         jsManifests += ',\n';
       }
 
-      if ((/\.json$/).test(abspath)) {
+      if ((/\.js$/).test(abspath)) {
 
-        // append the JSON
-        jsExpected += '  "' + basename(filename, '.json') + '": ' +
+        // append the expected parse
+        jsExpected += '  "' + basename(filename, '.js') + '": ' +
           grunt.file.read(abspath) + ',\n';
       }
     });
