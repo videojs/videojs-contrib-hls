@@ -118,7 +118,9 @@
        */
       loader.dispose = function() {
         if (request) {
+          request.onreadystatechange = null;
           request.abort();
+          request = null;
         }
         window.clearTimeout(mediaUpdateTimeout);
         dispose.call(this);
@@ -161,6 +163,7 @@
         if (loader.master.playlists[playlist.uri].endList) {
           // abort outstanding playlist requests
           if (request) {
+            request.onreadystatechange = null;
             request.abort();
             request = null;
           }
@@ -188,6 +191,7 @@
             // has no effect after the first
             return;
           }
+          request.onreadystatechange = null;
           request.abort();
           request = null;
         }
