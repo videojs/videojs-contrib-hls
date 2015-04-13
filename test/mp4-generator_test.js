@@ -518,6 +518,35 @@ test('generates a minimal moof', function() {
   }, 'wrote the sample data table');
 });
 
+test('generates a moof for audio', function() {
+  var
+    data = mp4.moof(7, [{
+      id: 17,
+      type: 'audio',
+      samples: [{
+        duration: 9000,
+        size: 10
+      }, {
+        duration: 10000,
+        size: 11
+      }]
+    }]),
+    moof = videojs.inspectMp4(data),
+    trun;
+
+  deepEqual(moof[0].boxes[1].boxes.length, 3, 'generated three traf children');
+  trun = moof[0].boxes[1].boxes[2];
+  ok(trun, 'generated a trun');
+  deepEqual(trun.dataOffset, data.byteLength + 8, 'calculated the data offset');
+  deepEqual(trun.samples, [{
+    duration: 9000,
+    size: 10
+  }, {
+    duration: 10000,
+    size: 11
+  }], 'wrote simple audio samples');
+});
+
 test('can generate a traf without samples', function() {
   var
     data = mp4.moof(8, [{

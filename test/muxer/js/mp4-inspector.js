@@ -39,6 +39,12 @@ var
     for (i = 0; i < avcStream.length; i += length) {
       length = avcView.getUint32(i);
       i += 4;
+
+      // bail if this doesn't appear to be an H264 stream
+      if (length <= 0) {
+        return;
+      }
+
       switch(avcStream[i] & 0x1F) {
       case 0x01:
         result.push('slice_layer_without_partitioning_rbsp');

@@ -486,7 +486,8 @@ AudioSegmentStream = function(track) {
     // concatenate the audio data to constuct the mdat
     data = new Uint8Array(aacFramesLength);
     track.samples = [];
-    while (aacFramesLength.length) {
+    i = 0;
+    while (aacFrames.length) {
       currentFrame = aacFrames[0];
       sample = {
         size: currentFrame.data.byteLength,

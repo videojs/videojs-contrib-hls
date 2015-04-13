@@ -333,17 +333,18 @@ sdtp = function(track) {
   var
     samples = track.samples || [],
     bytes = new Uint8Array(4 + samples.length),
-    sample,
+    flags,
     i;
 
   // leave the full box header (4 bytes) all zero
 
   // write the sample table
   for (i = 0; i < samples.length; i++) {
-    sample = samples[i];
-    bytes[i + 4] = (sample.flags.dependsOn << 4) |
-      (sample.flags.isDependedOn << 2) |
-      (sample.flags.hasRedundancy);
+    flags = samples[i].flags;
+
+    bytes[i + 4] = (flags.dependsOn << 4) |
+      (flags.isDependedOn << 2) |
+      (flags.hasRedundancy);
   }
 
   return box(types.sdtp,
@@ -508,30 +509,58 @@ tkhd = function(track) {
   return box(types.tkhd, result);
 };
 
+/**
+ * Generate a track fragment (traf) box. A traf box collects metadata
+ * about tracks in a movie fragment (moof) box.
+ */
 traf = function(track) {
-  var sampleDependencyTable = sdtp(track);
+  var trackFragmentHeader, trackFragmentDecodeTime,
+      trackFragmentRun, sampleDependencyTable, dataOffset;
+
+  trackFragmentHeader = box(types.tfhd, new Uint8Array([
+    0x00, // version 0
+    0x00, 0x00, 0x00, // flags
+    (track.id & 0xFF000000) >> 24,
+    (track.id & 0xFF0000) >> 16,
+    (track.id & 0xFF00) >> 8,
+    (track.id & 0xFF) // track_ID
+  ]));
+
+  trackFragmentDecodeTime = box(types.tfdt, new Uint8Array([
+    0x00, // version 0
+    0x00, 0x00, 0x00, // flags
+    0x00, 0x00, 0x00, 0x00 // baseMediaDecodeTime
+  ]));
+
+  // the data offset specifies the number of bytes from the start of
+  // the containing moof to the first payload byte of the associated
+  // mdat
+  dataOffset = (16 + // tfhd
+                16 + // tfdt
+                8 +  // traf header
+                16 + // mfhd
+                8 +  // moof header
+                8);  // mdat header
+
+  // audio tracks require less metadata
+  if (track.type === 'audio') {
+    trackFragmentRun = trun(track, dataOffset);
+    return box(types.traf,
+               trackFragmentHeader,
+               trackFragmentDecodeTime,
+               trackFragmentRun);
+  }
+
+  // video tracks should contain an independent and disposable samples
+  // box (sdtp)
+  // generate one and adjust offsets to match
+  sampleDependencyTable = sdtp(track);
+  trackFragmentRun = trun(track,
+                          sampleDependencyTable.length + dataOffset);
   return box(types.traf,
-             box(types.tfhd, new Uint8Array([
-               0x00, // version 0
-               0x00, 0x00, 0x00, // flags
-               (track.id & 0xFF000000) >> 24,
-               (track.id & 0xFF0000) >> 16,
-               (track.id & 0xFF00) >> 8,
-               (track.id & 0xFF) // track_ID
-             ])),
-             box(types.tfdt, new Uint8Array([
-               0x00, // version 0
-               0x00, 0x00, 0x00, // flags
-               0x00, 0x00, 0x00, 0x00 // baseMediaDecodeTime
-             ])),
-             trun(track,
-                  sampleDependencyTable.length +
-                  16 + // tfhd
-                  16 + // tfdt
-                  8 +  // traf header
-                  16 + // mfhd
-                  8 +  // moof header
-                  8),  // mdat header
+             trackFragmentHeader,
+             trackFragmentDecodeTime,
+             trackFragmentRun,
              sampleDependencyTable);
 };
 
@@ -571,51 +600,116 @@ trex = function(track) {
   return box(types.trex, result);
 };
 
-trun = function(track, offset) {
-  var bytes, samples, sample, i;
+(function() {
+  var audioTrun, videoTrun, trunHeader;
 
-  samples = track.samples || [];
-  offset += 8 + 12 + (16 * samples.length);
+  // This method assumes all samples are uniform. That is, if a
+  // duration is present for the first sample, it will be present for
+  // all subsequent samples.
+  // see ISO/IEC 14496-12:2012, Section 8.8.8.1
+  trunHeader = function(samples, offset) {
+    var durationPresent = 0, sizePresent = 0,
+        flagsPresent = 0, compositionTimeOffset = 0;
 
-  bytes = [
-    0x00, // version 0
-    0x00, 0x0f, 0x01, // flags
-    (samples.length & 0xFF000000) >>> 24,
-    (samples.length & 0xFF0000) >>> 16,
-    (samples.length & 0xFF00) >>> 8,
-    samples.length & 0xFF, // sample_count
-    (offset & 0xFF000000) >>> 24,
-    (offset & 0xFF0000) >>> 16,
-    (offset & 0xFF00) >>> 8,
-    offset & 0xFF // data_offset
-  ];
+    // trun flag constants
+    if (samples.length) {
+      if (samples[0].duration !== undefined) {
+        durationPresent = 0x1;
+      }
+      if (samples[0].size !== undefined) {
+        sizePresent = 0x2;
+      }
+      if (samples[0].flags !== undefined) {
+        flagsPresent = 0x4;
+      }
+      if (samples[0].compositionTimeOffset !== undefined) {
+        compositionTimeOffset = 0x8;
+      }
+    }
 
-  for (i = 0; i < samples.length; i++) {
-    sample = samples[i];
-    bytes = bytes.concat([
-      (sample.duration & 0xFF000000) >>> 24,
-      (sample.duration & 0xFF0000) >>> 16,
-      (sample.duration & 0xFF00) >>> 8,
-      sample.duration & 0xFF, // sample_duration
-      (sample.size & 0xFF000000) >>> 24,
-      (sample.size & 0xFF0000) >>> 16,
-      (sample.size & 0xFF00) >>> 8,
-      sample.size & 0xFF, // sample_size
-      (sample.flags.isLeading << 2) | sample.flags.dependsOn,
-      (sample.flags.isDependedOn << 6) |
-        (sample.flags.hasRedundancy << 4) |
-        (sample.flags.paddingValue << 1) |
-        sample.flags.isNonSyncSample,
-      sample.flags.degradationPriority & 0xF0 << 8,
-      sample.flags.degradationPriority & 0x0F, // sample_flags
-      (sample.compositionTimeOffset & 0xFF000000) >>> 24,
-      (sample.compositionTimeOffset & 0xFF0000) >>> 16,
-      (sample.compositionTimeOffset & 0xFF00) >>> 8,
-      sample.compositionTimeOffset & 0xFF // sample_composition_time_offset
-    ]);
-  }
-  return box(types.trun, new Uint8Array(bytes));
-};
+    return [
+      0x00, // version 0
+      0x00,
+      durationPresent | sizePresent | flagsPresent | compositionTimeOffset,
+      0x01, // flags
+      (samples.length & 0xFF000000) >>> 24,
+      (samples.length & 0xFF0000) >>> 16,
+      (samples.length & 0xFF00) >>> 8,
+      samples.length & 0xFF, // sample_count
+      (offset & 0xFF000000) >>> 24,
+      (offset & 0xFF0000) >>> 16,
+      (offset & 0xFF00) >>> 8,
+      offset & 0xFF // data_offset
+    ];
+  };
+
+  videoTrun = function(track, offset) {
+    var bytes, samples, sample, i;
+
+    samples = track.samples || [];
+    offset += 8 + 12 + (16 * samples.length);
+
+    bytes = trunHeader(samples, offset);
+
+    for (i = 0; i < samples.length; i++) {
+      sample = samples[i];
+      bytes = bytes.concat([
+        (sample.duration & 0xFF000000) >>> 24,
+        (sample.duration & 0xFF0000) >>> 16,
+        (sample.duration & 0xFF00) >>> 8,
+        sample.duration & 0xFF, // sample_duration
+        (sample.size & 0xFF000000) >>> 24,
+        (sample.size & 0xFF0000) >>> 16,
+        (sample.size & 0xFF00) >>> 8,
+        sample.size & 0xFF, // sample_size
+        (sample.flags.isLeading << 2) | sample.flags.dependsOn,
+        (sample.flags.isDependedOn << 6) |
+          (sample.flags.hasRedundancy << 4) |
+          (sample.flags.paddingValue << 1) |
+          sample.flags.isNonSyncSample,
+        sample.flags.degradationPriority & 0xF0 << 8,
+        sample.flags.degradationPriority & 0x0F, // sample_flags
+        (sample.compositionTimeOffset & 0xFF000000) >>> 24,
+        (sample.compositionTimeOffset & 0xFF0000) >>> 16,
+        (sample.compositionTimeOffset & 0xFF00) >>> 8,
+        sample.compositionTimeOffset & 0xFF // sample_composition_time_offset
+      ]);
+    }
+    return box(types.trun, new Uint8Array(bytes));
+  };
+
+  audioTrun = function(track, offset) {
+    var bytes, samples, sample, i;
+
+    samples = track.samples || [];
+    offset += 8 + 12 + (8 * samples.length);
+
+    bytes = trunHeader(samples, offset);
+
+    for (i = 0; i < samples.length; i++) {
+      sample = samples[i];
+      bytes = bytes.concat([
+        (sample.duration & 0xFF000000) >>> 24,
+        (sample.duration & 0xFF0000) >>> 16,
+        (sample.duration & 0xFF00) >>> 8,
+        sample.duration & 0xFF, // sample_duration
+        (sample.size & 0xFF000000) >>> 24,
+        (sample.size & 0xFF0000) >>> 16,
+        (sample.size & 0xFF00) >>> 8,
+        sample.size & 0xFF]); // sample_size
+    }
+
+    return box(types.trun, new Uint8Array(bytes));
+  };
+
+  trun = function(track, offset) {
+    if (track.type === 'audio') {
+      return audioTrun(track, offset);
+    } else {
+      return videoTrun(track, offset);
+    }
+  };
+})();
 
 window.videojs.mp4 = {
   ftyp: ftyp,
