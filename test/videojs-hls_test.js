@@ -813,8 +813,11 @@ test('selects the correct rendition by player dimensions', function() {
 
   playlist = player.hls.selectPlaylist();
 
-  deepEqual(playlist.attributes.RESOLUTION, {width:396,height:224},'should return the correct resolution by player dimensions');
-  equal(playlist.attributes.BANDWIDTH, 440000, 'should have the expected bandwidth in case of multiple');
+  // The bias is now BANDWIDTH over RESOLUTION
+  // deepEqual(playlist.attributes.RESOLUTION, {width:396,height:224},'should return the correct resolution by player dimensions');
+  // equal(playlist.attributes.BANDWIDTH, 440000, 'should have the expected bandwidth in case of multiple');
+  deepEqual(playlist.attributes.RESOLUTION, {width:960,height:540},'should return the correct resolution by player dimensions');
+  equal(playlist.attributes.BANDWIDTH, 1928000, 'should have the expected bandwidth in case of multiple');
 
   player.width(1920);
   player.height(1080);
