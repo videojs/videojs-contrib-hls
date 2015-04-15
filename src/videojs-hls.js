@@ -733,8 +733,14 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   this.segmentParser_.flushTags();
 
   tags = [];
+  segment.preciseTimestamp = -1;
+
   while (this.segmentParser_.tagsAvailable()) {
     tags.push(this.segmentParser_.getNextTag());
+    if (!tags[tags.length - 1].counted && tags[tags.length-1].pts) {
+      segment.preciseTimestamp = segment.preciseTimestamp > tags[tags.length-1].pts ? segment.preciseTimestamp : tags[tags.length-1].pts;
+      tags[tags.length - 1].counted = true;
+    }
   }
 
   // if we're refilling the buffer after a seek, scan through the muxed
@@ -908,7 +914,19 @@ videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
 
   for (; i >= startIndex; i--) {
     segment = playlist.segments[i];
-    dur += (segment.duration !== undefined ? segment.duration : playlist.targetDuration) || 0;
+    if (segment.preciseTimestamp && segment.preciseTimestamp >= 0) {
+      var offset = 0;
+      if (playlist.segments[i - 1]) {
+        if (playlist.segments[i - 1].preciseTimestamp) {
+          offset = playlist.segments[i - 1].preciseTimestamp;
+        } else {
+          offset = (playlist.targetDuration * (i - 1) + playlist.segments[i - 1].duration) * 1000;
+        }
+      }
+      dur += (segment.preciseTimestamp - offset) / 1000;
+    } else {
+      dur += (segment.duration !== undefined ? segment.duration : playlist.targetDuration) || 0;
+    }
   }
 
   return dur;
