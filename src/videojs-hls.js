@@ -427,7 +427,6 @@ videojs.Hls.prototype.selectPlaylist = function () {
     i = sortedPlaylists.length,
     variant,
     oldvariant,
-    ret,
     bandwidthBestVariant,
     resolutionPlusOne,
     resolutionBestVariant;

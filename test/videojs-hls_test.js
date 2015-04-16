@@ -813,8 +813,8 @@ test('selects the correct rendition by player dimensions', function() {
 
   playlist = player.hls.selectPlaylist();
 
-  deepEqual(playlist.attributes.RESOLUTION, {width:396,height:224},'should return the correct resolution by player dimensions');
-  equal(playlist.attributes.BANDWIDTH, 440000, 'should have the expected bandwidth in case of multiple');
+  deepEqual(playlist.attributes.RESOLUTION, {width:960,height:540},'should return the correct resolution by player dimensions');
+  equal(playlist.attributes.BANDWIDTH, 1928000, 'should have the expected bandwidth in case of multiple');
 
   player.width(1920);
   player.height(1080);
@@ -824,6 +824,13 @@ test('selects the correct rendition by player dimensions', function() {
 
   deepEqual(playlist.attributes.RESOLUTION, {width:960,height:540},'should return the correct resolution by player dimensions');
   equal(playlist.attributes.BANDWIDTH, 1928000, 'should have the expected bandwidth in case of multiple');
+
+  player.width(396);
+  player.height(224);
+  playlist = player.hls.selectPlaylist();
+
+  deepEqual(playlist.attributes.RESOLUTION, {width:396,height:224},'should return the correct resolution by player dimensions, if exact match');
+  equal(playlist.attributes.BANDWIDTH, 440000, 'should have the expected bandwidth in case of multiple, if exact match');
 
 });
 
