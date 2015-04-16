@@ -331,6 +331,7 @@
     clock.tick(10 * 1000);
     loader.media('high.m3u8');
     strictEqual(requests[0].aborted, true, 'aborted refresh request');
+    ok(!requests[0].onreadystatechange, 'onreadystatechange handlers should be removed on abort');
     strictEqual(loader.state, 'SWITCHING_MEDIA', 'updated the state');
   });
 
@@ -417,6 +418,7 @@
 
     strictEqual(requests.length, 1, 'requested high playlist');
     ok(requests[0].aborted, 'aborted playlist request');
+    ok(!requests[0].onreadystatechange, 'onreadystatechange handlers should be removed on abort');
     strictEqual(loader.state, 'HAVE_METADATA', 'returned to loaded playlist');
     strictEqual(loader.media(), loader.master.playlists[0], 'switched to loaded playlist');
   });
@@ -498,6 +500,7 @@
 
     loader.dispose();
     ok(requests[0].aborted, 'refresh request aborted');
+    ok(!requests[0].onreadystatechange, 'onreadystatechange handler should not exist after dispose called');
   });
 
   test('errors if requests take longer than 45s', function() {
