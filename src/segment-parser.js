@@ -124,7 +124,9 @@
       return tag.finalize();
     };
 
-    self.parseSegmentBinaryData = function(data) { // :ByteArray) {
+    self.parseSegmentBinaryData = function(data, segmentOffset) { // :ByteArray) {
+      segmentOffset = segmentOffset ? segmentOffset : 0;
+      
       var
         dataPosition = 0,
         dataSlice;
@@ -147,7 +149,7 @@
           dataSlice = data.subarray(0, MP2T_PACKET_LENGTH - streamBufferByteCount);
           streamBuffer.set(dataSlice, streamBufferByteCount);
 
-          parseTSPacket(streamBuffer);
+          parseTSPacket(streamBuffer, segmentOffset);
 
           // reset the buffer
           streamBuffer = new Uint8Array(MP2T_PACKET_LENGTH);
@@ -176,7 +178,7 @@
         }
 
         // attempt to parse a m2ts packet
-        if (parseTSPacket(data.subarray(dataPosition, dataPosition + MP2T_PACKET_LENGTH))) {
+        if (parseTSPacket(data.subarray(dataPosition, dataPosition + MP2T_PACKET_LENGTH), segmentOffset)) {
           dataPosition += MP2T_PACKET_LENGTH;
         } else {
           // If there was an error parsing a TS packet. it could be
@@ -197,7 +199,9 @@
      */
     // TODO add more testing to make sure we dont walk past the end of a TS
     // packet!
-    parseTSPacket = function(data) { // :ByteArray):Boolean {
+    parseTSPacket = function(data, segmentOffset) { // :ByteArray):Boolean {
+      segmentOffset = segmentOffset ? segmentOffset : 0;
+    
       var
         offset = 0, // :uint
         end = offset + MP2T_PACKET_LENGTH, // :uint
@@ -336,6 +340,12 @@
               dts /= 45;
             }
           }
+
+          // Fix pts & dst if chunks were segmented with "ffmpeg -reset_timestamps 1" command.
+          // To support of this feature, just use videojs('video', {hls: {resetTimestamps: true}});
+          // NOTE: this feature is not compatible with regular "ffmpeg -reset_timestamps 0" segments.
+          pts += segmentOffset;
+          dts += segmentOffset;
 
           // Skip past "optional" portion of PTS header
           offset += pesHeaderLength;
