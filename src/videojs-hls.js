@@ -733,7 +733,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   this.segmentParser_.flushTags();
 
   tags = [];
-  segment.preciseTimestamp = -1;
+  segment.preciseTimestamp = null;
 
   while (this.segmentParser_.tagsAvailable()) {
     tags.push(this.segmentParser_.getNextTag());
@@ -905,6 +905,7 @@ videojs.Hls.canPlaySource = function(srcObj) {
  */
 videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
   var dur = 0,
+      offset = 0,
       segment,
       i;
 
@@ -914,16 +915,23 @@ videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
 
   for (; i >= startIndex; i--) {
     segment = playlist.segments[i];
-    if (segment.preciseTimestamp && segment.preciseTimestamp >= 0) {
-      var offset = 0;
-      if (playlist.segments[i - 1]) {
-        if (playlist.segments[i - 1].preciseTimestamp) {
-          offset = playlist.segments[i - 1].preciseTimestamp;
+    if (segment.preciseDuration || segment.preciseTimestamp) {
+      offset = 0;
+      if (!segment.preciseDuration) {
+        if (playlist.segments[i - 1]) {
+          if (playlist.segments[i - 1].preciseTimestamp) {
+            offset = playlist.segments[i - 1].preciseTimestamp;
+          } else {
+            offset = (playlist.targetDuration * (i - 1) + playlist.segments[i - 1].duration) * 1000;
+          }
+          segment.preciseDuration = (segment.preciseTimestamp - offset) / 1000;
+        } else if (i === 0) {
+          segment.preciseDuration = segment.preciseTimestamp / 1000;
         } else {
-          offset = (playlist.targetDuration * (i - 1) + playlist.segments[i - 1].duration) * 1000;
+          segment.preciseDuration = segment.duration;
         }
       }
-      dur += (segment.preciseTimestamp - offset) / 1000;
+      dur += segment.preciseDuration;
     } else {
       dur += (segment.duration !== undefined ? segment.duration : playlist.targetDuration) || 0;
     }
