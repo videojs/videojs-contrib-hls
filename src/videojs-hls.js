@@ -424,7 +424,9 @@ videojs.Hls.prototype.selectPlaylist = function () {
     bandwidthPlaylists = [],
     i = sortedPlaylists.length,
     variant,
+    oldvariant,
     bandwidthBestVariant,
+    resolutionPlusOne,
     resolutionBestVariant;
 
   sortedPlaylists.sort(videojs.Hls.comparePlaylistBandwidth);
@@ -460,6 +462,7 @@ videojs.Hls.prototype.selectPlaylist = function () {
   // iterate through the bandwidth-filtered playlists and find
   // best rendition by player dimension
   while (i--) {
+    oldvariant = variant;
     variant = bandwidthPlaylists[i];
 
     // ignore playlists without resolution information
@@ -470,18 +473,29 @@ videojs.Hls.prototype.selectPlaylist = function () {
       continue;
     }
 
+
     // since the playlists are sorted, the first variant that has
-    // dimensions less than or equal to the player size is the
-    // best
-    if (variant.attributes.RESOLUTION.width <= player.width() &&
-        variant.attributes.RESOLUTION.height <= player.height()) {
+    // dimensions less than or equal to the player size is the best
+    if (variant.attributes.RESOLUTION.width === player.width() &&
+        variant.attributes.RESOLUTION.height === player.height()) {
+      // if we have the exact resolution as the player use it
+      resolutionPlusOne = null;
+      resolutionBestVariant = variant;
+      break;
+    } else if (variant.attributes.RESOLUTION.width < player.width() &&
+        variant.attributes.RESOLUTION.height < player.height()) {
+      // if we don't have an exact match, see if we have a good higher quality variant to use
+      if (oldvariant.attributes && oldvariant.attributes.RESOLUTION &&
+          oldvariant.attributes.RESOLUTION.width && oldvariant.attributes.RESOLUTION.height) {
+        resolutionPlusOne = oldvariant;
+      }
       resolutionBestVariant = variant;
       break;
     }
   }
 
   // fallback chain of variants
-  return resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+  return resolutionPlusOne || resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
 };
 
 /**
