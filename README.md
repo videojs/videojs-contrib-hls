@@ -203,6 +203,10 @@ available](http://enable-cors.org/server.html) for popular webservers
 and most CDNs should have no trouble turning CORS on for your account.
 
 ## Release History
+- 0.13.0:
+  - Improved audio/video synchronization
+  - Fixes for live, HLSe, and discontinuities
+  - Rename internal methods to clarify their intended visibility
 - 0.12.0: support for custom IVs with AES-128 encryption
 - 0.11.0: embedded ID3 tags are exposed as an in-band metadata track
 - 0.10.0: optimistic initial bitrate selection
