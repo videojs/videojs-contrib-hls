@@ -54,6 +54,7 @@ var
     tech.vjs_setProperty = function() {};
     tech.vjs_src = function() {};
     tech.vjs_play = function() {};
+    tech.vjs_discontinuity = function() {};
     videojs.Flash.onReady(tech.id);
 
     return player;
@@ -86,7 +87,7 @@ var
       contentType = 'video/MP2T';
     }
 
-    request.response = new Uint8Array([1]).buffer;
+    request.response = new Uint8Array(16).buffer;
     request.respond(200,
                     { 'Content-Type': contentType },
                     window.manifests[manifestName]);
@@ -569,6 +570,23 @@ test('calculates the bandwidth after downloading a segment', function() {
      'bandwidth is positive: ' + player.hls.bandwidth);
   ok(player.hls.segmentXhrTime >= 0,
      'saves segment request time: ' + player.hls.segmentXhrTime + 's');
+});
+
+test('fires a progress event after downloading a segment', function() {
+  var progressCount = 0;
+
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift());
+  player.on('progress', function() {
+    progressCount++;
+  });
+  standardXHRResponse(requests.shift());
+
+  equal(progressCount, 1, 'fired a progress event');
 });
 
 test('selects a playlist after segment downloads', function() {
@@ -1221,6 +1239,7 @@ test('updates the media index when a playlist reloads', function() {
   // reload the updated playlist
   player.hls.playlists.media = function() {
     return {
+      mediaSequence: 1,
       segments: [{
         uri: '1.ts'
       }, {
@@ -1348,9 +1367,10 @@ test('does not break if the playlist has no segments', function() {
   strictEqual(requests.length, 1, 'no requests for non-existent segments were queued');
 });
 
-test('waits until the buffer is empty before appending bytes at a discontinuity', function() {
-  var aborts = 0, setTime, currentTime, bufferEnd;
+test('calls vjs_discontinuity() before appending bytes at a discontinuity', function() {
+  var discontinuities = 0, tags = [], currentTime, bufferEnd;
 
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
   player.src({
     src: 'discontinuity.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1360,13 +1380,8 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
   player.buffered = function() {
     return videojs.createTimeRange(0, bufferEnd);
   };
-  player.hls.sourceBuffer.abort = function() {
-    aborts++;
-  };
-  player.hls.el().vjs_setProperty = function(name, value) {
-    if (name === 'currentTime') {
-      return setTime = value;
-    }
+  player.el().querySelector('.vjs-tech').vjs_discontinuity = function() {
+    discontinuities++;
   };
 
   requests.pop().respond(200, null,
@@ -1382,15 +1397,11 @@ test('waits until the buffer is empty before appending bytes at a discontinuity'
   currentTime = 6;
   bufferEnd = 10;
   player.hls.checkBuffer_();
-  strictEqual(aborts, 0, 'no aborts before the buffer empties');
+  strictEqual(discontinuities, 0, 'no discontinuities before the segment is received');
 
+  tags.push({});
   standardXHRResponse(requests.pop());
-  strictEqual(aborts, 0, 'no aborts before the buffer empties');
-
-  // pretend the buffer has emptied
-  player.trigger('waiting');
-  strictEqual(aborts, 1, 'aborted before appending the new segment');
-  strictEqual(setTime, 10, 'updated the time after crossing the discontinuity');
+  strictEqual(discontinuities, 1, 'signals a discontinuity');
 });
 
 test('clears the segment buffer on seek', function() {
@@ -1781,40 +1792,23 @@ test('drainBuffer will not proceed with empty source buffer', function() {
   player.hls.playlists.media = oldMedia;
 });
 
-test('calling fetchKeys() when a new playlist is loaded will create an XHR', function() {
+test('keys are requested when an encrypted segment is loaded', function() {
   player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
+    src: 'https://example.com/encrypted.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
 
-  var oldMedia = player.hls.playlists.media;
-  player.hls.playlists.media = function() {
-    return {
-      segments: [{
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=52'
-        },
-        uri: 'http://media.example.com/fileSequence52-A.ts'
-      }, {
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=53'
-        },
-        uri: 'http://media.example.com/fileSequence53-B.ts'
-      }]
-    };
-  };
+  standardXHRResponse(requests.shift()); // playlist
+  standardXHRResponse(requests.shift()); // first segment
 
-  player.hls.playlists.trigger('loadedplaylist');
-  strictEqual(requests.length, 2, 'a key XHR is created');
-  strictEqual(requests[1].url, player.hls.playlists.media().segments[0].key.uri, 'a key XHR is created with correct uri');
-
-  player.hls.playlists.media = oldMedia;
+  strictEqual(requests.length, 1, 'a key XHR is created');
+  strictEqual(requests[0].url,
+              player.hls.playlists.media().segments[0].key.uri,
+              'a key XHR is created with correct uri');
 });
 
-test('fetchKeys() resolves URLs relative to the master playlist', function() {
+test('keys are resolved relative to the master playlist', function() {
   player.src({
     src: 'video/master-encrypted.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1833,12 +1827,13 @@ test('fetchKeys() resolves URLs relative to the master playlist', function() {
                            'http://media.example.com/fileSequence1.ts\n' +
                            '#EXT-X-ENDLIST\n');
 
-  equal(requests.length, 2, 'requested two URLs');
+  standardXHRResponse(requests.shift());
+  equal(requests.length, 1, 'requested the key');
   ok((/video\/playlist\/keys\/key\.php$/).test(requests[0].url),
      'resolves multiple relative paths');
 });
 
-test('fetchKeys() resolves URLs relative to their containing playlist', function() {
+test('keys are resolved relative to their containing playlist', function() {
   player.src({
     src: 'video/media-encrypted.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1851,197 +1846,100 @@ test('fetchKeys() resolves URLs relative to their containing playlist', function
                            '#EXTINF:2.833,\n' +
                            'http://media.example.com/fileSequence1.ts\n' +
                            '#EXT-X-ENDLIST\n');
-  equal(requests.length, 2, 'requested two URLs');
+  standardXHRResponse(requests.shift());
+  equal(requests.length, 1, 'requested a key');
   ok((/video\/keys\/key\.php$/).test(requests[0].url),
      'resolves multiple relative paths');
 });
 
-test('a new keys XHR is created when a previous key XHR finishes', function() {
+test('a new key XHR is created when a the segment is received', function() {
   player.src({
     src: 'https://example.com/encrypted-media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
 
-  var oldMedia = player.hls.playlists.media;
-  player.hls.playlists.media = function() {
-    return {
-      segments: [{
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=52'
-        },
-        uri: 'http://media.example.com/fileSequence52-A.ts'
-      }, {
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=53'
-        },
-        uri: 'http://media.example.com/fileSequence53-B.ts'
-      }]
-    };
-  };
-  // we're inject the media playlist, so drop the request
-  requests.shift();
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-TARGETDURATION:15\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
+                           '#EXTINF:2.833,\n' +
+                           'http://media.example.com/fileSequence1.ts\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key2.php"\n' +
+                           '#EXTINF:2.833,\n' +
+                           'http://media.example.com/fileSequence2.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+  standardXHRResponse(requests.shift()); // segment 1
+  standardXHRResponse(requests.shift()); // key 1
+  standardXHRResponse(requests.shift()); // segment 2
 
-  player.hls.playlists.trigger('loadedplaylist');
-  // key response
-  requests[0].response = new Uint32Array([0, 0, 0, 0]).buffer;
-  requests.shift().respond(200, null, '');
   strictEqual(requests.length, 1, 'a key XHR is created');
-  strictEqual(requests[0].url, player.hls.playlists.media().segments[1].key.uri, 'a key XHR is created with the correct uri');
-
-  player.hls.playlists.media = oldMedia;
+  strictEqual(requests[0].url,
+              'https://example.com/' +
+              player.hls.playlists.media().segments[1].key.uri,
+              'a key XHR is created with the correct uri');
 });
 
-test('calling fetchKeys() when a seek happens will create an XHR', function() {
+test('seeking should abort an outstanding key request and create a new one', function() {
   player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
+    src: 'https://example.com/encrypted.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
 
-  var oldMedia = player.hls.playlists.media;
-  player.hls.playlists.media = function() {
-    return {
-      segments: [{
-        duration: 10,
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=52'
-        },
-        uri: 'http://media.example.com/fileSequence52-A.ts'
-      }, {
-        duration: 10,
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=53'
-        },
-        uri: 'http://media.example.com/fileSequence53-B.ts'
-      }]
-    };
-  };
 
-  player.hls.fetchKeys(player.hls.playlists.media(), 0);
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-TARGETDURATION:15\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
+                           '#EXTINF:9,\n' +
+                           'http://media.example.com/fileSequence1.ts\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key2.php"\n' +
+                           '#EXTINF:9,\n' +
+                           'http://media.example.com/fileSequence2.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+  standardXHRResponse(requests.shift()); // segment 1
+
   player.currentTime(11);
-  ok(requests[1].aborted, 'the key XHR should be aborted');
-  equal(requests.length, 3, 'we should get a new key XHR');
-  equal(requests[2].url, player.hls.playlists.media().segments[1].key.uri, 'urls should match');
+  ok(requests[0].aborted, 'the key XHR should be aborted');
+  requests.shift(); // aborted key 1
 
-  player.hls.playlists.media = oldMedia;
-});
-
-test('calling fetchKeys() when a key XHR is in progress will *not* create an XHR', function() {
-  player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-
-  var oldMedia = player.hls.playlists.media;
-  player.hls.playlists.media = function() {
-    return {
-      segments: [{
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=52'
-        },
-        uri: 'http://media.example.com/fileSequence52-A.ts'
-      }, {
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=53'
-        },
-        uri: 'http://media.example.com/fileSequence53-B.ts'
-      }]
-    };
-  };
-
-  strictEqual(requests.length, 1, 'no key XHR created for the player');
-  player.hls.playlists.trigger('loadedplaylist');
-  player.hls.fetchKeys(player.hls.playlists.media(), 0);
-  strictEqual(requests.length, 2, 'only the original XHR is available');
-
-  player.hls.playlists.media = oldMedia;
-});
-
-test('calling fetchKeys() when all keys are fetched, will *not* create an XHR', function() {
-  player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-
-  var oldMedia = player.hls.playlists.media;
-  player.hls.playlists.media = function() {
-    return {
-      segments: [{
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=52',
-          bytes: new Uint8Array([1])
-        },
-        uri: 'http://media.example.com/fileSequence52-A.ts'
-      }, {
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=53',
-          bytes: new Uint8Array([1])
-        },
-        uri: 'http://media.example.com/fileSequence53-B.ts'
-      }]
-    };
-  };
-
-  player.hls.fetchKeys(player.hls.playlists.media(), 0);
-  strictEqual(requests.length, 1, 'no XHR for keys created since they were all downloaded');
-
-  player.hls.playlists.media = oldMedia;
+  equal(requests.length, 1, 'requested the new segment');
+  standardXHRResponse(requests.shift()); // segment 2
+  equal(requests.length, 1, 'requested the new key');
+  equal(requests[0].url,
+        'https://example.com/' +
+        player.hls.playlists.media().segments[1].key.uri,
+        'urls should match');
 });
 
 test('retries key requests once upon failure', function() {
   player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
+    src: 'https://example.com/encrypted.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
 
-  var oldMedia = player.hls.playlists.media;
-  player.hls.playlists.media = function() {
-    return {
-      segments: [{
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=52'
-        },
-        uri: 'http://media.example.com/fileSequence52-A.ts'
-      }, {
-        key: {
-          'method': 'AES-128',
-          'uri': 'https://priv.example.com/key.php?r=53'
-        },
-        uri: 'http://media.example.com/fileSequence53-B.ts'
-      }]
-    };
-  };
-
-  player.hls.fetchKeys(player.hls.playlists.media(), 0);
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
+                           '#EXTINF:2.833,\n' +
+                           'http://media.example.com/fileSequence52-A.ts\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=53"\n' +
+                           '#EXTINF:15.0,\n' +
+                           'http://media.example.com/fileSequence53-A.ts\n');
+  standardXHRResponse(requests.shift()); // segment
+  requests[0].respond(404);
+  equal(requests.length, 2, 'create a new XHR for the same key');
+  equal(requests[1].url, requests[0].url, 'should be the same key');
 
   requests[1].respond(404);
-  equal(requests.length, 3, 'create a new XHR for the same key');
-  equal(requests[2].url, requests[1].url, 'should be the same key');
-
-  requests[2].respond(404);
-  equal(requests.length, 4, 'create a new XHR for the same key');
-  notEqual(requests[3].url, requests[2].url, 'should be the same key');
-  equal(requests[3].url, player.hls.playlists.media().segments[1].key.uri);
-
-  player.hls.playlists.media = oldMedia;
+  equal(requests.length, 2, 'gives up after one retry');
 });
 
 test('skip segments if key requests fail more than once', function() {
   var bytes = [],
-      tags = [{ pats: 0, bytes: 0 }];
+      tags = [{ pts: 0, bytes: 0 }];
 
   videojs.Hls.SegmentParser = mockSegmentParser(tags);
   window.videojs.SourceBuffer = function() {
@@ -2057,7 +1955,7 @@ test('skip segments if key requests fail more than once', function() {
   });
   openMediaSource(player);
 
-  requests.pop().respond(200, null,
+  requests.shift().respond(200, null,
                          '#EXTM3U\n' +
                          '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
                          '#EXTINF:2.833,\n' +
@@ -2065,32 +1963,19 @@ test('skip segments if key requests fail more than once', function() {
                          '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=53"\n' +
                          '#EXTINF:15.0,\n' +
                          'http://media.example.com/fileSequence53-A.ts\n');
-
-  player.hls.playlists.trigger('loadedplaylist');
-
-  player.hls.checkBuffer_();
-
-  // respond to ts segment
-  standardXHRResponse(requests.pop());
-  // fail key
-  requests.pop().respond(404);
-  // fail key, again
-  requests.pop().respond(404);
-
-  // key for second segment
-  requests[0].response = new Uint32Array([0,0,0,0]).buffer;
-  requests[0].respond(200, null, '');
-  requests.shift();
-
-  equal(bytes.length, 1, 'bytes from the ts segments should not be added');
-
-  player.hls.checkBuffer_();
+  standardXHRResponse(requests.shift()); // segment 1
+  requests.shift().respond(404); // fail key
+  requests.shift().respond(404); // fail key, again
 
   tags.length = 0;
   tags.push({pts: 0, bytes: 1});
+  player.hls.checkBuffer_();
+  standardXHRResponse(requests.shift()); // segment 2
+  equal(bytes.length, 1, 'bytes from the ts segments should not be added');
 
-  // second segment
-  standardXHRResponse(requests.pop());
+  // key for second segment
+  requests[0].response = new Uint32Array([0,0,0,0]).buffer;
+  requests.shift().respond(200, null, '');
 
   equal(bytes.length, 2, 'bytes from the second ts segment should be added');
   equal(bytes[1], 1, 'the bytes from the second segment are added and not the first');
@@ -2120,10 +2005,10 @@ test('the key is supplied to the decrypter in the correct format', function() {
     return new Uint8Array([0]);
   };
 
+  standardXHRResponse(requests.shift()); // segment
   requests[0].response = new Uint32Array([0,1,2,3]).buffer;
   requests[0].respond(200, null, '');
-  requests.shift();
-  standardXHRResponse(requests.pop());
+  requests.shift(); // key
 
   equal(keys.length, 1, 'only one call to decrypt was made');
   deepEqual(keys[0],
@@ -2188,23 +2073,26 @@ test('switching playlists with an outstanding key request does not stall playbac
   player.hls.playlists.media = function() {
     return player.hls.playlists.master.playlists[0];
   };
-  // don't respond to the initial key request
-  requests.shift();
   // first segment of the original media playlist
   standardXHRResponse(requests.shift());
+  // don't respond to the initial key request
+  requests.shift();
 
   // "switch" media
   player.hls.playlists.trigger('mediachange');
 
-  player.trigger('timeupdate');
+  player.hls.checkBuffer_();
 
   ok(requests.length, 'made a request');
   equal(requests[0].url,
+        'http://media.example.com/fileSequence52-B.ts',
+        'requested the segment');
+  equal(requests[1].url,
         'https://priv.example.com/key.php?r=52',
-        'requested the segment and key');
+        'requested the key');
 });
 
-test('resovles relative key URLs against the playlist', function() {
+test('resolves relative key URLs against the playlist', function() {
   player.src({
     src: 'https://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -2217,6 +2105,8 @@ test('resovles relative key URLs against the playlist', function() {
                            '#EXT-X-KEY:METHOD=AES-128,URI="key.php?r=52"\n' +
                            '#EXTINF:2.833,\n' +
                            'http://media.example.com/fileSequence52-A.ts\n');
+  standardXHRResponse(requests.shift()); // segment
+
   equal(requests[0].url, 'https://example.com/key.php?r=52', 'resolves the key URL');
 });
 
@@ -2243,11 +2133,11 @@ test('treats invalid keys as a key request failure', function() {
                            '#EXT-X-KEY:METHOD=NONE\n' +
                            '#EXTINF:15.0,\n' +
                            'http://media.example.com/fileSequence52-B.ts\n');
+  // segment request
+  standardXHRResponse(requests.shift());
   // keys should be 16 bytes long
   requests[0].response = new Uint8Array(1).buffer;
   requests.shift().respond(200, null, '');
-  // segment request
-  standardXHRResponse(requests.shift());
 
   equal(requests[0].url, 'https://priv.example.com/key.php?r=52', 'retries the key');
 
