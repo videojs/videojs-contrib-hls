@@ -267,9 +267,16 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   // construct the video data buffer and set the appropriate MIME type
   var
     player = this.player(),
-    sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
+    mediaSource = this.mediaSource,
+    sourceBuffer = mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
 
   this.sourceBuffer = sourceBuffer;
+
+  // signal whenever the buffer flushes to the swf
+  this.sourceBuffer.addEventListener('updateend', function() {
+    mediaSource.endOfStream();
+  });
+
   sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
 
 
@@ -671,7 +678,6 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       offset: offset,
       bytes: new Uint8Array(this.response)
     });
-    player.trigger('progress');
     tech.drainBuffer();
 
     tech.mediaIndex++;
@@ -765,18 +771,11 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     // queue up the bytes to be appended to the SourceBuffer
     // the queue gives control back to the browser between tags
     // so that large segments don't cause a "hiccup" in playback
-
     this.sourceBuffer.appendBuffer(tags[i].bytes, this.player());
   }
 
   // we're done processing this segment
   segmentBuffer.shift();
-
-  // transition the sourcebuffer to the ended state if we've hit the end of
-  // the playlist
-  if (this.duration() !== Infinity && mediaIndex + 1 === playlist.segments.length) {
-    this.mediaSource.endOfStream();
-  }
 };
 
 /**
