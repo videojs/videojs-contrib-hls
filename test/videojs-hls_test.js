@@ -143,6 +143,7 @@ module('HLS', {
     window.videojs.SourceBuffer = function() {
       this.appendBuffer = function() {};
       this.abort = function() {};
+      this.addEventListener = function() {};
     };
 
     // store functionality that some tests need to mock
@@ -570,23 +571,6 @@ test('calculates the bandwidth after downloading a segment', function() {
      'bandwidth is positive: ' + player.hls.bandwidth);
   ok(player.hls.segmentXhrTime >= 0,
      'saves segment request time: ' + player.hls.segmentXhrTime + 's');
-});
-
-test('fires a progress event after downloading a segment', function() {
-  var progressCount = 0;
-
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  standardXHRResponse(requests.shift());
-  player.on('progress', function() {
-    progressCount++;
-  });
-  standardXHRResponse(requests.shift());
-
-  equal(progressCount, 1, 'fired a progress event');
 });
 
 test('selects a playlist after segment downloads', function() {
@@ -1097,6 +1081,7 @@ test('drops tags before the target timestamp when seeking', function() {
       bytes.push(chunk);
     };
     this.abort = function() {};
+    this.addEventListener = function() {};
   };
 
   // push a tag into the buffer
@@ -1140,6 +1125,7 @@ test('calls abort() on the SourceBuffer before seeking', function() {
     this.abort = function() {
       aborts++;
     };
+    this.addEventListener = function() {};
   };
 
   player.src({
@@ -1714,16 +1700,29 @@ test('can be disposed before finishing initialization', function() {
   }
 });
 
-test('calls ended() on the media source at the end of a playlist', function() {
-  var endOfStreams = 0;
+test('adds a listener to for updateend firing on the media source at the end of a playlist', function() {
+  var
+    updateendListener = 0,
+    bytes = [];
+
+  window.videojs.SourceBuffer = function() {
+    this.appendBuffer = function(chunk) {
+      bytes.push(chunk);
+    };
+    this.abort = function() {};
+    this.addEventListener = function(event) {
+      if (event === 'updateend') {
+        updateendListener++;
+      }
+    };
+  };
+
   player.src({
     src: 'http://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.hls.mediaSource.endOfStream = function() {
-    endOfStreams++;
-  };
+
   // playlist response
   requests.shift().respond(200, null,
                            '#EXTM3U\n' +
@@ -1734,7 +1733,7 @@ test('calls ended() on the media source at the end of a playlist', function() {
   requests[0].response = new ArrayBuffer(17);
   requests.shift().respond(200, null, '');
 
-  strictEqual(endOfStreams, 1, 'ended media source');
+  strictEqual(updateendListener, 1, 'ended media source');
 });
 
 test('calling play() at the end of a video resets the media index', function() {
@@ -1954,6 +1953,7 @@ test('skip segments if key requests fail more than once', function() {
       bytes.push(chunk);
     };
     this.abort = function() {};
+    this.addEventListener = function() {};
   };
 
   player.src({
@@ -2125,6 +2125,7 @@ test('treats invalid keys as a key request failure', function() {
       bytes.push(chunk);
     };
     this.abort = function() {};
+    this.addEventListener = function() {};
   };
   player.src({
     src: 'https://example.com/media.m3u8',
