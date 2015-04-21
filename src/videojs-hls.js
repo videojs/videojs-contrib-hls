@@ -734,13 +734,23 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   this.segmentParser_.flushTags();
 
   tags = [];
-  segment.preciseTimestamp = null;
 
   while (this.segmentParser_.tagsAvailable()) {
     tags.push(this.segmentParser_.getNextTag());
-    if (!tags[tags.length - 1].counted && tags[tags.length-1].pts) {
-      segment.preciseTimestamp = segment.preciseTimestamp > tags[tags.length-1].pts ? segment.preciseTimestamp : tags[tags.length-1].pts;
-      tags[tags.length - 1].counted = true;
+  }
+
+  if (tags.length > 0) {
+    segment.preciseTimestamp = tags[tags.length - 1].pts;
+
+    if (playlist.segments[mediaIndex - 1]) {
+      if (playlist.segments[mediaIndex - 1].preciseTimestamp) {
+        durationOffset = playlist.segments[mediaIndex - 1].preciseTimestamp;
+      } else {
+        durationOffset = (playlist.targetDuration * (mediaIndex - 1) + playlist.segments[mediaIndex - 1].duration) * 1000;
+      }
+      segment.preciseDuration = (segment.preciseTimestamp - durationOffset) / 1000;
+    } else if (mediaIndex === 0) {
+      segment.preciseDuration = segment.preciseTimestamp / 1000;
     }
   }
 
@@ -921,7 +931,6 @@ videojs.Hls.canPlaySource = function(srcObj) {
  */
 videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
   var dur = 0,
-      offset = 0,
       segment,
       i;
 
@@ -931,22 +940,7 @@ videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
 
   for (; i >= startIndex; i--) {
     segment = playlist.segments[i];
-    if (segment.preciseDuration || segment.preciseTimestamp) {
-      offset = 0;
-      if (!segment.preciseDuration) {
-        if (playlist.segments[i - 1]) {
-          if (playlist.segments[i - 1].preciseTimestamp) {
-            offset = playlist.segments[i - 1].preciseTimestamp;
-          } else {
-            offset = (playlist.targetDuration * (i - 1) + playlist.segments[i - 1].duration) * 1000;
-          }
-          segment.preciseDuration = (segment.preciseTimestamp - offset) / 1000;
-        } else if (i === 0) {
-          segment.preciseDuration = segment.preciseTimestamp / 1000;
-        } else {
-          segment.preciseDuration = segment.duration;
-        }
-      }
+    if (segment.preciseDuration) {
       dur += segment.preciseDuration;
     } else {
       dur += (segment.duration !== undefined ? segment.duration : playlist.targetDuration) || 0;
