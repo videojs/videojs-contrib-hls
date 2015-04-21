@@ -1014,6 +1014,35 @@ test('flushes the parser after each segment', function() {
   strictEqual(flushes, 1, 'tags are flushed at the end of a segment');
 });
 
+test('calculates preciseTimestamp and preciseDuration for a new segment', function() {
+  // mock out the segment parser
+  videojs.Hls.SegmentParser = function() {
+    var tagsAvailable = true,
+        tag = { pts : 200000 };
+    this.getFlvHeader = function() {
+      return [];
+    };
+    this.parseSegmentBinaryData = function() {};
+    this.flushTags = function() {};
+    this.tagsAvailable = function() { return tagsAvailable; };
+    this.getNextTag = function() { tagsAvailable = false; return tag; };
+    this.metadataStream = {
+      on: Function.prototype
+    };
+  };
+
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  strictEqual(player.hls.playlists.media().segments[0].preciseTimestamp, 200000, 'preciseTimestamp is calculated and stored');
+  strictEqual(player.hls.playlists.media().segments[0].preciseDuration, 200, 'preciseDuration is calculated and stored');
+});
+
 test('exposes in-band metadata events as cues', function() {
   var track;
   player.src({
