@@ -572,23 +572,6 @@ test('calculates the bandwidth after downloading a segment', function() {
      'saves segment request time: ' + player.hls.segmentXhrTime + 's');
 });
 
-test('fires a progress event after downloading a segment', function() {
-  var progressCount = 0;
-
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  standardXHRResponse(requests.shift());
-  player.on('progress', function() {
-    progressCount++;
-  });
-  standardXHRResponse(requests.shift());
-
-  equal(progressCount, 1, 'fired a progress event');
-});
-
 test('selects a playlist after segment downloads', function() {
   var calls = 0;
   player.src({
