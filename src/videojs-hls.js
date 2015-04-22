@@ -671,7 +671,6 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       offset: offset,
       bytes: new Uint8Array(this.response)
     });
-    player.trigger('progress');
     tech.drainBuffer();
 
     tech.mediaIndex++;
