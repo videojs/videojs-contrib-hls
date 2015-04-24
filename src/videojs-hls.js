@@ -739,6 +739,10 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     tags.push(this.segmentParser_.getNextTag());
   }
 
+  // This block of code uses the presentation timestamp of the ts segment to calculate its exact duration, since this
+  // may differ by fractions of a second from what is reported. Using the exact, calculated 'preciseDuration' allows
+  // for smoother seeking and calculation of the total playlist duration, which previously (especially in short videos)
+  // was reported erroneously and made the play head overrun the end of the progress bar.
   if (tags.length > 0) {
     segment.preciseTimestamp = tags[tags.length - 1].pts;
 
@@ -940,11 +944,7 @@ videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
 
   for (; i >= startIndex; i--) {
     segment = playlist.segments[i];
-    if (segment.preciseDuration) {
-      dur += segment.preciseDuration;
-    } else {
-      dur += (segment.duration !== undefined ? segment.duration : playlist.targetDuration) || 0;
-    }
+    dur += segment.preciseDuration || segment.duration || playlist.targetDuration || 0;
   }
 
   return dur;
