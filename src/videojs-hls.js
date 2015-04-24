@@ -758,21 +758,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     }
   }
 
-  if (tags.length > 0) {
-    segment.preciseTimestamp = tags[tags.length - 1].pts;
-
-    if (playlist.segments[mediaIndex - 1]) {
-      if (playlist.segments[mediaIndex - 1].preciseTimestamp) {
-        durationOffset = playlist.segments[mediaIndex - 1].preciseTimestamp;
-      } else {
-        durationOffset = (playlist.targetDuration * (mediaIndex - 1) + playlist.segments[mediaIndex - 1].duration) * 1000;
-      }
-      segment.preciseDuration = (segment.preciseTimestamp - durationOffset) / 1000;
-    } else if (mediaIndex === 0) {
-      segment.preciseDuration = segment.preciseTimestamp / 1000;
-    }
-  }
-
   // if we're refilling the buffer after a seek, scan through the muxed
   // FLV tags until we find the one that is closest to the desired
   // playback time
