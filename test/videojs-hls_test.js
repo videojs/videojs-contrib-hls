@@ -271,7 +271,7 @@ test('sets the duration if one is available on the playlist', function() {
   standardXHRResponse(requests[0]);
   strictEqual(calls, 1, 'duration is set');
   standardXHRResponse(requests[1]);
-  strictEqual(calls, 1, 'duration is set');
+  strictEqual(calls, 2, 'duration is set');
 });
 
 test('calculates the duration if needed', function() {
