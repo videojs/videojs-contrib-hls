@@ -691,9 +691,10 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     tags,
     bytes,
     segment,
+    durationOffset,
 
     ptsTime,
-    segmentOffset,
+    segmentOffset = 0,
     segmentBuffer = this.segmentBuffer_;
 
   if (!segmentBuffer.length || !this.sourceBuffer) {
@@ -733,8 +734,28 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   this.segmentParser_.flushTags();
 
   tags = [];
+
   while (this.segmentParser_.tagsAvailable()) {
     tags.push(this.segmentParser_.getNextTag());
+  }
+
+  // This block of code uses the presentation timestamp of the ts segment to calculate its exact duration, since this
+  // may differ by fractions of a second from what is reported. Using the exact, calculated 'preciseDuration' allows
+  // for smoother seeking and calculation of the total playlist duration, which previously (especially in short videos)
+  // was reported erroneously and made the play head overrun the end of the progress bar.
+  if (tags.length > 0) {
+    segment.preciseTimestamp = tags[tags.length - 1].pts;
+
+    if (playlist.segments[mediaIndex - 1]) {
+      if (playlist.segments[mediaIndex - 1].preciseTimestamp) {
+        durationOffset = playlist.segments[mediaIndex - 1].preciseTimestamp;
+      } else {
+        durationOffset = (playlist.targetDuration * (mediaIndex - 1) + playlist.segments[mediaIndex - 1].duration) * 1000;
+      }
+      segment.preciseDuration = (segment.preciseTimestamp - durationOffset) / 1000;
+    } else if (mediaIndex === 0) {
+      segment.preciseDuration = segment.preciseTimestamp / 1000;
+    }
   }
 
   // if we're refilling the buffer after a seek, scan through the muxed
@@ -908,7 +929,7 @@ videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
 
   for (; i >= startIndex; i--) {
     segment = playlist.segments[i];
-    dur += (segment.duration !== undefined ? segment.duration : playlist.targetDuration) || 0;
+    dur += segment.preciseDuration || segment.duration || playlist.targetDuration || 0;
   }
 
   return dur;
