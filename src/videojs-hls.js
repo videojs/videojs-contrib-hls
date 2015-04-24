@@ -758,6 +758,8 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     }
   }
 
+  this.updateDuration(this.playlists.media());
+
   // if we're refilling the buffer after a seek, scan through the muxed
   // FLV tags until we find the one that is closest to the desired
   // playback time
