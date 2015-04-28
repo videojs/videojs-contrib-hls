@@ -852,6 +852,32 @@ test('selects the correct rendition by player dimensions', function() {
 
 });
 
+test('selects the highest bitrate playlist when the player dimensions are ' +
+     'larger than any of the variants', function() {
+  var playlist;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1000,RESOLUTION=2x1\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1,RESOLUTION=1x1\n' +
+                           'media1.m3u8\n'); // master
+  standardXHRResponse(requests.shift()); // media
+  player.hls.bandwidth = 1e10;
+
+  player.width(1024);
+  player.height(768);
+
+  playlist = player.hls.selectPlaylist();
+
+  equal(playlist.attributes.BANDWIDTH,
+        1000,
+        'selected the highest bandwidth variant');
+});
 
 test('does not download the next segment if the buffer is full', function() {
   var currentTime = 15;
