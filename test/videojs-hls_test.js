@@ -152,10 +152,8 @@ module('HLS', {
 
     oldNativeHlsSupport = videojs.Hls.supportsNativeHls;
 
-    oldDecrypt = videojs.Hls.decrypt;
-    videojs.Hls.decrypt = function() {
-      return new Uint8Array([0]);
-    };
+    oldDecrypt = videojs.Hls.Decrypter;
+    videojs.Hls.Decrypter = function() {};
 
     // fake XHRs
     xhr = sinon.useFakeXMLHttpRequest();
@@ -173,7 +171,7 @@ module('HLS', {
     videojs.MediaSource.open = oldMediaSourceOpen;
     videojs.Hls.SegmentParser = oldSegmentParser;
     videojs.Hls.supportsNativeHls = oldNativeHlsSupport;
-    videojs.Hls.decrypt = oldDecrypt;
+    videojs.Hls.Decrypter = oldDecrypt;
     videojs.SourceBuffer = oldSourceBuffer;
     window.setTimeout = oldSetTimeout;
     window.clearTimeout = oldClearTimeout;
@@ -1878,6 +1876,10 @@ test('a new key XHR is created when a the segment is received', function() {
                            '#EXT-X-ENDLIST\n');
   standardXHRResponse(requests.shift()); // segment 1
   standardXHRResponse(requests.shift()); // key 1
+  // "finish" decrypting segment 1
+  player.hls.segmentBuffer_[0].bytes = new Uint8Array(16);
+  player.hls.checkBuffer_();
+
   standardXHRResponse(requests.shift()); // segment 2
 
   strictEqual(requests.length, 1, 'a key XHR is created');
@@ -1983,6 +1985,9 @@ test('skip segments if key requests fail more than once', function() {
   // key for second segment
   requests[0].response = new Uint32Array([0,0,0,0]).buffer;
   requests.shift().respond(200, null, '');
+  // "finish" decryption
+  player.hls.segmentBuffer_[0].bytes = new Uint8Array(16);
+  player.hls.checkBuffer_();
 
   equal(bytes.length, 2, 'bytes from the second ts segment should be added');
   equal(bytes[1], 1, 'the bytes from the second segment are added and not the first');
@@ -2007,9 +2012,8 @@ test('the key is supplied to the decrypter in the correct format', function() {
                          'http://media.example.com/fileSequence52-B.ts\n');
 
 
-  videojs.Hls.decrypt = function(bytes, key) {
+  videojs.Hls.Decrypter = function(encrypted, key) {
     keys.push(key);
-    return new Uint8Array([0]);
   };
 
   standardXHRResponse(requests.shift()); // segment
@@ -2017,7 +2021,7 @@ test('the key is supplied to the decrypter in the correct format', function() {
   requests[0].respond(200, null, '');
   requests.shift(); // key
 
-  equal(keys.length, 1, 'only one call to decrypt was made');
+  equal(keys.length, 1, 'only one Decrypter was constructed');
   deepEqual(keys[0],
             new Uint32Array([0, 0x01000000, 0x02000000, 0x03000000]),
             'passed the specified segment key');
@@ -2042,9 +2046,8 @@ test('supplies the media sequence of current segment as the IV by default, if no
                          'http://media.example.com/fileSequence52-B.ts\n');
 
 
-  videojs.Hls.decrypt = function(bytes, key, iv) {
+  videojs.Hls.Decrypter = function(encrypted, key, iv) {
     ivs.push(iv);
-    return new Uint8Array([0]);
   };
 
   requests[0].response = new Uint32Array([0,0,0,0]).buffer;
@@ -2052,7 +2055,7 @@ test('supplies the media sequence of current segment as the IV by default, if no
   requests.shift();
   standardXHRResponse(requests.pop());
 
-  equal(ivs.length, 1, 'only one call to decrypt was made');
+  equal(ivs.length, 1, 'only one Decrypter was constructed');
   deepEqual(ivs[0],
         new Uint32Array([0, 0, 0, 5]),
         'the IV for the segment is the media sequence');

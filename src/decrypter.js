@@ -38,7 +38,18 @@
 (function(window, videojs, unpad) {
 'use strict';
 
-var AES, decrypt;
+var AES, AsyncStream, Decrypter, decrypt, ntoh;
+
+/**
+ * Convert network-order (big-endian) bytes into their little-endian
+ * representation.
+ */
+ntoh = function(word) {
+  return (word << 24) |
+    ((word & 0xff00) << 8) |
+    ((word & 0xff0000) >> 8) |
+    (word >>> 24);
+};
 
 /**
  * Schedule out an AES key for both encryption and decryption. This
@@ -221,7 +232,7 @@ AES.prototype = {
 decrypt = function(encrypted, key, initVector) {
   var
     // word-level access to the encrypted bytes
-    encrypted32 = new Int32Array(encrypted.buffer),
+    encrypted32 = new Int32Array(encrypted.buffer, encrypted.byteOffset, encrypted.byteLength >> 2),
 
     decipher = new AES(Array.prototype.slice.call(key)),
 
@@ -233,7 +244,6 @@ decrypt = function(encrypted, key, initVector) {
     // decrypted data
     init0, init1, init2, init3,
     encrypted0, encrypted1, encrypted2, encrypted3,
-    decrypted0, decrypted1, decrypted2, decrypted3,
 
     // iteration variable
     wordIx;
@@ -250,49 +260,25 @@ decrypt = function(encrypted, key, initVector) {
   for (wordIx = 0; wordIx < encrypted32.length; wordIx += 4) {
     // convert big-endian (network order) words into little-endian
     // (javascript order)
-    encrypted0 = (encrypted32[wordIx] << 24) |
-      ((encrypted32[wordIx] & 0xff00) << 8) |
-      ((encrypted32[wordIx] & 0xff0000) >> 8) |
-      (encrypted32[wordIx] >>> 24);
-    encrypted1 = (encrypted32[wordIx + 1] << 24) |
-      ((encrypted32[wordIx + 1] & 0xff00) << 8) |
-      ((encrypted32[wordIx + 1] & 0xff0000) >> 8) |
-      (encrypted32[wordIx + 1] >>> 24);
-    encrypted2 = (encrypted32[wordIx + 2] << 24) |
-      ((encrypted32[wordIx + 2] & 0xff00) << 8) |
-      ((encrypted32[wordIx + 2] & 0xff0000) >> 8) |
-      (encrypted32[wordIx + 2] >>> 24);
-    encrypted3 = (encrypted32[wordIx + 3] << 24) |
-      ((encrypted32[wordIx + 3] & 0xff00) << 8) |
-      ((encrypted32[wordIx + 3] & 0xff0000) >> 8) |
-      (encrypted32[wordIx + 3] >>> 24);
+    encrypted0 = ntoh(encrypted32[wordIx]);
+    encrypted1 = ntoh(encrypted32[wordIx + 1]);
+    encrypted2 = ntoh(encrypted32[wordIx + 2]);
+    encrypted3 = ntoh(encrypted32[wordIx + 3]);
 
     // decrypt the block
-    decipher.decrypt(encrypted0, encrypted1, encrypted2, encrypted3, decrypted32, wordIx);
+    decipher.decrypt(encrypted0,
+                     encrypted1,
+                     encrypted2,
+                     encrypted3,
+                     decrypted32,
+                     wordIx);
 
     // XOR with the IV, and restore network byte-order to obtain the
     // plaintext
-    decrypted0 = decrypted32[wordIx]     ^ init0;
-    decrypted1 = decrypted32[wordIx + 1] ^ init1;
-    decrypted2 = decrypted32[wordIx + 2] ^ init2;
-    decrypted3 = decrypted32[wordIx + 3] ^ init3;
-
-    decrypted32[wordIx] = decrypted0 << 24 |
-      ((decrypted0 & 0xff00) << 8) |
-      ((decrypted0 & 0xff0000) >> 8) |
-      (decrypted0 >>> 24);
-    decrypted32[wordIx + 1] = decrypted1 << 24 |
-      ((decrypted1 & 0xff00) << 8) |
-      ((decrypted1 & 0xff0000) >> 8) |
-      (decrypted1 >>> 24);
-    decrypted32[wordIx + 2] = decrypted2 << 24 |
-      ((decrypted2 & 0xff00) << 8) |
-      ((decrypted2 & 0xff0000) >> 8) |
-      (decrypted2 >>> 24);
-    decrypted32[wordIx + 3] = decrypted3 << 24 |
-      ((decrypted3 & 0xff00) << 8) |
-      ((decrypted3 & 0xff0000) >> 8) |
-      (decrypted3 >>> 24);
+    decrypted32[wordIx]     = ntoh(decrypted32[wordIx] ^ init0);
+    decrypted32[wordIx + 1] = ntoh(decrypted32[wordIx + 1] ^ init1);
+    decrypted32[wordIx + 2] = ntoh(decrypted32[wordIx + 2] ^ init2);
+    decrypted32[wordIx + 3] = ntoh(decrypted32[wordIx + 3] ^ init3);
 
     // setup the IV for the next round
     init0 = encrypted0;
@@ -301,11 +287,79 @@ decrypt = function(encrypted, key, initVector) {
     init3 = encrypted3;
   }
 
-  // remove any padding
-  return unpad(decrypted);
+  return decrypted;
 };
+
+AsyncStream = function() {
+  this.jobs = [];
+  this.delay = 1;
+  this.timeout_ = null;
+};
+AsyncStream.prototype = new videojs.Hls.Stream();
+AsyncStream.prototype.processJob_ = function() {
+  this.jobs.shift()();
+  if (this.jobs.length) {
+    this.timeout_ = setTimeout(videojs.bind(this, this.processJob_),
+                               this.delay);
+  } else {
+    this.timeout_ = null;
+  }
+};
+AsyncStream.prototype.push = function(job) {
+  this.jobs.push(job);
+  if (!this.timeout_) {
+    this.timeout_ = setTimeout(videojs.bind(this, this.processJob_),
+                               this.delay);
+  }
+};
+
+Decrypter = function(encrypted, key, initVector, done) {
+  var
+    step = Decrypter.STEP,
+    encrypted32 = new Int32Array(encrypted.buffer),
+    decrypted = new Uint8Array(encrypted.byteLength),
+    i = 0;
+  this.asyncStream_ = new AsyncStream();
+
+  // split up the encryption job and do the individual chunks asynchronously
+  this.asyncStream_.push(this.decryptChunk_(encrypted32.subarray(i, i + step),
+                                            key,
+                                            initVector,
+                                            decrypted,
+                                            i));
+  for (i = step; i < encrypted32.length; i += step) {
+    initVector = new Uint32Array([
+      ntoh(encrypted32[i - 4]),
+      ntoh(encrypted32[i - 3]),
+      ntoh(encrypted32[i - 2]),
+      ntoh(encrypted32[i - 1])
+    ]);
+    this.asyncStream_.push(this.decryptChunk_(encrypted32.subarray(i, i + step),
+                                              key,
+                                              initVector,
+                                              decrypted));
+  }
+  // invoke the done() callback when everything is finished
+  this.asyncStream_.push(function() {
+    // remove pkcs#7 padding from the decrypted bytes
+    done(null, unpad(decrypted));
+  });
+};
+Decrypter.prototype = new videojs.Hls.Stream();
+Decrypter.prototype.decryptChunk_ = function(encrypted, key, initVector, decrypted) {
+  return function() {
+    var bytes = decrypt(encrypted,
+                        key,
+                        initVector);
+    decrypted.set(bytes, encrypted.byteOffset);
+  };
+};
+// the maximum number of bytes to process at one time
+Decrypter.STEP = 4 * 8000;
 
 // exports
 videojs.Hls.decrypt = decrypt;
+videojs.Hls.Decrypter = Decrypter;
+videojs.Hls.AsyncStream = AsyncStream;
 
 })(window, window.videojs, window.pkcs7.unpad);
