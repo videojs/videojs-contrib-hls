@@ -637,6 +637,8 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     responseType: 'arraybuffer',
     withCredentials: settings.withCredentials
   }, function(error, url) {
+    var segmentInfo;
+
     // the segment request is no longer outstanding
     tech.segmentXhr_ = null;
 
@@ -669,12 +671,26 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     // if the segment is the start of a timestamp discontinuity,
     // we have to wait until the sourcebuffer is empty before
     // aborting the source buffer processing
-    tech.segmentBuffer_.push({
+    segmentInfo = {
+      // the segment's mediaIndex at the time it was received
       mediaIndex: tech.mediaIndex,
+      // the segment's playlist
       playlist: tech.playlists.media(),
+      // optionally, a time offset to seek to within the segment
       offset: offset,
-      bytes: new Uint8Array(this.response)
-    });
+      // unencrypted bytes of the segment
+      bytes: null,
+      // when a key is defined for this segment, the encrypted bytes
+      encryptedBytes: null,
+      // optionally, the decrypter that is unencrypting the segment
+      decrypter: null
+    };
+    if (segmentInfo.playlist.segments[segmentInfo.mediaIndex].key) {
+      segmentInfo.encryptedBytes = new Uint8Array(this.response);
+    } else {
+      segmentInfo.bytes = new Uint8Array(this.response);
+    }
+    tech.segmentBuffer_.push(segmentInfo);
     player.trigger('progress');
     tech.drainBuffer();
 
@@ -689,12 +705,15 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
 videojs.Hls.prototype.drainBuffer = function(event) {
   var
     i = 0,
+    segmentInfo,
     mediaIndex,
     playlist,
     offset,
     tags,
     bytes,
     segment,
+    decrypter,
+    segIv,
 
     ptsTime,
     segmentOffset,
@@ -704,28 +723,45 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     return;
   }
 
-  mediaIndex = segmentBuffer[0].mediaIndex;
-  playlist = segmentBuffer[0].playlist;
-  offset = segmentBuffer[0].offset;
-  bytes = segmentBuffer[0].bytes;
+  segmentInfo = segmentBuffer[0];
+
+  mediaIndex = segmentInfo.mediaIndex;
+  playlist = segmentInfo.playlist;
+  offset = segmentInfo.offset;
+  bytes = segmentInfo.bytes;
   segment = playlist.segments[mediaIndex];
 
-  if (segment.key) {
+  if (segment.key && !bytes) {
+
     // this is an encrypted segment
     // if the key download failed, we want to skip this segment
     // but if the key hasn't downloaded yet, we want to try again later
     if (keyFailed(segment.key)) {
       return segmentBuffer.shift();
     } else if (!segment.key.bytes) {
+
       // trigger a key request if one is not already in-flight
       return this.fetchKeys_();
+
+    } else if (segmentInfo.decrypter) {
+
+      // decryption is in progress, try again later
+      return;
+
     } else {
       // if the media sequence is greater than 2^32, the IV will be incorrect
       // assuming 10s segments, that would be about 1300 years
-      var segIv = segment.key.iv || new Uint32Array([0, 0, 0, mediaIndex + playlist.mediaSequence]);
-      bytes = videojs.Hls.decrypt(bytes,
-                                  segment.key.bytes,
-                                  segIv);
+      segIv = segment.key.iv || new Uint32Array([0, 0, 0, mediaIndex + playlist.mediaSequence]);
+
+      // create a decrypter to incrementally decrypt the segment
+      decrypter = new videojs.Hls.Decrypter(segmentInfo.encryptedBytes,
+                                            segment.key.bytes,
+                                            segIv,
+                                            function(err, bytes) {
+                                              segmentInfo.bytes = bytes;
+                                            });
+      segmentInfo.decrypter = decrypter;
+      return;
     }
   }
 
