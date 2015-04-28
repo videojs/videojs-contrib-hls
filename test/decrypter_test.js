@@ -154,7 +154,7 @@ test('breaks up input greater than the step value', function() {
       decrypter = new videojs.Hls.Decrypter(encrypted,
                                             new Uint32Array(4),
                                             new Uint32Array(4),
-                                            function(error, result) {
+                                            function() {
                                               done = true;
                                             });
   clock.tick(decrypter.asyncStream_.delay * 2);
