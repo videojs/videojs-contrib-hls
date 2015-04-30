@@ -118,7 +118,7 @@ videojs.Hls.prototype.src = function(src) {
       for (i = 0; i < metadata.frames.length; i++) {
         frame = metadata.frames[i];
         time = metadata.pts / 1000;
-        textTrack.addCue(new window.VTTCue(time, time, frame.value || frame.url));
+        textTrack.addCue(new window.VTTCue(time, time, frame.value || frame.url || frame.id === 'PRIV' && String.fromCharCode.apply(null, frame.data)));
       }
     });
   })();
