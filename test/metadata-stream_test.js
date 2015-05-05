@@ -227,6 +227,7 @@
 
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 1, 'parsed one frame');
+    equal(events[0].frames[0].id, 'TXXX', 'parsed the frame id');
     equal(events[0].frames[0].description, 'get done', 'parsed the description');
     equal(events[0].frames[0].value, '{ "key": "value" }', 'parsed the value');
   });
@@ -252,6 +253,7 @@
 
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 1, 'parsed one frame');
+    equal(events[0].frames[0].id, 'WXXX', 'parsed the frame id');
     equal(events[0].frames[0].description, '', 'parsed the description');
     equal(events[0].frames[0].url, url, 'parsed the value');
   });
@@ -278,6 +280,37 @@
     equal(events[0].frames[0].value,
           value,
           'parsed the single-digit character');
+  });
+
+  test('parses PRIV tags', function() {
+    var
+      events = [],
+      payload = stringToInts('arbitrary data may be included in the payload ' +
+                             'of a PRIV frame');
+
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+
+      // header
+      data: new Uint8Array(id3Tag(id3Frame('PRIV',
+                                           stringToCString('priv-owner@example.com'),
+                                           payload)))
+    });
+
+    equal(events.length, 1, 'parsed a tag');
+    equal(events[0].frames.length, 1, 'parsed a frame');
+    equal(events[0].frames[0].id, 'PRIV', 'frame id is PRIV');
+    equal(events[0].frames[0].owner, 'priv-owner@example.com', 'parsed the owner');
+    deepEqual(events[0].frames[0].privateData,
+              new Uint8Array(payload),
+              'parsed the frame private data');
+
   });
 
   // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track

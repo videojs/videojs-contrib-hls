@@ -6,12 +6,23 @@
 (function(window, videojs, undefined) {
   'use strict';
   var
-    parseString = function(bytes, start, end) {
+    // return the string representation of the specified byte range,
+    // interpreted as UTf-8.
+    parseUtf8 = function(bytes, start, end) {
       var i, result = '';
       for (i = start; i < end; i++) {
         result += '%' + ('00' + bytes[i].toString(16)).slice(-2);
       }
       return window.decodeURIComponent(result);
+    },
+    // return the string representation of the specified byte range,
+    // interpreted as ISO-8859-1.
+    parseIso88591 = function(bytes, start, end) {
+      var i, result = '';
+      for (i = start; i < end; i++) {
+        result += '%' + ('00' + bytes[i].toString(16)).slice(-2);
+      }
+      return window.unescape(result);
     },
     tagParsers = {
       'TXXX': function(tag) {
@@ -24,8 +35,8 @@
         for (i = 1; i < tag.data.length; i++) {
           if (tag.data[i] === 0) {
             // parse the text fields
-            tag.description = parseString(tag.data, 1, i);
-            tag.value = parseString(tag.data, i + 1, tag.data.length);
+            tag.description = parseUtf8(tag.data, 1, i);
+            tag.value = parseUtf8(tag.data, i + 1, tag.data.length);
             break;
           }
         }
@@ -40,11 +51,23 @@
         for (i = 1; i < tag.data.length; i++) {
           if (tag.data[i] === 0) {
             // parse the description and URL fields
-            tag.description = parseString(tag.data, 1, i);
-            tag.url = parseString(tag.data, i + 1, tag.data.length);
+            tag.description = parseUtf8(tag.data, 1, i);
+            tag.url = parseUtf8(tag.data, i + 1, tag.data.length);
             break;
           }
         }
+      },
+      'PRIV': function(tag) {
+        var i;
+
+        for (i = 0; i < tag.data.length; i++) {
+          if (tag.data[i] === 0) {
+            // parse the description and URL fields
+            tag.owner = parseIso88591(tag.data, 0, i);
+            break;
+          }
+        }
+        tag.privateData = tag.data.subarray(i + 1);
       }
     },
     MetadataStream;
