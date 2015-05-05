@@ -99,7 +99,7 @@ videojs.Hls.prototype.src = function(src) {
     }
 
     metadataStream.on('data', function(metadata) {
-      var i, frame, time, hexDigit;
+      var i, cue, frame, time, hexDigit;
 
       // create the metadata track if this is the first ID3 tag we've
       // seen
@@ -118,7 +118,9 @@ videojs.Hls.prototype.src = function(src) {
       for (i = 0; i < metadata.frames.length; i++) {
         frame = metadata.frames[i];
         time = metadata.pts / 1000;
-        textTrack.addCue(new window.VTTCue(time, time, frame.value || frame.url || frame.id === 'PRIV' && String.fromCharCode.apply(null, frame.data)));
+        cue = new window.VTTCue(time, time, frame.value || frame.url || '');
+        cue.frame = frame;
+        textTrack.addCue(cue);
       }
     });
   })();
