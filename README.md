@@ -203,6 +203,7 @@ available](http://enable-cors.org/server.html) for popular webservers
 and most CDNs should have no trouble turning CORS on for your account.
 
 ## Release History
+- 0.14.0: performance improvements for HLSe
 - 0.13.0:
   - Improved audio/video synchronization
   - Fixes for live, HLSe, and discontinuities
