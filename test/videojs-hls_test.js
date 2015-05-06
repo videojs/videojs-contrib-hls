@@ -1063,9 +1063,11 @@ test('calculates preciseTimestamp and preciseDuration for a new segment', functi
   openMediaSource(player);
 
   standardXHRResponse(requests[0]);
+  strictEqual(player.duration(), 40, 'player duration is read from playlist on load');
   standardXHRResponse(requests[1]);
   strictEqual(player.hls.playlists.media().segments[0].preciseTimestamp, 200000, 'preciseTimestamp is calculated and stored');
   strictEqual(player.hls.playlists.media().segments[0].preciseDuration, 200, 'preciseDuration is calculated and stored');
+  strictEqual(player.duration(), 230, 'player duration is calculated using preciseDuration');
 });
 
 test('exposes in-band metadata events as cues', function() {
