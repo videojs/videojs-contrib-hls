@@ -6,23 +6,24 @@
 (function(window, videojs, undefined) {
   'use strict';
   var
-    // return the string representation of the specified byte range,
-    // interpreted as UTf-8.
-    parseUtf8 = function(bytes, start, end) {
+    // return a percent-encoded representation of the specified byte range
+    // @see http://en.wikipedia.org/wiki/Percent-encoding
+    percentEncode = function(bytes, start, end) {
       var i, result = '';
       for (i = start; i < end; i++) {
         result += '%' + ('00' + bytes[i].toString(16)).slice(-2);
       }
-      return window.decodeURIComponent(result);
+      return result;
+    },
+    // return the string representation of the specified byte range,
+    // interpreted as UTf-8.
+    parseUtf8 = function(bytes, start, end) {
+      return window.decodeURIComponent(percentEncode(bytes, start, end));
     },
     // return the string representation of the specified byte range,
     // interpreted as ISO-8859-1.
     parseIso88591 = function(bytes, start, end) {
-      var i, result = '';
-      for (i = start; i < end; i++) {
-        result += '%' + ('00' + bytes[i].toString(16)).slice(-2);
-      }
-      return window.unescape(result);
+      return window.unescape(percentEncode(bytes, start, end));
     },
     tagParsers = {
       'TXXX': function(tag) {
@@ -73,14 +74,23 @@
     MetadataStream;
 
   MetadataStream = function(options) {
-    var settings = {
-      debug: !!(options && options.debug),
+    var
+      settings = {
+        debug: !!(options && options.debug),
 
-      // the bytes of the program-level descriptor field in MP2T
-      // see ISO/IEC 13818-1:2013 (E), section 2.6 "Program and
-      // program element descriptors"
-      descriptor: options && options.descriptor
-    }, i;
+        // the bytes of the program-level descriptor field in MP2T
+        // see ISO/IEC 13818-1:2013 (E), section 2.6 "Program and
+        // program element descriptors"
+        descriptor: options && options.descriptor
+      },
+      // the total size in bytes of the ID3 tag being parsed
+      tagSize = 0,
+      // tag data that is not complete enough to be parsed
+      buffer = [],
+      // the total number of bytes currently in the buffer
+      bufferSize = 0,
+      i;
+
     MetadataStream.prototype.init.call(this);
 
     // calculate the text track in-band metadata track dispatch type
@@ -93,73 +103,110 @@
     }
 
     this.push = function(chunk) {
-      var tagSize, frameStart, frameSize, frame;
+      var tag, frameStart, frameSize, frame, i;
 
       // ignore events that don't look like ID3 data
-      if (chunk.data.length < 10 ||
-          chunk.data[0] !== 'I'.charCodeAt(0) ||
-          chunk.data[1] !== 'D'.charCodeAt(0) ||
-          chunk.data[2] !== '3'.charCodeAt(0)) {
+      if (buffer.length === 0 &&
+          (chunk.data.length < 10 ||
+           chunk.data[0] !== 'I'.charCodeAt(0) ||
+           chunk.data[1] !== 'D'.charCodeAt(0) ||
+           chunk.data[2] !== '3'.charCodeAt(0))) {
         if (settings.debug) {
-          videojs.log('Skipping unrecognized metadata stream');
+          videojs.log('Skipping unrecognized metadata packet');
         }
         return;
       }
 
+      // add this chunk to the data we've collected so far
+      buffer.push(chunk);
+      bufferSize += chunk.data.byteLength;
+
+      // grab the size of the entire frame from the ID3 header
+      if (buffer.length === 1) {
+        // the frame size is transmitted as a 28-bit integer in the
+        // last four bytes of the ID3 header.
+        // The most significant bit of each byte is dropped and the
+        // results concatenated to recover the actual value.
+        tagSize = (chunk.data[6] << 21) |
+                  (chunk.data[7] << 14) |
+                  (chunk.data[8] << 7) |
+                  (chunk.data[9]);
+
+        // ID3 reports the tag size excluding the header but it's more
+        // convenient for our comparisons to include it
+        tagSize += 10;
+      }
+
+      // if the entire frame has not arrived, wait for more data
+      if (bufferSize < tagSize) {
+        return;
+      }
+
+      // collect the entire frame so it can be parsed
+      tag = {
+        data: new Uint8Array(tagSize),
+        frames: [],
+        pts: buffer[0].pts,
+        dts: buffer[0].dts
+      };
+      for (i = 0; i < tagSize;) {
+        tag.data.set(buffer[0].data, i);
+        i += buffer[0].data.byteLength;
+        buffer.shift();
+      }
+
       // find the start of the first frame and the end of the tag
-      tagSize = chunk.data.byteLength;
       frameStart = 10;
-      if (chunk.data[5] & 0x40) {
+      if (tag.data[5] & 0x40) {
         // advance the frame start past the extended header
         frameStart += 4; // header size field
-        frameStart += (chunk.data[10] << 24) |
-                      (chunk.data[11] << 16) |
-                      (chunk.data[12] << 8)  |
-                      (chunk.data[13]);
+        frameStart += (tag.data[10] << 24) |
+                      (tag.data[11] << 16) |
+                      (tag.data[12] << 8)  |
+                      (tag.data[13]);
 
         // clip any padding off the end
-        tagSize -= (chunk.data[16] << 24) |
-                   (chunk.data[17] << 16) |
-                   (chunk.data[18] << 8)  |
-                   (chunk.data[19]);
+        tagSize -= (tag.data[16] << 24) |
+                   (tag.data[17] << 16) |
+                   (tag.data[18] << 8)  |
+                   (tag.data[19]);
       }
 
       // adjust the PTS values to align with the video and audio
       // streams
       if (this.timestampOffset) {
-        chunk.pts -= this.timestampOffset;
-        chunk.dts -= this.timestampOffset;
+        tag.pts -= this.timestampOffset;
+        tag.dts -= this.timestampOffset;
       }
 
       // parse one or more ID3 frames
       // http://id3.org/id3v2.3.0#ID3v2_frame_overview
-      chunk.frames = [];
       do {
         // determine the number of bytes in this frame
-        frameSize = (chunk.data[frameStart + 4] << 24) |
-                    (chunk.data[frameStart + 5] << 16) |
-                    (chunk.data[frameStart + 6] <<  8) |
-                    (chunk.data[frameStart + 7]);
+        frameSize = (tag.data[frameStart + 4] << 24) |
+                    (tag.data[frameStart + 5] << 16) |
+                    (tag.data[frameStart + 6] <<  8) |
+                    (tag.data[frameStart + 7]);
         if (frameSize < 1) {
           return videojs.log('Malformed ID3 frame encountered. Skipping metadata parsing.');
         }
 
         frame = {
-          id: String.fromCharCode(chunk.data[frameStart]) +
-            String.fromCharCode(chunk.data[frameStart + 1]) +
-            String.fromCharCode(chunk.data[frameStart + 2]) +
-            String.fromCharCode(chunk.data[frameStart + 3]),
-          data: chunk.data.subarray(frameStart + 10, frameStart + frameSize + 10)
+          id: String.fromCharCode(tag.data[frameStart],
+                                  tag.data[frameStart + 1],
+                                  tag.data[frameStart + 2],
+                                  tag.data[frameStart + 3]),
+          data: tag.data.subarray(frameStart + 10, frameStart + frameSize + 10)
         };
         if (tagParsers[frame.id]) {
           tagParsers[frame.id](frame);
         }
-        chunk.frames.push(frame);
+        tag.frames.push(frame);
 
         frameStart += 10; // advance past the frame header
         frameStart += frameSize; // advance past the frame body
       } while (frameStart < tagSize);
-      this.trigger('data', chunk);
+      this.trigger('data', tag);
     };
   };
   MetadataStream.prototype = new videojs.Hls.Stream();
