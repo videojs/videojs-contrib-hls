@@ -368,12 +368,6 @@
             aacStream.setNextTimeStamp(pts,
                                        pesPacketSize,
                                        dataAlignmentIndicator);
-          } else {
-            self.metadataStream.push({
-              pts: pts,
-              dts: dts,
-              data: data.subarray(offset)
-            });
           }
         }
 
@@ -381,6 +375,12 @@
           aacStream.writeBytes(data, offset, end - offset);
         } else if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
           h264Stream.writeBytes(data, offset, end - offset);
+        } else if (pid === self.stream.programMapTable[STREAM_TYPES.metadata]) {
+          self.metadataStream.push({
+            pts: pts,
+            dts: dts,
+            data: data.subarray(offset)
+          });
         }
       } else if (self.stream.pmtPid === pid) {
         // similarly to the PAT, jump to the first byte of the section

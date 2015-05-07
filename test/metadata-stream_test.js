@@ -60,11 +60,13 @@
       ], frames),
       size;
 
+    // size is stored as a sequence of four 7-bit integers with the
+    // high bit of each byte set to zero
     size = result.length - 10;
-    result[6] = (size >>> 24) & 0xff;
-    result[7] = (size >>> 16) & 0xff;
-    result[8] = (size >>>  8) & 0xff;
-    result[9] = (size)        & 0xff;
+    result[6] = (size >>> 21) & 0x7f;
+    result[7] = (size >>> 14) & 0x7f;
+    result[8] = (size >>>  7) & 0x7f;
+    result[9] = (size)        & 0x7f;
 
     return result;
   };
@@ -351,6 +353,25 @@
     equal(events[0].frames[0].data.byteLength,
           owner.length + payload.length,
           'collected data across pushes');
+
+    // parses subsequent fragmented tags
+    tag = new Uint8Array(id3Tag(id3Frame('PRIV',
+                                         owner, payload, payload)));
+    front = tag.subarray(0, 188);
+    back = tag.subarray(188);
+    metadataStream.push({
+      trackId: 7,
+      pts: 2000,
+      dts: 2000,
+      data: front
+    });
+    metadataStream.push({
+      trackId: 7,
+      pts: 2000,
+      dts: 2000,
+      data: back
+    });
+    equal(events.length, 2, 'parsed a subseqent frame');
   });
 
   test('ignores tags when the header is fragmented', function() {

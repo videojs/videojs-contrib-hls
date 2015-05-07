@@ -152,6 +152,7 @@
       for (i = 0; i < tagSize;) {
         tag.data.set(buffer[0].data, i);
         i += buffer[0].data.byteLength;
+        bufferSize -= buffer[0].data.byteLength;
         buffer.shift();
       }
 
