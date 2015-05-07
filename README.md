@@ -166,12 +166,19 @@ embedded as [ID3 tags](http://id3.org/id3v2.3.0). When a stream is
 encountered with embedded metadata, an [in-band metadata text
 track](https://html.spec.whatwg.org/multipage/embedded-content.html#text-track-in-band-metadata-track-dispatch-type)
 will automatically be created and populated with cues as they are
-encountered in the stream. Only UTF-8 encoded
+encountered in the stream. UTF-8 encoded
 [TXXX](http://id3.org/id3v2.3.0#User_defined_text_information_frame)
 and [WXXX](http://id3.org/id3v2.3.0#User_defined_URL_link_frame) ID3
-frames are currently mapped to cue points. There are lots of guides
-and references to using text tracks [around the
-web](http://www.html5rocks.com/en/tutorials/track/basics/).
+frames are mapped to cue points and their values set as the cue
+text. Cues are created for all other frame types and the data is
+attached to the generated cue:
+
+```js
+cue.frame.data
+```
+
+There are lots of guides and references to using text tracks [around
+the web](http://www.html5rocks.com/en/tutorials/track/basics/).
 
 ### Testing
 
