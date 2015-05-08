@@ -210,6 +210,7 @@ available](http://enable-cors.org/server.html) for popular webservers
 and most CDNs should have no trouble turning CORS on for your account.
 
 ## Release History
+- 0.15.0: expose all ID3 frames and handle tags larger than 188 bytes
 - 0.14.0: performance improvements for HLSe
 - 0.13.0:
   - Improved audio/video synchronization
