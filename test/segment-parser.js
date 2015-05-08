@@ -177,7 +177,8 @@
     // sync_byte
     result.push(0x47);
     // transport_error_indicator payload_unit_start_indicator transport_priority PID
-    result.push((settings.pid & 0x1f) << 8 | 0x40);
+    result.push((settings.pid & 0x1f) << 8 |
+                (settings.payloadUnitStartIndicator ? 0x40 : 0x00));
     result.push(settings.pid & 0xff);
     // transport_scrambling_control adaptation_field_control continuity_counter
     result.push(0x10);
@@ -224,6 +225,29 @@
     }))));
 
     equal(parser.stream.programMapTable[0x15], 0x02, 'metadata is PID 2');
+  });
+
+  test('recognizes subsequent metadata packets after the payload start', function() {
+    var packets = [];
+    parser.metadataStream.push = function(packet) {
+      packets.push(packet);
+    };
+    parser.parseSegmentBinaryData(new Uint8Array(makePacket({
+      programs: {
+        0x01: [0x01]
+      }
+    }).concat(makePacket({
+      pid: 0x01,
+      pids: {
+        // Rec. ITU-T H.222.0 (06/2012), Table 2-34
+        0x02: 0x15 // Metadata carried in PES packets
+      }
+    })).concat(makePacket({
+      pid: 0x02,
+      payloadUnitStartIndicator: false
+    }))));
+
+    equal(packets.length, 1, 'parsed non-payload metadata packet');
   });
 
   test('parses the first bipbop segment', function() {
