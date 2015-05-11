@@ -143,9 +143,6 @@ videojs.Hls.prototype.src = function(src) {
 
     setupEvents = function() {
       this.fillBuffer();
-
-
-
       player.trigger('loadedmetadata');
     };
 
@@ -557,6 +554,11 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     bufferedTime = 0,
     segment,
     segmentUri;
+
+  // if preload is set to "none", do not download segments until playback is requested
+  if (!player.hasClass('vjs-has-started') && player.options.preload === "none") {
+    return;
+  }
 
   // if a video has not been specified, do nothing
   if (!player.currentSrc() || !this.playlists) {
