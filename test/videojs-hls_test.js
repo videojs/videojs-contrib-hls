@@ -2309,8 +2309,8 @@ test('does not download segments if preload option set to none', function() {
     type: 'application/vnd.apple.mpegurl'
   });
 
-  tech.vjs_getProperty = function(property) { return properties[property] };
-  tech.vjs_setProperty = function(property, value) { properties[property] = value };
+  tech.vjs_getProperty = function(property) { return properties[property]; };
+  tech.vjs_setProperty = function(property, value) { properties[property] = value; };
   player.preload('none');
 
   player.hls.loadSegment = function () {
