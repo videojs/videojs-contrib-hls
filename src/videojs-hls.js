@@ -556,7 +556,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     segmentUri;
 
   // if preload is set to "none", do not download segments until playback is requested
-  if (!player.hasClass('vjs-has-started') && player.options.preload === "none") {
+  if (!player.hasClass('vjs-has-started') && player.preload() === "none") {
     return;
   }
 

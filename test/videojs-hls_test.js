@@ -2300,13 +2300,18 @@ test('live stream should not call endOfStream', function(){
 });
 
 test('does not download segments if preload option set to none', function() {
-  var loadedSegments = 0;
+  var loadedSegments = 0,
+      tech = player.el().querySelector('.vjs-tech'),
+      properties = {};
+
   player.src({
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
 
-  player.options.preload = "none";
+  tech.vjs_getProperty = function(property) { return properties[property] };
+  tech.vjs_setProperty = function(property, value) { properties[property] = value };
+  player.preload('none');
 
   player.hls.loadSegment = function () {
     loadedSegments++;
