@@ -377,7 +377,10 @@ hls.FlvTag.durationFromTags = function(tags) {
     return 0;
   }
 
-  var first = tags[0], last = tags[tags.length - 1], frameDuration;
+  var
+    first = tags[0],
+    last = tags[tags.length - 1],
+    frameDuration;
 
   // use the interval between the last two tags or assume 24 fps
   frameDuration = last.pts - tags[tags.length - 2].pts || (1/24);
