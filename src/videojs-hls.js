@@ -714,14 +714,21 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     tags,
     bytes,
     segment,
-    durationOffset,
     decrypter,
     segIv,
     ptsTime,
     segmentOffset = 0,
     segmentBuffer = this.segmentBuffer_;
 
+  // if the buffer is empty or the source buffer hasn't been created
+  // yet, do nothing
   if (!segmentBuffer.length || !this.sourceBuffer) {
+    return;
+  }
+
+  // we can't append more data if the source buffer is busy processing
+  // what we've already sent
+  if (this.sourceBuffer.updating) {
     return;
   }
 
@@ -780,23 +787,11 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     tags.push(this.segmentParser_.getNextTag());
   }
 
-  // This block of code uses the presentation timestamp of the ts segment to calculate its exact duration, since this
-  // may differ by fractions of a second from what is reported. Using the exact, calculated 'preciseDuration' allows
-  // for smoother seeking and calculation of the total playlist duration, which previously (especially in short videos)
-  // was reported erroneously and made the play head overrun the end of the progress bar.
+  // Use the presentation timestamp of the ts segment to calculate its
+  // exact duration, since this may differ by fractions of a second
+  // from what is reported in the playlist
   if (tags.length > 0) {
-    segment.preciseTimestamp = tags[tags.length - 1].pts;
-
-    if (playlist.segments[mediaIndex - 1]) {
-      if (playlist.segments[mediaIndex - 1].preciseTimestamp) {
-        durationOffset = playlist.segments[mediaIndex - 1].preciseTimestamp;
-      } else {
-        durationOffset = (playlist.targetDuration * (mediaIndex - 1) + playlist.segments[mediaIndex - 1].duration) * 1000;
-      }
-      segment.preciseDuration = (segment.preciseTimestamp - durationOffset) / 1000;
-    } else if (mediaIndex === 0) {
-      segment.preciseDuration = segment.preciseTimestamp / 1000;
-    }
+    segment.preciseDuration = videojs.Hls.FlvTag.durationFromTags(tags) * 0.001;
   }
 
   this.updateDuration(this.playlists.media());
@@ -825,13 +820,18 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     this.el().vjs_discontinuity();
   }
 
-  for (i = 0; i < tags.length; i++) {
-    // queue up the bytes to be appended to the SourceBuffer
-    // the queue gives control back to the browser between tags
-    // so that large segments don't cause a "hiccup" in playback
-
-    this.sourceBuffer.appendBuffer(tags[i].bytes, this.player());
-  }
+  (function() {
+    var segmentByteLength = 0, j, segment;
+    for (i = 0; i < tags.length; i++) {
+      segmentByteLength += tags[i].bytes.byteLength;
+    }
+    segment = new Uint8Array(segmentByteLength);
+    for (i = 0, j = 0; i < tags.length; i++) {
+      segment.set(tags[i].bytes, j);
+      j += tags[i].bytes.byteLength;
+    }
+    this.sourceBuffer.appendBuffer(segment);
+  }).call(this);
 
   // we're done processing this segment
   segmentBuffer.shift();
