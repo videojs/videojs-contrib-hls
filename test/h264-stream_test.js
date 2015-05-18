@@ -62,7 +62,10 @@ test('metadata is generated for IDRs after a full NAL unit is written', function
 
 test('starting PTS values can be negative', function() {
   var
-    h264Stream = new videojs.Hls.H264Stream(),
+    H264ExtraData = videojs.Hls.H264ExtraData,
+    oldExtraData = H264ExtraData.prototype.extraDataTag,
+    oldMetadata = H264ExtraData.prototype.metaDataTag,
+    h264Stream,
     accessUnitDelimiter = new Uint8Array([
       0x00,
       0x00,
@@ -70,8 +73,14 @@ test('starting PTS values can be negative', function() {
       nalUnitTypes.access_unit_delimiter_rbsp
     ]);
 
-  // add a "tag" to the stream so that it doesn't try and parse metadata
-  h264Stream.tags.push('spacer tag');
+  H264ExtraData.prototype.extraDataTag = function() {
+    return 'extradataTag';
+  };
+  H264ExtraData.prototype.metaDataTag = function() {
+    return 'metadataTag';
+  };
+
+  h264Stream = new videojs.Hls.H264Stream();
 
   h264Stream.setTimeStampOffset(-100);
   h264Stream.setNextTimeStamp(-100, -100, true);
@@ -83,6 +92,8 @@ test('starting PTS values can be negative', function() {
   // flush out the last tag
   h264Stream.writeBytes(accessUnitDelimiter, 0, accessUnitDelimiter.byteLength);
 
+  // shift the metadata and extradata tags out, since we don't care about them here
+  h264Stream.tags.shift();
   h264Stream.tags.shift();
 
   strictEqual(h264Stream.tags.length, 3, 'three tags are ready');
