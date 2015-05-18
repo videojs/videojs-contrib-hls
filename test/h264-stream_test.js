@@ -104,6 +104,9 @@ test('starting PTS values can be negative', function() {
 
   strictEqual(h264Stream.tags[2].pts, 100, 'the third PTS is 100');
   strictEqual(h264Stream.tags[2].dts, 100, 'the third DTS is 100');
+
+  H264ExtraData.prototype.extraDataTag = oldExtraData;
+  H264ExtraData.prototype.metaDataTag = oldMetadata;
 });
 
 test('make sure we add metadata and extra data at the beginning of a stream', function() {
@@ -144,6 +147,9 @@ test('make sure we add metadata and extra data at the beginning of a stream', fu
   strictEqual(h264Stream.tags[2].dts, 0, 'the first DTS is 0');
   strictEqual(h264Stream.tags[3].pts, 5, 'the second PTS is 5');
   strictEqual(h264Stream.tags[3].dts, 5, 'the second DTS is 5');
+
+  H264ExtraData.prototype.extraDataTag = oldExtraData;
+  H264ExtraData.prototype.metaDataTag = oldMetadata;
 });
 
 })(window.videojs);
