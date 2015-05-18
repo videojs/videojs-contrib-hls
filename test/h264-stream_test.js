@@ -134,6 +134,11 @@ test('make sure we add metadata and extra data at the beginning of a stream', fu
   h264Stream.setTimeStampOffset(0);
   h264Stream.setNextTimeStamp(0, 0, true);
   h264Stream.writeBytes(accessUnitDelimiter, 0, accessUnitDelimiter.byteLength);
+
+  // make sure that keyFrame is set to false but that we don't have any tags currently written out
+  h264Stream._h264Frame.keyFrame = false;
+  h264Stream.tags = [];
+
   h264Stream.setNextTimeStamp(5, 5, true);
   h264Stream.writeBytes(accessUnitDelimiter, 0, accessUnitDelimiter.byteLength);
   // flush out the last tag
