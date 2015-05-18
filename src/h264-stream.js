@@ -283,7 +283,9 @@
           newExtraData = new H264ExtraData();
         }
 
-        if (h264Frame.keyFrame) {
+        // Check if keyframe and the length of tags.
+        // This makes sure we write metadata on the first frame of a segment.
+        if (h264Frame.keyFrame || this.tags.length === 0) {
           // Push extra data on every IDR frame in case we did a stream change + seek
           this.tags.push(oldExtraData.metaDataTag(h264Frame.pts));
           this.tags.push(oldExtraData.extraDataTag(h264Frame.pts));
