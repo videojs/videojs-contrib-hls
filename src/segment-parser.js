@@ -80,9 +80,10 @@
       metadata = new FlvTag(FlvTag.METADATA_TAG);
       metadata.pts = metadata.dts = 0;
       metadata.writeMetaDataDouble("duration", duration);
-      result = new Uint8Array(headBytes.byteLength + metadata.byteLength);
-      result.set(head);
-      result.set(head.bytesLength, metadata.finalize());
+      metadata.finalize();
+      result = new Uint8Array(headBytes.byteLength + metadata.bytes.byteLength);
+      result.set(headBytes);
+      result.set(metadata.bytes, headBytes.byteLength);
 
       return result;
     };
