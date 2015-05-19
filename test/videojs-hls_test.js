@@ -2299,4 +2299,34 @@ test('live stream should not call endOfStream', function(){
         "media source should be in open state, not ended state for live stream after the last segment in m3u8 downloaded");
 });
 
+test('does not download segments if preload option set to none', function() {
+  var loadedSegments = 0,
+      tech = player.el().querySelector('.vjs-tech'),
+      properties = {};
+
+  player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  tech.vjs_getProperty = function(property) { return properties[property]; };
+  tech.vjs_setProperty = function(property, value) { properties[property] = value; };
+  player.preload('none');
+
+  player.hls.loadSegment = function () {
+    loadedSegments++;
+  };
+
+  player.currentSrc = function() {
+    return player.src;
+  };
+
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
+  player.hls.checkBuffer_();
+
+  strictEqual(loadedSegments, 0, 'did not download any segments');
+});
+
 })(window, window.videojs);
