@@ -214,6 +214,16 @@
         // adaptation_field_control, whether this header is followed by an
         // adaptation field, a payload, or both
         afflag = (data[offset + 3] & 0x30 ) >>> 4,
+        adaptation_field_length,
+        afftemp,
+        discontinuity_indicator,
+        random_access_indicator,
+        elementary_stream_priority_indicator,
+        PCR_flag,
+        OPCR_flag,
+        splicing_point_flag,
+        transport_private_data_flag,
+        adaptation_field_extension_flag,
 
         patTableId, // :int
         patCurrentNextIndicator, // Boolean
@@ -247,7 +257,27 @@
       // used to specify some forms of timing and control data that we
       // do not currently use.
       if (afflag > 0x01) {
-        offset += data[offset] + 1;
+        adaptation_field_length = data[offset];
+
+        if (adaptation_field_length > 0) {
+          afftemp = data[offset + 1];
+
+          discontinuity_indicator = (afftemp & 0x80) >>> 7;
+          random_access_indicator = (afftemp & 0x40) >>> 6;
+          elementary_stream_priority_indicator = (afftemp & 0x20) >>> 5;
+          PCR_flag  = (afftemp & 0x10) >>> 4;
+          OPCR_flag = (afftemp & 0x08) >>> 3;
+          splicing_point_flag = (afftemp & 0x04) >>> 2;
+          transport_private_data_flag = (afftemp & 0x02) >>> 1;
+          adaptation_field_extension_flag  = afftemp & 0x01;
+
+          if (random_access_indicator === 1) {
+            if (h264Stream._h264Frame)
+              h264Stream._h264Frame.keyFrame = true;
+          }
+        }
+
+        offset += adaptation_field_length + 1;
       }
 
       // Handle a Program Association Table (PAT). PATs map PIDs to
