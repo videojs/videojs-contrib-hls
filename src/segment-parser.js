@@ -264,7 +264,7 @@
           }
         }
 
-        offset += adaptation_field_length + 1;
+        offset += adaptationFieldLength + 1;
       }
 
       // Handle a Program Association Table (PAT). PATs map PIDs to
