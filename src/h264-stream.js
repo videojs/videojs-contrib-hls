@@ -48,6 +48,8 @@
 
     this._state = 0; // :uint;
 
+    this._nextFrameKeyFrame = false;
+
     this.tags = [];
 
   };
