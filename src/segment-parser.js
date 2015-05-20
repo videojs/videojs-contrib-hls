@@ -272,8 +272,9 @@
           adaptation_field_extension_flag  = afftemp & 0x01;
 
           if (random_access_indicator === 1) {
-            if (h264Stream._h264Frame)
+            if (h264Stream._h264Frame) {
               h264Stream._h264Frame.keyFrame = true;
+            }
           }
         }
 
