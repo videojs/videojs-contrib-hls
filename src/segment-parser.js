@@ -258,9 +258,7 @@
           randomAccessIndicator = (afftemp & 0x40) >>> 6;
 
           if (randomAccessIndicator === 1) {
-            if (h264Stream._h264Frame) {
-              h264Stream._h264Frame.keyFrame = true;
-            }
+            h264Stream.setNextFrameKeyFrame();
           }
         }
 

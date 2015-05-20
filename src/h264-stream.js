@@ -94,6 +94,11 @@
     this._state = 0;
   };
 
+
+  H264Stream.prototype.setNextFrameKeyFrame = function() {
+    this._nextFrameKeyFrame = true;
+  };
+
   // (data:ByteArray, o:int, l:int):void
   H264Stream.prototype.writeBytes = function(data, offset, length) {
     var
@@ -255,6 +260,11 @@
         this._h264Frame = new FlvTag(FlvTag.VIDEO_TAG);
         this._h264Frame.pts = this._next_pts;
         this._h264Frame.dts = this._next_dts;
+
+        if (this._nextFrameKeyFrame) {
+          this._h264Frame.keyFrame = true;
+          this._nextFrameKeyFrame = false;
+        }
       }
 
       this._h264Frame.startNalUnit();
