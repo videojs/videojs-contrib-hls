@@ -1035,7 +1035,7 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
   // bitrate switches should be happening here.
   translatedMediaIndex = (mediaIndex + (original.mediaSequence - update.mediaSequence));
 
-  if (translatedMediaIndex >= update.segments.length || translatedMediaIndex < 0) {
+  if (translatedMediaIndex > update.segments.length || translatedMediaIndex < 0) {
     // recalculate the live point if the streams are too far out of sync
     return videojs.Hls.getMediaIndexForLive_(update) + 1;
   }
