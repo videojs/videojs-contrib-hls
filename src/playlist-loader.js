@@ -94,6 +94,7 @@
 
           // refresh live playlists after a target duration passes
           if (!loader.media().endList) {
+            window.clearTimeout(mediaUpdateTimeout);
             mediaUpdateTimeout = window.setTimeout(function() {
               loader.trigger('mediaupdatetimeout');
             }, refreshDelay);
