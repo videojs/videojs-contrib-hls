@@ -203,6 +203,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-concurrent');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('chg');
 
 
   grunt.registerTask('manifests-to-js', 'Wrap the test fixtures and output' +
