@@ -195,7 +195,6 @@
     strictEqual(errors[0].status, 500, 'http status is captured');
   });
 
-
   // http://tools.ietf.org/html/draft-pantos-http-live-streaming-12#section-6.3.4
   test('halves the refresh timeout if a playlist is unchanged' +
        'since the last reload', function() {
@@ -217,6 +216,37 @@
     strictEqual(requests[0].url,
                 urlTo('live.m3u8'),
                 'requested the media playlist');
+  });
+
+  test('clears the update timeout when switching quality', function() {
+    var loader = new videojs.Hls.PlaylistLoader('live-master.m3u8'), refreshes = 0;
+    // track the number of playlist refreshes triggered
+    loader.on('mediaupdatetimeout', function() {
+      refreshes++;
+    });
+    // deliver the master
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'live-low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'live-high.m3u8\n');
+    // deliver the low quality playlist
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'low-0.ts\n');
+    // change to a higher quality playlist
+    loader.media('live-high.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           'high-0.ts\n');
+    clock.tick(10 * 1000); // trigger a refresh
+
+    equal(1, refreshes, 'only one refresh was triggered');
   });
 
   test('media-sequence updates are considered a playlist change', function() {
