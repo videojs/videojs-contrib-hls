@@ -210,4 +210,4 @@ available](http://enable-cors.org/server.html) for popular webservers
 and most CDNs should have no trouble turning CORS on for your account.
 
 ## Release History
-Check out the [changelog](CHANGELIST.md) for a summary of each release.
+Check out the [changelog](CHANGELOG.md) for a summary of each release.
