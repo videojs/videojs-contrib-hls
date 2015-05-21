@@ -3,6 +3,7 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 * @dmlap use contribflow to manage contributions ([view](https://github.com/videojs/videojs-contrib-hls/pull/275))
+* @dmlap add a contribflow configuration ([view](https://github.com/videojs/videojs-contrib-hls/pull/276))
 
 --------------------
 
