@@ -27,6 +27,7 @@ module.exports = function(grunt) {
               'src/stream.js',
               'src/flv-tag.js',
               'src/exp-golomb.js',
+              'src/h264-extradata.js',
               'src/h264-stream.js',
               'src/aac-stream.js',
               'src/metadata-stream.js',

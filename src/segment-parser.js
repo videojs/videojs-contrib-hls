@@ -214,6 +214,9 @@
         // adaptation_field_control, whether this header is followed by an
         // adaptation field, a payload, or both
         afflag = (data[offset + 3] & 0x30 ) >>> 4,
+        adaptationFieldLength,
+        afftemp,
+        randomAccessIndicator,
 
         patTableId, // :int
         patCurrentNextIndicator, // Boolean
@@ -247,7 +250,19 @@
       // used to specify some forms of timing and control data that we
       // do not currently use.
       if (afflag > 0x01) {
-        offset += data[offset] + 1;
+        adaptationFieldLength = data[offset];
+
+        if (adaptationFieldLength > 0) {
+          afftemp = data[offset + 1];
+
+          randomAccessIndicator = (afftemp & 0x40) >>> 6;
+
+          if (randomAccessIndicator === 1) {
+            h264Stream.setNextFrameKeyFrame();
+          }
+        }
+
+        offset += adaptationFieldLength + 1;
       }
 
       // Handle a Program Association Table (PAT). PATs map PIDs to
