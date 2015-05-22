@@ -1385,6 +1385,24 @@ test('live playlist starts 30s before live', function() {
   strictEqual(player.hls.mediaIndex, 6, 'mediaIndex is updated after the reload');
 });
 
+test('does not reset live currentTime if mediaIndex is one beyond the last available segment', function() {
+  var playlist = {
+    mediaSequence: 20,
+    targetDuration: 9,
+    segments: [{
+      duration: 3
+    }, {
+      duration: 3
+    }, {
+      duration: 3
+    }]
+  };
+
+  equal(playlist.segments.length,
+        videojs.Hls.translateMediaIndex(playlist.segments.length, playlist, playlist),
+        'did not change mediaIndex');
+});
+
 test('live playlist starts with correct currentTime value', function() {
   player.src({
     src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
