@@ -4,6 +4,7 @@ CHANGELOG
 ## HEAD (Unreleased)
 * @dmlap use contribflow to manage contributions ([view](https://github.com/videojs/videojs-contrib-hls/pull/275))
 * @dmlap add a contribflow configuration ([view](https://github.com/videojs/videojs-contrib-hls/pull/276))
+* @ntadej Do not unnecessarily reset to the live point when refreshing playlists. Clean up playlist loader timeouts. ([view](https://github.com/videojs/videojs-contrib-hls/pull/274))
 
 --------------------
 
