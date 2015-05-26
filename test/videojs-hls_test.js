@@ -1321,6 +1321,19 @@ test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
   equal(4, player.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
 });
 
+test('seeking in an empty playlist is a non-erroring noop', function() {
+  player.src({
+    src: 'manifest/empty-live.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  requests.shift().respond(200, null, '#EXTM3U\n');
+
+  player.currentTime(183);
+  equal(player.currentTime(), 0, 'remains at time zero');
+});
+
 test('duration is Infinity for live playlists', function() {
   player.src({
     src: 'http://example.com/manifest/missingEndlist.m3u8',
