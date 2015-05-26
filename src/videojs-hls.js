@@ -584,6 +584,11 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     return;
   }
 
+  // if a playlist switch is in progress, wait for it to finish
+  if (this.playlists.state === 'SWITCHING_MEDIA') {
+    return;
+  }
+
   // if the video has finished downloading, stop trying to buffer
   segment = this.playlists.media().segments[this.mediaIndex];
   if (!segment) {
