@@ -70,7 +70,7 @@
       nextNewline = buffer.indexOf('\n');
 
       for (; nextNewline > -1; nextNewline = buffer.indexOf('\n')) {
-        this.trigger('data', buffer.substring(0, nextNewline));
+        this.trigger('data', buffer.substring(0, nextNewline).replace(/^\s+|\s+$/g, ''));
         buffer = buffer.substring(nextNewline + 1);
       }
     };
