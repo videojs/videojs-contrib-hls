@@ -976,6 +976,35 @@ test('only appends one segment at a time', function() {
   equal(appends, 0, 'did not append while updating');
 });
 
+test('waits to download new segments until the media playlist is stable', function() {
+  var media;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  player.hls.bandwidth = 1; // make sure we stay on the lowest variant
+  standardXHRResponse(requests.shift()); // media
+
+  // mock a playlist switch
+  media = player.hls.playlists.media();
+  player.hls.playlists.media = function() {
+    return media;
+  };
+  player.hls.playlists.state = 'SWITCHING_MEDIA';
+
+  standardXHRResponse(requests.shift()); // segment 0
+
+  equal(requests.length, 0, 'no requests outstanding');
+  player.hls.checkBuffer_();
+  equal(requests.length, 0, 'delays segment fetching');
+
+  player.hls.playlists.state = 'LOADED_METADATA';
+  player.hls.checkBuffer_();
+  equal(requests.length, 1, 'resumes segment fetching');
+});
+
 test('cancels outstanding XHRs when seeking', function() {
   player.src({
     src: 'manifest/media.m3u8',
