@@ -221,6 +221,9 @@
         patTableId, // :int
         patCurrentNextIndicator, // Boolean
         patSectionLength, // :uint
+        patNumEntries, // :uint
+        patNumPrograms, // :uint
+        patProgramOffset, // :uint
 
         pesPacketSize, // :int,
         dataAlignmentIndicator, // :Boolean,
@@ -302,8 +305,21 @@
           // raise an exception if we encounter one
           // section_length = rest of header + (n * entry length) + CRC
           // = 5 + (n * 4) + 4
-          if ((patSectionLength - 5 - 4) / 4 !== 1) {
+          patNumEntries = (patSectionLength - 5 - 4) / 4;
+          patNumPrograms = 0;
+          patProgramOffset = offset;
+          for (var entryIndex = 0; entryIndex < patNumEntries; entryIndex++) {
+            // network PID program number equals 0 and can be ignored
+            if (((data[offset + 4*entryIndex]) << 8 | data[offset + 4*entryIndex + 1]) > 0) {
+                patNumPrograms++;
+                patProgramOffset = offset + 4*entryIndex;
+            }
+          }
+          if (patNumPrograms !== 1) {
             throw new Error("TS has more that 1 program");
+          }
+          else {
+            offset = patProgramOffset;
           }
 
           // the Program Map Table (PMT) associates the underlying
