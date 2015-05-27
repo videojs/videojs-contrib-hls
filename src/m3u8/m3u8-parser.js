@@ -70,7 +70,7 @@
       nextNewline = buffer.indexOf('\n');
 
       for (; nextNewline > -1; nextNewline = buffer.indexOf('\n')) {
-        this.trigger('data', buffer.substring(0, nextNewline).replace(/^\s+|\s+$/g, ''));
+        this.trigger('data', buffer.substring(0, nextNewline));
         buffer = buffer.substring(nextNewline + 1);
       }
     };
@@ -108,6 +108,9 @@
    */
   ParseStream.prototype.push = function(line) {
     var match, event;
+
+    //strip whitespace
+    line = line.replace(/^\s+|\s+$/g, '');
     if (line.length === 0) {
       // ignore empty lines
       return;
