@@ -80,7 +80,8 @@
 
       // Check if keyframe and the length of tags.
       // This makes sure we write metadata on the first frame of a segment.
-      if (this._h264Frame.keyFrame || this.tags.length === 0) {
+      if (this._oldExtraData.extraDataExists() &&
+          (this._h264Frame.keyFrame || this.tags.length === 0)) {
         // Push extra data on every IDR frame in case we did a stream change + seek
         this.tags.push(this._oldExtraData.metaDataTag(this._h264Frame.pts));
         this.tags.push(this._oldExtraData.extraDataTag(this._h264Frame.pts));
