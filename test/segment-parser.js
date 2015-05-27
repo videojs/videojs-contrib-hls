@@ -64,12 +64,15 @@
   makePmt = function(options) {
     var
       result = [],
+      pcr = options.pcr || 0,
       entryCount = 0,
       k,
       sectionLength;
 
     for (k in options.pids) {
-      entryCount++;
+      if (k !== 'pcr') {
+        entryCount++;
+      }
     }
     // table_id
     result.push(0x02);
@@ -88,8 +91,8 @@
     // last_section_number
     result.push(0x00);
     // reserved PCR_PID
-    result.push(0xe1);
-    result.push(0x00);
+    result.push(0xe0 | (pcr & (0x1f << 8)));
+    result.push(pcr & 0xff);
     // reserved program_info_length
     result.push(0xf0);
     result.push(0x11); // hard-coded 17 byte descriptor
@@ -227,6 +230,19 @@
     })));
 
     ok(true, 'did not throw when a NIT is encountered');
+  });
+
+  test('ignores packets with PCR pids', function() {
+    parser.parseSegmentBinaryData(new Uint8Array(makePacket({
+      programs: {
+        0x01: [0x01]
+      }
+    }).concat(makePacket({
+      pid: 0x01,
+      pcr: 0x02
+    }))));
+
+    equal(parser.stream.programMapTable.pcrPid, 0x02, 'parsed the PCR pid');
   });
 
   test('recognizes metadata streams', function() {

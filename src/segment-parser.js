@@ -437,6 +437,9 @@
           // rest of header + CRC = 9 + 4
           pmtSectionLength -= 13;
 
+          // capture the PID of PCR packets so we can ignore them if we see any
+          self.stream.programMapTable.pcrPid = (data[offset + 8] & 0x1f) << 8 | data[offset + 9];
+
           // align offset to the first entry in the PMT
           offset += 12 + pmtProgramDescriptorsLength;
 
@@ -479,6 +482,10 @@
         // Service Description Table
       } else if (0x1FFF === pid) {
         // NULL packet
+      } else if (self.stream.programMapTable.pcrPid) {
+        // program clock reference (PCR) PID for the primary program
+        // PTS values are sufficient to synchronize playback for us so
+        // we can safely ignore these
       } else {
         videojs.log("Unknown PID parsing TS packet: " + pid);
       }
