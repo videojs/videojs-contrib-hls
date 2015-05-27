@@ -221,9 +221,9 @@
         patTableId, // :int
         patCurrentNextIndicator, // Boolean
         patSectionLength, // :uint
-        patNumEntries, // :uint
-        patNumPrograms, // :uint
-        patProgramOffset, // :uint
+        programNumber, // :uint
+        programPid, // :uint
+        patEntriesEnd, // :uint
 
         pesPacketSize, // :int,
         dataAlignmentIndicator, // :Boolean,
@@ -296,6 +296,8 @@
         if (patCurrentNextIndicator) {
           // section_length specifies the number of bytes following
           // its position to the end of this section
+          // section_length = rest of header + (n * entry length) + CRC
+          // = 5 + (n * 4) + 4
           patSectionLength =  (data[offset + 1] & 0x0F) << 8 | data[offset + 2];
           // move past the rest of the PSI header to the first program
           // map table entry
@@ -303,28 +305,22 @@
 
           // we don't handle streams with more than one program, so
           // raise an exception if we encounter one
-          // section_length = rest of header + (n * entry length) + CRC
-          // = 5 + (n * 4) + 4
-          patNumEntries = (patSectionLength - 5 - 4) / 4;
-          patNumPrograms = 0;
-          patProgramOffset = offset;
-          for (var entryIndex = 0; entryIndex < patNumEntries; entryIndex++) {
-            // network PID program number equals 0 and can be ignored
-            if (((data[offset + 4*entryIndex]) << 8 | data[offset + 4*entryIndex + 1]) > 0) {
-                patNumPrograms++;
-                patProgramOffset = offset + 4*entryIndex;
+          patEntriesEnd = offset + (patSectionLength - 5 - 4);
+          for (; offset < patEntriesEnd; offset += 4) {
+            programNumber = (data[offset] << 8 | data[offset + 1]);
+            programPid = (data[offset + 2] & 0x1F) << 8 | data[offset + 3];
+            // network PID program number equals 0
+            // this is primarily an artifact of EBU DVB and can be ignored
+            if (programNumber === 0) {
+              self.stream.networkPid = programPid;
+            } else if (self.stream.pmtPid === undefined) {
+              // the Program Map Table (PMT) associates the underlying
+              // video and audio streams with a unique PID
+              self.stream.pmtPid = programPid;
+            } else if (self.stream.pmtPid !== programPid) {
+              throw new Error("TS has more that 1 program");
             }
           }
-          if (patNumPrograms !== 1) {
-            throw new Error("TS has more that 1 program");
-          }
-          else {
-            offset = patProgramOffset;
-          }
-
-          // the Program Map Table (PMT) associates the underlying
-          // video and audio streams with a unique PID
-          self.stream.pmtPid = (data[offset + 2] & 0x1F) << 8 | data[offset + 3];
         }
       } else if (pid === self.stream.programMapTable[STREAM_TYPES.h264] ||
                  pid === self.stream.programMapTable[STREAM_TYPES.adts] ||
@@ -477,6 +473,8 @@
           }
         }
         // We could test the CRC here to detect corruption with extra CPU cost
+      } else if (self.stream.networkPid === pid) {
+        // network information specific data (NIT) packet
       } else if (0x0011 === pid) {
         // Service Description Table
       } else if (0x1FFF === pid) {

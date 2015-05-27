@@ -121,13 +121,26 @@
   makePat = function(options) {
     var
       result = [],
+      programEntries = [],
+      sectionLength,
       k;
+
+    // build the program entries first
+    for (k in options.programs) {
+      // program_number
+      programEntries.push((k & 0xFF00) >>> 8);
+      programEntries.push(k & 0x00FF);
+      // reserved program_map_pid
+      programEntries.push((options.programs[k] & 0x1f00) >>> 8);
+      programEntries.push(options.programs[k] & 0xff);
+    }
+    sectionLength = programEntries.length + 5 + 4;
 
     // table_id
     result.push(0x00);
     // section_syntax_indicator '0' reserved section_length
-    result.push(0x80);
-    result.push(0x0d); // section_length for one program
+    result.push(0x80 | ((0x300 & sectionLength) >>> 8));
+    result.push(0xff & sectionLength); // section_length
     // transport_stream_id
     result.push(0x00);
     result.push(0x00);
@@ -137,14 +150,8 @@
     result.push(0x00);
     // last_section_number
     result.push(0x00);
-    for (k in options.programs) {
-      // program_number
-      result.push((k & 0xFF00) >>> 8);
-      result.push(k & 0x00FF);
-      // reserved program_map_pid
-      result.push((options.programs[k] & 0x1f00) >>> 8);
-      result.push(options.programs[k] & 0xff);
-    }
+    // program entries
+    result = result.concat(programEntries);
     return result;
   };
 
@@ -209,6 +216,17 @@
     strictEqual(parser.stream.pmtPid, 0x01, 'PMT PID is 1');
     strictEqual(parser.stream.programMapTable[h264Type], 0x02, 'video is PID 2');
     strictEqual(parser.stream.programMapTable[adtsType], 0x03, 'audio is PID 3');
+  });
+
+  test('ignores network information specific data (NIT) in the PAT', function() {
+    parser.parseSegmentBinaryData(new Uint8Array(makePacket({
+      programs: {
+        0x01: [0x01],
+        0x00: [0x00] // a NIT has a reserved PID of 0x00
+      }
+    })));
+
+    ok(true, 'did not throw when a NIT is encountered');
   });
 
   test('recognizes metadata streams', function() {
