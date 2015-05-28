@@ -100,6 +100,13 @@
         { "include": "update {{meta.branches.development}}" },
         { "include": "pull_request accept" }
       ]
+    },
+    "accept-as-is": {
+      "desc": "Merge a submitted feature without squashing commits",
+      "steps": [
+        { "include": "update {{meta.branches.development}}" },
+        { "include": "pull_request accept-as-is" }
+      ]
     }
   },
 
@@ -139,6 +146,13 @@
       "steps": [
         { "include": "update {{meta.branches.release}}" },
         { "include": "pull_request accept" }
+      ]
+    },
+    "accept-as-is": {
+      "desc": "Merge a submitted patch without squashing commits",
+      "steps": [
+        { "include": "update {{meta.branches.release}}" },
+        { "include": "pull_request accept-as-is" }
       ]
     }
   },
@@ -333,6 +347,26 @@
         [ "git checkout -b {{pr.user.login}}-{{pr.head.ref}} {{pr.base.ref}}", "Create a new branch for merging the changes" ],
         [ "git fetch {{pr.head.repo.ssh_url}} {{pr.head.ref}}",                "Fetch the changes" ],
         [ "git merge --no-commit --squash FETCH_HEAD",                         "Merge the changes in without committing so they can be squashed" ],
+        [ "grunt test",                                                        "Run tests to make sure they still pass" ],
+        { "prompt": "text", "id": "line",                              "desc": "Describe this change in one line" },
+        [ "grunt chg-add:'{{line}} ([view](https\\://github.com/{{meta.org}}/{{meta.name}}/pull/{{prNum}}))'", "Add a line to the changelog" ],
+        [ "git add CHANGELOG.md",                                              "Add the changlelog change to be committed" ],
+        [ "git commit -a --author='{{prCommits.[0].commit.author.name}} <{{prCommits.[0].commit.author.email}}>' -m '{{line}}. closes #{{prNum}}'", "Commit the changes" ],
+        { "prompt": "confirm",                                         "desc": "Does everything look ok?" },
+        [ "git checkout {{pr.base.ref}}",                                      "Check out the base branch" ],
+        [ "git merge {{pr.user.login}}-{{pr.head.ref}}",                       "Merge the changes" ],
+        [ "git push origin {{pr.base.ref}}",                                   "Push the changes to your remote copy of the project" ],
+        [ "git push upstream {{pr.base.ref}}",                                 "Push the changes to the main project" ],
+        [ "git branch -D {{pr.user.login}}-{{pr.head.ref}}",                   "Delete the local branch used for merging" ]
+      ]
+    },
+    "accept-as-is": {
+      "steps": [
+        { "prompt": "text", "id": "prNum",                             "desc": "What is the the pull request number?" },
+        { "get": "{{meta.urls.repo_api}}/pulls/{{prNum}}",             "desc": "Get the PR information", "id": "pr" },
+        { "get": "{{meta.urls.repo_api}}/pulls/{{prNum}}/commits",     "desc": "Get the PR commits to access author info", "id": "prCommits" },
+        [ "git checkout -b {{pr.user.login}}-{{pr.head.ref}} {{pr.base.ref}}", "Create a new branch for merging the changes" ],
+        [ "git pull --rebase {{pr.head.repo.ssh_url}}", "Merge and rebase the changes"],
         [ "grunt test",                                                        "Run tests to make sure they still pass" ],
         { "prompt": "text", "id": "line",                              "desc": "Describe this change in one line" },
         [ "grunt chg-add:'{{line}} ([view](https\\://github.com/{{meta.org}}/{{meta.name}}/pull/{{prNum}}))'", "Add a line to the changelog" ],
