@@ -8,6 +8,7 @@ CHANGELOG
 * @gkatsev ensure segments without an initial IDR are not displayed in 4
 * @mikrohard: wait for an SPS to inject metadata tags. ([view](https://github.com/videojs/videojs-contrib-hls/pull/280))
 * @mikrohard: Trim whitespace in playlist. ([view](https://github.com/videojs/videojs-contrib-hls/pull/282))
+* @dmlap add a contrib option to merge PRs without squashing ([view](https://github.com/videojs/videojs-contrib-hls/pull/287))
 
 --------------------
 
