@@ -366,7 +366,7 @@
         { "get": "{{meta.urls.repo_api}}/pulls/{{prNum}}",             "desc": "Get the PR information", "id": "pr" },
         { "get": "{{meta.urls.repo_api}}/pulls/{{prNum}}/commits",     "desc": "Get the PR commits to access author info", "id": "prCommits" },
         [ "git checkout -b {{pr.user.login}}-{{pr.head.ref}} {{pr.base.ref}}", "Create a new branch for merging the changes" ],
-        [ "git pull --rebase {{pr.head.repo.ssh_url}}", "Merge and rebase the changes"],
+        [ "git pull --rebase {{pr.head.repo.ssh_url}}",                        "Merge and rebase the changes"],
         [ "grunt test",                                                        "Run tests to make sure they still pass" ],
         { "prompt": "text", "id": "line",                              "desc": "Describe this change in one line" },
         [ "grunt chg-add:'{{line}} ([view](https\\://github.com/{{meta.org}}/{{meta.name}}/pull/{{prNum}}))'", "Add a line to the changelog" ],
