@@ -315,6 +315,12 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
     return 0;
   }
 
+  // it's clearly an edge-case but don't thrown an error if asked to
+  // seek within an empty playlist
+  if (!this.playlists.media().segments) {
+    return 0;
+  }
+
   // save the seek target so currentTime can report it correctly
   // while the seek is pending
   this.lastSeekedTime_ = currentTime;
@@ -575,6 +581,11 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   if (this.playlists.state === "HAVE_NOTHING" ||
       !this.playlists.media() ||
       !this.playlists.media().segments) {
+    return;
+  }
+
+  // if a playlist switch is in progress, wait for it to finish
+  if (this.playlists.state === 'SWITCHING_MEDIA') {
     return;
   }
 

@@ -10,6 +10,7 @@ CHANGELOG
 * @mikrohard: Trim whitespace in playlist. ([view](https://github.com/videojs/videojs-contrib-hls/pull/282))
 * @dmlap add a contrib option to merge PRs without squashing ([view](https://github.com/videojs/videojs-contrib-hls/pull/287))
 * @mikrohard allow playback of TS files with NITs. Don&#x27;t warn about PCR PIDs. ([view](https://github.com/videojs/videojs-contrib-hls/pull/284))
+* @dmlap quicker quality switches when bandwidth changes. ([view](https://github.com/videojs/videojs-contrib-hls/pull/285))
 
 --------------------
 
