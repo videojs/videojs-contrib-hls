@@ -48,11 +48,9 @@
 
     this._state = 0; // :uint;
 
-    this._nextFrameKeyFrame = false;
-
     this.tags = [];
-
   };
+
   //(pts:uint):void
   H264Stream.prototype.setTimeStampOffset = function(pts) {
     this._pts_offset = pts;
@@ -95,11 +93,6 @@
     this._h264Frame = null;
     this._nalUnitType = -1;
     this._state = 0;
-  };
-
-
-  H264Stream.prototype.setNextFrameKeyFrame = function() {
-    this._nextFrameKeyFrame = true;
   };
 
   // (data:ByteArray, o:int, l:int):void
@@ -263,11 +256,6 @@
         this._h264Frame = new FlvTag(FlvTag.VIDEO_TAG);
         this._h264Frame.pts = this._next_pts;
         this._h264Frame.dts = this._next_dts;
-
-        if (this._nextFrameKeyFrame) {
-          this._h264Frame.keyFrame = true;
-          this._nextFrameKeyFrame = false;
-        }
       }
 
       this._h264Frame.startNalUnit();
