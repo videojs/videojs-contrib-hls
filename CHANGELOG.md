@@ -2,13 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-* @dmlap use contribflow to manage contributions ([view](https://github.com/videojs/videojs-contrib-hls/pull/275))
-* @dmlap add a contribflow configuration ([view](https://github.com/videojs/videojs-contrib-hls/pull/276))
 * @ntadej Do not unnecessarily reset to the live point when refreshing playlists. Clean up playlist loader timeouts. ([view](https://github.com/videojs/videojs-contrib-hls/pull/274))
-* @gkatsev ensure segments without an initial IDR are not displayed in 4
+* @gkatsev ensure segments without an initial IDR are not displayed in 4:3 initially ([view](https://github.com/videojs/videojs-contrib-hls/pull/272))
 * @mikrohard: wait for an SPS to inject metadata tags. ([view](https://github.com/videojs/videojs-contrib-hls/pull/280))
 * @mikrohard: Trim whitespace in playlist. ([view](https://github.com/videojs/videojs-contrib-hls/pull/282))
-* @dmlap add a contrib option to merge PRs without squashing ([view](https://github.com/videojs/videojs-contrib-hls/pull/287))
 * @mikrohard allow playback of TS files with NITs. Don&#x27;t warn about PCR PIDs. ([view](https://github.com/videojs/videojs-contrib-hls/pull/284))
 * @dmlap quicker quality switches when bandwidth changes. ([view](https://github.com/videojs/videojs-contrib-hls/pull/285))
 * @dmlap fix temporary warped display after seeking. ([view](https://github.com/videojs/videojs-contrib-hls/pull/290))
