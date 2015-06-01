@@ -133,6 +133,8 @@
         vjsParsed,
         workingParsed,
         diffParsed,
+        vjsBytes,
+        workingBytes,
 
         vjsBoxes = document.querySelector('.vjs-boxes'),
         workingBoxes = document.querySelector('.working-boxes'),
@@ -175,9 +177,12 @@
       if (workingParsed[0].type === 'moof') {
         diff = '<h3>Media Segment Comparision</h3>';
         transmuxed = vjsParsed.slice(2);
-      } else {
+      } else if (workingParsed.length === 2) {
         diff = '<h3>Init Segment Comparision</h3>';
         transmuxed = vjsParsed.slice(0, 2);
+      } else {
+        diff = '<h3>General Comparision</h3>';
+        transmuxed = vjsParsed;
       }
       diff += '<p>A <del>red background</del> indicates ' +
         'properties present in the transmuxed file but missing from the ' +
@@ -222,7 +227,6 @@
             transmuxer = new videojs.mp2t.Transmuxer(),
             events = [],
             bytesLength = 0,
-            done = false,
             bytes,
             i, j,
             hex = '';
@@ -242,6 +246,7 @@
           i += events[j].byteLength;
         }
 
+        vjsBytes = bytes;
         vjsParsed = videojs.inspectMp4(bytes);
         console.log('transmuxed', vjsParsed);
         diffParsed();
@@ -256,14 +261,7 @@
         vjsOutput.innerHTML = hex;
 
         // XXX Media Sources Testing
-        window.vjsSourceBuffer.addEventListener('updateend', function() {
-          if (!done) {
-            window.vjsSourceBuffer.appendBuffer(events[1]);
-            console.log('appended tmuxed output');
-            done = true;
-          }
-        });
-        window.vjsSourceBuffer.appendBuffer(events[0]);
+        window.vjsSourceBuffer.appendBuffer(bytes);
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
@@ -275,6 +273,7 @@
             bytes = new Uint8Array(reader.result);
 
 
+        workingBytes = bytes;
         workingParsed = videojs.inspectMp4(bytes);
         console.log('working', workingParsed);
         diffParsed();
@@ -289,7 +288,7 @@
         workingOutput.innerHTML = hex;
 
         // XXX Media Sources Testing
-        // window.vjsSourceBuffer.appendBuffer(bytes);
+        //window.vjsSourceBuffer.appendBuffer(bytes);
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);

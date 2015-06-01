@@ -519,11 +519,15 @@ traf = function(track) {
 
   trackFragmentHeader = box(types.tfhd, new Uint8Array([
     0x00, // version 0
-    0x00, 0x00, 0x00, // flags
+    0x00, 0x00, 0x3a, // flags
     (track.id & 0xFF000000) >> 24,
     (track.id & 0xFF0000) >> 16,
     (track.id & 0xFF00) >> 8,
-    (track.id & 0xFF) // track_ID
+    (track.id & 0xFF), // track_ID
+    0x00, 0x00, 0x00, 0x01, // sample_description_index
+    0x00, 0x00, 0x00, 0x00, // default_sample_duration
+    0x00, 0x00, 0x00, 0x00, // default_sample_size
+    0x00, 0x00, 0x00, 0x00  // default_sample_flags
   ]));
 
   trackFragmentDecodeTime = box(types.tfdt, new Uint8Array([

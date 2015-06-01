@@ -1035,8 +1035,12 @@ Transmuxer = function() {
   this.end = function() {
     elementaryStream.end();
     h264Stream.end();
-    videoSegmentStream.end();
-    audioSegmentStream.end();
+    if (videoSegmentStream) {
+      videoSegmentStream.end();
+    }
+    if (audioSegmentStream) {
+      audioSegmentStream.end();
+    }
   };
 };
 Transmuxer.prototype = new videojs.Hls.Stream();
