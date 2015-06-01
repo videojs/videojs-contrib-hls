@@ -318,7 +318,13 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
  */
 videojs.Hls.prototype.play = function() {
   if (this.ended()) {
-    this.mediaIndex = 0;
+    if (this.currentTime() === 0 || this.currentTime() === undefined || this.currentTime() === this.duration()) {
+      this.mediaIndex = 0;
+      this.setCurrentTime(0);
+    } else {
+      this.mediaIndex = videojs.Hls.getMediaIndexByTime(this.playlists.media(), this.currentTime());
+      this.setCurrentTime(this.currentTime());
+    }
   }
 
   // we may need to seek to begin playing safely for live playlists

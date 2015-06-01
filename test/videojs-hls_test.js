@@ -2723,4 +2723,25 @@ test('does not download segments if preload option set to none', function() {
   strictEqual(loadedSegments, 0, 'did not download any segments');
 });
 
+test('mediaIndex is not set to 0 when seeking after playback end', function() {
+  player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
+
+  player.ended = function() {
+    return true;
+  };
+
+  player.currentTime(30);
+
+  player.play();
+
+  strictEqual(player.hls.mediaIndex, 3, 'media index is non-zero');
+});
+
 })(window, window.videojs);
