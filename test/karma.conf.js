@@ -90,6 +90,7 @@ module.exports = function(config) {
       '../src/segment-parser.js',
       '../src/m3u8/m3u8-parser.js',
       '../src/xhr.js',
+      '../src/playlist.js',
       '../src/playlist-loader.js',
       '../src/decrypter.js',
       '../tmp/manifests.js',

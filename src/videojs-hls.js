@@ -350,9 +350,16 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
 videojs.Hls.prototype.duration = function() {
   var playlists = this.playlists;
   if (playlists) {
-    return videojs.Hls.getPlaylistTotalDuration(playlists.media());
+    return videojs.Hls.Playlist.duration(playlists.media());
   }
   return 0;
+};
+
+videojs.Hls.prototype.seekable = function() {
+  if (this.playlists) {
+    return videojs.Hls.Playlist.seekable(this.playlists.media());
+  }
+  return videojs.createTimeRange();
 };
 
 /**
@@ -361,7 +368,7 @@ videojs.Hls.prototype.duration = function() {
 videojs.Hls.prototype.updateDuration = function(playlist) {
   var player = this.player(),
       oldDuration = player.duration(),
-      newDuration = videojs.Hls.getPlaylistTotalDuration(playlist);
+      newDuration = videojs.Hls.Playlist.duration(playlist);
 
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
@@ -789,7 +796,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   }
 
   event = event || {};
-  segmentOffset = videojs.Hls.getPlaylistDuration(playlist, 0, mediaIndex) * 1000;
+  segmentOffset = videojs.Hls.Playlist.duration(playlist, 0, mediaIndex) * 1000;
 
   // transmux the segment data from MP2T to FLV
   this.segmentParser_.parseSegmentBinaryData(bytes);
@@ -976,20 +983,9 @@ videojs.Hls.canPlaySource = function(srcObj) {
  * @return {number} the duration between the start index and end index.
  */
 videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
-  var dur = 0,
-      segment,
-      i;
-
-  startIndex = startIndex || 0;
-  endIndex = endIndex !== undefined ? endIndex : (playlist.segments || []).length;
-  i = endIndex - 1;
-
-  for (; i >= startIndex; i--) {
-    segment = playlist.segments[i];
-    dur += segment.preciseDuration || segment.duration || playlist.targetDuration || 0;
-  }
-
-  return dur;
+  videojs.log.warn('videojs.Hls.getPlaylistDuration is deprecated. ' +
+                   'Use videojs.Hls.Playlist.duration instead');
+  return videojs.Hls.Playlist.duration(playlist, startIndex, endIndex);
 };
 
 /**
@@ -998,21 +994,9 @@ videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
  * @return {number} the currently known duration, in seconds
  */
 videojs.Hls.getPlaylistTotalDuration = function(playlist) {
-  if (!playlist) {
-    return 0;
-  }
-
-  // if present, use the duration specified in the playlist
-  if (playlist.totalDuration) {
-    return playlist.totalDuration;
-  }
-
-  // duration should be Infinity for live playlists
-  if (!playlist.endList) {
-    return window.Infinity;
-  }
-
-  return videojs.Hls.getPlaylistDuration(playlist);
+  videojs.log.warn('videojs.Hls.getPlaylistTotalDuration is deprecated. ' +
+                   'Use videojs.Hls.Playlist.duration instead');
+  return videojs.Hls.Playlist.duration(playlist);
 };
 
 /**

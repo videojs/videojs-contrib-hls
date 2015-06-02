@@ -597,4 +597,5 @@
                              '#EXT-X-ENDLIST'); // no newline
      ok(loader.media().endList, 'flushed the final line of input');
   });
+
 })(window);

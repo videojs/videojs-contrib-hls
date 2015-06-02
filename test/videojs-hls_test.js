@@ -1611,7 +1611,8 @@ test('clears the segment buffer on seek', function() {
                          '1.ts\n' +
                          '#EXT-X-DISCONTINUITY\n' +
                          '#EXTINF:10,0\n' +
-                         '2.ts\n');
+                         '2.ts\n' +
+                         '#EXT-X-ENDLIST\n');
   standardXHRResponse(requests.pop());
 
   // play to 6s to trigger the next segment request
@@ -1662,7 +1663,8 @@ test('continues playing after seek to discontinuity', function() {
     '1.ts\n' +
     '#EXT-X-DISCONTINUITY\n' +
     '#EXTINF:10,0\n' +
-    '2.ts\n');
+    '2.ts\n' +
+    '#EXT-X-ENDLIST\n');
   standardXHRResponse(requests.pop());
 
   currentTime = 1;
