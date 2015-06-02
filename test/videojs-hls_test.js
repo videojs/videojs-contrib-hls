@@ -2247,6 +2247,12 @@ test('calling play() at the end of a video resets the media index', function() {
                            '#EXT-X-ENDLIST\n');
   standardXHRResponse(requests.shift());
 
+  player.el().querySelector('.vjs-tech').vjs_getProperty = function(property) {
+    if (property === 'currentTime') {
+      return player.hls.mediaIndex * 10;
+    }
+  };
+
   strictEqual(player.hls.mediaIndex, 1, 'index is 1 after the first segment');
   player.hls.ended = function() {
     return true;
@@ -2254,6 +2260,8 @@ test('calling play() at the end of a video resets the media index', function() {
 
   player.play();
   strictEqual(player.hls.mediaIndex, 0, 'index is 1 after the first segment');
+
+  player.el().querySelector('.vjs-tech').vjs_getProperty = function() {};
 });
 
 test('drainBuffer will not proceed with empty source buffer', function() {
