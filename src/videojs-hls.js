@@ -286,9 +286,14 @@ videojs.Hls.prototype.handleSourceOpen = function() {
  */
 videojs.Hls.prototype.play = function() {
   if (this.ended()) {
-    if (this.currentTime() === 0 || this.currentTime() === undefined || this.currentTime() === this.duration()) {
+    // When the video ends and the 'ended' event fires, current time is set to 0. If the video is in this state, or the
+    // current time is equal to the duration (ie, play head is at the end position), reset the video to the beginning on
+    // a play event.
+    if (this.currentTime() === 0 || this.currentTime() === this.duration()) {
       this.mediaIndex = 0;
       this.setCurrentTime(0);
+    // Otherwise, if the user has seeked to another point in the video after the 'ended' event, it is likely the case
+    // that they wish to restart playback from that point, so play from the play head's position.
     } else {
       this.mediaIndex = videojs.Hls.getMediaIndexByTime(this.playlists.media(), this.currentTime());
       this.setCurrentTime(this.currentTime());
