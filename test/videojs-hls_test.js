@@ -1320,6 +1320,14 @@ test('clears in-band cues ahead of current time on seek', function() {
   standardXHRResponse(requests.shift()); // media
   tags.push({ pts: 10 * 1000, bytes: new Uint8Array(1) });
   events.push({
+      pts: 20 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue 3'
+      }]
+  });
+  events.push({
       pts: 9.9 * 1000,
       data: new Uint8Array([]),
       frames: [{
@@ -1345,7 +1353,7 @@ test('clears in-band cues ahead of current time on seek', function() {
 
   // seek into segment 1
   player.currentTime(11);
-  player.hls.trigger('seeking');
+  player.trigger('seeking');
   equal(track.cues.length, 1, 'removed a cue');
   equal(track.cues[0].startTime, 9.9, 'retained the earlier cue');
 });
@@ -1990,8 +1998,7 @@ test('remove event handlers on dispose', function() {
 
   player.dispose();
 
-  ok(offhandlers > onhandlers, 'more handlers were removed than were registered');
-  equal(offhandlers - onhandlers, 1, 'one handler was registered during init');
+  ok(offhandlers > onhandlers, 'removed all registered handlers');
 });
 
 test('aborts the source buffer on disposal', function() {

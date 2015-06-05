@@ -31,6 +31,8 @@
     // allow in-band metadata to be observed
     self.metadataStream = new MetadataStream();
 
+    this.mediaTimelineOffset = null;
+
     // The first timestamp value encountered during parsing. This
     // value can be used to determine the relative timing between
     // frames and the start of the current timestamp sequence. It

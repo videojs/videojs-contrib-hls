@@ -287,7 +287,7 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
     // create cue points for all the ID3 frames in this metadata event
     for (i = 0; i < metadata.frames.length; i++) {
       frame = metadata.frames[i];
-      time = segmentOffset + ((metadata.pts - tech.segmentParser_.timestampOffset) * 0.001);
+      time = tech.segmentParser_.mediaTimelineOffset + ((metadata.pts - tech.segmentParser_.timestampOffset) * 0.001);
       cue = new window.VTTCue(time, time, frame.value || frame.url || '');
       cue.frame = frame;
       textTrack.addCue(cue);
@@ -297,23 +297,20 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
   // when seeking, clear out all cues ahead of the earliest position
   // in the new segment. keep earlier cues around so they can still be
   // programmatically inspected even though they've already fired
-  tech.on('seeking', function() {
+  tech.on(tech.player(), 'seeking', function() {
+    var media, startTime, i;
     if (!textTrack) {
       return;
     }
-    var media = tech.playlists.media(), i;
-    var startTime = tech.playlists.expiredPreDiscontinuity_ + tech.playlists.expiredPostDiscontinuity_;
+    media = tech.playlists.media();
+    startTime = tech.playlists.expiredPreDiscontinuity_ + tech.playlists.expiredPostDiscontinuity_;
     startTime += videojs.Hls.Playlist.duration(media, media.mediaSequence, media.mediaSequence + tech.mediaIndex);
-    console.trace('seeking');
 
     i = textTrack.cues.length;
     while (i--) {
-      if (textTrack.cues[i].startTime < startTime) {
-        // cues are sorted by start time, earliest first, so all the
-        // rest of the cues are from earlier segments
-        break;
+      if (textTrack.cues[i].startTime >= startTime) {
+        textTrack.removeCue(textTrack.cues[i]);
       }
-      textTrack.removeCue(textTrack.cues[i])
     }
   });
 };
@@ -396,16 +393,20 @@ videojs.Hls.prototype.duration = function() {
 videojs.Hls.prototype.seekable = function() {
   var absoluteSeekable, startOffset, media;
 
-  if (this.playlists) {
-    // report the seekable range relative to the earliest possible
-    // position when the stream was first loaded
-    media = this.playlists.media();
-    absoluteSeekable = videojs.Hls.Playlist.seekable(media);
-    startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
-    return videojs.createTimeRange(startOffset,
-                                   startOffset + (absoluteSeekable.end(0) - absoluteSeekable.start(0)));
+  if (!this.playlists) {
+    return videojs.createTimeRange();
   }
-  return videojs.createTimeRange();
+  media = this.playlists.media();
+  if (!media) {
+    return videojs.createTimeRange();
+  }
+
+  // report the seekable range relative to the earliest possible
+  // position when the stream was first loaded
+  absoluteSeekable = videojs.Hls.Playlist.seekable(media);
+  startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
+  return videojs.createTimeRange(startOffset,
+                                 startOffset + (absoluteSeekable.end(0) - absoluteSeekable.start(0)));
 };
 
 /**
@@ -848,7 +849,10 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   // sequence, the segment parser's timestamp offset must be
   // re-calculated
   if (segment.discontinuity) {
+    this.segmentParser_.mediaTimelineOffset = segmentOffset * 0.001;
     this.segmentParser_.timestampOffset = null;
+  } else if (this.segmentParser_.mediaTimelineOffset === null) {
+    this.segmentParser_.mediaTimelineOffset = segmentOffset * 0.001;
   }
 
   // transmux the segment data from MP2T to FLV
