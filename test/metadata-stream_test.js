@@ -186,28 +186,6 @@
   // too large/small tag size values
   // too large/small frame size values
 
-  test('translates PTS and DTS values based on the timestamp offset', function() {
-    var events = [];
-    metadataStream.on('data', function(event) {
-      events.push(event);
-    });
-
-    metadataStream.timestampOffset = 800;
-
-    metadataStream.push({
-      trackId: 7,
-      pts: 1000,
-      dts: 900,
-
-      // header
-      data: new Uint8Array(id3Tag(id3Frame('XFFF', [0]), [0x00, 0x00]))
-    });
-
-    equal(events.length, 1, 'emitted an event');
-    equal(events[0].pts, 200, 'translated pts');
-    equal(events[0].dts, 100, 'translated dts');
-  });
-
   test('parses TXXX frames', function() {
     var events = [];
     metadataStream.on('data', function(event) {
@@ -223,7 +201,7 @@
       data: new Uint8Array(id3Tag(id3Frame('TXXX',
                                            0x03, // utf-8
                                            stringToCString('get done'),
-                                           stringToInts('{ "key": "value" }')),
+                                           stringToCString('{ "key": "value" }')),
                                   [0x00, 0x00]))
     });
 
@@ -231,7 +209,7 @@
     equal(events[0].frames.length, 1, 'parsed one frame');
     equal(events[0].frames[0].id, 'TXXX', 'parsed the frame id');
     equal(events[0].frames[0].description, 'get done', 'parsed the description');
-    equal(events[0].frames[0].value, '{ "key": "value" }', 'parsed the value');
+    deepEqual(JSON.parse(events[0].frames[0].value), { key: 'value' }, 'parsed the value');
   });
 
   test('parses WXXX frames', function() {
@@ -275,7 +253,7 @@
       data: new Uint8Array(id3Tag(id3Frame('TXXX',
                                            0x03, // utf-8
                                            stringToCString(''),
-                                           stringToInts(value)),
+                                           stringToCString(value)),
                                   [0x00, 0x00]))
     });
 

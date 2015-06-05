@@ -37,7 +37,6 @@
   window.videojs.Hls.H264Stream = H264Stream = function() {
     this._next_pts = 0; // :uint;
     this._next_dts = 0; // :uint;
-    this._pts_offset = 0; // :int
 
     this._h264Frame = null; // :FlvTag
 
@@ -52,15 +51,13 @@
   };
 
   //(pts:uint):void
-  H264Stream.prototype.setTimeStampOffset = function(pts) {
-    this._pts_offset = pts;
-  };
+  H264Stream.prototype.setTimeStampOffset = function() {};
 
   //(pts:uint, dts:uint, dataAligned:Boolean):void
   H264Stream.prototype.setNextTimeStamp = function(pts, dts, dataAligned) {
     // We could end up with a DTS less than 0 here. We need to deal with that!
-    this._next_pts = pts - this._pts_offset;
-    this._next_dts = dts - this._pts_offset;
+    this._next_pts = pts;
+    this._next_dts = dts;
 
     // If data is aligned, flush all internal buffers
     if (dataAligned) {

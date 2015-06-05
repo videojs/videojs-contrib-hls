@@ -39,9 +39,11 @@ videojs.Hls = videojs.Flash.extend({
     this.currentTime = videojs.Hls.prototype.currentTime;
     this.setCurrentTime = videojs.Hls.prototype.setCurrentTime;
 
+    // a queue of segments that need to be transmuxed and processed,
+    // and then fed to the source buffer
+    this.segmentBuffer_ = [];
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
-    this.segmentBuffer_ = [];
     this.startCheckingBuffer_();
 
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
@@ -87,43 +89,7 @@ videojs.Hls.prototype.src = function(src) {
 
   // if the stream contains ID3 metadata, expose that as a metadata
   // text track
-  (function() {
-    var
-      metadataStream = tech.segmentParser_.metadataStream,
-      textTrack;
-
-    // only expose metadata tracks to video.js versions that support
-    // dynamic text tracks (4.12+)
-    if (!tech.player().addTextTrack) {
-      return;
-    }
-
-    metadataStream.on('data', function(metadata) {
-      var i, cue, frame, time, hexDigit;
-
-      // create the metadata track if this is the first ID3 tag we've
-      // seen
-      if (!textTrack) {
-        textTrack = tech.player().addTextTrack('metadata', 'Timed Metadata');
-
-        // build the dispatch type from the stream descriptor
-        // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track
-        textTrack.inBandMetadataTrackDispatchType = videojs.Hls.SegmentParser.STREAM_TYPES.metadata.toString(16).toUpperCase();
-        for (i = 0; i < metadataStream.descriptor.length; i++) {
-          hexDigit = ('00' + metadataStream.descriptor[i].toString(16).toUpperCase()).slice(-2);
-          textTrack.inBandMetadataTrackDispatchType += hexDigit;
-        }
-      }
-
-      for (i = 0; i < metadata.frames.length; i++) {
-        frame = metadata.frames[i];
-        time = metadata.pts / 1000;
-        cue = new window.VTTCue(time, time, frame.value || frame.url || '');
-        cue.frame = frame;
-        textTrack.addCue(cue);
-      }
-    });
-  })();
+  this.setupMetadataCueTranslation_();
 
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
@@ -280,6 +246,75 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   }
 };
 
+// register event listeners to transform in-band metadata events into
+// VTTCues on a text track
+videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
+  var
+    tech = this,
+    metadataStream = tech.segmentParser_.metadataStream,
+    textTrack;
+
+  // only expose metadata tracks to video.js versions that support
+  // dynamic text tracks (4.12+)
+  if (!tech.player().addTextTrack) {
+    return;
+  }
+
+  // add a metadata cue whenever a metadata event is triggered during
+  // segment parsing
+  metadataStream.on('data', function(metadata) {
+    var i, cue, frame, time, media, segmentOffset, hexDigit;
+
+    // create the metadata track if this is the first ID3 tag we've
+    // seen
+    if (!textTrack) {
+      textTrack = tech.player().addTextTrack('metadata', 'Timed Metadata');
+
+      // build the dispatch type from the stream descriptor
+      // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track
+      textTrack.inBandMetadataTrackDispatchType = videojs.Hls.SegmentParser.STREAM_TYPES.metadata.toString(16).toUpperCase();
+      for (i = 0; i < metadataStream.descriptor.length; i++) {
+        hexDigit = ('00' + metadataStream.descriptor[i].toString(16).toUpperCase()).slice(-2);
+        textTrack.inBandMetadataTrackDispatchType += hexDigit;
+      }
+    }
+
+    // calculate the start time for the segment that is currently being parsed
+    media = tech.playlists.media();
+    segmentOffset = tech.playlists.expiredPreDiscontinuity_ + tech.playlists.expiredPostDiscontinuity_;
+    segmentOffset += videojs.Hls.Playlist.duration(media, media.mediaSequence, media.mediaSequence + tech.mediaIndex);
+
+    // create cue points for all the ID3 frames in this metadata event
+    for (i = 0; i < metadata.frames.length; i++) {
+      frame = metadata.frames[i];
+      time = tech.segmentParser_.mediaTimelineOffset + ((metadata.pts - tech.segmentParser_.timestampOffset) * 0.001);
+      cue = new window.VTTCue(time, time, frame.value || frame.url || '');
+      cue.frame = frame;
+      textTrack.addCue(cue);
+    }
+  });
+
+  // when seeking, clear out all cues ahead of the earliest position
+  // in the new segment. keep earlier cues around so they can still be
+  // programmatically inspected even though they've already fired
+  tech.on(tech.player(), 'seeking', function() {
+    var media, startTime, i;
+    if (!textTrack) {
+      return;
+    }
+    media = tech.playlists.media();
+    startTime = tech.playlists.expiredPreDiscontinuity_ + tech.playlists.expiredPostDiscontinuity_;
+    startTime += videojs.Hls.Playlist.duration(media, media.mediaSequence, media.mediaSequence + tech.mediaIndex);
+
+    i = textTrack.cues.length;
+    while (i--) {
+      if (textTrack.cues[i].startTime >= startTime) {
+        textTrack.removeCue(textTrack.cues[i]);
+      }
+    }
+  });
+};
+
 /**
  * Reset the mediaIndex if play() is called after the video has
  * ended.
@@ -350,9 +385,28 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
 videojs.Hls.prototype.duration = function() {
   var playlists = this.playlists;
   if (playlists) {
-    return videojs.Hls.getPlaylistTotalDuration(playlists.media());
+    return videojs.Hls.Playlist.duration(playlists.media());
   }
   return 0;
+};
+
+videojs.Hls.prototype.seekable = function() {
+  var absoluteSeekable, startOffset, media;
+
+  if (!this.playlists) {
+    return videojs.createTimeRange();
+  }
+  media = this.playlists.media();
+  if (!media) {
+    return videojs.createTimeRange();
+  }
+
+  // report the seekable range relative to the earliest possible
+  // position when the stream was first loaded
+  absoluteSeekable = videojs.Hls.Playlist.seekable(media);
+  startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
+  return videojs.createTimeRange(startOffset,
+                                 startOffset + (absoluteSeekable.end(0) - absoluteSeekable.start(0)));
 };
 
 /**
@@ -361,7 +415,7 @@ videojs.Hls.prototype.duration = function() {
 videojs.Hls.prototype.updateDuration = function(playlist) {
   var player = this.player(),
       oldDuration = player.duration(),
-      newDuration = videojs.Hls.getPlaylistTotalDuration(playlist);
+      newDuration = videojs.Hls.Playlist.duration(playlist);
 
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
@@ -684,9 +738,6 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     tech.setBandwidth(this);
 
     // package up all the work to append the segment
-    // if the segment is the start of a timestamp discontinuity,
-    // we have to wait until the sourcebuffer is empty before
-    // aborting the source buffer processing
     segmentInfo = {
       // the segment's mediaIndex at the time it was received
       mediaIndex: tech.mediaIndex,
@@ -789,7 +840,20 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   }
 
   event = event || {};
-  segmentOffset = videojs.Hls.getPlaylistDuration(playlist, 0, mediaIndex) * 1000;
+  segmentOffset = this.playlists.expiredPreDiscontinuity_;
+  segmentOffset += this.playlists.expiredPostDiscontinuity_;
+  segmentOffset += videojs.Hls.Playlist.duration(playlist, playlist.mediaSequence, playlist.mediaSequence + mediaIndex);
+  segmentOffset *= 1000;
+
+  // if this segment starts is the start of a new discontinuity
+  // sequence, the segment parser's timestamp offset must be
+  // re-calculated
+  if (segment.discontinuity) {
+    this.segmentParser_.mediaTimelineOffset = segmentOffset * 0.001;
+    this.segmentParser_.timestampOffset = null;
+  } else if (this.segmentParser_.mediaTimelineOffset === null) {
+    this.segmentParser_.mediaTimelineOffset = segmentOffset * 0.001;
+  }
 
   // transmux the segment data from MP2T to FLV
   this.segmentParser_.parseSegmentBinaryData(bytes);
@@ -801,10 +865,10 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     tags.push(this.segmentParser_.getNextTag());
   }
 
-  // Use the presentation timestamp of the ts segment to calculate its
-  // exact duration, since this may differ by fractions of a second
-  // from what is reported in the playlist
   if (tags.length > 0) {
+    // Use the presentation timestamp of the ts segment to calculate its
+    // exact duration, since this may differ by fractions of a second
+    // from what is reported in the playlist
     segment.preciseDuration = videojs.Hls.FlvTag.durationFromTags(tags) * 0.001;
   }
 
@@ -976,20 +1040,9 @@ videojs.Hls.canPlaySource = function(srcObj) {
  * @return {number} the duration between the start index and end index.
  */
 videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
-  var dur = 0,
-      segment,
-      i;
-
-  startIndex = startIndex || 0;
-  endIndex = endIndex !== undefined ? endIndex : (playlist.segments || []).length;
-  i = endIndex - 1;
-
-  for (; i >= startIndex; i--) {
-    segment = playlist.segments[i];
-    dur += segment.preciseDuration || segment.duration || playlist.targetDuration || 0;
-  }
-
-  return dur;
+  videojs.log.warn('videojs.Hls.getPlaylistDuration is deprecated. ' +
+                   'Use videojs.Hls.Playlist.duration instead');
+  return videojs.Hls.Playlist.duration(playlist, startIndex, endIndex);
 };
 
 /**
@@ -998,21 +1051,9 @@ videojs.Hls.getPlaylistDuration = function(playlist, startIndex, endIndex) {
  * @return {number} the currently known duration, in seconds
  */
 videojs.Hls.getPlaylistTotalDuration = function(playlist) {
-  if (!playlist) {
-    return 0;
-  }
-
-  // if present, use the duration specified in the playlist
-  if (playlist.totalDuration) {
-    return playlist.totalDuration;
-  }
-
-  // duration should be Infinity for live playlists
-  if (!playlist.endList) {
-    return window.Infinity;
-  }
-
-  return videojs.Hls.getPlaylistDuration(playlist);
+  videojs.log.warn('videojs.Hls.getPlaylistTotalDuration is deprecated. ' +
+                   'Use videojs.Hls.Playlist.duration instead');
+  return videojs.Hls.Playlist.duration(playlist);
 };
 
 /**

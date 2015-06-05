@@ -140,5 +140,6 @@
       "uri": "hls_450k_video.ts"
     }
   ],
-  "endList": true
+  "endList": true,
+  "discontinuitySequence": 0
 }
