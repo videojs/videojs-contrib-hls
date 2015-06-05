@@ -201,7 +201,7 @@
       data: new Uint8Array(id3Tag(id3Frame('TXXX',
                                            0x03, // utf-8
                                            stringToCString('get done'),
-                                           stringToInts('{ "key": "value" }')),
+                                           stringToCString('{ "key": "value" }')),
                                   [0x00, 0x00]))
     });
 
@@ -209,7 +209,7 @@
     equal(events[0].frames.length, 1, 'parsed one frame');
     equal(events[0].frames[0].id, 'TXXX', 'parsed the frame id');
     equal(events[0].frames[0].description, 'get done', 'parsed the description');
-    equal(events[0].frames[0].value, '{ "key": "value" }', 'parsed the value');
+    deepEqual(JSON.parse(events[0].frames[0].value), { key: 'value' }, 'parsed the value');
   });
 
   test('parses WXXX frames', function() {
@@ -253,7 +253,7 @@
       data: new Uint8Array(id3Tag(id3Frame('TXXX',
                                            0x03, // utf-8
                                            stringToCString(''),
-                                           stringToInts(value)),
+                                           stringToCString(value)),
                                   [0x00, 0x00]))
     });
 

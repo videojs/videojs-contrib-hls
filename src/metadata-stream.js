@@ -37,7 +37,8 @@
           if (tag.data[i] === 0) {
             // parse the text fields
             tag.description = parseUtf8(tag.data, 1, i);
-            tag.value = parseUtf8(tag.data, i + 1, tag.data.length);
+            // do not include the null terminator in the tag value
+            tag.value = parseUtf8(tag.data, i + 1, tag.data.length - 1);
             break;
           }
         }
