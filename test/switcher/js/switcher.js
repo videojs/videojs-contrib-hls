@@ -1,8 +1,17 @@
 (function(window, document) {
   'use strict';
+
+      // the number of seconds of video in each segment
   var segmentDuration = 9, // seconds
-      segmentCount = 10,
+
+      // the number of segments in the video
+      segmentCount = 100,
+
+      // the length of the simulation
       duration = segmentDuration * segmentCount,
+
+      // the number of seconds it takes for a single bit to be
+      // transmitted from the client to the server, or vice-versa
       propagationDelay = 0.5,
 
       runSimulation,
@@ -24,6 +33,9 @@
     this.flushTags = function() {};
     this.tagsAvailable = function() {
       return false;
+    };
+    this.metadataStream = {
+      on: function() {}
     };
   };
 
