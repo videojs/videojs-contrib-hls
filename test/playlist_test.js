@@ -16,28 +16,31 @@
     equal(duration, Infinity, 'duration is infinity');
   });
 
-  test('interval duration does not include upcoming live segments', function() {
+  test('interval duration accounts for media sequences', function() {
     var duration = Playlist.duration({
+      mediaSequence: 10,
+      endList: true,
       segments: [{
-        duration: 4,
-        uri: '0.ts'
+        duration: 10,
+        uri: '10.ts'
       }, {
         duration: 10,
-        uri: '1.ts'
+        uri: '11.ts'
       }, {
         duration: 10,
-        uri: '2.ts'
+        uri: '12.ts'
       }, {
         duration: 10,
-        uri: '3.ts'
+        uri: '13.ts'
       }]
-    }, 0, 3);
+    }, 0, 14);
 
-    equal(duration, 4, 'does not include upcoming live segments');
+    equal(duration, 14 * 10, 'duration includes dropped segments');
   });
 
   test('calculates seekable time ranges from the available segments', function() {
     var playlist = {
+      mediaSequence: 0,
       segments: [{
         duration: 10,
         uri: '0.ts'
@@ -66,6 +69,7 @@
 
   test('seekable end is three target durations from the actual end of live playlists', function() {
     var seekable = Playlist.seekable({
+      mediaSequence: 0,
       segments: [{
         duration: 7,
         uri: '0.ts'
@@ -107,6 +111,7 @@
   test('seekable end accounts for non-standard target durations', function() {
     var seekable = Playlist.seekable({
       targetDuration: 2,
+      mediaSequence: 0,
       segments: [{
         duration: 2,
         uri: '0.ts'

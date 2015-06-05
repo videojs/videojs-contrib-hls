@@ -293,6 +293,31 @@ test('calculates the duration if needed', function() {
               'duration is calculated');
 });
 
+test('translates seekable by the starting time for live playlists', function() {
+  var seekable;
+  player.src({
+    src: 'media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:15\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '3.ts\n');
+
+  seekable = player.seekable();
+  equal(seekable.length, 1, 'one seekable range');
+  equal(seekable.start(0), 0, 'the earliest possible position is at zero');
+  equal(seekable.end(0), 10, 'end is relative to the start');
+});
+
 test('starts downloading a segment on loadedmetadata', function() {
   player.src({
     src: 'manifest/media.m3u8',

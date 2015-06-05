@@ -210,6 +210,18 @@
       this.trigger('data', event);
       return;
     }
+    match = (/^#EXT-X-DISCONTINUITY-SEQUENCE:?(\-?[0-9.]*)?/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'discontinuity-sequence'
+      };
+      if (match[1]) {
+        event.number = parseInt(match[1], 10);
+      }
+      this.trigger('data', event);
+      return;
+    }
     match = (/^#EXT-X-PLAYLIST-TYPE:?(.*)?$/).exec(line);
     if (match) {
       event = {
@@ -308,7 +320,7 @@
         event.attributes = parseAttributes(match[1]);
         // parse the IV string into a Uint32Array
         if (event.attributes.IV) {
-          if (event.attributes.IV.substring(0,2) === '0x') {	
+          if (event.attributes.IV.substring(0,2) === '0x') {
             event.attributes.IV = event.attributes.IV.substring(2);
           }
 
@@ -409,6 +421,12 @@
                   message: 'defaulting media sequence to zero'
                 });
               }
+              if (!('discontinuitySequence' in this.manifest)) {
+                this.manifest.discontinuitySequence = 0;
+                this.trigger('info', {
+                  message: 'defaulting discontinuity sequence to zero'
+                });
+              }
               if (entry.duration >= 0) {
                 currentUri.duration = entry.duration;
               }
@@ -458,6 +476,15 @@
                 return;
               }
               this.manifest.mediaSequence = entry.number;
+            },
+            'discontinuity-sequence': function() {
+              if (!isFinite(entry.number)) {
+                this.trigger('warn', {
+                  message: 'ignoring invalid discontinuity sequence: ' + entry.number
+                });
+                return;
+              }
+              this.manifest.discontinuitySequence = entry.number;
             },
             'playlist-type': function() {
               if (!(/VOD|EVENT/).test(entry.playlistType)) {

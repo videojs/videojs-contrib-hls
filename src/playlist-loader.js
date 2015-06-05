@@ -1,12 +1,23 @@
 /**
  * A state machine that manages the loading, caching, and updating of
- * M3U8 playlists.
+ * M3U8 playlists. When tracking a live playlist, loaders will keep
+ * track of the duration of content that expired since the loader was
+ * initialized and when the current discontinuity sequence was
+ * encountered. A complete media timeline for a live playlist with
+ * expiring segments and discontinuities looks like this:
+ *
+ * |-- expiredPreDiscontinuity --|-- expiredPostDiscontinuity --|-- segments --|
+ *
+ * You can use these values to calculate how much time has elapsed
+ * since the stream began loading or how long it has been since the
+ * most recent discontinuity was encountered, for instance.
  */
 (function(window, videojs) {
   'use strict';
   var
     resolveUrl = videojs.Hls.resolveUrl,
     xhr = videojs.Hls.xhr,
+    Playlist = videojs.Hls.Playlist,
 
     /**
      * Returns a new master playlist that is the result of merging an
@@ -51,57 +62,9 @@
       var
         loader = this,
         dispose,
-        media,
         mediaUpdateTimeout,
         request,
-
-        haveMetadata = function(error, xhr, url) {
-          var parser, refreshDelay, update;
-
-          loader.setBandwidth(request || xhr);
-
-          // any in-flight request is now finished
-          request = null;
-
-          if (error) {
-            loader.error = {
-              status: xhr.status,
-              message: 'HLS playlist request error at URL: ' + url,
-              responseText: xhr.responseText,
-              code: (xhr.status >= 500) ? 4 : 2
-            };
-            return loader.trigger('error');
-          }
-
-          loader.state = 'HAVE_METADATA';
-
-          parser = new videojs.m3u8.Parser();
-          parser.push(xhr.responseText);
-          parser.end();
-          parser.manifest.uri = url;
-
-          // merge this playlist into the master
-          update = updateMaster(loader.master, parser.manifest);
-          refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
-          if (update) {
-            loader.master = update;
-            media = loader.master.playlists[url];
-          } else {
-            // if the playlist is unchanged since the last reload,
-            // try again after half the target duration
-            refreshDelay /= 2;
-          }
-
-          // refresh live playlists after a target duration passes
-          if (!loader.media().endList) {
-            window.clearTimeout(mediaUpdateTimeout);
-            mediaUpdateTimeout = window.setTimeout(function() {
-              loader.trigger('mediaupdatetimeout');
-            }, refreshDelay);
-          }
-
-          loader.trigger('loadedplaylist');
-        };
+        haveMetadata;
 
       PlaylistLoader.prototype.init.call(this);
 
@@ -109,7 +72,73 @@
         throw new Error('A non-empty playlist URL is required');
       }
 
+      // update the playlist loader's state in response to a new or
+      // updated playlist.
+      haveMetadata = function(error, xhr, url) {
+        var parser, refreshDelay, update;
+
+        loader.setBandwidth(request || xhr);
+
+        // any in-flight request is now finished
+        request = null;
+
+        if (error) {
+          loader.error = {
+            status: xhr.status,
+            message: 'HLS playlist request error at URL: ' + url,
+            responseText: xhr.responseText,
+            code: (xhr.status >= 500) ? 4 : 2
+          };
+          return loader.trigger('error');
+        }
+
+        loader.state = 'HAVE_METADATA';
+
+        parser = new videojs.m3u8.Parser();
+        parser.push(xhr.responseText);
+        parser.end();
+        parser.manifest.uri = url;
+
+        // merge this playlist into the master
+        update = updateMaster(loader.master, parser.manifest);
+        refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
+        if (update) {
+          loader.master = update;
+          loader.updateMediaPlaylist_(parser.manifest);
+        } else {
+          // if the playlist is unchanged since the last reload,
+          // try again after half the target duration
+          refreshDelay /= 2;
+        }
+
+        // refresh live playlists after a target duration passes
+        if (!loader.media().endList) {
+          window.clearTimeout(mediaUpdateTimeout);
+          mediaUpdateTimeout = window.setTimeout(function() {
+            loader.trigger('mediaupdatetimeout');
+          }, refreshDelay);
+        }
+
+        loader.trigger('loadedplaylist');
+      };
+
+      // initialize the loader state
       loader.state = 'HAVE_NOTHING';
+
+      // the total duration of all segments that expired and have been
+      // removed from the current playlist after the last
+      // #EXT-X-DISCONTINUITY. In a live playlist without
+      // discontinuities, this is the total amount of time that has
+      // been removed from the stream since the playlist loader began
+      // tracking it.
+      loader.expiredPostDiscontinuity_ = 0;
+
+      // the total duration of all segments that expired and have been
+      // removed from the current playlist before the last
+      // #EXT-X-DISCONTINUITY. The total amount of time that has
+      // expired is always the sum of expiredPreDiscontinuity_ and
+      // expiredPostDiscontinuity_.
+      loader.expiredPreDiscontinuity_ = 0;
 
       // capture the prototype dispose function
       dispose = this.dispose;
@@ -141,7 +170,7 @@
         var mediaChange = false;
         // getter
         if (!playlist) {
-          return media;
+          return loader.media_;
         }
 
         // setter
@@ -158,7 +187,7 @@
           playlist = loader.master.playlists[playlist];
         }
 
-        mediaChange = playlist.uri !== media.uri;
+        mediaChange = playlist.uri !== loader.media_.uri;
 
         // switch to fully loaded playlists immediately
         if (loader.master.playlists[playlist.uri].endList) {
@@ -169,7 +198,7 @@
             request = null;
           }
           loader.state = 'HAVE_METADATA';
-          media = playlist;
+          loader.media_ = playlist;
 
           // trigger media change if the active media has been updated
           if (mediaChange) {
@@ -291,6 +320,47 @@
       });
     };
   PlaylistLoader.prototype = new videojs.Hls.Stream();
+
+  /**
+   * Update the PlaylistLoader state to reflect the changes in an
+   * update to the current media playlist.
+   * @param update {object} the updated media playlist object
+   */
+  PlaylistLoader.prototype.updateMediaPlaylist_ = function(update) {
+    var lastDiscontinuity, expiredCount, i;
+
+    if (this.media_) {
+      expiredCount = update.mediaSequence - this.media_.mediaSequence;
+
+      // setup the index for duration calculations so that the newly
+      // expired time will be accumulated after the last
+      // discontinuity, unless we discover otherwise
+      lastDiscontinuity = this.media_.mediaSequence;
+
+      if (this.media_.discontinuitySequence !== update.discontinuitySequence) {
+        i = expiredCount;
+        while (i--) {
+          if (this.media_.segments[i].discontinuity) {
+            // a segment that begins a new discontinuity sequence has expired
+            lastDiscontinuity = i + this.media_.mediaSequence;
+            this.expiredPreDiscontinuity_ += this.expiredPostDiscontinuity_;
+            this.expiredPostDiscontinuity_ = 0;
+            break;
+          }
+        }
+      }
+
+      // update the expirated durations
+      this.expiredPreDiscontinuity_ += Playlist.duration(this.media_,
+                                                         this.media_.mediaSequence,
+                                                         lastDiscontinuity);
+      this.expiredPostDiscontinuity_ += Playlist.duration(this.media_,
+                                                         lastDiscontinuity,
+                                                         this.media_.mediaSequence + expiredCount);
+    }
+
+    this.media_ = this.master.playlists[update.uri];
+  };
 
   videojs.Hls.PlaylistLoader = PlaylistLoader;
 })(window, window.videojs);

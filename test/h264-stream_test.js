@@ -61,45 +61,6 @@ test('metadata is generated for IDRs after a full NAL unit is written', function
   ok(h264Stream.tags[2].keyFrame, 'key frame is written');
 });
 
-test('starting PTS values can be negative', function() {
-  var
-    H264ExtraData = videojs.Hls.H264ExtraData,
-    oldExtraData = H264ExtraData.prototype.extraDataTag,
-    oldMetadata = H264ExtraData.prototype.metaDataTag,
-    h264Stream;
-
-  H264ExtraData.prototype.extraDataTag = function() {
-    return 'extraDataTag';
-  };
-  H264ExtraData.prototype.metaDataTag = function() {
-    return 'metaDataTag';
-  };
-
-  h264Stream = new videojs.Hls.H264Stream();
-
-  h264Stream.setTimeStampOffset(-100);
-  h264Stream.setNextTimeStamp(-100, -100, true);
-  h264Stream.writeBytes(accessUnitDelimiter, 0, accessUnitDelimiter.byteLength);
-  h264Stream.setNextTimeStamp(-99, -99, true);
-  h264Stream.writeBytes(accessUnitDelimiter, 0, accessUnitDelimiter.byteLength);
-  h264Stream.setNextTimeStamp(0, 0, true);
-  h264Stream.writeBytes(accessUnitDelimiter, 0, accessUnitDelimiter.byteLength);
-  // flush out the last tag
-  h264Stream.writeBytes(accessUnitDelimiter, 0, accessUnitDelimiter.byteLength);
-
-  strictEqual(h264Stream.tags.length, 3, 'three tags are ready');
-  strictEqual(h264Stream.tags[0].pts, 0, 'the first PTS is zero');
-  strictEqual(h264Stream.tags[0].dts, 0, 'the first DTS is zero');
-  strictEqual(h264Stream.tags[1].pts, 1, 'the second PTS is one');
-  strictEqual(h264Stream.tags[1].dts, 1, 'the second DTS is one');
-
-  strictEqual(h264Stream.tags[2].pts, 100, 'the third PTS is 100');
-  strictEqual(h264Stream.tags[2].dts, 100, 'the third DTS is 100');
-
-  H264ExtraData.prototype.extraDataTag = oldExtraData;
-  H264ExtraData.prototype.metaDataTag = oldMetadata;
-});
-
 test('make sure we add metadata and extra data at the beginning of a stream', function() {
   var
     H264ExtraData = videojs.Hls.H264ExtraData,

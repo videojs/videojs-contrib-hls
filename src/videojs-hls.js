@@ -39,10 +39,19 @@ videojs.Hls = videojs.Flash.extend({
     this.currentTime = videojs.Hls.prototype.currentTime;
     this.setCurrentTime = videojs.Hls.prototype.setCurrentTime;
 
+    // a queue of segments that need to be transmuxed and processed,
+    // and then fed to the source buffer
+    this.segmentBuffer_ = [];
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
-    this.segmentBuffer_ = [];
     this.startCheckingBuffer_();
+
+    // the earliest presentation timestamp (PTS) encountered since the
+    // last #EXT-X-DISCONTINUITY. In a playlist without
+    // discontinuities, this will be the PTS value for the first frame
+    // in the video. PTS values are necessary to properly synchronize
+    // playback when switching to a variant stream.
+    this.lastStartingPts_ = undefined;
 
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
   }
@@ -356,8 +365,16 @@ videojs.Hls.prototype.duration = function() {
 };
 
 videojs.Hls.prototype.seekable = function() {
+  var absoluteSeekable, startOffset, media;
+
   if (this.playlists) {
-    return videojs.Hls.Playlist.seekable(this.playlists.media());
+    // report the seekable range relative to the earliest possible
+    // position when the stream was first loaded
+    media = this.playlists.media();
+    absoluteSeekable = videojs.Hls.Playlist.seekable(media);
+    startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
+    return videojs.createTimeRange(startOffset,
+                                   startOffset + (absoluteSeekable.end(0) - absoluteSeekable.start(0)));
   }
   return videojs.createTimeRange();
 };
@@ -691,9 +708,6 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     tech.setBandwidth(this);
 
     // package up all the work to append the segment
-    // if the segment is the start of a timestamp discontinuity,
-    // we have to wait until the sourcebuffer is empty before
-    // aborting the source buffer processing
     segmentInfo = {
       // the segment's mediaIndex at the time it was received
       mediaIndex: tech.mediaIndex,
@@ -796,7 +810,10 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   }
 
   event = event || {};
-  segmentOffset = videojs.Hls.Playlist.duration(playlist, 0, mediaIndex) * 1000;
+  segmentOffset = this.playlists.expiredPreDiscontinuity_;
+  segmentOffset += this.playlists.expiredPostDiscontinuity_;
+  segmentOffset += videojs.Hls.Playlist.duration(playlist, playlist.mediaSequence, playlist.mediaSequence + mediaIndex);
+  segmentOffset *= 1000;
 
   // transmux the segment data from MP2T to FLV
   this.segmentParser_.parseSegmentBinaryData(bytes);
@@ -808,10 +825,10 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     tags.push(this.segmentParser_.getNextTag());
   }
 
-  // Use the presentation timestamp of the ts segment to calculate its
-  // exact duration, since this may differ by fractions of a second
-  // from what is reported in the playlist
   if (tags.length > 0) {
+    // Use the presentation timestamp of the ts segment to calculate its
+    // exact duration, since this may differ by fractions of a second
+    // from what is reported in the playlist
     segment.preciseDuration = videojs.Hls.FlvTag.durationFromTags(tags) * 0.001;
   }
 
