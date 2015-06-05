@@ -173,13 +173,6 @@
                    (tag.data[19]);
       }
 
-      // adjust the PTS values to align with the video and audio
-      // streams
-      if (this.timestampOffset) {
-        tag.pts -= this.timestampOffset;
-        tag.dts -= this.timestampOffset;
-      }
-
       // parse one or more ID3 frames
       // http://id3.org/id3v2.3.0#ID3v2_frame_overview
       do {

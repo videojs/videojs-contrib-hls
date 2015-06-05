@@ -46,13 +46,6 @@ videojs.Hls = videojs.Flash.extend({
     // buffered data should be appended to the source buffer
     this.startCheckingBuffer_();
 
-    // the earliest presentation timestamp (PTS) encountered since the
-    // last #EXT-X-DISCONTINUITY. In a playlist without
-    // discontinuities, this will be the PTS value for the first frame
-    // in the video. PTS values are necessary to properly synchronize
-    // playback when switching to a variant stream.
-    this.lastStartingPts_ = undefined;
-
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
   }
 });
@@ -96,43 +89,7 @@ videojs.Hls.prototype.src = function(src) {
 
   // if the stream contains ID3 metadata, expose that as a metadata
   // text track
-  (function() {
-    var
-      metadataStream = tech.segmentParser_.metadataStream,
-      textTrack;
-
-    // only expose metadata tracks to video.js versions that support
-    // dynamic text tracks (4.12+)
-    if (!tech.player().addTextTrack) {
-      return;
-    }
-
-    metadataStream.on('data', function(metadata) {
-      var i, cue, frame, time, hexDigit;
-
-      // create the metadata track if this is the first ID3 tag we've
-      // seen
-      if (!textTrack) {
-        textTrack = tech.player().addTextTrack('metadata', 'Timed Metadata');
-
-        // build the dispatch type from the stream descriptor
-        // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track
-        textTrack.inBandMetadataTrackDispatchType = videojs.Hls.SegmentParser.STREAM_TYPES.metadata.toString(16).toUpperCase();
-        for (i = 0; i < metadataStream.descriptor.length; i++) {
-          hexDigit = ('00' + metadataStream.descriptor[i].toString(16).toUpperCase()).slice(-2);
-          textTrack.inBandMetadataTrackDispatchType += hexDigit;
-        }
-      }
-
-      for (i = 0; i < metadata.frames.length; i++) {
-        frame = metadata.frames[i];
-        time = metadata.pts / 1000;
-        cue = new window.VTTCue(time, time, frame.value || frame.url || '');
-        cue.frame = frame;
-        textTrack.addCue(cue);
-      }
-    });
-  })();
+  this.setupMetadataCueTranslation_();
 
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', videojs.bind(this, this.handleSourceOpen));
@@ -287,6 +244,78 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   if (player.options().autoplay) {
     player.play();
   }
+};
+
+// register event listeners to transform in-band metadata events into
+// VTTCues on a text track
+videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
+  var
+    tech = this,
+    metadataStream = tech.segmentParser_.metadataStream,
+    textTrack;
+
+  // only expose metadata tracks to video.js versions that support
+  // dynamic text tracks (4.12+)
+  if (!tech.player().addTextTrack) {
+    return;
+  }
+
+  // add a metadata cue whenever a metadata event is triggered during
+  // segment parsing
+  metadataStream.on('data', function(metadata) {
+    var i, cue, frame, time, media, segmentOffset, hexDigit;
+
+    // create the metadata track if this is the first ID3 tag we've
+    // seen
+    if (!textTrack) {
+      textTrack = tech.player().addTextTrack('metadata', 'Timed Metadata');
+
+      // build the dispatch type from the stream descriptor
+      // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track
+      textTrack.inBandMetadataTrackDispatchType = videojs.Hls.SegmentParser.STREAM_TYPES.metadata.toString(16).toUpperCase();
+      for (i = 0; i < metadataStream.descriptor.length; i++) {
+        hexDigit = ('00' + metadataStream.descriptor[i].toString(16).toUpperCase()).slice(-2);
+        textTrack.inBandMetadataTrackDispatchType += hexDigit;
+      }
+    }
+
+    // calculate the start time for the segment that is currently being parsed
+    media = tech.playlists.media();
+    segmentOffset = tech.playlists.expiredPreDiscontinuity_ + tech.playlists.expiredPostDiscontinuity_;
+    segmentOffset += videojs.Hls.Playlist.duration(media, media.mediaSequence, media.mediaSequence + tech.mediaIndex);
+
+    // create cue points for all the ID3 frames in this metadata event
+    for (i = 0; i < metadata.frames.length; i++) {
+      frame = metadata.frames[i];
+      time = segmentOffset + ((metadata.pts - tech.segmentParser_.timestampOffset) * 0.001);
+      cue = new window.VTTCue(time, time, frame.value || frame.url || '');
+      cue.frame = frame;
+      textTrack.addCue(cue);
+    }
+  });
+
+  // when seeking, clear out all cues ahead of the earliest position
+  // in the new segment. keep earlier cues around so they can still be
+  // programmatically inspected even though they've already fired
+  tech.on('seeking', function() {
+    if (!textTrack) {
+      return;
+    }
+    var media = tech.playlists.media(), i;
+    var startTime = tech.playlists.expiredPreDiscontinuity_ + tech.playlists.expiredPostDiscontinuity_;
+    startTime += videojs.Hls.Playlist.duration(media, media.mediaSequence, media.mediaSequence + tech.mediaIndex);
+    console.trace('seeking');
+
+    i = textTrack.cues.length;
+    while (i--) {
+      if (textTrack.cues[i].startTime < startTime) {
+        // cues are sorted by start time, earliest first, so all the
+        // rest of the cues are from earlier segments
+        break;
+      }
+      textTrack.removeCue(textTrack.cues[i])
+    }
+  });
 };
 
 /**
@@ -814,6 +843,13 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   segmentOffset += this.playlists.expiredPostDiscontinuity_;
   segmentOffset += videojs.Hls.Playlist.duration(playlist, playlist.mediaSequence, playlist.mediaSequence + mediaIndex);
   segmentOffset *= 1000;
+
+  // if this segment starts is the start of a new discontinuity
+  // sequence, the segment parser's timestamp offset must be
+  // re-calculated
+  if (segment.discontinuity) {
+    this.segmentParser_.timestampOffset = null;
+  }
 
   // transmux the segment data from MP2T to FLV
   this.segmentParser_.parseSegmentBinaryData(bytes);

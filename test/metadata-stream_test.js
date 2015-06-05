@@ -186,28 +186,6 @@
   // too large/small tag size values
   // too large/small frame size values
 
-  test('translates PTS and DTS values based on the timestamp offset', function() {
-    var events = [];
-    metadataStream.on('data', function(event) {
-      events.push(event);
-    });
-
-    metadataStream.timestampOffset = 800;
-
-    metadataStream.push({
-      trackId: 7,
-      pts: 1000,
-      dts: 900,
-
-      // header
-      data: new Uint8Array(id3Tag(id3Frame('XFFF', [0]), [0x00, 0x00]))
-    });
-
-    equal(events.length, 1, 'emitted an event');
-    equal(events[0].pts, 200, 'translated pts');
-    equal(events[0].dts, 100, 'translated dts');
-  });
-
   test('parses TXXX frames', function() {
     var events = [];
     metadataStream.on('data', function(event) {

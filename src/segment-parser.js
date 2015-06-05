@@ -19,10 +19,7 @@
       streamBuffer = new Uint8Array(MP2T_PACKET_LENGTH),
       streamBufferByteCount = 0,
       h264Stream = new H264Stream(),
-      aacStream = new AacStream(),
-      h264HasTimeStampOffset = false,
-      aacHasTimeStampOffset = false,
-      timeStampOffset;
+      aacStream = new AacStream();
 
     // expose the stream metadata
     self.stream = {
@@ -33,6 +30,13 @@
 
     // allow in-band metadata to be observed
     self.metadataStream = new MetadataStream();
+
+    // The first timestamp value encountered during parsing. This
+    // value can be used to determine the relative timing between
+    // frames and the start of the current timestamp sequence. It
+    // should be reset to null before parsing a segment with
+    // discontinuous timestamp values from previous segments.
+    self.timestampOffset = null;
 
     // For information on the FLV format, see
     // http://download.macromedia.com/f4v/video_file_format_spec_v10_1.pdf.
@@ -354,31 +358,18 @@
           // Skip past "optional" portion of PTS header
           offset += pesHeaderLength;
 
-          // align the metadata stream PTS values with the start of
-          // the other elementary streams
-          if (!self.metadataStream.timestampOffset) {
-            self.metadataStream.timestampOffset = pts;
+          // keep track of the earliest encounted PTS value so
+          // external parties can align timestamps across
+          // discontinuities
+          if (self.timestampOffset === null) {
+            self.timestampOffset = pts;
           }
 
           if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
-            if (!h264HasTimeStampOffset) {
-              h264HasTimeStampOffset = true;
-              if (timeStampOffset === undefined) {
-                timeStampOffset = pts;
-              }
-              h264Stream.setTimeStampOffset(timeStampOffset);
-            }
             h264Stream.setNextTimeStamp(pts,
                                         dts,
                                         dataAlignmentIndicator);
           } else if (pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
-            if (!aacHasTimeStampOffset) {
-              aacHasTimeStampOffset = true;
-              if (timeStampOffset === undefined) {
-                timeStampOffset = pts;
-              }
-              aacStream.setTimeStampOffset(timeStampOffset);
-            }
             aacStream.setNextTimeStamp(pts,
                                        pesPacketSize,
                                        dataAlignmentIndicator);

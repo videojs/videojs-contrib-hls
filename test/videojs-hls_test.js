@@ -1249,6 +1249,218 @@ test('exposes in-band metadata events as cues', function() {
             'set the private data');
 });
 
+test('only adds in-band cues the first time they are encountered', function() {
+  var tags = [{ pts: 0, bytes: new Uint8Array(1) }], track;
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.hls.segmentParser_.getNextTag = function() {
+    return tags.shift();
+  };
+  player.hls.segmentParser_.tagsAvailable = function() {
+    return tags.length;
+  };
+  player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    // fake out a descriptor
+    player.hls.segmentParser_.metadataStream.descriptor = new Uint8Array([
+      1, 2, 3, 0xbb
+    ]);
+    // trigger a metadata event
+    player.hls.segmentParser_.metadataStream.trigger('data', {
+      pts: 2000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue text'
+      }]
+    });
+  };
+  standardXHRResponse(requests.shift());
+  standardXHRResponse(requests.shift());
+  // seek back to the first segment
+  player.currentTime(0);
+  player.hls.trigger('seeking');
+  tags.push({ pts: 0, bytes: new Uint8Array(1) });
+  standardXHRResponse(requests.shift());
+
+  track = player.textTracks()[0];
+  equal(track.cues.length, 1, 'only added the cue once');
+});
+
+test('clears in-band cues ahead of current time on seek', function() {
+  var
+    tags = [],
+    events = [],
+    track;
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.hls.segmentParser_.getNextTag = function() {
+    return tags.shift();
+  };
+  player.hls.segmentParser_.tagsAvailable = function() {
+    return tags.length;
+  };
+  player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    // fake out a descriptor
+    player.hls.segmentParser_.metadataStream.descriptor = new Uint8Array([
+      1, 2, 3, 0xbb
+    ]);
+    // trigger a metadata event
+    if (events.length) {
+      player.hls.segmentParser_.metadataStream.trigger('data', events.shift());
+    }
+  };
+  standardXHRResponse(requests.shift()); // media
+  tags.push({ pts: 10 * 1000, bytes: new Uint8Array(1) });
+  events.push({
+      pts: 9.9 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue 1'
+      }]
+  });
+  standardXHRResponse(requests.shift()); // segment 0
+  tags.push({ pts: 20 * 1000, bytes: new Uint8Array(1) });
+  events.push({
+      pts: 19.9 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue 2'
+      }]
+  });
+  player.hls.checkBuffer_();
+  standardXHRResponse(requests.shift()); // segment 1
+
+  track = player.textTracks()[0];
+  equal(track.cues.length, 2, 'added the cues');
+
+  // seek into segment 1
+  player.currentTime(11);
+  player.hls.trigger('seeking');
+  equal(track.cues.length, 1, 'removed a cue');
+  equal(track.cues[0].startTime, 9.9, 'retained the earlier cue');
+});
+
+test('translates ID3 PTS values to cue media timeline positions', function() {
+  var tags = [{ pts: 4 * 1000, bytes: new Uint8Array(1) }], track;
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.hls.segmentParser_.getNextTag = function() {
+    return tags.shift();
+  };
+  player.hls.segmentParser_.tagsAvailable = function() {
+    return tags.length;
+  };
+  player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    // setup the timestamp offset
+    this.timestampOffset = tags[0].pts;
+
+    // fake out a descriptor
+    player.hls.segmentParser_.metadataStream.descriptor = new Uint8Array([
+      1, 2, 3, 0xbb
+    ]);
+    // trigger a metadata event
+    player.hls.segmentParser_.metadataStream.trigger('data', {
+      pts: 5 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue text'
+      }]
+    });
+  };
+  standardXHRResponse(requests.shift()); // media
+  standardXHRResponse(requests.shift()); // segment 0
+
+  track = player.textTracks()[0];
+  equal(track.cues[0].startTime, 1, 'translated startTime');
+  equal(track.cues[0].endTime, 1, 'translated startTime');
+});
+
+test('translates ID3 PTS values across discontinuities', function() {
+  var tags = [], events = [], track;
+  player.src({
+    src: 'cues-and-discontinuities.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.hls.segmentParser_.getNextTag = function() {
+    return tags.shift();
+  };
+  player.hls.segmentParser_.tagsAvailable = function() {
+    return tags.length;
+  };
+  player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    if (this.timestampOffset === null) {
+      this.timestampOffset = tags[0].pts;
+    }
+    // fake out a descriptor
+    player.hls.segmentParser_.metadataStream.descriptor = new Uint8Array([
+      1, 2, 3, 0xbb
+    ]);
+    // trigger a metadata event
+    if (events.length) {
+      player.hls.segmentParser_.metadataStream.trigger('data', events.shift());
+    }
+  };
+
+  // media playlist
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXT-X-DISCONTINUITY\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n');
+
+  // segment 0 starts at PTS 14000 and has a cue point at 15000
+  tags.push({ pts: 14 * 1000, bytes: new Uint8Array(1) });
+  events.push({
+      pts:  15 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue 0'
+      }]
+  });
+  standardXHRResponse(requests.shift()); // segment 0
+
+  // segment 1 is after a discontinuity, starts at PTS 22000
+  // and has a cue point at 15000
+  tags.push({ pts: 22 * 1000, bytes: new Uint8Array(1) });
+  events.push({
+      pts:  23 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue 0'
+      }]
+  });
+  player.hls.checkBuffer_();
+  standardXHRResponse(requests.shift());
+
+  track = player.textTracks()[0];
+  equal(track.cues.length, 2, 'created cues');
+  equal(track.cues[0].startTime, 1, 'first cue started at the correct time');
+  equal(track.cues[0].endTime, 1, 'first cue ended at the correct time');
+  equal(track.cues[1].startTime, 11, 'second cue started at the correct time');
+  equal(track.cues[1].endTime, 11, 'second cue ended at the correct time');
+});
+
 test('drops tags before the target timestamp when seeking', function() {
   var i = 10,
       tags = [],
