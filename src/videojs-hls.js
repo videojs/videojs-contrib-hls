@@ -1108,12 +1108,20 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
 videojs.Hls.getMediaIndexByTime = function(playlist, time) {
   var index, counter, timeRanges, currentSegmentRange;
 
+  if (time === 0) {
+    return 0;
+  }
+
   timeRanges = [];
   for (index = 0; index < playlist.segments.length; index++) {
     currentSegmentRange = {};
     currentSegmentRange.start = (index === 0) ? 0 : timeRanges[index - 1].end;
     currentSegmentRange.end = currentSegmentRange.start + playlist.segments[index].duration;
     timeRanges.push(currentSegmentRange);
+  }
+
+  if (time >= timeRanges[timeRanges.length - 1].end) {
+    return (playlist.segments.length - 1);
   }
 
   for (counter = 0; counter < timeRanges.length; counter++) {
