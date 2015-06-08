@@ -1427,6 +1427,7 @@ test('translates ID3 PTS values across discontinuities', function() {
   };
 
   // media playlist
+  player.trigger('play');
   requests.shift().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXTINF:10,\n' +
@@ -1627,6 +1628,7 @@ test('updates the media index when a playlist reloads', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.trigger('play');
 
   requests[0].respond(200, null,
                       '#EXTM3U\n' +
@@ -1658,18 +1660,22 @@ test('updates the media index when a playlist reloads', function() {
   strictEqual(player.hls.mediaIndex, 2, 'mediaIndex is updated after the reload');
 });
 
-test('live playlist starts 30s before live', function() {
+test('live playlist starts three target durations before live', function() {
+  var mediaPlaylist;
   player.src({
     src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  standardXHRResponse(requests.shift());
 
-  standardXHRResponse(requests[0]);
+  equal(player.hls.mediaIndex, 0, 'waits for the first play to start buffering');
+  equal(requests.length, 0, 'no outstanding segment request');
 
-  player.hls.playlists.trigger('loadedmetadata');
-
-  strictEqual(player.hls.mediaIndex, 6, 'mediaIndex is updated after the reload');
+  player.play();
+  mediaPlaylist = player.hls.playlists.media();
+  equal(player.hls.mediaIndex, 6, 'mediaIndex is updated at play');
+  equal(player.currentTime(), videojs.Hls.Playlist.seekable(mediaPlaylist).end(0));
 });
 
 test('does not reset live currentTime if mediaIndex is one beyond the last available segment', function() {
@@ -1703,7 +1709,9 @@ test('live playlist starts with correct currentTime value', function() {
 
   player.hls.play();
 
-  strictEqual(player.currentTime(), 70, 'currentTime is updated at playback');
+  strictEqual(player.currentTime(),
+              videojs.Hls.Playlist.seekable(player.hls.playlists.media()).end(0),
+              'currentTime is updated at playback');
 });
 
 test('mediaIndex is zero before the first segment loads', function() {
@@ -1798,6 +1806,7 @@ test('calls vjs_discontinuity() before appending bytes at a discontinuity', func
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.trigger('play');
   player.currentTime = function() { return currentTime; };
   player.buffered = function() {
     return videojs.createTimeRange(0, bufferEnd);
@@ -2221,7 +2230,7 @@ test('keys are requested when an encrypted segment is loaded', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-
+  player.trigger('play');
   standardXHRResponse(requests.shift()); // playlist
   standardXHRResponse(requests.shift()); // first segment
 
@@ -2314,7 +2323,6 @@ test('seeking should abort an outstanding key request and create a new one', fun
   });
   openMediaSource(player);
 
-
   requests.shift().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-TARGETDURATION:15\n' +
@@ -2346,6 +2354,7 @@ test('retries key requests once upon failure', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.trigger('play');
 
   requests.shift().respond(200, null,
                            '#EXTM3U\n' +
@@ -2381,6 +2390,7 @@ test('skip segments if key requests fail more than once', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.trigger('play');
 
   requests.shift().respond(200, null,
                          '#EXTM3U\n' +
@@ -2419,6 +2429,7 @@ test('the key is supplied to the decrypter in the correct format', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.trigger('play');
 
   requests.pop().respond(200, null,
                          '#EXTM3U\n' +
@@ -2453,6 +2464,7 @@ test('supplies the media sequence of current segment as the IV by default, if no
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.trigger('play');
 
   requests.pop().respond(200, null,
                          '#EXTM3U\n' +
@@ -2492,6 +2504,7 @@ test('switching playlists with an outstanding key request does not stall playbac
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.trigger('play');
 
   // master playlist
   standardXHRResponse(requests.shift());
@@ -2532,7 +2545,8 @@ test('resolves relative key URLs against the playlist', function() {
                            '#EXT-X-MEDIA-SEQUENCE:5\n' +
                            '#EXT-X-KEY:METHOD=AES-128,URI="key.php?r=52"\n' +
                            '#EXTINF:2.833,\n' +
-                           'http://media.example.com/fileSequence52-A.ts\n');
+                           'http://media.example.com/fileSequence52-A.ts\n' +
+                           '#EXT-X-ENDLIST\n');
   standardXHRResponse(requests.shift()); // segment
 
   equal(requests[0].url, 'https://example.com/key.php?r=52', 'resolves the key URL');
@@ -2552,6 +2566,7 @@ test('treats invalid keys as a key request failure', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.trigger('play');
   requests.shift().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:5\n' +
@@ -2593,6 +2608,7 @@ test('live stream should not call endOfStream', function(){
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.trigger('play');
   requests[0].respond(200, null,
                       '#EXTM3U\n' +
                       '#EXT-X-MEDIA-SEQUENCE:0\n' +

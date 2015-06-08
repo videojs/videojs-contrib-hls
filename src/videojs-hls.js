@@ -129,16 +129,6 @@ videojs.Hls.prototype.src = function(src) {
       });
     }
 
-    // Start live playlists 30 seconds before the current time
-    // This is done using the old playlist because of a race condition
-    // where the playlist selected below may not be loaded quickly
-    // enough to have its segments available for review. When we receive
-    // a loadedplaylist event, we will call translateMediaIndex and
-    // maintain our position at the live point.
-    if (this.duration() === Infinity && this.mediaIndex === 0) {
-      this.mediaIndex = videojs.Hls.getMediaIndexForLive_(oldMediaPlaylist);
-    }
-
     selectedPlaylist = this.selectPlaylist();
     oldBitrate = oldMediaPlaylist.attributes &&
                  oldMediaPlaylist.attributes.BANDWIDTH || 0;
@@ -235,15 +225,18 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
 
   this.sourceBuffer = sourceBuffer;
-  sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
-
 
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
   // *after* the media source has opened.
+  // NOTE: moving this invocation of play() after
+  // sourceBuffer.appendBuffer() below caused live streams with
+  // autoplay to stall
   if (player.options().autoplay) {
     player.play();
   }
+
+  sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
 };
 
 // register event listeners to transform in-band metadata events into
@@ -320,13 +313,19 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
  * ended.
  */
 videojs.Hls.prototype.play = function() {
+  var media;
   if (this.ended()) {
     this.mediaIndex = 0;
   }
 
-  if (this.duration() === Infinity && this.playlists.media() && !this.player().hasClass('vjs-has-started')) {
-    this.mediaIndex = videojs.Hls.getMediaIndexForLive_(this.playlists.media());
-    this.setCurrentTime(this.getCurrentTimeByMediaIndex_(this.playlists.media(), this.mediaIndex));
+  // seek to the latest safe point in the media timeline when first
+  // playing live streams
+  if (this.duration() === Infinity &&
+      this.playlists.media() &&
+      !this.player().hasClass('vjs-has-started')) {
+    media = this.playlists.media();
+    this.mediaIndex = videojs.Hls.getMediaIndexForLive_(media);
+    this.setCurrentTime(videojs.Hls.Playlist.seekable(media).end(0));
   }
 
   // delegate back to the Flash implementation
@@ -635,6 +634,14 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   if (this.playlists.state === "HAVE_NOTHING" ||
       !this.playlists.media() ||
       !this.playlists.media().segments) {
+    return;
+  }
+
+  // if this is a live video wait until playback has been requested to
+  // being buffering so we don't preload data that will never be
+  // played
+  if (!this.playlists.media().endList &&
+      !this.player().hasClass('vjs-has-started')) {
     return;
   }
 
