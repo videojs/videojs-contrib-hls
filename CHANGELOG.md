@@ -2,9 +2,12 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-* @dmlap do not preload live videos ([view](https://github.com/videojs/videojs-contrib-hls/pull/299))
+
 
 --------------------
+
+## 0.17.1 (2015-06-08)
+* @dmlap do not preload live videos ([view](https://github.com/videojs/videojs-contrib-hls/pull/299))
 
 ## 0.17.0 (2015-06-05)
 * @dmlap implement seekable for live streams. Fix in-band metadata timing for live streams. ([view](https://github.com/videojs/videojs-contrib-hls/pull/295))
