@@ -99,6 +99,10 @@ videojs.Hls.prototype.src = function(src) {
     this.playlists.dispose();
   }
 
+  // The index of the next segment to be downloaded in the current
+  // media playlist. When the current media playlist is live with
+  // expiring segments, it may be a different value from the media
+  // sequence number for a segment.
   this.mediaIndex = 0;
 
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
@@ -360,7 +364,7 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   this.lastSeekedTime_ = currentTime;
 
   // determine the requested segment
-  this.mediaIndex = videojs.Hls.getMediaIndexByTime(this.playlists.media(), currentTime);
+  this.mediaIndex = this.playlists.getMediaIndexForTime_(currentTime);
 
   // abort any segments still being decoded
   this.sourceBuffer.abort();
@@ -1103,41 +1107,14 @@ videojs.Hls.translateMediaIndex = function(mediaIndex, original, update) {
 };
 
 /**
- * Determine the media index in one playlist by a time in seconds. This
- * function iterates through the segments of a playlist and creates TimeRange
- * objects for each and then returns the most appropriate segment index by
- * checking the time value versus each range.
+ * Deprecated.
  *
- * @param playlist {object} The playlist of the segments being searched.
- * @param time {number} The time in seconds of what segment you want.
- * @returns {number} The media index, or -1 if none appropriate.
+ * @deprecated use player.hls.playlists.getMediaIndexForTime_() instead
  */
-videojs.Hls.getMediaIndexByTime = function(playlist, time) {
-  var index, counter, timeRanges, currentSegmentRange;
-
-  if (time === 0) {
-    return 0;
-  }
-
-  timeRanges = [];
-  for (index = 0; index < playlist.segments.length; index++) {
-    currentSegmentRange = {};
-    currentSegmentRange.start = (index === 0) ? 0 : timeRanges[index - 1].end;
-    currentSegmentRange.end = currentSegmentRange.start + playlist.segments[index].duration;
-    timeRanges.push(currentSegmentRange);
-  }
-
-  if (time >= timeRanges[timeRanges.length - 1].end) {
-    return (playlist.segments.length - 1);
-  }
-
-  for (counter = 0; counter < timeRanges.length; counter++) {
-    if (time >= timeRanges[counter].start && time < timeRanges[counter].end) {
-      return counter;
-    }
-  }
-
-  return -1;
+videojs.Hls.getMediaIndexByTime = function() {
+  videojs.log.warn('getMediaIndexByTime is deprecated. ' +
+                   'Use PlaylistLoader.getMediaIndexForTime_ instead.');
+  return 0;
 };
 
 /**

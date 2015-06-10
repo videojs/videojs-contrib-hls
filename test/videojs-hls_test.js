@@ -1937,18 +1937,19 @@ test('continues playing after seek to discontinuity', function() {
     '#EXTINF:10,0\n' +
     '2.ts\n' +
     '#EXT-X-ENDLIST\n');
-  standardXHRResponse(requests.pop());
+  standardXHRResponse(requests.pop()); // 1.ts
 
   currentTime = 1;
   bufferEnd = 10;
   player.hls.checkBuffer_();
 
-  standardXHRResponse(requests.pop());
+  standardXHRResponse(requests.pop()); // 2.ts
 
   // seek to the discontinuity
   player.currentTime(10);
   tags.push({ pts: 0, bytes: new Uint8Array(1) });
-  standardXHRResponse(requests.pop());
+  tags.push({ pts: 11 * 1000, bytes: new Uint8Array(1) });
+  standardXHRResponse(requests.pop()); // 1.ts, again
   strictEqual(aborts, 1, 'aborted once for the seek');
 
   // the source buffer empties. is 2.ts still in the segment buffer?

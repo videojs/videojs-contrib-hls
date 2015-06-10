@@ -362,5 +362,55 @@
     this.media_ = this.master.playlists[update.uri];
   };
 
+  /**
+   * Determine the index of the segment that contains a specified
+   * playback position in the current media playlist. Early versions
+   * of the HLS specification require segment durations to be rounded
+   * to the nearest integer which means it may not be possible to
+   * determine the correct segment for a playback position if that
+   * position is within .5 seconds of the segment duration. This
+   * function will always return the lower of the two possible indices
+   * in those cases.
+   *
+   * @param time {number} The number of seconds since the earliest
+   * possible position to determine the containing segment for
+   * @returns {number} The number of the media segment that contains
+   * that time position. If the specified playback position is outside
+   * the time range of the current set of media segments, the return
+   * value will be clamped to the index of the segment containing the
+   * closest playback position that is currently available.
+   */
+  PlaylistLoader.prototype.getMediaIndexForTime_ = function(time) {
+    var i;
+
+    if (!this.media_) {
+      return 0;
+    }
+
+    // when the requested position is earlier than the current set of
+    // segments, return the earliest segment index
+    time -= this.expiredPreDiscontinuity_ + this.expiredPostDiscontinuity_;
+    if (time < 0) {
+      return 0;
+    }
+
+    for (i = 0; i < this.media_.segments.length; i++) {
+      time -= Playlist.duration(this.media_,
+                                this.media_.mediaSequence + i,
+                                this.media_.mediaSequence + i + 1);
+
+      // HLS version 3 and lower round segment durations to the
+      // nearest decimal integer. When the correct media index is
+      // ambiguous, prefer the lower one.
+      if (time <= 0) {
+        return i;
+      }
+    }
+
+    // the playback position is outside the range of available
+    // segments so return the last one
+    return this.media_.segments.length - 1;
+  };
+
   videojs.Hls.PlaylistLoader = PlaylistLoader;
 })(window, window.videojs);
