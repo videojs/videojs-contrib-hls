@@ -1116,29 +1116,6 @@ videojs.Hls.getMediaIndexByTime = function() {
 };
 
 /**
- * Determine the current time in seconds in one playlist by a media index. This
- * function iterates through the segments of a playlist up to the specified index
- * and then returns the time up to that point.
- *
- * @param playlist {object} The playlist of the segments being searched.
- * @param mediaIndex {number} The index of the target segment in the playlist.
- * @returns {number} The current time to that point, or 0 if none appropriate.
- */
-videojs.Hls.prototype.getCurrentTimeByMediaIndex_ = function(playlist, mediaIndex) {
-  var index, time = 0;
-
-  if (!playlist.segments || mediaIndex === 0) {
-    return 0;
-  }
-
-  for (index = 0; index < mediaIndex; index++) {
-    time += playlist.segments[index].duration;
-  }
-
-  return time;
-};
-
-/**
  * A comparator function to sort two playlist object by bandwidth.
  * @param left {object} a media playlist object
  * @param right {object} a media playlist object
