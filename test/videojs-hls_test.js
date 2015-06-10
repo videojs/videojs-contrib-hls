@@ -1663,19 +1663,33 @@ test('updates the media index when a playlist reloads', function() {
 test('live playlist starts three target durations before live', function() {
   var mediaPlaylist;
   player.src({
-    src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
+    src: 'live.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  standardXHRResponse(requests.shift());
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:101\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '3.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '4.ts\n');
 
   equal(player.hls.mediaIndex, 0, 'waits for the first play to start buffering');
   equal(requests.length, 0, 'no outstanding segment request');
 
   player.play();
   mediaPlaylist = player.hls.playlists.media();
-  equal(player.hls.mediaIndex, 6, 'mediaIndex is updated at play');
-  equal(player.currentTime(), videojs.Hls.Playlist.seekable(mediaPlaylist).end(0));
+  equal(player.hls.mediaIndex, 1, 'mediaIndex is updated at play');
+  equal(player.currentTime(), player.seekable().end(0));
+
+  equal(requests.length, 1, 'begins buffering');
 });
 
 test('does not reset live currentTime if mediaIndex is one beyond the last available segment', function() {

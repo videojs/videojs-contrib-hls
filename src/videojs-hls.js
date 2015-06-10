@@ -317,7 +317,6 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
  * ended.
  */
 videojs.Hls.prototype.play = function() {
-  var media;
   if (this.ended()) {
     this.mediaIndex = 0;
   }
@@ -327,9 +326,7 @@ videojs.Hls.prototype.play = function() {
   if (this.duration() === Infinity &&
       this.playlists.media() &&
       !this.player().hasClass('vjs-has-started')) {
-    media = this.playlists.media();
-    this.mediaIndex = videojs.Hls.getMediaIndexForLive_(media);
-    this.setCurrentTime(videojs.Hls.Playlist.seekable(media).end(0));
+    this.setCurrentTime(this.seekable().end(0));
   }
 
   // delegate back to the Flash implementation
@@ -645,7 +642,8 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   // being buffering so we don't preload data that will never be
   // played
   if (!this.playlists.media().endList &&
-      !this.player().hasClass('vjs-has-started')) {
+      !this.player().hasClass('vjs-has-started') &&
+      offset === undefined) {
     return;
   }
 
