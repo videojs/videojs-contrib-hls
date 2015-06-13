@@ -735,4 +735,65 @@ videojs.inspectMp4 = function(data) {
   }
   return result;
 };
+
+/**
+ * Returns a textual representation of the javascript represtentation
+ * of an MP4 file. You can use it as an alternative to
+ * JSON.stringify() to compare inspected MP4s.
+ * @param inspectedMp4 {array} the parsed array of boxes in an MP4
+ * file
+ * @param depth {number} (optional) the number of ancestor boxes of
+ * the elements of inspectedMp4. Assumed to be zero if unspecified.
+ * @return {string} a text representation of the parsed MP4
+ */
+videojs.textifyMp4 = function(inspectedMp4, depth) {
+  var indent;
+  depth = depth || 0;
+  indent = Array(depth * 2 + 1).join(' ');
+
+  // iterate over all the boxes
+  return inspectedMp4.map(function(box, index) {
+
+    // list the box type first at the current indentation level
+    return indent + box.type + '\n' +
+
+      // the type is already included and handle child boxes separately
+      Object.keys(box).filter(function(key) {
+        return key !== 'type' && key !== 'boxes';
+
+      // output all the box properties
+      }).map(function(key) {
+        var prefix = indent + '  ' + key + ': ',
+            value = box[key];
+
+        // print out raw bytes as hexademical
+        if (value instanceof Uint8Array || value instanceof Uint32Array) {
+          var bytes = Array.prototype.slice.call(new Uint8Array(value.buffer, value.byteOffset, value.byteLength))
+              .map(function(byte) {
+                return ' ' + ('00' + byte.toString(16)).slice(-2);
+              }).join('').match(/.{1,24}/g);
+          if (bytes.length === 1) {
+            return prefix + '<' + bytes.join('').slice(1) + '>';
+          }
+          return prefix + '<\n' + bytes.map(function(line) {
+            return indent + '  ' + line;
+          }).join('\n') + '\n' + indent + '  >';
+        }
+
+        // stringify generic objects
+        return prefix +
+            JSON.stringify(value, null, 2)
+              .split('\n').map(function(line, index) {
+                if (index === 0) {
+                  return line;
+                }
+                return indent + '  ' + line;
+              }).join('\n');
+      }).join('\n') +
+
+    // recursively textify the child boxes
+    (box.boxes ? '\n' + videojs.textifyMp4(box.boxes, depth + 1) : '');
+  }).join('\n');
+};
+
 })(window, window.videojs);

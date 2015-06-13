@@ -404,11 +404,11 @@ form label {
 /**
  * Diff styling
  */
-#comparison {
-  white-space: pre;
-}
 #comparison p {
   white-space: normal;
+}
+#comparison pre {
+  font-size: 90%;
 }
 ins, del {
   text-decoration: none;

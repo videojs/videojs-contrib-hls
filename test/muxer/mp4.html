@@ -127,9 +127,6 @@
         original = document.getElementById('original'),
         working = document.getElementById('working'),
 
-        // customize JSON.stringify for more readable TypedArrays
-        stringify,
-
         vjsParsed,
         workingParsed,
         diffParsed,
@@ -149,22 +146,6 @@
         logevent = function(event) {
           console.log(event.type);
         };
-
-
-    stringify = function(object) {
-      return JSON.stringify(object, function(s, o) {
-        if (o instanceof Uint8Array) {
-          return Array.prototype.slice.call(o).map(function(byte) {
-            return ('00' + byte.toString(16)).slice(-2);
-          });
-        } else if (o instanceof Uint32Array) {
-          return Array.prototype.slice.call(o).map(function(byte) {
-            return ('00000000' + byte.toString(16)).slice(-8);
-          });
-        }
-        return o;
-      }, ' ');
-    };
 
     // output a diff of the two parsed MP4s
     diffParsed = function() {
@@ -189,8 +170,11 @@
         'working version. A <ins>green background</ins> indicates ' +
         'properties present in the working version but missing in the ' +
         'transmuxed output.</p>';
-      diff += QUnit.diff(stringify(transmuxed, null, ' '),
-                         stringify(workingParsed, null, ' '));
+      diff += '<pre class="mp4-diff">' +
+        QUnit.diff(videojs.textifyMp4(transmuxed, null, ' '),
+                   videojs.textifyMp4(workingParsed, null, ' ')) +
+        '</pre>';
+
       comparison.innerHTML = diff;
     };
 
@@ -252,7 +236,7 @@
         diffParsed();
 
         // clear old box info
-        vjsBoxes.innerHTML = stringify(vjsParsed, null, ' ');
+        vjsBoxes.innerHTML = videojs.textifyMp4(vjsParsed, null, ' ');
 
         // write out the result
         hex += '<pre>';
@@ -279,7 +263,7 @@
         diffParsed();
 
         // clear old box info
-        workingBoxes.innerHTML = stringify(workingParsed, null, ' ');
+        workingBoxes.innerHTML = videojs.textifyMp4(workingParsed, null, ' ');
 
         // output the hex dump
         hex += '<pre>';
@@ -288,7 +272,7 @@
         workingOutput.innerHTML = hex;
 
         // XXX Media Sources Testing
-        //window.vjsSourceBuffer.appendBuffer(bytes);
+        // window.vjsSourceBuffer.appendBuffer(bytes);
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
