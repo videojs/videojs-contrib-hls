@@ -537,7 +537,7 @@ test('generates a moof for audio', function() {
   deepEqual(moof[0].boxes[1].boxes.length, 3, 'generated three traf children');
   trun = moof[0].boxes[1].boxes[2];
   ok(trun, 'generated a trun');
-  deepEqual(trun.dataOffset, data.byteLength + 8, 'calculated the data offset');
+  equal(trun.dataOffset, data.byteLength + 8, 'calculated the data offset');
   deepEqual(trun.samples, [{
     duration: 9000,
     size: 10

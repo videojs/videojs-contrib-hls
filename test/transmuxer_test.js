@@ -997,7 +997,9 @@ test('generates AAC frame events from ADTS bytes', function() {
   });
 
   equal(frames.length, 1, 'generated one frame');
-  deepEqual(frames[0].data, new Uint8Array([0x12, 0x34]), 'extracted AAC frame');
+  deepEqual(new Uint8Array(frames[0].data),
+            new Uint8Array([0x12, 0x34]),
+            'extracted AAC frame');
   equal(frames[0].channelcount, 2, 'parsed channelcount');
   equal(frames[0].samplerate, 44100, 'parsed samplerate');
 
@@ -1036,7 +1038,7 @@ test('parses across packets', function() {
   });
 
   equal(frames.length, 2, 'parsed two frames');
-  deepEqual(frames[1].data,
+  deepEqual(new Uint8Array(frames[1].data),
             new Uint8Array([0x9a, 0xbc]),
             'extracted the second AAC frame');
 });

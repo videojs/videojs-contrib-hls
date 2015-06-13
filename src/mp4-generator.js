@@ -539,7 +539,7 @@ traf = function(track) {
   // the data offset specifies the number of bytes from the start of
   // the containing moof to the first payload byte of the associated
   // mdat
-  dataOffset = (16 + // tfhd
+  dataOffset = (32 + // tfhd
                 16 + // tfdt
                 8 +  // traf header
                 16 + // mfhd
