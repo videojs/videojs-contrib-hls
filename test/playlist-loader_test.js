@@ -700,6 +700,69 @@
     strictEqual(mediaChanges, 2, 'ignored a no-op media change');
   });
 
+  test('can get media index by playback position for non-live videos', function() {
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                             '#EXTINF:4,\n' +
+                             '0.ts\n' +
+                             '#EXTINF:5,\n' +
+                             '1.ts\n' +
+                             '#EXTINF:6,\n' +
+                             '2.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+
+    equal(loader.getMediaIndexForTime_(-1),
+          0,
+          'the index is never less than zero');
+    equal(loader.getMediaIndexForTime_(0), 0, 'time zero is index zero');
+    equal(loader.getMediaIndexForTime_(3), 0, 'time three is index zero');
+    equal(loader.getMediaIndexForTime_(10), 2, 'time 10 is index 2');
+    equal(loader.getMediaIndexForTime_(22),
+          2,
+          'the index is never greater than the length');
+  });
+
+  test('returns the lower index when calculating for a segment boundary', function() {
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                             '#EXTINF:4,\n' +
+                             '0.ts\n' +
+                             '#EXTINF:5,\n' +
+                             '1.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+    equal(loader.getMediaIndexForTime_(4), 0, 'rounds down exact matches');
+    equal(loader.getMediaIndexForTime_(3.7), 0, 'rounds down');
+    // FIXME: the test below should pass for HLSv3
+    //equal(loader.getMediaIndexForTime_(4.2), 0, 'rounds down');
+    equal(loader.getMediaIndexForTime_(4.5), 1, 'rounds up at 0.5');
+  });
+
+  test('accounts for expired time when calculating media index', function() {
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-MEDIA-SEQUENCE:1001\n' +
+                             '#EXTINF:4,\n' +
+                             '1001.ts\n' +
+                             '#EXTINF:5,\n' +
+                             '1002.ts\n');
+    loader.expiredPreDiscontinuity_ = 50;
+    loader.expiredPostDiscontinuity_ = 100;
+
+    equal(loader.getMediaIndexForTime_(0), 0, 'the lowest returned value is zero');
+    equal(loader.getMediaIndexForTime_(45), 0, 'expired content returns zero');
+    equal(loader.getMediaIndexForTime_(75), 0, 'expired content returns zero');
+    equal(loader.getMediaIndexForTime_(50 + 100), 0, 'calculates the earliest available position');
+    equal(loader.getMediaIndexForTime_(50 + 100 + 2), 0, 'calculates within the first segment');
+    equal(loader.getMediaIndexForTime_(50 + 100 + 2), 0, 'calculates within the first segment');
+    equal(loader.getMediaIndexForTime_(50 + 100 + 4.5), 1, 'calculates within the second segment');
+    equal(loader.getMediaIndexForTime_(50 + 100 + 6), 1, 'calculates within the second segment');
+  });
+
   test('does not misintrepret playlists missing newlines at the end', function() {
     var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
     requests.shift().respond(200, null,
