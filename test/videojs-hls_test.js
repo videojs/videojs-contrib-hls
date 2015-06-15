@@ -1728,6 +1728,24 @@ test('mediaIndex is zero before the first segment loads', function() {
   strictEqual(player.hls.mediaIndex, 0, 'mediaIndex is zero');
 });
 
+test('mediaIndex returns correctly at playlist boundaries', function() {
+  player.src({
+    src: 'http://example.com/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
+
+  strictEqual(player.hls.mediaIndex, 0, 'mediaIndex is zero at first segment');
+
+  // seek to end
+  player.currentTime(40);
+
+  strictEqual(player.hls.mediaIndex, 3, 'mediaIndex is 3 at last segment');
+});
+
 test('reloads out-of-date live playlists when switching variants', function() {
   player.src({
     src: 'http://example.com/master.m3u8',
