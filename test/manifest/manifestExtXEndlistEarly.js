@@ -24,5 +24,6 @@
     }
   ],
   "targetDuration": 10,
-  "endList": true
+  "endList": true,
+  "discontinuitySequence": 0
 }

@@ -60,11 +60,13 @@
       ], frames),
       size;
 
+    // size is stored as a sequence of four 7-bit integers with the
+    // high bit of each byte set to zero
     size = result.length - 10;
-    result[6] = (size >>> 24) & 0xff;
-    result[7] = (size >>> 16) & 0xff;
-    result[8] = (size >>>  8) & 0xff;
-    result[9] = (size)        & 0xff;
+    result[6] = (size >>> 21) & 0x7f;
+    result[7] = (size >>> 14) & 0x7f;
+    result[8] = (size >>>  7) & 0x7f;
+    result[9] = (size)        & 0x7f;
 
     return result;
   };
@@ -184,29 +186,7 @@
   // too large/small tag size values
   // too large/small frame size values
 
-  test('translates PTS and DTS values based on the timestamp offset', function() {
-    var events = [];
-    metadataStream.on('data', function(event) {
-      events.push(event);
-    });
-
-    metadataStream.timestampOffset = 800;
-
-    metadataStream.push({
-      trackId: 7,
-      pts: 1000,
-      dts: 900,
-
-      // header
-      data: new Uint8Array(id3Tag(id3Frame('XFFF', [0]), [0x00, 0x00]))
-    });
-
-    equal(events.length, 1, 'emitted an event');
-    equal(events[0].pts, 200, 'translated pts');
-    equal(events[0].dts, 100, 'translated dts');
-  });
-
-  test('parses TXXX tags', function() {
+  test('parses TXXX frames', function() {
     var events = [];
     metadataStream.on('data', function(event) {
       events.push(event);
@@ -221,17 +201,18 @@
       data: new Uint8Array(id3Tag(id3Frame('TXXX',
                                            0x03, // utf-8
                                            stringToCString('get done'),
-                                           stringToInts('{ "key": "value" }')),
+                                           stringToCString('{ "key": "value" }')),
                                   [0x00, 0x00]))
     });
 
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 1, 'parsed one frame');
+    equal(events[0].frames[0].id, 'TXXX', 'parsed the frame id');
     equal(events[0].frames[0].description, 'get done', 'parsed the description');
-    equal(events[0].frames[0].value, '{ "key": "value" }', 'parsed the value');
+    deepEqual(JSON.parse(events[0].frames[0].value), { key: 'value' }, 'parsed the value');
   });
 
-  test('parses WXXX tags', function() {
+  test('parses WXXX frames', function() {
     var events = [], url = 'http://example.com/path/file?abc=7&d=4#ty';
     metadataStream.on('data', function(event) {
       events.push(event);
@@ -252,11 +233,12 @@
 
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 1, 'parsed one frame');
+    equal(events[0].frames[0].id, 'WXXX', 'parsed the frame id');
     equal(events[0].frames[0].description, '', 'parsed the description');
     equal(events[0].frames[0].url, url, 'parsed the value');
   });
 
-  test('parses TXXX tags with characters that have a single-digit hexadecimal representation', function() {
+  test('parses TXXX frames with characters that have a single-digit hexadecimal representation', function() {
     var events = [], value = String.fromCharCode(7);
     metadataStream.on('data', function(event) {
       events.push(event);
@@ -271,13 +253,145 @@
       data: new Uint8Array(id3Tag(id3Frame('TXXX',
                                            0x03, // utf-8
                                            stringToCString(''),
-                                           stringToInts(value)),
+                                           stringToCString(value)),
                                   [0x00, 0x00]))
     });
 
     equal(events[0].frames[0].value,
           value,
           'parsed the single-digit character');
+  });
+
+  test('parses PRIV frames', function() {
+    var
+      events = [],
+      payload = stringToInts('arbitrary data may be included in the payload ' +
+                             'of a PRIV frame');
+
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+
+      // header
+      data: new Uint8Array(id3Tag(id3Frame('PRIV',
+                                           stringToCString('priv-owner@example.com'),
+                                           payload)))
+    });
+
+    equal(events.length, 1, 'parsed a tag');
+    equal(events[0].frames.length, 1, 'parsed a frame');
+    equal(events[0].frames[0].id, 'PRIV', 'frame id is PRIV');
+    equal(events[0].frames[0].owner, 'priv-owner@example.com', 'parsed the owner');
+    deepEqual(new Uint8Array(events[0].frames[0].privateData),
+              new Uint8Array(payload),
+              'parsed the frame private data');
+
+  });
+
+  test('parses tags split across pushes', function() {
+    var
+      events = [],
+      owner = stringToCString('owner@example.com'),
+      payload = stringToInts('A TS packet is 188 bytes in length so that it can' +
+                             ' be easily transmitted over ATM networks, an ' +
+                             'important medium at one time. We want to be sure' +
+                             ' that ID3 frames larger than a TS packet are ' +
+                             'properly re-assembled.'),
+      tag = new Uint8Array(id3Tag(id3Frame('PRIV', owner, payload))),
+      front = tag.subarray(0, 100),
+      back = tag.subarray(100);
+
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+      data: front
+    });
+
+    equal(events.length, 0, 'parsed zero tags');
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+      data: back
+    });
+
+    equal(events.length, 1, 'parsed a tag');
+    equal(events[0].frames.length, 1, 'parsed a frame');
+    equal(events[0].frames[0].data.byteLength,
+          owner.length + payload.length,
+          'collected data across pushes');
+
+    // parses subsequent fragmented tags
+    tag = new Uint8Array(id3Tag(id3Frame('PRIV',
+                                         owner, payload, payload)));
+    front = tag.subarray(0, 188);
+    back = tag.subarray(188);
+    metadataStream.push({
+      trackId: 7,
+      pts: 2000,
+      dts: 2000,
+      data: front
+    });
+    metadataStream.push({
+      trackId: 7,
+      pts: 2000,
+      dts: 2000,
+      data: back
+    });
+    equal(events.length, 2, 'parsed a subseqent frame');
+  });
+
+  test('ignores tags when the header is fragmented', function() {
+
+    var
+      events = [],
+      tag = new Uint8Array(id3Tag(id3Frame('PRIV',
+                                           stringToCString('owner@example.com'),
+                                           stringToInts('payload')))),
+      // split the 10-byte ID3 tag header in half
+      front = tag.subarray(0, 5),
+      back = tag.subarray(5);
+
+    metadataStream.on('data', function(event) {
+      events.push(event);
+    });
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+      data: front
+    });
+    metadataStream.push({
+      trackId: 7,
+      pts: 1000,
+      dts: 900,
+      data: back
+    });
+
+    equal(events.length, 0, 'parsed zero tags');
+
+    metadataStream.push({
+      trackId: 7,
+      pts: 1500,
+      dts: 1500,
+      data: new Uint8Array(id3Tag(id3Frame('PRIV',
+                                           stringToCString('owner2'),
+                                           stringToInts('payload2'))))
+    });
+    equal(events.length, 1, 'parsed one tag');
+    equal(events[0].frames[0].owner, 'owner2', 'dropped the first tag');
   });
 
   // https://html.spec.whatwg.org/multipage/embedded-content.html#steps-to-expose-a-media-resource-specific-text-track

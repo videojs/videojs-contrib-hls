@@ -18,5 +18,6 @@
       "uri": "004.ts",
       "duration": 10
     }
-  ]
+  ],
+  "discontinuitySequence": 0
 }

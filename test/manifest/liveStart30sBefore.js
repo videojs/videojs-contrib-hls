@@ -39,5 +39,6 @@
       "uri": "009.ts"
     }
   ],
-  "targetDuration": 10
+  "targetDuration": 10,
+  "discontinuitySequence": 0
 }

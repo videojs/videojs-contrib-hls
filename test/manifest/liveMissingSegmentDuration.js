@@ -16,5 +16,6 @@
       "uri": "/test/ts-files/tvy7/549c8c77f55f049741a06596e5c1e01dacaa46d0-hi720.ts"
     }
   ],
-  "targetDuration": 8
+  "targetDuration": 8,
+  "discontinuitySequence": 0
 }

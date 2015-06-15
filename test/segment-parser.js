@@ -64,12 +64,15 @@
   makePmt = function(options) {
     var
       result = [],
+      pcr = options.pcr || 0,
       entryCount = 0,
       k,
       sectionLength;
 
     for (k in options.pids) {
-      entryCount++;
+      if (k !== 'pcr') {
+        entryCount++;
+      }
     }
     // table_id
     result.push(0x02);
@@ -88,8 +91,8 @@
     // last_section_number
     result.push(0x00);
     // reserved PCR_PID
-    result.push(0xe1);
-    result.push(0x00);
+    result.push(0xe0 | (pcr & (0x1f << 8)));
+    result.push(pcr & 0xff);
     // reserved program_info_length
     result.push(0xf0);
     result.push(0x11); // hard-coded 17 byte descriptor
@@ -121,13 +124,26 @@
   makePat = function(options) {
     var
       result = [],
+      programEntries = [],
+      sectionLength,
       k;
+
+    // build the program entries first
+    for (k in options.programs) {
+      // program_number
+      programEntries.push((k & 0xFF00) >>> 8);
+      programEntries.push(k & 0x00FF);
+      // reserved program_map_pid
+      programEntries.push((options.programs[k] & 0x1f00) >>> 8);
+      programEntries.push(options.programs[k] & 0xff);
+    }
+    sectionLength = programEntries.length + 5 + 4;
 
     // table_id
     result.push(0x00);
     // section_syntax_indicator '0' reserved section_length
-    result.push(0x80);
-    result.push(0x0d); // section_length for one program
+    result.push(0x80 | ((0x300 & sectionLength) >>> 8));
+    result.push(0xff & sectionLength); // section_length
     // transport_stream_id
     result.push(0x00);
     result.push(0x00);
@@ -137,14 +153,8 @@
     result.push(0x00);
     // last_section_number
     result.push(0x00);
-    for (k in options.programs) {
-      // program_number
-      result.push((k & 0xFF00) >>> 8);
-      result.push(k & 0x00FF);
-      // reserved program_map_pid
-      result.push((options.programs[k] & 0x1f00) >>> 8);
-      result.push(options.programs[k] & 0xff);
-    }
+    // program entries
+    result = result.concat(programEntries);
     return result;
   };
 
@@ -177,7 +187,8 @@
     // sync_byte
     result.push(0x47);
     // transport_error_indicator payload_unit_start_indicator transport_priority PID
-    result.push((settings.pid & 0x1f) << 8 | 0x40);
+    result.push((settings.pid & 0x1f) << 8 |
+                (settings.payloadUnitStartIndicator ? 0x40 : 0x00));
     result.push(settings.pid & 0xff);
     // transport_scrambling_control adaptation_field_control continuity_counter
     result.push(0x10);
@@ -210,6 +221,30 @@
     strictEqual(parser.stream.programMapTable[adtsType], 0x03, 'audio is PID 3');
   });
 
+  test('ignores network information specific data (NIT) in the PAT', function() {
+    parser.parseSegmentBinaryData(new Uint8Array(makePacket({
+      programs: {
+        0x01: [0x01],
+        0x00: [0x00] // a NIT has a reserved PID of 0x00
+      }
+    })));
+
+    ok(true, 'did not throw when a NIT is encountered');
+  });
+
+  test('ignores packets with PCR pids', function() {
+    parser.parseSegmentBinaryData(new Uint8Array(makePacket({
+      programs: {
+        0x01: [0x01]
+      }
+    }).concat(makePacket({
+      pid: 0x01,
+      pcr: 0x02
+    }))));
+
+    equal(parser.stream.programMapTable.pcrPid, 0x02, 'parsed the PCR pid');
+  });
+
   test('recognizes metadata streams', function() {
     parser.parseSegmentBinaryData(new Uint8Array(makePacket({
       programs: {
@@ -224,6 +259,29 @@
     }))));
 
     equal(parser.stream.programMapTable[0x15], 0x02, 'metadata is PID 2');
+  });
+
+  test('recognizes subsequent metadata packets after the payload start', function() {
+    var packets = [];
+    parser.metadataStream.push = function(packet) {
+      packets.push(packet);
+    };
+    parser.parseSegmentBinaryData(new Uint8Array(makePacket({
+      programs: {
+        0x01: [0x01]
+      }
+    }).concat(makePacket({
+      pid: 0x01,
+      pids: {
+        // Rec. ITU-T H.222.0 (06/2012), Table 2-34
+        0x02: 0x15 // Metadata carried in PES packets
+      }
+    })).concat(makePacket({
+      pid: 0x02,
+      payloadUnitStartIndicator: false
+    }))));
+
+    equal(packets.length, 1, 'parsed non-payload metadata packet');
   });
 
   test('parses the first bipbop segment', function() {

@@ -27,12 +27,14 @@ module.exports = function(grunt) {
               'src/stream.js',
               'src/flv-tag.js',
               'src/exp-golomb.js',
+              'src/h264-extradata.js',
               'src/h264-stream.js',
               'src/aac-stream.js',
               'src/metadata-stream.js',
               'src/segment-parser.js',
               'src/m3u8/m3u8-parser.js',
               'src/xhr.js',
+              'src/playlist.js',
               'src/playlist-loader.js',
               'node_modules/pkcs7/dist/pkcs7.unpad.js',
               'src/decrypter.js'
@@ -203,6 +205,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-concurrent');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('chg');
 
 
   grunt.registerTask('manifests-to-js', 'Wrap the test fixtures and output' +

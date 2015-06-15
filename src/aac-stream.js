@@ -12,7 +12,6 @@ var
 window.videojs.Hls.AacStream = function() {
   var
     next_pts, // :uint
-    pts_offset, // :int
     state, // :uint
     pes_length, // :int
     lastMetaPts,
@@ -32,7 +31,6 @@ window.videojs.Hls.AacStream = function() {
 
   // (pts:uint):void
   this.setTimeStampOffset = function(pts) {
-    pts_offset = pts;
 
     // keep track of the last time a metadata tag was written out
     // set the initial value so metadata will be generated before any
@@ -42,7 +40,7 @@ window.videojs.Hls.AacStream = function() {
 
   // (pts:uint, pes_size:int, dataAligned:Boolean):void
   this.setNextTimeStamp = function(pts, pes_size, dataAligned) {
-    next_pts = pts - pts_offset;
+    next_pts = pts;
     pes_length = pes_size;
 
     // If data is aligned, flush all internal buffers

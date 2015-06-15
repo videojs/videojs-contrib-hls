@@ -11,5 +11,6 @@
       "uri": "00002.ts"
     }
   ],
-  "targetDuration": 10
+  "targetDuration": 10,
+  "discontinuitySequence": 0
 }

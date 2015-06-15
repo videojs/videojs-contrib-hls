@@ -1,6 +1,7 @@
 {
   "allowCache": true,
   "mediaSequence": 0,
+  "discontinuitySequence": 0,
   "segments": [
     {
       "duration": 10,

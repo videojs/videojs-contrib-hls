@@ -19,10 +19,7 @@
       streamBuffer = new Uint8Array(MP2T_PACKET_LENGTH),
       streamBufferByteCount = 0,
       h264Stream = new H264Stream(),
-      aacStream = new AacStream(),
-      h264HasTimeStampOffset = false,
-      aacHasTimeStampOffset = false,
-      timeStampOffset;
+      aacStream = new AacStream();
 
     // expose the stream metadata
     self.stream = {
@@ -33,6 +30,15 @@
 
     // allow in-band metadata to be observed
     self.metadataStream = new MetadataStream();
+
+    this.mediaTimelineOffset = null;
+
+    // The first timestamp value encountered during parsing. This
+    // value can be used to determine the relative timing between
+    // frames and the start of the current timestamp sequence. It
+    // should be reset to null before parsing a segment with
+    // discontinuous timestamp values from previous segments.
+    self.timestampOffset = null;
 
     // For information on the FLV format, see
     // http://download.macromedia.com/f4v/video_file_format_spec_v10_1.pdf.
@@ -45,7 +51,8 @@
         headBytes = new Uint8Array(3 + 1 + 1 + 4),
         head = new DataView(headBytes.buffer),
         metadata,
-        result;
+        result,
+        metadataLength;
 
       // default arguments
       duration = duration || 0;
@@ -80,9 +87,10 @@
       metadata = new FlvTag(FlvTag.METADATA_TAG);
       metadata.pts = metadata.dts = 0;
       metadata.writeMetaDataDouble("duration", duration);
-      result = new Uint8Array(headBytes.byteLength + metadata.byteLength);
-      result.set(head);
-      result.set(head.bytesLength, metadata.finalize());
+      metadataLength = metadata.finalize().length;
+      result = new Uint8Array(headBytes.byteLength + metadataLength);
+      result.set(headBytes);
+      result.set(head.byteLength, metadataLength);
 
       return result;
     };
@@ -216,6 +224,9 @@
         patTableId, // :int
         patCurrentNextIndicator, // Boolean
         patSectionLength, // :uint
+        programNumber, // :uint
+        programPid, // :uint
+        patEntriesEnd, // :uint
 
         pesPacketSize, // :int,
         dataAlignmentIndicator, // :Boolean,
@@ -276,6 +287,8 @@
         if (patCurrentNextIndicator) {
           // section_length specifies the number of bytes following
           // its position to the end of this section
+          // section_length = rest of header + (n * entry length) + CRC
+          // = 5 + (n * 4) + 4
           patSectionLength =  (data[offset + 1] & 0x0F) << 8 | data[offset + 2];
           // move past the rest of the PSI header to the first program
           // map table entry
@@ -283,15 +296,22 @@
 
           // we don't handle streams with more than one program, so
           // raise an exception if we encounter one
-          // section_length = rest of header + (n * entry length) + CRC
-          // = 5 + (n * 4) + 4
-          if ((patSectionLength - 5 - 4) / 4 !== 1) {
-            throw new Error("TS has more that 1 program");
+          patEntriesEnd = offset + (patSectionLength - 5 - 4);
+          for (; offset < patEntriesEnd; offset += 4) {
+            programNumber = (data[offset] << 8 | data[offset + 1]);
+            programPid = (data[offset + 2] & 0x1F) << 8 | data[offset + 3];
+            // network PID program number equals 0
+            // this is primarily an artifact of EBU DVB and can be ignored
+            if (programNumber === 0) {
+              self.stream.networkPid = programPid;
+            } else if (self.stream.pmtPid === undefined) {
+              // the Program Map Table (PMT) associates the underlying
+              // video and audio streams with a unique PID
+              self.stream.pmtPid = programPid;
+            } else if (self.stream.pmtPid !== programPid) {
+              throw new Error("TS has more that 1 program");
+            }
           }
-
-          // the Program Map Table (PMT) associates the underlying
-          // video and audio streams with a unique PID
-          self.stream.pmtPid = (data[offset + 2] & 0x1F) << 8 | data[offset + 3];
         }
       } else if (pid === self.stream.programMapTable[STREAM_TYPES.h264] ||
                  pid === self.stream.programMapTable[STREAM_TYPES.adts] ||
@@ -340,40 +360,21 @@
           // Skip past "optional" portion of PTS header
           offset += pesHeaderLength;
 
-          // align the metadata stream PTS values with the start of
-          // the other elementary streams
-          if (!self.metadataStream.timestampOffset) {
-            self.metadataStream.timestampOffset = pts;
+          // keep track of the earliest encounted PTS value so
+          // external parties can align timestamps across
+          // discontinuities
+          if (self.timestampOffset === null) {
+            self.timestampOffset = pts;
           }
 
           if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
-            if (!h264HasTimeStampOffset) {
-              h264HasTimeStampOffset = true;
-              if (timeStampOffset === undefined) {
-                timeStampOffset = pts;
-              }
-              h264Stream.setTimeStampOffset(timeStampOffset);
-            }
             h264Stream.setNextTimeStamp(pts,
                                         dts,
                                         dataAlignmentIndicator);
           } else if (pid === self.stream.programMapTable[STREAM_TYPES.adts]) {
-            if (!aacHasTimeStampOffset) {
-              aacHasTimeStampOffset = true;
-              if (timeStampOffset === undefined) {
-                timeStampOffset = pts;
-              }
-              aacStream.setTimeStampOffset(timeStampOffset);
-            }
             aacStream.setNextTimeStamp(pts,
                                        pesPacketSize,
                                        dataAlignmentIndicator);
-          } else {
-            self.metadataStream.push({
-              pts: pts,
-              dts: dts,
-              data: data.subarray(offset)
-            });
           }
         }
 
@@ -381,6 +382,12 @@
           aacStream.writeBytes(data, offset, end - offset);
         } else if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
           h264Stream.writeBytes(data, offset, end - offset);
+        } else if (pid === self.stream.programMapTable[STREAM_TYPES.metadata]) {
+          self.metadataStream.push({
+            pts: pts,
+            dts: dts,
+            data: data.subarray(offset)
+          });
         }
       } else if (self.stream.pmtPid === pid) {
         // similarly to the PAT, jump to the first byte of the section
@@ -407,6 +414,9 @@
           // skip CRC and PSI data we dont care about
           // rest of header + CRC = 9 + 4
           pmtSectionLength -= 13;
+
+          // capture the PID of PCR packets so we can ignore them if we see any
+          self.stream.programMapTable.pcrPid = (data[offset + 8] & 0x1f) << 8 | data[offset + 9];
 
           // align offset to the first entry in the PMT
           offset += 12 + pmtProgramDescriptorsLength;
@@ -444,10 +454,16 @@
           }
         }
         // We could test the CRC here to detect corruption with extra CPU cost
+      } else if (self.stream.networkPid === pid) {
+        // network information specific data (NIT) packet
       } else if (0x0011 === pid) {
         // Service Description Table
       } else if (0x1FFF === pid) {
         // NULL packet
+      } else if (self.stream.programMapTable.pcrPid) {
+        // program clock reference (PCR) PID for the primary program
+        // PTS values are sufficient to synchronize playback for us so
+        // we can safely ignore these
       } else {
         videojs.log("Unknown PID parsing TS packet: " + pid);
       }
