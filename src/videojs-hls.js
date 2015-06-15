@@ -675,9 +675,11 @@
     // playback time
     if (typeof offset === 'number') {
       ptsTime = offset - segmentOffset + tags[0].pts;
+      //Storing the value of pts to tagPts and also maintating the tagIndex 
       tagPts = tags[i].pts;
       tagIndex = i;
       while(tagPts < ptsTime){i++;
+        //if the array goes out of bounds , i.e if we get a value of undefined, get the value of tagPts and tagIndex
         if(tags[i] !== undefined){
             tagPts = tags[i].pts;
             tagIndex = i;
@@ -872,6 +874,7 @@
     timeRanges = [];
     for (index = 0; index < playlist.segments.length; index++) {   
         segment = playlist.segments[index];
+        //Taking into account the preciseDuration of the segement and checking against it too, previously we did not take this into account
         segmentDuration = segment.preciseDuration || segment.duration || playlist.targetDuration || 0; 
       currentSegmentRange = {};
       currentSegmentRange.start = index === 0 ? 0 : timeRanges[index - 1].end;  
