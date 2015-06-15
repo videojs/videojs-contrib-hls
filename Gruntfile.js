@@ -113,6 +113,11 @@ module.exports = function(grunt) {
         }
       }
     },
+    version: {
+      project: {
+        src: ['package.json']
+      }
+    },
     karma: {
       options: {
         frameworks: ['qunit']
@@ -205,6 +210,8 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-concurrent');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-github-releaser');
+  grunt.loadNpmTasks('grunt-version');
   grunt.loadNpmTasks('chg');
 
 
