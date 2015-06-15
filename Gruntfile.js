@@ -37,8 +37,8 @@ module.exports = function(grunt) {
               'src/playlist.js',
               'src/playlist-loader.js',
               'node_modules/pkcs7/dist/pkcs7.unpad.js',
-              'src/decrypter.js',
-              'src/vineet-test.js'
+              'src/decrypter.js'
+              
             ],
         dest: 'dist/videojs.hls.js'
       }
