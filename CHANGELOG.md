@@ -2,10 +2,13 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-
-* @dmlap fix seeking in live streams ([view](https://github.com/videojs/videojs-contrib-hls/pull/308))
+_(none)_
 
 --------------------
+
+## 0.17.2 (2015-06-15)
+
+* @dmlap fix seeking in live streams ([view](https://github.com/videojs/videojs-contrib-hls/pull/308))
 
 ## 0.17.1 (2015-06-08)
 * @dmlap do not preload live videos ([view](https://github.com/videojs/videojs-contrib-hls/pull/299))
