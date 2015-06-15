@@ -3,6 +3,7 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+* @dmlap fix seeking in live streams ([view](https://github.com/videojs/videojs-contrib-hls/pull/308))
 
 --------------------
 

@@ -1663,19 +1663,33 @@ test('updates the media index when a playlist reloads', function() {
 test('live playlist starts three target durations before live', function() {
   var mediaPlaylist;
   player.src({
-    src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
+    src: 'live.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  standardXHRResponse(requests.shift());
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:101\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '3.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '4.ts\n');
 
   equal(player.hls.mediaIndex, 0, 'waits for the first play to start buffering');
   equal(requests.length, 0, 'no outstanding segment request');
 
   player.play();
   mediaPlaylist = player.hls.playlists.media();
-  equal(player.hls.mediaIndex, 6, 'mediaIndex is updated at play');
-  equal(player.currentTime(), videojs.Hls.Playlist.seekable(mediaPlaylist).end(0));
+  equal(player.hls.mediaIndex, 1, 'mediaIndex is updated at play');
+  equal(player.currentTime(), player.seekable().end(0));
+
+  equal(requests.length, 1, 'begins buffering');
 });
 
 test('does not reset live currentTime if mediaIndex is one beyond the last available segment', function() {
@@ -1726,6 +1740,24 @@ test('mediaIndex is zero before the first segment loads', function() {
   openMediaSource(player);
 
   strictEqual(player.hls.mediaIndex, 0, 'mediaIndex is zero');
+});
+
+test('mediaIndex returns correctly at playlist boundaries', function() {
+  player.src({
+    src: 'http://example.com/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
+
+  strictEqual(player.hls.mediaIndex, 0, 'mediaIndex is zero at first segment');
+
+  // seek to end
+  player.currentTime(40);
+
+  strictEqual(player.hls.mediaIndex, 3, 'mediaIndex is 3 at last segment');
 });
 
 test('reloads out-of-date live playlists when switching variants', function() {
@@ -1919,18 +1951,19 @@ test('continues playing after seek to discontinuity', function() {
     '#EXTINF:10,0\n' +
     '2.ts\n' +
     '#EXT-X-ENDLIST\n');
-  standardXHRResponse(requests.pop());
+  standardXHRResponse(requests.pop()); // 1.ts
 
   currentTime = 1;
   bufferEnd = 10;
   player.hls.checkBuffer_();
 
-  standardXHRResponse(requests.pop());
+  standardXHRResponse(requests.pop()); // 2.ts
 
   // seek to the discontinuity
   player.currentTime(10);
   tags.push({ pts: 0, bytes: new Uint8Array(1) });
-  standardXHRResponse(requests.pop());
+  tags.push({ pts: 11 * 1000, bytes: new Uint8Array(1) });
+  standardXHRResponse(requests.pop()); // 1.ts, again
   strictEqual(aborts, 1, 'aborted once for the seek');
 
   // the source buffer empties. is 2.ts still in the segment buffer?
