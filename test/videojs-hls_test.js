@@ -2651,4 +2651,19 @@ test('does not download segments if preload option set to none', function() {
   strictEqual(loadedSegments, 0, 'did not download any segments');
 });
 
+test('pts value undefined test', function(){
+	//Making a fictious array
+    var tags = [{ pts: 1000, bytes: new Uint8Array(1)}];
+	//Check the length of tags
+	ok(tags.length,"We have the length of tags");
+	//Check to see if value of pts exists
+	ok(tags[length].pts,"We have got a pts value at length of tag");
+	//Check to see if the last element is not undefined
+	notEqual(tags[length].pts,undefined,"the tags array is doing fine until the last pts value");
+	//Check to see if the out of bounds array is undefined
+	equal(tags[length+1],undefined,"the tags array will going out of bounds here");
+	//Try accessing the value of undefined - which throws an error so commenting this out
+	//equal(tags[length+1].pts,undefined,"cannot find pts value of undefined");
+	
+});
 })(window, window.videojs);

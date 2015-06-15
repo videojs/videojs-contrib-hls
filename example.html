@@ -54,12 +54,18 @@
       padding: 0 5px;
       margin: 20px 0;
     }
+	.video-js 
+		{
+		width: 640px;
+		height: 360px;    
+		}
+		
   </style>
 
 </head>
 <body>
   <div class="info">
-    <p>The video below is an <a href="https://developer.apple.com/library/ios/documentation/networkinginternet/conceptual/streamingmediaguide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008332-CH1-SW1">HTTP Live Stream</a>. On desktop browsers other than Safari, the HLS plugin will polyfill support for the format on top of the video.js Flash tech.</p>
+    <p>The video below is an <a href="https://developer.apple.com/library/ios/documentation/networkinginternet/conceptual/streamingmediaguide/Introduction/Introduction.html#//apple_ref/doc/uid/TP50008332-CH1-SW1">HTTP Live Stream</a>. On desktop browsers other than Safari, the HLS plugin will polyfill support for the format on top of the video.js Flash tech.</p>
     <p>Due to security restrictions in Flash, you will have to load this page over HTTP(S) to see the example in action.</p>
   </div>
   <video id="video"
@@ -75,6 +81,10 @@
     videojs.options.flash.swf = 'node_modules/videojs-swf/dist/video-js.swf';
     // initialize the player
     var player = videojs('video');
+    
+   
   </script>
+  
+   
 </body>
 </html>
