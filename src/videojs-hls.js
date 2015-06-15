@@ -6,7 +6,6 @@
  /*jshint -W092 */
  /*jshint -W062 */
 (function(window, videojs, document, undefined) {
-
   'use strict';
   var
     // a fudge factor to apply to advertised playlist bitrates to account for
@@ -668,6 +667,7 @@
       // exact duration, since this may differ by fractions of a second
       // from what is reported in the playlist
       segment.preciseDuration = videojs.Hls.FlvTag.durationFromTags(tags) * 0.001;
+      console.log(segment.preciseDuation);
     }
     this.updateDuration(this.playlists.media());
     // if we're refilling the buffer after a seek, scan through the muxed
@@ -679,8 +679,10 @@
       tagPts = tags[i].pts;
       tagIndex = i;
       while(tagPts < ptsTime){i++;
+            //console.log("before:"+tags[i].pts);
         //if the array goes out of bounds , i.e if we get a value of undefined, get the value of tagPts and tagIndex
         if(tags[i] !== undefined){
+            //console.log(tags[i].pts);
             tagPts = tags[i].pts;
             tagIndex = i;
         }
