@@ -105,6 +105,11 @@ videojs.Hls.prototype.src = function(src) {
   // sequence number for a segment.
   this.mediaIndex = 0;
 
+  console.time('playlistsLoad');
+
+  player.on('loadstart', function () {
+  console.timeEnd('playlistsLoad');
+
   this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
@@ -191,6 +196,7 @@ videojs.Hls.prototype.src = function(src) {
 
     player.trigger('mediachange');
   }));
+  }.bind(this));
 
   this.player().ready(function() {
     // do nothing if the tech has been disposed already
