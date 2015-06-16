@@ -46,7 +46,9 @@ videojs.Hls = videojs.Flash.extend({
     // buffered data should be appended to the source buffer
     this.startCheckingBuffer_();
 
-    videojs.Hls.prototype.src.call(this, options.source && options.source.src);
+    if (source) {
+      videojs.Hls.prototype.setSource.call(this, source);
+    }
   }
 });
 
@@ -622,7 +624,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   }
 
   // if a video has not been specified, do nothing
-  if (!player.currentSrc() || !this.playlists) {
+  if (!this.src_ || !this.playlists) {
     return;
   }
 
@@ -1000,6 +1002,22 @@ videojs.Hls.prototype.fetchKeys_ = function() {
     }
   }
 };
+
+/* Source Handler Support --------------------------------------------------- */
+
+/** Add the source handler pattern to the tech */
+videojs.MediaTechController.withSourceHandlers(videojs.Hls);
+videojs.Hls.nativeSourceHandler = {
+  // the native source handler can play any sources the static method supports
+  canHandleSource: videojs.Hls.canPlaySource,
+  // delegate to the tech's standard implementation
+  handleSource: function(source, tech) {
+    tech.src(source.src);
+  }
+};
+
+
+/* Utilities ---------------------------------------------------------------- */
 
 /**
  * Whether the browser has built-in HLS support.
