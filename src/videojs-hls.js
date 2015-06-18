@@ -105,7 +105,7 @@ videojs.Hls.prototype.src = function(src) {
   // sequence number for a segment.
   this.mediaIndex = 0;
 
-  this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials);
+  this.playlists = new videojs.Hls.PlaylistLoader(this.src_, settings.withCredentials, player);
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     var selectedPlaylist, loaderHandler, oldBitrate, newBitrate, segmentDuration,
@@ -711,7 +711,7 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     settings = player.options().hls || {};
 
   // request the next segment
-  this.segmentXhr_ = videojs.Hls.xhr({
+  this.segmentXhr_ = player.hls.xhr({
     url: segmentUri,
     responseType: 'arraybuffer',
     withCredentials: settings.withCredentials
@@ -991,7 +991,7 @@ videojs.Hls.prototype.fetchKeys_ = function() {
 
     // request the key if the retry limit hasn't been reached
     if (!key.bytes && !keyFailed(key)) {
-      keyXhr = videojs.Hls.xhr({
+      keyXhr = player.hls.xhr({
         url: this.playlistUriToUrl(key.uri),
         responseType: 'arraybuffer',
         withCredentials: settings.withCredentials

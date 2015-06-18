@@ -148,6 +148,18 @@ segment is downloaded. You can override this function to provide your
 adaptive streaming logic. You must, however, be sure to return a valid
 media playlist object that is present in `player.hls.master`.
 
+#### player.hls.updateXhr(xhr)
+Type: `function`
+
+A function that returns an updated XMLHttpRequest object to be 
+initiated. It is invoked by the tech immediately before initiating 
+the XMLHttpRequest `send()` method. You can override this function to 
+allow you to modify the XHR request, which is useful in cases where 
+content is protected by CDN tokens, among other cases. This function 
+is invoked with the existing XMLHttpRequest object as a parameter, 
+and you must be sure to return the modified XMLHttpRequest object, 
+which must be a valid XMLHttpRequest object.
+
 ### Events
 #### loadedmetadata
 

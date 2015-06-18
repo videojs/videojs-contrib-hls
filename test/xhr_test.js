@@ -5,22 +5,54 @@
     XHR test suite
   */
 
-  var xhr;
+  var 
+    xhr,
+    player,
+
+    createPlayer = function(options) {
+      var tech, video, player;
+      video = document.createElement('video');
+      document.querySelector('#qunit-fixture').appendChild(video);
+      player = videojs(video, {
+        flash: {
+          swf: ''
+        },
+        hls: options || {}
+      });
+
+      player.buffered = function() {
+        return videojs.createTimeRange(0, 0);
+      };
+
+      tech = player.el().querySelector('.vjs-tech');
+      tech.vjs_getProperty = function() {};
+      tech.vjs_setProperty = function() {};
+      tech.vjs_src = function() {};
+      tech.vjs_play = function() {};
+      tech.vjs_discontinuity = function() {};
+      videojs.Flash.onReady(tech.id);
+
+      return player;
+    };
 
   module('XHR', {
     setup: function() {
       xhr = sinon.useFakeXMLHttpRequest();
+
+      // create the test player
+      player = createPlayer();
     },
 
     teardown: function() {
       xhr.restore();
+      player.dispose();
     }
   });
 
   test('handles xhr timeouts correctly', function () {
     var error;
     var clock = sinon.useFakeTimers();
-    videojs.Hls.xhr({
+    player.hls.xhr({
       url: 'http://example.com',
       timeout: 1
     }, function(innerError) {

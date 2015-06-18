@@ -5,6 +5,33 @@
     clock,
     requests,
     videojs = window.videojs,
+    player,
+
+    createPlayer = function(options) {
+      var tech, video, player;
+      video = document.createElement('video');
+      document.querySelector('#qunit-fixture').appendChild(video);
+      player = videojs(video, {
+        flash: {
+          swf: ''
+        },
+        hls: options || {}
+      });
+
+      player.buffered = function() {
+        return videojs.createTimeRange(0, 0);
+      };
+
+      tech = player.el().querySelector('.vjs-tech');
+      tech.vjs_getProperty = function() {};
+      tech.vjs_setProperty = function() {};
+      tech.vjs_src = function() {};
+      tech.vjs_play = function() {};
+      tech.vjs_discontinuity = function() {};
+      videojs.Flash.onReady(tech.id);
+
+      return player;
+    },
 
     // Attempts to produce an absolute URL to a given relative path
     // based on window.location.href
@@ -29,10 +56,14 @@
 
       // fake timers
       clock = sinon.useFakeTimers();
+
+      // create the test player
+      player = createPlayer();
     },
     teardown: function() {
       sinonXhr.restore();
       clock.restore();
+      player.dispose();
     }
   });
 
@@ -46,12 +77,12 @@
   });
 
   test('starts without any metadata', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     strictEqual(loader.state, 'HAVE_NOTHING', 'no metadata has loaded yet');
   });
 
   test('starts with no expired time', function() {
-    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXTINF:10,\n' +
@@ -65,13 +96,13 @@
   });
 
   test('requests the initial playlist immediately', function() {
-    new videojs.Hls.PlaylistLoader('master.m3u8');
+    new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     strictEqual(requests.length, 1, 'made a request');
     strictEqual(requests[0].url, 'master.m3u8', 'requested the initial playlist');
   });
 
   test('moves to HAVE_MASTER after loading a master playlist', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:\n' +
@@ -83,7 +114,7 @@
   test('jumps to HAVE_METADATA when initialized with a media playlist', function() {
     var
       loadedmetadatas = 0,
-      loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+      loader = new videojs.Hls.PlaylistLoader('media.m3u8', false, player);
     loader.on('loadedmetadata', function() {
       loadedmetadatas++;
     });
@@ -101,7 +132,7 @@
   });
 
   test('jumps to HAVE_METADATA when initialized with a live media playlist', function() {
-    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXTINF:10,\n' +
@@ -115,7 +146,7 @@
     var
       loadedPlaylist = 0,
       loadedMetadata = 0,
-      loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+      loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     loader.on('loadedplaylist', function() {
       loadedPlaylist++;
     });
@@ -147,7 +178,7 @@
   });
 
   test('moves to HAVE_CURRENT_METADATA when refreshing the playlist', function() {
-    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXTINF:10,\n' +
@@ -161,7 +192,7 @@
   });
 
   test('returns to HAVE_METADATA after refreshing the playlist', function() {
-    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXTINF:10,\n' +
@@ -175,7 +206,7 @@
   });
 
   test('increments expired seconds after a segment is removed', function() {
-    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -203,7 +234,7 @@
   });
 
   test('increments expired seconds after a discontinuity', function() {
-    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -248,7 +279,7 @@
   });
 
   test('tracks expired seconds properly when two discontinuities expire at once', function() {
-    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -276,7 +307,7 @@
   test('emits an error when an initial playlist request fails', function() {
     var
       errors = [],
-      loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+      loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
 
     loader.on('error', function() {
       errors.push(loader.error);
@@ -290,7 +321,7 @@
   test('errors when an initial media playlist request fails', function() {
     var
       errors = [],
-      loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+      loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
 
     loader.on('error', function() {
       errors.push(loader.error);
@@ -311,7 +342,7 @@
   // http://tools.ietf.org/html/draft-pantos-http-live-streaming-12#section-6.3.4
   test('halves the refresh timeout if a playlist is unchanged' +
        'since the last reload', function() {
-    new videojs.Hls.PlaylistLoader('live.m3u8');
+    new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -332,7 +363,7 @@
   });
 
   test('clears the update timeout when switching quality', function() {
-    var loader = new videojs.Hls.PlaylistLoader('live-master.m3u8'), refreshes = 0;
+    var loader = new videojs.Hls.PlaylistLoader('live-master.m3u8', false, player), refreshes = 0;
     // track the number of playlist refreshes triggered
     loader.on('mediaupdatetimeout', function() {
       refreshes++;
@@ -363,7 +394,7 @@
   });
 
   test('media-sequence updates are considered a playlist change', function() {
-    new videojs.Hls.PlaylistLoader('live.m3u8');
+    new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -384,7 +415,7 @@
     var
       errors = 0,
       errorResponseText = 'custom error message',
-      loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+      loader = new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
 
     loader.on('error', function() {
       errors++;
@@ -403,7 +434,7 @@
   });
 
   test('switches media playlists when requested', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
@@ -431,7 +462,7 @@
   });
 
   test('can switch media playlists based on URI', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
@@ -459,7 +490,7 @@
   });
 
   test('aborts in-flight playlist refreshes when switching', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
@@ -479,7 +510,7 @@
   });
 
   test('switching to the active playlist is a no-op', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
@@ -498,7 +529,7 @@
   });
 
   test('switching to the active live playlist is a no-op', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
@@ -516,7 +547,7 @@
   });
 
   test('switches back to loaded playlists without re-requesting them', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
@@ -543,7 +574,7 @@
   });
 
   test('aborts outstanding requests if switching back to an already loaded playlist', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
@@ -568,7 +599,7 @@
 
 
   test('does not abort requests when the same playlist is re-requested', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
@@ -589,7 +620,7 @@
   });
 
   test('throws an error if a media switch is initiated too early', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
 
     throws(function() {
       loader.media('high.m3u8');
@@ -607,7 +638,7 @@
   });
 
   test('throws an error if a switch to an unrecognized playlist is requested', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
@@ -619,7 +650,7 @@
   });
 
   test('dispose cancels the refresh timeout', function() {
-    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -633,7 +664,7 @@
   });
 
   test('dispose aborts pending refresh requests', function() {
-    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8', false, player);
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -648,7 +679,7 @@
 
   test('errors if requests take longer than 45s', function() {
     var
-      loader = new videojs.Hls.PlaylistLoader('media.m3u8'),
+      loader = new videojs.Hls.PlaylistLoader('media.m3u8', false, player),
       errors = 0;
     loader.on('error', function() {
       errors++;
@@ -661,7 +692,7 @@
 
   test('triggers an event when the active media changes', function() {
     var
-      loader = new videojs.Hls.PlaylistLoader('master.m3u8'),
+      loader = new videojs.Hls.PlaylistLoader('master.m3u8', false, player),
       mediaChanges = 0;
     loader.on('mediachange', function() {
       mediaChanges++;
@@ -701,7 +732,7 @@
   });
 
   test('can get media index by playback position for non-live videos', function() {
-    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8', false, player);
     requests.shift().respond(200, null,
                              '#EXTM3U\n' +
                              '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -725,7 +756,7 @@
   });
 
   test('returns the lower index when calculating for a segment boundary', function() {
-    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8', false, player);
     requests.shift().respond(200, null,
                              '#EXTM3U\n' +
                              '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -742,7 +773,7 @@
   });
 
   test('accounts for expired time when calculating media index', function() {
-    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8', false, player);
     requests.shift().respond(200, null,
                              '#EXTM3U\n' +
                              '#EXT-X-MEDIA-SEQUENCE:1001\n' +
@@ -764,7 +795,7 @@
   });
 
   test('does not misintrepret playlists missing newlines at the end', function() {
-    var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('media.m3u8', false, player);
     requests.shift().respond(200, null,
                              '#EXTM3U\n' +
                              '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -772,6 +803,26 @@
                              'low-0.ts\n' +
                              '#EXT-X-ENDLIST'); // no newline
      ok(loader.media().endList, 'flushed the final line of input');
+  });
+
+  test('allows customization of the xhr object on master playlist request', function() {
+    var modified = false;
+    player.hls.updateXhr = function(xhr) {
+      modified = true;
+      return xhr;
+    };
+    new videojs.Hls.PlaylistLoader('master.m3u8', false, player);
+    strictEqual(requests.length, 1, 'made a request');
+    ok(modified, 'custom update function executed');
+  });
+
+  test('throws if the player is undefined or null', function() {
+    throws(function() {
+      videojs.Hls.PlaylistLoader('master.m3u8');
+    }, 'requires a player');
+    throws(function() {
+      videojs.Hls.PlaylistLoader('master.m3u8', false, null);
+    }, 'player cannot be null');
   });
 
 })(window);

@@ -1,5 +1,16 @@
 (function(videojs){
   /**
+   * Prepare the XHR object, allowing for custom logic and settings
+   * for specific customer implementations. Does nothing by default.
+   * 
+   * @param xhr {object} the XMLHttpRequest that is about to be sent.
+   * @return {object} the modified XMLHttpRequest to be initiated.
+   */
+  videojs.Hls.prototype.updateXhr = function(xhr) {
+    return xhr;
+  };
+
+  /**
    * Creates and sends an XMLHttpRequest.
    * TODO - expose video.js core's XHR and use that instead
    *
@@ -13,14 +24,16 @@
    * argument will be falsey.
    * @return {object} the XMLHttpRequest that was initiated.
    */
-   videojs.Hls.xhr = function(url, callback) {
+  videojs.Hls.prototype.xhr = function(url, callback) {
     var
       options = {
         method: 'GET',
         timeout: 45 * 1000
       },
       request,
-      abortTimeout;
+      abortTimeout,
+      player = this.player();
+
 
     if (typeof callback !== 'function') {
       callback = function() {};
@@ -79,6 +92,10 @@
 
       return callback.call(this, false, url);
     };
+
+    // allow people to customize the request
+    request = player.hls.updateXhr(request);
+
     request.send(null);
     return request;
   };

@@ -2684,4 +2684,75 @@ test('does not download segments if preload option set to none', function() {
   strictEqual(loadedSegments, 0, 'did not download any segments');
 });
 
+test('runs XHR customization handler for master playlist', function() {
+  var masterXhrModified = false;
+
+  player.hls.updateXhr = function(xhr) {
+    masterXhrModified = true;
+    return xhr;
+  };
+  player.src({
+    src:'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  ok(masterXhrModified, 'custom XHR update function executed for master playlist');
+});
+
+test('runs XHR customization handler and can modify the XHR object', function() {
+  player.hls.updateXhr = function(xhr) {
+    xhr.url = 'manifest/playlist.m3u8';
+    return xhr;
+  };
+  player.src({
+    src:'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  strictEqual('manifest/playlist.m3u8', requests[0].url);
+});
+
+test('runs XHR customization handler for media playlist, segment, and key', function() {
+  var 
+    playlistXhrModified = false,
+    segmentXhrModified = false,
+    keyXhrModified = false;
+
+  player.hls.updateXhr = function(xhr) {
+    playlistXhrModified = true;
+    return xhr;
+  };
+  player.src({
+    src: 'https://example.com/encrypted-media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  ok(playlistXhrModified, 'custom XHR update function executed for media playlist');
+  
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-TARGETDURATION:15\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
+                           '#EXTINF:2.833,\n' +
+                           'http://media.example.com/fileSequence1.ts\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key2.php"\n' +
+                           '#EXTINF:2.833,\n' +
+                           'http://media.example.com/fileSequence2.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+  
+  player.hls.updateXhr = function(xhr) {
+    segmentXhrModified = true;
+    return xhr;
+  };
+  standardXHRResponse(requests.shift()); // segment 1
+  ok(playlistXhrModified, 'custom XHR update function executed for segment');
+
+  player.hls.updateXhr = function(xhr) {
+    keyXhrModified = true;
+    return xhr;
+  };
+  standardXHRResponse(requests.shift()); // key 1
+  ok(playlistXhrModified, 'custom XHR update function executed for key');
+});
+
 })(window, window.videojs);
