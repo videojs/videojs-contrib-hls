@@ -8,6 +8,7 @@
   var 
     xhr,
     player,
+    oldFlashSupported,
 
     createPlayer = function(options) {
       var tech, video, player;
@@ -37,6 +38,13 @@
 
   module('XHR', {
     setup: function() {
+
+      // mock out Flash features for phantomjs
+      oldFlashSupported = videojs.Flash.isSupported;
+      videojs.Flash.isSupported = function() {
+        return true;
+      };
+
       xhr = sinon.useFakeXMLHttpRequest();
 
       // create the test player
@@ -44,6 +52,7 @@
     },
 
     teardown: function() {
+      videojs.Flash.isSupported = oldFlashSupported;
       xhr.restore();
       player.dispose();
     }

@@ -71,6 +71,10 @@
         throw new Error('A non-empty playlist URL is required');
       }
 
+      if (!player) {
+        throw new Error('A valid player is required');
+      }
+
       // update the playlist loader's state in response to a new or
       // updated playlist.
       haveMetadata = function(error, xhr, url) {
