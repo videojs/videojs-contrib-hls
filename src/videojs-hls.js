@@ -791,6 +791,8 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     decrypter,
     segIv,
     ptsTime,
+    tagPts,
+    tagIndex,
     segmentOffset = 0,
     segmentBuffer = this.segmentBuffer_;
 
@@ -889,14 +891,23 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   if (typeof offset === 'number') {
     ptsTime = offset - segmentOffset + tags[0].pts;
 
-    while (tags[i].pts < ptsTime) {
+    tagPts = tags[i].pts;
+    tagIndex = i;
+    while (tagPts < ptsTime) {
       i++;
+      if (tags[i] !== undefined) {
+        tagPts = tags[i].pts;
+        tagIndex = i;
+      }
+      else {
+        break;
+      }
     }
 
     // tell the SWF where we will be seeking to
-    this.el().vjs_setProperty('currentTime', (tags[i].pts - tags[0].pts + segmentOffset) * 0.001);
+    this.el().vjs_setProperty('currentTime', (tagPts - tags[0].pts + segmentOffset) * 0.001);
 
-    tags = tags.slice(i);
+    tags = tags.slice(tagIndex);
 
     this.lastSeekedTime_ = null;
   }
@@ -1125,14 +1136,15 @@ videojs.Hls.getMediaIndexByTime = function() {
  * @returns {number} The current time to that point, or 0 if none appropriate.
  */
 videojs.Hls.prototype.getCurrentTimeByMediaIndex_ = function(playlist, mediaIndex) {
-  var index, time = 0;
+  var index, time = 0, segment;
 
   if (!playlist.segments || mediaIndex === 0) {
     return 0;
   }
 
   for (index = 0; index < mediaIndex; index++) {
-    time += playlist.segments[index].duration;
+    segment = playlist.segments[index];
+    time += segment.preciseDuration || segment.duration || playlist.targetDuration || 0;
   }
 
   return time;
