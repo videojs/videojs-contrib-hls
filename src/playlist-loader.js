@@ -16,7 +16,6 @@
   'use strict';
   var
     resolveUrl = videojs.Hls.resolveUrl,
-    xhr = videojs.Hls.xhr,
     Playlist = videojs.Hls.Playlist,
 
     /**
@@ -58,7 +57,7 @@
       return changed ? result : null;
     },
 
-    PlaylistLoader = function(srcUrl, withCredentials) {
+    PlaylistLoader = function(srcUrl, withCredentials, player) {
       var
         loader = this,
         dispose,
@@ -70,6 +69,10 @@
 
       if (!srcUrl) {
         throw new Error('A non-empty playlist URL is required');
+      }
+
+      if (!player) {
+        throw new Error('A valid player is required');
       }
 
       // update the playlist loader's state in response to a new or
@@ -227,7 +230,7 @@
         }
 
         // request the new playlist
-        request = xhr({
+        request = player.hls.xhr({
           url: resolveUrl(loader.master.uri, playlist.uri),
           withCredentials: withCredentials
         }, function(error) {
@@ -248,7 +251,7 @@
         }
 
         loader.state = 'HAVE_CURRENT_METADATA';
-        request = xhr({
+        request = player.hls.xhr({
           url: resolveUrl(loader.master.uri, loader.media().uri),
           withCredentials: withCredentials
         }, function(error) {
@@ -257,7 +260,7 @@
       });
 
       // request the specified URL
-      xhr({
+      player.hls.xhr({
         url: srcUrl,
         withCredentials: withCredentials
       }, function(error) {
@@ -291,7 +294,7 @@
             loader.master.playlists[loader.master.playlists[i].uri] = loader.master.playlists[i];
           }
 
-          request = xhr({
+          request = player.hls.xhr({
             url: resolveUrl(srcUrl, parser.manifest.playlists[0].uri),
             withCredentials: withCredentials
           }, function(error) {
