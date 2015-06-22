@@ -883,13 +883,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     tags.push(this.segmentParser_.getNextTag());
   }
 
-  if (tags.length > 0) {
-    // Use the presentation timestamp of the ts segment to calculate its
-    // exact duration, since this may differ by fractions of a second
-    // from what is reported in the playlist
-    segment.preciseDuration = videojs.Hls.FlvTag.durationFromTags(tags) * 0.001;
-  }
-
   this.updateDuration(this.playlists.media());
 
   // if we're refilling the buffer after a seek, scan through the muxed

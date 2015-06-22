@@ -331,6 +331,35 @@
                 'requested the media playlist');
   });
 
+  test('preserves segment metadata across playlist refreshes', function() {
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8'), segment;
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n');
+    // add PTS info to 1.ts
+    segment = loader.media().segments[1];
+    segment.minVideoPts = 14;
+    segment.maxAudioPts = 27;
+    segment.preciseDuration = 10.045;
+
+    clock.tick(10 * 1000); // trigger a refresh
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:1\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n');
+
+    deepEqual(loader.media().segments[0], segment, 'preserved segment attributes');
+  });
+
   test('clears the update timeout when switching quality', function() {
     var loader = new videojs.Hls.PlaylistLoader('live-master.m3u8'), refreshes = 0;
     // track the number of playlist refreshes triggered

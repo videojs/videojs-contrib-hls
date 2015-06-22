@@ -1185,56 +1185,6 @@ test('flushes the parser after each segment', function() {
   strictEqual(flushes, 1, 'tags are flushed at the end of a segment');
 });
 
-test('calculates preciseDuration for a new segment', function() {
-  var tags = [
-    { pts : 200 * 1000, bytes: new Uint8Array(1) },
-    { pts : 300 * 1000, bytes: new Uint8Array(1) }
-  ];
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
-
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-
-  standardXHRResponse(requests[0]);
-  strictEqual(player.duration(), 40, 'player duration is read from playlist on load');
-  standardXHRResponse(requests[1]);
-  strictEqual(player.hls.playlists.media().segments[0].preciseDuration, 200, 'preciseDuration is calculated and stored');
-  strictEqual(player.duration(), 230, 'player duration is calculated using preciseDuration');
-});
-
-test('calculates preciseDuration correctly around discontinuities', function() {
-  var tags = [];
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  requests.shift().respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXTINF:10,\n' +
-                           '0.ts\n' +
-                           '#EXT-X-DISCONTINUITY\n' +
-                           '#EXTINF:10,\n' +
-                           '1.ts\n' +
-                           '#EXT-X-ENDLIST\n');
-  tags.push({ pts: 10 * 1000, bytes: new Uint8Array(1) });
-  standardXHRResponse(requests.shift()); // segment 0
-  player.hls.checkBuffer_();
-
-  // the PTS value of the second segment is *earlier* than the first
-  tags.push({ pts: 0 * 1000, bytes: new Uint8Array(1) });
-  tags.push({ pts: 5 * 1000, bytes: new Uint8Array(1) });
-  standardXHRResponse(requests.shift()); // segment 1
-
-  equal(player.hls.playlists.media().segments[1].preciseDuration,
-        5 + 5, // duration includes the time to display the second tag
-        'duration is independent of previous segments');
-});
-
 test('exposes in-band metadata events as cues', function() {
   var track;
   videojs.Hls.SegmentParser = mockSegmentParser();
@@ -1444,7 +1394,8 @@ test('translates ID3 PTS values across discontinuities', function() {
 
   // segment 0 starts at PTS 14000 and has a cue point at 15000
   player.hls.segmentParser_.timestampOffset = 14 * 1000;
-  tags.push({ pts: 14 * 1000, bytes: new Uint8Array(1) });
+  tags.push({ pts: 14 * 1000, bytes: new Uint8Array(1) },
+            { pts: 24 * 1000, bytes: new Uint8Array(1) });
   events.push({
       pts:  15 * 1000,
       data: new Uint8Array([]),

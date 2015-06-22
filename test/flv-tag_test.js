@@ -57,32 +57,4 @@ test('writeBytes grows the internal byte array dynamically', function() {
   }
 });
 
-test('calculates the duration of a tag array from PTS values', function() {
-  var tags = [], count = 20, i;
-
-  for (i = 0; i < count; i++) {
-    tags[i] = new FlvTag(FlvTag.VIDEO_TAG);
-    tags[i].pts = i * 1000;
-  }
-
-  equal(FlvTag.durationFromTags(tags), count * 1000, 'calculated duration from PTS values');
-});
-
-test('durationFromTags() assumes 24fps if the last frame duration cannot be calculated', function() {
-  var tags = [
-    new FlvTag(FlvTag.VIDEO_TAG),
-    new FlvTag(FlvTag.VIDEO_TAG),
-    new FlvTag(FlvTag.VIDEO_TAG)
-  ];
-  tags[0].pts = 0;
-  tags[1].pts = tags[2].pts = 1000;
-
-  equal(FlvTag.durationFromTags(tags), 1000 + (1/24) , 'assumes 24fps video');
-});
-
-test('durationFromTags() returns zero if there are less than two frames', function() {
-  equal(FlvTag.durationFromTags([]), 0, 'returns zero for empty input');
-  equal(FlvTag.durationFromTags([new FlvTag(FlvTag.VIDEO_TAG)]), 0, 'returns zero for a singleton input');
-});
-
 })(this);

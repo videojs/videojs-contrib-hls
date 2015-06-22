@@ -21,7 +21,7 @@
    * index.
    */
   segmentsDuration = function(playlist, startSequence, endSequence) {
-    var targetDuration, i, segment, expiredSegmentCount, result = 0;
+    var targetDuration, i, j, segment, endSegment, expiredSegmentCount, result = 0;
 
     startSequence = startSequence || 0;
     i = startSequence;
@@ -36,9 +36,27 @@
     // accumulate the segment durations into the result
     for (; i < endSequence; i++) {
       segment = playlist.segments[i - playlist.mediaSequence];
-      result += segment.preciseDuration ||
-                segment.duration ||
-                targetDuration;
+
+      // when PTS values aren't available, use information from the playlist
+      if (segment.minVideoPts === undefined) {
+        result += segment.duration ||
+                  targetDuration;
+        continue;
+      }
+
+      // find the last segment with PTS info and use that to calculate
+      // the interval duration
+      for(j = i; j < endSequence - 1; j++) {
+        endSegment = playlist.segments[j - playlist.mediaSequence + 1];
+        if (endSegment.maxVideoPts === undefined ||
+            endSegment.discontinuity) {
+          break;
+        }
+      }
+      endSegment = playlist.segments[j - playlist.mediaSequence];
+      result += (Math.max(endSegment.maxVideoPts, endSegment.maxAudioPts) -
+                 Math.min(segment.minVideoPts, segment.minAudioPts)) * 0.001;
+      i = j;
     }
 
     return result;
