@@ -27,7 +27,7 @@ if (process.env.SAUCE_USERNAME) {
   }];
 }
 
-config.baseUrl = 'http://localhost:9999/test/functional/index.html';
+config.baseUrl = 'http://localhost:9999/example.html';
 config.specs = ['spec.js'];
 
 config.framework = 'jasmine2';
