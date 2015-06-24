@@ -190,7 +190,7 @@ the web](http://www.html5rocks.com/en/tutorials/track/basics/).
 ### Testing
 
 For testing, you can either run `npm test` or use `grunt` directly.
-If you use `npm test`, it will only run the karma tests using chrome.
+If you use `npm test`, it will only run the karma and end-to-end tests using chrome.
 You can specify which browsers you want the tests to run via grunt's `test` task.
 You can use either grunt-style arguments or comma separated arguments:
 ```
@@ -201,10 +201,14 @@ Possible options are:
 * `chromecanary`
 * `phantomjs`
 * `opera`
-* `chrome`
-* `safari`
-* `firefox`
-* `ie`
+* `chrome`<sup>1</sup>
+* `safari`<sup>1, 2</sup>
+* `firefox`<sup>1</sup>
+* `ie`<sup>1</sup>
+
+
+_<sup>1</sup>supported end-to-end browsers_<br />
+_<sup>2</sup>requires the [SafariDriver extension]( https://code.google.com/p/selenium/wiki/SafariDriver) to be installed_
 
 ## Hosting Considerations
 Unlike a native HLS implementation, the HLS tech has to comply with

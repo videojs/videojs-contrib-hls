@@ -21,10 +21,6 @@ if (process.env.SAUCE_USERNAME) {
   config.sauceKey = process.env.SAUCE_ACCESS_KEY;
   config.maxSessions = 5;
   config.maxDuration = 300;
-} else {
-  config.multiCapabilities = [{
-    browserName: 'chrome',
-  }];
 }
 
 config.baseUrl = 'http://localhost:9999/example.html';

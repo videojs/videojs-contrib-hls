@@ -203,11 +203,51 @@ module.exports = function(grunt) {
       }
     },
     protractor: {
-      test: {
+      options: {
+        configFile: 'test/functional/protractor.config.js'
+      },
+
+      chrome: {
         options: {
-          configFile: 'test/functional/protractor.config.js'
+          args: {
+            capabilities: {
+              browserName: 'chrome'
+            }
+          }
         }
-      }
+      },
+
+      firefox: {
+        options: {
+          args: {
+            capabilities: {
+              browserName: 'firefox'
+            }
+          }
+        }
+      },
+
+      safari: {
+        options: {
+          args: {
+            capabilities: {
+              browserName: 'safari'
+            }
+          }
+        }
+      },
+
+      ie: {
+        options: {
+          args: {
+            capabilities: {
+              browserName: 'internet explorer'
+            }
+          }
+        }
+      },
+
+      saucelabs:{}
     }
   });
 
@@ -307,7 +347,7 @@ module.exports = function(grunt) {
       grunt.task.run(['karma:phantomjs']);
     } else if (process.env.TRAVIS) {
       grunt.task.run(['karma:saucelabs']);
-      grunt.task.run(['connect:test', 'protractor']);
+      grunt.task.run(['connect:test', 'protractor:saucelabs']);
     } else {
       if (tasks.length === 0) {
         tasks.push('chrome');
@@ -315,12 +355,16 @@ module.exports = function(grunt) {
       if (tasks.length === 1) {
         tasks = tasks[0].split(',');
       }
-      tasks = tasks.map(function(el) {
-        return 'karma:' + el;
-      });
+      tasks = tasks.reduce(function(acc, el) {
+        acc.push('karma:' + el);
+        if (/chrome|firefox|safari|ie/.test(el)) {
+          acc.push('protractor:' + el);
+        }
+        return acc;
+      }, []);
+      tasks = ['update-webdriver', 'connect:test'].concat(tasks);
 
       grunt.task.run(tasks);
-      grunt.task.run(['update-webdriver', 'connect:test', 'protractor']);
     }
   });
 };
