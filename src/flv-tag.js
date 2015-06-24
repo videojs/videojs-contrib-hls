@@ -363,29 +363,4 @@ hls.FlvTag.frameTime = function(tag) {
   return pts;
 };
 
-/**
- * Calculate the media timeline duration represented by an array of
- * tags. This function assumes the tags are already pre-sorted by
- * presentation timestamp (PTS), in ascending order. Returns zero if
- * there are less than two FLV tags to inspect.
- * @param tags {array} the FlvTag objects to query
- * @return the number of milliseconds between the display time of the
- * first tag and the last tag.
- */
-hls.FlvTag.durationFromTags = function(tags) {
-  if (tags.length < 2) {
-    return 0;
-  }
-
-  var
-    first = tags[0],
-    last = tags[tags.length - 1],
-    frameDuration;
-
-  // use the interval between the last two tags or assume 24 fps
-  frameDuration = last.pts - tags[tags.length - 2].pts || (1/24);
-
-  return (last.pts - first.pts) + frameDuration;
-};
-
 })(this);

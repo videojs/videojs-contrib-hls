@@ -479,8 +479,20 @@
       h264Tags: function() {
         return h264Stream.tags.length;
       },
+      minVideoPts: function() {
+        return h264Stream.tags[0].pts;
+      },
+      maxVideoPts: function() {
+        return h264Stream.tags[h264Stream.tags.length - 1].pts;
+      },
       aacTags: function() {
         return aacStream.tags.length;
+      },
+      minAudioPts: function() {
+        return aacStream.tags[0].pts;
+      },
+      maxAudioPts: function() {
+        return aacStream.tags[aacStream.tags.length - 1].pts;
       }
     };
   };

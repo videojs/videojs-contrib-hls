@@ -38,6 +38,98 @@
     equal(duration, 14 * 10, 'duration includes dropped segments');
   });
 
+  test('interval duration uses PTS values when available', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 0,
+      endList: true,
+      segments: [{
+        minVideoPts: 1,
+        minAudioPts: 2,
+        uri: '0.ts'
+      }, {
+        duration: 10,
+        maxVideoPts: 2 * 10 * 1000 + 1,
+        maxAudioPts: 2 * 10 * 1000 + 2,
+        uri: '1.ts'
+      }, {
+        duration: 10,
+        maxVideoPts: 3 * 10 * 1000 + 1,
+        maxAudioPts: 3 * 10 * 1000 + 2,
+        uri: '2.ts'
+      }, {
+        duration: 10,
+        maxVideoPts: 4 * 10 * 1000 + 1,
+        maxAudioPts: 4 * 10 * 1000 + 2,
+        uri: '3.ts'
+      }]
+    }, 0, 4);
+
+    equal(duration, ((4 * 10 * 1000 + 2) - 1) * 0.001, 'used PTS values');
+  });
+
+  test('interval duration works when partial PTS information is available', function() {
+    var firstInterval, secondInterval, duration = Playlist.duration({
+      mediaSequence: 0,
+      endList: true,
+      segments: [{
+        minVideoPts: 1,
+        minAudioPts: 2,
+        maxVideoPts: 1 * 10 * 1000 + 1,
+
+        // intentionally less duration than video
+        // the max stream duration should be used
+        maxAudioPts: 1 * 10 * 1000 + 1,
+        uri: '0.ts'
+      }, {
+        duration: 10,
+        uri: '1.ts'
+      }, {
+        duration: 10,
+        minVideoPts: 2 * 10 * 1000 + 7,
+        minAudioPts: 2 * 10 * 1000 + 10,
+        maxVideoPts: 3 * 10 * 1000 + 1,
+        maxAudioPts: 3 * 10 * 1000 + 2,
+        uri: '2.ts'
+      }, {
+        duration: 10,
+        maxVideoPts: 4 * 10 * 1000 + 1,
+        maxAudioPts: 4 * 10 * 1000 + 2,
+        uri: '3.ts'
+      }]
+    }, 0, 4);
+
+    firstInterval = (1 * 10 * 1000 + 1) - 1;
+    firstInterval *= 0.001;
+    secondInterval = (4 * 10 * 1000 + 2) - (2 * 10 * 1000 + 7);
+    secondInterval *= 0.001;
+
+    equal(duration, firstInterval + 10 + secondInterval, 'calculated with mixed intervals');
+  });
+
+  test('interval duration accounts for discontinuities', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 0,
+      endList: true,
+      segments: [{
+        minVideoPts: 0,
+        minAudioPts: 0,
+        maxVideoPts: 1 * 10 * 1000,
+        maxAudioPts: 1 * 10 * 1000,
+        uri: '0.ts'
+      }, {
+        discontinuity: true,
+        minVideoPts: 2 * 10 * 1000,
+        minAudioPts: 2 * 10 * 1000,
+        maxVideoPts: 3 * 10 * 1000,
+        maxAudioPts: 3 * 10 * 1000,
+        duration: 10,
+        uri: '1.ts'
+      }]
+    }, 0, 2);
+
+    equal(duration, 10 + 10, 'handles discontinuities');
+  });
+
   test('calculates seekable time ranges from the available segments', function() {
     var playlist = {
       mediaSequence: 0,

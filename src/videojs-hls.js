@@ -870,15 +870,17 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   tags = [];
 
-  while (this.segmentParser_.tagsAvailable()) {
-    tags.push(this.segmentParser_.getNextTag());
+  if (this.segmentParser_.tagsAvailable()) {
+    // record PTS information for the segment so we can calculate
+    // accurate durations and seek reliably
+    segment.minVideoPts = this.segmentParser_.stats.minVideoPts();
+    segment.maxVideoPts = this.segmentParser_.stats.maxVideoPts();
+    segment.minAudioPts = this.segmentParser_.stats.minAudioPts();
+    segment.maxAudioPts = this.segmentParser_.stats.maxAudioPts();
   }
 
-  if (tags.length > 0) {
-    // Use the presentation timestamp of the ts segment to calculate its
-    // exact duration, since this may differ by fractions of a second
-    // from what is reported in the playlist
-    segment.preciseDuration = videojs.Hls.FlvTag.durationFromTags(tags) * 0.001;
+  while (this.segmentParser_.tagsAvailable()) {
+    tags.push(this.segmentParser_.getNextTag());
   }
 
   this.updateDuration(this.playlists.media());
