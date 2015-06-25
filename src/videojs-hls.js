@@ -365,6 +365,13 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
     return 0;
   }
 
+  // clamp seeks to the available seekable time range
+  if (currentTime < this.seekable().start(0)) {
+    currentTime = this.seekable().start(0);
+  } else if (currentTime > this.seekable().end(0)) {
+    currentTime = this.seekable().end(0);
+  }
+
   // save the seek target so currentTime can report it correctly
   // while the seek is pending
   this.lastSeekedTime_ = currentTime;

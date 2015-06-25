@@ -1731,6 +1731,42 @@ test('resets the time to a seekable position when resuming a live stream ' +
   equal(seekTarget, player.seekable().end(0), 'seeked to the end of seekable');
 });
 
+test('clamps seeks to the seekable window', function() {
+  var seekTarget;
+  player.src({
+    src: 'live0.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:16\n' +
+                           '#EXTINF:10,\n' +
+                           '16.ts\n');
+  // mock out a seekable window
+  player.hls.seekable = function() {
+    return {
+      start: function() {
+        return 160;
+      },
+      end: function() {
+        return 170;
+      }
+    };
+  };
+  player.hls.fillBuffer = function(time) {
+    if (time !== undefined) {
+      seekTarget = time;
+    }
+  };
+
+  player.currentTime(180);
+  equal(seekTarget * 0.001, player.seekable().end(0), 'forward seeks are clamped');
+
+  player.currentTime(45);
+  equal(seekTarget * 0.001, player.seekable().start(0), 'backward seeks are clamped');
+});
+
 test('mediaIndex is zero before the first segment loads', function() {
   window.manifests['first-seg-load'] =
     '#EXTM3U\n' +
