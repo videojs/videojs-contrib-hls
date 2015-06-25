@@ -486,7 +486,9 @@ videojs.Hls.prototype.selectPlaylist = function () {
     oldvariant,
     bandwidthBestVariant,
     resolutionPlusOne,
-    resolutionBestVariant;
+    resolutionBestVariant,
+    playerWidth,
+    playerHeight;
 
   sortedPlaylists.sort(videojs.Hls.comparePlaylistBandwidth);
 
@@ -522,6 +524,9 @@ videojs.Hls.prototype.selectPlaylist = function () {
   // (this could be the lowest bitrate rendition as  we go through all of them above)
   variant = null;
 
+  playerWidth = parseInt(getComputedStyle(player.el()).width, 10);
+  playerHeight = parseInt(getComputedStyle(player.el()).height, 10);
+
   // iterate through the bandwidth-filtered playlists and find
   // best rendition by player dimension
   while (i--) {
@@ -539,14 +544,14 @@ videojs.Hls.prototype.selectPlaylist = function () {
 
     // since the playlists are sorted, the first variant that has
     // dimensions less than or equal to the player size is the best
-    if (variant.attributes.RESOLUTION.width === player.width() &&
-        variant.attributes.RESOLUTION.height === player.height()) {
+    if (variant.attributes.RESOLUTION.width === playerWidth &&
+        variant.attributes.RESOLUTION.height === playerHeight) {
       // if we have the exact resolution as the player use it
       resolutionPlusOne = null;
       resolutionBestVariant = variant;
       break;
-    } else if (variant.attributes.RESOLUTION.width < player.width() &&
-        variant.attributes.RESOLUTION.height < player.height()) {
+    } else if (variant.attributes.RESOLUTION.width < playerWidth &&
+        variant.attributes.RESOLUTION.height < playerHeight) {
       // if we don't have an exact match, see if we have a good higher quality variant to use
       if (oldvariant && oldvariant.attributes && oldvariant.attributes.RESOLUTION &&
           oldvariant.attributes.RESOLUTION.width && oldvariant.attributes.RESOLUTION.height) {
