@@ -30,7 +30,7 @@
     "grunt-github-releaser": "^0.1.17",
     "grunt-karma": "~0.6.2",
     "grunt-open": "0.2.3",
-    "grunt-protractor-runner": "^2.0.0",
+    "grunt-protractor-runner": "git+https://github.com/forbesjo/grunt-protractor-runner.git#update-webdriver",
     "grunt-shell": "0.6.1",
     "grunt-version": "^1.0.0",
     "karma": "~0.10.0",
@@ -42,7 +42,6 @@
     "karma-qunit": "~0.1.1",
     "karma-safari-launcher": "~0.1.1",
     "karma-sauce-launcher": "~0.1.8",
-    "protractor": "^2.1.0",
     "qunitjs": "^1.15.0",
     "sinon": "1.10.2",
     "video.js": "^4.12.0"

@@ -322,16 +322,6 @@ module.exports = function(grunt) {
                       'concat',
                       'uglify']);
 
-  grunt.registerTask('update-webdriver', function () {
-    var spawn = require('child_process').spawn,
-      done = this.async(),
-      p = spawn('node',
-          ['node_modules/protractor/bin/webdriver-manager', 'update']);
-    p.stdout.pipe(process.stdout);
-    p.stderr.pipe(process.stderr);
-    p.on('exit', done);
-  });
-
   // The test task will run `karma:saucelabs` when running in travis,
   // otherwise, it'll default to running karma in chrome.
   // You can specify which browsers to build with by using grunt-style arguments
@@ -361,8 +351,7 @@ module.exports = function(grunt) {
           acc.push('protractor:' + el);
         }
         return acc;
-      }, []);
-      tasks = ['update-webdriver', 'connect:test'].concat(tasks);
+      }, ['connect:test']);
 
       grunt.task.run(tasks);
     }
