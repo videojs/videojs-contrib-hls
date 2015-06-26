@@ -345,7 +345,7 @@
         [ "git pull --rebase {{pr.head.repo.ssh_url}} {{pr.head.ref}}",        "Merge and rebase the changes"],
         [ "git checkout {{pr.base.ref}}",                                      "Check out the base branch" ],
         { "prompt": "text", "id": "line",                              "desc": "Describe this change in one line" },
-        [ "git merge --no-ff {{pr.user.login}}-{{pr.head.ref}} -m {{line}}. Closes #{{prNum}}", "Merge the changes" ],
+        [ "git merge --no-ff {{pr.user.login}}-{{pr.head.ref}} -m '{{line}}. Closes #{{prNum}}'", "Merge the changes" ],
         [ "grunt chg-add:'{{line}} ([view](https\\://github.com/{{meta.org}}/{{meta.name}}/pull/{{prNum}}))'", "Add a line to the changelog" ],
         [ "git add CHANGELOG.md",                                              "Add the changlelog change to be committed" ],
         [ "git commit --amend --no-edit",                                      "Add the changelog change to the merge commit" ],
