@@ -321,12 +321,21 @@ videojs.Hls.prototype.play = function() {
     this.mediaIndex = 0;
   }
 
-  // seek to the latest safe point in the media timeline when first
-  // playing live streams
-  if (this.duration() === Infinity &&
-      this.playlists.media() &&
-      !this.player().hasClass('vjs-has-started')) {
-    this.setCurrentTime(this.seekable().end(0));
+  // we may need to seek to begin playing safely for live playlists
+  if (this.duration() === Infinity) {
+
+    // if this is the first time we're playing the stream or we're
+    // ahead of the latest safe playback position, seek to the live
+    // point
+    if (!this.player().hasClass('vjs-has-started') ||
+        this.currentTime() > this.seekable().end(0)) {
+      this.setCurrentTime(this.seekable().end(0));
+
+    } else if (this.currentTime() < this.seekable().start(0)) {
+      // if the viewer has paused and we fell out of the live window,
+      // seek forward to the earliest available position
+      this.setCurrentTime(this.seekable().start(0));
+    }
   }
 
   // delegate back to the Flash implementation
@@ -354,6 +363,13 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   // seek within an empty playlist
   if (!this.playlists.media().segments) {
     return 0;
+  }
+
+  // clamp seeks to the available seekable time range
+  if (currentTime < this.seekable().start(0)) {
+    currentTime = this.seekable().start(0);
+  } else if (currentTime > this.seekable().end(0)) {
+    currentTime = this.seekable().end(0);
   }
 
   // save the seek target so currentTime can report it correctly
