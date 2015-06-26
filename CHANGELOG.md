@@ -4,6 +4,7 @@ CHANGELOG
 ## HEAD (Unreleased)
 * @dmlap improved video duration calculation. ([view](https://github.com/videojs/videojs-contrib-hls/pull/321))
 * Clamp seeks to the seekable range ([view](https://github.com/videojs/videojs-contrib-hls/pull/327))
+* Use getComputedStyle for player dimensions when filtering variants ([view](https://github.com/videojs/videojs-contrib-hls/pull/326))
 
 --------------------
 
