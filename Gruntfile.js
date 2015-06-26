@@ -83,6 +83,12 @@ module.exports = function(grunt) {
           port: 9999,
           keepalive: true
         }
+      },
+      test: {
+        options: {
+          hostname: '*',
+          port: 9999
+        }
       }
     },
     open : {
@@ -196,7 +202,53 @@ module.exports = function(grunt) {
         autoWatch: false
       }
     },
+    protractor: {
+      options: {
+        configFile: 'test/functional/protractor.config.js'
+      },
 
+      chrome: {
+        options: {
+          args: {
+            capabilities: {
+              browserName: 'chrome'
+            }
+          }
+        }
+      },
+
+      firefox: {
+        options: {
+          args: {
+            capabilities: {
+              browserName: 'firefox'
+            }
+          }
+        }
+      },
+
+      safari: {
+        options: {
+          args: {
+            capabilities: {
+              browserName: 'safari'
+            }
+          }
+        }
+      },
+
+      ie: {
+        options: {
+          args: {
+            capabilities: {
+              browserName: 'internet explorer'
+            }
+          }
+        }
+      },
+
+      saucelabs:{}
+    }
   });
 
   // These plugins provide necessary tasks.
@@ -212,6 +264,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-github-releaser');
   grunt.loadNpmTasks('grunt-version');
+  grunt.loadNpmTasks('grunt-protractor-runner');
   grunt.loadNpmTasks('chg');
 
 
@@ -284,6 +337,7 @@ module.exports = function(grunt) {
       grunt.task.run(['karma:phantomjs']);
     } else if (process.env.TRAVIS) {
       grunt.task.run(['karma:saucelabs']);
+      grunt.task.run(['connect:test', 'protractor:saucelabs']);
     } else {
       if (tasks.length === 0) {
         tasks.push('chrome');
@@ -291,9 +345,13 @@ module.exports = function(grunt) {
       if (tasks.length === 1) {
         tasks = tasks[0].split(',');
       }
-      tasks = tasks.map(function(el) {
-        return 'karma:' + el;
-      });
+      tasks = tasks.reduce(function(acc, el) {
+        acc.push('karma:' + el);
+        if (/chrome|firefox|safari|ie/.test(el)) {
+          acc.push('protractor:' + el);
+        }
+        return acc;
+      }, ['connect:test']);
 
       grunt.task.run(tasks);
     }

@@ -3,7 +3,6 @@ node_js:
 - '0.10'
 install:
 - npm install -g grunt-cli && npm install
-- if [ "${TRAVIS_PULL_REQUEST}" = "false" ]; then curl https://gist.githubusercontent.com/santiycr/5139565/raw/sauce_connect_setup.sh | bash; fi
 notifications:
   hipchat:
     rooms:
@@ -16,3 +15,5 @@ env:
   global:
   - secure: dM7svnHPPu5IiUMeFWW5zg+iuWNpwt6SSDi3MmVvhSclNMRLesQoRB+7Qq5J/LiKhmjpv1/GlNVV0CTsHMRhZNwQ3fo38eEuTXv99aAflEITXwSEh/VntKViHbGFubn06EnVkJoH6MX3zJ6kbiwc2QdSQbywKzS6l6quUEpWpd0=
   - secure: AnduYGXka5ft1x7V3SuVYqvlKLvJGhUaRNFdy4UDJr3ZVuwpQjE4TMDG8REmJIJvXfHbh4qY4N1cFSGnXkZ4bH21Xk0v9DLhsxbarKz+X2BvPgXs+Af9EQ6vLEy/5S1vMLxfT5+y+Ec5bVNGOsdUZby8Y21CRzSg6ADN9kwPGlE=
+addons:
+  sauce_connect: true

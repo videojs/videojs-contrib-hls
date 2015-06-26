@@ -19,7 +19,7 @@
   ],
   "devDependencies": {
     "chg": "^0.2.0",
-    "grunt": "~0.4.1",
+    "grunt": "^0.4.5",
     "grunt-concurrent": "0.4.3",
     "grunt-contrib-clean": "~0.4.0",
     "grunt-contrib-concat": "~0.3.0",
@@ -30,6 +30,7 @@
     "grunt-github-releaser": "^0.1.17",
     "grunt-karma": "~0.6.2",
     "grunt-open": "0.2.3",
+    "grunt-protractor-runner": "git+https://github.com/forbesjo/grunt-protractor-runner.git#update-webdriver",
     "grunt-shell": "0.6.1",
     "grunt-version": "^1.0.0",
     "karma": "~0.10.0",
