@@ -3,11 +3,12 @@
 var basename = require('path').basename;
 
 module.exports = function(grunt) {
+  var pkg = grunt.file.readJSON('package.json');
 
   // Project configuration.
   grunt.initConfig({
     // Metadata.
-    pkg: grunt.file.readJSON('package.json'),
+    pkg: pkg,
     banner: '/*! <%= pkg.name %> - v<%= pkg.version %> - ' +
       '<%= grunt.template.today("yyyy-mm-dd") %>\n' +
       '* Copyright (c) <%= grunt.template.today("yyyy") %> Brightcove;' +
@@ -122,6 +123,23 @@ module.exports = function(grunt) {
     version: {
       project: {
         src: ['package.json']
+      }
+    },
+    'github-release': {
+      options: {
+        repository: 'videojs/videojs-contrib-hls',
+        auth: {
+          user: process.env.VJS_GITHUB_USER,
+          password: process.env.VJS_GITHUB_TOKEN
+        },
+        release: {
+          'tag_name': 'v' + pkg.version,
+          name: pkg.version,
+          body: require('chg').find(pkg.version).changesRaw
+        }
+      },
+      files: {
+        'dist': ['videojs.hls.min.js']
       }
     },
     karma: {

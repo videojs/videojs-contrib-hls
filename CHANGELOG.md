@@ -10,7 +10,6 @@ CHANGELOG
 --------------------
 
 ## 0.17.2 (2015-06-15)
-
 * @dmlap fix seeking in live streams ([view](https://github.com/videojs/videojs-contrib-hls/pull/308))
 
 ## 0.17.1 (2015-06-08)
