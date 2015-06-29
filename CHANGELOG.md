@@ -2,12 +2,15 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+--------------------
+
+## 0.17.3 (2015-06-29)
 * @dmlap improved video duration calculation. ([view](https://github.com/videojs/videojs-contrib-hls/pull/321))
 * Clamp seeks to the seekable range ([view](https://github.com/videojs/videojs-contrib-hls/pull/327))
 * Use getComputedStyle for player dimensions when filtering variants ([view](https://github.com/videojs/videojs-contrib-hls/pull/326))
 * Add a functional test that runs in SauceLabs ([view](https://github.com/videojs/videojs-contrib-hls/pull/323))
-
---------------------
 
 ## 0.17.2 (2015-06-15)
 * @dmlap fix seeking in live streams ([view](https://github.com/videojs/videojs-contrib-hls/pull/308))
