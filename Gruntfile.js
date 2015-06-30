@@ -351,11 +351,13 @@ module.exports = function(grunt) {
 
     grunt.task.run(['jshint', 'manifests-to-js']);
 
-    if (process.env.TRAVIS_PULL_REQUEST) {
-      grunt.task.run(['karma:phantomjs']);
-    } else if (process.env.TRAVIS) {
-      grunt.task.run(['karma:saucelabs']);
-      grunt.task.run(['connect:test', 'protractor:saucelabs']);
+    if (process.env.TRAVIS) {
+      if (process.env.TRAVIS_PULL_REQUEST === 'false') {
+        grunt.task.run(['karma:saucelabs']);
+        grunt.task.run(['connect:test', 'protractor:saucelabs']);
+      } else {
+        grunt.task.run(['karma:phantomjs']);
+      }
     } else {
       if (tasks.length === 0) {
         tasks.push('chrome');

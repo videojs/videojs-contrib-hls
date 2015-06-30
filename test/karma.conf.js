@@ -61,7 +61,7 @@ module.exports = function(config) {
     customLaunchers: customLaunchers,
 
     // Start these browsers
-    browsers: ['chrome_sl', 'ipad_sl'], //Object.keys(customLaunchers),
+    browsers: ['chrome_sl', 'firefox_sl'], //Object.keys(customLaunchers),
 
     // List of files / patterns to load in the browser
     // Add any new src files to this list.
