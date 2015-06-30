@@ -222,7 +222,8 @@ module.exports = function(grunt) {
     },
     protractor: {
       options: {
-        configFile: 'test/functional/protractor.config.js'
+        configFile: 'test/functional/protractor.config.js',
+        webdriverManagerUpdate: process.env.TRAVIS ? false : true
       },
 
       chrome: {
