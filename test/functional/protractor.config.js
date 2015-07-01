@@ -23,7 +23,7 @@ if (process.env.SAUCE_USERNAME) {
   config.maxDuration = 300;
 }
 
-config.baseUrl = 'http://localhost:9999/example.html';
+config.baseUrl = 'http://127.0.0.1:9999/example.html';
 config.specs = ['spec.js'];
 
 config.framework = 'jasmine2';

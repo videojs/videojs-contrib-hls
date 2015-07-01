@@ -10,8 +10,7 @@ module.exports = function(config) {
       singleRun: true,
       base: 'SauceLabs',
       browserName: 'chrome',
-      platform: 'Windows 7',
-      version: '34'
+      platform: 'Windows 7'
     },
 
     firefox_sl: {
