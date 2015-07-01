@@ -133,7 +133,7 @@ module.exports = function(config) {
 
     // global config for SauceLabs
     sauceLabs: {
-      startConnect: true,
+      startConnect: false,
       tunnelIdentifier: process.env.TRAVIS_JOB_NUMBER,
       build: process.env.TRAVIS_BUILD_NUMBER,
       testName: process.env.TRAVIS_BUILD_NUMBER + process.env.TRAVIS_BRANCH,
