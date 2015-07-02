@@ -97,7 +97,7 @@ var
     var MockSegmentParser;
 
     if (tags === undefined) {
-      tags = [];
+      tags = [{ pts: 0, bytes: new Uint8Array(1) }];
     }
     MockSegmentParser = function() {
       this.getFlvHeader = function() {
@@ -1287,20 +1287,13 @@ test('clears in-band cues ahead of current time on seek', function() {
 
   player.hls.segmentParser_.parseSegmentBinaryData = function() {
     // trigger a metadata event
-    if (events.length) {
+    while (events.length) {
       player.hls.segmentParser_.metadataStream.trigger('data', events.shift());
     }
   };
   standardXHRResponse(requests.shift()); // media
-  tags.push({ pts: 10 * 1000, bytes: new Uint8Array(1) });
-  events.push({
-      pts: 20 * 1000,
-      data: new Uint8Array([]),
-      frames: [{
-        id: 'TXXX',
-        value: 'cue 3'
-      }]
-  });
+  tags.push({ pts: 0, bytes: new Uint8Array(1) },
+            { pts: 10 * 1000, bytes: new Uint8Array(1) });
   events.push({
       pts: 9.9 * 1000,
       data: new Uint8Array([]),
@@ -1309,8 +1302,17 @@ test('clears in-band cues ahead of current time on seek', function() {
         value: 'cue 1'
       }]
   });
+  events.push({
+      pts: 20 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue 3'
+      }]
+  });
   standardXHRResponse(requests.shift()); // segment 0
-  tags.push({ pts: 20 * 1000, bytes: new Uint8Array(1) });
+  tags.push({ pts: 10 * 1000 + 1, bytes: new Uint8Array(1) },
+            { pts: 20 * 1000, bytes: new Uint8Array(1) });
   events.push({
       pts: 19.9 * 1000,
       data: new Uint8Array([]),
@@ -1323,12 +1325,12 @@ test('clears in-band cues ahead of current time on seek', function() {
   standardXHRResponse(requests.shift()); // segment 1
 
   track = player.textTracks()[0];
-  equal(track.cues.length, 2, 'added the cues');
+  equal(track.cues.length, 3, 'added the cues');
 
   // seek into segment 1
   player.currentTime(11);
   player.trigger('seeking');
-  equal(track.cues.length, 1, 'removed a cue');
+  equal(track.cues.length, 1, 'removed later cues');
   equal(track.cues[0].startTime, 9.9, 'retained the earlier cue');
 });
 
@@ -2008,6 +2010,48 @@ test('continues playing after seek to discontinuity', function() {
   // the source buffer empties. is 2.ts still in the segment buffer?
   player.trigger('waiting');
   strictEqual(aborts, 1, 'cleared the segment buffer on a seek');
+});
+
+test('seeking does not fail when targeted between segments', function() {
+  var tags = [], currentTime, segmentUrl;
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  player.src({
+    src: 'media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  // mock out the currentTime callbacks
+  player.hls.el().vjs_setProperty = function(property, value) {
+    if (property === 'currentTime') {
+      currentTime = value;
+    }
+  };
+  player.hls.el().vjs_getProperty = function(property) {
+    if (property === 'currentTime') {
+      return currentTime;
+    }
+  };
+
+  standardXHRResponse(requests.shift()); // media
+  tags.push({ pts: 100, bytes: new Uint8Array(1) },
+            { pts: 9 * 1000 + 100, bytes: new Uint8Array(1) });
+  standardXHRResponse(requests.shift()); // segment 0
+  player.hls.checkBuffer_();
+  tags.push({ pts: 9.5 * 1000 + 100, bytes: new Uint8Array(1) },
+            { pts: 20 * 1000 + 100, bytes: new Uint8Array(1) });
+  segmentUrl = requests[0].url;
+  standardXHRResponse(requests.shift()); // segment 1
+
+  // seek to a time that is greater than the last tag in segment 0 but
+  // less than the first in segment 1
+  player.currentTime(9.4);
+  equal(requests[0].url, segmentUrl, 'requested the later segment');
+
+  tags.push({ pts: 9.5 * 1000 + 100, bytes: new Uint8Array(1) },
+            { pts: 20 * 1000 + 100, bytes: new Uint8Array(1) });
+  standardXHRResponse(requests.shift()); // segment 1
+  equal(player.currentTime(), 9.5, 'seeked to the later time');
 });
 
 test('resets the switching algorithm if a request times out', function() {

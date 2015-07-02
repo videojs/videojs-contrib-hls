@@ -431,11 +431,12 @@
     for (i = 0; i < this.media_.segments.length; i++) {
       time -= Playlist.duration(this.media_,
                                 this.media_.mediaSequence + i,
-                                this.media_.mediaSequence + i + 1);
+                                this.media_.mediaSequence + i + 1,
+                                true);
 
       // HLS version 3 and lower round segment durations to the
       // nearest decimal integer. When the correct media index is
-      // ambiguous, prefer the lower one.
+      // ambiguous, prefer the higher one.
       if (time <= 0) {
         return i;
       }
