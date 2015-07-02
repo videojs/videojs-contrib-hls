@@ -17,10 +17,13 @@
    * boundary for the playlist.  Defaults to 0.
    * @param endSequence {number} (optional) an exclusive upper boundary
    * for the playlist.  Defaults to playlist length.
+   * @param strict {boolean} (optional) if true, the interval between
+   * the final segment and the subsequent segment will not be included
+   * in the result
    * @return {number} the duration between the start index and end
    * index.
    */
-  segmentsDuration = function(playlist, startSequence, endSequence) {
+  segmentsDuration = function(playlist, startSequence, endSequence, strict) {
     var targetDuration, i, j, segment, endSegment, expiredSegmentCount, result = 0;
 
     startSequence = startSequence || 0;
@@ -54,9 +57,24 @@
         }
       }
       endSegment = playlist.segments[j - playlist.mediaSequence];
+
       result += (Math.max(endSegment.maxVideoPts, endSegment.maxAudioPts) -
                  Math.min(segment.minVideoPts, segment.minAudioPts)) * 0.001;
       i = j;
+    }
+
+    // attribute the gap between the latest PTS value in end segment
+    // and the earlier PTS in the next one to the result
+    segment = playlist.segments[endSequence - 1];
+    endSegment = playlist.segments[endSequence];
+    if (!strict &&
+        endSegment &&
+        !endSegment.discontinuity &&
+        endSegment.minVideoPts &&
+        segment &&
+        segment.maxVideoPts) {
+      result += (Math.min(endSegment.minVideoPts, endSegment.minAudioPts) -
+                 Math.max(segment.maxVideoPts, segment.maxAudioPts)) * 0.001;
     }
 
     return result;
@@ -72,10 +90,13 @@
    * boundary for the playlist.  Defaults to 0.
    * @param endSequence {number} (optional) an exclusive upper boundary
    * for the playlist.  Defaults to playlist length.
+   * @param strict {boolean} (optional) if true, the interval between
+   * the final segment and the subsequent segment will not be included
+   * in the result
    * @return {number} the duration between the start index and end
    * index.
    */
-  duration = function(playlist, startSequence, endSequence) {
+  duration = function(playlist, startSequence, endSequence, strict) {
     if (!playlist) {
       return 0;
     }
@@ -97,7 +118,8 @@
     // calculate the total duration based on the segment durations
     return segmentsDuration(playlist,
                             startSequence,
-                            endSequence);
+                            endSequence,
+                            strict);
   };
 
   /**

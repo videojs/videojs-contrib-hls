@@ -260,7 +260,7 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
   // add a metadata cue whenever a metadata event is triggered during
   // segment parsing
   metadataStream.on('data', function(metadata) {
-    var i, cue, frame, time, media, segmentOffset, hexDigit;
+    var i, hexDigit;
 
     // create the metadata track if this is the first ID3 tag we've
     // seen
@@ -276,19 +276,7 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
       }
     }
 
-    // calculate the start time for the segment that is currently being parsed
-    media = tech.playlists.media();
-    segmentOffset = tech.playlists.expiredPreDiscontinuity_ + tech.playlists.expiredPostDiscontinuity_;
-    segmentOffset += videojs.Hls.Playlist.duration(media, media.mediaSequence, media.mediaSequence + tech.mediaIndex);
-
-    // create cue points for all the ID3 frames in this metadata event
-    for (i = 0; i < metadata.frames.length; i++) {
-      frame = metadata.frames[i];
-      time = tech.segmentParser_.mediaTimelineOffset + ((metadata.pts - tech.segmentParser_.timestampOffset) * 0.001);
-      cue = new window.VTTCue(time, time, frame.value || frame.url || '');
-      cue.frame = frame;
-      textTrack.addCue(cue);
-    }
+    tech.addCuesForMetadata_(textTrack, metadata);
   });
 
   // when seeking, clear out all cues ahead of the earliest position
@@ -310,6 +298,25 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
       }
     }
   });
+};
+
+videojs.Hls.prototype.addCuesForMetadata_ = function(textTrack, metadata) {
+  var i, cue, frame, minPts, segmentInfo, segmentOffset, time;
+  segmentInfo = this.segmentBuffer_[0];
+  segmentOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist,
+                                                segmentInfo.playlist.mediaSequence,
+                                                segmentInfo.playlist.mediaSequence + segmentInfo.mediaIndex);
+  minPts = Math.min(this.segmentParser_.stats.minVideoPts(),
+                    this.segmentParser_.stats.minAudioPts());
+
+  // create cue points for all the ID3 frames in this metadata event
+  for (i = 0; i < metadata.frames.length; i++) {
+    frame = metadata.frames[i];
+    time = segmentOffset + ((metadata.pts - minPts) * 0.001);
+    cue = new window.VTTCue(time, time, frame.value || frame.url || '');
+    cue.frame = frame;
+    textTrack.addCue(cue);
+  }
 };
 
 /**
@@ -812,8 +819,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     decrypter,
     segIv,
     ptsTime,
-    tagPts,
-    tagIndex,
     segmentOffset = 0,
     segmentBuffer = this.segmentBuffer_;
 
@@ -872,19 +877,12 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   }
 
   event = event || {};
-  segmentOffset = this.playlists.expiredPreDiscontinuity_;
-  segmentOffset += this.playlists.expiredPostDiscontinuity_;
-  segmentOffset += videojs.Hls.Playlist.duration(playlist, playlist.mediaSequence, playlist.mediaSequence + mediaIndex);
-  segmentOffset *= 1000;
 
   // if this segment starts is the start of a new discontinuity
   // sequence, the segment parser's timestamp offset must be
   // re-calculated
   if (segment.discontinuity) {
-    this.segmentParser_.mediaTimelineOffset = segmentOffset * 0.001;
     this.segmentParser_.timestampOffset = null;
-  } else if (this.segmentParser_.mediaTimelineOffset === null) {
-    this.segmentParser_.mediaTimelineOffset = segmentOffset * 0.001;
   }
 
   // transmux the segment data from MP2T to FLV
@@ -908,29 +906,66 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   this.updateDuration(this.playlists.media());
 
+/*
+Live In-Progress
+      0       s        c  m
+. . . |~~~~~~~|--%-----^--|~~~~~%~~~~~|-----| . . .
+              p  q     AAJ
+
+Live In-Progress 2
+      0             s  c  m
+. . . |~~~~~~~~~~%~~|--^--|~~~~~%~~~~~|-----| . . .
+                    q  AAJ
+
+0     400    450
+. . . |-------X-----| . . .
+
+Live Before Buffering
+      c
+. . . |~~%~~~~~| . . .
+      ??
+
+p  = earliest known pts
+s  = earliest playback position
+q  = earliest pts after the last discontinuity
+c  = current time
+m  = the latest buffered playback position
+~  = only EXTINF available
+-  = PTS available
+%  = discontinuity
+.  = expired or unavailable
+A  = buffered in actionscript
+J  = buffered in javascript
+
+Calculate current pts from current time
+  - subtract current time from buffered end to find out the interval between the latest buffered playback position and current time
+  - determine the current segment by subtracting segment durations from the latest buffered playback position
+  - determine current pts based on max segment pts
+Determine the target segment by calculating the duration of intermediate segments
+Add the difference between current time and the target time to find the target pts
+Skip samples until the next sample is greater than or equal to the target pts
+*/
+
   // if we're refilling the buffer after a seek, scan through the muxed
   // FLV tags until we find the one that is closest to the desired
   // playback time
   if (typeof offset === 'number') {
-    ptsTime = offset - segmentOffset + tags[0].pts;
+    // determine the offset within this segment we're seeking to
+    segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
+    segmentOffset += videojs.Hls.Playlist.duration(playlist,
+                                                   playlist.mediaSequence,
+                                                   playlist.mediaSequence + mediaIndex);
+    segmentOffset = offset - (segmentOffset * 1000);
+    ptsTime = segmentOffset + tags[0].pts;
 
-    tagPts = tags[i].pts;
-    tagIndex = i;
-    while (tagPts < ptsTime) {
+    while (tags[i + 1] && tags[i].pts < ptsTime) {
       i++;
-      if (tags[i] !== undefined) {
-        tagPts = tags[i].pts;
-        tagIndex = i;
-      }
-      else {
-        break;
-      }
     }
 
-    // tell the SWF where we will be seeking to
-    this.el().vjs_setProperty('currentTime', (tagPts - tags[0].pts + segmentOffset) * 0.001);
+    // tell the SWF the media position of the first tag we'll be delivering
+    this.el().vjs_setProperty('currentTime', ((tags[i].pts - ptsTime + offset) * 0.001));
 
-    tags = tags.slice(tagIndex);
+    tags = tags.slice(i);
 
     this.lastSeekedTime_ = null;
   }

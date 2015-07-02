@@ -81,29 +81,85 @@
         maxAudioPts: 1 * 10 * 1000 + 1,
         uri: '0.ts'
       }, {
-        duration: 10,
+        duration: 9,
         uri: '1.ts'
+      }, {
+        duration: 10,
+        uri: '2.ts'
       }, {
         duration: 10,
         minVideoPts: 2 * 10 * 1000 + 7,
         minAudioPts: 2 * 10 * 1000 + 10,
         maxVideoPts: 3 * 10 * 1000 + 1,
         maxAudioPts: 3 * 10 * 1000 + 2,
-        uri: '2.ts'
+        uri: '3.ts'
       }, {
         duration: 10,
         maxVideoPts: 4 * 10 * 1000 + 1,
         maxAudioPts: 4 * 10 * 1000 + 2,
-        uri: '3.ts'
+        uri: '4.ts'
       }]
-    }, 0, 4);
+    }, 0, 5);
 
     firstInterval = (1 * 10 * 1000 + 1) - 1;
     firstInterval *= 0.001;
     secondInterval = (4 * 10 * 1000 + 2) - (2 * 10 * 1000 + 7);
     secondInterval *= 0.001;
 
-    equal(duration, firstInterval + 10 + secondInterval, 'calculated with mixed intervals');
+    equal(duration,
+          firstInterval + 9 + 10 + secondInterval,
+          'calculated with mixed intervals');
+  });
+
+  test('interval duration handles trailing segments without PTS information', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 0,
+      endList: true,
+      segments: [{
+        minVideoPts: 0,
+        minAudioPts: 0,
+        maxVideoPts: 10 * 1000,
+        maxAudioPts: 10 * 1000,
+        uri: '0.ts'
+      }, {
+        duration: 9,
+        uri: '1.ts'
+      }, {
+        duration: 10,
+        uri: '2.ts'
+      }, {
+        minVideoPts: 30 * 1000,
+        minAudioPts: 30 * 1000,
+        maxVideoPts: 40 * 1000,
+        maxAudioPts: 40 * 1000,
+        uri: '3.ts'
+      }]
+    }, 0, 3);
+
+    equal(duration, 10 + 9 + 10, 'calculated duration');
+  });
+
+  test('interval duration counts the time between segments as part of the later segment duration', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 0,
+      endList: true,
+      segments: [{
+        minVideoPts: 0,
+        minAudioPts: 0,
+        maxVideoPts: 1 * 10 * 1000,
+        maxAudioPts: 1 * 10 * 1000,
+        uri: '0.ts'
+      }, {
+        minVideoPts: 1 * 10 * 1000 + 100,
+        minAudioPts: 1 * 10 * 1000 + 100,
+        maxVideoPts: 2 * 10 * 1000 + 100,
+        maxAudioPts: 2 * 10 * 1000 + 100,
+        duration: 10,
+        uri: '1.ts'
+      }]
+    }, 0, 1);
+
+    equal(duration, (1 * 10 * 1000 + 100) * 0.001, 'included the segment gap');
   });
 
   test('interval duration accounts for discontinuities', function() {
@@ -128,6 +184,53 @@
     }, 0, 2);
 
     equal(duration, 10 + 10, 'handles discontinuities');
+  });
+
+  test('interval duration does not count ending segment gaps across a discontinuity', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 0,
+      endList: true,
+      segments: [{
+        minVideoPts: 0,
+        minAudioPts: 0,
+        maxVideoPts: 1 * 10 * 1000,
+        maxAudioPts: 1 * 10 * 1000,
+        uri: '0.ts'
+      }, {
+        discontinuity: true,
+        minVideoPts: 1 * 10 * 1000 + 100,
+        minAudioPts: 1 * 10 * 1000 + 100,
+        maxVideoPts: 2 * 10 * 1000 + 100,
+        maxAudioPts: 2 * 10 * 1000 + 100,
+        duration: 10,
+        uri: '1.ts'
+      }]
+    }, 0, 1);
+
+    equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
+  });
+
+  test('strict interval duration does not count ending segment gaps', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 0,
+      endList: true,
+      segments: [{
+        minVideoPts: 0,
+        minAudioPts: 0,
+        maxVideoPts: 1 * 10 * 1000,
+        maxAudioPts: 1 * 10 * 1000,
+        uri: '0.ts'
+      }, {
+        minVideoPts: 1 * 10 * 1000 + 100,
+        minAudioPts: 1 * 10 * 1000 + 100,
+        maxVideoPts: 2 * 10 * 1000 + 100,
+        maxAudioPts: 2 * 10 * 1000 + 100,
+        duration: 10,
+        uri: '1.ts'
+      }]
+    }, 0, 1, true);
+
+    equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
   });
 
   test('calculates seekable time ranges from the available segments', function() {
