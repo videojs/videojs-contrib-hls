@@ -5,39 +5,17 @@
   'use strict';
 
   var DEFAULT_TARGET_DURATION = 10;
-  var duration, seekable, segmentsDuration;
+  var accumulateDuration, duration, seekable, segmentsDuration;
 
-  /**
-   * Calculate the media duration from the segments associated with a
-   * playlist. The duration of a subinterval of the available segments
-   * may be calculated by specifying a start and end index.
-   *
-   * @param playlist {object} a media playlist object
-   * @param startSequence {number} (optional) an inclusive lower
-   * boundary for the playlist.  Defaults to 0.
-   * @param endSequence {number} (optional) an exclusive upper boundary
-   * for the playlist.  Defaults to playlist length.
-   * @param strict {boolean} (optional) if true, the interval between
-   * the final segment and the subsequent segment will not be included
-   * in the result
-   * @return {number} the duration between the start index and end
-   * index.
-   */
-  segmentsDuration = function(playlist, startSequence, endSequence, strict) {
-    var targetDuration, i, j, segment, endSegment, expiredSegmentCount, result = 0;
-
-    startSequence = startSequence || 0;
-    i = startSequence;
-    endSequence = endSequence !== undefined ? endSequence : (playlist.segments || []).length;
-    targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION;
-
-    // estimate expired segment duration using the target duration
-    expiredSegmentCount = Math.max(playlist.mediaSequence - startSequence, 0);
-    result += expiredSegmentCount * targetDuration;
-    i += expiredSegmentCount;
+  accumulateDuration = function(playlist, startSequence, endSequence, strict) {
+    var
+      result = 0,
+      targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION,
+      segment, endSegment,
+      i, j;
 
     // accumulate the segment durations into the result
-    for (; i < endSequence; i++) {
+    for (i = startSequence; i < endSequence; i++) {
       segment = playlist.segments[i - playlist.mediaSequence];
 
       // when PTS values aren't available, use information from the playlist
@@ -49,7 +27,7 @@
 
       // find the last segment with PTS info and use that to calculate
       // the interval duration
-      for(j = i; j < endSequence - 1; j++) {
+      for (j = i; j < endSequence - 1; j++) {
         endSegment = playlist.segments[j - playlist.mediaSequence + 1];
         if (endSegment.maxVideoPts === undefined ||
             endSegment.discontinuity) {
@@ -76,6 +54,42 @@
       result += (Math.min(endSegment.minVideoPts, endSegment.minAudioPts) -
                  Math.max(segment.maxVideoPts, segment.maxAudioPts)) * 0.001;
     }
+
+    return result;
+  };
+
+  /**
+   * Calculate the media duration from the segments associated with a
+   * playlist. The duration of a subinterval of the available segments
+   * may be calculated by specifying a start and end index.
+   *
+   * @param playlist {object} a media playlist object
+   * @param startSequence {number} (optional) an inclusive lower
+   * boundary for the playlist.  Defaults to 0.
+   * @param endSequence {number} (optional) an exclusive upper boundary
+   * for the playlist.  Defaults to playlist length.
+   * @param strict {boolean} (optional) if true, the interval between
+   * the final segment and the subsequent segment will not be included
+   * in the result
+   * @return {number} the duration between the start index and end
+   * index.
+   */
+  segmentsDuration = function(playlist, startSequence, endSequence, strict) {
+    var targetDuration, expiredSegmentCount, result = 0;
+
+    startSequence = startSequence || 0;
+    endSequence = endSequence !== undefined ? endSequence : (playlist.segments || []).length;
+    targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION;
+
+    // estimate expired segment duration using the target duration
+    expiredSegmentCount = Math.max(playlist.mediaSequence - startSequence, 0);
+    result += expiredSegmentCount * targetDuration;
+
+    // accumulate the segment durations into the result
+    result += accumulateDuration(playlist,
+                                 startSequence + expiredSegmentCount,
+                                 endSequence,
+                                 strict);
 
     return result;
   };

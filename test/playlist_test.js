@@ -3,7 +3,7 @@
   'use strict';
   var Playlist = videojs.Hls.Playlist;
 
-  module('Playlist Utilities');
+  module('Playlist Duration');
 
   test('total duration for live playlists is Infinity', function() {
     var duration = Playlist.duration({
@@ -16,7 +16,9 @@
     equal(duration, Infinity, 'duration is infinity');
   });
 
-  test('interval duration accounts for media sequences', function() {
+  module('Playlist Interval Duration');
+
+  test('accounts for media sequences', function() {
     var duration = Playlist.duration({
       mediaSequence: 10,
       endList: true,
@@ -38,7 +40,7 @@
     equal(duration, 14 * 10, 'duration includes dropped segments');
   });
 
-  test('interval duration uses PTS values when available', function() {
+  test('uses PTS values when available', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
@@ -67,7 +69,7 @@
     equal(duration, ((4 * 10 * 1000 + 2) - 1) * 0.001, 'used PTS values');
   });
 
-  test('interval duration works when partial PTS information is available', function() {
+  test('works when partial PTS information is available', function() {
     var firstInterval, secondInterval, duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
@@ -111,7 +113,7 @@
           'calculated with mixed intervals');
   });
 
-  test('interval duration handles trailing segments without PTS information', function() {
+  test('handles trailing segments without PTS information', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
@@ -139,7 +141,37 @@
     equal(duration, 10 + 9 + 10, 'calculated duration');
   });
 
-  test('interval duration counts the time between segments as part of the later segment duration', function() {
+  test('uses PTS intervals when the start and end segment have them', function() {
+    var playlist, duration;
+    playlist = {
+      mediaSequence: 0,
+      segments: [{
+        minVideoPts: 0,
+        minAudioPts: 0,
+        maxVideoPts: 10 * 1000,
+        maxAudioPts: 10 * 1000,
+        uri: '0.ts'
+      }, {
+        duration: 9,
+        uri: '1.ts'
+      },{
+        minVideoPts: 20 * 1000 + 100,
+        minAudioPts: 20 * 1000 + 100,
+        maxVideoPts: 30 * 1000 + 100,
+        maxAudioPts: 30 * 1000 + 100,
+        duration: 10,
+        uri: '2.ts'
+      }]
+    };
+    duration = Playlist.duration(playlist, 0, 2);
+
+    equal(duration, 20.1, 'used the PTS-based interval');
+
+    duration = Playlist.duration(playlist, 0, 3);
+    equal(duration, 30.1, 'used the PTS-based interval');
+  });
+
+  test('counts the time between segments as part of the later segment duration', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
@@ -162,7 +194,7 @@
     equal(duration, (1 * 10 * 1000 + 100) * 0.001, 'included the segment gap');
   });
 
-  test('interval duration accounts for discontinuities', function() {
+  test('accounts for discontinuities', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
@@ -186,7 +218,7 @@
     equal(duration, 10 + 10, 'handles discontinuities');
   });
 
-  test('interval duration does not count ending segment gaps across a discontinuity', function() {
+  test('does not count ending segment gaps across a discontinuity', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
@@ -210,7 +242,7 @@
     equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
   });
 
-  test('strict interval duration does not count ending segment gaps', function() {
+  test('strict duration does not count ending segment gaps', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
@@ -232,6 +264,8 @@
 
     equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
   });
+
+  module('Playlist Seekable');
 
   test('calculates seekable time ranges from the available segments', function() {
     var playlist = {
