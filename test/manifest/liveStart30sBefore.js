@@ -40,5 +40,6 @@
     }
   ],
   "targetDuration": 10,
-  "discontinuitySequence": 0
+  "discontinuitySequence": 0,
+  "discontinuityStarts": []
 }

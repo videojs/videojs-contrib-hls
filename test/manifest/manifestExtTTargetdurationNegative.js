@@ -8,5 +8,6 @@
     }
   ],
   "endList": true,
-  "discontinuitySequence": 0
+  "discontinuitySequence": 0,
+  "discontinuityStarts": []
 }

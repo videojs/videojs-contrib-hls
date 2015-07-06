@@ -41,5 +41,6 @@
       },
       "uri": "media3.m3u8"
     }
-  ]
+  ],
+  "discontinuityStarts": []
 }
