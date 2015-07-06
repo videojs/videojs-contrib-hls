@@ -890,13 +890,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   event = event || {};
 
-  // if this segment starts is the start of a new discontinuity
-  // sequence, the segment parser's timestamp offset must be
-  // re-calculated
-  if (segment.discontinuity) {
-    this.segmentParser_.timestampOffset = null;
-  }
-
   // transmux the segment data from MP2T to FLV
   this.segmentParser_.parseSegmentBinaryData(bytes);
   this.segmentParser_.flushTags();

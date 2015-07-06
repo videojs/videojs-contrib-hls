@@ -31,15 +31,6 @@
     // allow in-band metadata to be observed
     self.metadataStream = new MetadataStream();
 
-    this.mediaTimelineOffset = null;
-
-    // The first timestamp value encountered during parsing. This
-    // value can be used to determine the relative timing between
-    // frames and the start of the current timestamp sequence. It
-    // should be reset to null before parsing a segment with
-    // discontinuous timestamp values from previous segments.
-    self.timestampOffset = null;
-
     // For information on the FLV format, see
     // http://download.macromedia.com/f4v/video_file_format_spec_v10_1.pdf.
     // Technically, this function returns the header and a metadata FLV tag
@@ -359,13 +350,6 @@
 
           // Skip past "optional" portion of PTS header
           offset += pesHeaderLength;
-
-          // keep track of the earliest encounted PTS value so
-          // external parties can align timestamps across
-          // discontinuities
-          if (self.timestampOffset === null) {
-            self.timestampOffset = pts;
-          }
 
           if (pid === self.stream.programMapTable[STREAM_TYPES.h264]) {
             h264Stream.setNextTimeStamp(pts,
