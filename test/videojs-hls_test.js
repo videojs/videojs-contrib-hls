@@ -2749,7 +2749,7 @@ test('mediaIndex is not set to 0 when seeking after playback end', function() {
 
   player.play();
 
-  strictEqual(player.hls.mediaIndex, 3, 'media index is non-zero');
+  strictEqual(player.hls.mediaIndex, 2, 'media index is non-zero');
 });
 
 })(window, window.videojs);
