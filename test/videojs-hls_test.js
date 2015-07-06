@@ -2710,12 +2710,13 @@ test('treats invalid keys as a key request failure', function() {
   equal(bytes[0], 'flv', 'appended the flv header');
 
   tags.length = 0;
-  tags.push({ pts: 1, bytes: new Uint8Array([1]) });
+  tags.push({ pts: 2833, bytes: new Uint8Array([1]) },
+            { pts: 4833, bytes: new Uint8Array([2]) });
   // second segment request
   standardXHRResponse(requests.shift());
 
   equal(bytes.length, 2, 'appended bytes');
-  deepEqual(new Uint8Array([1]), bytes[1], 'skipped to the second segment');
+  deepEqual(bytes[1], new Uint8Array([1, 2]), 'skipped to the second segment');
 });
 
 test('live stream should not call endOfStream', function(){

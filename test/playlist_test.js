@@ -70,17 +70,17 @@
   });
 
   test('works when partial PTS information is available', function() {
-    var firstInterval, secondInterval, duration = Playlist.duration({
+    var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
       segments: [{
         minVideoPts: 1,
         minAudioPts: 2,
-        maxVideoPts: 1 * 10 * 1000 + 1,
+        maxVideoPts: 10 * 1000 + 1,
 
         // intentionally less duration than video
         // the max stream duration should be used
-        maxAudioPts: 1 * 10 * 1000 + 1,
+        maxAudioPts: 10 * 1000 + 1,
         uri: '0.ts'
       }, {
         duration: 9,
@@ -90,27 +90,94 @@
         uri: '2.ts'
       }, {
         duration: 10,
-        minVideoPts: 2 * 10 * 1000 + 7,
-        minAudioPts: 2 * 10 * 1000 + 10,
-        maxVideoPts: 3 * 10 * 1000 + 1,
-        maxAudioPts: 3 * 10 * 1000 + 2,
+        minVideoPts: 30 * 1000 + 7,
+        minAudioPts: 30 * 1000 + 10,
+        maxVideoPts: 40 * 1000 + 1,
+        maxAudioPts: 40 * 1000 + 2,
         uri: '3.ts'
       }, {
         duration: 10,
-        maxVideoPts: 4 * 10 * 1000 + 1,
-        maxAudioPts: 4 * 10 * 1000 + 2,
+        maxVideoPts: 50 * 1000 + 1,
+        maxAudioPts: 50 * 1000 + 2,
         uri: '4.ts'
       }]
     }, 0, 5);
 
-    firstInterval = (1 * 10 * 1000 + 1) - 1;
-    firstInterval *= 0.001;
-    secondInterval = (4 * 10 * 1000 + 2) - (2 * 10 * 1000 + 7);
-    secondInterval *= 0.001;
-
     equal(duration,
-          firstInterval + 9 + 10 + secondInterval,
+          ((50 * 1000 + 2) - 1) * 0.001,
           'calculated with mixed intervals');
+  });
+
+  test('ignores segments before the start', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 0,
+      segments: [{
+        duration: 10,
+        uri: '0.ts'
+      }, {
+        duration: 10,
+        uri: '1.ts'
+      }, {
+        duration: 10,
+        uri: '2.ts'
+      }]
+    }, 1, 3);
+
+    equal(duration, 10 + 10, 'ignored the first segment');
+  });
+
+  test('ignores discontinuity sequences earlier than the start', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 0,
+      discontinuityStarts: [1, 3],
+      segments: [{
+        minVideoPts: 0,
+        minAudioPts: 0,
+        maxVideoPts: 10 * 1000,
+        maxAudioPts: 10 * 1000,
+        uri: '0.ts'
+      }, {
+        discontinuity: true,
+        duration: 9,
+        uri: '1.ts'
+      }, {
+        duration: 10,
+        uri: '2.ts'
+      }, {
+        discontinuity: true,
+        duration: 10,
+        uri: '3.ts'
+      }]
+    }, 2, 4);
+
+    equal(duration, 10 + 10, 'excluded the earlier segments');
+  });
+
+  test('ignores discontinuity sequences later than the end', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 0,
+      discontinuityStarts: [1, 3],
+      segments: [{
+        minVideoPts: 0,
+        minAudioPts: 0,
+        maxVideoPts: 10 * 1000,
+        maxAudioPts: 10 * 1000,
+        uri: '0.ts'
+      }, {
+        discontinuity: true,
+        duration: 9,
+        uri: '1.ts'
+      }, {
+        duration: 10,
+        uri: '2.ts'
+      }, {
+        discontinuity: true,
+        duration: 10,
+        uri: '3.ts'
+      }]
+    }, 0, 2);
+
+    equal(duration, 19, 'excluded the later segments');
   });
 
   test('handles trailing segments without PTS information', function() {
@@ -130,15 +197,15 @@
         duration: 10,
         uri: '2.ts'
       }, {
-        minVideoPts: 30 * 1000,
-        minAudioPts: 30 * 1000,
-        maxVideoPts: 40 * 1000,
-        maxAudioPts: 40 * 1000,
+        minVideoPts: 29.5 * 1000,
+        minAudioPts: 29.5 * 1000,
+        maxVideoPts: 39.5 * 1000,
+        maxAudioPts: 39.5 * 1000,
         uri: '3.ts'
       }]
     }, 0, 3);
 
-    equal(duration, 10 + 9 + 10, 'calculated duration');
+    equal(duration, 29.5, 'calculated duration');
   });
 
   test('uses PTS intervals when the start and end segment have them', function() {
@@ -171,7 +238,45 @@
     equal(duration, 30.1, 'used the PTS-based interval');
   });
 
-  test('counts the time between segments as part of the later segment duration', function() {
+  test('uses the largest continuous available PTS ranges', function() {
+    var playlist = {
+      mediaSequence: 0,
+      segments: [{
+        minVideoPts: 0,
+        minAudioPts: 0,
+        maxVideoPts: 10 * 1000,
+        maxAudioPts: 10 * 1000,
+        uri: '0.ts'
+      }, {
+        duration: 10,
+        uri: '1.ts'
+      }, {
+        // starts 0.5s earlier than the previous segment indicates
+        minVideoPts: 19.5 * 1000,
+        minAudioPts: 19.5 * 1000,
+        maxVideoPts: 29.5 * 1000,
+        maxAudioPts: 29.5 * 1000,
+        uri: '2.ts'
+      }, {
+        duration: 10,
+        uri: '3.ts'
+      }, {
+        // ... but by the last segment, there is actual 0.5s more
+        // content than duration indicates
+        minVideoPts: 40.5 * 1000,
+        minAudioPts: 40.5 * 1000,
+        maxVideoPts: 50.5 * 1000,
+        maxAudioPts: 50.5 * 1000,
+        uri: '4.ts'
+      }]
+    };
+
+    equal(Playlist.duration(playlist, 0, 5),
+          50.5,
+          'calculated across the larger PTS interval');
+  });
+
+  test('counts the time between segments as part of the earlier segment\'s duration', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
@@ -198,6 +303,7 @@
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
+      discontinuityStarts: [1],
       segments: [{
         minVideoPts: 0,
         minAudioPts: 0,
@@ -221,6 +327,7 @@
   test('does not count ending segment gaps across a discontinuity', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
+      discontinuityStarts: [1],
       endList: true,
       segments: [{
         minVideoPts: 0,
@@ -242,7 +349,7 @@
     equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
   });
 
-  test('strict duration does not count ending segment gaps', function() {
+  test('trailing duration on the final segment can be excluded', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
@@ -260,9 +367,29 @@
         duration: 10,
         uri: '1.ts'
       }]
-    }, 0, 1, true);
+    }, 0, 1, false);
 
     equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
+  });
+
+  test('a non-positive length interval has zero duration', function() {
+    var playlist = {
+      mediaSequence: 0,
+      discontinuityStarts: [1],
+      segments: [{
+        duration: 10,
+        uri: '0.ts'
+      }, {
+        discontinuity: true,
+        duration: 10,
+        uri: '1.ts'
+      }]
+    };
+
+    equal(Playlist.duration(playlist, 0, 0), 0, 'zero-length duration is zero');
+    equal(Playlist.duration(playlist, 0, 0, false), 0, 'zero-length duration is zero');
+    equal(Playlist.duration(playlist, 0, -1), 0, 'negative length duration is zero');
+    equal(Playlist.duration(playlist, 2, 1, false), 0, 'negative length duration is zero');
   });
 
   module('Playlist Seekable');

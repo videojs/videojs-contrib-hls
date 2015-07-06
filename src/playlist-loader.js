@@ -432,7 +432,7 @@
       time -= Playlist.duration(this.media_,
                                 this.media_.mediaSequence + i,
                                 this.media_.mediaSequence + i + 1,
-                                true);
+                                false);
 
       // HLS version 3 and lower round segment durations to the
       // nearest decimal integer. When the correct media index is

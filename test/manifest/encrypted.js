@@ -2,6 +2,7 @@
   "allowCache": true,
   "mediaSequence": 7794,
   "discontinuitySequence": 0,
+  "discontinuityStarts": [],
   "segments": [
     {
       "duration": 2.833,

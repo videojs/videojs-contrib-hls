@@ -375,7 +375,8 @@
 
     // the manifest is empty until the parse stream begins delivering data
     this.manifest = {
-      allowCache: true
+      allowCache: true,
+      discontinuityStarts: []
     };
 
     // update the manifest with the m3u8 entry from the parse stream
@@ -513,6 +514,7 @@
             },
             'discontinuity': function() {
               currentUri.discontinuity = true;
+              this.manifest.discontinuityStarts.push(uris.length);
             },
             'targetduration': function() {
               if (!isFinite(entry.duration) || entry.duration < 0) {

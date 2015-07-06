@@ -276,7 +276,11 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
       }
     }
 
-    tech.addCuesForMetadata_(textTrack, metadata);
+    // store this event for processing once the muxing has finished
+    tech.segmentBuffer_[0].pendingMetadata.push({
+      textTrack: textTrack,
+      metadata: metadata
+    });
   });
 
   // when seeking, clear out all cues ahead of the earliest position
@@ -300,22 +304,27 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
   });
 };
 
-videojs.Hls.prototype.addCuesForMetadata_ = function(textTrack, metadata) {
-  var i, cue, frame, minPts, segmentInfo, segmentOffset, time;
-  segmentInfo = this.segmentBuffer_[0];
+videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
+  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time;
   segmentOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist,
                                                 segmentInfo.playlist.mediaSequence,
                                                 segmentInfo.playlist.mediaSequence + segmentInfo.mediaIndex);
-  minPts = Math.min(this.segmentParser_.stats.minVideoPts(),
-                    this.segmentParser_.stats.minAudioPts());
+  segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+  minPts = Math.min(segment.minVideoPts, segment.minAudioPts);
 
-  // create cue points for all the ID3 frames in this metadata event
-  for (i = 0; i < metadata.frames.length; i++) {
-    frame = metadata.frames[i];
-    time = segmentOffset + ((metadata.pts - minPts) * 0.001);
-    cue = new window.VTTCue(time, time, frame.value || frame.url || '');
-    cue.frame = frame;
-    textTrack.addCue(cue);
+  while (segmentInfo.pendingMetadata.length) {
+    metadata = segmentInfo.pendingMetadata[0].metadata;
+    textTrack = segmentInfo.pendingMetadata[0].textTrack;
+
+    // create cue points for all the ID3 frames in this metadata event
+    for (i = 0; i < metadata.frames.length; i++) {
+      frame = metadata.frames[i];
+      time = segmentOffset + ((metadata.pts - minPts) * 0.001);
+      cue = new window.VTTCue(time, time, frame.value || frame.url || '');
+      cue.frame = frame;
+      textTrack.addCue(cue);
+    }
+    segmentInfo.pendingMetadata.shift();
   }
 };
 
@@ -787,7 +796,10 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       // when a key is defined for this segment, the encrypted bytes
       encryptedBytes: null,
       // optionally, the decrypter that is unencrypting the segment
-      decrypter: null
+      decrypter: null,
+      // metadata events discovered during muxing that need to be
+      // translated into cue points
+      pendingMetadata: []
     };
     if (segmentInfo.playlist.segments[segmentInfo.mediaIndex].key) {
       segmentInfo.encryptedBytes = new Uint8Array(this.response);
@@ -904,47 +916,8 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     tags.push(this.segmentParser_.getNextTag());
   }
 
+  this.addCuesForMetadata_(segmentInfo);
   this.updateDuration(this.playlists.media());
-
-/*
-Live In-Progress
-      0       s        c  m
-. . . |~~~~~~~|--%-----^--|~~~~~%~~~~~|-----| . . .
-              p  q     AAJ
-
-Live In-Progress 2
-      0             s  c  m
-. . . |~~~~~~~~~~%~~|--^--|~~~~~%~~~~~|-----| . . .
-                    q  AAJ
-
-0     400    450
-. . . |-------X-----| . . .
-
-Live Before Buffering
-      c
-. . . |~~%~~~~~| . . .
-      ??
-
-p  = earliest known pts
-s  = earliest playback position
-q  = earliest pts after the last discontinuity
-c  = current time
-m  = the latest buffered playback position
-~  = only EXTINF available
--  = PTS available
-%  = discontinuity
-.  = expired or unavailable
-A  = buffered in actionscript
-J  = buffered in javascript
-
-Calculate current pts from current time
-  - subtract current time from buffered end to find out the interval between the latest buffered playback position and current time
-  - determine the current segment by subtracting segment durations from the latest buffered playback position
-  - determine current pts based on max segment pts
-Determine the target segment by calculating the duration of intermediate segments
-Add the difference between current time and the target time to find the target pts
-Skip samples until the next sample is greater than or equal to the target pts
-*/
 
   // if we're refilling the buffer after a seek, scan through the muxed
   // FLV tags until we find the one that is closest to the desired
