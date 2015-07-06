@@ -104,8 +104,6 @@ var
         return 'flv';
       };
       this.parseSegmentBinaryData = function() {};
-      this.timestampOffset = 0;
-      this.mediaTimelineOffset = 0;
       this.flushTags = function() {};
       this.tagsAvailable = function() {
         return tags.length;
@@ -1344,9 +1342,6 @@ test('translates ID3 PTS values to cue media timeline positions', function() {
   openMediaSource(player);
 
   player.hls.segmentParser_.parseSegmentBinaryData = function() {
-    // setup the timestamp offset
-    this.timestampOffset = tags[0].pts;
-
     // trigger a metadata event
     player.hls.segmentParser_.metadataStream.trigger('data', {
       pts: 5 * 1000,
@@ -1375,9 +1370,6 @@ test('translates ID3 PTS values across discontinuities', function() {
   openMediaSource(player);
 
   player.hls.segmentParser_.parseSegmentBinaryData = function() {
-    if (this.timestampOffset === null) {
-      this.timestampOffset = tags[0].pts;
-    }
     // trigger a metadata event
     if (events.length) {
       player.hls.segmentParser_.metadataStream.trigger('data', events.shift());
@@ -1395,7 +1387,6 @@ test('translates ID3 PTS values across discontinuities', function() {
                            '1.ts\n');
 
   // segment 0 starts at PTS 14000 and has a cue point at 15000
-  player.hls.segmentParser_.timestampOffset = 14 * 1000;
   tags.push({ pts: 14 * 1000, bytes: new Uint8Array(1) },
             { pts: 24 * 1000, bytes: new Uint8Array(1) });
   events.push({
