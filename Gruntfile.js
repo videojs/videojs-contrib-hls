@@ -300,7 +300,7 @@ module.exports = function(grunt) {
         // translate this manifest
         jsManifests += '  \'' + basename(filename, '.m3u8') + '\': ' +
           grunt.file.read(abspath)
-            .split('\n')
+            .split(/\r\n|\n/)
 
             // quote and concatenate
             .map(function(line) {
