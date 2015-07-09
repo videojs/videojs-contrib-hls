@@ -320,12 +320,7 @@ videojs.Hls.prototype.play = function() {
   if (this.ended()) {
     // If this.lastSeekedTime_ is defined, a seek has happened after playback ended, as it is set undefined at video end.
     // We should begin playback from that point.
-    if (this.lastSeekedTime_ !== undefined) {
-      this.mediaIndex = videojs.Hls.getMediaIndexByTime(this.playlists.media(), this.currentTime());
-      this.setCurrentTime(this.currentTime());
-    // Otherwise, reset the playback point to 0 so that a video restarts from the beginning
-    } else {
-      this.mediaIndex = 0;
+    if (this.lastSeekedTime_ === undefined) {
       this.setCurrentTime(0);
     }
   }
@@ -959,6 +954,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   // the playlist
   if (this.duration() !== Infinity && mediaIndex + 1 === playlist.segments.length) {
     this.mediaSource.endOfStream();
+    this.lastSeekedTime_ = undefined;
   }
 };
 
