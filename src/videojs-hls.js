@@ -318,7 +318,11 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
  */
 videojs.Hls.prototype.play = function() {
   if (this.ended()) {
-    this.mediaIndex = 0;
+    // If this.lastSeekedTime_ is defined, a seek has happened after playback ended, as it is set undefined at video end.
+    // We should begin playback from that point.
+    if (this.lastSeekedTime_ === undefined) {
+      this.setCurrentTime(0);
+    }
   }
 
   // we may need to seek to begin playing safely for live playlists
@@ -950,6 +954,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   // the playlist
   if (this.duration() !== Infinity && mediaIndex + 1 === playlist.segments.length) {
     this.mediaSource.endOfStream();
+    this.lastSeekedTime_ = undefined;
   }
 };
 
