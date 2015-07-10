@@ -18,10 +18,9 @@
 
   module('Playlist Interval Duration');
 
-  test('accounts for media sequences', function() {
+  test('accounts expired duration for live playlists', function() {
     var duration = Playlist.duration({
       mediaSequence: 10,
-      endList: true,
       segments: [{
         duration: 10,
         uri: '10.ts'
@@ -38,6 +37,28 @@
     }, 0, 14);
 
     equal(duration, 14 * 10, 'duration includes dropped segments');
+  });
+
+  test('accounts for non-zero starting VOD media sequences', function() {
+    var duration = Playlist.duration({
+      mediaSequence: 10,
+      endList: true,
+      segments: [{
+        duration: 10,
+        uri: '0.ts'
+      }, {
+        duration: 10,
+        uri: '1.ts'
+      }, {
+        duration: 10,
+        uri: '2.ts'
+      }, {
+        duration: 10,
+        uri: '3.ts'
+      }]
+    });
+
+    equal(duration, 4 * 10, 'includes only listed segments');
   });
 
   test('uses PTS values when available', function() {
@@ -445,7 +466,7 @@
     equal(seekable.end(0), 7, 'ends three target durations from the last segment');
   });
 
-  test('adjusts seekable to the live playlist window', function() {
+  test('only considers available segments', function() {
     var seekable = Playlist.seekable({
       targetDuration: 10,
       mediaSequence: 7,
@@ -460,8 +481,8 @@
       }]
     });
     equal(seekable.length, 1, 'there are seekable ranges');
-    equal(seekable.start(0), 10 * 7, 'starts at the earliest available segment');
-    equal(seekable.end(0), 10 * 8, 'ends three target durations from the last available segment');
+    equal(seekable.start(0), 0, 'starts at the earliest available segment');
+    equal(seekable.end(0), 10, 'ends three target durations from the last available segment');
   });
 
   test('seekable end accounts for non-standard target durations', function() {

@@ -423,7 +423,7 @@ videojs.Hls.prototype.duration = function() {
 };
 
 videojs.Hls.prototype.seekable = function() {
-  var absoluteSeekable, startOffset, media;
+  var currentSeekable, startOffset, media;
 
   if (!this.playlists) {
     return videojs.createTimeRange();
@@ -435,10 +435,10 @@ videojs.Hls.prototype.seekable = function() {
 
   // report the seekable range relative to the earliest possible
   // position when the stream was first loaded
-  absoluteSeekable = videojs.Hls.Playlist.seekable(media);
+  currentSeekable = videojs.Hls.Playlist.seekable(media);
   startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
   return videojs.createTimeRange(startOffset,
-                                 startOffset + (absoluteSeekable.end(0) - absoluteSeekable.start(0)));
+                                 startOffset + (currentSeekable.end(0) - currentSeekable.start(0)));
 };
 
 /**
