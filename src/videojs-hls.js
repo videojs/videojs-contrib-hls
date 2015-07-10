@@ -44,7 +44,7 @@ videojs.Hls = videojs.Flash.extend({
     this.segmentBuffer_ = [];
     // periodically check if new data needs to be downloaded or
     // buffered data should be appended to the source buffer
-    this.startCheckingBuffer_();
+    this.startCheckingBuffer();
 
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
   }
@@ -490,7 +490,7 @@ videojs.Hls.prototype.cancelSegmentXhr = function() {
  * Abort all outstanding work and cleanup.
  */
 videojs.Hls.prototype.dispose = function() {
-  this.stopCheckingBuffer_();
+  this.stopCheckingBuffer();
 
   if (this.playlists) {
     this.playlists.dispose();
@@ -620,7 +620,7 @@ videojs.Hls.prototype.checkBuffer_ = function() {
  * Setup a periodic task to request new segments if necessary and
  * append bytes into the SourceBuffer.
  */
-videojs.Hls.prototype.startCheckingBuffer_ = function() {
+videojs.Hls.prototype.startCheckingBuffer = function() {
   // if the player ever stalls, check if there is video data available
   // to append immediately
   this.player().on('waiting', videojs.bind(this, this.drainBuffer));
@@ -632,7 +632,7 @@ videojs.Hls.prototype.startCheckingBuffer_ = function() {
  * Stop the periodic task requesting new segments and feeding the
  * SourceBuffer.
  */
-videojs.Hls.prototype.stopCheckingBuffer_ = function() {
+videojs.Hls.prototype.stopCheckingBuffer = function() {
   window.clearTimeout(this.checkBufferTimeout_);
   this.checkBufferTimeout_ = null;
   this.player().off('waiting', this.drainBuffer);
