@@ -260,7 +260,7 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
   // add a metadata cue whenever a metadata event is triggered during
   // segment parsing
   metadataStream.on('data', function(metadata) {
-    var i, cue, frame, time, media, segmentOffset, hexDigit;
+    var i, hexDigit;
 
     // create the metadata track if this is the first ID3 tag we've
     // seen
@@ -276,19 +276,11 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
       }
     }
 
-    // calculate the start time for the segment that is currently being parsed
-    media = tech.playlists.media();
-    segmentOffset = tech.playlists.expiredPreDiscontinuity_ + tech.playlists.expiredPostDiscontinuity_;
-    segmentOffset += videojs.Hls.Playlist.duration(media, media.mediaSequence, media.mediaSequence + tech.mediaIndex);
-
-    // create cue points for all the ID3 frames in this metadata event
-    for (i = 0; i < metadata.frames.length; i++) {
-      frame = metadata.frames[i];
-      time = tech.segmentParser_.mediaTimelineOffset + ((metadata.pts - tech.segmentParser_.timestampOffset) * 0.001);
-      cue = new window.VTTCue(time, time, frame.value || frame.url || '');
-      cue.frame = frame;
-      textTrack.addCue(cue);
-    }
+    // store this event for processing once the muxing has finished
+    tech.segmentBuffer_[0].pendingMetadata.push({
+      textTrack: textTrack,
+      metadata: metadata
+    });
   });
 
   // when seeking, clear out all cues ahead of the earliest position
@@ -310,6 +302,30 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
       }
     }
   });
+};
+
+videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
+  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time;
+  segmentOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist,
+                                                segmentInfo.playlist.mediaSequence,
+                                                segmentInfo.playlist.mediaSequence + segmentInfo.mediaIndex);
+  segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+  minPts = Math.min(segment.minVideoPts, segment.minAudioPts);
+
+  while (segmentInfo.pendingMetadata.length) {
+    metadata = segmentInfo.pendingMetadata[0].metadata;
+    textTrack = segmentInfo.pendingMetadata[0].textTrack;
+
+    // create cue points for all the ID3 frames in this metadata event
+    for (i = 0; i < metadata.frames.length; i++) {
+      frame = metadata.frames[i];
+      time = segmentOffset + ((metadata.pts - minPts) * 0.001);
+      cue = new window.VTTCue(time, time, frame.value || frame.url || '');
+      cue.frame = frame;
+      textTrack.addCue(cue);
+    }
+    segmentInfo.pendingMetadata.shift();
+  }
 };
 
 /**
@@ -780,7 +796,10 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       // when a key is defined for this segment, the encrypted bytes
       encryptedBytes: null,
       // optionally, the decrypter that is unencrypting the segment
-      decrypter: null
+      decrypter: null,
+      // metadata events discovered during muxing that need to be
+      // translated into cue points
+      pendingMetadata: []
     };
     if (segmentInfo.playlist.segments[segmentInfo.mediaIndex].key) {
       segmentInfo.encryptedBytes = new Uint8Array(this.response);
@@ -870,20 +889,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   }
 
   event = event || {};
-  segmentOffset = this.playlists.expiredPreDiscontinuity_;
-  segmentOffset += this.playlists.expiredPostDiscontinuity_;
-  segmentOffset += videojs.Hls.Playlist.duration(playlist, playlist.mediaSequence, playlist.mediaSequence + mediaIndex);
-  segmentOffset *= 1000;
-
-  // if this segment starts is the start of a new discontinuity
-  // sequence, the segment parser's timestamp offset must be
-  // re-calculated
-  if (segment.discontinuity) {
-    this.segmentParser_.mediaTimelineOffset = segmentOffset * 0.001;
-    this.segmentParser_.timestampOffset = null;
-  } else if (this.segmentParser_.mediaTimelineOffset === null) {
-    this.segmentParser_.mediaTimelineOffset = segmentOffset * 0.001;
-  }
 
   // transmux the segment data from MP2T to FLV
   this.segmentParser_.parseSegmentBinaryData(bytes);
@@ -904,20 +909,27 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     tags.push(this.segmentParser_.getNextTag());
   }
 
+  this.addCuesForMetadata_(segmentInfo);
   this.updateDuration(this.playlists.media());
 
   // if we're refilling the buffer after a seek, scan through the muxed
   // FLV tags until we find the one that is closest to the desired
   // playback time
   if (typeof offset === 'number') {
-    ptsTime = offset - segmentOffset + tags[0].pts;
+    // determine the offset within this segment we're seeking to
+    segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
+    segmentOffset += videojs.Hls.Playlist.duration(playlist,
+                                                   playlist.mediaSequence,
+                                                   playlist.mediaSequence + mediaIndex);
+    segmentOffset = offset - (segmentOffset * 1000);
+    ptsTime = segmentOffset + tags[0].pts;
 
-    while (tags[i].pts < ptsTime) {
+    while (tags[i + 1] && tags[i].pts < ptsTime) {
       i++;
     }
 
-    // tell the SWF where we will be seeking to
-    this.el().vjs_setProperty('currentTime', (tags[i].pts - tags[0].pts + segmentOffset) * 0.001);
+    // tell the SWF the media position of the first tag we'll be delivering
+    this.el().vjs_setProperty('currentTime', ((tags[i].pts - ptsTime + offset) * 0.001));
 
     tags = tags.slice(i);
 
@@ -1136,29 +1148,6 @@ videojs.Hls.getMediaIndexByTime = function() {
   videojs.log.warn('getMediaIndexByTime is deprecated. ' +
                    'Use PlaylistLoader.getMediaIndexForTime_ instead.');
   return 0;
-};
-
-/**
- * Determine the current time in seconds in one playlist by a media index. This
- * function iterates through the segments of a playlist up to the specified index
- * and then returns the time up to that point.
- *
- * @param playlist {object} The playlist of the segments being searched.
- * @param mediaIndex {number} The index of the target segment in the playlist.
- * @returns {number} The current time to that point, or 0 if none appropriate.
- */
-videojs.Hls.prototype.getCurrentTimeByMediaIndex_ = function(playlist, mediaIndex) {
-  var index, time = 0;
-
-  if (!playlist.segments || mediaIndex === 0) {
-    return 0;
-  }
-
-  for (index = 0; index < mediaIndex; index++) {
-    time += playlist.segments[index].duration;
-  }
-
-  return time;
 };
 
 /**

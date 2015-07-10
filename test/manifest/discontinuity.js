@@ -44,5 +44,6 @@
     }
   ],
   "targetDuration": 19,
-  "endList": true
+  "endList": true,
+  "discontinuityStarts": [2, 4, 7]
 }

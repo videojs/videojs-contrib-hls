@@ -10,5 +10,6 @@
     {
       "uri": "media1.m3u8"
     }
-  ]
+  ],
+  "discontinuityStarts": []
 }
