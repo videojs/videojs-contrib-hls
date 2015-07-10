@@ -299,7 +299,7 @@ AsyncStream.prototype = new videojs.Hls.Stream();
 AsyncStream.prototype.processJob_ = function() {
   this.jobs.shift()();
   if (this.jobs.length) {
-    this.timeout_ = setTimeout(videojs.bind(this, this.processJob_),
+    this.timeout_ = setTimeout(this.processJob_.bind(this),
                                this.delay);
   } else {
     this.timeout_ = null;
@@ -308,7 +308,7 @@ AsyncStream.prototype.processJob_ = function() {
 AsyncStream.prototype.push = function(job) {
   this.jobs.push(job);
   if (!this.timeout_) {
-    this.timeout_ = setTimeout(videojs.bind(this, this.processJob_),
+    this.timeout_ = setTimeout(this.processJob_.bind(this),
                                this.delay);
   }
 };

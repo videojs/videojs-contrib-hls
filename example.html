@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <title>video.js HLS Plugin Example</title>
 
-  <link href="node_modules/video.js/dist/video-js/video-js.css" rel="stylesheet">
+  <link href="node_modules/video.js/dist/video-js.css" rel="stylesheet">
 
   <!-- video.js -->
-  <script src="node_modules/video.js/dist/video-js/video.dev.js"></script>
+  <script src="node_modules/video.js/dist/video.js"></script>
 
   <!-- Media Sources plugin -->
   <script src="node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
@@ -72,8 +72,7 @@
        type="application/x-mpegURL">
   </video>
   <script>
-    videojs.options.flash.swf = 'node_modules/videojs-swf/dist/video-js.swf';
-
+    videojs.getGlobalOptions().flash.swf = 'node_modules/videojs-swf/dist/video-js.swf';
     // initialize the player
     var player = videojs('video');
   </script>
