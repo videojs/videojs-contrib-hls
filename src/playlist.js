@@ -149,8 +149,12 @@
   intervalDuration = function(playlist, startSequence, endSequence, includeTrailingTime) {
     var result = 0, targetDuration, expiredSegmentCount;
 
-    startSequence = startSequence || 0;
-    endSequence = endSequence !== undefined ? endSequence : (playlist.segments || []).length;
+    if (startSequence === undefined) {
+      startSequence = playlist.mediaSequence || 0;
+    }
+    if (endSequence === undefined) {
+      endSequence = startSequence + (playlist.segments || []).length;
+    }
     targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION;
 
     // estimate expired segment duration using the target duration
@@ -214,7 +218,11 @@
 
   /**
    * Calculates the interval of time that is currently seekable in a
-   * playlist.
+   * playlist. The returned time ranges are relative to the earliest
+   * moment in the specified playlist that is still available. A full
+   * seekable implementation for live streams would need to offset
+   * these values by the duration of content that has expired from the
+   * stream.
    * @param playlist {object} a media playlist object
    * @return {TimeRanges} the periods of time that are valid targets
    * for seeking
@@ -231,10 +239,10 @@
       return videojs.createTimeRange(0, duration(playlist));
     }
 
-    start = intervalDuration(playlist, 0, playlist.mediaSequence);
-    end = start + intervalDuration(playlist,
-                                   playlist.mediaSequence,
-                                   playlist.mediaSequence + playlist.segments.length);
+    start = 0;
+    end = intervalDuration(playlist,
+                           playlist.mediaSequence,
+                           playlist.mediaSequence + playlist.segments.length);
     targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION;
 
     // live playlists should not expose three segment durations worth
@@ -249,9 +257,9 @@
       // from the result.
       for (i = playlist.segments.length - 1; i >= 0 && liveBuffer > 0; i--) {
         segment = playlist.segments[i];
-        pending = Math.min(segment.preciseDuration ||
-                           segment.duration ||
-                           targetDuration,
+        pending = Math.min(duration(playlist,
+                                    playlist.mediaSequence + i,
+                                    playlist.mediaSequence + i + 1),
                            liveBuffer);
         liveBuffer -= pending;
         end -= pending;
