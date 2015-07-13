@@ -899,10 +899,14 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   if (this.segmentParser_.tagsAvailable()) {
     // record PTS information for the segment so we can calculate
     // accurate durations and seek reliably
-    segment.minVideoPts = this.segmentParser_.stats.minVideoPts();
-    segment.maxVideoPts = this.segmentParser_.stats.maxVideoPts();
-    segment.minAudioPts = this.segmentParser_.stats.minAudioPts();
-    segment.maxAudioPts = this.segmentParser_.stats.maxAudioPts();
+    if (this.segmentParser_.stats.h264Tags()) {
+      segment.minVideoPts = this.segmentParser_.stats.minVideoPts();
+      segment.maxVideoPts = this.segmentParser_.stats.maxVideoPts();
+    }
+    if (this.segmentParser_.stats.aacTags()) {
+      segment.minAudioPts = this.segmentParser_.stats.minAudioPts();
+      segment.maxAudioPts = this.segmentParser_.stats.maxAudioPts();
+    }
   }
 
   while (this.segmentParser_.tagsAvailable()) {

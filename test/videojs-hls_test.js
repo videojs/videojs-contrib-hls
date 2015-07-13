@@ -121,11 +121,17 @@ var
       ]);
 
       this.stats = {
+        h264Tags: function() {
+          return tags.length;
+        },
         minVideoPts: function() {
           return tags[0].pts;
         },
         maxVideoPts: function() {
           return tags[tags.length - 1].pts;
+        },
+        aacTags: function() {
+          return tags.length;
         },
         minAudioPts: function() {
           return tags[0].pts;
@@ -1042,6 +1048,64 @@ test('records the min and max PTS values for a segment', function() {
   equal(player.hls.playlists.media().segments[0].maxVideoPts, 10, 'recorded max video pts');
   equal(player.hls.playlists.media().segments[0].minAudioPts, 0, 'recorded min audio pts');
   equal(player.hls.playlists.media().segments[0].maxAudioPts, 10, 'recorded max audio pts');
+});
+
+test('records PTS values for video-only segments', function() {
+  var tags = [];
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.pop()); // media.m3u8
+
+  player.hls.segmentParser_.stats.aacTags = function() {
+    return 0;
+  };
+  player.hls.segmentParser_.stats.minAudioPts = function() {
+    throw new Error('No audio tags');
+  };
+  player.hls.segmentParser_.stats.maxAudioPts = function() {
+    throw new Error('No audio tags');
+  };
+  tags.push({ pts: 0, bytes: new Uint8Array(1) });
+  tags.push({ pts: 10, bytes: new Uint8Array(1) });
+  standardXHRResponse(requests.pop()); // segment 0
+
+  equal(player.hls.playlists.media().segments[0].minVideoPts, 0, 'recorded min video pts');
+  equal(player.hls.playlists.media().segments[0].maxVideoPts, 10, 'recorded max video pts');
+  strictEqual(player.hls.playlists.media().segments[0].minAudioPts, undefined, 'min audio pts is undefined');
+  strictEqual(player.hls.playlists.media().segments[0].maxAudioPts, undefined, 'max audio pts is undefined');
+});
+
+test('records PTS values for audio-only segments', function() {
+  var tags = [];
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.pop()); // media.m3u8
+
+  player.hls.segmentParser_.stats.h264Tags = function() {
+    return 0;
+  };
+  player.hls.segmentParser_.stats.minVideoPts = function() {
+    throw new Error('No video tags');
+  };
+  player.hls.segmentParser_.stats.maxVideoPts = function() {
+    throw new Error('No video tags');
+  };
+  tags.push({ pts: 0, bytes: new Uint8Array(1) });
+  tags.push({ pts: 10, bytes: new Uint8Array(1) });
+  standardXHRResponse(requests.pop()); // segment 0
+
+  equal(player.hls.playlists.media().segments[0].minAudioPts, 0, 'recorded min audio pts');
+  equal(player.hls.playlists.media().segments[0].maxAudioPts, 10, 'recorded max audio pts');
+  strictEqual(player.hls.playlists.media().segments[0].minVideoPts, undefined, 'min video pts is undefined');
+  strictEqual(player.hls.playlists.media().segments[0].maxVideoPts, undefined, 'max video pts is undefined');
 });
 
 test('waits to download new segments until the media playlist is stable', function() {
