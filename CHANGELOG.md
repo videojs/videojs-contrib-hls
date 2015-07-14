@@ -2,10 +2,13 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-* do not assume media sequence starts at zero ([view](https://github.com/videojs/videojs-contrib-hls/pull/346))
-* fix error with audio- or video-only streams ([view](https://github.com/videojs/videojs-contrib-hls/pull/348))
+_(none)_
 
 --------------------
+
+## 0.17.5 (2015-07-14)
+* do not assume media sequence starts at zero ([view](https://github.com/videojs/videojs-contrib-hls/pull/346))
+* fix error with audio- or video-only streams ([view](https://github.com/videojs/videojs-contrib-hls/pull/348))
 
 ## 0.17.4 (2015-07-12)
 * Fix seeks between segments. Improve duration calculation. ([view](https://github.com/videojs/videojs-contrib-hls/pull/339))
