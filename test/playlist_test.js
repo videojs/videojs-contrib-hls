@@ -259,6 +259,30 @@
     equal(duration, 30.1, 'used the PTS-based interval');
   });
 
+  test('works for media without audio', function() {
+    equal(Playlist.duration({
+      mediaSequence: 0,
+      endList: true,
+      segments: [{
+        minVideoPts: 0,
+        maxVideoPts: 9 * 1000,
+        uri: 'no-audio.ts'
+      }]
+    }), 9, 'used video PTS values');
+  });
+
+  test('works for media without video', function() {
+    equal(Playlist.duration({
+      mediaSequence: 0,
+      endList: true,
+      segments: [{
+        minAudioPts: 0,
+        maxAudioPts: 9 * 1000,
+        uri: 'no-video.ts'
+      }]
+    }), 9, 'used video PTS values');
+  });
+
   test('uses the largest continuous available PTS ranges', function() {
     var playlist = {
       mediaSequence: 0,

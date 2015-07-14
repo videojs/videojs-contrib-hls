@@ -284,6 +284,17 @@
     equal(packets.length, 1, 'parsed non-payload metadata packet');
   });
 
+  test('returns undefined for PTS stats when a track is missing', function() {
+    parser.parseSegmentBinaryData(new Uint8Array(makePacket({
+      programs: {
+        0x01: [0x01]
+      }
+    })));
+
+    strictEqual(parser.stats.h264Tags(), 0, 'no video tags yet');
+    strictEqual(parser.stats.aacTags(), 0, 'no audio tags yet');
+  });
+
   test('parses the first bipbop segment', function() {
     parser.parseSegmentBinaryData(window.bcSegment);
 

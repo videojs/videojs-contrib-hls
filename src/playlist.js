@@ -5,7 +5,23 @@
   'use strict';
 
   var DEFAULT_TARGET_DURATION = 10;
-  var accumulateDuration, ascendingNumeric, duration, intervalDuration, rangeDuration, seekable;
+  var accumulateDuration, ascendingNumeric, duration, intervalDuration, optionalMin, optionalMax, rangeDuration, seekable;
+
+  // Math.min that will return the alternative input if one of its
+  // parameters in undefined
+  optionalMin = function(left, right) {
+    left = isFinite(left) ? left : Infinity;
+    right = isFinite(right) ? right : Infinity;
+    return Math.min(left, right);
+  };
+
+  // Math.max that will return the alternative input if one of its
+  // parameters in undefined
+  optionalMax = function(left, right) {
+    left = isFinite(left) ? left: -Infinity;
+    right = isFinite(right) ? right: -Infinity;
+    return Math.max(left, right);
+  };
 
   // Array.sort comparator to sort numbers in ascending order
   ascendingNumeric = function(left, right) {
@@ -91,7 +107,8 @@
     // available PTS information
     for (left = range.start; left < range.end; left++) {
       segment = playlist.segments[left];
-      if (segment.minVideoPts !== undefined) {
+      if (segment.minVideoPts !== undefined ||
+          segment.minAudioPts !== undefined) {
         break;
       }
       result += segment.duration || targetDuration;
@@ -100,10 +117,12 @@
     // see if there's enough information to include the trailing time
     if (includeTrailingTime) {
       segment = playlist.segments[range.end];
-      if (segment && segment.minVideoPts !== undefined) {
+      if (segment &&
+          (segment.minVideoPts !== undefined ||
+           segment.minAudioPts !== undefined)) {
         result += 0.001 *
-          (Math.min(segment.minVideoPts, segment.minAudioPts) -
-           Math.min(playlist.segments[left].minVideoPts,
+          (optionalMin(segment.minVideoPts, segment.minAudioPts) -
+           optionalMin(playlist.segments[left].minVideoPts,
                     playlist.segments[left].minAudioPts));
         return result;
       }
@@ -112,7 +131,8 @@
     // do the same thing while finding the latest segment
     for (right = range.end - 1; right >= left; right--) {
       segment = playlist.segments[right];
-      if (segment.maxVideoPts !== undefined) {
+      if (segment.maxVideoPts !== undefined ||
+          segment.maxAudioPts !== undefined) {
         break;
       }
       result += segment.duration || targetDuration;
@@ -121,9 +141,9 @@
     // add in the PTS interval in seconds between them
     if (right >= left) {
       result += 0.001 *
-        (Math.max(playlist.segments[right].maxVideoPts,
+        (optionalMax(playlist.segments[right].maxVideoPts,
                   playlist.segments[right].maxAudioPts) -
-         Math.min(playlist.segments[left].minVideoPts,
+         optionalMin(playlist.segments[left].minVideoPts,
                   playlist.segments[left].minAudioPts));
     }
 
@@ -158,7 +178,7 @@
     targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION;
 
     // estimate expired segment duration using the target duration
-    expiredSegmentCount = Math.max(playlist.mediaSequence - startSequence, 0);
+    expiredSegmentCount = optionalMax(playlist.mediaSequence - startSequence, 0);
     result += expiredSegmentCount * targetDuration;
 
     // accumulate the segment durations into the result
@@ -257,9 +277,9 @@
       // from the result.
       for (i = playlist.segments.length - 1; i >= 0 && liveBuffer > 0; i--) {
         segment = playlist.segments[i];
-        pending = Math.min(duration(playlist,
-                                    playlist.mediaSequence + i,
-                                    playlist.mediaSequence + i + 1),
+        pending = optionalMin(duration(playlist,
+                                       playlist.mediaSequence + i,
+                                       playlist.mediaSequence + i + 1),
                            liveBuffer);
         liveBuffer -= pending;
         end -= pending;

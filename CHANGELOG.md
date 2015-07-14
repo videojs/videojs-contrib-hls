@@ -3,6 +3,7 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 * do not assume media sequence starts at zero ([view](https://github.com/videojs/videojs-contrib-hls/pull/346))
+* fix error with audio- or video-only streams ([view](https://github.com/videojs/videojs-contrib-hls/pull/348))
 
 --------------------
 
