@@ -2261,7 +2261,7 @@ test('calling play() at the end of a video resets the media index', function() {
   player.play();
   strictEqual(player.hls.mediaIndex, 0, 'index is 1 after the first segment');
 
-  player.el().querySelector('.vjs-tech').vjs_getProperty = function() {};
+  player.tech.el().vjs_getProperty = function() {};
 });
 
 test('drainBuffer will not proceed with empty source buffer', function() {

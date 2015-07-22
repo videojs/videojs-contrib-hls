@@ -318,8 +318,8 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
  */
 videojs.Hls.prototype.play = function() {
   if (this.ended()) {
-    // If this.lastSeekedTime_ is defined, a seek has happened after playback ended, as it is set undefined at video end.
-    // We should begin playback from that point.
+    // lastSeekedTime_ is set undefined when the video ends. It changes to 'null' when the user seeks.
+    // If it hasn't changed after the video ended, that means we need to reset the current time to 0 before playing.
     if (this.lastSeekedTime_ === undefined) {
       this.setCurrentTime(0);
     }
