@@ -310,7 +310,8 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
                                                 segmentInfo.playlist.mediaSequence,
                                                 segmentInfo.playlist.mediaSequence + segmentInfo.mediaIndex);
   segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
-  minPts = Math.min(segment.minVideoPts, segment.minAudioPts);
+  minPts = Math.min(isFinite(segment.minVideoPts) ? segment.minVideoPts : Infinity, 
+                    isFinite(segment.minAudioPts) ? segment.minAudioPts : Infinity);
 
   while (segmentInfo.pendingMetadata.length) {
     metadata = segmentInfo.pendingMetadata[0].metadata;
