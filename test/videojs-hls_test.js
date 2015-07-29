@@ -1473,6 +1473,73 @@ test('translates ID3 PTS values to cue media timeline positions', function() {
   equal(track.cues[0].endTime, 1, 'translated startTime');
 });
 
+test('translates ID3 PTS values with expired segments', function() {
+  var tags = [{ pts: 4 * 1000, bytes: new Uint8Array(1) }], track;
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  player.src({
+    src: 'live.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.play();
+
+  // 20.9 seconds of content have expired
+  player.hls.playlists.expiredPostDiscontinuity_ = 20.9;
+
+  player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    // trigger a metadata event
+    player.hls.segmentParser_.metadataStream.trigger('data', {
+      pts: 5 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue text'
+      }]
+    });
+  };
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:2\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '3.ts\n');    // media
+  standardXHRResponse(requests.shift()); // segment 0
+
+  track = player.textTracks()[0];
+  equal(track.cues[0].startTime, 20.9 + 1, 'translated startTime');
+  equal(track.cues[0].endTime, 20.9 + 1, 'translated startTime');
+});
+
+test('translates id3 PTS values for audio-only media', function() {
+  var tags = [{ pts: 4 * 1000, bytes: new Uint8Array(1) }], track;
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    // trigger a metadata event
+    player.hls.segmentParser_.metadataStream.trigger('data', {
+      pts: 5 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue text'
+      }]
+    });
+  };
+  player.hls.segmentParser_.stats.h264Tags = function() { return 0; };
+  player.hls.segmentParser_.stats.minVideoPts = null;
+  standardXHRResponse(requests.shift()); // media
+  standardXHRResponse(requests.shift()); // segment 0
+
+  track = player.textTracks()[0];
+  equal(track.cues[0].startTime, 1, 'translated startTime');
+});
+
 test('translates ID3 PTS values across discontinuities', function() {
   var tags = [], events = [], track;
   videojs.Hls.SegmentParser = mockSegmentParser(tags);

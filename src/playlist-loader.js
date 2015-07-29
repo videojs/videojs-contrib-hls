@@ -389,8 +389,8 @@
                                                          this.media_.mediaSequence,
                                                          lastDiscontinuity);
       this.expiredPostDiscontinuity_ += Playlist.duration(this.media_,
-                                                         lastDiscontinuity,
-                                                         this.media_.mediaSequence + expiredCount);
+                                                          lastDiscontinuity,
+                                                          update.mediaSequence);
     }
 
     this.media_ = this.master.playlists[update.uri];

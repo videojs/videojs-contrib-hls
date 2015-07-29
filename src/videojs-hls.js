@@ -313,11 +313,14 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
 
 videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
   var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time;
-  segmentOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist,
-                                                segmentInfo.playlist.mediaSequence,
-                                                segmentInfo.playlist.mediaSequence + segmentInfo.mediaIndex);
+  segmentOffset = this.playlists.expiredPreDiscontinuity_;
+  segmentOffset += this.playlists.expiredPostDiscontinuity_;
+  segmentOffset += videojs.Hls.Playlist.duration(segmentInfo.playlist,
+                                                 segmentInfo.playlist.mediaSequence,
+                                                 segmentInfo.playlist.mediaSequence + segmentInfo.mediaIndex);
   segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
-  minPts = Math.min(segment.minVideoPts, segment.minAudioPts);
+  minPts = Math.min(isFinite(segment.minVideoPts) ? segment.minVideoPts : Infinity,
+                    isFinite(segment.minAudioPts) ? segment.minAudioPts : Infinity);
 
   while (segmentInfo.pendingMetadata.length) {
     metadata = segmentInfo.pendingMetadata[0].metadata;
