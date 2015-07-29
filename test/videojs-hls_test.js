@@ -50,10 +50,19 @@ var
     };
 
     tech = player.el().querySelector('.vjs-tech');
-    tech.vjs_getProperty = function() {};
+    tech.vjs_getProperty = function(name) {
+      if (name === 'paused') {
+        return this.paused_;
+      }
+    };
     tech.vjs_setProperty = function() {};
     tech.vjs_src = function() {};
-    tech.vjs_play = function() {};
+    tech.vjs_play = function() {
+      this.paused_ = false;
+    };
+    tech.vjs_pause = function() {
+      this.paused_ = true;
+    };
     tech.vjs_discontinuity = function() {};
     videojs.Flash.onReady(tech.id);
 
@@ -224,6 +233,46 @@ test('starts playing if autoplay is specified', function() {
 
   standardXHRResponse(requests[0]);
   strictEqual(1, plays, 'play was called');
+});
+
+test('autoplay seeks to the live point after playlist load', function() {
+  var currentTime = 0;
+  player.options().autoplay = true;
+  player.hls.setCurrentTime = function(time) {
+    currentTime = time;
+    return currentTime;
+  };
+  player.hls.currentTime = function() {
+    return currentTime;
+  };
+  player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift());
+
+  notEqual(currentTime, 0, 'seeked on autoplay');
+});
+
+test('autoplay seeks to the live point after media source open', function() {
+  var currentTime = 0;
+  player.options().autoplay = true;
+  player.hls.setCurrentTime = function(time) {
+    currentTime = time;
+    return currentTime;
+  };
+  player.hls.currentTime = function() {
+    return currentTime;
+  };
+  player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  standardXHRResponse(requests.shift());
+  openMediaSource(player);
+
+  notEqual(currentTime, 0, 'seeked on autoplay');
 });
 
 test('creates a PlaylistLoader on init', function() {
@@ -1424,6 +1473,73 @@ test('translates ID3 PTS values to cue media timeline positions', function() {
   equal(track.cues[0].endTime, 1, 'translated startTime');
 });
 
+test('translates ID3 PTS values with expired segments', function() {
+  var tags = [{ pts: 4 * 1000, bytes: new Uint8Array(1) }], track;
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  player.src({
+    src: 'live.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.play();
+
+  // 20.9 seconds of content have expired
+  player.hls.playlists.expiredPostDiscontinuity_ = 20.9;
+
+  player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    // trigger a metadata event
+    player.hls.segmentParser_.metadataStream.trigger('data', {
+      pts: 5 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue text'
+      }]
+    });
+  };
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:2\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '3.ts\n');    // media
+  standardXHRResponse(requests.shift()); // segment 0
+
+  track = player.textTracks()[0];
+  equal(track.cues[0].startTime, 20.9 + 1, 'translated startTime');
+  equal(track.cues[0].endTime, 20.9 + 1, 'translated startTime');
+});
+
+test('translates id3 PTS values for audio-only media', function() {
+  var tags = [{ pts: 4 * 1000, bytes: new Uint8Array(1) }], track;
+  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.hls.segmentParser_.parseSegmentBinaryData = function() {
+    // trigger a metadata event
+    player.hls.segmentParser_.metadataStream.trigger('data', {
+      pts: 5 * 1000,
+      data: new Uint8Array([]),
+      frames: [{
+        id: 'TXXX',
+        value: 'cue text'
+      }]
+    });
+  };
+  player.hls.segmentParser_.stats.h264Tags = function() { return 0; };
+  player.hls.segmentParser_.stats.minVideoPts = null;
+  standardXHRResponse(requests.shift()); // media
+  standardXHRResponse(requests.shift()); // segment 0
+
+  track = player.textTracks()[0];
+  equal(track.cues[0].startTime, 1, 'translated startTime');
+});
+
 test('translates ID3 PTS values across discontinuities', function() {
   var tags = [], events = [], track;
   videojs.Hls.SegmentParser = mockSegmentParser(tags);
@@ -1699,6 +1815,7 @@ test('live playlist starts three target durations before live', function() {
   equal(player.hls.mediaIndex, 0, 'waits for the first play to start buffering');
   equal(requests.length, 0, 'no outstanding segment request');
 
+  player.hls.paused = function() { return false; };
   player.play();
   mediaPlaylist = player.hls.playlists.media();
   equal(player.hls.mediaIndex, 1, 'mediaIndex is updated at play');
@@ -1758,7 +1875,7 @@ test('resets the time to a seekable position when resuming a live stream ' +
                            '16.ts\n');
   // mock out the player to simulate a live stream that has been
   // playing for awhile
-  player.addClass('vjs-has-started');
+  player.hls.hasPlayed_ = true;
   player.hls.seekable = function() {
     return {
       start: function() {
@@ -1766,7 +1883,8 @@ test('resets the time to a seekable position when resuming a live stream ' +
       },
       end: function() {
         return 170;
-      }
+      },
+      length: 1
     };
   };
   player.hls.currentTime = function() {
@@ -1780,12 +1898,6 @@ test('resets the time to a seekable position when resuming a live stream ' +
 
   player.play();
   equal(seekTarget, player.seekable().start(0), 'seeked to the start of seekable');
-
-  player.hls.currentTime = function() {
-    return 180;
-  };
-  player.play();
-  equal(seekTarget, player.seekable().end(0), 'seeked to the end of seekable');
 });
 
 test('clamps seeks to the seekable window', function() {
@@ -2013,6 +2125,18 @@ test('clears the segment buffer on seek', function() {
   // the source buffer empties. is 2.ts still in the segment buffer?
   player.trigger('waiting');
   strictEqual(aborts, 1, 'cleared the segment buffer on a seek');
+});
+
+test('can seek before the source buffer opens', function() {
+  player.src({
+    src: 'media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  standardXHRResponse(requests.shift());
+  player.triggerReady();
+
+  player.currentTime(1);
+  equal(player.currentTime(), 1, 'seeked');
 });
 
 test('continues playing after seek to discontinuity', function() {

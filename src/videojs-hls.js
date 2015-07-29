@@ -35,6 +35,14 @@ videojs.Hls = videojs.Flash.extend({
     options.source = source;
     this.bytesReceived = 0;
 
+    this.hasPlayed_ = false;
+    this.on(player, 'loadstart', function() {
+      this.hasPlayed_ = false;
+      this.one(this.mediaSource, 'sourceopen', this.setupFirstPlay);
+    });
+    this.on(player, ['play', 'loadedmetadata'], this.setupFirstPlay);
+
+
     // TODO: After video.js#1347 is pulled in remove these lines
     this.currentTime = videojs.Hls.prototype.currentTime;
     this.setCurrentTime = videojs.Hls.prototype.setCurrentTime;
@@ -109,12 +117,7 @@ videojs.Hls.prototype.src = function(src) {
 
   this.playlists.on('loadedmetadata', videojs.bind(this, function() {
     var selectedPlaylist, loaderHandler, oldBitrate, newBitrate, segmentDuration,
-        segmentDlTime, setupEvents, threshold;
-
-    setupEvents = function() {
-      this.fillBuffer();
-      player.trigger('loadedmetadata');
-    };
+        segmentDlTime, threshold;
 
     oldMediaPlaylist = this.playlists.media();
 
@@ -155,12 +158,16 @@ videojs.Hls.prototype.src = function(src) {
     if (newBitrate > oldBitrate && segmentDlTime <= threshold) {
       this.playlists.media(selectedPlaylist);
       loaderHandler = videojs.bind(this, function() {
-        setupEvents.call(this);
+        this.setupFirstPlay();
+        this.fillBuffer();
+        player.trigger('loadedmetadata');
         this.playlists.off('loadedplaylist', loaderHandler);
       });
       this.playlists.on('loadedplaylist', loaderHandler);
     } else {
-      setupEvents.call(this);
+      this.setupFirstPlay();
+      this.fillBuffer();
+      player.trigger('loadedmetadata');
     }
   }));
 
@@ -306,11 +313,14 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
 
 videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
   var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time;
-  segmentOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist,
-                                                segmentInfo.playlist.mediaSequence,
-                                                segmentInfo.playlist.mediaSequence + segmentInfo.mediaIndex);
+  segmentOffset = this.playlists.expiredPreDiscontinuity_;
+  segmentOffset += this.playlists.expiredPostDiscontinuity_;
+  segmentOffset += videojs.Hls.Playlist.duration(segmentInfo.playlist,
+                                                 segmentInfo.playlist.mediaSequence,
+                                                 segmentInfo.playlist.mediaSequence + segmentInfo.mediaIndex);
   segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
-  minPts = Math.min(segment.minVideoPts, segment.minAudioPts);
+  minPts = Math.min(isFinite(segment.minVideoPts) ? segment.minVideoPts : Infinity,
+                    isFinite(segment.minAudioPts) ? segment.minAudioPts : Infinity);
 
   while (segmentInfo.pendingMetadata.length) {
     metadata = segmentInfo.pendingMetadata[0].metadata;
@@ -322,9 +332,37 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
       time = segmentOffset + ((metadata.pts - minPts) * 0.001);
       cue = new window.VTTCue(time, time, frame.value || frame.url || '');
       cue.frame = frame;
+      cue.pts_ = metadata.pts;
       textTrack.addCue(cue);
     }
     segmentInfo.pendingMetadata.shift();
+  }
+};
+
+/**
+ * Seek to the latest media position if this is a live video and the
+ * player and video are loaded and initialized.
+ */
+videojs.Hls.prototype.setupFirstPlay = function() {
+  var seekable, media;
+  media = this.playlists.media();
+
+  // check that everything is ready to begin buffering
+  if (!this.hasPlayed_ &&
+      this.sourceBuffer &&
+      media &&
+      this.paused() === false) {
+
+    // only run this block once per video
+    this.hasPlayed_ = true;
+
+    if (this.duration() === Infinity) {
+      // seek to the latest media position for live videos
+      seekable = this.seekable();
+      if (seekable.length) {
+        this.setCurrentTime(seekable.end(0));
+      }
+    }
   }
 };
 
@@ -337,25 +375,20 @@ videojs.Hls.prototype.play = function() {
     this.mediaIndex = 0;
   }
 
-  // we may need to seek to begin playing safely for live playlists
-  if (this.duration() === Infinity) {
+  if (!this.hasPlayed_) {
+    videojs.Flash.prototype.play.apply(this, arguments);
+    return this.setupFirstPlay();
+  }
 
-    // if this is the first time we're playing the stream or we're
-    // ahead of the latest safe playback position, seek to the live
-    // point
-    if (!this.player().hasClass('vjs-has-started') ||
-        this.currentTime() > this.seekable().end(0)) {
-      this.setCurrentTime(this.seekable().end(0));
-
-    } else if (this.currentTime() < this.seekable().start(0)) {
-      // if the viewer has paused and we fell out of the live window,
-      // seek forward to the earliest available position
-      this.setCurrentTime(this.seekable().start(0));
-    }
+  // if the viewer has paused and we fell out of the live window,
+  // seek forward to the earliest available position
+  if (this.duration() === Infinity &&
+      this.currentTime() < this.seekable().start(0)) {
+    this.setCurrentTime(this.seekable().start(0));
   }
 
   // delegate back to the Flash implementation
-  return videojs.Flash.prototype.play.apply(this, arguments);
+  videojs.Flash.prototype.play.apply(this, arguments);
 };
 
 videojs.Hls.prototype.currentTime = function() {
@@ -396,7 +429,9 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   this.mediaIndex = this.playlists.getMediaIndexForTime_(currentTime);
 
   // abort any segments still being decoded
-  this.sourceBuffer.abort();
+  if (this.sourceBuffer) {
+    this.sourceBuffer.abort();
+  }
 
   // cancel outstanding requests and buffer appends
   this.cancelSegmentXhr();
@@ -436,6 +471,10 @@ videojs.Hls.prototype.seekable = function() {
   // report the seekable range relative to the earliest possible
   // position when the stream was first loaded
   currentSeekable = videojs.Hls.Playlist.seekable(media);
+  if (!currentSeekable.length) {
+    return currentSeekable;
+  }
+
   startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
   return videojs.createTimeRange(startOffset,
                                  startOffset + (currentSeekable.end(0) - currentSeekable.start(0)));
@@ -679,7 +718,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
   // being buffering so we don't preload data that will never be
   // played
   if (!this.playlists.media().endList &&
-      !this.player().hasClass('vjs-has-started') &&
+      !player.hasClass('vjs-has-started') &&
       offset === undefined) {
     return;
   }
@@ -920,22 +959,24 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   // FLV tags until we find the one that is closest to the desired
   // playback time
   if (typeof offset === 'number') {
-    // determine the offset within this segment we're seeking to
-    segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
-    segmentOffset += videojs.Hls.Playlist.duration(playlist,
-                                                   playlist.mediaSequence,
-                                                   playlist.mediaSequence + mediaIndex);
-    segmentOffset = offset - (segmentOffset * 1000);
-    ptsTime = segmentOffset + tags[0].pts;
+    if (tags.length) {
+      // determine the offset within this segment we're seeking to
+      segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
+      segmentOffset += videojs.Hls.Playlist.duration(playlist,
+                                                     playlist.mediaSequence,
+                                                     playlist.mediaSequence + mediaIndex);
+      segmentOffset = offset - (segmentOffset * 1000);
+      ptsTime = segmentOffset + tags[0].pts;
 
-    while (tags[i + 1] && tags[i].pts < ptsTime) {
-      i++;
+      while (tags[i + 1] && tags[i].pts < ptsTime) {
+        i++;
+      }
+
+      // tell the SWF the media position of the first tag we'll be delivering
+      this.el().vjs_setProperty('currentTime', ((tags[i].pts - ptsTime + offset) * 0.001));
+
+      tags = tags.slice(i);
     }
-
-    // tell the SWF the media position of the first tag we'll be delivering
-    this.el().vjs_setProperty('currentTime', ((tags[i].pts - ptsTime + offset) * 0.001));
-
-    tags = tags.slice(i);
 
     this.lastSeekedTime_ = null;
   }
