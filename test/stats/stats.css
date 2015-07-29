@@ -1,0 +1,28 @@
+.axis text,
+.cue text {
+  font: 12px sans-serif;
+}
+
+.axis line,
+.axis path,
+.intersect {
+  fill: none;
+  stroke: #000;
+}
+
+.cue {
+  width: 20px;
+  height: 20px;
+}
+.cue text {
+  display: none;
+}
+.cue:hover text {
+  display: block;
+}
+
+.intersect {
+  fill: none;
+  stroke: #000;
+  stroke-dasharray: 2,2;
+}

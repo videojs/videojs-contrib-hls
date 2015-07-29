@@ -71,86 +71,11 @@
        src="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8"
        type="application/x-mpegURL">
   </video>
-  <section class="stats">
-    <h2>Player Stats</h2>
-    <dl>
-      <dt>Current Time:</dt>
-      <dd class="current-time-stat">0</dd>
-      <dt>Buffered:</dt>
-      <dd><span class="buffered-start-stat">-</span> - <span class="buffered-end-stat">-</span></dd>
-      <dt>Seekable:</dt>
-      <dd><span class="seekable-start-stat">-</span> - <span class="seekable-end-stat">-</span></dd>
-      <dt>Video Bitrate:</dt>
-      <dd class="video-bitrate-stat">0 kbps</dd>
-      <dt>Measured Bitrate:</dt>
-      <dd class="measured-bitrate-stat">0 kbps</dd>
-    </dl>
-  </section>
   <script>
     videojs.options.flash.swf = 'node_modules/videojs-swf/dist/video-js.swf';
+
     // initialize the player
     var player = videojs('video');
-
-    // ------------
-    // Player Stats
-    // ------------
-
-    var currentTimeStat = document.querySelector('.current-time-stat');
-    var bufferedStartStat = document.querySelector('.buffered-start-stat');
-    var bufferedEndStat = document.querySelector('.buffered-end-stat');
-    var seekableStartStat = document.querySelector('.seekable-start-stat');
-    var seekableEndStat = document.querySelector('.seekable-end-stat');
-    var videoBitrateState = document.querySelector('.video-bitrate-stat');
-    var measuredBitrateStat = document.querySelector('.measured-bitrate-stat');
-
-
-    player.on('timeupdate', function() {
-      currentTimeStat.textContent = player.currentTime().toFixed(1);
-    });
-
-    player.on('progress', function() {
-      var oldStart, oldEnd;
-      // buffered
-      var buffered = player.buffered();
-      if (buffered.length) {
-
-        oldStart = bufferedStartStat.textContent;
-        if (buffered.start(0).toFixed(1) !== oldStart) {
-          bufferedStartStat.textContent = buffered.start(0).toFixed(1);
-        }
-        oldEnd = bufferedEndStat.textContent;
-        if (buffered.end(0).toFixed(1) !== oldEnd) {
-          bufferedEndStat.textContent = buffered.end(0).toFixed(1);
-        }
-      }
-
-      // seekable
-      var seekable = player.seekable();
-      if (seekable && seekable.length) {
-
-        oldStart = seekableStartStat.textContent;
-        if (seekable.start(0).toFixed(1) !== oldStart) {
-          seekableStartStat.textContent = seekable.start(0).toFixed(1);
-        }
-        oldEnd = seekableEndStat.textContent;
-        if (seekable.end(0).toFixed(1) !== oldEnd) {
-          seekableEndStat.textContent = seekable.end(0).toFixed(1);
-        }
-      }
-
-      // bitrates
-      var playlist = player.hls.playlists.media();
-      if (playlist && playlist.attributes.BANDWIDTH) {
-        videoBitrateState.textContent = (playlist.attributes.BANDWIDTH / 1024).toLocaleString(undefined, {
-          maximumFractionDigits: 1
-        }) + ' kbps';
-      }
-      if (player.hls.bandwidth) {
-        measuredBitrateStat.textContent = (player.hls.bandwidth / 1024).toLocaleString(undefined, {
-          maximumFractionDigits: 1
-        }) + ' kbps';
-      }
-    });
   </script>
 </body>
 </html>
