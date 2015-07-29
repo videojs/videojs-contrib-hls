@@ -2,9 +2,12 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-* autoplay at the live point. fix live id3 cue insertion. ([view](https://github.com/videojs/videojs-contrib-hls/pull/353))
+_(none)_
 
 --------------------
+
+## 0.17.6 (2015-07-29)
+* autoplay at the live point. fix live id3 cue insertion. ([view](https://github.com/videojs/videojs-contrib-hls/pull/353))
 
 ## 0.17.5 (2015-07-14)
 * do not assume media sequence starts at zero ([view](https://github.com/videojs/videojs-contrib-hls/pull/346))
