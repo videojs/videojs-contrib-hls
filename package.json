@@ -42,13 +42,13 @@
     "karma-qunit": "~0.1.1",
     "karma-safari-launcher": "~0.1.1",
     "karma-sauce-launcher": "~0.1.8",
-    "qunitjs": "^1.15.0",
+    "qunitjs": "^1.18.0",
     "sinon": "1.10.2",
-    "video.js": "^4.12.0"
+    "video.js": "^5.0.0-rc.4"
   },
   "dependencies": {
     "pkcs7": "^0.2.2",
     "videojs-contrib-media-sources": "^1.0.0",
-    "videojs-swf": "^4.7.0"
+    "videojs-swf": "5.0.0-rc0"
   }
 }

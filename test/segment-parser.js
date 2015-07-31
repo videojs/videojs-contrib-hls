@@ -27,7 +27,7 @@
       0x09, 0x00, 0x00, 0x00, 0x00
     ],
 
-    extend = window.videojs.util.mergeOptions,
+    mergeOptions = window.videojs.mergeOptions,
 
     makePat,
     makePsi,
@@ -178,7 +178,7 @@
   makePacket = function(options) {
     var
       result = [],
-      settings = extend({
+      settings = mergeOptions({
         payloadUnitStartIndicator: true,
         pid: 0x00
       }, options);

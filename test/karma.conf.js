@@ -69,12 +69,9 @@ module.exports = function(config) {
     // add their paths to this list.
 
     files: [
-      '../node_modules/sinon/lib/sinon.js',
-      '../node_modules/sinon/lib/sinon/util/event.js',
-      '../node_modules/sinon/lib/sinon/util/fake_xml_http_request.js',
-      '../node_modules/sinon/lib/sinon/util/xhr_ie.js',
-      '../node_modules/sinon/lib/sinon/util/fake_timers.js',
-      '../node_modules/video.js/dist/video-js/video.dev.js',
+      '../node_modules/sinon/pkg/sinon.js',
+      '../node_modules/video.js/dist/video-js.css',
+      '../node_modules/video.js/dist/video.js',
       '../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js',
       '../node_modules/pkcs7/dist/pkcs7.unpad.js',
       '../test/karma-qunit-shim.js',

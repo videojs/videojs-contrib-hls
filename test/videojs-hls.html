@@ -4,18 +4,15 @@
   <meta charset="utf-8">
   <title>video.js HLS Plugin Test Suite</title>
   <!-- Load sinon server for fakeXHR -->
-  <script src="../node_modules/sinon/lib/sinon.js"></script>
-  <script src="../node_modules/sinon/lib/sinon/util/event.js"></script>
-  <script src="../node_modules/sinon/lib/sinon/util/fake_xml_http_request.js"></script>
-  <script src="../node_modules/sinon/lib/sinon/util/xhr_ie.js"></script>
-  <script src="../node_modules/sinon/lib/sinon/util/fake_timers.js"></script>
+  <script src="../node_modules/sinon/pkg/sinon.js"></script>
 
   <!-- Load local QUnit. -->
-  <link rel="stylesheet" href="../libs/qunit/qunit.css" media="screen">
-  <script src="../libs/qunit/qunit.js"></script>
+  <link rel="stylesheet" href="../node_modules/qunitjs/qunit/qunit.css" media="screen">
+  <script src="../node_modules/qunitjs/qunit/qunit.js"></script>
 
   <!-- video.js -->
-  <script src="../node_modules/video.js/dist/video-js/video.dev.js"></script>
+  <script src="../node_modules/video.js/dist/video.js"></script>
+  <link rel="stylesheet" href="../node_modules/video.js/dist/video-js.css" media="screen">
   <script src="../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
 
   <!-- HLS plugin -->
@@ -63,7 +60,6 @@
   <script src="playlist_test.js"></script>
   <script src="playlist-loader_test.js"></script>
   <script src="decrypter_test.js"></script>
-  <script src="xhr_test.js"></script>
 </head>
 <body>
   <div id="qunit"></div>

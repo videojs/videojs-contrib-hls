@@ -585,4 +585,4 @@
     ParseStream: ParseStream,
     Parser: Parser
   };
-})(window.videojs, window.parseInt, window.isFinite, window.videojs.util.mergeOptions);
+})(window.videojs, window.parseInt, window.isFinite, window.videojs.mergeOptions);

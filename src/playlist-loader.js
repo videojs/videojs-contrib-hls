@@ -18,7 +18,7 @@
     resolveUrl = videojs.Hls.resolveUrl,
     xhr = videojs.Hls.xhr,
     Playlist = videojs.Hls.Playlist,
-    mergeOptions = videojs.util.mergeOptions,
+    mergeOptions = videojs.mergeOptions,
 
     /**
      * Returns a new master playlist that is the result of merging an
@@ -262,10 +262,10 @@
 
         // request the new playlist
         request = xhr({
-          url: resolveUrl(loader.master.uri, playlist.uri),
+          uri: resolveUrl(loader.master.uri, playlist.uri),
           withCredentials: withCredentials
-        }, function(error) {
-          haveMetadata(error, this, playlist.uri);
+        }, function(error, request) {
+          haveMetadata(error, request, playlist.uri);
           loader.trigger('mediachange');
         });
       };
@@ -283,32 +283,35 @@
 
         loader.state = 'HAVE_CURRENT_METADATA';
         request = xhr({
-          url: resolveUrl(loader.master.uri, loader.media().uri),
+          uri: resolveUrl(loader.master.uri, loader.media().uri),
           withCredentials: withCredentials
-        }, function(error) {
-          haveMetadata(error, this, loader.media().uri);
+        }, function(error, request) {
+          haveMetadata(error, request, loader.media().uri);
         });
       });
 
       // request the specified URL
-      xhr({
-        url: srcUrl,
+      request = xhr({
+        uri: srcUrl,
         withCredentials: withCredentials
-      }, function(error) {
+      }, function(error, req) {
         var parser, i;
+
+        // clear the loader's request reference
+        request = null;
 
         if (error) {
           loader.error = {
-            status: this.status,
+            status: req.status,
             message: 'HLS playlist request error at URL: ' + srcUrl,
-            responseText: this.responseText,
+            responseText: req.responseText,
             code: 2 // MEDIA_ERR_NETWORK
           };
           return loader.trigger('error');
         }
 
         parser = new videojs.m3u8.Parser();
-        parser.push(this.responseText);
+        parser.push(req.responseText);
         parser.end();
 
         loader.state = 'HAVE_MASTER';
@@ -326,12 +329,12 @@
           }
 
           request = xhr({
-            url: resolveUrl(srcUrl, parser.manifest.playlists[0].uri),
+            uri: resolveUrl(srcUrl, parser.manifest.playlists[0].uri),
             withCredentials: withCredentials
-          }, function(error) {
+          }, function(error, request) {
             // pass along the URL specified in the master playlist
             haveMetadata(error,
-                         this,
+                         request,
                          parser.manifest.playlists[0].uri);
             if (!error) {
               loader.trigger('loadedmetadata');
@@ -349,7 +352,7 @@
           }]
         };
         loader.master.playlists[srcUrl] = loader.master.playlists[0];
-        haveMetadata(null, this, srcUrl);
+        haveMetadata(null, req, srcUrl);
         return loader.trigger('loadedmetadata');
       });
     };
