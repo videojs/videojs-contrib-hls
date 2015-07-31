@@ -33,12 +33,17 @@
         <header>
           <p>
             This page can help you inspect the results of the
-            transmuxing to mp4 files performed by videojs-contrib-hls.
-          </p>
-          <p>
-            Looking for the FLV tool? Check out
-            the <a href="index.html">FLV utility</a>.
-          </p>
+            transmuxing to mp4 files performed by
+            videojs-contrib-hls. It's still a bit tricky to create a
+            MSE-compatible fragmented MP4. We've had luck
+            with <a href="http://www.bento4.com/developers/dash/">Bento4</a>
+            and ffmpeg. If you have both of those utilities installed,
+            you can create a working MP4 like this:
+            <pre>
+ffmpeg -i movie.ts -vn -codec copy -absf aac_adtstoasc movie-audio.mp4
+mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.m4s
+            </pre>
+          <small>Looking for the <a href="index.html">FLV tool</a>?</small>
         </header>
         <section>
           <h2>Inputs</h2>
@@ -245,7 +250,7 @@
         vjsOutput.innerHTML = hex;
 
         // XXX Media Sources Testing
-        window.vjsSourceBuffer.appendBuffer(bytes);
+        //window.vjsSourceBuffer.appendBuffer(bytes);
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
@@ -272,7 +277,7 @@
         workingOutput.innerHTML = hex;
 
         // XXX Media Sources Testing
-        // window.vjsSourceBuffer.appendBuffer(bytes);
+        window.vjsSourceBuffer.appendBuffer(bytes);
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);

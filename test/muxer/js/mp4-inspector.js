@@ -772,6 +772,9 @@ videojs.textifyMp4 = function(inspectedMp4, depth) {
               .map(function(byte) {
                 return ' ' + ('00' + byte.toString(16)).slice(-2);
               }).join('').match(/.{1,24}/g);
+          if (!bytes) {
+            return prefix + '<>';
+          }
           if (bytes.length === 1) {
             return prefix + '<' + bytes.join('').slice(1) + '>';
           }
