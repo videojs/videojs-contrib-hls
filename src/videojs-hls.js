@@ -34,7 +34,7 @@ videojs.Hls = videojs.extends(Component, {
     // backwards-compatibility
     if (tech.options_ && tech.options_.playerId) {
       _player = videojs(tech.options_.playerId);
-      if (!_player.tech.hls) {
+      if (!_player.hls) {
         Object.defineProperty(_player, 'hls', {
           get: function() {
             videojs.log.warn('player.hls is deprecated. Use player.tech.hls instead.');
@@ -74,7 +74,8 @@ videojs.Hls = videojs.extends(Component, {
 });
 
 // add HLS as a source handler
-videojs.getComponent('Flash').registerSourceHandler({
+//videojs.getComponent('Flash').registerSourceHandler({
+videojs.getComponent('Html5').registerSourceHandler({
   canHandleSource: function(srcObj) {
     var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
     return mpegurlRE.test(srcObj.type);
@@ -100,10 +101,12 @@ videojs.Hls.prototype.src = function(src) {
     return;
   }
 
-  mediaSource = new videojs.MediaSource();
+  // mediaSource = new videojs.MediaSource();
+  mediaSource = new MediaSource();
   source = {
-    src: videojs.URL.createObjectURL(mediaSource),
-    type: "video/flv"
+    src: URL.createObjectURL(mediaSource),
+    //src: videojs.URL.createObjectURL(mediaSource),
+    type: 'audio/mp4;codecs=mp4a.40.2' // "video/flv"
   };
   this.mediaSource = mediaSource;
 
@@ -228,7 +231,8 @@ videojs.Hls.prototype.src = function(src) {
   if (!this.tech_.el()) {
     return;
   }
-  this.tech_.el().vjs_src(source.src);
+  this.tech_.el().src = source.src;
+  //this.tech_.el().vjs_src(source.src);
 };
 
 /* Returns the media index for the live point in the current playlist, and updates
@@ -252,10 +256,8 @@ videojs.Hls.getMediaIndexForLive_ = function(selectedPlaylist) {
 };
 
 videojs.Hls.prototype.handleSourceOpen = function() {
-  // construct the video data buffer and set the appropriate MIME type
-  var sourceBuffer = this.mediaSource.addSourceBuffer('video/flv; codecs="vp6,aac"');
-
-  this.sourceBuffer = sourceBuffer;
+  this.audioSourceBuffer = this.mediaSource.addSourceBuffer('audio/mp4;codecs=mp4a.40.2');
+  this.videoSourceBuffer = this.mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d');
 
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
@@ -267,7 +269,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
     this.play();
   }
 
-  sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
+  //sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
 };
 
 // register event listeners to transform in-band metadata events into
@@ -369,7 +371,8 @@ videojs.Hls.prototype.setupFirstPlay = function() {
   // check that everything is ready to begin buffering
   if (this.duration() === Infinity &&
       this.tech_.played().length === 0 &&
-      this.sourceBuffer &&
+      this.audioSourceBuffer &&
+      this.videoSourceBuffer &&
       media) {
 
     // seek to the latest media position for live videos
@@ -420,8 +423,9 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   this.mediaIndex = this.playlists.getMediaIndexForTime_(currentTime);
 
   // abort any segments still being decoded
-  if (this.sourceBuffer) {
-    this.sourceBuffer.abort();
+  if (this.audioSourceBuffer) {
+    this.audioSourceBuffer.abort();
+    this.videoSourceBuffer.abort();
   }
 
   // cancel outstanding requests and buffer appends
@@ -476,10 +480,11 @@ videojs.Hls.prototype.seekable = function() {
  * Update the player duration
  */
 videojs.Hls.prototype.updateDuration = function(playlist) {
-  var oldDuration = this.mediaSource.duration(),
+  var oldDuration = this.mediaSource.duration,
+      // oldDuration = this.mediaSource.duration(),
       newDuration = videojs.Hls.Playlist.duration(playlist),
       setDuration = function() {
-        this.mediaSource.duration(newDuration);
+        this.mediaSource.duration = newDuration;
         this.tech_.trigger('durationchange');
         this.mediaSource.removeEventListener('sourceopen', setDuration);
       }.bind(this);
@@ -487,7 +492,8 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
     if (this.mediaSource.readyState === 'open') {
-      this.mediaSource.duration(newDuration);
+      // this.mediaSource.duration(newDuration);
+      this.mediaSource.duration = newDuration;
       this.tech_.trigger('durationchange');
     } else {
       this.mediaSource.addEventListener('sourceopen', setDuration);
@@ -504,8 +510,9 @@ videojs.Hls.prototype.resetSrc_ = function() {
   this.cancelSegmentXhr();
   this.cancelKeyXhr();
 
-  if (this.sourceBuffer) {
-    this.sourceBuffer.abort();
+  if (this.audioSourceBuffer) {
+    this.audioSourceBuffer.abort();
+    this.videoSourceBuffer.abort();
   }
 };
 
@@ -724,7 +731,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     return;
   }
 
-  if (buffered) {
+  if (buffered && buffered.length) {
     // assuming a single, contiguous buffer region
     bufferedTime = tech.buffered().end(0) - tech.currentTime();
   }
@@ -843,6 +850,8 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
   });
 };
 
+var initialized = false;
+
 videojs.Hls.prototype.drainBuffer = function(event) {
   var
     i = 0,
@@ -861,14 +870,21 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   // if the buffer is empty or the source buffer hasn't been created
   // yet, do nothing
-  if (!segmentBuffer.length || !this.sourceBuffer) {
+  if (!segmentBuffer.length || !this.audioSourceBuffer) {
     return;
   }
 
   // we can't append more data if the source buffer is busy processing
   // what we've already sent
-  if (this.sourceBuffer.updating) {
+  if (this.audioSourceBuffer.updating || this.videoSourceBuffer.updating) {
     return;
+  }
+
+  // transition the sourcebuffer to the ended state if we've hit the end of
+  // the playlist
+  if (this.duration() !== Infinity &&
+      this.mediaIndex === this.playlists.media().segments.length) {
+    this.mediaSource.endOfStream();
   }
 
   segmentInfo = segmentBuffer[0];
@@ -915,83 +931,125 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   event = event || {};
 
-  // transmux the segment data from MP2T to FLV
-  this.segmentParser_.parseSegmentBinaryData(bytes);
-  this.segmentParser_.flushTags();
+  var transmuxer = new videojs.mp2t.Transmuxer();
+  var segments = [];
+  transmuxer.on('data', function(segment) {
+    segments.push(segment);
+  });
+  transmuxer.push(bytes);
+  transmuxer.end();
 
-  tags = [];
+  // // transmux the segment data from MP2T to FLV
+  // this.segmentParser_.parseSegmentBinaryData(bytes);
+  // this.segmentParser_.flushTags();
 
-  if (this.segmentParser_.tagsAvailable()) {
-    // record PTS information for the segment so we can calculate
-    // accurate durations and seek reliably
-    if (this.segmentParser_.stats.h264Tags()) {
-      segment.minVideoPts = this.segmentParser_.stats.minVideoPts();
-      segment.maxVideoPts = this.segmentParser_.stats.maxVideoPts();
-    }
-    if (this.segmentParser_.stats.aacTags()) {
-      segment.minAudioPts = this.segmentParser_.stats.minAudioPts();
-      segment.maxAudioPts = this.segmentParser_.stats.maxAudioPts();
-    }
-  }
+  // tags = [];
 
-  while (this.segmentParser_.tagsAvailable()) {
-    tags.push(this.segmentParser_.getNextTag());
-  }
+  // if (this.segmentParser_.tagsAvailable()) {
+  //   // record PTS information for the segment so we can calculate
+  //   // accurate durations and seek reliably
+  //   if (this.segmentParser_.stats.h264Tags()) {
+  //     segment.minVideoPts = this.segmentParser_.stats.minVideoPts();
+  //     segment.maxVideoPts = this.segmentParser_.stats.maxVideoPts();
+  //   }
+  //   if (this.segmentParser_.stats.aacTags()) {
+  //     segment.minAudioPts = this.segmentParser_.stats.minAudioPts();
+  //     segment.maxAudioPts = this.segmentParser_.stats.maxAudioPts();
+  //   }
+  // }
+
+  // while (this.segmentParser_.tagsAvailable()) {
+  //   tags.push(this.segmentParser_.getNextTag());
+  // }
 
   this.addCuesForMetadata_(segmentInfo);
   this.updateDuration(this.playlists.media());
 
-  // if we're refilling the buffer after a seek, scan through the muxed
-  // FLV tags until we find the one that is closest to the desired
-  // playback time
-  if (typeof offset === 'number') {
-    if (tags.length) {
-      // determine the offset within this segment we're seeking to
-      segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
-      segmentOffset += videojs.Hls.Playlist.duration(playlist,
-                                                     playlist.mediaSequence,
-                                                     playlist.mediaSequence + mediaIndex);
-      segmentOffset = offset - (segmentOffset * 1000);
-      ptsTime = segmentOffset + tags[0].pts;
+  // // if we're refilling the buffer after a seek, scan through the muxed
+  // // FLV tags until we find the one that is closest to the desired
+  // // playback time
+  // if (typeof offset === 'number') {
+  //   if (tags.length) {
+  //     // determine the offset within this segment we're seeking to
+  //     segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
+  //     segmentOffset += videojs.Hls.Playlist.duration(playlist,
+  //                                                    playlist.mediaSequence,
+  //                                                    playlist.mediaSequence + mediaIndex);
+  //     segmentOffset = offset - (segmentOffset * 1000);
+  //     ptsTime = segmentOffset + tags[0].pts;
 
-      while (tags[i + 1] && tags[i].pts < ptsTime) {
-        i++;
-      }
+  //     while (tags[i + 1] && tags[i].pts < ptsTime) {
+  //       i++;
+  //     }
 
-      // tell the SWF the media position of the first tag we'll be delivering
-      this.tech_.el().vjs_setProperty('currentTime', ((tags[i].pts - ptsTime + offset) * 0.001));
+  //     // tell the SWF the media position of the first tag we'll be delivering
+  //     this.tech_.el().vjs_setProperty('currentTime', ((tags[i].pts - ptsTime + offset) * 0.001));
 
-      tags = tags.slice(i);
-    }
-  }
+  //     tags = tags.slice(i);
+  //   }
+  // }
 
-  // when we're crossing a discontinuity, inject metadata to indicate
-  // that the decoder should be reset appropriately
-  if (segment.discontinuity && tags.length) {
-    this.tech_.el().vjs_discontinuity();
-  }
+  // // when we're crossing a discontinuity, inject metadata to indicate
+  // // that the decoder should be reset appropriately
+  // if (segment.discontinuity && tags.length) {
+  //   this.tech_.el().vjs_discontinuity();
+  // }
+
+  // (function() {
+  //   var segmentByteLength = 0, j, segment;
+  //   for (i = 0; i < tags.length; i++) {
+  //     segmentByteLength += tags[i].bytes.byteLength;
+  //   }
+  //   segment = new Uint8Array(segmentByteLength);
+  //   for (i = 0, j = 0; i < tags.length; i++) {
+  //     segment.set(tags[i].bytes, j);
+  //     j += tags[i].bytes.byteLength;
+  //   }
+  //   this.sourceBuffer.appendBuffer(segment);
+  // }).call(this);
 
   (function() {
-    var segmentByteLength = 0, j, segment;
-    for (i = 0; i < tags.length; i++) {
-      segmentByteLength += tags[i].bytes.byteLength;
+    var audioByteLength = 0, videoByteLength = 0, j, audioSegment, videoSegment;
+    if (initialized) {
+      segments = segments.slice(2);
     }
-    segment = new Uint8Array(segmentByteLength);
-    for (i = 0, j = 0; i < tags.length; i++) {
-      segment.set(tags[i].bytes, j);
-      j += tags[i].bytes.byteLength;
+    for (i = 0; i < segments.length; i++) {
+      if (segments[i].type === 'audio') {
+        audioByteLength += segments[i].data.byteLength;
+      } else {
+        videoByteLength += segments[i].data.byteLength;
+      }
     }
-    this.sourceBuffer.appendBuffer(segment);
+    audioSegment = new Uint8Array(audioByteLength);
+    for (i = 0, j = 0; i < segments.length; i++) {
+      if (segments[i].type === 'audio') {
+        audioSegment.set(segments[i].data, j);
+        j += segments[i].data.byteLength;
+      }
+    }
+    if (this.audioSourceBuffer.buffered.length) {
+      this.audioSourceBuffer.timestampOffset = this.audioSourceBuffer.buffered.end(0);
+    }
+    this.audioSourceBuffer.appendBuffer(audioSegment);
+
+    videoSegment = new Uint8Array(videoByteLength);
+    for (i = 0, j = 0; i < segments.length; i++) {
+      if (segments[i].type === 'video') {
+        videoSegment.set(segments[i].data, j);
+        j += segments[i].data.byteLength;
+      }
+    }
+    if (this.videoSourceBuffer.buffered.length) {
+      this.videoSourceBuffer.timestampOffset = this.videoSourceBuffer.buffered.end(0);
+    }
+    this.videoSourceBuffer.appendBuffer(videoSegment);
+
+    initialized = true;
   }).call(this);
 
   // we're done processing this segment
   segmentBuffer.shift();
 
-  // transition the sourcebuffer to the ended state if we've hit the end of
-  // the playlist
-  if (this.duration() !== Infinity && mediaIndex + 1 === playlist.segments.length) {
-    this.mediaSource.endOfStream();
-  }
 };
 
 /**
