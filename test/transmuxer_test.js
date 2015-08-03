@@ -741,21 +741,58 @@ test('unpacks nal units from byte streams split across pushes', function() {
     type: 'video',
     data: new Uint8Array([
       0x00, 0x00, 0x00, 0x01,
-      0x09])
+      0x09, 0x07, 0x06, 0x05,
+      0x04
+    ])
   });
   ok(!data, 'buffers NAL units across events');
 
   h264Stream.push({
     type: 'video',
     data: new Uint8Array([
-      0x07,
+      0x03, 0x02, 0x01,
       0x00, 0x00, 0x01
     ])
   });
   ok(data, 'generated a data event');
   equal(data.nalUnitType, 'access_unit_delimiter_rbsp', 'identified an access unit delimiter');
-  equal(data.data.length, 2, 'calculated nal unit length');
+  equal(data.data.length, 8, 'calculated nal unit length');
   equal(data.data[1], 7, 'read a payload byte');
+});
+
+test('buffers nal unit trailing zeros across pushes', function() {
+  var data = [];
+  h264Stream.on('data', function(event) {
+    data.push(event);
+  });
+
+  // lots of zeros after the nal, stretching into the next push
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x00, 0x00, 0x00, 0x01,
+      0x09, 0x07, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00
+    ])
+  });
+  equal(data.length, 1, 'delivered the first nal');
+
+  h264Stream.push({
+    type: 'video',
+    data: new Uint8Array([
+      0x00, 0x00,
+      0x00, 0x00, 0x01,
+      0x09, 0x06,
+      0x00, 0x00, 0x01
+    ])
+  });
+  equal(data.length, 2, 'generated data events');
+  equal(data[0].data.length, 2, 'ignored trailing zeros');
+  equal(data[0].data[0], 0x09, 'found the first nal start');
+  equal(data[1].data.length, 2, 'found the following nal start');
+  equal(data[1].data[0], 0x09, 'found the second nal start');
 });
 
 test('unpacks nal units from byte streams with split sync points', function() {

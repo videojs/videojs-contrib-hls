@@ -522,8 +522,8 @@ AudioSegmentStream.prototype = new videojs.Hls.Stream();
  */
 NalByteStream = function() {
   var
-    i = 6,
     syncPoint = 1,
+    i,
     buffer;
   NalByteStream.prototype.init.call(this);
 
@@ -548,6 +548,16 @@ NalByteStream = function() {
     // or this:
     // 0 0 1 .. NAL .. 0 0 0
     // ^ sync point        ^ i
+
+    // advance the sync point to a NAL start, if necessary
+    for (; syncPoint < buffer.byteLength - 3; syncPoint++) {
+      if (buffer[syncPoint + 2] === 1) {
+        // the sync point is properly aligned
+        i = syncPoint + 5;
+        break;
+      }
+    }
+
     while (i < buffer.byteLength) {
       // look at the current byte to determine if we've hit the end of
       // a NAL unit boundary
@@ -568,7 +578,7 @@ NalByteStream = function() {
         // drop trailing zeroes
         do {
           i++;
-        } while (buffer[i] !== 1);
+        } while (buffer[i] !== 1 && i < buffer.length);
         syncPoint = i - 2;
         i += 3;
         break;
