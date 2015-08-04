@@ -91,25 +91,14 @@ videojs.getComponent('Html5').registerSourceHandler({
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
 
 videojs.Hls.prototype.src = function(src) {
-  var
-    mediaSource,
-    oldMediaPlaylist,
-    source;
+  var oldMediaPlaylist;
 
   // do nothing if the src is falsey
   if (!src) {
     return;
   }
 
-  // mediaSource = new videojs.MediaSource();
-  mediaSource = new MediaSource();
-  source = {
-    src: URL.createObjectURL(mediaSource),
-    //src: videojs.URL.createObjectURL(mediaSource),
-    type: 'audio/mp4;codecs=mp4a.40.2' // "video/flv"
-  };
-  this.mediaSource = mediaSource;
-
+  this.mediaSource = new videojs.MediaSource();
   this.segmentBuffer_ = [];
   this.segmentParser_ = new videojs.Hls.SegmentParser();
 
@@ -231,8 +220,8 @@ videojs.Hls.prototype.src = function(src) {
   if (!this.tech_.el()) {
     return;
   }
-  this.tech_.el().src = source.src;
-  //this.tech_.el().vjs_src(source.src);
+
+  this.tech_.src(videojs.URL.createObjectURL(this.mediaSource));
 };
 
 /* Returns the media index for the live point in the current playlist, and updates
@@ -256,8 +245,7 @@ videojs.Hls.getMediaIndexForLive_ = function(selectedPlaylist) {
 };
 
 videojs.Hls.prototype.handleSourceOpen = function() {
-  this.audioSourceBuffer = this.mediaSource.addSourceBuffer('audio/mp4;codecs=mp4a.40.2');
-  this.videoSourceBuffer = this.mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d');
+  this.sourceBuffer = this.mediaSource.addSourceBuffer('video/mp2t');
 
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
@@ -371,8 +359,7 @@ videojs.Hls.prototype.setupFirstPlay = function() {
   // check that everything is ready to begin buffering
   if (this.duration() === Infinity &&
       this.tech_.played().length === 0 &&
-      this.audioSourceBuffer &&
-      this.videoSourceBuffer &&
+      this.sourceBuffer &&
       media) {
 
     // seek to the latest media position for live videos
@@ -423,9 +410,8 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   this.mediaIndex = this.playlists.getMediaIndexForTime_(currentTime);
 
   // abort any segments still being decoded
-  if (this.audioSourceBuffer) {
-    this.audioSourceBuffer.abort();
-    this.videoSourceBuffer.abort();
+  if (this.sourceBuffer) {
+    this.sourceBuffer.abort();
   }
 
   // cancel outstanding requests and buffer appends
@@ -481,7 +467,6 @@ videojs.Hls.prototype.seekable = function() {
  */
 videojs.Hls.prototype.updateDuration = function(playlist) {
   var oldDuration = this.mediaSource.duration,
-      // oldDuration = this.mediaSource.duration(),
       newDuration = videojs.Hls.Playlist.duration(playlist),
       setDuration = function() {
         this.mediaSource.duration = newDuration;
@@ -492,7 +477,6 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
     if (this.mediaSource.readyState === 'open') {
-      // this.mediaSource.duration(newDuration);
       this.mediaSource.duration = newDuration;
       this.tech_.trigger('durationchange');
     } else {
@@ -510,9 +494,8 @@ videojs.Hls.prototype.resetSrc_ = function() {
   this.cancelSegmentXhr();
   this.cancelKeyXhr();
 
-  if (this.audioSourceBuffer) {
-    this.audioSourceBuffer.abort();
-    this.videoSourceBuffer.abort();
+  if (this.sourceBuffer) {
+    this.sourceBuffer.abort();
   }
 };
 
@@ -850,8 +833,6 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
   });
 };
 
-var initialized = false;
-
 videojs.Hls.prototype.drainBuffer = function(event) {
   var
     i = 0,
@@ -870,13 +851,13 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   // if the buffer is empty or the source buffer hasn't been created
   // yet, do nothing
-  if (!segmentBuffer.length || !this.audioSourceBuffer) {
+  if (!segmentBuffer.length || !this.sourceBuffer) {
     return;
   }
 
   // we can't append more data if the source buffer is busy processing
   // what we've already sent
-  if (this.audioSourceBuffer.updating || this.videoSourceBuffer.updating) {
+  if (this.sourceBuffer.updating) {
     return;
   }
 
@@ -930,14 +911,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   }
 
   event = event || {};
-
-  var transmuxer = new videojs.mp2t.Transmuxer();
-  var segments = [];
-  transmuxer.on('data', function(segment) {
-    segments.push(segment);
-  });
-  transmuxer.push(bytes);
-  transmuxer.end();
 
   // // transmux the segment data from MP2T to FLV
   // this.segmentParser_.parseSegmentBinaryData(bytes);
@@ -995,57 +968,10 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   //   this.tech_.el().vjs_discontinuity();
   // }
 
-  // (function() {
-  //   var segmentByteLength = 0, j, segment;
-  //   for (i = 0; i < tags.length; i++) {
-  //     segmentByteLength += tags[i].bytes.byteLength;
-  //   }
-  //   segment = new Uint8Array(segmentByteLength);
-  //   for (i = 0, j = 0; i < tags.length; i++) {
-  //     segment.set(tags[i].bytes, j);
-  //     j += tags[i].bytes.byteLength;
-  //   }
-  //   this.sourceBuffer.appendBuffer(segment);
-  // }).call(this);
-
-  (function() {
-    var audioByteLength = 0, videoByteLength = 0, j, audioSegment, videoSegment;
-    if (initialized) {
-      segments = segments.slice(2);
-    }
-    for (i = 0; i < segments.length; i++) {
-      if (segments[i].type === 'audio') {
-        audioByteLength += segments[i].data.byteLength;
-      } else {
-        videoByteLength += segments[i].data.byteLength;
-      }
-    }
-    audioSegment = new Uint8Array(audioByteLength);
-    for (i = 0, j = 0; i < segments.length; i++) {
-      if (segments[i].type === 'audio') {
-        audioSegment.set(segments[i].data, j);
-        j += segments[i].data.byteLength;
-      }
-    }
-    if (this.audioSourceBuffer.buffered.length) {
-      this.audioSourceBuffer.timestampOffset = this.audioSourceBuffer.buffered.end(0);
-    }
-    this.audioSourceBuffer.appendBuffer(audioSegment);
-
-    videoSegment = new Uint8Array(videoByteLength);
-    for (i = 0, j = 0; i < segments.length; i++) {
-      if (segments[i].type === 'video') {
-        videoSegment.set(segments[i].data, j);
-        j += segments[i].data.byteLength;
-      }
-    }
-    if (this.videoSourceBuffer.buffered.length) {
-      this.videoSourceBuffer.timestampOffset = this.videoSourceBuffer.buffered.end(0);
-    }
-    this.videoSourceBuffer.appendBuffer(videoSegment);
-
-    initialized = true;
-  }).call(this);
+  if (this.sourceBuffer.buffered.length) {
+    this.sourceBuffer.timestampOffset = this.sourceBuffer.buffered.end(0);
+  }
+  this.sourceBuffer.appendBuffer(bytes);
 
   // we're done processing this segment
   segmentBuffer.shift();
