@@ -2,7 +2,7 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+* Reverting triggering of &#x27;loadstart&#x27; event to match the revert done to the swf ([view](https://github.com/videojs/videojs-contrib-hls/pull/362))
 
 --------------------
 
