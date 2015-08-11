@@ -7,7 +7,8 @@ _(none)_
 --------------------
 
 ## 0.17.7 (2015-08-11)
-_(none)_
+- fix the ordering and count of `loadstart` and `loadedmetadata`. ([view](https://github.com/videojs/videojs-contrib-hls/pull/356))
+
 
 ## 0.17.6 (2015-07-29)
 * autoplay at the live point. fix live id3 cue insertion. ([view](https://github.com/videojs/videojs-contrib-hls/pull/353))
