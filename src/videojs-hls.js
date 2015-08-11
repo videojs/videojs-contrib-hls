@@ -107,6 +107,16 @@ videojs.Hls.prototype.src = function(src) {
     this.playlists.dispose();
   }
 
+  // We need to trigger this asynchronously to give others the chance
+  // to bind to the event when a source is set at player creation
+  setTimeout(function() {
+    // Be careful since the player could have been disposed immediately after
+    // setting the src
+    if (player && player.el()) {
+      player.trigger('loadstart');
+    }
+  }, 1);
+
   // The index of the next segment to be downloaded in the current
   // media playlist. When the current media playlist is live with
   // expiring segments, it may be a different value from the media
