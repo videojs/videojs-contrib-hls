@@ -2,9 +2,12 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-* Reverting triggering of &#x27;loadstart&#x27; event to match the revert done to the swf ([view](https://github.com/videojs/videojs-contrib-hls/pull/362))
+_(none)_
 
 --------------------
+
+## 0.17.8 (2015-08-11)
+* Reverting triggering of &#x27;loadstart&#x27; event to match the revert done to the swf ([view](https://github.com/videojs/videojs-contrib-hls/pull/362))
 
 ## 0.17.7 (2015-08-11)
 - fix the ordering and count of `loadstart` and `loadedmetadata`. ([view](https://github.com/videojs/videojs-contrib-hls/pull/356))
