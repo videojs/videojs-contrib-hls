@@ -30,7 +30,7 @@
     "grunt-github-releaser": "^0.1.17",
     "grunt-karma": "~0.6.2",
     "grunt-open": "0.2.3",
-    "grunt-protractor-runner": "git+https://github.com/forbesjo/grunt-protractor-runner.git#webdriverManagerUpdate",
+    "grunt-protractor-runner": "^2.1.0",
     "grunt-shell": "0.6.1",
     "grunt-version": "^1.0.0",
     "karma": "~0.10.0",
