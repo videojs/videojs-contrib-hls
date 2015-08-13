@@ -74,18 +74,32 @@ videojs.Hls = videojs.extends(Component, {
 });
 
 // add HLS as a source handler
-//videojs.getComponent('Flash').registerSourceHandler({
-videojs.getComponent('Html5').registerSourceHandler({
-  canHandleSource: function(srcObj) {
-    var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
-    return mpegurlRE.test(srcObj.type);
-  },
-  handleSource: function(source, tech) {
-    tech.hls = new videojs.Hls(tech, source);
-    tech.hls.src(source.src);
-    return tech.hls;
-  }
-});
+if (videojs.MediaSource.supportsNativeMediaSources()) {
+  videojs.getComponent('Html5').registerSourceHandler({
+    canHandleSource: function(srcObj) {
+      var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
+      return mpegurlRE.test(srcObj.type);
+    },
+    handleSource: function(source, tech) {
+      tech.hls = new videojs.Hls(tech, source);
+      tech.hls.src(source.src);
+      return tech.hls;
+    }
+  });
+} else {
+  videojs.getComponent('Flash').registerSourceHandler({
+    canHandleSource: function(srcObj) {
+      var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
+      return mpegurlRE.test(srcObj.type);
+    },
+    handleSource: function(source, tech) {
+      tech.hls = new videojs.Hls(tech, source);
+      tech.hls.src(source.src);
+      return tech.hls;
+    }
+  });
+}
+
 
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
@@ -100,11 +114,10 @@ videojs.Hls.prototype.src = function(src) {
 
   this.mediaSource = new videojs.MediaSource();
   this.segmentBuffer_ = [];
-  this.segmentParser_ = new videojs.Hls.SegmentParser();
 
   // if the stream contains ID3 metadata, expose that as a metadata
   // text track
-  this.setupMetadataCueTranslation_();
+  //this.setupMetadataCueTranslation_();
 
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen.bind(this));
@@ -256,8 +269,6 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   if (this.tech_.autoplay()) {
     this.play();
   }
-
-  //sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
 };
 
 // register event listeners to transform in-band metadata events into
@@ -840,7 +851,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     mediaIndex,
     playlist,
     offset,
-    tags,
     bytes,
     segment,
     decrypter,
@@ -911,12 +921,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   }
 
   event = event || {};
-
-  // // transmux the segment data from MP2T to FLV
-  // this.segmentParser_.parseSegmentBinaryData(bytes);
-  // this.segmentParser_.flushTags();
-
-  // tags = [];
 
   // if (this.segmentParser_.tagsAvailable()) {
   //   // record PTS information for the segment so we can calculate
