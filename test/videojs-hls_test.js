@@ -26,10 +26,9 @@ var
   oldFlash,
   player,
   clock,
-  oldMediaSourceOpen,
+  oldMediaSource,
+  oldCreateUrl,
   oldSegmentParser,
-  oldSetTimeout,
-  oldClearTimeout,
   oldSourceBuffer,
   oldFlashSupported,
   oldNativeHlsSupport,
@@ -39,6 +38,39 @@ var
   xhr,
 
   nextId = 0,
+
+  // patch over some methods of the provided tech so it can be tested
+  // synchronously with sinon's fake timers
+  mockTech = function(tech) {
+    tech.currentTime = function() {
+      return tech.currentTime_ === undefined ? tech.currentTime : tech.currentTime_;
+    };
+
+    tech.setSrc = function(src) {
+      tech.src_ = src;
+    };
+    tech.src = function(src) {
+      if (src !== undefined) {
+        return tech.setSrc(src);
+      }
+      return tech.src_ === undefined ? tech.src : tech.src_;
+    };
+    tech.currentSrc_ = tech.currentSrc;
+    tech.currentSrc = function() {
+      return tech.src_ === undefined ? tech.currentSrc_() : tech.src_;
+    };
+
+    tech.setCurrentTime = function(time) {
+      tech.currentTime_ = time;
+
+      setTimeout(function() {
+        tech.trigger('seeking');
+        setTimeout(function() {
+          tech.trigger('seeked');
+        }, 1);
+      }, 1);
+    };
+  },
 
   createPlayer = function() {
     var video, player;
@@ -54,6 +86,7 @@ var
     player.buffered = function() {
       return videojs.createTimeRange(0, 0);
     };
+    mockTech(player.tech);
 
     return player;
   },
@@ -62,8 +95,9 @@ var
     player.tech.triggerReady();
     clock.tick(1);
 
-    // simulate the Flash callback
-    player.tech.hls.mediaSource.trigger({
+    // simulate the sourceopen event
+    player.tech.hls.mediaSource.readyState = 'open';
+    player.tech.hls.mediaSource.dispatchEvent({
       type: 'sourceopen',
       swfId: player.tech.el().id
     });
@@ -152,6 +186,26 @@ var
     return MockSegmentParser;
   },
 
+  // a no-op MediaSource implementation to allow synchronous testing
+  MockMediaSource = videojs.extends(videojs.EventTarget, {
+    constructor: function() {},
+    addSourceBuffer: function() {
+      return {
+        abort: function() {},
+        buffered: videojs.createTimeRange(),
+        appendBuffer: function() {}
+      };
+    },
+  }),
+
+  // do a shallow copy of the properties of source onto the target object
+  merge = function(target, source) {
+    var name;
+    for (name in source) {
+      target[name] = source[name];
+    }
+  },
+
   // return an absolute version of a page-relative URL
   absoluteUrl = function(relativeUrl) {
     return window.location.origin +
@@ -162,10 +216,16 @@ var
          .join('/'));
   };
 
+MockMediaSource.open = function() {};
+
 module('HLS', {
   beforeEach: function() {
-    oldMediaSourceOpen = videojs.MediaSource.open;
-    videojs.MediaSource.open = function() {};
+    oldMediaSource = videojs.MediaSource;
+    videojs.MediaSource = MockMediaSource;
+    oldCreateUrl = videojs.URL.createObjectURL;
+    videojs.URL.createObjectURL = function() {
+      return 'blob:mock-vjs-object-url';
+    };
 
     // mock out Flash features for phantomjs
     oldFlash = videojs.mergeOptions({}, Flash);
@@ -208,9 +268,7 @@ module('HLS', {
 
     // store functionality that some tests need to mock
     oldSegmentParser = videojs.Hls.SegmentParser;
-    oldSetTimeout = window.setTimeout;
-    oldClearTimeout = window.clearTimeout;
-    oldGlobalOptions = window.videojs.getGlobalOptions();
+    oldGlobalOptions = videojs.mergeOptions(videojs.options);
 
     // force the HLS tech to run
     oldNativeHlsSupport = videojs.Hls.supportsNativeHls;
@@ -234,16 +292,18 @@ module('HLS', {
   },
 
   afterEach: function() {
+    videojs.MediaSource = oldMediaSource;
+    videojs.URL.createObjectURL = oldCreateUrl;
+
+    merge(videojs.options, oldGlobalOptions);
     Flash.isSupported = oldFlashSupported;
-    videojs.mergeOptions(Flash, oldFlash);
-    videojs.MediaSource.open = oldMediaSourceOpen;
+    merge(Flash, oldFlash);
+
     videojs.Hls.SegmentParser = oldSegmentParser;
     videojs.Hls.supportsNativeHls = oldNativeHlsSupport;
     videojs.Hls.Decrypter = oldDecrypt;
     videojs.SourceBuffer = oldSourceBuffer;
-    window.setTimeout = oldSetTimeout;
-    window.clearTimeout = oldClearTimeout;
-    videojs.setGlobalOptions(oldGlobalOptions);
+
     player.dispose();
     xhr.restore();
     clock.restore();
@@ -282,6 +342,7 @@ test('autoplay seeks to the live point after playlist load', function() {
   });
   openMediaSource(player);
   standardXHRResponse(requests.shift());
+  clock.tick(1);
 
   notEqual(currentTime, 0, 'seeked on autoplay');
 });
@@ -300,6 +361,7 @@ test('autoplay seeks to the live point after media source open', function() {
   clock.tick(1);
   standardXHRResponse(requests.shift());
   openMediaSource(player);
+  clock.tick(1);
 
   notEqual(currentTime, 0, 'seeked on autoplay');
 });
@@ -314,7 +376,7 @@ test('duration is set when the source opens after the playlist is loaded', funct
   standardXHRResponse(requests.shift());
   openMediaSource(player);
 
-  equal(player.duration() , 40, 'set the duration');
+  equal(player.tech.hls.mediaSource.duration , 40, 'set the duration');
 });
 
 test('creates a PlaylistLoader on init', function() {
@@ -323,7 +385,6 @@ test('creates a PlaylistLoader on init', function() {
     type: 'application/vnd.apple.mpegurl'
   });
 
-  ok(!player.tech.hls, 'waits for set src to create the source handler');
   player.src({
     src:'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -385,41 +446,28 @@ test('sets the duration if one is available on the playlist', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.tech.hls.mediaSource.duration = function(value) {
-    if (value !== undefined) {
-      duration = value;
-      calls++;
-    }
-    return duration;
-  };
 
   standardXHRResponse(requests[0]);
-  strictEqual(calls, 1, 'duration is set');
+  equal(player.tech.hls.mediaSource.duration, 40, 'set the duration');
   equal(events, 1, 'durationchange is fired');
 });
 
 test('calculates the duration if needed', function() {
-  var durations = [], changes = 0;
+  var changes = 0;
   player.src({
     src: 'http://example.com/manifest/missingExtinf.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.tech.hls.mediaSource.duration = function(duration) {
-    if (duration === undefined) {
-      return 0;
-    }
-    durations.push(duration);
-  };
+  player.tech.hls.mediaSource.duration = NaN;
   player.on('durationchange', function() {
     changes++;
   });
 
   standardXHRResponse(requests[0]);
-  strictEqual(durations.length, 1, 'duration is set');
-  strictEqual(durations[0],
+  strictEqual(player.tech.hls.mediaSource.duration,
               player.tech.hls.playlists.media().segments.length * 10,
-              'duration is calculated');
+              'duration is updated');
   strictEqual(changes, 1, 'one durationchange fired');
 });
 
@@ -780,25 +828,18 @@ test('moves to the next segment if there is a network error', function() {
 });
 
 test('updates the duration after switching playlists', function() {
-  var
-    calls = 0,
-    selectedPlaylist = false;
+  var selectedPlaylist = false;
   player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.tech.hls.mediaSource.duration = function(duration) {
-    if (duration === undefined) {
-      return 0;
-    }
-    // only track calls that occur after the playlist has been switched
-    if (player.tech.hls.playlists.media() === player.tech.hls.playlists.master.playlists[1]) {
-      calls++;
-    }
-  };
   player.tech.hls.selectPlaylist = function() {
     selectedPlaylist = true;
+
+    // this duraiton should be overwritten by the playlist change
+    player.tech.hls.mediaSource.duration = -Infinity;
+
     return player.tech.hls.playlists.master.playlists[1];
   };
 
@@ -807,7 +848,7 @@ test('updates the duration after switching playlists', function() {
   standardXHRResponse(requests[2]);
   standardXHRResponse(requests[3]);
   ok(selectedPlaylist, 'selected playlist');
-  strictEqual(calls, 1, 'updates the duration');
+  ok(player.tech.hls.mediaSource.duration !== -Infinity, 'updates the duration');
 });
 
 test('downloads additional playlists if required', function() {
@@ -1246,10 +1287,9 @@ test('cancels outstanding XHRs when seeking', function() {
     }]
   };
 
-  // trigger a segment download request
-  player.trigger('timeupdate');
   // attempt to seek while the download is in progress
   player.currentTime(7);
+  clock.tick(1);
 
   ok(requests[1].aborted, 'XHR aborted');
   strictEqual(requests.length, 3, 'opened new XHR');
@@ -1274,6 +1314,7 @@ test('when outstanding XHRs are cancelled, they get aborted properly', function(
 
   // attempt to seek while the download is in progress
   player.currentTime(12);
+  clock.tick(1);
 
   ok(requests[1].aborted, 'XHR aborted');
   strictEqual(requests.length, 3, 'opened new XHR');
@@ -1309,34 +1350,6 @@ test('segmentXhr is properly nulled out when dispose is called', function() {
   strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
 
   Flash.prototype.dispose = oldDispose;
-});
-
-test('flushes the parser after each segment', function() {
-  var flushes = 0;
-  // mock out the segment parser
-  videojs.Hls.SegmentParser = function() {
-    this.getFlvHeader = function() {
-      return [];
-    };
-    this.parseSegmentBinaryData = function() {};
-    this.flushTags = function() {
-      flushes++;
-    };
-    this.tagsAvailable = function() {};
-    this.metadataStream = {
-      on: Function.prototype
-    };
-  };
-
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-
-  standardXHRResponse(requests[0]);
-  standardXHRResponse(requests[1]);
-  strictEqual(flushes, 1, 'tags are flushed at the end of a segment');
 });
 
 QUnit.skip('exposes in-band metadata events as cues', function() {
@@ -1792,8 +1805,9 @@ test('duration is Infinity for live playlists', function() {
 
   standardXHRResponse(requests[0]);
 
-  strictEqual(player.duration(), Infinity, 'duration is infinity');
-  ok((' ' + player.el().className + ' ').indexOf(' vjs-live ') >= 0, 'added vjs-live class');
+  strictEqual(player.tech.hls.mediaSource.duration,
+              Infinity,
+              'duration is infinity');
 });
 
 test('updates the media index when a playlist reloads', function() {
@@ -2027,7 +2041,7 @@ test('reloads out-of-date live playlists when switching variants', function() {
 
 test('if withCredentials global option is used, withCredentials is set on the XHR object', function() {
   player.dispose();
-  videojs.getGlobalOptions().hls = {
+  videojs.options.hls = {
     withCredentials: true
   };
   player = createPlayer();

@@ -131,8 +131,8 @@ videojs.Hls.prototype.src = function(src) {
   this.options_ = {};
   if (this.source_.withCredentials !== undefined) {
     this.options_.withCredentials = this.source_.withCredentials;
-  } else if (videojs.getGlobalOptions().hls) {
-    this.options_.withCredentials = videojs.getGlobalOptions().hls.withCredentials;
+  } else if (videojs.options.hls) {
+    this.options_.withCredentials = videojs.options.hls.withCredentials;
   }
   this.playlists = new videojs.Hls.PlaylistLoader(this.source_.src, this.options_.withCredentials);
 
@@ -846,7 +846,6 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
 
 videojs.Hls.prototype.drainBuffer = function(event) {
   var
-    i = 0,
     segmentInfo,
     mediaIndex,
     playlist,
@@ -855,8 +854,8 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     segment,
     decrypter,
     segIv,
-    ptsTime,
-    segmentOffset = 0,
+    // ptsTime,
+    // segmentOffset = 0,
     segmentBuffer = this.segmentBuffer_;
 
   // if the buffer is empty or the source buffer hasn't been created

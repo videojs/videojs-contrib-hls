@@ -44,11 +44,11 @@
     "karma-sauce-launcher": "~0.1.8",
     "qunitjs": "^1.18.0",
     "sinon": "1.10.2",
-    "video.js": "^5.0.0-rc.4"
+    "video.js": "^5.0.0-rc.51"
   },
   "dependencies": {
     "pkcs7": "^0.2.2",
-    "videojs-contrib-media-sources": "^1.0.0",
+    "videojs-contrib-media-sources": "git+ssh://git@github.com:videojs/videojs-contrib-media-sources.git#mse-mp2t-polyfill",
     "videojs-swf": "5.0.0-rc0"
   }
 }
