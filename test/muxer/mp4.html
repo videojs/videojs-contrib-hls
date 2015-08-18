@@ -45,6 +45,8 @@ mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.
             </pre>
           <small>Looking for the <a href="index.html">FLV tool</a>?</small>
         </header>
+        <section id="video-place">
+        </section>
         <section>
           <h2>Inputs</h2>
           <form id="inputs">
@@ -116,17 +118,131 @@ mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.
       Hls: {}
     };
   </script>
-  <script src="../../src/stream.js"></script>
-  <script src="../../src/mp4-generator.js"></script>
-  <script src="../../src/transmuxer.js"></script>
-  <script src="../../src/flv-tag.js"></script>
-  <script src="../../src/exp-golomb.js"></script>
-  <script src="js/mp4-inspector.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/stream.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/mp4-generator.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/transmuxer.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/mp4-inspector.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/flv-tag.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/exp-golomb.js"></script>
 
   <script src="../../src/bin-utils.js"></script>
 
   <!-- Include QUnit for object diffs -->
   <script src="../../node_modules/qunitjs/qunit/qunit.js"></script>
+  <script>
+    /*
+    MOSTLY STOLEN FROM https://w3c.github.io/media-source/#examples
+    */
+    function setupMSE (videoElement, getNextVideoSegment, getNextAudioSegment) {
+      function onSourceOpen(videoTag, e) {
+        var
+          initVideoSegment = getNextVideoSegment(),
+          initAudioSegment = getNextAudioSegment(),
+          numberInited = 0,
+          videoBuffer, audioBuffer,
+          mediaSource = e.target;
+
+        if (mediaSource.sourceBuffers.length > 0)
+            return;
+
+        if (initVideoSegment) {
+          videoBuffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d401f');
+        }
+        if (initAudioSegment) {
+          audioBuffer = mediaSource.addSourceBuffer('audio/mp4;codecs=mp4a.40.2');
+        }
+
+        videoTag.addEventListener('progress', onProgress.bind(videoTag, mediaSource));
+
+        if (initVideoSegment == null && initAudioSegment == null) {
+          // Error fetching the initialization segment. Signal end of stream with an error.
+          mediaSource.endOfStream("network");
+          return;
+        }
+
+        // Append the initialization segment.
+        var firstAppendHandler = function(e) {
+          var sourceBuffer = e.target;
+          sourceBuffer.removeEventListener('updateend', firstAppendHandler);
+
+          // Append some initial media data.
+          if (++numberInited === 2) {
+            onProgress(mediaSource, e);
+          }
+        };
+
+        if (videoBuffer) {
+          videoBuffer.addEventListener('updateend', firstAppendHandler);
+        }
+        if (audioBuffer) {
+          audioBuffer.addEventListener('updateend', firstAppendHandler);
+        }
+
+        if (initVideoSegment) {
+          videoBuffer.appendBuffer(initVideoSegment);
+        }
+        if (initAudioSegment) {
+          audioBuffer.appendBuffer(initAudioSegment);
+        }
+      }
+
+      function appendNextMediaSegment(getNextMediaSegment, mediaSource, sourceBuffer) {
+        if (mediaSource.readyState == "closed") {
+          return;
+        }
+
+        var mediaSegment = getNextMediaSegment();
+        // If we have run out of stream data, then signal end of stream.
+        if (mediaSegment == null) {
+      //    mediaSource.endOfStream("network");
+          return false;
+        }
+
+        // Make sure the previous append is not still pending.
+        if (sourceBuffer.updating) {
+            return false;
+        }
+
+        // NOTE: If mediaSource.readyState == “ended”, this appendBuffer() call will
+        // cause mediaSource.readyState to transition to "open". The web application
+        // should be prepared to handle multiple “sourceopen” events.
+        sourceBuffer.appendBuffer(mediaSegment);
+        return true;
+      }
+    /*
+      function onSeeking(mediaSource, e) {
+        var video = e.target;
+
+        if (mediaSource.readyState == "open") {
+          // Abort current segment append.
+          mediaSource.sourceBuffers[0].abort();
+        }
+
+        // Notify the media segment loading code to start fetching data at the
+        // new playback position.
+        SeekToMediaSegmentAt(video.currentTime);
+
+        // Append a media segment from the new playback position.
+        appendNextMediaSegment(mediaSource);
+      }
+    */
+      function onProgress(mediaSource, e) {
+        (appendNextMediaSegment(getNextVideoSegment, mediaSource, mediaSource.sourceBuffers[0]) &&
+        appendNextMediaSegment(getNextAudioSegment, mediaSource, mediaSource.sourceBuffers[1]));
+      }
+
+      var mediaSource = new MediaSource();
+      mediaSource.addEventListener('sourceopen', onSourceOpen.bind(this, videoElement));
+      videoElement.src = window.URL.createObjectURL(mediaSource);
+    }
+    function getSegment (segmentArray) {
+        var segment = segmentArray.shift();
+        if (segment) {
+          return segment.data;
+        }
+        return null;
+    }
+  </script>
   <script>
     var inputs = document.getElementById('inputs'),
         original = document.getElementById('original'),
@@ -145,8 +261,9 @@ mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.
         workingOutput = document.querySelector('.working-output'),
 
         video = document.createElement('video'),
-        mediaSource = new MediaSource(),
-        FlvTag = videojs.Hls.FlvTag;
+        mediaSource = new MediaSource();
+
+        document.querySelector('#video-place').appendChild(video);
 
         logevent = function(event) {
           console.log(event.type);
@@ -176,8 +293,8 @@ mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.
         'properties present in the working version but missing in the ' +
         'transmuxed output.</p>';
       diff += '<pre class="mp4-diff">' +
-        QUnit.diff(videojs.textifyMp4(transmuxed, null, ' '),
-                   videojs.textifyMp4(workingParsed, null, ' ')) +
+        QUnit.diff(muxjs.textifyMp4(transmuxed, null, ' '),
+                   muxjs.textifyMp4(workingParsed, null, ' ')) +
         '</pre>';
 
       comparison.innerHTML = diff;
@@ -185,8 +302,8 @@ mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.
 
     mediaSource.addEventListener('sourceopen', function() {
       var
-        // buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d');
-        buffer = mediaSource.addSourceBuffer('audio/mp4;codecs=mp4a.40.2');
+        buffer = mediaSource.addSourceBuffer('video/mp4;codecs=avc1.4d400d');
+        //buffer = mediaSource.addSourceBuffer('audio/mp4;codecs=mp4a.40.2');
       buffer.addEventListener('updatestart', logevent);
       buffer.addEventListener('updateend', logevent);
       buffer.addEventListener('error', logevent);
@@ -202,46 +319,61 @@ mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.
     video.addEventListener('error', console.log.bind(console));
 
 
-    videojs.log = console.log.bind(console);
+//    muxjs.log = console.log.bind(console);
 
     original.addEventListener('change', function() {
       var reader = new FileReader(),
-        videoSegments= [],
-        audioSegments = [],
         videoBuffer = [],
         audioBuffer = [];
 
       reader.addEventListener('loadend', function() {
         var segment = new Uint8Array(reader.result),
-            transmuxer = new videojs.mp2t.Transmuxer(),
-            events = [],
-            bytesLength = 0,
+            transmuxer = new muxjs.mp2t.Transmuxer(),
+            videoSegments = [],
+            audioSegments = [],
+            videoBytesLength = 0,
+            audioBytesLength = 0,
+            decodeMe,
             bytes,
             i, j,
             hex = '';
 
-        transmuxer.on('data', function(data) {
-          if (data && data.type === 'audio') {
-            events.push(data.data);
-            bytesLength += data.data.byteLength;
+        // transmux the MPEG-TS data to BMFF segments
+        transmuxer.on('data', function(segment) {
+          if (segment.type === 'video') {
+            videoSegments.push(segment);
+            videoBytesLength += segment.data.byteLength;
+          } else {
+            audioSegments.push(segment);
+            audioBytesLength += segment.data.byteLength;
           }
         });
+
         transmuxer.push(segment);
         transmuxer.end();
+        // XXX - switch to select video/audio to show
+        decodeMe = videoSegments;
+        bytes = new Uint8Array(videoBytesLength);
 
-        bytes = new Uint8Array(bytesLength);
-        for (j = 0, i = 0; j < events.length; j++) {
-          bytes.set(events[j], i);
-          i += events[j].byteLength;
+        for (j = 0, i = 0; j < decodeMe.length; j++) {
+          bytes.set(decodeMe[j].data, i);
+          i += decodeMe[j].byteLength;
         }
 
         vjsBytes = bytes;
-        vjsParsed = videojs.inspectMp4(bytes);
+        vjsParsed = muxjs.inspectMp4(bytes);
         console.log('transmuxed', vjsParsed);
         diffParsed();
 
+        // XXX - set one of videoSegments or audioSegments below to an
+        //       empty array to only test one stream
+
+        setupMSE(video,
+          getSegment.bind(null, videoSegments),
+          getSegment.bind(null, audioSegments));
+
         // clear old box info
-        vjsBoxes.innerHTML = videojs.textifyMp4(vjsParsed, null, ' ');
+        vjsBoxes.innerHTML = muxjs.textifyMp4(vjsParsed, null, ' ');
 
         // write out the result
         hex += '<pre>';
@@ -249,9 +381,9 @@ mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.
         hex += '</pre>';
         vjsOutput.innerHTML = hex;
 
-        // XXX Media Sources Testing
-        //window.vjsSourceBuffer.appendBuffer(bytes);
+        video.play();
       });
+
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
 
@@ -263,12 +395,12 @@ mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.
 
 
         workingBytes = bytes;
-        workingParsed = videojs.inspectMp4(bytes);
+        workingParsed = muxjs.inspectMp4(bytes);
         console.log('working', workingParsed);
         diffParsed();
 
         // clear old box info
-        workingBoxes.innerHTML = videojs.textifyMp4(workingParsed, null, ' ');
+        workingBoxes.innerHTML = muxjs.textifyMp4(workingParsed, null, ' ');
 
         // output the hex dump
         hex += '<pre>';
@@ -277,7 +409,10 @@ mp4fragment --track audio --fragment-duration 11000 movie-audio.mp4 movie-audio.
         workingOutput.innerHTML = hex;
 
         // XXX Media Sources Testing
-        window.vjsSourceBuffer.appendBuffer(bytes);
+/*        setupMSE(video,
+          getSegment.bind(null, []),
+          getSegment.bind(null, [{data: bytes}]));*/
+        //window.vjsSourceBuffer.appendBuffer(bytes);
       });
       reader.readAsArrayBuffer(this.files[0]);
     }, false);
