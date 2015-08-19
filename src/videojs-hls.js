@@ -73,33 +73,35 @@ videojs.Hls = videojs.extends(Component, {
   }
 });
 
-// add HLS as a source handler
-if (videojs.MediaSource.supportsNativeMediaSources()) {
-  videojs.getComponent('Html5').registerSourceHandler({
-    canHandleSource: function(srcObj) {
-      var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
-      return mpegurlRE.test(srcObj.type);
-    },
-    handleSource: function(source, tech) {
-      tech.hls = new videojs.Hls(tech, source);
-      tech.hls.src(source.src);
-      return tech.hls;
-    }
-  });
-} else {
-  videojs.getComponent('Flash').registerSourceHandler({
-    canHandleSource: function(srcObj) {
-      var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
-      return mpegurlRE.test(srcObj.type);
-    },
-    handleSource: function(source, tech) {
-      tech.hls = new videojs.Hls(tech, source);
-      tech.hls.src(source.src);
-      return tech.hls;
-    }
-  });
-}
+/**
+ * The Source Handler object, which informs video.js what additional
+ * MIME types are supported and sets up playback. It is registered
+ * automatically to the appropriate tech based on the capabilities of
+ * the browser it is running in. It is not necessary to use or modify
+ * this object in normal usage.
+ */
+videojs.HlsSourceHandler = {
+  canHandleSource: function(srcObj) {
+    var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
+    // favor native HLS support if it's available
+    if (videojs.Hls.supportsNativeHls) {
+      return false;
+    }
+    return mpegurlRE.test(srcObj.type);
+  },
+  handleSource: function(source, tech) {
+    tech.hls = new videojs.Hls(tech, source);
+    tech.hls.src(source.src);
+    return tech.hls;
+  }
+};
+// register with the appropriate tech
+if (videojs.MediaSource.supportsNativeMediaSources()) {
+  videojs.getComponent('Html5').registerSourceHandler(videojs.HlsSourceHandler);
+} else {
+  videojs.getComponent('Flash').registerSourceHandler(videojs.HlsSourceHandler);
+}
 
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
@@ -368,9 +370,18 @@ videojs.Hls.prototype.setupFirstPlay = function() {
   media = this.playlists.media();
 
   // check that everything is ready to begin buffering
+
+  // 1) the video is a live stream of unknown duration
   if (this.duration() === Infinity &&
+
+      // 2) the player has not played before and is not paused
       this.tech_.played().length === 0 &&
+      !this.tech_.paused() &&
+
+      // 3) the Media Source and Source Buffers are ready
       this.sourceBuffer &&
+
+      // 4) the active media playlist is available
       media) {
 
     // seek to the latest media position for live videos
@@ -870,13 +881,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     return;
   }
 
-  // transition the sourcebuffer to the ended state if we've hit the end of
-  // the playlist
-  if (this.duration() !== Infinity &&
-      this.mediaIndex === this.playlists.media().segments.length) {
-    this.mediaSource.endOfStream();
-  }
-
   segmentInfo = segmentBuffer[0];
 
   mediaIndex = segmentInfo.mediaIndex;
@@ -975,6 +979,13 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     this.sourceBuffer.timestampOffset = this.sourceBuffer.buffered.end(0);
   }
   this.sourceBuffer.appendBuffer(bytes);
+
+  // transition the sourcebuffer to the ended state if we've hit the end of
+  // the playlist
+  if (this.duration() !== Infinity &&
+      mediaIndex + 1 === this.playlists.media().segments.length) {
+    this.mediaSource.endOfStream();
+  }
 
   // we're done processing this segment
   segmentBuffer.shift();
