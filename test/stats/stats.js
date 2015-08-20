@@ -86,8 +86,8 @@
 
   var mediaDomain = function(media, player) {
     var segments = media.segments;
-    var end = player.hls.playlists.expiredPreDiscontinuity_;
-    end += player.hls.playlists.expiredPostDiscontinuity_;
+    var end = player.tech.hls.playlists.expiredPreDiscontinuity_;
+    end += player.tech.hls.playlists.expiredPostDiscontinuity_;
     end += Playlist.duration(media,
                              media.mediaSequence,
                              media.mediaSequence + segments.length);
@@ -160,7 +160,7 @@
       .call(ptsAxis);
   };
   var svgRenderSegmentTimeline = function(container, player) {
-    var media = player.hls.playlists.media();
+    var media = player.tech.hls.playlists.media();
     var segments = media.segments; // media.segments.slice(0, count);
 
     // setup the display
@@ -196,7 +196,7 @@
 
     // update everything on progress
     player.on('progress', function() {
-      var updatedMedia = player.hls.playlists.media();
+      var updatedMedia = player.tech.hls.playlists.media();
       var segments = updatedMedia.segments; // updatedMedia.segments.slice(currentIndex, currentIndex + count);
 
       if (updatedMedia.mediaSequence !== media.mediaSequence) {
@@ -220,7 +220,7 @@
   };
 
   var displayCues = function(container, player) {
-    var media = player.hls.playlists.media();
+    var media = player.tech.hls.playlists.media();
     if (media && media.segments) {
       svgRenderSegmentTimeline(container, player);
     } else {

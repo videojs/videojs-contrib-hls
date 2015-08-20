@@ -4,10 +4,22 @@
   <meta charset="utf-8">
   <title>video.js HLS Stats</title>
 
-  <link href="../../node_modules/video.js/dist/video-js/video-js.css" rel="stylesheet">
+  <link href="../../node_modules/video.js/dist/video-js.css" rel="stylesheet">
 
   <!-- video.js -->
-  <script src="../../node_modules/video.js/dist/video-js/video.dev.js"></script>
+  <script src="../../node_modules/video.js/dist/video.js"></script>
+
+  <!-- transmuxing -->
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/stream.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/mp4-generator.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/transmuxer.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/flv-tag.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/exp-golomb.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/h264-extradata.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/h264-stream.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/aac-stream.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/metadata-stream.js"></script>
+  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/segment-parser.js"></script>
 
   <!-- Media Sources plugin -->
   <script src="../../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
@@ -15,25 +27,15 @@
   <!-- HLS plugin -->
   <script src="../../src/videojs-hls.js"></script>
 
-  <!-- segment handling -->
-  <script src="../../src/xhr.js"></script>
-  <script src="../../src/flv-tag.js"></script>
-  <script src="../../src/stream.js"></script>
-  <script src="../../src/exp-golomb.js"></script>
-  <script src="../../src/h264-extradata.js"></script>
-  <script src="../../src/h264-stream.js"></script>
-  <script src="../../src/aac-stream.js"></script>
-  <script src="../../src/metadata-stream.js"></script>
-  <script src="../../src/segment-parser.js"></script>
-
   <!-- m3u8 handling -->
+  <script src="../../src/xhr.js"></script>
+  <script src="../../src/stream.js"></script>
   <script src="../../src/m3u8/m3u8-parser.js"></script>
   <script src="../../src/playlist.js"></script>
   <script src="../../src/playlist-loader.js"></script>
 
   <script src="../../node_modules/pkcs7/dist/pkcs7.unpad.js"></script>
   <script src="../../src/decrypter.js"></script>
-
 
   <!-- player stats visualization -->
   <link href="stats.css" rel="stylesheet">
@@ -66,6 +68,9 @@
          height="300"
          width="600"
          controls>
+    <source
+       src="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8"
+       type="application/x-mpegURL">
     <source
        src="http://s3.amazonaws.com/_bc_dml/example-content/bipbop-id3/index.m3u8"
        type="application/x-mpegURL">
@@ -144,14 +149,14 @@
       }
 
       // bitrates
-      var playlist = player.hls.playlists.media();
+      var playlist = player.tech.hls.playlists.media();
       if (playlist && playlist.attributes && playlist.attributes.BANDWIDTH) {
         videoBitrateState.textContent = (playlist.attributes.BANDWIDTH / 1024).toLocaleString(undefined, {
           maximumFractionDigits: 1
         }) + ' kbps';
       }
-      if (player.hls.bandwidth) {
-        measuredBitrateStat.textContent = (player.hls.bandwidth / 1024).toLocaleString(undefined, {
+      if (player.tech.hls.bandwidth) {
+        measuredBitrateStat.textContent = (player.tech.hls.bandwidth / 1024).toLocaleString(undefined, {
           maximumFractionDigits: 1
         }) + ' kbps';
       }
