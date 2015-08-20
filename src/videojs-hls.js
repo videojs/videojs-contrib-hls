@@ -262,6 +262,15 @@ videojs.Hls.getMediaIndexForLive_ = function(selectedPlaylist) {
 videojs.Hls.prototype.handleSourceOpen = function() {
   this.sourceBuffer = this.mediaSource.addSourceBuffer('video/mp2t');
 
+  // transition the sourcebuffer to the ended state if we've hit the end of
+  // the playlist
+  this.sourceBuffer.addEventListener('updateend', function() {
+    if (this.duration() !== Infinity &&
+        this.mediaIndex === this.playlists.media().segments.length) {
+      this.mediaSource.endOfStream();
+    }
+  }.bind(this));
+
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
   // *after* the media source has opened.
@@ -417,6 +426,7 @@ videojs.Hls.prototype.play = function() {
 };
 
 videojs.Hls.prototype.setCurrentTime = function(currentTime) {
+  var buffered, i;
   if (!(this.playlists && this.playlists.media())) {
     // return immediately if the metadata is not ready yet
     return 0;
@@ -428,13 +438,18 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
     return 0;
   }
 
+  // if the seek location is already buffered, continue buffering as
+  // usual
+  buffered = this.tech_.buffered();
+  for (i = 0; i < buffered.length; i++) {
+    if (this.tech_.buffered().start(i) <= currentTime &&
+        this.tech_.buffered().end(i) >= currentTime) {
+      return currentTime;
+    }
+  }
+
   // determine the requested segment
   this.mediaIndex = this.playlists.getMediaIndexForTime_(currentTime);
-
-  // abort any segments still being decoded
-  if (this.sourceBuffer) {
-    this.sourceBuffer.abort();
-  }
 
   // cancel outstanding requests and buffer appends
   this.cancelSegmentXhr();
@@ -865,8 +880,8 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     segment,
     decrypter,
     segIv,
+    segmentOffset = 0,
     // ptsTime,
-    // segmentOffset = 0,
     segmentBuffer = this.segmentBuffer_;
 
   // if the buffer is empty or the source buffer hasn't been created
@@ -880,6 +895,9 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   if (this.sourceBuffer.updating) {
     return;
   }
+
+
+
 
   segmentInfo = segmentBuffer[0];
 
@@ -943,7 +961,8 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   // }
 
   this.addCuesForMetadata_(segmentInfo);
-  this.updateDuration(this.playlists.media());
+  //this.updateDuration(this.playlists.media());
+
 
   // // if we're refilling the buffer after a seek, scan through the muxed
   // // FLV tags until we find the one that is closest to the desired
@@ -975,21 +994,17 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   //   this.tech_.el().vjs_discontinuity();
   // }
 
-  if (this.sourceBuffer.buffered.length) {
-    this.sourceBuffer.timestampOffset = this.sourceBuffer.buffered.end(0);
-  }
-  this.sourceBuffer.appendBuffer(bytes);
+  // determine the timestamp offset for the start of this segment
+  segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
+  segmentOffset += videojs.Hls.Playlist.duration(playlist,
+                                                 playlist.mediaSequence,
+                                                 playlist.mediaSequence + mediaIndex);
 
-  // transition the sourcebuffer to the ended state if we've hit the end of
-  // the playlist
-  if (this.duration() !== Infinity &&
-      mediaIndex + 1 === this.playlists.media().segments.length) {
-    this.mediaSource.endOfStream();
-  }
+  this.sourceBuffer.timestampOffset = segmentOffset;
+  this.sourceBuffer.appendBuffer(bytes);
 
   // we're done processing this segment
   segmentBuffer.shift();
-
 };
 
 /**

@@ -191,11 +191,12 @@ var
   MockMediaSource = videojs.extends(videojs.EventTarget, {
     constructor: function() {},
     addSourceBuffer: function() {
-      return {
+      return new (videojs.extends(videojs.EventTarget, {
+        constructor: function() {},
         abort: function() {},
         buffered: videojs.createTimeRange(),
         appendBuffer: function() {}
-      };
+      }));
     },
   }),
 
@@ -1142,8 +1143,7 @@ test('only makes one segment request at a time', function() {
 });
 
 test('only appends one segment at a time', function() {
-  var appends = 0, tags = [{ pts: 0, bytes: new Uint8Array(1) }];
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  var appends = 0;
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1156,7 +1156,6 @@ test('only appends one segment at a time', function() {
   player.tech.hls.sourceBuffer.appendBuffer = function() {
     appends++;
   };
-  tags.push({ pts: 0, bytes: new Uint8Array(1) });
 
   player.tech.hls.checkBuffer_();
   standardXHRResponse(requests.pop()); // segment 1
@@ -1164,7 +1163,7 @@ test('only appends one segment at a time', function() {
   equal(appends, 0, 'did not append while updating');
 });
 
-test('records the min and max PTS values for a segment', function() {
+QUnit.skip('records the min and max PTS values for a segment', function() {
   var tags = [];
   videojs.Hls.SegmentParser = mockSegmentParser(tags);
   player.src({
@@ -1184,7 +1183,7 @@ test('records the min and max PTS values for a segment', function() {
   equal(player.tech.hls.playlists.media().segments[0].maxAudioPts, 10, 'recorded max audio pts');
 });
 
-test('records PTS values for video-only segments', function() {
+QUnit.skip('records PTS values for video-only segments', function() {
   var tags = [];
   videojs.Hls.SegmentParser = mockSegmentParser(tags);
   player.src({
@@ -1213,7 +1212,7 @@ test('records PTS values for video-only segments', function() {
   strictEqual(player.tech.hls.playlists.media().segments[0].maxAudioPts, undefined, 'max audio pts is undefined');
 });
 
-test('records PTS values for audio-only segments', function() {
+QUnit.skip('records PTS values for audio-only segments', function() {
   var tags = [];
   videojs.Hls.SegmentParser = mockSegmentParser(tags);
   player.src({
@@ -1658,7 +1657,7 @@ QUnit.skip('translates ID3 PTS values across discontinuities', function() {
   equal(track.cues[1].endTime, 11, 'second cue ended at the correct time');
 });
 
-test('drops tags before the target timestamp when seeking', function() {
+QUnit.skip('drops tags before the target timestamp when seeking', function() {
   var i = 10,
       tags = [],
       bytes = [];
@@ -1697,42 +1696,73 @@ test('drops tags before the target timestamp when seeking', function() {
   deepEqual(bytes, [new Uint8Array([7,8,9])], 'three tags are appended');
 });
 
-test('calls abort() on the SourceBuffer before seeking', function() {
-  var
-    aborts = 0,
-    bytes = [],
-    tags = [{ pts: 0, bytes: new Uint8Array(1) }];
-
-
-  // track calls to abort()
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
-  window.videojs.SourceBuffer = function() {
-    this.appendBuffer = function(chunk) {
-      bytes.push(chunk);
-    };
-    this.abort = function() {
-      aborts++;
-    };
-  };
-
+test('adjusts the segment offsets for out-of-buffer seeking', function() {
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  standardXHRResponse(requests.shift()); // media
+  player.tech.hls.sourceBuffer.buffered = function() {
+    return videojs.createTimeRange(0, 20);
+  };
+  equal(player.tech.hls.mediaIndex, 0, 'starts at zero');
 
-  standardXHRResponse(requests[0]);
-  standardXHRResponse(requests[1]);
+  player.tech.setCurrentTime(35);
+  clock.tick(1);
+  // drop the aborted segment
+  requests.shift();
+  equal(player.tech.hls.mediaIndex, 3, 'moved the mediaIndex');
+  standardXHRResponse(requests.shift());
+  equal(player.tech.hls.sourceBuffer.timestampOffset, 30, 'updated the timestamp offset');
+});
 
-  // drainBuffer() uses the first PTS value to account for any timestamp discontinuities in the stream
-  // adding a tag with a PTS of zero looks like a stream with no discontinuities
-  tags.push({ pts: 0, bytes: new Uint8Array(1) });
-  tags.push({ pts: 7000, bytes: new Uint8Array([7]) });
-  // seek to 7s
-  player.currentTime(7);
-  standardXHRResponse(requests[2]);
+test('seeks between buffered time ranges', function() {
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // media
+  player.tech.buffered = function() {
+    return {
+      length: 2,
+      ranges_: [[0, 10], [20, 30]],
+      start: function(i) {
+        return this.ranges_[i][0];
+      },
+      end: function(i) {
+        return this.ranges_[i][1];
+      }
+    };
+  };
 
-  strictEqual(1, aborts, 'aborted pending buffer');
+  player.tech.setCurrentTime(15);
+  clock.tick(1);
+  // drop the aborted segment
+  requests.shift();
+  equal(player.tech.hls.mediaIndex, 1, 'updated the mediaIndex');
+  standardXHRResponse(requests.shift());
+  equal(player.tech.hls.sourceBuffer.timestampOffset, 10, 'updated the timestamp offset');
+});
+
+test('does not modify the media index for in-buffer seeking', function() {
+  var mediaIndex;
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift());
+  player.tech.buffered = function() {
+    return videojs.createTimeRange(0, 20);
+  };
+  mediaIndex = player.tech.hls.mediaIndex;
+
+  player.tech.setCurrentTime(11);
+  clock.tick(1);
+  equal(player.tech.hls.mediaIndex, mediaIndex, 'did not interrupt buffering');
+  equal(requests.length, 1, 'did not abort the outstanding request');
 });
 
 QUnit.skip('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
@@ -2522,7 +2552,9 @@ test('calls ended() on the media source at the end of a playlist', function() {
   // segment response
   requests[0].response = new ArrayBuffer(17);
   requests.shift().respond(200, null, '');
+  strictEqual(endOfStreams, 0, 'waits for the buffer update to finish');
 
+  player.tech.hls.sourceBuffer.trigger('updateend');
   strictEqual(endOfStreams, 1, 'ended media source');
 });
 
