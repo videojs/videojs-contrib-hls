@@ -73,12 +73,12 @@ var
     };
   },
 
-  createPlayer = function() {
+  createPlayer = function(options) {
     var video, player;
     video = document.createElement('video');
     video.className = 'video-js';
     document.querySelector('#qunit-fixture').appendChild(video);
-    player = videojs(video, {
+    player = videojs(video, options || {
       flash: {
         swf: ''
       }
@@ -379,6 +379,14 @@ test('duration is set when the source opens after the playlist is loaded', funct
   openMediaSource(player);
 
   equal(player.tech.hls.mediaSource.duration , 40, 'set the duration');
+});
+
+test('including HLS as a tech does not error', function() {
+  var player = createPlayer({
+    techOrder: ['hls', 'html5']
+  });
+
+  ok(player, 'created the player');
 });
 
 test('creates a PlaylistLoader on init', function() {

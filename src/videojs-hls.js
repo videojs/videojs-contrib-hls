@@ -73,6 +73,13 @@ videojs.Hls = videojs.extends(Component, {
   }
 });
 
+// HLS is a source handler, not a tech. Make sure attempts to use it
+// as one do not cause exceptions.
+videojs.Hls.canPlaySource = function() {
+  return videojs.log.warn('HLS is no longer a tech. Please remove it from ' +
+                          'your player\'s techOrder.');
+};
+
 /**
  * The Source Handler object, which informs video.js what additional
  * MIME types are supported and sets up playback. It is registered
@@ -1098,15 +1105,11 @@ videojs.Hls.supportsNativeHls = (function() {
     (/probably|maybe/).test(vndMpeg);
 })();
 
+// HLS is a source handler, not a tech. Make sure attempts to use it
+// as one do not cause exceptions.
 videojs.Hls.isSupported = function() {
-  // Only use the HLS tech if native HLS isn't available
-  return !videojs.Hls.supportsNativeHls &&
-    // Flash must be supported for the fallback to work
-    videojs.getComponent('Flash').isSupported() &&
-    // Media sources must be available to stream bytes to Flash
-    videojs.MediaSource &&
-    // Typed arrays are used to repackage the segments
-    window.Uint8Array;
+  return videojs.log.warn('HLS is no longer a tech. Please remove it from ' +
+                          'your player\'s techOrder.');
 };
 
 /**
