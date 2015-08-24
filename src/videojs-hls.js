@@ -134,12 +134,8 @@ videojs.Hls.prototype.src = function(src) {
   // We need to trigger this asynchronously to give others the chance
   // to bind to the event when a source is set at player creation
   setTimeout(function() {
-    // Be careful since the player could have been disposed immediately after
-    // setting the src
-    if (player && player.el()) {
-      player.trigger('loadstart');
-    }
-  }, 1);
+    this.tech_.trigger('loadstart');
+  }.bind(this), 1);
 
   // The index of the next segment to be downloaded in the current
   // media playlist. When the current media playlist is live with
