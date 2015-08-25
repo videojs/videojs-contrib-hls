@@ -1769,11 +1769,7 @@ test('does not modify the media index for in-buffer seeking', function() {
   equal(requests.length, 1, 'did not abort the outstanding request');
 });
 
-QUnit.skip('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
-  var errorTriggered = false;
-  player.on('error', function() {
-    errorTriggered = true;
-  });
+test('playlist 404 should end stream with a network error', function() {
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1781,13 +1777,7 @@ QUnit.skip('playlist 404 should trigger MEDIA_ERR_NETWORK', function() {
   openMediaSource(player);
   requests.pop().respond(404);
 
-  equal(errorTriggered,
-        true,
-        'Missing Playlist error event should trigger');
-  equal(player.error().code,
-        2,
-        'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
-  ok(player.error().message, 'included an error message');
+  equal(player.tech.hls.mediaSource.error_, 'network', 'set a network error');
 });
 
 test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
