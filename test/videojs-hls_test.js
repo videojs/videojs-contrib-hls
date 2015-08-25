@@ -104,7 +104,9 @@ var
     });
 
     // endOfStream triggers an exception if flash isn't available
-    player.tech.hls.mediaSource.endOfStream = function() {};
+    player.tech.hls.mediaSource.endOfStream = function(error) {
+      this.error_ = error;
+    };
   },
   standardXHRResponse = function(request) {
     if (!request.url) {
@@ -583,11 +585,7 @@ test('re-initializes the handler for each source', function() {
   notStrictEqual(firstMSE, secondMSE, 'the media source object is not reused');
 });
 
-QUnit.skip('triggers an error when a master playlist request errors', function() {
-  var errors = 0;
-  player.on('error', function() {
-    errors++;
-  });
+test('triggers an error when a master playlist request errors', function() {
   player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -595,9 +593,7 @@ QUnit.skip('triggers an error when a master playlist request errors', function()
   openMediaSource(player);
   requests.pop().respond(500);
 
-  ok(player.error(), 'an error is triggered');
-  strictEqual(1, errors, 'fired one error');
-  strictEqual(2, player.error().code, 'a network error is triggered');
+  equal(player.tech.hls.mediaSource.error_, 'network', 'a network error is triggered');
 });
 
 test('downloads media playlists after loading the master', function() {

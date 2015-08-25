@@ -210,6 +210,14 @@ videojs.Hls.prototype.src = function(src) {
   }.bind(this));
 
   this.playlists.on('error', function() {
+    // close the media source with the appropriate error type
+    if (this.playlists.error.code === 2) {
+      this.mediaSource.endOfStream('network');
+    } else if (this.playlists.error.code === 4) {
+      this.mediaSource.endOfStream('decode');
+    }
+
+    // if this error is unrecognized, pass it along to the tech
     this.tech_.error(this.playlists.error);
   }.bind(this));
 
