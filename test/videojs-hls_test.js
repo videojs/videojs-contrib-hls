@@ -196,7 +196,7 @@ var
         abort: function() {},
         buffered: videojs.createTimeRange(),
         appendBuffer: function() {}
-      }));
+      }))();
     },
   }),
 
@@ -447,7 +447,7 @@ test('re-initializes the playlist loader when switching sources', function() {
 });
 
 test('sets the duration if one is available on the playlist', function() {
-  var calls = 0, events = 0, duration = 0;
+  var events = 0;
   player.on('durationchange', function() {
     events++;
   });
@@ -1982,40 +1982,14 @@ test('resets the time to a seekable position when resuming a live stream ' +
       seekTarget = time;
     }
   };
+  player.tech.played = function() {
+    return videojs.createTimeRange(120, 170);
+  };
   player.tech.trigger('playing');
 
   player.tech.trigger('play');
   equal(seekTarget, player.seekable().start(0), 'seeked to the start of seekable');
   player.tech.trigger('seeked');
-});
-
-test('clamps seeks to the seekable window', function() {
-  var seekTarget;
-  player.src({
-    src: 'live0.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  requests.shift().respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXT-X-MEDIA-SEQUENCE:16\n' +
-                           '#EXTINF:10,\n' +
-                           '16.ts\n');
-  // mock out a seekable window
-  player.tech.hls.seekable = function() {
-    return videojs.createTimeRange(160, 170);
-  };
-  player.tech.hls.fillBuffer = function(time) {
-    if (time !== undefined) {
-      seekTarget = time;
-    }
-  };
-
-  player.currentTime(180);
-  equal(seekTarget * 0.001, player.seekable().end(0), 'forward seeks are clamped');
-
-  player.currentTime(45);
-  equal(seekTarget * 0.001, player.seekable().start(0), 'backward seeks are clamped');
 });
 
 test('mediaIndex is zero before the first segment loads', function() {
@@ -2045,7 +2019,8 @@ test('mediaIndex returns correctly at playlist boundaries', function() {
   strictEqual(player.tech.hls.mediaIndex, 0, 'mediaIndex is zero at first segment');
 
   // seek to end
-  player.currentTime(40);
+  player.tech.setCurrentTime(40);
+  clock.tick(1);
 
   strictEqual(player.tech.hls.mediaIndex, 3, 'mediaIndex is 3 at last segment');
 });
@@ -2148,47 +2123,8 @@ test('does not break if the playlist has no segments', function() {
   strictEqual(requests.length, 1, 'no requests for non-existent segments were queued');
 });
 
-test('calls vjs_discontinuity() before appending bytes at a discontinuity', function() {
-  var discontinuities = 0, tags = [], bufferEnd;
-
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
-  player.src({
-    src: 'discontinuity.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  player.tech.trigger('play');
-  player.tech.buffered = function() {
-    return videojs.createTimeRange(0, bufferEnd);
-  };
-  player.tech.el().vjs_discontinuity = function() {
-    discontinuities++;
-  };
-
-  requests.pop().respond(200, null,
-                         '#EXTM3U\n' +
-                         '#EXTINF:10,0\n' +
-                         '1.ts\n' +
-                         '#EXT-X-DISCONTINUITY\n' +
-                         '#EXTINF:10,0\n' +
-                         '2.ts\n');
-  standardXHRResponse(requests.pop());
-
-  // play to 6s to trigger the next segment request
-  player.tech.el().currentTime = 6;
-  bufferEnd = 10;
-  player.tech.hls.checkBuffer_();
-  strictEqual(discontinuities, 0, 'no discontinuities before the segment is received');
-
-  tags.push({ pts: 0, bytes: new Uint8Array(1) });
-  standardXHRResponse(requests.pop());
-  strictEqual(discontinuities, 1, 'signals a discontinuity');
-});
-
 test('clears the segment buffer on seek', function() {
-  var aborts = 0, tags = [], currentTime, bufferEnd, oldCurrentTime;
-
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+  var currentTime, bufferEnd, oldCurrentTime;
 
   player.src({
     src: 'discontinuity.m3u8',
@@ -2205,37 +2141,30 @@ test('clears the segment buffer on seek', function() {
   player.buffered = function() {
     return videojs.createTimeRange(0, bufferEnd);
   };
-  player.tech.hls.sourceBuffer.abort = function() {
-    aborts++;
-  };
 
   requests.pop().respond(200, null,
                          '#EXTM3U\n' +
+                         '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
                          '#EXTINF:10,0\n' +
                          '1.ts\n' +
                          '#EXT-X-DISCONTINUITY\n' +
                          '#EXTINF:10,0\n' +
                          '2.ts\n' +
                          '#EXT-X-ENDLIST\n');
-  standardXHRResponse(requests.pop());
+  standardXHRResponse(requests.pop()); // 1.ts
 
   // play to 6s to trigger the next segment request
   currentTime = 6;
   bufferEnd = 10;
-  player.tech.hls.checkBuffer_();
+  clock.tick(6000);
 
-  standardXHRResponse(requests.pop());
+  standardXHRResponse(requests.pop()); // 2.ts
+  equal(player.tech.hls.segmentBuffer_.length, 2, 'started fetching segments');
 
   // seek back to the beginning
   player.currentTime(0);
-  tags.push({ pts: 0, bytes: new Uint8Array(1) });
   clock.tick(1);
-  standardXHRResponse(requests.pop());
-  strictEqual(aborts, 1, 'aborted once for the seek');
-
-  // the source buffer empties. is 2.ts still in the segment buffer?
-  player.trigger('waiting');
-  strictEqual(aborts, 1, 'cleared the segment buffer on a seek');
+  equal(player.tech.hls.segmentBuffer_.length, 0, 'cleared the segment buffer');
 });
 
 test('can seek before the source buffer opens', function() {
@@ -2252,28 +2181,15 @@ test('can seek before the source buffer opens', function() {
   equal(player.currentTime(), 1, 'seeked');
 });
 
-test('continues playing after seek to discontinuity', function() {
-  var aborts = 0, tags = [], currentTime, bufferEnd, oldCurrentTime;
-
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
-
+test('sets the timestampOffset after seeking to discontinuity', function() {
+  var bufferEnd;
   player.src({
     src: 'discontinuity.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  oldCurrentTime = player.currentTime;
-  player.currentTime = function(time) {
-    if (time !== undefined) {
-      return oldCurrentTime.call(player, time);
-    }
-    return currentTime;
-  };
-  player.buffered = function() {
+  player.tech.buffered = function() {
     return videojs.createTimeRange(0, bufferEnd);
-  };
-  player.tech.hls.sourceBuffer.abort = function() {
-    aborts++;
   };
 
   requests.pop().respond(200, null,
@@ -2286,27 +2202,51 @@ test('continues playing after seek to discontinuity', function() {
     '#EXT-X-ENDLIST\n');
   standardXHRResponse(requests.pop()); // 1.ts
 
-  currentTime = 1;
-  bufferEnd = 10;
+  // seek to a discontinuity
+  player.tech.setCurrentTime(10);
+  bufferEnd = 9.9;
+  clock.tick(1);
+  standardXHRResponse(requests.pop()); // 1.ts
   player.tech.hls.checkBuffer_();
-
-  standardXHRResponse(requests.pop()); // 2.ts
-
-  // seek to the discontinuity
-  player.currentTime(10);
-  tags.push({ pts: 0, bytes: new Uint8Array(1) });
-  tags.push({ pts: 11 * 1000, bytes: new Uint8Array(1) });
-  standardXHRResponse(requests.pop()); // 1.ts, again
-  strictEqual(aborts, 1, 'aborted once for the seek');
-
-  // the source buffer empties. is 2.ts still in the segment buffer?
-  player.trigger('waiting');
-  strictEqual(aborts, 1, 'cleared the segment buffer on a seek');
+  standardXHRResponse(requests.pop()); // 2.ts, again
+  equal(player.tech.hls.sourceBuffer.timestampOffset,
+        10,
+        'set the timestamp offset');
 });
 
-test('seeking does not fail when targeted between segments', function() {
-  var tags = [], currentTime, segmentUrl;
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
+QUnit.skip('tracks segment end times as they are buffered', function() {
+  var bufferEnd = 0;
+  player.src({
+    src: 'media.m3u8',
+    type: 'application/x-mpegURL'
+  });
+  openMediaSource(player);
+
+  // as new segments are downloaded, the buffer end is updated
+  player.tech.buffered = function() {
+    return videojs.createTimeRange(0, bufferEnd);
+  };
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+
+  // 0.ts is shorter than advertised
+  standardXHRResponse(requests.shift());
+  equal(player.tech.hls.mediaSource.duration, 20, 'original duration is from the m3u8');
+
+  bufferEnd = 9.5;
+  player.tech.hls.sourceBuffer.trigger('update');
+  player.tech.hls.sourceBuffer.trigger('updateend');
+  equal(player.tech.duration(), 10 + 9.5, 'updated duration');
+  equal(player.tech.hls.appendingSegmentInfo_, null, 'cleared the appending segment');
+});
+
+QUnit.skip('seeking does not fail when targeted between segments', function() {
+  var currentTime, segmentUrl;
   player.src({
     src: 'media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -2326,22 +2266,19 @@ test('seeking does not fail when targeted between segments', function() {
   };
 
   standardXHRResponse(requests.shift()); // media
-  tags.push({ pts: 100, bytes: new Uint8Array(1) },
-            { pts: 9 * 1000 + 100, bytes: new Uint8Array(1) });
   standardXHRResponse(requests.shift()); // segment 0
   player.tech.hls.checkBuffer_();
-  tags.push({ pts: 9.5 * 1000 + 100, bytes: new Uint8Array(1) },
-            { pts: 20 * 1000 + 100, bytes: new Uint8Array(1) });
   segmentUrl = requests[0].url;
   standardXHRResponse(requests.shift()); // segment 1
 
   // seek to a time that is greater than the last tag in segment 0 but
   // less than the first in segment 1
-  player.currentTime(9.4);
+  // FIXME: it's not possible to seek here without timestamp-based
+  // segment durations
+  player.tech.setCurrentTime(9.4);
+  clock.tick(1);
   equal(requests[0].url, segmentUrl, 'requested the later segment');
 
-  tags.push({ pts: 9.5 * 1000 + 100, bytes: new Uint8Array(1) },
-            { pts: 20 * 1000 + 100, bytes: new Uint8Array(1) });
   standardXHRResponse(requests.shift()); // segment 1
   player.tech.trigger('seeked');
   equal(player.currentTime(), 9.5, 'seeked to the later time');
@@ -2986,7 +2923,7 @@ test('treats invalid keys as a key request failure', function() {
   equal(bytes.length, 0, 'did not append bytes');
 
   // second segment request
-  requests[0].response = new Uint8Array([1, 2])
+  requests[0].response = new Uint8Array([1, 2]);
   requests.shift().respond(200, null, '');
 
   equal(bytes.length, 1, 'appended bytes');
