@@ -114,6 +114,7 @@ var
       };
       this.parseSegmentBinaryData = function() {};
       this.flushTags = function() {};
+      this.flushAudio = function() {};
       this.tagsAvailable = function() {
         return tags.length;
       };

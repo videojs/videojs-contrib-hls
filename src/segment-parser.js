@@ -90,6 +90,10 @@
       h264Stream.finishFrame();
     };
 
+    self.flushAudio = function() {
+      aacStream.flush();
+    };
+
     /**
      * Returns whether a call to `getNextTag()` will be successful.
      * @return {boolean} whether there is at least one transmuxed FLV

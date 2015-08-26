@@ -29,6 +29,10 @@ window.videojs.Hls.AacStream = function() {
 
   this.tags = [];
 
+  this.flush = function() {
+    state = 0;
+  };
+
   // (pts:uint):void
   this.setTimeStampOffset = function(pts) {
 
@@ -45,7 +49,7 @@ window.videojs.Hls.AacStream = function() {
 
     // If data is aligned, flush all internal buffers
     if (dataAligned) {
-      state = 0;
+      this.flush();
     }
   };
 
