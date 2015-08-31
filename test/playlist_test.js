@@ -536,4 +536,29 @@
           'allows seeking no further than three target durations from the end');
   });
 
+  test('adjustable live buffer is functional', function() {
+    var playlist = {
+      mediaSequence: 0,
+      segments: [{
+        duration: 7,
+        uri: '0.ts'
+      }, {
+        duration: 10,
+        uri: '1.ts'
+      }, {
+        duration: 10,
+        uri: '2.ts'
+      }, {
+        duration: 10,
+        uri: '3.ts'
+      }]}, seekable;
+
+    Playlist.setLiveTargetDurations(playlist, 1);
+    seekable = Playlist.seekable(playlist);
+
+    equal(seekable.length, 1, 'there are seekable ranges');
+    equal(seekable.start(0), 0, 'starts at zero');
+    equal(seekable.end(0), 27, 'ends one target duration from the last segment');
+  });
+
 })(window, window.videojs);

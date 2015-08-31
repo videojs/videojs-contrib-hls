@@ -5,7 +5,7 @@
   'use strict';
 
   var DEFAULT_TARGET_DURATION = 10;
-  var accumulateDuration, ascendingNumeric, duration, intervalDuration, optionalMin, optionalMax, rangeDuration, seekable;
+  var accumulateDuration, ascendingNumeric, duration, intervalDuration, optionalMin, optionalMax, rangeDuration, liveTargetDurations, setLiveTargetDurations, seekable;
 
   // Math.min that will return the alternative input if one of its
   // parameters in undefined
@@ -236,6 +236,21 @@
                             includeTrailingTime);
   };
 
+  liveTargetDurations = function(playlist) {
+    if (!playlist.liveTargetDurations_) {
+      playlist.liveTargetDurations_ = 3;
+    }
+    return playlist.liveTargetDurations_;
+  };
+
+  setLiveTargetDurations = function(playlist, numTargetDurations) {
+    if (numTargetDurations > 1) {
+      playlist.liveTargetDurations_ = numTargetDurations;
+    } else {
+      playlist.liveTargetDurations_ = 1;
+    }
+  };
+
   /**
    * Calculates the interval of time that is currently seekable in a
    * playlist. The returned time ranges are relative to the earliest
@@ -269,7 +284,7 @@
     // of content from the end of the playlist
     // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
     if (!playlist.endList) {
-      liveBuffer = targetDuration * 3;
+      liveBuffer = targetDuration * liveTargetDurations(playlist);
       // walk backward from the last available segment and track how
       // much media time has elapsed until three target durations have
       // been traversed. if a segment is part of the interval being
@@ -292,6 +307,8 @@
   // exports
   videojs.Hls.Playlist = {
     duration: duration,
+    liveTargetDurations: liveTargetDurations,
+    setLiveTargetDurations: setLiveTargetDurations,
     seekable: seekable
   };
 })(window, window.videojs);
