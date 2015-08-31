@@ -42,7 +42,6 @@ videojs.Hls = videojs.Flash.extend({
     });
     this.on(player, ['play', 'loadedmetadata'], this.setupFirstPlay);
 
-    this.liveNumTargetDurations_ = 3;
     // TODO: After video.js#1347 is pulled in remove these lines
     this.currentTime = videojs.Hls.prototype.currentTime;
     this.setCurrentTime = videojs.Hls.prototype.setCurrentTime;
@@ -219,7 +218,7 @@ videojs.Hls.getMediaIndexForLive_ = function(selectedPlaylist) {
 
   var tailIterator = selectedPlaylist.segments.length,
       tailDuration = 0,
-      targetTail = (selectedPlaylist.targetDuration || 10) * this.player().hls.liveNumTargetDurations();
+      targetTail = (selectedPlaylist.targetDuration || 10) * videojs.Hls.Playlist.liveTargetDurations(selectedPlaylist);
 
   while (tailDuration < targetTail && tailIterator > 0) {
     tailDuration += selectedPlaylist.segments[tailIterator - 1].duration;
@@ -248,6 +247,18 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   }
 
   sourceBuffer.appendBuffer(this.segmentParser_.getFlvHeader());
+};
+
+videojs.Hls.prototype.setLiveTargetDurations = function(num){
+  var setForEachPlaylist = function() {
+    videojs.Hls.Playlist.setLiveTargetDurations(this.playlists.media(), num);
+  };
+
+  this.on('mediachange', setForEachPlaylist);
+
+  this.one('loadedplaylist', function() {
+    this.off('mediachange', setForEachPlaylist);
+  });
 };
 
 // register event listeners to transform in-band metadata events into
@@ -478,18 +489,6 @@ videojs.Hls.prototype.seekable = function() {
   startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
   return videojs.createTimeRange(startOffset,
                                  startOffset + (currentSeekable.end(0) - currentSeekable.start(0)));
-};
-
-videojs.Hls.prototype.liveNumTargetDurations = function() {
-  return this.liveNumTargetDurations_;
-};
-
-videojs.Hls.prototype.setLiveNumTargetDurations = function(numTargetDurations) {
-  if (numTargetDurations > 1) {
-    this.liveNumTargetDurations_ = numTargetDurations;
-  } else {
-    this.liveNumTargetDurations_ = 1;
-  }
 };
 
 /**
