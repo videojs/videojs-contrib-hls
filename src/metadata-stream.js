@@ -28,33 +28,33 @@
     tagParsers = {
       'TXXX': function(tag) {
         var i;
-        if (tag.data[0] !== 3) {
+        if (tag.value[0] !== 3) {
           // ignore frames with unrecognized character encodings
           return;
         }
 
-        for (i = 1; i < tag.data.length; i++) {
-          if (tag.data[i] === 0) {
+        for (i = 1; i < tag.value.length; i++) {
+          if (tag.value[i] === 0) {
             // parse the text fields
-            tag.description = parseUtf8(tag.data, 1, i);
+            tag.description = parseUtf8(tag.value, 1, i);
             // do not include the null terminator in the tag value
-            tag.value = parseUtf8(tag.data, i + 1, tag.data.length - 1);
+            tag.data = parseUtf8(tag.value, i + 1, tag.value.length - 1);
             break;
           }
         }
       },
       'WXXX': function(tag) {
         var i;
-        if (tag.data[0] !== 3) {
+        if (tag.value[0] !== 3) {
           // ignore frames with unrecognized character encodings
           return;
         }
 
-        for (i = 1; i < tag.data.length; i++) {
-          if (tag.data[i] === 0) {
+        for (i = 1; i < tag.value.length; i++) {
+          if (tag.value[i] === 0) {
             // parse the description and URL fields
-            tag.description = parseUtf8(tag.data, 1, i);
-            tag.url = parseUtf8(tag.data, i + 1, tag.data.length);
+            tag.description = parseUtf8(tag.value, 1, i);
+            tag.url = parseUtf8(tag.value, i + 1, tag.value.length);
             break;
           }
         }
@@ -62,14 +62,14 @@
       'PRIV': function(tag) {
         var i;
 
-        for (i = 0; i < tag.data.length; i++) {
-          if (tag.data[i] === 0) {
+        for (i = 0; i < tag.value.length; i++) {
+          if (tag.value[i] === 0) {
             // parse the description and URL fields
-            tag.owner = parseIso88591(tag.data, 0, i);
+            tag.owner = parseIso88591(tag.value, 0, i);
             break;
           }
         }
-        tag.privateData = tag.data.subarray(i + 1);
+        tag.privateData = tag.value.subarray(i + 1);
       }
     },
     MetadataStream;
@@ -187,14 +187,14 @@
         }
 
         frame = {
-          id: String.fromCharCode(tag.data[frameStart],
+          key: String.fromCharCode(tag.data[frameStart],
                                   tag.data[frameStart + 1],
                                   tag.data[frameStart + 2],
                                   tag.data[frameStart + 3]),
-          data: tag.data.subarray(frameStart + 10, frameStart + frameSize + 10)
+          value: tag.data.subarray(frameStart + 10, frameStart + frameSize + 10)
         };
-        if (tagParsers[frame.id]) {
-          tagParsers[frame.id](frame);
+        if (tagParsers[frame.key]) {
+          tagParsers[frame.key](frame);
         }
         tag.frames.push(frame);
 
