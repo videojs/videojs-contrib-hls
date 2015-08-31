@@ -42,7 +42,7 @@ videojs.Hls = videojs.Flash.extend({
     });
     this.on(player, ['play', 'loadedmetadata'], this.setupFirstPlay);
 
-
+    this.liveNumTargetDurations_ = 3;
     // TODO: After video.js#1347 is pulled in remove these lines
     this.currentTime = videojs.Hls.prototype.currentTime;
     this.setCurrentTime = videojs.Hls.prototype.setCurrentTime;
@@ -219,7 +219,7 @@ videojs.Hls.getMediaIndexForLive_ = function(selectedPlaylist) {
 
   var tailIterator = selectedPlaylist.segments.length,
       tailDuration = 0,
-      targetTail = (selectedPlaylist.targetDuration || 10) * 3;
+      targetTail = (selectedPlaylist.targetDuration || 10) * this.player().hls.liveNumTargetDurations();
 
   while (tailDuration < targetTail && tailIterator > 0) {
     tailDuration += selectedPlaylist.segments[tailIterator - 1].duration;
@@ -478,6 +478,18 @@ videojs.Hls.prototype.seekable = function() {
   startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
   return videojs.createTimeRange(startOffset,
                                  startOffset + (currentSeekable.end(0) - currentSeekable.start(0)));
+};
+
+videojs.Hls.prototype.liveNumTargetDurations = function() {
+  return this.liveNumTargetDurations_;
+};
+
+videojs.Hls.prototype.setLiveNumTargetDurations = function(numTargetDurations) {
+  if (numTargetDurations > 1) {
+    this.liveNumTargetDurations_ = numTargetDurations;
+  } else {
+    this.liveNumTargetDurations_ = 1;
+  }
 };
 
 /**
