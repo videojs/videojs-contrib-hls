@@ -69,7 +69,7 @@
             break;
           }
         }
-        tag.privateData = tag.value.subarray(i + 1);
+        tag.data = tag.value.subarray(i + 1);
       }
     },
     MetadataStream;

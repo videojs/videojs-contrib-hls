@@ -287,7 +287,7 @@
     equal(events[0].frames.length, 1, 'parsed a frame');
     equal(events[0].frames[0].key, 'PRIV', 'frame id is PRIV');
     equal(events[0].frames[0].owner, 'priv-owner@example.com', 'parsed the owner');
-    deepEqual(new Uint8Array(events[0].frames[0].privateData),
+    deepEqual(new Uint8Array(events[0].frames[0].data),
               new Uint8Array(payload),
               'parsed the frame private data');
 
