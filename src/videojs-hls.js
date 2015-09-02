@@ -210,6 +210,14 @@ videojs.Hls.prototype.src = function(src) {
   }.bind(this));
 
   this.playlists.on('error', function() {
+    // close the media source with the appropriate error type
+    if (this.playlists.error.code === 2) {
+      this.mediaSource.endOfStream('network');
+    } else if (this.playlists.error.code === 4) {
+      this.mediaSource.endOfStream('decode');
+    }
+
+    // if this error is unrecognized, pass it along to the tech
     this.tech_.error(this.playlists.error);
   }.bind(this));
 
@@ -425,7 +433,7 @@ videojs.Hls.prototype.play = function() {
 
   // if the viewer has paused and we fell out of the live window,
   // seek forward to the earliest available position
-  if (this.tech_.duration() === Infinity) {
+  if (this.duration() === Infinity) {
     if (this.tech_.currentTime() < this.tech_.seekable().start(0)) {
       this.tech_.setCurrentTime(this.tech_.seekable().start(0));
     }
@@ -903,11 +911,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     return;
   }
 
-
-
-
   segmentInfo = segmentBuffer[0];
-
   mediaIndex = segmentInfo.mediaIndex;
   playlist = segmentInfo.playlist;
   offset = segmentInfo.offset;
@@ -969,31 +973,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   this.addCuesForMetadata_(segmentInfo);
   //this.updateDuration(this.playlists.media());
-
-
-  // // if we're refilling the buffer after a seek, scan through the muxed
-  // // FLV tags until we find the one that is closest to the desired
-  // // playback time
-  // if (typeof offset === 'number') {
-  //   if (tags.length) {
-  //     // determine the offset within this segment we're seeking to
-  //     segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
-  //     segmentOffset += videojs.Hls.Playlist.duration(playlist,
-  //                                                    playlist.mediaSequence,
-  //                                                    playlist.mediaSequence + mediaIndex);
-  //     segmentOffset = offset - (segmentOffset * 1000);
-  //     ptsTime = segmentOffset + tags[0].pts;
-
-  //     while (tags[i + 1] && tags[i].pts < ptsTime) {
-  //       i++;
-  //     }
-
-  //     // tell the SWF the media position of the first tag we'll be delivering
-  //     this.tech_.el().vjs_setProperty('currentTime', ((tags[i].pts - ptsTime + offset) * 0.001));
-
-  //     tags = tags.slice(i);
-  //   }
-  // }
 
   // // when we're crossing a discontinuity, inject metadata to indicate
   // // that the decoder should be reset appropriately
