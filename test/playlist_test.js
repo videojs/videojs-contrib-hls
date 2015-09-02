@@ -468,8 +468,8 @@
     equal(seekable.length, 0, 'no seekable ranges from a master playlist');
   });
 
-  test('seekable end is three target durations from the actual end of live playlists', function() {
-    var seekable = Playlist.seekable({
+  test('seekable end is NUM_TARGET_DURATIONS from the actual end of live playlists', function() {
+    var seekableEnd, seekable = Playlist.seekable({
       mediaSequence: 0,
       segments: [{
         duration: 7,
@@ -485,13 +485,22 @@
         uri: '3.ts'
       }]
     });
+
+    if (videojs.Hls.NUM_TARGET_DURATIONS <= 3) {
+      seekableEnd = 37 - (10 * videojs.Hls.NUM_TARGET_DURATIONS);
+    } else {
+      //if we make this const bigger than 3, we need to update the manifest in this test to remain useful,
+      //so fail to remind someone to do that.
+      seekableEnd = -1;
+    }
+
     equal(seekable.length, 1, 'there are seekable ranges');
     equal(seekable.start(0), 0, 'starts at zero');
-    equal(seekable.end(0), 7, 'ends three target durations from the last segment');
+    equal(seekable.end(0), seekableEnd, 'ends NUM_TARGET_DURATIONS from the last segment');
   });
 
   test('only considers available segments', function() {
-    var seekable = Playlist.seekable({
+    var seekableEnd, seekable = Playlist.seekable({
       targetDuration: 10,
       mediaSequence: 7,
       segments: [{
@@ -504,9 +513,18 @@
         uri: '11.ts'
       }]
     });
+
+    if (videojs.Hls.NUM_TARGET_DURATIONS <= 3) {
+      seekableEnd = 40 - (10 * videojs.Hls.NUM_TARGET_DURATIONS);
+    } else {
+      //if we make this const bigger than 3, we need to update the manifest in this test to remain useful,
+      //so fail to remind someone to do that.
+      seekableEnd = -1;
+    }
+
     equal(seekable.length, 1, 'there are seekable ranges');
     equal(seekable.start(0), 0, 'starts at the earliest available segment');
-    equal(seekable.end(0), 10, 'ends three target durations from the last available segment');
+    equal(seekable.end(0), seekableEnd, 'ends Hls.NUM_TARGET_DURATIONS from the last available segment');
   });
 
   test('seekable end accounts for non-standard target durations', function() {
@@ -532,8 +550,8 @@
     });
     equal(seekable.start(0), 0, 'starts at the earliest available segment');
     equal(seekable.end(0),
-          9 - (2 * 3),
-          'allows seeking no further than three target durations from the end');
+          9 - (2 * videojs.Hls.NUM_TARGET_DURATIONS),
+          'allows seeking no further than NUM_TARGET_DURATIONS from the end');
   });
 
 })(window, window.videojs);
