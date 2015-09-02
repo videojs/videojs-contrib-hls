@@ -372,7 +372,7 @@ test('calculates the duration if needed', function() {
 });
 
 test('translates seekable by the starting time for live playlists', function() {
-  var seekable;
+  var seekable, seekableEnd;
   player.src({
     src: 'media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -391,9 +391,18 @@ test('translates seekable by the starting time for live playlists', function() {
                            '3.ts\n');
 
   seekable = player.seekable();
+
+  if (videojs.Hls.NUM_TARGET_DURATIONS <= 3) {
+    seekableEnd = 40 - (10 * videojs.Hls.NUM_TARGET_DURATIONS);
+  } else {
+    //if we make this const bigger than 3, we need to update the manifest in this test to remain useful,
+    //so fail to remind someone to do that.
+    seekableEnd = -1;
+  }
+
   equal(seekable.length, 1, 'one seekable range');
   equal(seekable.start(0), 0, 'the earliest possible position is at zero');
-  equal(seekable.end(0), 10, 'end is relative to the start');
+  equal(seekable.end(0), seekableEnd, 'end is relative to the start');
 });
 
 test('starts downloading a segment on loadedmetadata', function() {
@@ -1789,39 +1798,6 @@ test('updates the media index when a playlist reloads', function() {
   player.hls.playlists.trigger('loadedplaylist');
 
   strictEqual(player.hls.mediaIndex, 2, 'mediaIndex is updated after the reload');
-});
-
-test('live playlist starts three target durations before live', function() {
-  var mediaPlaylist;
-  player.src({
-    src: 'live.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  requests.shift().respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXT-X-MEDIA-SEQUENCE:101\n' +
-                           '#EXTINF:10,\n' +
-                           '0.ts\n' +
-                           '#EXTINF:10,\n' +
-                           '1.ts\n' +
-                           '#EXTINF:10,\n' +
-                           '2.ts\n' +
-                           '#EXTINF:10,\n' +
-                           '3.ts\n' +
-                           '#EXTINF:10,\n' +
-                           '4.ts\n');
-
-  equal(player.hls.mediaIndex, 0, 'waits for the first play to start buffering');
-  equal(requests.length, 0, 'no outstanding segment request');
-
-  player.hls.paused = function() { return false; };
-  player.play();
-  mediaPlaylist = player.hls.playlists.media();
-  equal(player.hls.mediaIndex, 1, 'mediaIndex is updated at play');
-  equal(player.currentTime(), player.seekable().end(0));
-
-  equal(requests.length, 1, 'begins buffering');
 });
 
 test('does not reset live currentTime if mediaIndex is one beyond the last available segment', function() {
