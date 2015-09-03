@@ -207,9 +207,9 @@
 
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 1, 'parsed one frame');
-    equal(events[0].frames[0].key, 'TXXX', 'parsed the frame id');
+    equal(events[0].frames[0].key, 'TXXX', 'parsed the frame key');
     equal(events[0].frames[0].description, 'get done', 'parsed the description');
-    deepEqual(JSON.parse(events[0].frames[0].data), { key: 'value' }, 'parsed the value');
+    deepEqual(JSON.parse(events[0].frames[0].data), { key: 'value' }, 'parsed the data');
   });
 
   test('parses WXXX frames', function() {
@@ -233,7 +233,7 @@
 
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 1, 'parsed one frame');
-    equal(events[0].frames[0].key, 'WXXX', 'parsed the frame id');
+    equal(events[0].frames[0].key, 'WXXX', 'parsed the frame key');
     equal(events[0].frames[0].description, '', 'parsed the description');
     equal(events[0].frames[0].url, url, 'parsed the value');
   });
@@ -285,7 +285,7 @@
 
     equal(events.length, 1, 'parsed a tag');
     equal(events[0].frames.length, 1, 'parsed a frame');
-    equal(events[0].frames[0].key, 'PRIV', 'frame id is PRIV');
+    equal(events[0].frames[0].key, 'PRIV', 'frame key is PRIV');
     equal(events[0].frames[0].owner, 'priv-owner@example.com', 'parsed the owner');
     deepEqual(new Uint8Array(events[0].frames[0].data),
               new Uint8Array(payload),
