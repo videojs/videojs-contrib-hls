@@ -141,10 +141,8 @@
     // add in the PTS interval in seconds between them
     if (right >= left) {
       result += 0.001 *
-        (optionalMax(playlist.segments[right].maxVideoPts,
-                  playlist.segments[right].maxAudioPts) -
-         optionalMin(playlist.segments[left].minVideoPts,
-                  playlist.segments[left].minAudioPts));
+        optionalMax(playlist.segments[right].maxVideoPts - playlist.segments[left].minVideoPts,
+            playlist.segments[right].maxAudioPts - playlist.segments[left].minAudioPts);
     }
 
     return result;
