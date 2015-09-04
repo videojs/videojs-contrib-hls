@@ -6,6 +6,9 @@ _(none)_
 
 --------------------
 
+## 0.17.9 (2015-09-04)
+_(none)_
+
 ## 0.17.8 (2015-08-11)
 * Reverting triggering of &#x27;loadstart&#x27; event to match the revert done to the swf ([view](https://github.com/videojs/videojs-contrib-hls/pull/362))
 
