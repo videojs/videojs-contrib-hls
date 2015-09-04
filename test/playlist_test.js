@@ -468,7 +468,7 @@
     equal(seekable.length, 0, 'no seekable ranges from a master playlist');
   });
 
-  test('seekable end is NUM_TARGET_DURATIONS from the actual end of live playlists', function() {
+  test('seekable end is LIVE_SYNC_DURATION_COUNT from the actual end of live playlists', function() {
     var seekableEnd, seekable = Playlist.seekable({
       mediaSequence: 0,
       segments: [{
@@ -486,8 +486,8 @@
       }]
     });
 
-    if (videojs.Hls.NUM_TARGET_DURATIONS <= 3) {
-      seekableEnd = 37 - (10 * videojs.Hls.NUM_TARGET_DURATIONS);
+    if (videojs.Hls.LIVE_SYNC_DURATION_COUNT <= 3) {
+      seekableEnd = 37 - (10 * videojs.Hls.LIVE_SYNC_DURATION_COUNT);
     } else {
       //if we make this const bigger than 3, we need to update the manifest in this test to remain useful,
       //so fail to remind someone to do that.
@@ -496,7 +496,7 @@
 
     equal(seekable.length, 1, 'there are seekable ranges');
     equal(seekable.start(0), 0, 'starts at zero');
-    equal(seekable.end(0), seekableEnd, 'ends NUM_TARGET_DURATIONS from the last segment');
+    equal(seekable.end(0), seekableEnd, 'ends LIVE_SYNC_DURATION_COUNT from the last segment');
   });
 
   test('only considers available segments', function() {
@@ -514,8 +514,8 @@
       }]
     });
 
-    if (videojs.Hls.NUM_TARGET_DURATIONS <= 3) {
-      seekableEnd = 40 - (10 * videojs.Hls.NUM_TARGET_DURATIONS);
+    if (videojs.Hls.LIVE_SYNC_DURATION_COUNT <= 3) {
+      seekableEnd = 40 - (10 * videojs.Hls.LIVE_SYNC_DURATION_COUNT);
     } else {
       //if we make this const bigger than 3, we need to update the manifest in this test to remain useful,
       //so fail to remind someone to do that.
@@ -524,7 +524,7 @@
 
     equal(seekable.length, 1, 'there are seekable ranges');
     equal(seekable.start(0), 0, 'starts at the earliest available segment');
-    equal(seekable.end(0), seekableEnd, 'ends Hls.NUM_TARGET_DURATIONS from the last available segment');
+    equal(seekable.end(0), seekableEnd, 'ends Hls.LIVE_SYNC_DURATION_COUNT from the last available segment');
   });
 
   test('seekable end accounts for non-standard target durations', function() {
@@ -550,8 +550,8 @@
     });
     equal(seekable.start(0), 0, 'starts at the earliest available segment');
     equal(seekable.end(0),
-          9 - (2 * videojs.Hls.NUM_TARGET_DURATIONS),
-          'allows seeking no further than NUM_TARGET_DURATIONS from the end');
+          9 - (2 * videojs.Hls.LIVE_SYNC_DURATION_COUNT),
+          'allows seeking no further than LIVE_SYNC_DURATION_COUNT from the end');
   });
 
 })(window, window.videojs);

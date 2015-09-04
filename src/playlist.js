@@ -269,7 +269,7 @@
     // of content from the end of the playlist
     // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
     if (!playlist.endList) {
-      liveBuffer = targetDuration * videojs.Hls.NUM_TARGET_DURATIONS;
+      liveBuffer = targetDuration * videojs.Hls.LIVE_SYNC_DURATION_COUNT;
       // walk backward from the last available segment and track how
       // much media time has elapsed until three target durations have
       // been traversed. if a segment is part of the interval being

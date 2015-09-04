@@ -392,8 +392,8 @@ test('translates seekable by the starting time for live playlists', function() {
 
   seekable = player.seekable();
 
-  if (videojs.Hls.NUM_TARGET_DURATIONS <= 3) {
-    seekableEnd = 40 - (10 * videojs.Hls.NUM_TARGET_DURATIONS);
+  if (videojs.Hls.LIVE_SYNC_DURATION_COUNT <= 3) {
+    seekableEnd = 40 - (10 * videojs.Hls.LIVE_SYNC_DURATION_COUNT);
   } else {
     //if we make this const bigger than 3, we need to update the manifest in this test to remain useful,
     //so fail to remind someone to do that.
