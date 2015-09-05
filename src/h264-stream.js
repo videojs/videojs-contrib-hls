@@ -182,7 +182,7 @@
         } else {
           // If we get here we have 00 00 00 or 00 00 01
           if (data[offset + 2] === 1) {
-            if (offset > start) {
+            if (this._h264Frame && offset > start) {
               this._h264Frame.writeBytes(data, start, offset - start);
             }
             this._state = 3;
@@ -193,7 +193,7 @@
           if (end - offset >= 4 &&
               data[offset + 2] === 0 &&
               data[offset + 3] === 1) {
-            if (offset > start) {
+            if (this._h264Frame && offset > start) {
               this._h264Frame.writeBytes(data, start, offset - start);
             }
             this._state = 3;
