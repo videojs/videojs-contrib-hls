@@ -55,6 +55,13 @@ videojs.Hls = videojs.Flash.extend({
     this.startCheckingBuffer_();
 
     videojs.Hls.prototype.src.call(this, options.source && options.source.src);
+
+    // add the debugger panel if it's been included
+    if (player.el().getAttribute('debug') !== null && videojs.Hls.Debugger) {
+      player.ready(function() {
+        this.debugger_ = new videojs.Hls.Debugger(player);
+      });
+    }
   }
 });
 

@@ -1,0 +1,16 @@
+.vjs-hls-debug {
+  background-color: #000;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-left: thin solid #fff;
+  box-sizing: border-box;
+  color: #fff;
+  font-size: 14px;
+  margin: 0;
+  padding: 8px;
+  position: absolute;
+
+  top: 0;
+  right: 0;
+  width: 250px;
+  height: 100%;
+}
