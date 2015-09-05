@@ -438,6 +438,11 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
     this.sourceBuffer.abort();
   }
 
+  // flush audio on seek
+  if (this.segmentParser_) {
+    this.segmentParser_.flushAudio();
+  }
+
   // cancel outstanding requests and buffer appends
   this.cancelSegmentXhr();
 
