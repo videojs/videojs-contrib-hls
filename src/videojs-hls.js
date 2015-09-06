@@ -864,6 +864,9 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
 
 videojs.Hls.prototype.drainBuffer = function(event) {
   var
+    player = this.player(),
+    settings = player.options().hls || {},
+  
     i = 0,
     segmentInfo,
     mediaIndex,
@@ -935,7 +938,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   event = event || {};
 
   // transmux the segment data from MP2T to FLV
-  this.segmentParser_.parseSegmentBinaryData(bytes);
+  this.segmentParser_.parseSegmentBinaryData(bytes, settings.resetTimestamps ? segmentOffset : 0);
   this.segmentParser_.flushTags();
 
   tags = [];
