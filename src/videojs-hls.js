@@ -377,6 +377,7 @@ videojs.Hls.prototype.setupFirstPlay = function() {
  */
 videojs.Hls.prototype.play = function() {
   if (this.ended()) {
+    this.setCurrentTime(0);
     this.mediaIndex = 0;
   }
 
