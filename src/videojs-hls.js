@@ -992,7 +992,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
                                                  playlist.mediaSequence,
                                                  playlist.mediaSequence + mediaIndex);
 
-  this.sourceBuffer.timestampOffset = segmentOffset;
   this.sourceBuffer.appendBuffer(bytes);
 
   // we're done processing this segment
