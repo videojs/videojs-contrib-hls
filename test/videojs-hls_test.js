@@ -464,7 +464,7 @@ test('sets the duration if one is available on the playlist', function() {
   equal(events, 1, 'durationchange is fired');
 });
 
-test('calculates the duration if needed', function() {
+QUnit.skip('calculates the duration if needed', function() {
   var changes = 0;
   player.src({
     src: 'http://example.com/manifest/missingExtinf.m3u8',
