@@ -6,9 +6,6 @@ if (process.env.SAUCE_USERNAME) {
   config.multiCapabilities = [{
     browserName: 'chrome',
     platform: 'Windows 8.1'
-  }, {
-    browserName: 'firefox',
-    platform: 'Windows 8.1'
   }].map(function(caps) {
     caps.name = process.env.TRAVIS_BUILD_NUMBER + process.env.TRAVIS_BRANCH;
     caps.build = process.env.TRAVIS_BUILD_NUMBER;
