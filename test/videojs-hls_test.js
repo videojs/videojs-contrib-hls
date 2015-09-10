@@ -1327,8 +1327,10 @@ test('exposes in-band metadata events as cues', function() {
         url: 'http://example.com'
       }, {
         id: 'PRIV',
+        key: 'PRIV',
         owner: 'owner@example.com',
-        privateData: new Uint8Array([1, 2, 3])
+        privateData: new Uint8Array([1, 2, 3]),
+        data: new Uint8Array([1, 2, 3])
       }]
     });
   };
@@ -1357,6 +1359,10 @@ test('exposes in-band metadata events as cues', function() {
   equal(track.cues[2].text, '', 'did not set cue text');
   equal(track.cues[2].frame.owner, 'owner@example.com', 'set the owner');
   deepEqual(track.cues[2].frame.privateData,
+            new Uint8Array([1, 2, 3]),
+            'set the private data');
+  equal(track.cues[2].value.owner, 'owner@example.com', 'set the owner');
+  deepEqual(track.cues[2].value.data,
             new Uint8Array([1, 2, 3]),
             'set the private data');
 });
