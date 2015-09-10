@@ -1,6 +1,9 @@
 'use strict';
 
-var basename = require('path').basename;
+var
+  basename = require('path').basename,
+  mediaSourcesPath = 'node_modules/videojs-contrib-media-sources/dist/',
+  mediaSourcesDebug = mediaSourcesPath + 'videojs-media-sources.js';
 
 module.exports = function(grunt) {
   var pkg = grunt.file.readJSON('package.json');
@@ -24,16 +27,17 @@ module.exports = function(grunt) {
       },
       dist: {
         nonull: true,
-        src: ['node_modules/videojs-contrib-media-sources/dist/videojs-media-sources.js',
-              'src/videojs-hls.js',
-              'src/xhr.js',
-              'src/stream.js',
-              'src/m3u8/m3u8-parser.js',
-              'src/playlist.js',
-              'src/playlist-loader.js',
-              'node_modules/pkcs7/dist/pkcs7.unpad.js',
-              'src/decrypter.js'
-            ],
+        src: [
+          mediaSourcesDebug,
+          'src/videojs-hls.js',
+          'src/xhr.js',
+          'src/stream.js',
+          'src/m3u8/m3u8-parser.js',
+          'src/playlist.js',
+          'src/playlist-loader.js',
+          'node_modules/pkcs7/dist/pkcs7.unpad.js',
+          'src/decrypter.js'
+        ],
         dest: 'dist/videojs.hls.js'
       }
     },
@@ -93,6 +97,10 @@ module.exports = function(grunt) {
       }
     },
     watch: {
+      build: {
+        files: '<%= concat.dist.src %>',
+        tasks: ['clean', 'concat', 'uglify']
+      },
       gruntfile: {
         files: '<%= jshint.gruntfile.src %>',
         tasks: ['jshint:gruntfile']
