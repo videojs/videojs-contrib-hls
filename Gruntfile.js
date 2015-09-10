@@ -336,12 +336,15 @@ module.exports = function(grunt) {
   // Launch a Development Environment
   grunt.registerTask('dev', 'Launching Dev Environment', 'concurrent:dev');
 
-  // Default task.
-  grunt.registerTask('default',
+  grunt.registerTask('build',
                      ['clean',
-                      'test',
                       'concat',
                       'uglify']);
+
+  // Default task.
+  grunt.registerTask('default',
+                     ['test',
+                      'build']);
 
   // The test task will run `karma:saucelabs` when running in travis,
   // otherwise, it'll default to running karma in chrome.
