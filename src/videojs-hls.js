@@ -180,6 +180,8 @@ videojs.Hls.prototype.src = function(src) {
       });
     }
 
+    this.setupSourceBuffer_();
+
     selectedPlaylist = this.selectPlaylist();
     oldBitrate = oldMediaPlaylist.attributes &&
                  oldMediaPlaylist.attributes.BANDWIDTH || 0;
@@ -281,16 +283,7 @@ videojs.Hls.getMediaIndexForLive_ = function(selectedPlaylist) {
 };
 
 videojs.Hls.prototype.handleSourceOpen = function() {
-  this.sourceBuffer = this.mediaSource.addSourceBuffer('video/mp2t');
-
-  // transition the sourcebuffer to the ended state if we've hit the end of
-  // the playlist
-  this.sourceBuffer.addEventListener('updateend', function() {
-    if (this.duration() !== Infinity &&
-        this.mediaIndex === this.playlists.media().segments.length) {
-      this.mediaSource.endOfStream();
-    }
-  }.bind(this));
+  this.setupSourceBuffer_();
 
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
@@ -303,18 +296,37 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   }
 };
 
+videojs.Hls.prototype.setupSourceBuffer_ = function() {
+  var media = this.playlists.media(), mimeType;
+
+  // wait until a media playlist is available and the Media Source is
+  // attached
+  if (!media || this.mediaSource.readyState !== 'open') {
+    return;
+  }
+
+  mimeType = 'video/mp2t';
+  if (media.attributes && media.attributes.CODECS) {
+    mimeType += '; codecs="' + media.attributes.CODECS + '"';
+  }
+  this.sourceBuffer = this.mediaSource.addSourceBuffer(mimeType);
+
+  // transition the sourcebuffer to the ended state if we've hit the end of
+  // the playlist
+  this.sourceBuffer.addEventListener('updateend', function() {
+    if (this.duration() !== Infinity &&
+        this.mediaIndex === this.playlists.media().segments.length) {
+      this.mediaSource.endOfStream();
+    }
+  }.bind(this));
+};
+
 // register event listeners to transform in-band metadata events into
 // VTTCues on a text track
 videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
   var
     metadataStream = this.segmentParser_.metadataStream,
     textTrack;
-
-  // only expose metadata tracks to video.js versions that support
-  // dynamic text tracks (4.12+)
-  if (!this.tech_.addTextTrack) {
-    return;
-  }
 
   // add a metadata cue whenever a metadata event is triggered during
   // segment parsing

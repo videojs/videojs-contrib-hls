@@ -207,7 +207,7 @@
           'the title is parsed');
   });
   test('parses #EXTINF tags with carriage returns', function() {
-    var 
+    var
       manifest = '#EXTINF:13,Does anyone really use the title attribute?\r\n',
       element;
     parseStream.on('data', function(elem) {
@@ -480,6 +480,16 @@
     strictEqual(element.tagType, 'stream-inf', 'the tag type is stream-inf');
     strictEqual(element.attributes.RESOLUTION.width, 396, 'width is parsed');
     strictEqual(element.attributes.RESOLUTION.height, 224, 'heigth is parsed');
+
+    manifest = '#EXT-X-STREAM-INF:CODECS="avc1.4d400d, mp4a.40.2"\n';
+    lineStream.push(manifest);
+
+    ok(element, 'an event was triggered');
+    strictEqual(element.type, 'tag', 'the line type is tag');
+    strictEqual(element.tagType, 'stream-inf', 'the tag type is stream-inf');
+    strictEqual(element.attributes.CODECS,
+                'avc1.4d400d, mp4a.40.2',
+                'codecs are parsed');
   });
   test('parses #EXT-X-STREAM-INF with arbitrary attributes', function() {
     var
