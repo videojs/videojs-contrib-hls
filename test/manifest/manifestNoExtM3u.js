@@ -8,6 +8,7 @@
     }
   ],
   "targetDuration": 10,
+  "totalDuration": 10,
   "endList": true,
   "discontinuitySequence": 0,
   "discontinuityStarts": []

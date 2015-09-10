@@ -7,6 +7,7 @@
       "uri": "/test/ts-files/zencoder/gogo/00001.ts"
     }
   ],
+  "totalDuration": 50,
   "endList": true,
   "discontinuitySequence": 0,
   "discontinuityStarts": []
