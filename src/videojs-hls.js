@@ -335,8 +335,10 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
     for (i = 0; i < metadata.frames.length; i++) {
       frame = metadata.frames[i];
       time = segmentOffset + ((metadata.pts - minPts) * 0.001);
-      cue = new window.VTTCue(time, time, frame.value || frame.url || '');
+      /*jshint -W056 */
+      cue = new (window.WebKitDataCue || window.VTTCue)(time, time, frame.value || frame.url || '');
       cue.frame = frame;
+      cue.value = frame;
       cue.pts_ = metadata.pts;
       textTrack.addCue(cue);
     }

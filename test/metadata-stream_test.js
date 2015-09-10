@@ -147,10 +147,12 @@
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 2, 'parsed two frames');
     equal(events[0].frames[0].id, 'WXXX', 'parsed a WXXX frame');
+    equal(events[0].frames[0].key, 'WXXX', 'parsed a WXXX frame');
     deepEqual(new Uint8Array(events[0].frames[0].data),
               new Uint8Array(wxxxPayload),
               'attached the frame payload');
     equal(events[0].frames[1].id, 'XINF', 'parsed a user-defined frame');
+    equal(events[0].frames[1].key, 'XINF', 'parsed a user-defined frame');
     deepEqual(new Uint8Array(events[0].frames[1].data),
               new Uint8Array([0x04, 0x03, 0x02, 0x01]),
               'attached the frame payload');
@@ -208,8 +210,10 @@
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 1, 'parsed one frame');
     equal(events[0].frames[0].id, 'TXXX', 'parsed the frame id');
+    equal(events[0].frames[0].key, 'TXXX', 'parsed the frame key');
     equal(events[0].frames[0].description, 'get done', 'parsed the description');
     deepEqual(JSON.parse(events[0].frames[0].value), { key: 'value' }, 'parsed the value');
+    deepEqual(JSON.parse(events[0].frames[0].data), { key: 'value' }, 'parsed the data');
   });
 
   test('parses WXXX frames', function() {
@@ -234,6 +238,7 @@
     equal(events.length, 1, 'parsed one tag');
     equal(events[0].frames.length, 1, 'parsed one frame');
     equal(events[0].frames[0].id, 'WXXX', 'parsed the frame id');
+    equal(events[0].frames[0].key, 'WXXX', 'parsed the frame key');
     equal(events[0].frames[0].description, '', 'parsed the description');
     equal(events[0].frames[0].url, url, 'parsed the value');
   });
@@ -286,8 +291,12 @@
     equal(events.length, 1, 'parsed a tag');
     equal(events[0].frames.length, 1, 'parsed a frame');
     equal(events[0].frames[0].id, 'PRIV', 'frame id is PRIV');
+    equal(events[0].frames[0].key, 'PRIV', 'frame key is PRIV');
     equal(events[0].frames[0].owner, 'priv-owner@example.com', 'parsed the owner');
     deepEqual(new Uint8Array(events[0].frames[0].privateData),
+              new Uint8Array(payload),
+              'parsed the frame private data');
+    deepEqual(new Uint8Array(events[0].frames[0].data),
               new Uint8Array(payload),
               'parsed the frame private data');
 
@@ -329,7 +338,7 @@
     equal(events.length, 1, 'parsed a tag');
     equal(events[0].frames.length, 1, 'parsed a frame');
     equal(events[0].frames[0].data.byteLength,
-          owner.length + payload.length,
+          payload.length,
           'collected data across pushes');
 
     // parses subsequent fragmented tags

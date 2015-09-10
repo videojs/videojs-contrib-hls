@@ -42,6 +42,7 @@
             break;
           }
         }
+        tag.data = tag.value;
       },
       'WXXX': function(tag) {
         var i;
@@ -70,6 +71,7 @@
           }
         }
         tag.privateData = tag.data.subarray(i + 1);
+        tag.data = tag.privateData;
       }
     },
     MetadataStream;
@@ -193,6 +195,8 @@
                                   tag.data[frameStart + 3]),
           data: tag.data.subarray(frameStart + 10, frameStart + frameSize + 10)
         };
+        frame.key = frame.id;
+
         if (tagParsers[frame.id]) {
           tagParsers[frame.id](frame);
         }
