@@ -212,7 +212,8 @@ var
 
   // return an absolute version of a page-relative URL
   absoluteUrl = function(relativeUrl) {
-    return window.location.origin +
+    return window.location.protocol + '//' +
+      window.location.host +
       (window.location.pathname
          .split('/')
          .slice(0, -1)
@@ -239,6 +240,9 @@ module('HLS', {
       el.className = 'vjs-tech vjs-mock-flash';
       el.vjs_load = function() {};
       el.vjs_getProperty = function(attr) {
+        if (attr === 'buffered') {
+          return [[0,0]];
+        }
         return el[attr];
       };
       el.vjs_setProperty = function(attr, value) {
@@ -383,6 +387,26 @@ test('duration is set when the source opens after the playlist is loaded', funct
   equal(player.tech.hls.mediaSource.duration , 40, 'set the duration');
 });
 
+test('codecs are passed to the source buffer', function() {
+  var codecs = [];
+  player.src({
+    src: 'custom-codecs.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.tech.hls.mediaSource.addSourceBuffer = function(codec) {
+    codecs.push(codec);
+  };
+
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:CODECS="video, audio"\n' +
+                           'media.m3u8\n');
+  standardXHRResponse(requests.shift());
+  equal(codecs.length, 1, 'created a source buffer');
+  equal(codecs[0], 'video/mp2t; codecs="video, audio"', 'specified the codecs');
+});
+
 test('including HLS as a tech does not error', function() {
   var player = createPlayer({
     techOrder: ['hls', 'html5']
@@ -450,14 +474,14 @@ test('re-initializes the playlist loader when switching sources', function() {
 
 test('sets the duration if one is available on the playlist', function() {
   var events = 0;
-  player.on('durationchange', function() {
-    events++;
-  });
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.tech.on('durationchange', function() {
+    events++;
+  });
 
   standardXHRResponse(requests[0]);
   equal(player.tech.hls.mediaSource.duration, 40, 'set the duration');
@@ -549,7 +573,8 @@ test('recognizes domain-relative URLs', function() {
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
   strictEqual(requests[1].url,
-              window.location.origin + '/00001.ts',
+              window.location.protocol + '//' + window.location.host +
+              '/00001.ts',
               'the first segment is requested');
 });
 
@@ -565,11 +590,11 @@ test('re-initializes the handler for each source', function() {
   openMediaSource(player);
   firstPlaylists = player.tech.hls.playlists;
   firstMSE = player.tech.hls.mediaSource;
+  standardXHRResponse(requests.shift());
+  standardXHRResponse(requests.shift());
   player.tech.hls.sourceBuffer.abort = function() {
     aborts++;
   };
-  standardXHRResponse(requests.shift());
-  standardXHRResponse(requests.shift());
 
   player.src({
     src: 'manifest/master.m3u8',
@@ -1329,9 +1354,11 @@ test('when outstanding XHRs are cancelled, they get aborted properly', function(
 test('segmentXhr is properly nulled out when dispose is called', function() {
   var
     readystatechanges = 0,
-    oldDispose = Flash.prototype.dispose;
+    oldDispose = Flash.prototype.dispose,
+    player;
   Flash.prototype.dispose = function() {};
 
+  player = createPlayer();
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -2108,7 +2135,7 @@ test('does not break if the playlist has no segments', function() {
 });
 
 test('clears the segment buffer on seek', function() {
-  var currentTime, bufferEnd, oldCurrentTime;
+  var currentTime, oldCurrentTime;
 
   player.src({
     src: 'discontinuity.m3u8',
@@ -2122,8 +2149,8 @@ test('clears the segment buffer on seek', function() {
     }
     return currentTime;
   };
-  player.buffered = function() {
-    return videojs.createTimeRange(0, bufferEnd);
+  player.tech.buffered = function() {
+    return videojs.createTimeRange();
   };
 
   requests.pop().respond(200, null,
@@ -2139,7 +2166,6 @@ test('clears the segment buffer on seek', function() {
 
   // play to 6s to trigger the next segment request
   currentTime = 6;
-  bufferEnd = 10;
   clock.tick(6000);
 
   standardXHRResponse(requests.pop()); // 2.ts
@@ -2346,6 +2372,17 @@ test('aborts the source buffer on disposal', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.dispose();
+  ok(true, 'disposed before creating the source buffer');
+  requests.length = 0;
+
+  player = createPlayer();
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift());
   player.tech.hls.sourceBuffer.abort = function() {
     aborts++;
   };
@@ -2708,9 +2745,6 @@ test('skip segments if key requests fail more than once', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.tech.hls.sourceBuffer.appendBuffer = function(chunk) {
-    bytes.push(chunk);
-  };
   player.tech.trigger('play');
 
   requests.shift().respond(200, null,
@@ -2721,6 +2755,9 @@ test('skip segments if key requests fail more than once', function() {
                          '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=53"\n' +
                          '#EXTINF:15.0,\n' +
                          'http://media.example.com/fileSequence53-A.ts\n');
+  player.tech.hls.sourceBuffer.appendBuffer = function(chunk) {
+    bytes.push(chunk);
+  };
   standardXHRResponse(requests.shift()); // segment 1
   requests.shift().respond(404); // fail key
   requests.shift().respond(404); // fail key, again
@@ -2878,9 +2915,6 @@ test('treats invalid keys as a key request failure', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.tech.hls.sourceBuffer.appendBuffer = function(chunk) {
-    bytes.push(chunk);
-  };
   player.tech.trigger('play');
   requests.shift().respond(200, null,
                            '#EXTM3U\n' +
@@ -2891,6 +2925,9 @@ test('treats invalid keys as a key request failure', function() {
                            '#EXT-X-KEY:METHOD=NONE\n' +
                            '#EXTINF:15.0,\n' +
                            'http://media.example.com/fileSequence52-B.ts\n');
+  player.tech.hls.sourceBuffer.appendBuffer = function(chunk) {
+    bytes.push(chunk);
+  };
   // segment request
   standardXHRResponse(requests.shift());
   // keys should be 16 bytes long

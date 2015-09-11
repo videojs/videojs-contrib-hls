@@ -10,10 +10,10 @@ var
   // a fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.1,
+  Component = videojs.getComponent('Component'),
 
   // the amount of time to wait between checking the state of the buffer
   bufferCheckInterval = 500,
-  Component = videojs.getComponent('Component'),
 
   keyXhr,
   keyFailed,
@@ -133,7 +133,7 @@ videojs.Hls.prototype.src = function(src) {
 
   // We need to trigger this asynchronously to give others the chance
   // to bind to the event when a source is set at player creation
-  setTimeout(function() {
+  this.setTimeout(function() {
     this.tech_.trigger('loadstart');
   }.bind(this), 1);
 
@@ -179,6 +179,8 @@ videojs.Hls.prototype.src = function(src) {
         bandwidth: this.playlists.bandwidth * 5
       });
     }
+
+    this.setupSourceBuffer_();
 
     selectedPlaylist = this.selectPlaylist();
     oldBitrate = oldMediaPlaylist.attributes &&
@@ -281,16 +283,7 @@ videojs.Hls.getMediaIndexForLive_ = function(selectedPlaylist) {
 };
 
 videojs.Hls.prototype.handleSourceOpen = function() {
-  this.sourceBuffer = this.mediaSource.addSourceBuffer('video/mp2t');
-
-  // transition the sourcebuffer to the ended state if we've hit the end of
-  // the playlist
-  this.sourceBuffer.addEventListener('updateend', function() {
-    if (this.duration() !== Infinity &&
-        this.mediaIndex === this.playlists.media().segments.length) {
-      this.mediaSource.endOfStream();
-    }
-  }.bind(this));
+  this.setupSourceBuffer_();
 
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
@@ -303,18 +296,37 @@ videojs.Hls.prototype.handleSourceOpen = function() {
   }
 };
 
+videojs.Hls.prototype.setupSourceBuffer_ = function() {
+  var media = this.playlists.media(), mimeType;
+
+  // wait until a media playlist is available and the Media Source is
+  // attached
+  if (!media || this.mediaSource.readyState !== 'open') {
+    return;
+  }
+
+  mimeType = 'video/mp2t';
+  if (media.attributes && media.attributes.CODECS) {
+    mimeType += '; codecs="' + media.attributes.CODECS + '"';
+  }
+  this.sourceBuffer = this.mediaSource.addSourceBuffer(mimeType);
+
+  // transition the sourcebuffer to the ended state if we've hit the end of
+  // the playlist
+  this.sourceBuffer.addEventListener('updateend', function() {
+    if (this.duration() !== Infinity &&
+        this.mediaIndex === this.playlists.media().segments.length) {
+      this.mediaSource.endOfStream();
+    }
+  }.bind(this));
+};
+
 // register event listeners to transform in-band metadata events into
 // VTTCues on a text track
 videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
   var
     metadataStream = this.segmentParser_.metadataStream,
     textTrack;
-
-  // only expose metadata tracks to video.js versions that support
-  // dynamic text tracks (4.12+)
-  if (!this.tech_.addTextTrack) {
-    return;
-  }
 
   // add a metadata cue whenever a metadata event is triggered during
   // segment parsing
@@ -585,6 +597,7 @@ videojs.Hls.prototype.dispose = function() {
   }
 
   this.resetSrc_();
+  Component.prototype.dispose.call(this);
 };
 
 /**

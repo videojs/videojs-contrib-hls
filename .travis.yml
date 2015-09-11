@@ -1,6 +1,7 @@
 language: node_js
+sudo: false
 node_js:
-- '0.10'
+  - "stable"
 install:
 - npm install -g grunt-cli && npm install
 notifications:
@@ -11,6 +12,9 @@ notifications:
     channels:
       - "chat.freenode.net#videojs"
     use_notice: true
+before_script:
+  - export DISPLAY=:99.0
+  - sh -e /etc/init.d/xvfb start
 env:
   global:
   - secure: dM7svnHPPu5IiUMeFWW5zg+iuWNpwt6SSDi3MmVvhSclNMRLesQoRB+7Qq5J/LiKhmjpv1/GlNVV0CTsHMRhZNwQ3fo38eEuTXv99aAflEITXwSEh/VntKViHbGFubn06EnVkJoH6MX3zJ6kbiwc2QdSQbywKzS6l6quUEpWpd0=

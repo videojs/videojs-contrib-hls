@@ -11,8 +11,6 @@
 
   <!-- transmuxing -->
   <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/stream.js"></script>
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/mp4-generator.js"></script>
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/transmuxer.js"></script>
   <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/flv-tag.js"></script>
   <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/exp-golomb.js"></script>
   <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/h264-extradata.js"></script>
@@ -23,6 +21,9 @@
 
   <!-- Media Sources plugin -->
   <script src="node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
+  <script>
+    videojs.MediaSource.webWorkerURI = 'node_modules/videojs-contrib-media-sources/src/transmuxer_worker.js';
+  </script>
 
   <!-- HLS plugin -->
   <script src="src/videojs-hls.js"></script>
@@ -38,12 +39,6 @@
   <script src="src/decrypter.js"></script>
 
   <script src="src/bin-utils.js"></script>
-
-  <!-- example MPEG2-TS segments -->
-  <!-- bipbop -->
-  <!-- <script src="test/tsSegment.js"></script> -->
-  <!-- bunnies -->
-  <!--<script src="test/tsSegment-bc.js"></script>-->
 
   <style>
     body {
