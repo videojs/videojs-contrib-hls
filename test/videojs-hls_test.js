@@ -212,7 +212,8 @@ var
 
   // return an absolute version of a page-relative URL
   absoluteUrl = function(relativeUrl) {
-    return window.location.origin +
+    return window.location.protocol + '//' +
+      window.location.host +
       (window.location.pathname
          .split('/')
          .slice(0, -1)
@@ -239,6 +240,9 @@ module('HLS', {
       el.className = 'vjs-tech vjs-mock-flash';
       el.vjs_load = function() {};
       el.vjs_getProperty = function(attr) {
+        if (attr === 'buffered') {
+          return [[0,0]];
+        }
         return el[attr];
       };
       el.vjs_setProperty = function(attr, value) {
@@ -470,14 +474,14 @@ test('re-initializes the playlist loader when switching sources', function() {
 
 test('sets the duration if one is available on the playlist', function() {
   var events = 0;
-  player.on('durationchange', function() {
-    events++;
-  });
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.tech.on('durationchange', function() {
+    events++;
+  });
 
   standardXHRResponse(requests[0]);
   equal(player.tech.hls.mediaSource.duration, 40, 'set the duration');
@@ -569,7 +573,8 @@ test('recognizes domain-relative URLs', function() {
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
   strictEqual(requests[1].url,
-              window.location.origin + '/00001.ts',
+              window.location.protocol + '//' + window.location.host +
+              '/00001.ts',
               'the first segment is requested');
 });
 
@@ -1349,9 +1354,11 @@ test('when outstanding XHRs are cancelled, they get aborted properly', function(
 test('segmentXhr is properly nulled out when dispose is called', function() {
   var
     readystatechanges = 0,
-    oldDispose = Flash.prototype.dispose;
+    oldDispose = Flash.prototype.dispose,
+    player;
   Flash.prototype.dispose = function() {};
 
+  player = createPlayer();
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -2128,7 +2135,7 @@ test('does not break if the playlist has no segments', function() {
 });
 
 test('clears the segment buffer on seek', function() {
-  var currentTime, bufferEnd, oldCurrentTime;
+  var currentTime, oldCurrentTime;
 
   player.src({
     src: 'discontinuity.m3u8',
@@ -2142,8 +2149,8 @@ test('clears the segment buffer on seek', function() {
     }
     return currentTime;
   };
-  player.buffered = function() {
-    return videojs.createTimeRange(0, bufferEnd);
+  player.tech.buffered = function() {
+    return videojs.createTimeRange();
   };
 
   requests.pop().respond(200, null,
@@ -2159,7 +2166,6 @@ test('clears the segment buffer on seek', function() {
 
   // play to 6s to trigger the next segment request
   currentTime = 6;
-  bufferEnd = 10;
   clock.tick(6000);
 
   standardXHRResponse(requests.pop()); // 2.ts

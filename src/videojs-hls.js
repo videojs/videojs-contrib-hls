@@ -10,10 +10,10 @@ var
   // a fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.1,
+  Component = videojs.getComponent('Component'),
 
   // the amount of time to wait between checking the state of the buffer
   bufferCheckInterval = 500,
-  Component = videojs.getComponent('Component'),
 
   keyXhr,
   keyFailed,
@@ -133,7 +133,7 @@ videojs.Hls.prototype.src = function(src) {
 
   // We need to trigger this asynchronously to give others the chance
   // to bind to the event when a source is set at player creation
-  setTimeout(function() {
+  this.setTimeout(function() {
     this.tech_.trigger('loadstart');
   }.bind(this), 1);
 
@@ -597,6 +597,7 @@ videojs.Hls.prototype.dispose = function() {
   }
 
   this.resetSrc_();
+  Component.prototype.dispose.call(this);
 };
 
 /**

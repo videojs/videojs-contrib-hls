@@ -357,7 +357,7 @@ module.exports = function(grunt) {
         grunt.task.run(['karma:saucelabs']);
         grunt.task.run(['connect:test', 'protractor:saucelabs']);
       } else {
-        grunt.task.run(['karma:phantomjs']);
+        grunt.task.run(['karma:firefox']);
       }
     } else {
       if (tasks.length === 0) {
