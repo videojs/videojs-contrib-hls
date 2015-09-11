@@ -317,7 +317,7 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
 };
 
 videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
-  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time;
+  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time, WebKitCue;
   segmentOffset = this.playlists.expiredPreDiscontinuity_;
   segmentOffset += this.playlists.expiredPostDiscontinuity_;
   segmentOffset += videojs.Hls.Playlist.duration(segmentInfo.playlist,
@@ -327,6 +327,8 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
   minPts = Math.min(isFinite(segment.minVideoPts) ? segment.minVideoPts : Infinity,
                     isFinite(segment.minAudioPts) ? segment.minAudioPts : Infinity);
 
+  WebKitCue = window.WebKitDataCue || window.VTTCue;
+
   while (segmentInfo.pendingMetadata.length) {
     metadata = segmentInfo.pendingMetadata[0].metadata;
     textTrack = segmentInfo.pendingMetadata[0].textTrack;
@@ -335,8 +337,7 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
     for (i = 0; i < metadata.frames.length; i++) {
       frame = metadata.frames[i];
       time = segmentOffset + ((metadata.pts - minPts) * 0.001);
-      /*jshint -W056 */
-      cue = new (window.WebKitDataCue || window.VTTCue)(time, time, frame.value || frame.url || '');
+      cue = new WebKitCue(time, time, frame.value || frame.url || '');
       cue.frame = frame;
       cue.value = frame;
       cue.pts_ = metadata.pts;
