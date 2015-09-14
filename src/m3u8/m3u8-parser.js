@@ -294,6 +294,18 @@
       this.trigger('data', event);
       return;
     }
+    match = (/^#EXT-X-MEDIA:?(.*)$/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'media'
+      };
+      if (match[1]) {
+        event.attributes = parseAttributes(match[1]);
+      }
+      this.trigger('data', event);
+      return;
+    }
     match = (/^#EXT-X-ENDLIST/).exec(line);
     if (match) {
       this.trigger('data', {
@@ -366,6 +378,12 @@
       self = this,
       uris = [],
       currentUri = {},
+      defaultMediaGroups = {
+        AUDIO: {},
+        VIDEO: {},
+        'CLOSED-CAPTIONS': {},
+        SUBTITLES: {}
+      },
       key;
     Parser.prototype.init.call(this);
 
@@ -381,6 +399,7 @@
 
     // update the manifest with the m3u8 entry from the parse stream
     this.parseStream.on('data', function(entry) {
+      var mediaGroup, rendition;
       ({
         tag: function() {
           // switch based on the tag type
@@ -498,6 +517,8 @@
             },
             'stream-inf': function() {
               this.manifest.playlists = uris;
+              this.manifest.mediaGroups =
+                this.manifest.mediaGroups || defaultMediaGroups;
 
               if (!entry.attributes) {
                 this.trigger('warn', {
@@ -511,6 +532,45 @@
               }
               currentUri.attributes = mergeOptions(currentUri.attributes,
                                                    entry.attributes);
+            },
+            'media': function() {
+              this.manifest.mediaGroups =
+                this.manifest.mediaGroups || defaultMediaGroups;
+
+              if (!(entry.attributes &&
+                    entry.attributes.TYPE &&
+                    entry.attributes['GROUP-ID'] &&
+                    entry.attributes.NAME)) {
+                this.trigger('warn', {
+                  message: 'ignoring incomplete or missing media group'
+                });
+                return;
+              }
+
+              // find the media group, creating defaults as necessary
+              this.manifest.mediaGroups[entry.attributes.TYPE][entry.attributes['GROUP-ID']] =
+                this.manifest.mediaGroups[entry.attributes.TYPE][entry.attributes['GROUP-ID']] || {};
+              mediaGroup =
+                this.manifest.mediaGroups[entry.attributes.TYPE][entry.attributes['GROUP-ID']];
+
+              // collect the rendition metadata
+              rendition = {
+                default: (/yes/i).test(entry.attributes.DEFAULT)
+              };
+              if (rendition.default) {
+                rendition.autoselect = true;
+              } else {
+                rendition.autoselect = (/yes/i).test(entry.attributes.AUTOSELECT);
+              }
+              if (entry.attributes.LANGUAGE) {
+                rendition.language = entry.attributes.LANGUAGE;
+              }
+              if (entry.attributes.URI) {
+                rendition.uri = entry.attributes.URI;
+              }
+
+              // insert the new rendition
+              mediaGroup[entry.attributes.NAME] = rendition;
             },
             'discontinuity': function() {
               currentUri.discontinuity = true;

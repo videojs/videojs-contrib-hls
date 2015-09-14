@@ -42,5 +42,11 @@
       "uri": "http://c.brightcove.com/services/mobile/streaming/index/rendition.m3u8?assetId=1824687660001&videoId=1824650741001"
     }
   ],
-  "discontinuityStarts": []
+  "discontinuityStarts": [],
+  "mediaGroups": {
+    "VIDEO": {},
+    "AUDIO": {},
+    "CLOSED-CAPTIONS": {},
+    "SUBTITLES": {}
+  }
 }
