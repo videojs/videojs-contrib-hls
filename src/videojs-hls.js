@@ -317,7 +317,7 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
 };
 
 videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
-  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time, WebKitCue;
+  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time, Cue;
   segmentOffset = this.playlists.expiredPreDiscontinuity_;
   segmentOffset += this.playlists.expiredPostDiscontinuity_;
   segmentOffset += videojs.Hls.Playlist.duration(segmentInfo.playlist,
@@ -327,7 +327,7 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
   minPts = Math.min(isFinite(segment.minVideoPts) ? segment.minVideoPts : Infinity,
                     isFinite(segment.minAudioPts) ? segment.minAudioPts : Infinity);
 
-  WebKitCue = window.WebKitDataCue || window.VTTCue;
+  Cue = window.WebKitDataCue || window.VTTCue;
 
   while (segmentInfo.pendingMetadata.length) {
     metadata = segmentInfo.pendingMetadata[0].metadata;
@@ -337,13 +337,22 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
     for (i = 0; i < metadata.frames.length; i++) {
       frame = metadata.frames[i];
       time = segmentOffset + ((metadata.pts - minPts) * 0.001);
-      cue = new WebKitCue(time, time, frame.value || frame.url || '');
+      cue = new Cue(time, time, frame.value || frame.url || '');
       cue.frame = frame;
       cue.value = frame;
       cue.pts_ = metadata.pts;
       textTrack.addCue(cue);
     }
     segmentInfo.pendingMetadata.shift();
+  }
+
+  if (cue && cue.frame) {
+    Object.defineProperty(cue, 'frame', {
+      get: function() {
+        videojs.log.warn('cue.frame is deprecated. Use cue.value instead.');
+        return;
+      }
+    });
   }
 };
 
