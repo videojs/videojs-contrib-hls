@@ -347,12 +347,32 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
   }
 
   if (cue && cue.frame) {
-    Object.defineProperty(cue, 'frame', {
-      get: function() {
-        videojs.log.warn('cue.frame is deprecated. Use cue.value instead.');
-        return;
-      }
-    });
+    if (cue.frame.id) {
+      Object.defineProperty(cue.frame, 'id', {
+        get: function() {
+          videojs.log.warn('cue.frame.id is deprecated. Use cue.value.key instead.');
+          return;
+        }
+      });
+    }
+
+    if (cue.frame.value) {
+      Object.defineProperty(cue.frame, 'value', {
+        get: function() {
+          videojs.log.warn('cue.frame.value is deprecated. Use cue.value.data instead.');
+          return;
+        }
+      });
+    }
+
+    if (cue.frame.privateData) {
+      Object.defineProperty(cue.frame, 'privateData', {
+        get: function() {
+          videojs.log.warn('cue.frame.privateData is deprecated. Use cue.value.data instead.');
+          return;
+        }
+      });
+    }
   }
 };
 
