@@ -945,7 +945,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     segment,
     decrypter,
     segIv,
-    segmentOffset = 0,
     // ptsTime,
     segmentBuffer = this.segmentBuffer_;
 
@@ -1030,11 +1029,9 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   //   this.tech_.el().vjs_discontinuity();
   // }
 
-  // determine the timestamp offset for the start of this segment
-  segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
-  segmentOffset += videojs.Hls.Playlist.duration(playlist,
-                                                 playlist.mediaSequence,
-                                                 playlist.mediaSequence + mediaIndex);
+  if (segment.discontinuity) {
+    this.sourceBuffer.timestampOffset = this.findCurrentBuffered_().end(0);
+  }
 
   this.sourceBuffer.appendBuffer(bytes);
 
