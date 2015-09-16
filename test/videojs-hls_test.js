@@ -1126,11 +1126,11 @@ test('downloads the next segment if the buffer is getting low', function() {
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
 
-  strictEqual(requests.length, 2, 'did not make a request');
-  player.currentTime = function() {
+  strictEqual(requests.length, 2, 'made two requests');
+  player.tech.currentTime = function() {
     return 15;
   };
-  player.buffered = function() {
+  player.tech.buffered = function() {
     return videojs.createTimeRange(0, 19.999);
   };
   player.tech.hls.checkBuffer_();
@@ -1138,6 +1138,69 @@ test('downloads the next segment if the buffer is getting low', function() {
   standardXHRResponse(requests[2]);
 
   strictEqual(requests.length, 3, 'made a request');
+  strictEqual(requests[2].url,
+              absoluteUrl('manifest/media-00002.ts'),
+              'made segment request');
+});
+
+test('buffers based on the correct TimeRange if multiple ranges exist', function() {
+  player.tech.currentTime = function() {
+    return 8;
+  };
+
+  player.tech.buffered = function() {
+    return {
+      start: function(num) {
+        switch (num) {
+          case 0:
+            return 0;
+          case 1:
+            return 50;
+        }
+      },
+      end: function(num) {
+        switch (num) {
+          case 0:
+            return 10;
+          case 1:
+            return 160;
+        }
+      },
+      length: 2
+    };
+  };
+
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+
+  strictEqual(requests.length, 2, 'made two requests');
+  strictEqual(requests[1].url,
+              absoluteUrl('manifest/media-00001.ts'),
+              'made segment request');
+
+  player.tech.currentTime = function() {
+    return 55;
+  };
+
+  player.tech.hls.checkBuffer_();
+
+  strictEqual(requests.length, 2, 'made no additional requests');
+
+  player.tech.currentTime = function() {
+    return 134;
+  };
+
+  player.tech.hls.checkBuffer_();
+  standardXHRResponse(requests[2]);
+
+  strictEqual(requests.length, 3, 'made three requests');
+
   strictEqual(requests[2].url,
               absoluteUrl('manifest/media-00002.ts'),
               'made segment request');
