@@ -739,6 +739,35 @@ videojs.Hls.prototype.stopCheckingBuffer_ = function() {
 };
 
 /**
+ * Attempts to find the buffered TimeRange where playback is currently
+ * happening. Returns a new TimeRange with one or zero ranges.
+ */
+videojs.Hls.prototype.findCurrentBuffered_ = function() {
+  var
+    tech = this.tech_,
+    currentTime = tech.currentTime(),
+    buffered = this.tech_.buffered(),
+    i;
+
+  if (buffered && buffered.length) {
+    // Search for a range containing the play-head
+    for (i = 0;i < buffered.length; i++) {
+      if (buffered.start(i) <= currentTime &&
+          buffered.end(i) >= currentTime) {
+        return videojs.createTimeRange(buffered.start(i), buffered.end(i));
+      }
+    }
+
+    // Just return the first range if one was not found that contain
+    // the play-head
+    return videojs.createTimeRange(buffered.start(0), buffered.end(0));
+  }
+
+  // Return an empty range if no ranges exist
+  return videojs.createTimeRange();
+};
+
+/**
  * Determines whether there is enough video data currently in the buffer
  * and downloads a new segment if the buffered time is less than the goal.
  * @param offset (optional) {number} the offset into the downloaded segment
@@ -747,7 +776,8 @@ videojs.Hls.prototype.stopCheckingBuffer_ = function() {
 videojs.Hls.prototype.fillBuffer = function(offset) {
   var
     tech = this.tech_,
-    buffered = this.tech_.buffered(),
+    currentTime = tech.currentTime(),
+    buffered = this.findCurrentBuffered_(),
     bufferedTime = 0,
     segment,
     segmentUri;
@@ -785,9 +815,10 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     return;
   }
 
+  // To determine how much is buffered, we need to find the buffered region we
+  // are currently playing in and measure it's length
   if (buffered && buffered.length) {
-    // assuming a single, contiguous buffer region
-    bufferedTime = tech.buffered().end(0) - tech.currentTime();
+    bufferedTime = Math.max(0, buffered.end(0) - currentTime);
   }
 
   // if there is plenty of content in the buffer and we're not
