@@ -317,7 +317,7 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
 };
 
 videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
-  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time, Cue;
+  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time, Cue, deprecateOldCue;
   segmentOffset = this.playlists.expiredPreDiscontinuity_;
   segmentOffset += this.playlists.expiredPostDiscontinuity_;
   segmentOffset += videojs.Hls.Playlist.duration(segmentInfo.playlist,
@@ -329,24 +329,7 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
 
   Cue = window.WebKitDataCue || window.VTTCue;
 
-  while (segmentInfo.pendingMetadata.length) {
-    metadata = segmentInfo.pendingMetadata[0].metadata;
-    textTrack = segmentInfo.pendingMetadata[0].textTrack;
-
-    // create cue points for all the ID3 frames in this metadata event
-    for (i = 0; i < metadata.frames.length; i++) {
-      frame = metadata.frames[i];
-      time = segmentOffset + ((metadata.pts - minPts) * 0.001);
-      cue = new Cue(time, time, frame.value || frame.url || '');
-      cue.frame = frame;
-      cue.value = frame;
-      cue.pts_ = metadata.pts;
-      textTrack.addCue(cue);
-    }
-    segmentInfo.pendingMetadata.shift();
-  }
-
-  if (cue && cue.frame) {
+  deprecateOldCue = function(cue) {
     if (cue.frame.id) {
       Object.defineProperty(cue.frame, 'id', {
         get: function() {
@@ -373,6 +356,24 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
         }
       });
     }
+  };
+
+  while (segmentInfo.pendingMetadata.length) {
+    metadata = segmentInfo.pendingMetadata[0].metadata;
+    textTrack = segmentInfo.pendingMetadata[0].textTrack;
+
+    // create cue points for all the ID3 frames in this metadata event
+    for (i = 0; i < metadata.frames.length; i++) {
+      frame = metadata.frames[i];
+      time = segmentOffset + ((metadata.pts - minPts) * 0.001);
+      cue = new Cue(time, time, frame.value || frame.url || '');
+      cue.frame = frame;
+      cue.value = frame;
+      cue.pts_ = metadata.pts;
+      textTrack.addCue(cue);
+      deprecateOldCue(cue);
+    }
+    segmentInfo.pendingMetadata.shift();
   }
 };
 
