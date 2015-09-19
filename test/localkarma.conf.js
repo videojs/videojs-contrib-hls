@@ -48,6 +48,7 @@ module.exports = function(config) {
       '../src/h264-stream.js',
       '../src/aac-stream.js',
       '../src/metadata-stream.js',
+      '../src/segment-loader.js',
       '../src/segment-parser.js',
       '../src/m3u8/m3u8-parser.js',
       '../src/xhr.js',
@@ -61,7 +62,21 @@ module.exports = function(config) {
       'tsSegment-bc.js',
       '../src/bin-utils.js',
       '../test/muxer/js/mp4-inspector.js',
-      '../test/*.js',
+
+      '../test/test-utils.js',
+      '../test/videojs-hls_test.js',
+      '../test/segment-loader_test.js',
+      '../test/h264-stream_test.js',
+      '../test/exp-golomb_test.js',
+      '../test/flv-tag_test.js',
+      '../test/metadata-stream_test.js',
+      '../test/m3u8_test.js',
+      '../test/playlist_test.js',
+      '../test/playlist-loader_test.js',
+      '../test/decrypter_test.js',
+      '../test/transmuxer_test.js',
+      '../test/mp4-inspector_test.js',
+      '../test/mp4-generator_test.js'
       ],
 
     plugins: [
