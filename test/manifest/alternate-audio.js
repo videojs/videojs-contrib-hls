@@ -37,10 +37,9 @@
     attributes: {
       "PROGRAM-ID": 1,
       BANDWIDTH: 195023,
-      CODECS: "avc1.42e00a,mp4a.40.2",
-      AUDIO: 'audio'
+      CODECS: "avc1.42e00a,mp4a.40.2"
     },
-    uri: "lo/prog_index.m3u8"
+    uri: "lo/media.m3u8"
   }, {
     attributes: {
       "PROGRAM-ID": 1,
@@ -48,6 +47,6 @@
       CODECS: "avc1.42e01e,mp4a.40.2",
       AUDIO: 'audio'
     },
-    uri: "hi/prog_index.m3u8"
+    uri: "hi/media1.m3u8"
   }]
 }

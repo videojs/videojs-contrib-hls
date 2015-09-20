@@ -27,8 +27,17 @@ videojs.Hls = videojs.extends(Component, {
 
     Component.call(this, tech);
 
-    // tech.player() is deprecated but setup a reference to HLS for
-    // backwards-compatibility
+    this.tech_ = tech;
+    this.source_ = source;
+
+    this.bytesReceived = 0;
+
+    // media track lists
+    // see https://html.spec.whatwg.org/multipage/embedded-content.html#media-resources-with-multiple-media-tracks
+    this.audioTracks = [];
+    this.videoTracks = [];
+
+    // deprecated properties
     if (tech.options_ && tech.options_.playerId) {
       _player = videojs(tech.options_.playerId);
       if (!_player.hasOwnProperty('hls')) {
@@ -40,11 +49,6 @@ videojs.Hls = videojs.extends(Component, {
         });
       }
     }
-    this.tech_ = tech;
-    this.source_ = source;
-    this.bytesReceived = 0;
-
-    // deprecated properties
     Object.defineProperty(this, 'bandwidth', {
       get: function() {
         videojs.log.warn('hls.bandwidth is deprecated. Use hls.segments.bandwidth instead.');
@@ -100,11 +104,20 @@ videojs.Hls = videojs.extends(Component, {
     // buffered data should be appended to the source buffer
     this.startCheckingBuffer_();
 
+    // respond to tech events
     this.on(this.tech_, 'seeking', function() {
       this.setCurrentTime(this.tech_.currentTime());
     });
-
     this.on(this.tech_, 'play', this.play);
+    this.on(this.tech_, 'error', function() {
+      var error = this.tech_.error();
+
+      if (error && error.code === 3) {
+        // we don't have retry logic for decode errors currently so
+        // stop buffering if we encounter one
+        this.segments.load(null);
+      }
+    });
   }
 });
 
@@ -270,6 +283,9 @@ videojs.Hls.prototype.src = function(src) {
       this.segments.load(updatedPlaylist);
     }
 
+    // export alternative rendition info and then wait for a media playlist to load
+    this.updateMediaTrackLists_();
+
     this.updateDuration(this.playlists.media());
     oldMediaPlaylist = updatedPlaylist;
   }.bind(this));
@@ -349,6 +365,56 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
       this.mediaSource.endOfStream();
     }
   }.bind(this));
+};
+
+/**
+ * Export any alternative renditions for current media playlist
+ * specified in the master playlist for the current media playlist.
+ */
+videojs.Hls.prototype.updateMediaTrackLists_ = function() {
+  var media = this.playlists.media();
+
+  // export audio renditions
+  if (media.attributes && media.attributes.AUDIO) {
+    this.updateAudioTrackList_();
+  } else {
+    this.audioTracks = [{
+      id: 'default',
+      kind: 'main',
+      label: '',
+      language: '',
+      enabled: true
+    }];
+  }
+
+  // export a default video rendition
+  this.videoTracks = [{
+    id: 'default',
+    kind: 'main',
+    label: '',
+    language: '',
+    selected: true
+  }];
+};
+
+/**
+ * Export alternative audio renditions for current media playlist.
+ */
+videojs.Hls.prototype.updateAudioTrackList_ = function() {
+  var media = this.playlists.media(),
+      audioGroup = this.playlists.master.mediaGroups.AUDIO[media.attributes.AUDIO],
+      name;
+
+  this.audioTracks = [];
+  for (name in audioGroup) {
+    this.audioTracks.push({
+      id: name,
+      kind: audioGroup[name].default ? 'main' : 'alternative',
+      label: name,
+      language: audioGroup[name].language,
+      enabled: audioGroup[name].default
+    });
+  }
 };
 
 // register event listeners to transform in-band metadata events into

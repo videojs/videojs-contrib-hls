@@ -1142,6 +1142,65 @@ test('waits to download new segments until the media playlist is stable', functi
   equal(requests.length, 1, 'resumes segment fetching');
 });
 
+test('exposes alternate renditions as media track lists', function() {
+  player.src({
+    src: 'alternate-audio.m3u8',
+    type: 'application/x-mpegURL'
+  });
+
+  openMediaSource(player);
+  ok(player.tech.hls.audioTracks, 'created an audio track list');
+  ok(player.tech.hls.videoTracks, 'created a video track list');
+
+  standardXHRResponse(requests.shift()); // master
+  equal(player.tech.hls.audioTracks.length, 0, 'no audio tracks available yet');
+  equal(player.tech.hls.videoTracks.length, 0, 'no video tracks available yet');
+
+  standardXHRResponse(requests.shift()); // media without alternative audio
+  equal(player.tech.hls.audioTracks.length, 1, 'default audio track available');
+  deepEqual(player.tech.hls.audioTracks[0], {
+    id: 'default',
+    kind: 'main',
+    label: '',
+    language: '',
+    enabled: true
+  }, 'created a default audio track');
+  equal(player.tech.hls.videoTracks.length, 1, 'default video track available');
+  deepEqual(player.tech.hls.videoTracks[0], {
+    id: 'default',
+    kind: 'main',
+    label: '',
+    language: '',
+    selected: true
+  }, 'created a default video track');
+
+  requests.length = 0; // ignore any outstanding requests
+  player.tech.hls.playlists.media('hi/media1.m3u8');
+  standardXHRResponse(requests.shift()); // media with alternative audio
+  equal(player.tech.hls.audioTracks.length, 3, 'found all audio tracks');
+  deepEqual(player.tech.hls.audioTracks[0], {
+    id: 'English',
+    kind: 'main',
+    label: 'English',
+    language: 'eng',
+    enabled: true
+  }, 'translated the default track');
+  deepEqual(player.tech.hls.audioTracks[1], {
+    id: 'Français',
+    kind: 'alternative',
+    label: 'Français',
+    language: 'fre',
+    enabled: false
+  }, 'translated the french track');
+  deepEqual(player.tech.hls.audioTracks[2], {
+    id: 'Espanol',
+    kind: 'alternative',
+    label: 'Espanol',
+    language: 'sp',
+    enabled: false
+  }, 'translated the spanish track');
+});
+
 QUnit.skip('exposes in-band metadata events as cues', function() {
   var track;
   videojs.Hls.SegmentParser = mockSegmentParser();
