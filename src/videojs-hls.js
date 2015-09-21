@@ -875,12 +875,13 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     // the segment request is no longer outstanding
     self.segmentXhr_ = null;
 
-    if (error) {
-      // if a segment request times out, we may have better luck with another playlist
-      if (request.timedout) {
-        self.bandwidth = 1;
-        return self.playlists.media(self.selectPlaylist());
-      }
+    // if a segment request times out, we may have better luck with another playlist
+    if (request.timedout) {
+      self.bandwidth = 1;
+      return self.playlists.media(self.selectPlaylist());
+    }
+
+    if (!request.aborted && error) {
       // otherwise, try jumping ahead to the next segment
       self.error = {
         status: request.status,
