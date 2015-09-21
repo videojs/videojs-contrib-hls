@@ -11,8 +11,6 @@
 
   <!-- transmuxing -->
   <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/stream.js"></script>
-  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/mp4-generator.js"></script>
-  <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/transmuxer.js"></script>
   <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/flv-tag.js"></script>
   <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/exp-golomb.js"></script>
   <script src="../../node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/h264-extradata.js"></script>
@@ -23,9 +21,13 @@
 
   <!-- Media Sources plugin -->
   <script src="../../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
+  <script>
+    videojs.MediaSource.webWorkerURI = '../../node_modules/videojs-contrib-media-sources/src/transmuxer_worker.js';
+  </script>
 
   <!-- HLS plugin -->
   <script src="../../src/videojs-hls.js"></script>
+  <script src="../../src/segment-loader.js"></script>
 
   <!-- m3u8 handling -->
   <script src="../../src/xhr.js"></script>
@@ -60,8 +62,13 @@
 </head>
 <body>
   <div class="info">
-    <p>The video below is an <a href="https://developer.apple.com/library/ios/documentation/networkinginternet/conceptual/streamingmediaguide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008332-CH1-SW1">HTTP Live Stream</a>. On desktop browsers other than Safari, the HLS plugin will polyfill support for the format on top of the video.js Flash tech.</p>
-    <p>Due to security restrictions in Flash, you will have to load this page over HTTP(S) to see the example in action.</p>
+    <p>
+      The video below is
+      an <a href="https://developer.apple.com/library/ios/documentation/networkinginternet/conceptual/streamingmediaguide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008332-CH1-SW1">HTTP
+      Live Stream</a>. Due to browser security restrictions, you will
+      have to load this page over HTTP(S) to see the example in
+      action.
+    </p>
   </div>
   <video id="video"
          class="video-js vjs-default-skin"
@@ -76,8 +83,7 @@
        type="application/x-mpegURL">
   </video>
   <section class="stats">
-    <h2>Player Stats</h2>
-    <div class="segment-timeline"></div>
+    <h2>Player Stats & Settings</h2>
     <dl>
       <dt>Current Time:</dt>
       <dd class="current-time-stat">0</dd>
@@ -90,10 +96,23 @@
       <dt>Measured Bitrate:</dt>
       <dd class="measured-bitrate-stat">0 kbps</dd>
     </dl>
+
+    <h3>Alternative Rendition Selection</h3>
+    <form>
+      <label>
+        Audio Track:
+        <select id="audio-track-selector" disabled></select>
+      </label>
+    </form>
+
+    <h3>Adaptive Bitrate Switching</h3>
     <div class="switching-stats">
       Once the player begins loading, you'll see information about the
       operation of the adaptive quality switching here.
     </div>
+
+    <h3>In-Band Metadata Cues</h3>
+    <div class="segment-timeline"></div>
   </section>
 
   <script src="stats.js"></script>
@@ -155,13 +174,14 @@
           maximumFractionDigits: 1
         }) + ' kbps';
       }
-      if (player.tech.hls.bandwidth) {
-        measuredBitrateStat.textContent = (player.tech.hls.bandwidth / 1024).toLocaleString(undefined, {
+      if (player.tech.hls.segments.bandwidth) {
+        measuredBitrateStat.textContent = (player.tech.hls.segments.bandwidth / 1024).toLocaleString(undefined, {
           maximumFractionDigits: 1
         }) + ' kbps';
       }
     });
 
+    videojs.Hls.setupTrackSelection(document.querySelector('#audio-track-selector'), player);
     videojs.Hls.displayStats(document.querySelector('.switching-stats'), player);
     videojs.Hls.displayCues(document.querySelector('.segment-timeline'), player);
   </script>

@@ -1142,7 +1142,7 @@ test('waits to download new segments until the media playlist is stable', functi
   equal(requests.length, 1, 'resumes segment fetching');
 });
 
-test('exposes alternate renditions as media track lists', function() {
+test('has empty alternate renditions before a media playlist loads', function() {
   player.src({
     src: 'alternate-audio.m3u8',
     type: 'application/x-mpegURL'
@@ -1155,7 +1155,15 @@ test('exposes alternate renditions as media track lists', function() {
   standardXHRResponse(requests.shift()); // master
   equal(player.tech.hls.audioTracks.length, 0, 'no audio tracks available yet');
   equal(player.tech.hls.videoTracks.length, 0, 'no video tracks available yet');
+});
 
+test('exposes default tracks for variants without alternative renditions', function() {
+  player.src({
+    src: 'alternate-audio.m3u8',
+    type: 'application/x-mpegURL'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
   standardXHRResponse(requests.shift()); // media without alternative audio
   equal(player.tech.hls.audioTracks.length, 1, 'default audio track available');
   deepEqual(player.tech.hls.audioTracks[0], {
@@ -1173,32 +1181,49 @@ test('exposes alternate renditions as media track lists', function() {
     language: '',
     selected: true
   }, 'created a default video track');
+});
+
+test('exposes alternate renditions as media track lists', function() {
+  player.src({
+    src: 'alternate-audio.m3u8',
+    type: 'application/x-mpegURL'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media without alternative audio
 
   requests.length = 0; // ignore any outstanding requests
   player.tech.hls.playlists.media('hi/media1.m3u8');
   standardXHRResponse(requests.shift()); // media with alternative audio
   equal(player.tech.hls.audioTracks.length, 3, 'found all audio tracks');
-  deepEqual(player.tech.hls.audioTracks[0], {
-    id: 'English',
-    kind: 'main',
-    label: 'English',
-    language: 'eng',
-    enabled: true
-  }, 'translated the default track');
-  deepEqual(player.tech.hls.audioTracks[1], {
-    id: 'Français',
-    kind: 'alternative',
-    label: 'Français',
-    language: 'fre',
-    enabled: false
-  }, 'translated the french track');
-  deepEqual(player.tech.hls.audioTracks[2], {
-    id: 'Espanol',
-    kind: 'alternative',
-    label: 'Espanol',
-    language: 'sp',
-    enabled: false
-  }, 'translated the spanish track');
+  equal(player.tech.hls.audioTracks[0].kind, 'main', 'set main kind');
+  equal(player.tech.hls.audioTracks[0].enabled, true, 'set main enabled');
+  equal(player.tech.hls.audioTracks[1].id, 'Français', 'set french id');
+  equal(player.tech.hls.audioTracks[1].kind, 'alternative', 'set french kind');
+  equal(player.tech.hls.audioTracks[1].language, 'fre', 'set french language');
+  equal(player.tech.hls.audioTracks[1].enabled, false, 'french is disabled');
+  equal(player.tech.hls.audioTracks[2].id, 'Espanol', 'set spanish id');
+});
+
+test('enabling an alternate audio track disables the active track', function() {
+  var audioTracks;
+  player.src({
+    src: 'alternate-audio.m3u8',
+    type: 'application/x-mpegURL'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media without alternative audio
+
+  requests.length = 0; // ignore any outstanding requests
+  player.tech.hls.playlists.media('hi/media1.m3u8');
+  standardXHRResponse(requests.shift()); // media with alternative audio
+
+  audioTracks = player.tech.hls.audioTracks;
+  audioTracks[1].enabled = true;
+  equal(audioTracks[0].enabled, false, audioTracks[0].label + ' is disabled');
+  equal(audioTracks[1].enabled, true, audioTracks[1].label + ' is enabled');
+  equal(audioTracks[2].enabled, false, audioTracks[2].label + ' is disabled');
 });
 
 QUnit.skip('exposes in-band metadata events as cues', function() {

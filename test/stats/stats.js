@@ -1,9 +1,9 @@
 (function(window, videojs, undefined) {
   'use strict';
 
-  // -------------
-  // Initial Setup
-  // -------------
+  // ------
+  // Graphs
+  // ------
 
   var d3 = window.d3;
 
@@ -62,17 +62,9 @@
 
   };
 
-  // ---------------
-  // Dynamic Updates
-  // ---------------
-
   var displayStats = function(element, player) {
     setupGraph(element, player);
   };
-
-  // -----------------
-  // Cue Visualization
-  // -----------------
 
   var Playlist = videojs.Hls.Playlist;
   var margin = {
@@ -230,8 +222,32 @@
     }
   };
 
+  // ---------------
+  // Track Selection
+  // ---------------
+
+  var setupTrackSelection = function(select, player) {
+    player.tech.on(['loadedmetadata', 'mediachange'], function() {
+      while (select.firstChild) {
+        select.removeChild(select.firstChild);
+      }
+      this.hls.audioTracks.forEach(function(track) {
+        var option = document.createElement('option');
+        option.value = track.id;
+        option.appendChild(document.createTextNode(track.label));
+        select.appendChild(option);
+      });
+      select.disabled = false;
+    });
+
+    select.addEventListener('change', function() {
+      player.tech.hls.audioTracks[this.selectedIndex].enabled = true;
+    });
+  };
+
 
   // export
+  videojs.Hls.setupTrackSelection = setupTrackSelection;
   videojs.Hls.displayStats = displayStats;
   videojs.Hls.displayCues = displayCues;
 

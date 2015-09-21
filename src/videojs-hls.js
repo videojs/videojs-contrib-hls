@@ -401,19 +401,36 @@ videojs.Hls.prototype.updateMediaTrackLists_ = function() {
  * Export alternative audio renditions for current media playlist.
  */
 videojs.Hls.prototype.updateAudioTrackList_ = function() {
-  var media = this.playlists.media(),
-      audioGroup = this.playlists.master.mediaGroups.AUDIO[media.attributes.AUDIO],
-      name;
+  var audioGroupId = this.playlists.media().attributes.AUDIO,
+      audioGroup = this.playlists.master.mediaGroups.AUDIO[audioGroupId],
+      audioTracks = [],
+      track, name;
 
-  this.audioTracks = [];
+  this.audioTracks = audioTracks;
+  audioTracks.selectedIndex_ = 0;
   for (name in audioGroup) {
-    this.audioTracks.push({
+    track = {
       id: name,
-      kind: audioGroup[name].default ? 'main' : 'alternative',
+      kind: 'alternative',
       label: name,
-      language: audioGroup[name].language,
-      enabled: audioGroup[name].default
+      language: audioGroup[name].language
+    };
+    track.index_ = audioTracks.length;
+    if (audioGroup[name].default) {
+      track.kind = 'main';
+      audioTracks.selectedIndex_ = audioTracks.length;
+    }
+    Object.defineProperty(track, 'enabled', {
+      get: function() {
+        return this.index_ === audioTracks.selectedIndex_;
+      },
+      set: function(enabled) {
+        if (enabled) {
+          audioTracks.selectedIndex_ = this.index_;
+        }
+      }
     });
+    audioTracks.push(track);
   }
 };
 
