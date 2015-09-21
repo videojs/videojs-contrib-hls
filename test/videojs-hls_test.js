@@ -551,6 +551,28 @@ test('starts downloading a segment on loadedmetadata', function() {
               'the first segment is requested');
 });
 
+test('finds the correct buffered region based on currentTime', function() {
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.tech_.buffered = function() {
+    return videojs.createTimeRanges([[0, 5], [6, 12]]);
+  };
+  openMediaSource(player);
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  player.currentTime(3);
+  clock.tick(1);
+  equal(player.tech_.hls.findCurrentBuffered_().end(0),
+        5, 'inside the first buffered region');
+  player.currentTime(6);
+  clock.tick(1);
+  equal(player.tech_.hls.findCurrentBuffered_().end(0),
+        12, 'inside the second buffered region');
+});
+
 test('recognizes absolute URIs and requests them unmodified', function() {
   player.src({
     src: 'manifest/absoluteUris.m3u8',
@@ -2242,6 +2264,38 @@ test('clears the segment buffer on seek', function() {
   equal(player.tech_.hls.segmentBuffer_.length, 0, 'cleared the segment buffer');
 });
 
+test('calls mediaSource\'s timestampOffset on discontinuity', function() {
+  player.src({
+    src: 'discontinuity.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.play();
+  player.tech_.buffered = function() {
+    return videojs.createTimeRange(0, 10);
+  };
+
+  requests.pop().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXTINF:10,0\n' +
+                         '1.ts\n' +
+                         '#EXT-X-DISCONTINUITY\n' +
+                         '#EXTINF:10,0\n' +
+                         '2.ts\n' +
+                         '#EXT-X-ENDLIST\n');
+  standardXHRResponse(requests.pop()); // 1.ts
+  player.tech_.hls.sourceBuffer.timestampOffset = 0;
+
+  equal(player.tech_.hls.sourceBuffer.timestampOffset, 0, 'timestampOffset starts at zero');
+
+  // play to 6s to trigger the next segment request
+  clock.tick(6000);
+
+  standardXHRResponse(requests.pop()); // 2.ts
+  equal(player.tech_.hls.sourceBuffer.timestampOffset, 10, 'timestampOffset set after discontinuity');
+});
+
+
 test('can seek before the source buffer opens', function() {
   player.src({
     src: 'media.m3u8',
@@ -2256,8 +2310,7 @@ test('can seek before the source buffer opens', function() {
   equal(player.currentTime(), 1, 'seeked');
 });
 
-// TODO: Decide on proper discontinuity behavior
-QUnit.skip('sets the timestampOffset after seeking to discontinuity', function() {
+test('sets the timestampOffset after seeking to discontinuity', function() {
   var bufferEnd;
   player.src({
     src: 'discontinuity.m3u8',
@@ -2282,11 +2335,11 @@ QUnit.skip('sets the timestampOffset after seeking to discontinuity', function()
   player.tech_.setCurrentTime(10);
   bufferEnd = 9.9;
   clock.tick(1);
-  standardXHRResponse(requests.pop()); // 1.ts
+  standardXHRResponse(requests.pop()); // 1.ts, again
   player.tech_.hls.checkBuffer_();
-  standardXHRResponse(requests.pop()); // 2.ts, again
+  standardXHRResponse(requests.pop()); // 2.ts
   equal(player.tech_.hls.sourceBuffer.timestampOffset,
-        10,
+        9.9,
         'set the timestamp offset');
 });
 
