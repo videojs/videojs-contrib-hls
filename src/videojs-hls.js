@@ -25,7 +25,7 @@ keyFailed = function(key) {
 };
 
 videojs.Hls = videojs.extends(Component, {
-  constructor: function(tech, source) {
+  constructor: function(tech, options) {
     var self = this, _player;
 
     Component.call(this, tech);
@@ -44,7 +44,8 @@ videojs.Hls = videojs.extends(Component, {
       }
     }
     this.tech_ = tech;
-    this.source_ = source;
+    this.source_ = options.source;
+    this.mode_ = options.mode;
     this.bytesReceived = 0;
 
     // loadingState_ tracks how far along the buffering process we
@@ -87,28 +88,33 @@ videojs.Hls.canPlaySource = function() {
  * the browser it is running in. It is not necessary to use or modify
  * this object in normal usage.
  */
-videojs.HlsSourceHandler = {
-  canHandleSource: function(srcObj) {
-    var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
+videojs.HlsSourceHandler = function(mode) {
+  return {
+    canHandleSource: function(srcObj) {
+      var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
-    // favor native HLS support if it's available
-    if (videojs.Hls.supportsNativeHls) {
-      return false;
+      // favor native HLS support if it's available
+      if (videojs.Hls.supportsNativeHls) {
+        return false;
+      }
+      return mpegurlRE.test(srcObj.type);
+    },
+    handleSource: function(source, tech) {
+      tech.hls = new videojs.Hls(tech, {
+        source: source,
+        mode: mode
+      });
+      tech.hls.src(source.src);
+      return tech.hls;
     }
-    return mpegurlRE.test(srcObj.type);
-  },
-  handleSource: function(source, tech) {
-    tech.hls = new videojs.Hls(tech, source);
-    tech.hls.src(source.src);
-    return tech.hls;
-  }
+  };
 };
-// register with the appropriate tech
+
+// register source handlers with the appropriate techs
 if (videojs.MediaSource.supportsNativeMediaSources()) {
-  videojs.getComponent('Html5').registerSourceHandler(videojs.HlsSourceHandler);
-} else {
-  videojs.getComponent('Flash').registerSourceHandler(videojs.HlsSourceHandler);
+  videojs.getComponent('Html5').registerSourceHandler(videojs.HlsSourceHandler('html5'));
 }
+videojs.getComponent('Flash').registerSourceHandler(videojs.HlsSourceHandler('flash'));
 
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
@@ -121,7 +127,7 @@ videojs.Hls.prototype.src = function(src) {
     return;
   }
 
-  this.mediaSource = new videojs.MediaSource();
+  this.mediaSource = new videojs.MediaSource({ mode: this.mode_ });
   this.segmentBuffer_ = [];
 
   // if the stream contains ID3 metadata, expose that as a metadata

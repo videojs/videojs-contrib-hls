@@ -2510,19 +2510,21 @@ test('aborts the source buffer on disposal', function() {
 });
 
 test('the source handler supports HLS mime types', function() {
-  ok(videojs.HlsSourceHandler.canHandleSource({
-    type: 'aPplicatiOn/x-MPegUrl'
-  }), 'supports x-mpegurl');
-  ok(videojs.HlsSourceHandler.canHandleSource({
-    type: 'aPplicatiOn/VnD.aPPle.MpEgUrL'
-  }), 'supports vnd.apple.mpegurl');
+  ['html5', 'flash'].forEach(function(techName) {
+    ok(videojs.HlsSourceHandler(techName).canHandleSource({
+      type: 'aPplicatiOn/x-MPegUrl'
+    }), 'supports x-mpegurl');
+    ok(videojs.HlsSourceHandler(techName).canHandleSource({
+      type: 'aPplicatiOn/VnD.aPPle.MpEgUrL'
+    }), 'supports vnd.apple.mpegurl');
 
-  ok(!(videojs.HlsSourceHandler.canHandleSource({
-    type: 'video/mp4'
-  }) instanceof videojs.Hls), 'does not support mp4');
-  ok(!(videojs.HlsSourceHandler.canHandleSource({
-    type: 'video/x-flv'
-  }) instanceof videojs.Hls), 'does not support flv');
+    ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
+      type: 'video/mp4'
+    }) instanceof videojs.Hls), 'does not support mp4');
+    ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
+      type: 'video/x-flv'
+    }) instanceof videojs.Hls), 'does not support flv');
+  });
 });
 
 test('has no effect if native HLS is available', function() {
