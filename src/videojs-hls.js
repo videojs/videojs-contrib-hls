@@ -763,10 +763,6 @@ videojs.Hls.prototype.findCurrentBuffered_ = function() {
         return videojs.createTimeRange(buffered.start(i), buffered.end(i));
       }
     }
-
-    // Just return the first range if one was not found that contain
-    // the play-head
-    return videojs.createTimeRange(buffered.start(0), buffered.end(0));
   }
 
   // Return an empty range if no ranges exist

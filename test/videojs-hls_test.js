@@ -2310,7 +2310,7 @@ test('can seek before the source buffer opens', function() {
   equal(player.currentTime(), 1, 'seeked');
 });
 
-test('sets the timestampOffset after seeking to discontinuity', function() {
+QUnit.skip('sets the timestampOffset after seeking to discontinuity', function() {
   var bufferEnd;
   player.src({
     src: 'discontinuity.m3u8',
