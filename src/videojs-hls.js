@@ -24,7 +24,7 @@ keyFailed = function(key) {
   return key.retries && key.retries >= 2;
 };
 
-videojs.Hls = videojs.extends(Component, {
+videojs.Hls = videojs.extend(Component, {
   constructor: function(tech, source) {
     var self = this, _player;
 
