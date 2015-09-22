@@ -190,10 +190,10 @@ var
   },
 
   // a no-op MediaSource implementation to allow synchronous testing
-  MockMediaSource = videojs.extends(videojs.EventTarget, {
+  MockMediaSource = videojs.extend(videojs.EventTarget, {
     constructor: function() {},
     addSourceBuffer: function() {
-      return new (videojs.extends(videojs.EventTarget, {
+      return new (videojs.extend(videojs.EventTarget, {
         constructor: function() {},
         abort: function() {},
         buffered: videojs.createTimeRange(),
