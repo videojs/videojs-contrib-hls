@@ -24,8 +24,8 @@ keyFailed = function(key) {
   return key.retries && key.retries >= 2;
 };
 
-videojs.Hls = videojs.extends(Component, {
-  constructor: function(tech, source) {
+videojs.Hls = videojs.extend(Component, {
+  constructor: function(tech, options) {
     var self = this, _player;
 
     Component.call(this, tech);
@@ -44,7 +44,8 @@ videojs.Hls = videojs.extends(Component, {
       }
     }
     this.tech_ = tech;
-    this.source_ = source;
+    this.source_ = options.source;
+    this.mode_ = options.mode;
     this.bytesReceived = 0;
 
     // loadingState_ tracks how far along the buffering process we
@@ -87,28 +88,33 @@ videojs.Hls.canPlaySource = function() {
  * the browser it is running in. It is not necessary to use or modify
  * this object in normal usage.
  */
-videojs.HlsSourceHandler = {
-  canHandleSource: function(srcObj) {
-    var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
+videojs.HlsSourceHandler = function(mode) {
+  return {
+    canHandleSource: function(srcObj) {
+      var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
-    // favor native HLS support if it's available
-    if (videojs.Hls.supportsNativeHls) {
-      return false;
+      // favor native HLS support if it's available
+      if (videojs.Hls.supportsNativeHls) {
+        return false;
+      }
+      return mpegurlRE.test(srcObj.type);
+    },
+    handleSource: function(source, tech) {
+      tech.hls = new videojs.Hls(tech, {
+        source: source,
+        mode: mode
+      });
+      tech.hls.src(source.src);
+      return tech.hls;
     }
-    return mpegurlRE.test(srcObj.type);
-  },
-  handleSource: function(source, tech) {
-    tech.hls = new videojs.Hls(tech, source);
-    tech.hls.src(source.src);
-    return tech.hls;
-  }
+  };
 };
-// register with the appropriate tech
+
+// register source handlers with the appropriate techs
 if (videojs.MediaSource.supportsNativeMediaSources()) {
-  videojs.getComponent('Html5').registerSourceHandler(videojs.HlsSourceHandler);
-} else {
-  videojs.getComponent('Flash').registerSourceHandler(videojs.HlsSourceHandler);
+  videojs.getComponent('Html5').registerSourceHandler(videojs.HlsSourceHandler('html5'));
 }
+videojs.getComponent('Flash').registerSourceHandler(videojs.HlsSourceHandler('flash'));
 
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
@@ -121,7 +127,7 @@ videojs.Hls.prototype.src = function(src) {
     return;
   }
 
-  this.mediaSource = new videojs.MediaSource();
+  this.mediaSource = new videojs.MediaSource({ mode: this.mode_ });
   this.segmentBuffer_ = [];
 
   // if the stream contains ID3 metadata, expose that as a metadata
@@ -739,6 +745,31 @@ videojs.Hls.prototype.stopCheckingBuffer_ = function() {
 };
 
 /**
+ * Attempts to find the buffered TimeRange where playback is currently
+ * happening. Returns a new TimeRange with one or zero ranges.
+ */
+videojs.Hls.prototype.findCurrentBuffered_ = function() {
+  var
+    tech = this.tech_,
+    currentTime = tech.currentTime(),
+    buffered = this.tech_.buffered(),
+    i;
+
+  if (buffered && buffered.length) {
+    // Search for a range containing the play-head
+    for (i = 0;i < buffered.length; i++) {
+      if (buffered.start(i) <= currentTime &&
+          buffered.end(i) >= currentTime) {
+        return videojs.createTimeRange(buffered.start(i), buffered.end(i));
+      }
+    }
+  }
+
+  // Return an empty range if no ranges exist
+  return videojs.createTimeRange();
+};
+
+/**
  * Determines whether there is enough video data currently in the buffer
  * and downloads a new segment if the buffered time is less than the goal.
  * @param offset (optional) {number} the offset into the downloaded segment
@@ -747,7 +778,8 @@ videojs.Hls.prototype.stopCheckingBuffer_ = function() {
 videojs.Hls.prototype.fillBuffer = function(offset) {
   var
     tech = this.tech_,
-    buffered = this.tech_.buffered(),
+    currentTime = tech.currentTime(),
+    buffered = this.findCurrentBuffered_(),
     bufferedTime = 0,
     segment,
     segmentUri;
@@ -785,9 +817,10 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     return;
   }
 
+  // To determine how much is buffered, we need to find the buffered region we
+  // are currently playing in and measure it's length
   if (buffered && buffered.length) {
-    // assuming a single, contiguous buffer region
-    bufferedTime = tech.buffered().end(0) - tech.currentTime();
+    bufferedTime = Math.max(0, buffered.end(0) - currentTime);
   }
 
   // if there is plenty of content in the buffer and we're not
@@ -844,12 +877,13 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
     // the segment request is no longer outstanding
     self.segmentXhr_ = null;
 
-    if (error) {
-      // if a segment request times out, we may have better luck with another playlist
-      if (request.timedout) {
-        self.bandwidth = 1;
-        return self.playlists.media(self.selectPlaylist());
-      }
+    // if a segment request times out, we may have better luck with another playlist
+    if (request.timedout) {
+      self.bandwidth = 1;
+      return self.playlists.media(self.selectPlaylist());
+    }
+
+    if (!request.aborted && error) {
       // otherwise, try jumping ahead to the next segment
       self.error = {
         status: request.status,
@@ -914,7 +948,6 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     segment,
     decrypter,
     segIv,
-    segmentOffset = 0,
     // ptsTime,
     segmentBuffer = this.segmentBuffer_;
 
@@ -999,11 +1032,9 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   //   this.tech_.el().vjs_discontinuity();
   // }
 
-  // determine the timestamp offset for the start of this segment
-  segmentOffset = this.playlists.expiredPostDiscontinuity_ + this.playlists.expiredPreDiscontinuity_;
-  segmentOffset += videojs.Hls.Playlist.duration(playlist,
-                                                 playlist.mediaSequence,
-                                                 playlist.mediaSequence + mediaIndex);
+  if (segment.discontinuity) {
+    this.sourceBuffer.timestampOffset = this.findCurrentBuffered_().end(0);
+  }
 
   this.sourceBuffer.appendBuffer(bytes);
 

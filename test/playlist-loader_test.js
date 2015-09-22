@@ -20,6 +20,8 @@
     setup: function() {
       // fake XHRs
       sinonXhr = sinon.useFakeXMLHttpRequest();
+      videojs.xhr.XMLHttpRequest = sinonXhr;
+
       requests = [];
       sinonXhr.onCreate = function(xhr) {
         // force the XHR2 timeout polyfill
@@ -32,6 +34,7 @@
     },
     teardown: function() {
       sinonXhr.restore();
+      videojs.xhr.XMLHttpRequest = window.XMLHttpRequest;
       clock.restore();
     }
   });
