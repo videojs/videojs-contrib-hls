@@ -48,6 +48,7 @@
   },
   "dependencies": {
     "pkcs7": "^0.2.2",
+    "video.js": "^5.0.0-rc.96",
     "videojs-contrib-media-sources": "videojs/videojs-contrib-media-sources.git#mse-mp2t-polyfill",
     "videojs-swf": "5.0.0-rc0"
   }
