@@ -2283,8 +2283,8 @@ test('calls mediaSource\'s timestampOffset on discontinuity', function() {
                          '#EXTINF:10,0\n' +
                          '2.ts\n' +
                          '#EXT-X-ENDLIST\n');
-  standardXHRResponse(requests.pop()); // 1.ts
   player.tech_.hls.sourceBuffer.timestampOffset = 0;
+  standardXHRResponse(requests.pop()); // 1.ts
 
   equal(player.tech_.hls.sourceBuffer.timestampOffset, 0, 'timestampOffset starts at zero');
 
@@ -2295,6 +2295,46 @@ test('calls mediaSource\'s timestampOffset on discontinuity', function() {
   equal(player.tech_.hls.sourceBuffer.timestampOffset, 10, 'timestampOffset set after discontinuity');
 });
 
+test('sets timestampOffset when seeking with discontinuities', function() {
+  var removes = [], timeRange = videojs.createTimeRange(0, 10);
+
+  player.src({
+    src: 'discontinuity.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.play();
+  player.tech_.buffered = function() {
+    return timeRange;
+  };
+  player.tech_.seeking = function (){
+    return true;
+  };
+
+  requests.pop().respond(200, null,
+                         '#EXTM3U\n' +
+                         '#EXTINF:10,0\n' +
+                         '1.ts\n' +
+                         '#EXTINF:10,0\n' +
+                         '2.ts\n' +
+                         '#EXT-X-DISCONTINUITY\n' +
+                         '#EXTINF:10,0\n' +
+                         '3.ts\n' +
+                         '#EXT-X-ENDLIST\n');
+  player.tech_.hls.sourceBuffer.timestampOffset = 0;
+  player.tech_.hls.sourceBuffer.remove = function(start, end) {
+    timeRange = videojs.createTimeRange();
+    removes.push([start, end]);
+  };
+
+  player.currentTime(21);
+  clock.tick(1);
+  equal(requests.shift().aborted, true, 'aborted first request');
+  standardXHRResponse(requests.pop()); // 3.ts
+  clock.tick(1000);
+  equal(player.tech_.hls.sourceBuffer.timestampOffset, 20, 'timestampOffset starts at zero');
+  equal(removes.length, 1, 'remove was called');
+});
 
 test('can seek before the source buffer opens', function() {
   player.src({
