@@ -382,7 +382,7 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
 };
 
 videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
-  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time;
+  var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time, Cue, deprecateOldCue;
   segmentOffset = this.playlists.expiredPreDiscontinuity_;
   segmentOffset += this.playlists.expiredPostDiscontinuity_;
   segmentOffset += videojs.Hls.Playlist.duration(segmentInfo.playlist,
@@ -392,6 +392,37 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
   minPts = Math.min(isFinite(segment.minVideoPts) ? segment.minVideoPts : Infinity,
                     isFinite(segment.minAudioPts) ? segment.minAudioPts : Infinity);
 
+  Cue = window.WebKitDataCue || window.VTTCue;
+
+  deprecateOldCue = function(cue) {
+    if (cue.frame.id) {
+      Object.defineProperty(cue.frame, 'id', {
+        get: function() {
+          videojs.log.warn('cue.frame.id is deprecated. Use cue.value.key instead.');
+          return;
+        }
+      });
+    }
+
+    if (cue.frame.value) {
+      Object.defineProperty(cue.frame, 'value', {
+        get: function() {
+          videojs.log.warn('cue.frame.value is deprecated. Use cue.value.data instead.');
+          return;
+        }
+      });
+    }
+
+    if (cue.frame.privateData) {
+      Object.defineProperty(cue.frame, 'privateData', {
+        get: function() {
+          videojs.log.warn('cue.frame.privateData is deprecated. Use cue.value.data instead.');
+          return;
+        }
+      });
+    }
+  };
+
   while (segmentInfo.pendingMetadata.length) {
     metadata = segmentInfo.pendingMetadata[0].metadata;
     textTrack = segmentInfo.pendingMetadata[0].textTrack;
@@ -400,10 +431,12 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
     for (i = 0; i < metadata.frames.length; i++) {
       frame = metadata.frames[i];
       time = segmentOffset + ((metadata.pts - minPts) * 0.001);
-      cue = new window.VTTCue(time, time, frame.value || frame.url || '');
+      cue = new Cue(time, time, frame.value || frame.url || '');
       cue.frame = frame;
+      cue.value = frame;
       cue.pts_ = metadata.pts;
       textTrack.addCue(cue);
+      deprecateOldCue(cue);
     }
     segmentInfo.pendingMetadata.shift();
   }
