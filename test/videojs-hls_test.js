@@ -1775,45 +1775,6 @@ QUnit.skip('translates ID3 PTS values across discontinuities', function() {
   equal(track.cues[1].endTime, 11, 'second cue ended at the correct time');
 });
 
-QUnit.skip('drops tags before the target timestamp when seeking', function() {
-  var i = 10,
-      tags = [],
-      bytes = [];
-
-  // mock out the parser and source buffer
-  videojs.Hls.SegmentParser = mockSegmentParser(tags);
-  window.videojs.SourceBuffer = function() {
-    this.appendBuffer = function(chunk) {
-      bytes.push(chunk);
-    };
-    this.abort = function() {};
-  };
-
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  standardXHRResponse(requests[0]); // media
-
-  // push a tag into the buffer
-  tags.push({ pts: 0, bytes: new Uint8Array(1) });
-  standardXHRResponse(requests[1]); // segment 0
-
-  // mock out a new segment of FLV tags
-  bytes = [];
-  while (i--) {
-    tags.unshift({
-      pts: i * 1000,
-      bytes: new Uint8Array([i])
-    });
-  }
-  player.currentTime(7);
-  standardXHRResponse(requests[2]);
-
-  deepEqual(bytes, [new Uint8Array([7,8,9])], 'three tags are appended');
-});
-
 test('adjusts the segment offsets for out-of-buffer seeking', function() {
   player.src({
     src: 'manifest/media.m3u8',
