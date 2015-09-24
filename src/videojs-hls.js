@@ -399,7 +399,7 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
       Object.defineProperty(cue.frame, 'id', {
         get: function() {
           videojs.log.warn('cue.frame.id is deprecated. Use cue.value.key instead.');
-          return;
+          return cue.value.key;
         }
       });
     }
@@ -408,7 +408,7 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
       Object.defineProperty(cue.frame, 'value', {
         get: function() {
           videojs.log.warn('cue.frame.value is deprecated. Use cue.value.data instead.');
-          return;
+          return cue.value.data;
         }
       });
     }
@@ -417,7 +417,7 @@ videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
       Object.defineProperty(cue.frame, 'privateData', {
         get: function() {
           videojs.log.warn('cue.frame.privateData is deprecated. Use cue.value.data instead.');
-          return;
+          return cue.value.data;
         }
       });
     }
