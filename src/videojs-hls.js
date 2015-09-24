@@ -465,7 +465,9 @@ videojs.Hls.prototype.play = function() {
 };
 
 videojs.Hls.prototype.setCurrentTime = function(currentTime) {
-  var buffered, i;
+  var
+    buffered = this.findCurrentBuffered_();
+
   if (!(this.playlists && this.playlists.media())) {
     // return immediately if the metadata is not ready yet
     return 0;
@@ -479,12 +481,8 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
 
   // if the seek location is already buffered, continue buffering as
   // usual
-  buffered = this.tech_.buffered();
-  for (i = 0; i < buffered.length; i++) {
-    if (this.tech_.buffered().start(i) <= currentTime &&
-        this.tech_.buffered().end(i) >= currentTime) {
-      return currentTime;
-    }
+  if (buffered && buffered.length) {
+    return currentTime;
   }
 
   // determine the requested segment
@@ -518,11 +516,11 @@ videojs.Hls.prototype.seekable = function() {
   var currentSeekable, startOffset, media;
 
   if (!this.playlists) {
-    return videojs.createTimeRange();
+    return videojs.createTimeRanges();
   }
   media = this.playlists.media();
   if (!media) {
-    return videojs.createTimeRange();
+    return videojs.createTimeRanges();
   }
 
   // report the seekable range relative to the earliest possible
@@ -534,7 +532,7 @@ videojs.Hls.prototype.seekable = function() {
   }
 
   startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
-  return videojs.createTimeRange(startOffset,
+  return videojs.createTimeRanges(startOffset,
                                  startOffset + (currentSeekable.end(0) - currentSeekable.start(0)));
 };
 
@@ -753,6 +751,7 @@ videojs.Hls.prototype.findCurrentBuffered_ = function() {
     tech = this.tech_,
     currentTime = tech.currentTime(),
     buffered = this.tech_.buffered(),
+    ranges,
     i;
 
   if (buffered && buffered.length) {
@@ -760,22 +759,26 @@ videojs.Hls.prototype.findCurrentBuffered_ = function() {
     for (i = 0;i < buffered.length; i++) {
       if (buffered.start(i) <= currentTime &&
           buffered.end(i) >= currentTime) {
-        return videojs.createTimeRange(buffered.start(i), buffered.end(i));
+        ranges = videojs.createTimeRanges(buffered.start(i), buffered.end(i));
+        ranges.indexOf = i;
+        return ranges;
       }
     }
   }
 
   // Return an empty range if no ranges exist
-  return videojs.createTimeRange();
+  ranges = videojs.createTimeRanges();
+  ranges.indexOf = -1;
+  return ranges;
 };
 
 /**
  * Determines whether there is enough video data currently in the buffer
  * and downloads a new segment if the buffered time is less than the goal.
- * @param offset (optional) {number} the offset into the downloaded segment
+ * @param seekToTime (optional) {number} the offset into the downloaded segment
  * to seek to, in milliseconds
  */
-videojs.Hls.prototype.fillBuffer = function(offset) {
+videojs.Hls.prototype.fillBuffer = function(seekToTime) {
   var
     tech = this.tech_,
     currentTime = tech.currentTime(),
@@ -825,14 +828,14 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
 
   // if there is plenty of content in the buffer and we're not
   // seeking, relax for awhile
-  if (typeof offset !== 'number' && bufferedTime >= videojs.Hls.GOAL_BUFFER_LENGTH) {
+  if (typeof seekToTime !== 'number' && bufferedTime >= videojs.Hls.GOAL_BUFFER_LENGTH) {
     return;
   }
 
   // resolve the segment URL relative to the playlist
   segmentUri = this.playlistUriToUrl(segment.uri);
 
-  this.loadSegment(segmentUri, offset);
+  this.loadSegment(segmentUri, seekToTime);
 };
 
 videojs.Hls.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
@@ -863,7 +866,7 @@ videojs.Hls.prototype.setBandwidth = function(xhr) {
   this.tech_.trigger('bandwidthupdate');
 };
 
-videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
+videojs.Hls.prototype.loadSegment = function(segmentUri, seekToTime) {
   var self = this;
 
   // request the next segment
@@ -910,7 +913,7 @@ videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
       // the segment's playlist
       playlist: self.playlists.media(),
       // optionally, a time offset to seek to within the segment
-      offset: offset,
+      offset: seekToTime,
       // unencrypted bytes of the segment
       bytes: null,
       // when a key is defined for this segment, the encrypted bytes
@@ -948,6 +951,10 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     segment,
     decrypter,
     segIv,
+    segmentTimestampOffset = 0,
+    hasBufferedContent = (this.tech_.buffered().length !== 0),
+    currentBuffered = this.findCurrentBuffered_(),
+    outsideBufferedRanges = !(currentBuffered && currentBuffered.length),
     // ptsTime,
     segmentBuffer = this.segmentBuffer_;
 
@@ -1032,8 +1039,33 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   //   this.tech_.el().vjs_discontinuity();
   // }
 
-  if (segment.discontinuity) {
-    this.sourceBuffer.timestampOffset = this.findCurrentBuffered_().end(0);
+  // If we have seeked into a non-buffered time-range, remove all buffered
+  // time-ranges because they could have been incorrectly placed originally
+  if (this.tech_.seeking() && outsideBufferedRanges) {
+    if (hasBufferedContent) {
+      // In Chrome, it seems that too many independent buffered time-ranges can
+      // cause playback to fail to resume when seeking so just kill all of them
+      this.sourceBuffer.remove(0, Infinity);
+      return;
+    }
+
+    // If there are discontinuities in the playlist, we can't be sure of anything
+    // related to time so we reset the timestamp offset and start appending data
+    // anew on every seek
+    if (segmentInfo.playlist.discontinuityStarts.length) {
+      if (segmentInfo.mediaIndex > 0) {
+        segmentTimestampOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist, 0, segmentInfo.mediaIndex);
+      }
+
+      // Now that the forward buffer is clear, we have to set timestamp offset to
+      // the start of the buffered region
+      this.sourceBuffer.timestampOffset = segmentTimestampOffset;
+    }
+  } else if (segment.discontinuity) {
+    // If we aren't seeking and are crossing a discontinuity, we should set
+    // timestampOffset for new segments to be appended the end of the current
+    // buffered time-range
+    this.sourceBuffer.timestampOffset = currentBuffered.end(0);
   }
 
   this.sourceBuffer.appendBuffer(bytes);
