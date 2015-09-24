@@ -1328,7 +1328,9 @@ test('exposes in-band metadata events as cues', function() {
       }, {
         id: 'PRIV',
         owner: 'owner@example.com',
-        privateData: new Uint8Array([1, 2, 3])
+        privateData: new Uint8Array([1, 2, 3]),
+        key: 'PRIV',
+        data: new Uint8Array([1, 2, 3])
       }]
     });
   };
