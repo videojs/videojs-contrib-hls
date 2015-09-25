@@ -23,7 +23,9 @@
 
   <!-- Media Sources plugin -->
   <script src="../../node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
-
+  <script>
+    videojs.MediaSource.webWorkerURI = '../../node_modules/videojs-contrib-media-sources/src/transmuxer_worker.js';
+  </script>
   <!-- HLS plugin -->
   <script src="../../src/videojs-hls.js"></script>
 
@@ -77,12 +79,11 @@
   </video>
   <section class="stats">
     <h2>Player Stats</h2>
-    <div class="segment-timeline"></div>
     <dl>
       <dt>Current Time:</dt>
       <dd class="current-time-stat">0</dd>
       <dt>Buffered:</dt>
-      <dd><span class="buffered-start-stat">-</span> - <span class="buffered-end-stat">-</span></dd>
+      <dd class="buffered-stat">-</dd>
       <dt>Seekable:</dt>
       <dd><span class="seekable-start-stat">-</span> - <span class="seekable-end-stat">-</span></dd>
       <dt>Video Bitrate:</dt>
@@ -90,10 +91,13 @@
       <dt>Measured Bitrate:</dt>
       <dd class="measured-bitrate-stat">0 kbps</dd>
     </dl>
+    <h3>Bitrate Switching</h3>
     <div class="switching-stats">
       Once the player begins loading, you'll see information about the
       operation of the adaptive quality switching here.
     </div>
+    <h3>Timed Metadata</h3>
+    <div class="segment-timeline"></div>
   </section>
 
   <script src="stats.js"></script>
@@ -107,8 +111,7 @@
     // ------------
 
     var currentTimeStat = document.querySelector('.current-time-stat');
-    var bufferedStartStat = document.querySelector('.buffered-start-stat');
-    var bufferedEndStat = document.querySelector('.buffered-end-stat');
+    var bufferedStat = document.querySelector('.buffered-stat');
     var seekableStartStat = document.querySelector('.seekable-start-stat');
     var seekableEndStat = document.querySelector('.seekable-end-stat');
     var videoBitrateState = document.querySelector('.video-bitrate-stat');
@@ -119,20 +122,17 @@
     });
 
     player.on('progress', function() {
-      var oldStart, oldEnd;
+      var bufferedText = '', oldStart, oldEnd, i;
+
       // buffered
       var buffered = player.buffered();
       if (buffered.length) {
-
-        oldStart = bufferedStartStat.textContent;
-        if (buffered.start(0).toFixed(1) !== oldStart) {
-          bufferedStartStat.textContent = buffered.start(0).toFixed(1);
-        }
-        oldEnd = bufferedEndStat.textContent;
-        if (buffered.end(0).toFixed(1) !== oldEnd) {
-          bufferedEndStat.textContent = buffered.end(0).toFixed(1);
-        }
+        bufferedText += buffered.start(0) + ' - ' + buffered.end(0);
       }
+      for (i = 1; i < buffered.length; i++) {
+        bufferedText += ', ' + buffered.start(i) + ' - ' + buffered.end(i);
+      }
+      bufferedStat.textContent = bufferedText;
 
       // seekable
       var seekable = player.seekable();
@@ -149,14 +149,14 @@
       }
 
       // bitrates
-      var playlist = player.tech.hls.playlists.media();
+      var playlist = player.tech_.hls.playlists.media();
       if (playlist && playlist.attributes && playlist.attributes.BANDWIDTH) {
         videoBitrateState.textContent = (playlist.attributes.BANDWIDTH / 1024).toLocaleString(undefined, {
           maximumFractionDigits: 1
         }) + ' kbps';
       }
-      if (player.tech.hls.bandwidth) {
-        measuredBitrateStat.textContent = (player.tech.hls.bandwidth / 1024).toLocaleString(undefined, {
+      if (player.tech_.hls.bandwidth) {
+        measuredBitrateStat.textContent = (player.tech_.hls.bandwidth / 1024).toLocaleString(undefined, {
           maximumFractionDigits: 1
         }) + ' kbps';
       }

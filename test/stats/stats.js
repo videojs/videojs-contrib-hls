@@ -7,9 +7,35 @@
 
   var d3 = window.d3;
 
-  var setupGraph = function(element) {
-    element.innerHTML = '';
+  var bitrateTickFormatter = d3.format(',.0f');
 
+  var updateBitrateAxes = function(svg, xScale, yScale) {
+    var xAxis = d3.svg.axis().scale(xScale).orient('bottom');
+    svg.select('.axis.x')
+      .transition().duration(500)
+      .call(xAxis);
+
+    var yAxis = d3.svg.axis().scale(yScale)
+        .tickFormat(function(value) {
+          return bitrateTickFormatter(value / 1024);
+        }).orient('left');
+    svg.select('.axis.y')
+      .transition().duration(500)
+      .call(yAxis);
+  };
+
+  var updateBitrates = function(svg, x, y, measuredBitrateKbps) {
+    var bitrates, line;
+
+    bitrates = svg.selectAll('.bitrates').datum(measuredBitrateKbps);
+    line = d3.svg.line()
+      .x(function(bitrate) { return x(bitrate.time); })
+      .y(function(bitrate) { return y(bitrate.value); });
+
+    bitrates.transition().duration(500).attr('d', line);
+  };
+
+  var setupGraph = function(element, player) {
     // setup the display
     var margin = {
       top: 20,
@@ -30,15 +56,14 @@
     var x = d3.time.scale().range([0, width]); // d3.scale.linear().range([0, width]);
     var y = d3.scale.linear().range([height, 0]);
 
-    x.domain([new Date(), new Date(Date.now() + (5 * 60 * 1000))]);
+    x.domain([new Date(), new Date(Date.now() + (1 * 60 * 1000))]);
     y.domain([0, 5 * 1024 * 1024 * 8]);
 
     var timeAxis = d3.svg.axis().scale(x).orient('bottom');
-    var tickFormatter = d3.format(',.0f');
     var bitrateAxis = d3.svg.axis()
         .scale(y)
         .tickFormat(function(value) {
-          return tickFormatter(value / 1024);
+          return bitrateTickFormatter(value / 1024);
         })
         .orient('left');
 
@@ -60,6 +85,26 @@
       .style('text-anchor', 'end')
       .text('Bitrate (kb/s)');
 
+    svg.append('path')
+      .attr('class', 'bitrates');
+
+    var measuredBitrateKbps = [{
+      time: new Date(),
+      value: player.tech_.hls.bandwidth || 0
+    }];
+
+    player.on('progress', function() {
+      measuredBitrateKbps.push({
+        time: new Date(),
+        value: player.tech_.hls.bandwidth || 0
+      });
+      x.domain([x.domain()[0], new Date()]);
+      y.domain([0, d3.max(measuredBitrateKbps, function(bitrate) {
+        return bitrate.value;
+      })]);
+      updateBitrateAxes(svg, x, y);
+      updateBitrates(svg, x, y, measuredBitrateKbps);
+    });
   };
 
   // ---------------
@@ -86,8 +131,8 @@
 
   var mediaDomain = function(media, player) {
     var segments = media.segments;
-    var end = player.tech.hls.playlists.expiredPreDiscontinuity_;
-    end += player.tech.hls.playlists.expiredPostDiscontinuity_;
+    var end = player.tech_.hls.playlists.expiredPreDiscontinuity_;
+    end += player.tech_.hls.playlists.expiredPostDiscontinuity_;
     end += Playlist.duration(media,
                              media.mediaSequence,
                              media.mediaSequence + segments.length);
@@ -160,7 +205,7 @@
       .call(ptsAxis);
   };
   var svgRenderSegmentTimeline = function(container, player) {
-    var media = player.tech.hls.playlists.media();
+    var media = player.tech_.hls.playlists.media();
     var segments = media.segments; // media.segments.slice(0, count);
 
     // setup the display
@@ -196,7 +241,7 @@
 
     // update everything on progress
     player.on('progress', function() {
-      var updatedMedia = player.tech.hls.playlists.media();
+      var updatedMedia = player.tech_.hls.playlists.media();
       var segments = updatedMedia.segments; // updatedMedia.segments.slice(currentIndex, currentIndex + count);
 
       if (updatedMedia.mediaSequence !== media.mediaSequence) {
@@ -220,7 +265,7 @@
   };
 
   var displayCues = function(container, player) {
-    var media = player.tech.hls.playlists.media();
+    var media = player.tech_.hls.playlists.media();
     if (media && media.segments) {
       svgRenderSegmentTimeline(container, player);
     } else {
