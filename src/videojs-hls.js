@@ -311,6 +311,8 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
     return;
   }
 
+  // if the codecs were explicitly specified, pass them along to the
+  // source buffer
   mimeType = 'video/mp2t';
   if (media.attributes && media.attributes.CODECS) {
     mimeType += '; codecs="' + media.attributes.CODECS + '"';
@@ -323,6 +325,16 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
     if (this.duration() !== Infinity &&
         this.mediaIndex === this.playlists.media().segments.length) {
       this.mediaSource.endOfStream();
+    }
+
+    // when switching renditions or seeking, we may misjudge the media
+    // index to request to continue playback. check after each append
+    // that our buffering is productive and seek if necessary to
+    // continue playback
+    if (this.tech_.buffered().length &&
+        this.tech_.currentTime() < this.tech_.buffered().start(this.tech_.buffered().length - 1)) {
+      videojs.log('Variants out of sync. Seeking to continue.');
+      this.tech_.setCurrentTime(this.tech_.buffered().start(this.tech_.buffered().length - 1));
     }
   }.bind(this));
 };
