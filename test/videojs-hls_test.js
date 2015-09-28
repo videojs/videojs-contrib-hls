@@ -1326,9 +1326,10 @@ test('exposes in-band metadata events as cues', function() {
         id: 'WXXX',
         url: 'http://example.com'
       }, {
-        id: 'PRIV',
+        key: 'PRIV',
         owner: 'owner@example.com',
-        privateData: new Uint8Array([1, 2, 3])
+        privateData: new Uint8Array([1, 2, 3]),
+        data: new Uint8Array([1, 2, 3])
       }]
     });
   };
@@ -1355,8 +1356,9 @@ test('exposes in-band metadata events as cues', function() {
   equal(track.cues[2].endTime, 2, 'cue ends at 2 seconds');
   equal(track.cues[2].pauseOnExit, false, 'cue does not pause on exit');
   equal(track.cues[2].text, '', 'did not set cue text');
+  equal(track.cues[2].value.key, 'PRIV', 'key is not PRIV');
   equal(track.cues[2].frame.owner, 'owner@example.com', 'set the owner');
-  deepEqual(track.cues[2].frame.privateData,
+  deepEqual(track.cues[2].value.data,
             new Uint8Array([1, 2, 3]),
             'set the private data');
 });

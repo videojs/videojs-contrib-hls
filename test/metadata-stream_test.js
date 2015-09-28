@@ -329,7 +329,7 @@
     equal(events.length, 1, 'parsed a tag');
     equal(events[0].frames.length, 1, 'parsed a frame');
     equal(events[0].frames[0].data.byteLength,
-          owner.length + payload.length,
+          payload.length,
           'collected data across pushes');
 
     // parses subsequent fragmented tags
