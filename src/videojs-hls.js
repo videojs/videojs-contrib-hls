@@ -137,12 +137,6 @@ videojs.Hls.prototype.src = function(src) {
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen.bind(this));
 
-  // We need to trigger this asynchronously to give others the chance
-  // to bind to the event when a source is set at player creation
-  this.setTimeout(function() {
-    this.tech_.trigger('loadstart');
-  }.bind(this), 1);
-
   // The index of the next segment to be downloaded in the current
   // media playlist. When the current media playlist is live with
   // expiring segments, it may be a different value from the media
