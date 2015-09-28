@@ -344,11 +344,9 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
         if (this.tech_.currentTime() < this.tech_.buffered().start(i)) {
           // found the misidentified segment's buffered time range
           // adjust the media index to fill the gap
-          var mi = this.mediaIndex;
           currentBuffered = this.findCurrentBuffered_();
           this.playlists.updateTimelineOffset(segmentInfo.mediaIndex, this.tech_.buffered().start(i));
           this.mediaIndex = this.playlists.getMediaIndexForTime_(currentBuffered.end(0) + 1);
-          console.log(mi, '->', this.mediaIndex, 'expired:', this.tech_.buffered().start(i));
           break;
         }
       }
