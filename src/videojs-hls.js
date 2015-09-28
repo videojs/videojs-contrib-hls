@@ -46,6 +46,8 @@ videojs.Hls = videojs.extend(Component, {
     this.tech_ = tech;
     this.source_ = options.source;
     this.mode_ = options.mode;
+    this.pendingSegment_ = null;
+
     this.bytesReceived = 0;
 
     // loadingState_ tracks how far along the buffering process we
@@ -322,19 +324,34 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
   // transition the sourcebuffer to the ended state if we've hit the end of
   // the playlist
   this.sourceBuffer.addEventListener('updateend', function() {
+    var segmentInfo = this.pendingSegment_, i, currentBuffered;
+
+    this.pendingSegment_ = null;
+
     if (this.duration() !== Infinity &&
         this.mediaIndex === this.playlists.media().segments.length) {
       this.mediaSource.endOfStream();
     }
 
-    // when switching renditions or seeking, we may misjudge the media
-    // index to request to continue playback. check after each append
-    // that our buffering is productive and seek if necessary to
-    // continue playback
-    if (this.tech_.buffered().length &&
-        this.tech_.currentTime() < this.tech_.buffered().start(this.tech_.buffered().length - 1)) {
-      videojs.log('Variants out of sync. Seeking to continue.');
-      this.tech_.setCurrentTime(this.tech_.buffered().start(this.tech_.buffered().length - 1));
+    // When switching renditions or seeking, we may misjudge the media
+    // index to request to continue playback. Check after each append
+    // that a gap hasn't appeared in the buffered region and adjust
+    // the media index to fill it if necessary
+    if (this.tech_.buffered().length === 2 &&
+        segmentInfo.playlist === this.playlists.media()) {
+      i = this.tech_.buffered().length;
+      while (i--) {
+        if (this.tech_.currentTime() < this.tech_.buffered().start(i)) {
+          // found the misidentified segment's buffered time range
+          // adjust the media index to fill the gap
+          var mi = this.mediaIndex;
+          currentBuffered = this.findCurrentBuffered_();
+          this.playlists.updateTimelineOffset(segmentInfo.mediaIndex, this.tech_.buffered().start(i));
+          this.mediaIndex = this.playlists.getMediaIndexForTime_(currentBuffered.end(0) + 1);
+          console.log(mi, '->', this.mediaIndex, 'expired:', this.tech_.buffered().start(i));
+          break;
+        }
+      }
     }
   }.bind(this));
 };
@@ -381,8 +398,10 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
       return;
     }
     media = this.playlists.media();
-    startTime = this.tech_.playlists.expiredPreDiscontinuity_ + this.tech_.playlists.expiredPostDiscontinuity_;
-    startTime += videojs.Hls.Playlist.duration(media, media.mediaSequence, media.mediaSequence + this.tech_.mediaIndex);
+    startTime = this.tech_.playlists.expired_;
+    startTime += videojs.Hls.Playlist.duration(media,
+                                               media.mediaSequence,
+                                               media.mediaSequence + this.tech_.mediaIndex);
 
     i = textTrack.cues.length;
     while (i--) {
@@ -395,8 +414,7 @@ videojs.Hls.prototype.setupMetadataCueTranslation_ = function() {
 
 videojs.Hls.prototype.addCuesForMetadata_ = function(segmentInfo) {
   var i, cue, frame, metadata, minPts, segment, segmentOffset, textTrack, time;
-  segmentOffset = this.playlists.expiredPreDiscontinuity_;
-  segmentOffset += this.playlists.expiredPostDiscontinuity_;
+  segmentOffset = this.playlists.expired_;
   segmentOffset += videojs.Hls.Playlist.duration(segmentInfo.playlist,
                                                  segmentInfo.playlist.mediaSequence,
                                                  segmentInfo.playlist.mediaSequence + segmentInfo.mediaIndex);
@@ -543,7 +561,7 @@ videojs.Hls.prototype.seekable = function() {
     return currentSeekable;
   }
 
-  startOffset = this.playlists.expiredPostDiscontinuity_ - this.playlists.expiredPreDiscontinuity_;
+  startOffset = this.playlists.expired_;
   return videojs.createTimeRanges(startOffset,
                                  startOffset + (currentSeekable.end(0) - currentSeekable.start(0)));
 };
@@ -1080,10 +1098,9 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     this.sourceBuffer.timestampOffset = currentBuffered.end(0);
   }
 
+  // the segment is asynchronously added to the current buffered data
   this.sourceBuffer.appendBuffer(bytes);
-
-  // we're done processing this segment
-  segmentBuffer.shift();
+  this.pendingSegment_ = segmentBuffer.shift();
 };
 
 /**

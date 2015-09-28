@@ -1,16 +1,15 @@
 /**
+ * playlist-loader
+ *
  * A state machine that manages the loading, caching, and updating of
  * M3U8 playlists. When tracking a live playlist, loaders will keep
  * track of the duration of content that expired since the loader was
  * initialized and when the current discontinuity sequence was
  * encountered. A complete media timeline for a live playlist with
- * expiring segments and discontinuities looks like this:
+ * expiring segments looks like this:
  *
- * |-- expiredPreDiscontinuity --|-- expiredPostDiscontinuity --|-- segments --|
+ * |-- expired --|-- segments --|
  *
- * You can use these values to calculate how much time has elapsed
- * since the stream began loading or how long it has been since the
- * most recent discontinuity was encountered, for instance.
  */
 (function(window, videojs) {
   'use strict';
@@ -159,20 +158,13 @@
       // initialize the loader state
       loader.state = 'HAVE_NOTHING';
 
-      // the total duration of all segments that expired and have been
-      // removed from the current playlist after the last
-      // #EXT-X-DISCONTINUITY. In a live playlist without
-      // discontinuities, this is the total amount of time that has
-      // been removed from the stream since the playlist loader began
+      // The total duration of all segments that expired and have been
+      // removed from the current playlist, in seconds. This property
+      // should always be zero for non-live playlists. In a live
+      // playlist, this is the total amount of time that has been
+      // removed from the stream since the playlist loader began
       // tracking it.
-      loader.expiredPostDiscontinuity_ = 0;
-
-      // the total duration of all segments that expired and have been
-      // removed from the current playlist before the last
-      // #EXT-X-DISCONTINUITY. The total amount of time that has
-      // expired is always the sum of expiredPreDiscontinuity_ and
-      // expiredPostDiscontinuity_.
-      loader.expiredPreDiscontinuity_ = 0;
+      loader.expired_ = 0;
 
       // capture the prototype dispose function
       dispose = this.dispose;
@@ -364,39 +356,40 @@
    * @param update {object} the updated media playlist object
    */
   PlaylistLoader.prototype.updateMediaPlaylist_ = function(update) {
-    var lastDiscontinuity, expiredCount, i;
+    var expiredCount;
 
     if (this.media_) {
       expiredCount = update.mediaSequence - this.media_.mediaSequence;
 
-      // setup the index for duration calculations so that the newly
-      // expired time will be accumulated after the last
-      // discontinuity, unless we discover otherwise
-      lastDiscontinuity = this.media_.mediaSequence;
-
-      if (this.media_.discontinuitySequence !== update.discontinuitySequence) {
-        i = expiredCount;
-        while (i--) {
-          if (this.media_.segments[i].discontinuity) {
-            // a segment that begins a new discontinuity sequence has expired
-            lastDiscontinuity = i + this.media_.mediaSequence;
-            this.expiredPreDiscontinuity_ += this.expiredPostDiscontinuity_;
-            this.expiredPostDiscontinuity_ = 0;
-            break;
-          }
-        }
-      }
-
-      // update the expirated durations
-      this.expiredPreDiscontinuity_ += Playlist.duration(this.media_,
-                                                         this.media_.mediaSequence,
-                                                         lastDiscontinuity);
-      this.expiredPostDiscontinuity_ += Playlist.duration(this.media_,
-                                                          lastDiscontinuity,
-                                                          update.mediaSequence);
+      // update the expired time count
+      this.expired_ += Playlist.duration(this.media_,
+                                         this.media_.mediaSequence,
+                                         update.mediaSequence);
     }
 
     this.media_ = this.master.playlists[update.uri];
+  };
+
+  /**
+   * When switching variant playlists in a live stream, the player may
+   * discover that the new set of available segments is shifted in
+   * time relative to the old playlist. If that is the case, you can
+   * call this method to synchronize the playlist loader so that
+   * subsequent calls to getMediaIndexForTime_() return values
+   * appropriate for the new playlist.
+   *
+   * @param mediaIndex {integer} the index of the segment that will be
+   * the used to base timeline calculations on
+   * @param startTime {number} the media timeline position of the
+   * first moment of video data for the specified segment. That is,
+   * data from the specified segment will first be displayed when
+   * `currentTime` is equal to `startTime`.
+   */
+  PlaylistLoader.prototype.updateTimelineOffset = function(mediaIndex, startingTime) {
+    var segmentOffset = Playlist.duration(this.media_,
+                                          this.media_.mediaSequence,
+                                          this.media_.mediaSequence + mediaIndex);
+    this.expired_ = startingTime - segmentOffset;
   };
 
   /**
@@ -426,7 +419,7 @@
 
     // when the requested position is earlier than the current set of
     // segments, return the earliest segment index
-    time -= this.expiredPreDiscontinuity_ + this.expiredPostDiscontinuity_;
+    time -= this.expired_;
     if (time < 0) {
       return 0;
     }
