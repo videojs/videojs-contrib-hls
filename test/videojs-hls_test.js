@@ -2594,6 +2594,38 @@ test('the source handler supports HLS mime types', function() {
   });
 });
 
+test('fires loadstart manually if Flash is used', function() {
+  var
+    tech = new (videojs.extend(videojs.EventTarget, {
+      buffered: function() {
+        return videojs.createTimeRange();
+      },
+      currentTime: function() {
+        return 0;
+      },
+      el: function() {
+        return {};
+      },
+      preload: function() {
+        return 'auto';
+      },
+      src: function() {},
+      setTimeout: window.setTimeout
+    }))(),
+    loadstarts = 0;
+  tech.on('loadstart', function() {
+    loadstarts++;
+  });
+  videojs.HlsSourceHandler('flash').handleSource({
+    src: 'movie.m3u8',
+    type: 'application/x-mpegURL'
+  }, tech);
+
+  equal(loadstarts, 0, 'loadstart is not synchronous');
+  clock.tick(1);
+  equal(loadstarts, 1, 'fired loadstart');
+});
+
 test('has no effect if native HLS is available', function() {
   var player;
   videojs.Hls.supportsNativeHls = true;
