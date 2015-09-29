@@ -4,10 +4,15 @@
 }
 
 .axis line,
-.axis path,
-.intersect {
+.axis path {
   fill: none;
-  stroke: #000;
+  stroke: #111;
+}
+
+.bitrates {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 3px;
 }
 
 .cue {
@@ -23,6 +28,6 @@
 
 .intersect {
   fill: none;
-  stroke: #000;
+  stroke: #111;
   stroke-dasharray: 2,2;
 }

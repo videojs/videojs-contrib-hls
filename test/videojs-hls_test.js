@@ -42,7 +42,25 @@ var
   // patch over some methods of the provided tech so it can be tested
   // synchronously with sinon's fake timers
   mockTech = function(tech) {
-    tech.currentTime_ = tech.currentTime;
+    if (tech.isMocked_) {
+      // make this function idempotent because HTML and Flash based
+      // playback have very different lifecycles. For HTML, the tech
+      // is available on player creation. For Flash, the tech isn't
+      // ready until the source has been loaded and one tick has
+      // expired.
+      return;
+    }
+
+    tech.isMocked_ = true;
+
+    tech.paused_ = !tech.autoplay();
+    tech.paused = function() {
+      return tech.paused_;
+    };
+
+    if (!tech.currentTime_) {
+      tech.currentTime_ = tech.currentTime;
+    }
     tech.currentTime = function() {
       return tech.time_ === undefined ? tech.currentTime_() : tech.time_;
     };
@@ -59,6 +77,19 @@ var
     tech.currentSrc_ = tech.currentSrc;
     tech.currentSrc = function() {
       return tech.src_ === undefined ? tech.currentSrc_() : tech.src_;
+    };
+
+    tech.play_ = tech.play;
+    tech.play = function() {
+      tech.play_();
+      tech.paused_ = false;
+      tech.trigger('play');
+    };
+    tech.pause_ = tech.pause_;
+    tech.pause = function() {
+      tech.pause_();
+      tech.paused_ = true;
+      tech.trigger('pause');
     };
 
     tech.setCurrentTime = function(time) {
@@ -95,6 +126,7 @@ var
     // ensure the Flash tech is ready
     player.tech_.triggerReady();
     clock.tick(1);
+    mockTech(player.tech_);
 
     // simulate the sourceopen event
     player.tech_.hls.mediaSource.readyState = 'open';
@@ -197,9 +229,11 @@ var
         constructor: function() {},
         abort: function() {},
         buffered: videojs.createTimeRange(),
-        appendBuffer: function() {}
+        appendBuffer: function() {},
+        remove: function() {}
       }))();
     },
+    endOfStream: function() {}
   }),
 
   // do a shallow copy of the properties of source onto the target object
@@ -882,6 +916,57 @@ test('moves to the next segment if there is a network error', function() {
   strictEqual(mediaIndex + 1, player.tech_.hls.mediaIndex, 'media index is incremented');
 });
 
+test('updates playlist timeline offsets if it detects a desynchronization', function() {
+  var buffered = [], currentTime = 0;
+
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:2\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '3.ts\n'); // media
+  player.tech_.buffered = function() { return videojs.createTimeRange(buffered); };
+  player.tech_.currentTime = function() { return currentTime; };
+  player.tech_.paused = function() { return false; };
+  player.tech_.trigger('play');
+  clock.tick(1);
+  standardXHRResponse(requests.shift()); // segment 0
+  equal(player.tech_.hls.mediaIndex, 1, 'incremented mediaIndex');
+
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+  buffered.push([0, 10]);
+
+  // force a playlist switch
+  player.tech_.hls.playlists.media('media1.m3u8');
+  requests = requests.filter(function(request) {
+    return !request.aborted;
+  });
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:9999\n' +
+                           '#EXTINF:10,\n' +
+                           '3.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '4.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '5.ts\n'); // media1
+  player.tech_.hls.checkBuffer_();
+  standardXHRResponse(requests.shift());
+
+  buffered.push([20, 30]);
+  currentTime = 8;
+
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+  equal(player.tech_.hls.mediaIndex, 0, 'prepared to request the missing segment');
+});
+
 test('updates the duration after switching playlists', function() {
   var selectedPlaylist = false;
   player.src({
@@ -1172,33 +1257,14 @@ test('buffers based on the correct TimeRange if multiple ranges exist', function
     return 8;
   };
 
-  player.tech_.buffered = function() {
-    return {
-      start: function(num) {
-        switch (num) {
-          case 0:
-            return 0;
-          case 1:
-            return 50;
-        }
-      },
-      end: function(num) {
-        switch (num) {
-          case 0:
-            return 10;
-          case 1:
-            return 160;
-        }
-      },
-      length: 2
-    };
-  };
-
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+  player.tech_.buffered = function() {
+    return videojs.createTimeRange([[0, 10], [50, 160]]);
+  };
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
