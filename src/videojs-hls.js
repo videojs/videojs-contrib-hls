@@ -102,6 +102,13 @@ videojs.HlsSourceHandler = function(mode) {
       return mpegurlRE.test(srcObj.type);
     },
     handleSource: function(source, tech) {
+      if (mode === 'flash') {
+        // We need to trigger this asynchronously to give others the chance
+        // to bind to the event when a source is set at player creation
+        tech.setTimeout(function() {
+          tech.trigger('loadstart');
+        }, 1);
+      }
       tech.hls = new videojs.Hls(tech, {
         source: source,
         mode: mode
@@ -138,12 +145,6 @@ videojs.Hls.prototype.src = function(src) {
 
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen.bind(this));
-
-  // We need to trigger this asynchronously to give others the chance
-  // to bind to the event when a source is set at player creation
-  this.setTimeout(function() {
-    this.tech_.trigger('loadstart');
-  }.bind(this), 1);
 
   // The index of the next segment to be downloaded in the current
   // media playlist. When the current media playlist is live with
