@@ -292,7 +292,12 @@ videojs.Hls.getMediaIndexForLive_ = function(selectedPlaylist) {
 };
 
 videojs.Hls.prototype.handleSourceOpen = function() {
-  this.setupSourceBuffer_();
+  // Only attempt to create the source buffer if none already exist.
+  // handleSourceOpen is also called when we are "re-opening" a source buffer
+  // after `endOfStream` has been called (in response to a seek for instance)
+  if (!this.sourceBuffer) {
+    this.setupSourceBuffer_();
+  }
 
   // if autoplay is enabled, begin playback. This is duplicative of
   // code in video.js but is required because play() must be invoked
