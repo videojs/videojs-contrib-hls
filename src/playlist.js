@@ -5,7 +5,7 @@
   'use strict';
 
   var DEFAULT_TARGET_DURATION = 10;
-  var accumulateDuration, ascendingNumeric, duration, intervalDuration, optionalMin, optionalMax, rangeDuration, seekable;
+  var duration, intervalDuration, optionalMin, optionalMax, seekable;
 
   // Math.min that will return the alternative input if one of its
   // parameters in undefined
@@ -23,133 +23,6 @@
     return Math.max(left, right);
   };
 
-  // Array.sort comparator to sort numbers in ascending order
-  ascendingNumeric = function(left, right) {
-    return left - right;
-  };
-
-  /**
-   * Returns the media duration for the segments between a start and
-   * exclusive end index. The start and end parameters are interpreted
-   * as indices into the currently available segments. This method
-   * does not calculate durations for segments that have expired.
-   * @param playlist {object} a media playlist object
-   * @param start {number} an inclusive lower boundary for the
-   * segments to examine.
-   * @param end {number} an exclusive upper boundary for the segments
-   * to examine.
-   * @param includeTrailingTime {boolean} if false, the interval between
-   * the final segment and the subsequent segment will not be included
-   * in the result
-   * @return {number} the duration between the start index and end
-   * index in seconds.
-   */
-  accumulateDuration = function(playlist, start, end, includeTrailingTime) {
-    var
-      ranges = [],
-      rangeEnds = (playlist.discontinuityStarts || []).concat(end),
-      result = 0,
-      i;
-
-    // short circuit if start and end don't specify a non-empty range
-    // of segments
-    if (start >= end) {
-      return 0;
-    }
-
-    // create a range object for each discontinuity sequence
-    rangeEnds.sort(ascendingNumeric);
-    for (i = 0; i < rangeEnds.length; i++) {
-      if (rangeEnds[i] > start) {
-        ranges.push({ start: start, end: rangeEnds[i] });
-        i++;
-        break;
-      }
-    }
-    for (; i < rangeEnds.length; i++) {
-      // ignore times ranges later than end
-      if (rangeEnds[i] >= end) {
-        ranges.push({ start: rangeEnds[i - 1], end: end });
-        break;
-      }
-      ranges.push({ start: ranges[ranges.length - 1].end, end: rangeEnds[i] });
-    }
-
-    // add up the durations for each of the ranges
-    for (i = 0; i < ranges.length; i++) {
-      result += rangeDuration(playlist,
-                              ranges[i],
-                              i === ranges.length - 1 && includeTrailingTime);
-    }
-
-    return result;
-  };
-
-  /**
-   * Returns the duration of the specified range of segments. The
-   * range *must not* cross a discontinuity.
-   * @param playlist {object} a media playlist object
-   * @param range {object} an object that specifies a starting and
-   * ending index into the available segments.
-   * @param includeTrailingTime {boolean} if false, the interval between
-   * the final segment and the subsequent segment will not be included
-   * in the result
-   * @return {number} the duration of the range in seconds.
-   */
-  rangeDuration = function(playlist, range, includeTrailingTime) {
-    var
-      result = 0,
-      targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION,
-      segment,
-      left, right;
-
-    // accumulate while searching for the earliest segment with
-    // available PTS information
-    for (left = range.start; left < range.end; left++) {
-      segment = playlist.segments[left];
-      if (segment.minVideoPts !== undefined ||
-          segment.minAudioPts !== undefined) {
-        break;
-      }
-      result += segment.duration || targetDuration;
-    }
-
-    // see if there's enough information to include the trailing time
-    if (includeTrailingTime) {
-      segment = playlist.segments[range.end];
-      if (segment &&
-          (segment.minVideoPts !== undefined ||
-           segment.minAudioPts !== undefined)) {
-        result += 0.001 *
-          (optionalMin(segment.minVideoPts, segment.minAudioPts) -
-           optionalMin(playlist.segments[left].minVideoPts,
-                    playlist.segments[left].minAudioPts));
-        return result;
-      }
-    }
-
-    // do the same thing while finding the latest segment
-    for (right = range.end - 1; right >= left; right--) {
-      segment = playlist.segments[right];
-      if (segment.maxVideoPts !== undefined ||
-          segment.maxAudioPts !== undefined) {
-        break;
-      }
-      result += segment.duration || targetDuration;
-    }
-
-    // add in the PTS interval in seconds between them
-    if (right >= left) {
-      result += 0.001 *
-        (optionalMax(playlist.segments[right].maxVideoPts,
-                  playlist.segments[right].maxAudioPts) -
-         optionalMin(playlist.segments[left].minVideoPts,
-                  playlist.segments[left].minAudioPts));
-    }
-
-    return result;
-  };
-
   /**
    * Calculate the media duration from the segments associated with a
    * playlist. The duration of a subinterval of the available segments
@@ -160,14 +33,11 @@
    * boundary for the playlist.  Defaults to 0.
    * @param endSequence {number} (optional) an exclusive upper boundary
    * for the playlist.  Defaults to playlist length.
-   * @param includeTrailingTime {boolean} if false, the interval between
-   * the final segment and the subsequent segment will not be included
-   * in the result
    * @return {number} the duration between the start index and end
    * index.
    */
-  intervalDuration = function(playlist, startSequence, endSequence, includeTrailingTime) {
-    var result = 0, targetDuration, expiredSegmentCount;
+  intervalDuration = function(playlist, startSequence, endSequence) {
+    var result = 0, targetDuration, i, start, end, expiredSegmentCount;
 
     if (startSequence === undefined) {
       startSequence = playlist.mediaSequence || 0;
@@ -177,16 +47,26 @@
     }
     targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION;
 
-    // estimate expired segment duration using the target duration
+    // accumulate while looking for the latest known segment-timeline mapping
     expiredSegmentCount = optionalMax(playlist.mediaSequence - startSequence, 0);
+    start = startSequence + expiredSegmentCount - playlist.mediaSequence;
+    end = endSequence - playlist.mediaSequence;
+    for (i = end - 1; i >= start; i--) {
+      if (playlist.segments[i].end !== undefined) {
+        result += playlist.segments[i].end;
+        return result;
+      }
+
+      result += playlist.segments[i].duration || targetDuration;
+
+      if (playlist.segments[i].start !== undefined) {
+        result += playlist.segments[i].start;
+        return result;
+      }
+    }
+    // neither a start or end time was found in the interval so we
+    // have to estimate the expired duration
     result += expiredSegmentCount * targetDuration;
-
-    // accumulate the segment durations into the result
-    result += accumulateDuration(playlist,
-                                 startSequence + expiredSegmentCount - playlist.mediaSequence,
-                                 endSequence - playlist.mediaSequence,
-                                 includeTrailingTime);
-
     return result;
   };
 

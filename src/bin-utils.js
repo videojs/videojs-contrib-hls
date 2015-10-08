@@ -1,4 +1,7 @@
 (function(window) {
+  var textRange = function(range, i) {
+    return range.start(i) + '-' + range.end(i);
+  };
   var module = {
     hexDump: function(data) {
       var
@@ -26,6 +29,13 @@
     },
     tagDump: function(tag) {
       return module.hexDump(tag.bytes);
+    },
+    textRanges: function(ranges) {
+      var result = '', i;
+      for (i = 0; i < ranges.length; i++) {
+        result += textRange(ranges, i) + ' ';
+      }
+      return result;
     }
   };
 

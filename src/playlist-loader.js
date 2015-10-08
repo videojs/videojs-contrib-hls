@@ -411,7 +411,7 @@
    * closest playback position that is currently available.
    */
   PlaylistLoader.prototype.getMediaIndexForTime_ = function(time) {
-    var i;
+    var i, j, segment, targetDuration;
 
     if (!this.media_) {
       return 0;
@@ -424,17 +424,46 @@
       return 0;
     }
 
-    for (i = 0; i < this.media_.segments.length; i++) {
-      time -= Playlist.duration(this.media_,
-                                this.media_.mediaSequence + i,
-                                this.media_.mediaSequence + i + 1,
-                                false);
+    // 1) Walk backward until we find the latest segment with timeline
+    // information that is earlier than `time`
+    targetDuration = this.media_.targetDuration || 10;
+    i = this.media_.segments.length;
+    while (i--) {
+      segment = this.media_.segments[i];
+      if (segment.end !== undefined && segment.end <= time) {
+        time -= segment.end;
+        break;
+      }
+      if (segment.start !== undefined && segment.start < time) {
 
-      // HLS version 3 and lower round segment durations to the
-      // nearest decimal integer. When the correct media index is
-      // ambiguous, prefer the higher one.
-      if (time <= 0) {
-        return i;
+        if (segment.end !== undefined && segment.end > time) {
+          // we've found the target segment exactly
+          return i;
+        }
+
+        time -= segment.start;
+        time -= segment.duration || targetDuration;
+        break;
+      }
+    }
+    i++;
+
+    // 2) Walk forward, testing each segment to see if `time` falls within it
+    for (j = i; j < this.media_.segments.length; j++) {
+      segment = this.media_.segments[j];
+      time -= segment.duration || targetDuration;
+
+      if (time < 0) {
+        return j;
+      }
+
+      // 2a) If we discover a segment that has timeline information
+      // before finding the result segment, the playlist information
+      // must have been inaccurate. Start a binary search for the
+      // segment which contains `time`. If the guess turns out to be
+      // incorrect, we'll have more info to work with next time.
+      if (segment.start !== undefined || segment.end !== undefined) {
+        return Math.floor((j - i) * 0.5);
       }
     }
 
