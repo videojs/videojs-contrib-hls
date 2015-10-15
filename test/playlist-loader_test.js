@@ -69,13 +69,16 @@
   });
 
   test('moves to HAVE_MASTER after loading a master playlist', function() {
-    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8'), state;
+    loader.on('loadedplaylist', function() {
+      state = loader.state;
+    });
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-STREAM-INF:\n' +
                            'media.m3u8\n');
     ok(loader.master, 'the master playlist is available');
-    strictEqual(loader.state, 'HAVE_MASTER', 'the state is correct');
+    strictEqual(state, 'HAVE_MASTER', 'the state at loadedplaylist correct');
   });
 
   test('jumps to HAVE_METADATA when initialized with a media playlist', function() {
@@ -453,6 +456,20 @@
                 'updated the active media');
   });
 
+  test('can switch playlists immediately after the master is downloaded', function() {
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    loader.on('loadedplaylist', function() {
+      loader.media('high.m3u8');
+    });
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'low.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
+                           'high.m3u8\n');
+    equal(requests[0].url, urlTo('high.m3u8'), 'switched variants immediately');
+  });
+
   test('can switch media playlists based on URI', function() {
     var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
     requests.pop().respond(200, null,
@@ -624,9 +641,6 @@
                            'low.m3u8\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=2\n' +
                            'high.m3u8\n');
-    throws(function() {
-      loader.media('high.m3u8');
-    }, 'throws an error from HAVE_MASTER');
   });
 
   test('throws an error if a switch to an unrecognized playlist is requested', function() {
@@ -757,10 +771,8 @@
                              '#EXTINF:5,\n' +
                              '1.ts\n' +
                              '#EXT-X-ENDLIST\n');
-    equal(loader.getMediaIndexForTime_(4), 0, 'rounds down exact matches');
+    equal(loader.getMediaIndexForTime_(4), 1, 'rounds up exact matches');
     equal(loader.getMediaIndexForTime_(3.7), 0, 'rounds down');
-    // FIXME: the test below should pass for HLSv3
-    //equal(loader.getMediaIndexForTime_(4.2), 0, 'rounds down');
     equal(loader.getMediaIndexForTime_(4.5), 1, 'rounds up at 0.5');
   });
 

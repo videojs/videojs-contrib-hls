@@ -686,73 +686,59 @@ test('downloads media playlists after loading the master', function() {
   });
   openMediaSource(player);
 
-  // set bandwidth to an appropriate number so we don't switch
-  player.tech_.hls.bandwidth = 200000;
+  player.tech_.hls.bandwidth = 20e10;
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
 
   strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
   strictEqual(requests[1].url,
-              absoluteUrl('manifest/media.m3u8'),
-              'media playlist requested');
-  strictEqual(requests[2].url,
-              absoluteUrl('manifest/media-00001.ts'),
-              'first segment requested');
-});
-
-test('upshift if initial bandwidth is high', function() {
-  player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-
-  standardXHRResponse(requests[0]);
-
-  player.tech_.hls.playlists.setBandwidth = function() {
-    player.tech_.hls.playlists.bandwidth = 1000000000;
-  };
-
-  standardXHRResponse(requests[1]);
-  standardXHRResponse(requests[2]);
-
-  standardXHRResponse(requests[3]);
-
-  strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
-  strictEqual(requests[1].url,
-              absoluteUrl('manifest/media.m3u8'),
-              'media playlist requested');
-  strictEqual(requests[2].url,
               absoluteUrl('manifest/media3.m3u8'),
               'media playlist requested');
-  strictEqual(requests[3].url,
+  strictEqual(requests[2].url,
               absoluteUrl('manifest/media3-00001.ts'),
               'first segment requested');
 });
 
-test('dont downshift if bandwidth is low', function() {
+test('upshifts if the initial bandwidth hint is high', function() {
   player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
 
+  player.tech_.hls.bandwidth = 10e20;
   standardXHRResponse(requests[0]);
-
-  player.tech_.hls.playlists.setBandwidth = function() {
-    player.tech_.hls.playlists.bandwidth = 100;
-  };
-
   standardXHRResponse(requests[1]);
   standardXHRResponse(requests[2]);
 
   strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
   strictEqual(requests[1].url,
-              absoluteUrl('manifest/media.m3u8'),
+              absoluteUrl('manifest/media3.m3u8'),
               'media playlist requested');
   strictEqual(requests[2].url,
-              absoluteUrl('manifest/media-00001.ts'),
+              absoluteUrl('manifest/media3-00001.ts'),
+              'first segment requested');
+});
+
+test('downshifts if the initial bandwidth hint is low', function() {
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 100;
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  standardXHRResponse(requests[2]);
+
+  strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
+  strictEqual(requests[1].url,
+              absoluteUrl('manifest/media1.m3u8'),
+              'media playlist requested');
+  strictEqual(requests[2].url,
+              absoluteUrl('manifest/media1-00001.ts'),
               'first segment requested');
 });
 
@@ -822,7 +808,7 @@ test('buffer checks are noops when only the master is ready', function() {
 
   strictEqual(1, requests.length, 'one request was made');
   strictEqual(requests[0].url,
-              absoluteUrl('manifest/media.m3u8'),
+              absoluteUrl('manifest/media1.m3u8'),
               'media playlist requested');
 });
 
@@ -876,11 +862,9 @@ test('selects a playlist after segment downloads', function() {
     return player.tech_.hls.playlists.master.playlists[0];
   };
 
-  standardXHRResponse(requests[0]);
-
-  player.tech_.hls.bandwidth = 3000000;
-  standardXHRResponse(requests[1]);
-  standardXHRResponse(requests[2]);
+  standardXHRResponse(requests[0]); // master
+  standardXHRResponse(requests[1]); // media
+  standardXHRResponse(requests[2]); // segment
 
   strictEqual(calls, 2, 'selects after the initial segment');
   player.currentTime = function() {
@@ -889,6 +873,7 @@ test('selects a playlist after segment downloads', function() {
   player.buffered = function() {
     return videojs.createTimeRange(0, 2);
   };
+  player.tech_.hls.sourceBuffer.trigger('updateend');
   player.tech_.hls.checkBuffer_();
 
   standardXHRResponse(requests[3]);
@@ -896,9 +881,7 @@ test('selects a playlist after segment downloads', function() {
   strictEqual(calls, 3, 'selects after additional segments');
 });
 
-test('moves to the next segment if there is a network error', function() {
-  var mediaIndex;
-
+test('reports an error if a segment is unreachable', function() {
   player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -909,62 +892,8 @@ test('moves to the next segment if there is a network error', function() {
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
 
-  mediaIndex = player.tech_.hls.mediaIndex;
-  player.trigger('timeupdate');
-
   requests[2].respond(400);
-  strictEqual(mediaIndex + 1, player.tech_.hls.mediaIndex, 'media index is incremented');
-});
-
-test('updates playlist timeline offsets if it detects a desynchronization', function() {
-  var buffered = [], currentTime = 0;
-
-  player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  standardXHRResponse(requests.shift()); // master
-  requests.shift().respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXT-X-MEDIA-SEQUENCE:2\n' +
-                           '#EXTINF:10,\n' +
-                           '2.ts\n' +
-                           '#EXTINF:10,\n' +
-                           '3.ts\n'); // media
-  player.tech_.buffered = function() { return videojs.createTimeRange(buffered); };
-  player.tech_.currentTime = function() { return currentTime; };
-  player.tech_.paused = function() { return false; };
-  player.tech_.trigger('play');
-  clock.tick(1);
-  standardXHRResponse(requests.shift()); // segment 0
-  equal(player.tech_.hls.mediaIndex, 1, 'incremented mediaIndex');
-
-  player.tech_.hls.sourceBuffer.trigger('updateend');
-  buffered.push([0, 10]);
-
-  // force a playlist switch
-  player.tech_.hls.playlists.media('media1.m3u8');
-  requests = requests.filter(function(request) {
-    return !request.aborted;
-  });
-  requests.shift().respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXT-X-MEDIA-SEQUENCE:9999\n' +
-                           '#EXTINF:10,\n' +
-                           '3.ts\n' +
-                           '#EXTINF:10,\n' +
-                           '4.ts\n' +
-                           '#EXTINF:10,\n' +
-                           '5.ts\n'); // media1
-  player.tech_.hls.checkBuffer_();
-  standardXHRResponse(requests.shift());
-
-  buffered.push([20, 30]);
-  currentTime = 8;
-
-  player.tech_.hls.sourceBuffer.trigger('updateend');
-  equal(player.tech_.hls.mediaIndex, 0, 'prepared to request the missing segment');
+  strictEqual(player.tech_.hls.mediaSource.error_, 'network', 'network error is triggered');
 });
 
 test('updates the duration after switching playlists', function() {
@@ -974,19 +903,22 @@ test('updates the duration after switching playlists', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1e20;
+  standardXHRResponse(requests[0]); // master
+  standardXHRResponse(requests[1]); // media3
+
   player.tech_.hls.selectPlaylist = function() {
     selectedPlaylist = true;
 
-    // this duraiton should be overwritten by the playlist change
+    // this duration should be overwritten by the playlist change
     player.tech_.hls.mediaSource.duration = -Infinity;
 
     return player.tech_.hls.playlists.master.playlists[1];
   };
 
-  standardXHRResponse(requests[0]);
-  standardXHRResponse(requests[1]);
-  standardXHRResponse(requests[2]);
-  standardXHRResponse(requests[3]);
+  standardXHRResponse(requests[2]); // segment 0
+  standardXHRResponse(requests[3]); // media1
   ok(selectedPlaylist, 'selected playlist');
   ok(player.tech_.hls.mediaSource.duration !== -Infinity, 'updates the duration');
 });
@@ -1056,21 +988,6 @@ test('selects a playlist below the current bandwidth', function() {
   strictEqual(playlist,
               player.tech_.hls.playlists.master.playlists[1],
               'the low bitrate stream is selected');
-});
-
-test('scales the bandwidth estimate for the first segment', function() {
-  player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-
-  requests[0].bandwidth = 500;
-  requests.shift().respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXT-X-PLAYLIST-TYPE:VOD\n' +
-                           '#EXT-X-TARGETDURATION:10\n');
-  equal(player.tech_.hls.bandwidth, 500 * 5, 'scaled the bandwidth estimate by 5');
 });
 
 test('allows initial bandwidth to be provided', function() {
@@ -1242,6 +1159,7 @@ test('downloads the next segment if the buffer is getting low', function() {
   player.tech_.buffered = function() {
     return videojs.createTimeRange(0, 19.999);
   };
+  player.tech_.hls.sourceBuffer.trigger('updateend');
   player.tech_.hls.checkBuffer_();
 
   standardXHRResponse(requests[2]);
@@ -1253,8 +1171,12 @@ test('downloads the next segment if the buffer is getting low', function() {
 });
 
 test('buffers based on the correct TimeRange if multiple ranges exist', function() {
+  var currentTime, buffered;
   player.tech_.currentTime = function() {
-    return 8;
+    return currentTime;
+  };
+  player.tech_.buffered = function() {
+    return videojs.createTimeRange(buffered);
   };
 
   player.src({
@@ -1262,37 +1184,28 @@ test('buffers based on the correct TimeRange if multiple ranges exist', function
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.tech_.buffered = function() {
-    return videojs.createTimeRange([[0, 10], [50, 160]]);
-  };
+  currentTime = 8;
+  buffered = [[0, 10], [20, 40]];
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
 
   strictEqual(requests.length, 2, 'made two requests');
   strictEqual(requests[1].url,
-              absoluteUrl('manifest/media-00001.ts'),
+              absoluteUrl('manifest/media-00002.ts'),
               'made segment request');
 
-  player.tech_.currentTime = function() {
-    return 55;
-  };
-
+  currentTime = 22;
+  player.tech_.hls.sourceBuffer.trigger('updateend');
   player.tech_.hls.checkBuffer_();
-
   strictEqual(requests.length, 2, 'made no additional requests');
 
-  player.tech_.currentTime = function() {
-    return 134;
-  };
-
+  buffered = [[0, 10], [20, 30]];
   player.tech_.hls.checkBuffer_();
   standardXHRResponse(requests[2]);
-
   strictEqual(requests.length, 3, 'made three requests');
-
   strictEqual(requests[2].url,
-              absoluteUrl('manifest/media-00002.ts'),
+              absoluteUrl('manifest/media-00004.ts'),
               'made segment request');
 });
 
@@ -1334,15 +1247,8 @@ test('only appends one segment at a time', function() {
   standardXHRResponse(requests.pop()); // media.m3u8
   standardXHRResponse(requests.pop()); // segment 0
 
-  player.tech_.hls.sourceBuffer.updating = true;
-  player.tech_.hls.sourceBuffer.appendBuffer = function() {
-    appends++;
-  };
-
   player.tech_.hls.checkBuffer_();
-  standardXHRResponse(requests.pop()); // segment 1
-  player.tech_.hls.checkBuffer_(); // should be a no-op
-  equal(appends, 0, 'did not append while updating');
+  equal(requests.length, 0, 'did not request while updating');
 });
 
 QUnit.skip('records the min and max PTS values for a segment', function() {
@@ -1424,7 +1330,6 @@ QUnit.skip('records PTS values for audio-only segments', function() {
 });
 
 test('waits to download new segments until the media playlist is stable', function() {
-  var media;
   player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1432,22 +1337,19 @@ test('waits to download new segments until the media playlist is stable', functi
   openMediaSource(player);
   standardXHRResponse(requests.shift()); // master
   player.tech_.hls.bandwidth = 1; // make sure we stay on the lowest variant
-  standardXHRResponse(requests.shift()); // media
+  standardXHRResponse(requests.shift()); // media1
 
-  // mock a playlist switch
-  media = player.tech_.hls.playlists.media();
-  player.tech_.hls.playlists.media = function() {
-    return media;
-  };
-  player.tech_.hls.playlists.state = 'SWITCHING_MEDIA';
+  // force a playlist switch
+  player.tech_.hls.playlists.media('media3.m3u8');
 
   standardXHRResponse(requests.shift()); // segment 0
+  player.tech_.hls.sourceBuffer.trigger('updateend');
 
-  equal(requests.length, 0, 'no requests outstanding');
+  equal(requests.length, 1, 'only the playlist request outstanding');
   player.tech_.hls.checkBuffer_();
-  equal(requests.length, 0, 'delays segment fetching');
+  equal(requests.length, 1, 'delays segment fetching');
 
-  player.tech_.hls.playlists.state = 'LOADED_METADATA';
+  standardXHRResponse(requests.shift()); // media3
   player.tech_.hls.checkBuffer_();
   equal(requests.length, 1, 'resumes segment fetching');
 });
@@ -1841,52 +1743,24 @@ QUnit.skip('translates ID3 PTS values across discontinuities', function() {
   equal(track.cues[1].endTime, 11, 'second cue ended at the correct time');
 });
 
-test('adjusts the segment offsets for out-of-buffer seeking', function() {
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  standardXHRResponse(requests.shift()); // media
-  player.tech_.hls.sourceBuffer.buffered = function() {
-    return videojs.createTimeRange(0, 20);
-  };
-  equal(player.tech_.hls.mediaIndex, 0, 'starts at zero');
-
-  player.tech_.setCurrentTime(35);
-  clock.tick(1);
-  // drop the aborted segment
-  requests.shift();
-  equal(player.tech_.hls.mediaIndex, 3, 'moved the mediaIndex');
-  standardXHRResponse(requests.shift());
-});
-
 test('seeks between buffered time ranges', function() {
   player.src({
-    src: 'manifest/media.m3u8',
+    src: 'media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
   standardXHRResponse(requests.shift()); // media
   player.tech_.buffered = function() {
-    return {
-      length: 2,
-      ranges_: [[0, 10], [20, 30]],
-      start: function(i) {
-        return this.ranges_[i][0];
-      },
-      end: function(i) {
-        return this.ranges_[i][1];
-      }
-    };
+    return videojs.createTimeRange([[0, 10], [20, 30]]);
   };
 
   player.tech_.setCurrentTime(15);
   clock.tick(1);
   // drop the aborted segment
   requests.shift();
-  equal(player.tech_.hls.mediaIndex, 1, 'updated the mediaIndex');
-  standardXHRResponse(requests.shift());
+  equal(requests[0].url,
+        absoluteUrl('media-00002.ts'),
+        'requested the correct segment');
 });
 
 test('does not modify the media index for in-buffer seeking', function() {
@@ -1979,40 +1853,6 @@ test('duration is Infinity for live playlists', function() {
               'duration is infinity');
 });
 
-test('updates the media index when a playlist reloads', function() {
-  player.src({
-    src: 'http://example.com/live-updating.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-  player.tech_.trigger('play');
-
-  requests[0].respond(200, null,
-                      '#EXTM3U\n' +
-                      '#EXTINF:10,\n' +
-                      '0.ts\n' +
-                      '#EXTINF:10,\n' +
-                      '1.ts\n' +
-                      '#EXTINF:10,\n' +
-                      '2.ts\n');
-  standardXHRResponse(requests[1]);
-  // play the stream until 2.ts is playing
-  player.tech_.hls.mediaIndex = 3;
-  // trigger a playlist refresh
-  player.tech_.hls.playlists.trigger('mediaupdatetimeout');
-  requests[2].respond(200, null,
-                      '#EXTM3U\n' +
-                      '#EXT-X-MEDIA-SEQUENCE:1\n' +
-                      '#EXTINF:10,\n' +
-                      '1.ts\n' +
-                      '#EXTINF:10,\n' +
-                      '2.ts\n' +
-                      '#EXTINF:10,\n' +
-                      '3.ts\n');
-
-  strictEqual(player.tech_.hls.mediaIndex, 2, 'mediaIndex is updated after the reload');
-});
-
 test('live playlist starts three target durations before live', function() {
   var mediaPlaylist;
   player.src({
@@ -2040,28 +1880,9 @@ test('live playlist starts three target durations before live', function() {
   player.tech_.trigger('play');
   clock.tick(1);
   mediaPlaylist = player.tech_.hls.playlists.media();
-  equal(player.tech_.hls.mediaIndex, 1, 'mediaIndex is updated at play');
   equal(player.currentTime(), player.tech_.hls.seekable().end(0), 'seeked to the seekable end');
 
   equal(requests.length, 1, 'begins buffering');
-});
-
-test('does not reset live currentTime if mediaIndex is one beyond the last available segment', function() {
-  var playlist = {
-    mediaSequence: 20,
-    targetDuration: 9,
-    segments: [{
-      duration: 3
-    }, {
-      duration: 3
-    }, {
-      duration: 3
-    }]
-  };
-
-  equal(playlist.segments.length,
-        videojs.Hls.translateMediaIndex(playlist.segments.length, playlist, playlist),
-        'did not change mediaIndex');
 });
 
 test('live playlist starts with correct currentTime value', function() {
@@ -2115,39 +1936,6 @@ test('resets the time to a seekable position when resuming a live stream ' +
   player.tech_.trigger('play');
   equal(seekTarget, player.seekable().start(0), 'seeked to the start of seekable');
   player.tech_.trigger('seeked');
-});
-
-test('mediaIndex is zero before the first segment loads', function() {
-  window.manifests['first-seg-load'] =
-    '#EXTM3U\n' +
-    '#EXTINF:10,\n' +
-    '0.ts\n';
-  player.src({
-    src: 'http://example.com/first-seg-load.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-
-  strictEqual(player.tech_.hls.mediaIndex, 0, 'mediaIndex is zero');
-});
-
-test('mediaIndex returns correctly at playlist boundaries', function() {
-  player.src({
-    src: 'http://example.com/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  openMediaSource(player);
-  standardXHRResponse(requests.shift()); // master
-  standardXHRResponse(requests.shift()); // media
-
-  strictEqual(player.tech_.hls.mediaIndex, 0, 'mediaIndex is zero at first segment');
-
-  // seek to end
-  player.tech_.setCurrentTime(40);
-  clock.tick(1);
-
-  strictEqual(player.tech_.hls.mediaIndex, 3, 'mediaIndex is 3 at last segment');
 });
 
 test('reloads out-of-date live playlists when switching variants', function() {
@@ -3207,6 +2995,44 @@ test('does not download segments if preload option set to none', function() {
     return !/m3u8$/.test(request.uri);
   });
   equal(requests.length, 0, 'did not download any segments');
+});
+
+module('Buffer Inspection');
+
+test('detects time range edges added by updates', function() {
+  var edges;
+
+  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[0, 10]]),
+                                         videojs.createTimeRange([[0, 11]]));
+  deepEqual(edges, [{ end: 11 }], 'detected a forward addition');
+
+  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[5, 10]]),
+                                         videojs.createTimeRange([[0, 10]]));
+  deepEqual(edges, [{ start: 0 }], 'detected a backward addition');
+
+  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[5, 10]]),
+                                         videojs.createTimeRange([[0, 11]]));
+  deepEqual(edges, [
+    { start: 0 }, { end: 11 }
+  ], 'detected forward and backward additions');
+
+  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[0, 10]]),
+                                         videojs.createTimeRange([[0, 10]]));
+  deepEqual(edges, [], 'detected no addition');
+
+  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([]),
+                                         videojs.createTimeRange([[0, 10]]));
+  deepEqual(edges, [
+    { start: 0 },
+    { end: 10 }
+  ], 'detected an initial addition');
+
+  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[0, 10]]),
+                                         videojs.createTimeRange([[0, 10], [20, 30]]));
+  deepEqual(edges, [
+    { start: 20 },
+    { end: 30}
+  ], 'detected a non-contiguous addition');
 });
 
 })(window, window.videojs);

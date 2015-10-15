@@ -187,20 +187,20 @@
        * active media playlist. When called with a single argument,
        * triggers the playlist loader to asynchronously switch to the
        * specified media playlist. Calling this method while the
-       * loader is in the HAVE_NOTHING or HAVE_MASTER states causes an
-       * error to be emitted but otherwise has no effect.
+       * loader is in the HAVE_NOTHING causes an error to be emitted
+       * but otherwise has no effect.
        * @param playlist (optional) {object} the parsed media playlist
        * object to switch to
        */
       loader.media = function(playlist) {
-        var mediaChange = false;
+        var startingState = loader.state, mediaChange;
         // getter
         if (!playlist) {
           return loader.media_;
         }
 
         // setter
-        if (loader.state === 'HAVE_NOTHING' || loader.state === 'HAVE_MASTER') {
+        if (loader.state === 'HAVE_NOTHING') {
           throw new Error('Cannot switch media playlist from ' + loader.state);
         }
 
@@ -213,7 +213,7 @@
           playlist = loader.master.playlists[playlist];
         }
 
-        mediaChange = playlist.uri !== loader.media_.uri;
+        mediaChange = !loader.media_ || playlist.uri !== loader.media_.uri;
 
         // switch to fully loaded playlists immediately
         if (loader.master.playlists[playlist.uri].endList) {
@@ -258,7 +258,17 @@
           withCredentials: withCredentials
         }, function(error, request) {
           haveMetadata(error, request, playlist.uri);
-          loader.trigger('mediachange');
+
+          if (error) {
+            return;
+          }
+
+          // fire loadedmetadata the first time a media playlist is loaded
+          if (startingState === 'HAVE_MASTER') {
+            loader.trigger('loadedmetadata');
+          } else {
+            loader.trigger('mediachange');
+          }
         });
       };
 
@@ -320,19 +330,13 @@
             loader.master.playlists[loader.master.playlists[i].uri] = loader.master.playlists[i];
           }
 
-          request = xhr({
-            uri: resolveUrl(srcUrl, parser.manifest.playlists[0].uri),
-            withCredentials: withCredentials
-          }, function(error, request) {
-            // pass along the URL specified in the master playlist
-            haveMetadata(error,
-                         request,
-                         parser.manifest.playlists[0].uri);
-            if (!error) {
-              loader.trigger('loadedmetadata');
-            }
-          });
-          return loader.trigger('loadedplaylist');
+          loader.trigger('loadedplaylist');
+          if (!request) {
+            // no media playlist was specifically selected so start
+            // from the first listed one
+            loader.media(parser.manifest.playlists[0]);
+          }
+          return;
         }
 
         // loaded a media playlist
@@ -468,8 +472,8 @@
     }
 
     // the playback position is outside the range of available
-    // segments so return the last one
-    return this.media_.segments.length - 1;
+    // segments so return the length
+    return this.media_.segments.length;
   };
 
   videojs.Hls.PlaylistLoader = PlaylistLoader;

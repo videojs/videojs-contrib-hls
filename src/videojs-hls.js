@@ -190,7 +190,8 @@ videojs.Hls.prototype.src = function(src) {
     var updatedPlaylist = this.playlists.media();
 
     if (!updatedPlaylist) {
-      // do nothing before an initial media playlist has been activated
+      // select the initial variant
+      this.playlists.media(this.selectPlaylist());
       return;
     }
 
@@ -254,7 +255,7 @@ videojs.Hls.prototype.handleSourceOpen = function() {
 
 // Returns the array of time range edge objects that were additively
 // modified between two TimeRanges.
-var bufferedAdditions = function(original, update) {
+videojs.Hls.bufferedAdditions_ = function(original, update) {
   var result = [], edges = [],
       i, inOriginalRanges;
 
@@ -271,6 +272,15 @@ var bufferedAdditions = function(original, update) {
     var leftTime, rightTime;
     leftTime = left.start !== undefined ? left.start : left.end;
     rightTime = right.start !== undefined ? right.start : right.end;
+
+    // when two times are equal, ensure the original edge covers the
+    // update
+    if (leftTime === rightTime) {
+      if (left.original) {
+        return left.start !== undefined ? -1 : 1;
+      }
+      return right.start !== undefined ? -1 : 1;
+    }
     return leftTime - rightTime;
   });
 
@@ -349,8 +359,8 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
     // annotate the segment with any start and end time information
     // added by the media processing
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
-    timelineUpdates = bufferedAdditions(segmentInfo.buffered,
-                                        this.tech_.buffered());
+    timelineUpdates = videojs.Hls.bufferedAdditions_(segmentInfo.buffered,
+                                                     this.tech_.buffered());
     timelineUpdates.forEach(function(update) {
       if (update.start !== undefined) {
         segment.start = update.start;
@@ -1112,15 +1122,16 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     this.sourceBuffer.timestampOffset = currentBuffered.end(0);
   }
 
-  // the segment is asynchronously added to the current buffered data
   if (currentBuffered.length) {
-    this.sourceBuffer.videoBuffer_.appendWindowStart = Math.min(this.tech_.currentTime(), currentBuffered.end(0));
-  } else if (this.sourceBuffer.videoBuffer_) {
-    this.sourceBuffer.videoBuffer_.appendWindowStart = 0;
+    // Chrome 45 stalls if appends overlap the playhead
+    this.sourceBuffer.appendWindowStart = Math.min(this.tech_.currentTime(), currentBuffered.end(0));
+  } else {
+    this.sourceBuffer.appendWindowStart = 0;
   }
   this.pendingSegment_ = segmentBuffer.shift();
   this.pendingSegment_.buffered = this.tech_.buffered();
 
+  // the segment is asynchronously added to the current buffered data
   this.sourceBuffer.appendBuffer(bytes);
 };
 
