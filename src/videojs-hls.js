@@ -228,6 +228,12 @@ videojs.Hls.bufferedAdditions_ = function(original, update) {
   var result = [], edges = [],
       i, inOriginalRanges;
 
+  // if original or update are falsey, return an empty list of
+  // additions
+  if (!original || !update) {
+    return result;
+  }
+
   // create a sorted array of time range start and end times
   for (i = 0; i < original.length; i++) {
     edges.push({ original: true, start: original.start(i) });

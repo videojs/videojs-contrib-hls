@@ -2553,4 +2553,11 @@ test('detects time range edges added by updates', function() {
   ], 'detected a non-contiguous addition');
 });
 
+test('treats null buffered ranges as no addition', function() {
+  var edges = videojs.Hls.bufferedAdditions_(null,
+                                             videojs.createTimeRange([[0, 11]]));
+
+  equal(edges.length, 0, 'no additions');
+});
+
 })(window, window.videojs);
