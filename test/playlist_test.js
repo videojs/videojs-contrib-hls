@@ -18,27 +18,6 @@
 
   module('Playlist Interval Duration');
 
-  test('accounts expired duration for live playlists', function() {
-    var duration = Playlist.duration({
-      mediaSequence: 10,
-      segments: [{
-        duration: 10,
-        uri: '10.ts'
-      }, {
-        duration: 10,
-        uri: '11.ts'
-      }, {
-        duration: 10,
-        uri: '12.ts'
-      }, {
-        duration: 10,
-        uri: '13.ts'
-      }]
-    }, 0, 14);
-
-    equal(duration, 14 * 10, 'duration includes dropped segments');
-  });
-
   test('accounts for non-zero starting VOD media sequences', function() {
     var duration = Playlist.duration({
       mediaSequence: 10,
@@ -61,47 +40,37 @@
     equal(duration, 4 * 10, 'includes only listed segments');
   });
 
-  test('uses PTS values when available', function() {
+  test('uses timeline values when available', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
       segments: [{
-        minVideoPts: 1,
-        minAudioPts: 2,
+        start: 0,
         uri: '0.ts'
       }, {
         duration: 10,
-        maxVideoPts: 2 * 10 * 1000 + 1,
-        maxAudioPts: 2 * 10 * 1000 + 2,
+        end: 2 * 10 + 2,
         uri: '1.ts'
       }, {
         duration: 10,
-        maxVideoPts: 3 * 10 * 1000 + 1,
-        maxAudioPts: 3 * 10 * 1000 + 2,
+        end: 3 * 10 + 2,
         uri: '2.ts'
       }, {
         duration: 10,
-        maxVideoPts: 4 * 10 * 1000 + 1,
-        maxAudioPts: 4 * 10 * 1000 + 2,
+        end: 4 * 10 + 2,
         uri: '3.ts'
       }]
-    }, 0, 4);
+    }, 4);
 
-    equal(duration, ((4 * 10 * 1000 + 2) - 1) * 0.001, 'used PTS values');
+    equal(duration, 4 * 10 + 2, 'used timeline values');
   });
 
-  test('works when partial PTS information is available', function() {
+  test('works when partial timeline information is available', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       endList: true,
       segments: [{
-        minVideoPts: 1,
-        minAudioPts: 2,
-        maxVideoPts: 10 * 1000 + 1,
-
-        // intentionally less duration than video
-        // the max stream duration should be used
-        maxAudioPts: 10 * 1000 + 1,
+        start: 0,
         uri: '0.ts'
       }, {
         duration: 9,
@@ -111,67 +80,17 @@
         uri: '2.ts'
       }, {
         duration: 10,
-        minVideoPts: 30 * 1000 + 7,
-        minAudioPts: 30 * 1000 + 10,
-        maxVideoPts: 40 * 1000 + 1,
-        maxAudioPts: 40 * 1000 + 2,
+        start: 30.007,
+        end: 40.002,
         uri: '3.ts'
       }, {
         duration: 10,
-        maxVideoPts: 50 * 1000 + 1,
-        maxAudioPts: 50 * 1000 + 2,
+        end: 50.0002,
         uri: '4.ts'
       }]
-    }, 0, 5);
+    }, 5);
 
-    equal(duration,
-          ((50 * 1000 + 2) - 1) * 0.001,
-          'calculated with mixed intervals');
-  });
-
-  test('ignores segments before the start', function() {
-    var duration = Playlist.duration({
-      mediaSequence: 0,
-      segments: [{
-        duration: 10,
-        uri: '0.ts'
-      }, {
-        duration: 10,
-        uri: '1.ts'
-      }, {
-        duration: 10,
-        uri: '2.ts'
-      }]
-    }, 1, 3);
-
-    equal(duration, 10 + 10, 'ignored the first segment');
-  });
-
-  test('ignores discontinuity sequences earlier than the start', function() {
-    var duration = Playlist.duration({
-      mediaSequence: 0,
-      discontinuityStarts: [1, 3],
-      segments: [{
-        minVideoPts: 0,
-        minAudioPts: 0,
-        maxVideoPts: 10 * 1000,
-        maxAudioPts: 10 * 1000,
-        uri: '0.ts'
-      }, {
-        discontinuity: true,
-        duration: 9,
-        uri: '1.ts'
-      }, {
-        duration: 10,
-        uri: '2.ts'
-      }, {
-        discontinuity: true,
-        duration: 10,
-        uri: '3.ts'
-      }]
-    }, 2, 4);
-
-    equal(duration, 10 + 10, 'excluded the earlier segments');
+    equal(duration, 50.0002, 'calculated with mixed intervals');
   });
 
   test('ignores discontinuity sequences later than the end', function() {
@@ -196,20 +115,19 @@
         duration: 10,
         uri: '3.ts'
       }]
-    }, 0, 2);
+    }, 2);
 
     equal(duration, 19, 'excluded the later segments');
   });
 
-  test('handles trailing segments without PTS information', function() {
-    var duration = Playlist.duration({
+  test('handles trailing segments without timeline information', function() {
+    var playlist, duration;
+    playlist = {
       mediaSequence: 0,
       endList: true,
       segments: [{
-        minVideoPts: 0,
-        minAudioPts: 0,
-        maxVideoPts: 10 * 1000,
-        maxAudioPts: 10 * 1000,
+        start: 0,
+        end: 10.5,
         uri: '0.ts'
       }, {
         duration: 9,
@@ -218,107 +136,43 @@
         duration: 10,
         uri: '2.ts'
       }, {
-        minVideoPts: 29.5 * 1000,
-        minAudioPts: 29.5 * 1000,
-        maxVideoPts: 39.5 * 1000,
-        maxAudioPts: 39.5 * 1000,
+        start: 29.45,
+        end: 39.5,
         uri: '3.ts'
       }]
-    }, 0, 3);
+    };
 
-    equal(duration, 29.5, 'calculated duration');
+    duration = Playlist.duration(playlist, 3);
+    equal(duration, 29.45, 'calculated duration');
+
+    duration = Playlist.duration(playlist, 2);
+    equal(duration, 19.5, 'calculated duration');
   });
 
-  test('uses PTS intervals when the start and end segment have them', function() {
+  test('uses timeline intervals when segments have them', function() {
     var playlist, duration;
     playlist = {
       mediaSequence: 0,
       segments: [{
-        minVideoPts: 0,
-        minAudioPts: 0,
-        maxVideoPts: 10 * 1000,
-        maxAudioPts: 10 * 1000,
+        start: 0,
+        end: 10,
         uri: '0.ts'
       }, {
         duration: 9,
         uri: '1.ts'
       },{
-        minVideoPts: 20 * 1000 + 100,
-        minAudioPts: 20 * 1000 + 100,
-        maxVideoPts: 30 * 1000 + 100,
-        maxAudioPts: 30 * 1000 + 100,
+        start: 20.1,
+        end: 30.1,
         duration: 10,
         uri: '2.ts'
       }]
     };
-    duration = Playlist.duration(playlist, 0, 2);
+    duration = Playlist.duration(playlist, 2);
 
-    equal(duration, 20.1, 'used the PTS-based interval');
+    equal(duration, 20.1, 'used the timeline-based interval');
 
-    duration = Playlist.duration(playlist, 0, 3);
-    equal(duration, 30.1, 'used the PTS-based interval');
-  });
-
-  test('works for media without audio', function() {
-    equal(Playlist.duration({
-      mediaSequence: 0,
-      endList: true,
-      segments: [{
-        minVideoPts: 0,
-        maxVideoPts: 9 * 1000,
-        uri: 'no-audio.ts'
-      }]
-    }), 9, 'used video PTS values');
-  });
-
-  test('works for media without video', function() {
-    equal(Playlist.duration({
-      mediaSequence: 0,
-      endList: true,
-      segments: [{
-        minAudioPts: 0,
-        maxAudioPts: 9 * 1000,
-        uri: 'no-video.ts'
-      }]
-    }), 9, 'used video PTS values');
-  });
-
-  test('uses the largest continuous available PTS ranges', function() {
-    var playlist = {
-      mediaSequence: 0,
-      segments: [{
-        minVideoPts: 0,
-        minAudioPts: 0,
-        maxVideoPts: 10 * 1000,
-        maxAudioPts: 10 * 1000,
-        uri: '0.ts'
-      }, {
-        duration: 10,
-        uri: '1.ts'
-      }, {
-        // starts 0.5s earlier than the previous segment indicates
-        minVideoPts: 19.5 * 1000,
-        minAudioPts: 19.5 * 1000,
-        maxVideoPts: 29.5 * 1000,
-        maxAudioPts: 29.5 * 1000,
-        uri: '2.ts'
-      }, {
-        duration: 10,
-        uri: '3.ts'
-      }, {
-        // ... but by the last segment, there is actual 0.5s more
-        // content than duration indicates
-        minVideoPts: 40.5 * 1000,
-        minAudioPts: 40.5 * 1000,
-        maxVideoPts: 50.5 * 1000,
-        maxAudioPts: 50.5 * 1000,
-        uri: '4.ts'
-      }]
-    };
-
-    equal(Playlist.duration(playlist, 0, 5),
-          50.5,
-          'calculated across the larger PTS interval');
+    duration = Playlist.duration(playlist, 3);
+    equal(duration, 30.1, 'used the timeline-based interval');
   });
 
   test('counts the time between segments as part of the earlier segment\'s duration', function() {
@@ -326,22 +180,18 @@
       mediaSequence: 0,
       endList: true,
       segments: [{
-        minVideoPts: 0,
-        minAudioPts: 0,
-        maxVideoPts: 1 * 10 * 1000,
-        maxAudioPts: 1 * 10 * 1000,
+        start: 0,
+        end: 10,
         uri: '0.ts'
       }, {
-        minVideoPts: 1 * 10 * 1000 + 100,
-        minAudioPts: 1 * 10 * 1000 + 100,
-        maxVideoPts: 2 * 10 * 1000 + 100,
-        maxAudioPts: 2 * 10 * 1000 + 100,
+        start: 10.1,
+        end: 20.1,
         duration: 10,
         uri: '1.ts'
       }]
-    }, 0, 1);
+    }, 1);
 
-    equal(duration, (1 * 10 * 1000 + 100) * 0.001, 'included the segment gap');
+    equal(duration, 10.1, 'included the segment gap');
   });
 
   test('accounts for discontinuities', function() {
@@ -364,7 +214,7 @@
         duration: 10,
         uri: '1.ts'
       }]
-    }, 0, 2);
+    }, 2);
 
     equal(duration, 10 + 10, 'handles discontinuities');
   });
@@ -389,7 +239,7 @@
         duration: 10,
         uri: '1.ts'
       }]
-    }, 0, 1);
+    }, 1);
 
     equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
   });
@@ -412,7 +262,7 @@
         duration: 10,
         uri: '1.ts'
       }]
-    }, 0, 1, false);
+    }, 1, false);
 
     equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
   });
@@ -431,10 +281,9 @@
       }]
     };
 
-    equal(Playlist.duration(playlist, 0, 0), 0, 'zero-length duration is zero');
-    equal(Playlist.duration(playlist, 0, 0, false), 0, 'zero-length duration is zero');
-    equal(Playlist.duration(playlist, 0, -1), 0, 'negative length duration is zero');
-    equal(Playlist.duration(playlist, 2, 1, false), 0, 'negative length duration is zero');
+    equal(Playlist.duration(playlist, 0), 0, 'zero-length duration is zero');
+    equal(Playlist.duration(playlist, 0, false), 0, 'zero-length duration is zero');
+    equal(Playlist.duration(playlist, -1), 0, 'negative length duration is zero');
   });
 
   module('Playlist Seekable');

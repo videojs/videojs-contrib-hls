@@ -26,47 +26,46 @@
   /**
    * Calculate the media duration from the segments associated with a
    * playlist. The duration of a subinterval of the available segments
-   * may be calculated by specifying a start and end index.
+   * may be calculated by specifying an end index.
    *
    * @param playlist {object} a media playlist object
-   * @param startSequence {number} (optional) an inclusive lower
-   * boundary for the playlist.  Defaults to 0.
    * @param endSequence {number} (optional) an exclusive upper boundary
    * for the playlist.  Defaults to playlist length.
    * @return {number} the duration between the start index and end
    * index.
    */
-  intervalDuration = function(playlist, startSequence, endSequence) {
-    var result = 0, targetDuration, i, start, end, expiredSegmentCount;
+  intervalDuration = function(playlist, endSequence) {
+    var result = 0, segment, targetDuration, i;
 
-    if (startSequence === undefined) {
-      startSequence = playlist.mediaSequence || 0;
-    }
     if (endSequence === undefined) {
-      endSequence = startSequence + (playlist.segments || []).length;
+      endSequence = playlist.mediaSequence + (playlist.segments || []).length;
+    }
+    if (endSequence < 0) {
+      return 0;
     }
     targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION;
 
-    // accumulate while looking for the latest known segment-timeline mapping
-    expiredSegmentCount = optionalMax(playlist.mediaSequence - startSequence, 0);
-    start = startSequence + expiredSegmentCount - playlist.mediaSequence;
-    end = endSequence - playlist.mediaSequence;
-    for (i = end - 1; i >= start; i--) {
-      if (playlist.segments[i].end !== undefined) {
-        result += playlist.segments[i].end;
-        return result;
+    i = endSequence - playlist.mediaSequence;
+    // if a start time is available for segment immediately following
+    // the interval, use it
+    segment = playlist.segments[i];
+    // Walk backward until we find the latest segment with timeline
+    // information that is earlier than endSequence
+    if (segment && segment.start !== undefined) {
+      return segment.start;
+    }
+    while (i--) {
+      segment = playlist.segments[i];
+      if (segment.end !== undefined) {
+        return result + segment.end;
       }
 
-      result += playlist.segments[i].duration || targetDuration;
+      result += (segment.duration || targetDuration);
 
-      if (playlist.segments[i].start !== undefined) {
-        result += playlist.segments[i].start;
-        return result;
+      if (segment.start !== undefined) {
+        return result + segment.start;
       }
     }
-    // neither a start or end time was found in the interval so we
-    // have to estimate the expired duration
-    result += expiredSegmentCount * targetDuration;
     return result;
   };
 
@@ -76,17 +75,16 @@
    * timeline between those two indices. The total duration for live
    * playlists is always Infinity.
    * @param playlist {object} a media playlist object
-   * @param startSequence {number} (optional) an inclusive lower
-   * boundary for the playlist.  Defaults to 0.
-   * @param endSequence {number} (optional) an exclusive upper boundary
-   * for the playlist.  Defaults to playlist length.
-   * @param includeTrailingTime {boolean} (optional) if false, the interval between
-   * the final segment and the subsequent segment will not be included
-   * in the result
+   * @param endSequence {number} (optional) an exclusive upper
+   * boundary for the playlist.  Defaults to the playlist media
+   * sequence number plus its length.
+   * @param includeTrailingTime {boolean} (optional) if false, the
+   * interval between the final segment and the subsequent segment
+   * will not be included in the result
    * @return {number} the duration between the start index and end
    * index.
    */
-  duration = function(playlist, startSequence, endSequence, includeTrailingTime) {
+  duration = function(playlist, endSequence, includeTrailingTime) {
     if (!playlist) {
       return 0;
     }
@@ -97,7 +95,7 @@
 
     // if a slice of the total duration is not requested, use
     // playlist-level duration indicators when they're present
-    if (startSequence === undefined && endSequence === undefined) {
+    if (endSequence === undefined) {
       // if present, use the duration specified in the playlist
       if (playlist.totalDuration) {
         return playlist.totalDuration;
@@ -111,7 +109,6 @@
 
     // calculate the total duration based on the segment durations
     return intervalDuration(playlist,
-                            startSequence,
                             endSequence,
                             includeTrailingTime);
   };
@@ -128,7 +125,7 @@
    * for seeking
    */
   seekable = function(playlist) {
-    var start, end, liveBuffer, targetDuration, segment, pending, i;
+    var start, end;
 
     // without segments, there are no seekable ranges
     if (!playlist.segments) {
@@ -139,33 +136,14 @@
       return videojs.createTimeRange(0, duration(playlist));
     }
 
-    start = 0;
-    end = intervalDuration(playlist,
-                           playlist.mediaSequence,
-                           playlist.mediaSequence + playlist.segments.length);
-    targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION;
-
     // live playlists should not expose three segment durations worth
     // of content from the end of the playlist
     // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
-    if (!playlist.endList) {
-      liveBuffer = targetDuration * 3;
-      // walk backward from the last available segment and track how
-      // much media time has elapsed until three target durations have
-      // been traversed. if a segment is part of the interval being
-      // reported, subtract the overlapping portion of its duration
-      // from the result.
-      for (i = playlist.segments.length - 1; i >= 0 && liveBuffer > 0; i--) {
-        segment = playlist.segments[i];
-        pending = optionalMin(duration(playlist,
-                                       playlist.mediaSequence + i,
-                                       playlist.mediaSequence + i + 1),
-                           liveBuffer);
-        liveBuffer -= pending;
-        end -= pending;
-      }
-    }
-
+    start = intervalDuration(playlist, playlist.mediaSequence);
+    end = intervalDuration(playlist,
+                           playlist.mediaSequence + playlist.segments.length);
+    end -= (playlist.targetDuration || DEFAULT_TARGET_DURATION) * 3;
+    end = Math.max(0, end);
     return videojs.createTimeRange(start, end);
   };
 
