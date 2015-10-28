@@ -310,7 +310,9 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
 
     // if we've buffered to the end of the video, let the MediaSource know
     currentBuffered = this.findCurrentBuffered_();
-    if (currentBuffered.length && this.duration() === currentBuffered.end(0)) {
+    if (currentBuffered.length &&
+        this.duration() === currentBuffered.end(0) &&
+        this.mediaSource.readyState === 'open') {
       this.mediaSource.endOfStream();
     }
 
@@ -426,9 +428,6 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
     this.cancelKeyXhr();
   }
 
-  // clear out the segment being processed
-  this.pendingSegment_ = null;
-
   // begin filling the buffer at the new position
   this.fillBuffer(currentTime);
 };
@@ -506,6 +505,8 @@ videojs.Hls.prototype.cancelSegmentXhr = function() {
     this.segmentXhr_.onreadystatechange = null;
     this.segmentXhr_.abort();
     this.segmentXhr_ = null;
+    // clear out the segment being processed
+    this.pendingSegment_ = null;
   }
 };
 
@@ -676,8 +677,8 @@ videojs.Hls.prototype.findCurrentBuffered_ = function() {
   if (buffered && buffered.length) {
     // Search for a range containing the play-head
     for (i = 0; i < buffered.length; i++) {
-      if (buffered.start(i) <= currentTime &&
-          buffered.end(i) >= currentTime) {
+      if (buffered.start(i) <= (currentTime + 0.05) &&
+          buffered.end(i) >= (currentTime - 0.05)) {
         ranges = videojs.createTimeRanges(buffered.start(i), buffered.end(i));
         ranges.indexOf = i;
         return ranges;
@@ -750,6 +751,14 @@ videojs.Hls.prototype.fillBuffer = function(seekToTime) {
   }
   segment = this.playlists.media().segments[mediaIndex];
 
+  if (this.lastSegmentUri_ &&
+      this.lastSegmentUri_.indexOf(segment.uri) !== -1) {
+    // We may have learned nothing about the state of the buffer and chosen the
+    // same segment as before. This should eventually break that stalemate.
+    mediaIndex++;
+    segment = this.playlists.media().segments[mediaIndex];
+  }
+
   // if the video has finished downloading, stop trying to buffer
   if (!segment) {
     return;
@@ -761,6 +770,8 @@ videojs.Hls.prototype.fillBuffer = function(seekToTime) {
       bufferedTime >= videojs.Hls.GOAL_BUFFER_LENGTH) {
     return;
   }
+
+  this.lastMediaIndex_ = mediaIndex;
 
   // package up all the work to append the segment
   segmentInfo = {
@@ -856,6 +867,7 @@ videojs.Hls.prototype.loadSegment = function(segmentInfo) {
       return;
     }
 
+    self.lastSegmentUri_ = segmentInfo.uri;
     self.setBandwidth(request);
 
     if (segment.key) {
@@ -944,24 +956,17 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 
   event = event || {};
 
+  if (segmentInfo.mediaIndex > 0) {
+    segmentTimestampOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist, segmentInfo.mediaIndex);
+  }
+
   // If we have seeked into a non-buffered time-range, remove all buffered
   // time-ranges because they could have been incorrectly placed originally
   if (this.tech_.seeking() && outsideBufferedRanges) {
-    if (hasBufferedContent) {
-      // In Chrome, it seems that too many independent buffered time-ranges can
-      // cause playback to fail to resume when seeking so just kill all of them
-      this.sourceBuffer.remove(0, Infinity);
-      return;
-    }
-
     // If there are discontinuities in the playlist, we can't be sure of anything
     // related to time so we reset the timestamp offset and start appending data
     // anew on every seek
     if (segmentInfo.playlist.discontinuityStarts.length) {
-      if (segmentInfo.mediaIndex > 0) {
-        segmentTimestampOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist, segmentInfo.mediaIndex);
-      }
-
       // Now that the forward buffer is clear, we have to set timestamp offset to
       // the start of the buffered region
       this.sourceBuffer.timestampOffset = segmentTimestampOffset;
@@ -971,14 +976,12 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     // timestampOffset for new segments to be appended the end of the current
     // buffered time-range
     this.sourceBuffer.timestampOffset = currentBuffered.end(0);
+  } else if (!hasBufferedContent && this.tech_.currentTime() > 0.05) {
+    // If we are trying to play at a position that is not zero but we aren't
+    // currently seeking according to the video element
+    this.sourceBuffer.timestampOffset = segmentTimestampOffset;
   }
 
-  if (currentBuffered.length) {
-    // Chrome 45 stalls if appends overlap the playhead
-    this.sourceBuffer.appendWindowStart = Math.min(this.tech_.currentTime(), currentBuffered.end(0));
-  } else {
-    this.sourceBuffer.appendWindowStart = 0;
-  }
   this.pendingSegment_.buffered = this.tech_.buffered();
 
   // the segment is asynchronously added to the current buffered data
