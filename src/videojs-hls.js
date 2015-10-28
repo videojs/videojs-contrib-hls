@@ -306,6 +306,11 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
   this.sourceBuffer.addEventListener('updateend', function() {
     var segmentInfo = this.pendingSegment_, segment, currentBuffered, timelineUpdates;
 
+    // stop here if the update errored or was aborted
+    if (!segmentInfo) {
+      return;
+    }
+
     this.pendingSegment_ = null;
 
     // if we've buffered to the end of the video, let the MediaSource know
@@ -337,10 +342,17 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
 
     if (timelineUpdates.length) {
       this.updateDuration(segmentInfo.playlist);
+
+      // check if it's time to download the next segment
+      this.fillBuffer();
+      return;
     }
 
-    // check if it's time to download the next segment
-    this.checkBuffer_();
+    // the last segment append must have been entirely in the
+    // already buffered time ranges. just buffer forward until we
+    // find a segment that adds to the buffered time ranges and
+    // improves subsequent media index calculations.
+    this.fillBuffer(segmentInfo.mediaIndex + 1);
   }.bind(this));
 };
 
@@ -429,7 +441,7 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   }
 
   // begin filling the buffer at the new position
-  this.fillBuffer(currentTime);
+  this.fillBuffer(this.playlists.getMediaIndexForTime_(currentTime));
 };
 
 videojs.Hls.prototype.duration = function() {
@@ -698,13 +710,12 @@ videojs.Hls.prototype.findCurrentBuffered_ = function() {
  * @param seekToTime (optional) {number} the offset into the downloaded segment
  * to seek to, in seconds
  */
-videojs.Hls.prototype.fillBuffer = function(seekToTime) {
+videojs.Hls.prototype.fillBuffer = function(mediaIndex) {
   var
     tech = this.tech_,
     currentTime = tech.currentTime(),
     currentBuffered = this.findCurrentBuffered_(),
     bufferedTime = 0,
-    mediaIndex = 0,
     segment,
     segmentInfo;
 
@@ -740,34 +751,35 @@ videojs.Hls.prototype.fillBuffer = function(seekToTime) {
     return;
   }
 
-  // find the next segment to download
-  if (typeof seekToTime === 'number') {
-    mediaIndex = this.playlists.getMediaIndexForTime_(seekToTime);
-  } else if (currentBuffered && currentBuffered.length) {
-    mediaIndex = this.playlists.getMediaIndexForTime_(currentBuffered.end(0));
-    bufferedTime = Math.max(0, currentBuffered.end(0) - currentTime);
-  } else {
-    mediaIndex = this.playlists.getMediaIndexForTime_(this.tech_.currentTime());
+  if (mediaIndex === undefined) {
+    if (currentBuffered && currentBuffered.length) {
+      mediaIndex = this.playlists.getMediaIndexForTime_(currentBuffered.end(0));
+      bufferedTime = Math.max(0, currentBuffered.end(0) - currentTime);
+
+      // if there is plenty of content in the buffer and we're not
+      // seeking, relax for awhile
+      if (bufferedTime >= videojs.Hls.GOAL_BUFFER_LENGTH) {
+        return;
+      }
+    } else {
+      mediaIndex = this.playlists.getMediaIndexForTime_(this.tech_.currentTime());
+    }
   }
+//console.log('mediaIndex', mediaIndex);
   segment = this.playlists.media().segments[mediaIndex];
 
-  if (this.lastSegmentUri_ &&
+//console.log(JSON.stringify(this.playlists.media().segments/*.filter(function(segment){return segment.start || segment.end })*/));
+
+  if (segment &&
+      this.lastSegmentUri_ &&
       this.lastSegmentUri_.indexOf(segment.uri) !== -1) {
     // We may have learned nothing about the state of the buffer and chosen the
     // same segment as before. This should eventually break that stalemate.
-    mediaIndex++;
-    segment = this.playlists.media().segments[mediaIndex];
+    segment = undefined;//this.playlists.media().segments[mediaIndex];
   }
 
   // if the video has finished downloading, stop trying to buffer
   if (!segment) {
-    return;
-  }
-
-  // if there is plenty of content in the buffer and we're not
-  // seeking, relax for awhile
-  if (typeof seekToTime !== 'number' &&
-      bufferedTime >= videojs.Hls.GOAL_BUFFER_LENGTH) {
     return;
   }
 
@@ -782,7 +794,7 @@ videojs.Hls.prototype.fillBuffer = function(seekToTime) {
     // the segment's playlist
     playlist: this.playlists.media(),
     // optionally, a time offset to seek to within the segment
-    offset: seekToTime,
+//    offset: seekToTime,
     // unencrypted bytes of the segment
     bytes: null,
     // when a key is defined for this segment, the encrypted bytes

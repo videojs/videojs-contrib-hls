@@ -378,7 +378,6 @@
       knownStart,
       knownEnd;
 
-    time = Math.ceil(time * 100) / 100;
 
     if (!this.media_) {
       return 0;
@@ -392,11 +391,9 @@
 
     // 1) Walk backward until we find the first segment with timeline
     // information that is earlier than `time`
-    targetDuration
-
     for (i = lastSegment; i > 0; i--) {
       segment = this.media_.segments[i];
-      if (segment.end !== undefined && segment.end < time) {
+      if (segment.end !== undefined && segment.end <= time) {
         startIndex = i + 1;
         knownStart = segment.end;
         if (startIndex >= numSegments) {
