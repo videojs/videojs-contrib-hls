@@ -507,15 +507,29 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
         this.mediaSource.duration = newDuration;
         this.tech_.trigger('durationchange');
         this.mediaSource.removeEventListener('sourceopen', setDuration);
-      }.bind(this);
+        if (this.sourceBuffer) {
+          this.sourceBuffer.removeEventListener('updatend', setDuration);
+        }
+      }.bind(this),
+      seekable = this.seekable();
+
+  if (seekable.length && newDuration === Infinity) {
+    if (isNaN(oldDuration)) {
+      oldDuration = 0;
+    }
+    newDuration = Math.max(
+      oldDuration, seekable.end(0) + playlist.targetDuration * 3);
+  }
 
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
-    if (this.mediaSource.readyState === 'open') {
+    if (this.mediaSource.readyState !== 'open') {
+      this.mediaSource.addEventListener('sourceopen', setDuration);
+    } else if (this.sourceBuffer && this.sourceBuffer.updating) {
+      this.sourceBuffer.addEventListener('updateend', setDuration);
+    } else {
       this.mediaSource.duration = newDuration;
       this.tech_.trigger('durationchange');
-    } else {
-      this.mediaSource.addEventListener('sourceopen', setDuration);
     }
   }
 };
@@ -1014,7 +1028,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
       // the start of the buffered region
       this.sourceBuffer.timestampOffset = segmentTimestampOffset;
     }
-  } else if (segment.discontinuity) {
+  } else if (segment.discontinuity && currentBuffered.length) {
     // If we aren't seeking and are crossing a discontinuity, we should set
     // timestampOffset for new segments to be appended the end of the current
     // buffered time-range
