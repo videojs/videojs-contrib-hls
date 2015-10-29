@@ -378,7 +378,6 @@
       knownStart,
       knownEnd;
 
-
     if (!this.media_) {
       return 0;
     }
@@ -461,7 +460,7 @@
       // We have a known-end point that is after our desired time so
       // walk from that point backwards
       time = knownEnd - time;
-      for (i = endIndex; i > 0; i--) {
+      for (i = endIndex; i >= 0; i--) {
         segment = this.media_.segments[i];
         time -= segment.duration || targetDuration;
         if (time < 0) {
