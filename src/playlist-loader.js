@@ -378,7 +378,7 @@
       endIndex,
       knownStart,
       knownEnd;
-console.log('>>', time);
+
     if (!this.media_) {
       return 0;
     }
