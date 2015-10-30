@@ -370,6 +370,7 @@
     var
       i,
       segment,
+      originalTime = time,
       targetDuration = this.media_.targetDuration || 10,
       numSegments = this.media_.segments.length,
       lastSegment = numSegments - 1,
@@ -377,7 +378,7 @@
       endIndex,
       knownStart,
       knownEnd;
-
+console.log('>>', time);
     if (!this.media_) {
       return 0;
     }
@@ -396,9 +397,9 @@
         startIndex = i + 1;
         knownStart = segment.end;
         if (startIndex >= numSegments) {
-          // Somehow the last segment claims to end *before* the time we are
+          // The last segment claims to end *before* the time we are
           // searching for so just return it
-          return lastSegment;
+          return numSegments;
         }
         break;
       }
@@ -415,49 +416,51 @@
 
     // 2) Walk forward until we find the first segment with timeline
     // information that is greater than `time`
-    for (i = 0; i < this.media_.segments.length; i++) {
+    for (i = 0; i < numSegments; i++) {
       segment = this.media_.segments[i];
       if (segment.start !== undefined && segment.start > time) {
         endIndex = i - 1;
         knownEnd = segment.start;
         if (endIndex < 0) {
-          // Somehow the first segment claims to start *after* the time we are
+          // The first segment claims to start *after* the time we are
           // searching for so just return it
-          return 0;
+          return -1;
         }
         break;
       }
       if (segment.end !== undefined && segment.end > time) {
-        if (segment.start !== undefined && segment.start < time) {
-          // we've found the target segment exactly
-          return i;
-        }
         endIndex = i;
         knownEnd = segment.end;
         break;
       }
     }
 
-    if (startIndex !== undefined && endIndex !== undefined) {
-      // Do the fancy maths of "Algorithm Jon"
-      return startIndex + Math.floor(
-        ((time - knownStart) / (knownEnd - knownStart)) *
-        (endIndex - startIndex));
-    } else if (startIndex !== undefined) {
+    if (startIndex !== undefined) {
       // We have a known-start point that is before our desired time so
       // walk from that point forwards
       time = time - knownStart;
-      for (i = startIndex; i < numSegments; i++) {
+      for (i = startIndex; i < (endIndex || numSegments); i++) {
         segment = this.media_.segments[i];
         time -= segment.duration || targetDuration;
         if (time < 0) {
           return i;
         }
       }
-      // We haven't found a segment so load the last one
+
+      if (i === endIndex) {
+        // We haven't found a segment but we did hit a known end point
+        // so fallback to "Algorithm Jon" - try to interpolate the segment
+        // index based on the known span of the timeline we are dealing with
+        // and the number of segments inside that span
+        return startIndex + Math.floor(
+          ((originalTime - knownStart) / (knownEnd - knownStart)) *
+          (endIndex - startIndex));
+      }
+
+      // We _still_ haven't found a segment so load the last one
       return lastSegment;
     } else if (endIndex !== undefined) {
-      // We have a known-end point that is after our desired time so
+      // We _only_ have a known-end point that is after our desired time so
       // walk from that point backwards
       time = knownEnd - time;
       for (i = endIndex; i >= 0; i--) {
@@ -470,8 +473,9 @@
       // We haven't found a segment so load the first one
       return 0;
     } else {
-      // We known nothing so use "Algorithm A"
-      i = 0;
+      // We known nothing so use "Algorithm A" - walk from the front
+      // of the playlist naively subtracking durations until we find
+      // a segment that contains time and return it
       for (i = 0; i < numSegments; i++) {
         segment = this.media_.segments[i];
         time -= segment.duration || targetDuration;
@@ -479,7 +483,9 @@
           return i;
         }
       }
-      // We are out of possible candidates so load the last one
+      // We are out of possible candidates so load the last one...
+      // The last one is the least likely to overlap a buffer and therefore
+      // the one most likely to tell us something about the timeline
       return lastSegment;
     }
   };
