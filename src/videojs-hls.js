@@ -546,9 +546,9 @@ videojs.Hls.prototype.cancelSegmentXhr = function() {
     this.segmentXhr_.onreadystatechange = null;
     this.segmentXhr_.abort();
     this.segmentXhr_ = null;
-    // clear out the segment being processed
-    this.pendingSegment_ = null;
   }
+  // clear out the segment being processed
+  this.pendingSegment_ = null;
 };
 
 /**
