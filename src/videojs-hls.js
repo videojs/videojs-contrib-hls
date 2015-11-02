@@ -709,11 +709,17 @@ videojs.Hls.prototype.stopCheckingBuffer_ = function() {
  */
 videojs.Hls.prototype.findCurrentBuffered_ = function() {
   var
-    tech = this.tech_,
-    currentTime = tech.currentTime(),
-    buffered = this.tech_.buffered(),
     ranges,
-    i;
+    i,
+    tech = this.tech_,
+    // !!The order of the next two lines is important!!
+    // `currentTime` must be equal-to or greater-than the start of the
+    // buffered range. Flash executes out-of-process so, every value can
+    // change behind the scenes from line-to-line. By reading `currentTime`
+    // after `buffered`, we ensure that it is always a current or later
+    // value during playback.
+    buffered = tech.buffered(),
+    currentTime = tech.currentTime();
 
   if (buffered && buffered.length) {
     // Search for a range containing the play-head
