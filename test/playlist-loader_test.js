@@ -653,8 +653,8 @@
     equal(loader.getMediaIndexForTime_(3), 0, 'time three is index zero');
     equal(loader.getMediaIndexForTime_(10), 2, 'time 10 is index 2');
     equal(loader.getMediaIndexForTime_(22),
-          3,
-          'time greater than the length is index 3');
+          2,
+          'time greater than the length is index 2');
   });
 
   test('returns the lower index when calculating for a segment boundary', function() {
@@ -683,9 +683,9 @@
                              '1002.ts\n');
     loader.media().segments[0].start = 150;
 
-    equal(loader.getMediaIndexForTime_(0), 0, 'the lowest returned value is zero');
-    equal(loader.getMediaIndexForTime_(45), 0, 'expired content returns zero');
-    equal(loader.getMediaIndexForTime_(75), 0, 'expired content returns zero');
+    equal(loader.getMediaIndexForTime_(0), -1, 'the lowest returned value is  negative one');
+    equal(loader.getMediaIndexForTime_(45), -1, 'expired content returns negative one');
+    equal(loader.getMediaIndexForTime_(75), -1, 'expired content returns  negative one');
     equal(loader.getMediaIndexForTime_(50 + 100), 0, 'calculates the earliest available position');
     equal(loader.getMediaIndexForTime_(50 + 100 + 2), 0, 'calculates within the first segment');
     equal(loader.getMediaIndexForTime_(50 + 100 + 2), 0, 'calculates within the first segment');

@@ -367,7 +367,17 @@
    * closest playback position that is currently available.
    */
   PlaylistLoader.prototype.getMediaIndexForTime_ = function(time) {
-    var i, j, segment, targetDuration;
+    var
+      i,
+      segment,
+      originalTime = time,
+      targetDuration = this.media_.targetDuration || 10,
+      numSegments = this.media_.segments.length,
+      lastSegment = numSegments - 1,
+      startIndex,
+      endIndex,
+      knownStart,
+      knownEnd;
 
     if (!this.media_) {
       return 0;
@@ -379,57 +389,105 @@
       return 0;
     }
 
-    // 1) Walk backward until we find the latest segment with timeline
+    // 1) Walk backward until we find the first segment with timeline
     // information that is earlier than `time`
-    targetDuration = this.media_.targetDuration || 10;
-    i = this.media_.segments.length;
-    while (i--) {
+    for (i = lastSegment; i >= 0; i--) {
       segment = this.media_.segments[i];
       if (segment.end !== undefined && segment.end <= time) {
-        time -= segment.end;
+        startIndex = i + 1;
+        knownStart = segment.end;
+        if (startIndex >= numSegments) {
+          // The last segment claims to end *before* the time we are
+          // searching for so just return it
+          return numSegments;
+        }
         break;
       }
-      if (segment.start !== undefined && segment.start < time) {
-
+      if (segment.start !== undefined && segment.start <= time) {
         if (segment.end !== undefined && segment.end > time) {
           // we've found the target segment exactly
           return i;
         }
-
-        time -= segment.start;
-        time -= segment.duration || targetDuration;
-        if (time < 0) {
-          // the segment with start information is also our best guess
-          // for the momment
-          return i;
-        }
+        startIndex = i;
+        knownStart = segment.start;
         break;
       }
     }
-    i++;
 
-    // 2) Walk forward, testing each segment to see if `time` falls within it
-    for (j = i; j < this.media_.segments.length; j++) {
-      segment = this.media_.segments[j];
-      time -= segment.duration || targetDuration;
-
-      if (time < 0) {
-        return j;
+    // 2) Walk forward until we find the first segment with timeline
+    // information that is greater than `time`
+    for (i = 0; i < numSegments; i++) {
+      segment = this.media_.segments[i];
+      if (segment.start !== undefined && segment.start > time) {
+        endIndex = i - 1;
+        knownEnd = segment.start;
+        if (endIndex < 0) {
+          // The first segment claims to start *after* the time we are
+          // searching for so just return it
+          return -1;
+        }
+        break;
       }
-
-      // 2a) If we discover a segment that has timeline information
-      // before finding the result segment, the playlist information
-      // must have been inaccurate. Start a binary search for the
-      // segment which contains `time`. If the guess turns out to be
-      // incorrect, we'll have more info to work with next time.
-      if (segment.start !== undefined || segment.end !== undefined) {
-        return Math.floor((j - i) * 0.5);
+      if (segment.end !== undefined && segment.end > time) {
+        endIndex = i;
+        knownEnd = segment.end;
+        break;
       }
     }
 
-    // the playback position is outside the range of available
-    // segments so return the length
-    return this.media_.segments.length;
+    if (startIndex !== undefined) {
+      // We have a known-start point that is before our desired time so
+      // walk from that point forwards
+      time = time - knownStart;
+      for (i = startIndex; i < (endIndex || numSegments); i++) {
+        segment = this.media_.segments[i];
+        time -= segment.duration || targetDuration;
+        if (time < 0) {
+          return i;
+        }
+      }
+
+      if (i === endIndex) {
+        // We haven't found a segment but we did hit a known end point
+        // so fallback to "Algorithm Jon" - try to interpolate the segment
+        // index based on the known span of the timeline we are dealing with
+        // and the number of segments inside that span
+        return startIndex + Math.floor(
+          ((originalTime - knownStart) / (knownEnd - knownStart)) *
+          (endIndex - startIndex));
+      }
+
+      // We _still_ haven't found a segment so load the last one
+      return lastSegment;
+    } else if (endIndex !== undefined) {
+      // We _only_ have a known-end point that is after our desired time so
+      // walk from that point backwards
+      time = knownEnd - time;
+      for (i = endIndex; i >= 0; i--) {
+        segment = this.media_.segments[i];
+        time -= segment.duration || targetDuration;
+        if (time < 0) {
+          return i;
+        }
+      }
+      // We haven't found a segment so load the first one
+      return 0;
+    } else {
+      // We known nothing so use "Algorithm A" - walk from the front
+      // of the playlist naively subtracking durations until we find
+      // a segment that contains time and return it
+      for (i = 0; i < numSegments; i++) {
+        segment = this.media_.segments[i];
+        time -= segment.duration || targetDuration;
+        if (time < 0) {
+          return i;
+        }
+      }
+      // We are out of possible candidates so load the last one...
+      // The last one is the least likely to overlap a buffer and therefore
+      // the one most likely to tell us something about the timeline
+      return lastSegment;
+    }
   };
 
   videojs.Hls.PlaylistLoader = PlaylistLoader;

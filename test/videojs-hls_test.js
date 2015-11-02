@@ -218,6 +218,7 @@ module('HLS', {
       var el = document.createElement('div');
       el.id = 'vjs_mock_flash_' + nextId++;
       el.className = 'vjs-tech vjs-mock-flash';
+      el.duration = Infinity;
       el.vjs_load = function() {};
       el.vjs_getProperty = function(attr) {
         if (attr === 'buffered') {
@@ -1131,7 +1132,7 @@ test('buffers based on the correct TimeRange if multiple ranges exist', function
     return videojs.createTimeRange(buffered);
   };
   currentTime = 8;
-  buffered = [[0, 10], [20, 40]];
+  buffered = [[0, 10], [20, 30]];
 
   standardXHRResponse(requests[0]);
   standardXHRResponse(requests[1]);
@@ -1144,14 +1145,9 @@ test('buffers based on the correct TimeRange if multiple ranges exist', function
   currentTime = 22;
   player.tech_.hls.sourceBuffer.trigger('updateend');
   player.tech_.hls.checkBuffer_();
-  strictEqual(requests.length, 2, 'made no additional requests');
-
-  buffered = [[0, 10], [20, 30]];
-  player.tech_.hls.checkBuffer_();
-  standardXHRResponse(requests[2]);
   strictEqual(requests.length, 3, 'made three requests');
   strictEqual(requests[2].url,
-              absoluteUrl('manifest/media-00004.ts'),
+              absoluteUrl('manifest/media-00003.ts'),
               'made segment request');
 });
 
@@ -1381,7 +1377,7 @@ test('seeking in an empty playlist is a non-erroring noop', function() {
   equal(requests.length, requestsLength, 'made no additional requests');
 });
 
-test('duration is Infinity for live playlists', function() {
+test('tech\'s duration reports Infinity for live playlists', function() {
   player.src({
     src: 'http://example.com/manifest/missingEndlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1390,9 +1386,13 @@ test('duration is Infinity for live playlists', function() {
 
   standardXHRResponse(requests[0]);
 
-  strictEqual(player.tech_.hls.mediaSource.duration,
+  strictEqual(player.tech_.duration(),
               Infinity,
-              'duration is infinity');
+              'duration on the tech is infinity');
+
+  notEqual(player.tech_.hls.mediaSource.duration,
+              Infinity,
+              'duration on the mediaSource is not infinity');
 });
 
 test('live playlist starts three target durations before live', function() {
@@ -1644,7 +1644,7 @@ test('calls mediaSource\'s timestampOffset on discontinuity', function() {
 });
 
 test('sets timestampOffset when seeking with discontinuities', function() {
-  var removes = [], timeRange = videojs.createTimeRange(0, 10);
+  var timeRange = videojs.createTimeRange(0, 10);
 
   player.src({
     src: 'discontinuity.m3u8',
@@ -1670,18 +1670,12 @@ test('sets timestampOffset when seeking with discontinuities', function() {
                          '3.ts\n' +
                          '#EXT-X-ENDLIST\n');
   player.tech_.hls.sourceBuffer.timestampOffset = 0;
-  player.tech_.hls.sourceBuffer.remove = function(start, end) {
-    timeRange = videojs.createTimeRange();
-    removes.push([start, end]);
-  };
-
   player.currentTime(21);
   clock.tick(1);
   equal(requests.shift().aborted, true, 'aborted first request');
   standardXHRResponse(requests.pop()); // 3.ts
   clock.tick(1000);
   equal(player.tech_.hls.sourceBuffer.timestampOffset, 20, 'timestampOffset starts at zero');
-  equal(removes.length, 1, 'remove was called');
 });
 
 test('can seek before the source buffer opens', function() {
