@@ -2,7 +2,7 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+* buffer at the current time range end instead of incrementing a variable. ([view](https://github.com/videojs/videojs-contrib-hls/pull/423))
 
 --------------------
 
