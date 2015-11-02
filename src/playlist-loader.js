@@ -391,7 +391,7 @@
 
     // 1) Walk backward until we find the first segment with timeline
     // information that is earlier than `time`
-    for (i = lastSegment; i > 0; i--) {
+    for (i = lastSegment; i >= 0; i--) {
       segment = this.media_.segments[i];
       if (segment.end !== undefined && segment.end <= time) {
         startIndex = i + 1;
@@ -403,7 +403,7 @@
         }
         break;
       }
-      if (segment.start !== undefined && segment.start < time) {
+      if (segment.start !== undefined && segment.start <= time) {
         if (segment.end !== undefined && segment.end > time) {
           // we've found the target segment exactly
           return i;
