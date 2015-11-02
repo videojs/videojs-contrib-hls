@@ -1021,7 +1021,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     // timestampOffset for new segments to be appended the end of the current
     // buffered time-range
     this.sourceBuffer.timestampOffset = currentBuffered.end(0);
-  } else if (!hasBufferedContent && this.tech_.currentTime() > 0.05) {
+  } else if (!hasBufferedContent && this.tech_.currentTime() !== 0) {
     // If we are trying to play at a position that is not zero but we aren't
     // currently seeking according to the video element
     this.sourceBuffer.timestampOffset = segmentTimestampOffset;
