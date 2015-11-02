@@ -798,20 +798,23 @@ videojs.Hls.prototype.fillBuffer = function(mediaIndex) {
   }
   segment = this.playlists.media().segments[mediaIndex];
 
-  // if the video has finished downloading or we have entered a loop
-  // fetching the same segment, stop trying to buffer
-  if (!segment ||
-       (segment &&
-        this.lastSegmentLoaded_ &&
-        this.lastSegmentLoaded_.indexOf(segment.uri) !== -1)) {
+  // if the video has finished downloading
+  if (!segment) {
     return;
+  }
+
+  // we have entered a state where we are fetching the same segment,
+  // try to walk forward
+  if (this.lastSegmentLoaded_ &&
+      this.lastSegmentLoaded_ === this.playlistUriToUrl(segment.uri)) {
+    return this.fillBuffer(mediaIndex + 1);
   }
 
   // package up all the work to append the segment
   segmentInfo = {
     // resolve the segment URL relative to the playlist
     uri: this.playlistUriToUrl(segment.uri),
-    // the segment's mediaIndex at the time it was received
+    // the segment's mediaIndex & mediaSequence at the time it was requested
     mediaIndex: mediaIndex,
     mediaSequence: this.playlists.media().mediaSequence,
     // the segment's playlist
