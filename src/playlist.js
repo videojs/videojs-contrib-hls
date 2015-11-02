@@ -105,12 +105,11 @@
       if (!playlist.endList) {
         return window.Infinity;
       }
-      endSequence = playlist.segments.length;
     }
 
     // calculate the total duration based on the segment durations
     return intervalDuration(playlist,
-                            playlist.mediaSequence + endSequence,
+                            endSequence,
                             includeTrailingTime);
   };
 

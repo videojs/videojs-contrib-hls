@@ -992,7 +992,8 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   event = event || {};
 
   if (segmentInfo.mediaIndex > 0) {
-    segmentTimestampOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist, segmentInfo.mediaIndex);
+    segmentTimestampOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist,
+      playlist.mediaSequence + segmentInfo.mediaIndex);
   }
 
   // If we have seeked into a non-buffered time-range, remove all buffered
