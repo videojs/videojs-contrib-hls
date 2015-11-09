@@ -1917,6 +1917,8 @@ test('the source handler supports HLS mime types', function() {
     ok(videojs.HlsSourceHandler(techName).canHandleSource({
       type: 'aPplicatiOn/VnD.aPPle.MpEgUrL'
     }), 'supports vnd.apple.mpegurl');
+    ok(videojs.HlsSourceHandler(techName).canPlayType('aPplicatiOn/VnD.aPPle.MpEgUrL'), 'supports vnd.apple.mpegurl');
+    ok(videojs.HlsSourceHandler(techName).canPlayType('aPplicatiOn/x-MPegUrl'), 'supports x-mpegurl');
 
     ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
       type: 'video/mp4'
@@ -1924,6 +1926,8 @@ test('the source handler supports HLS mime types', function() {
     ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
       type: 'video/x-flv'
     }) instanceof videojs.HlsHandler), 'does not support flv');
+    ok(!(videojs.HlsSourceHandler(techName).canPlayType('video/mp4')), 'does not support mp4');
+    ok(!(videojs.HlsSourceHandler(techName).canPlayType('video/x-flv')), 'does not support flv');
   });
 });
 
