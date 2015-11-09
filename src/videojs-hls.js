@@ -94,13 +94,7 @@ videojs.Hls.canPlaySource = function() {
 videojs.HlsSourceHandler = function(mode) {
   return {
     canHandleSource: function(srcObj) {
-      var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
-
-      // favor native HLS support if it's available
-      if (videojs.Hls.supportsNativeHls) {
-        return false;
-      }
-      return mpegurlRE.test(srcObj.type);
+      return videojs.HlsSourceHandler.canPlayType(srcObj.type);
     },
     handleSource: function(source, tech) {
       if (mode === 'flash') {
@@ -116,8 +110,21 @@ videojs.HlsSourceHandler = function(mode) {
       });
       tech.hls.src(source.src);
       return tech.hls;
+    },
+    canPlayType: function(type) {
+      return videojs.HlsSourceHandler.canPlayType(type);
     }
   };
+};
+
+videojs.HlsSourceHandler.canPlayType = function(type) {
+  var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
+
+  // favor native HLS support if it's available
+  if (videojs.Hls.supportsNativeHls) {
+    return false;
+  }
+  return mpegurlRE.test(type);
 };
 
 // register source handlers with the appropriate techs
