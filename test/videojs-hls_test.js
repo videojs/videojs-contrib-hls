@@ -1180,16 +1180,24 @@ test('only makes one segment request at a time', function() {
 });
 
 test('only appends one segment at a time', function() {
+  var appends = 0;
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
   standardXHRResponse(requests.pop()); // media.m3u8
+  player.tech_.hls.sourceBuffer.appendBuffer = function() {
+    appends++;
+  };
+
   standardXHRResponse(requests.pop()); // segment 0
 
   player.tech_.hls.checkBuffer_();
   equal(requests.length, 0, 'did not request while updating');
+
+  player.tech_.hls.checkBuffer_();
+  equal(appends, 1, 'appended once');
 });
 
 test('waits to download new segments until the media playlist is stable', function() {

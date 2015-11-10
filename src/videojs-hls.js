@@ -948,6 +948,12 @@ videojs.Hls.prototype.drainBuffer = function(event) {
     return;
   }
 
+  // the pending segment has already been appended and we're waiting
+  // for updateend to fire
+  if (this.pendingSegment_.buffered) {
+    return;
+  }
+
   // we can't append more data if the source buffer is busy processing
   // what we've already sent
   if (this.sourceBuffer.updating) {
