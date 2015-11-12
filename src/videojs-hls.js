@@ -125,7 +125,9 @@ videojs.HlsSourceHandler = function(mode) {
 if (videojs.MediaSource.supportsNativeMediaSources()) {
   videojs.getComponent('Html5').registerSourceHandler(videojs.HlsSourceHandler('html5'));
 }
-videojs.getComponent('Flash').registerSourceHandler(videojs.HlsSourceHandler('flash'));
+if (window.Uint8Array) {
+  videojs.getComponent('Flash').registerSourceHandler(videojs.HlsSourceHandler('flash'));
+}
 
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
