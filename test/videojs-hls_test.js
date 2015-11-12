@@ -1526,6 +1526,7 @@ test('reloads out-of-date live playlists when switching variants', function() {
 });
 
 test('if withCredentials global option is used, withCredentials is set on the XHR object', function() {
+  var hlsOptions = videojs.options.hls;
   player.dispose();
   videojs.options.hls = {
     withCredentials: true
@@ -1538,6 +1539,7 @@ test('if withCredentials global option is used, withCredentials is set on the XH
   openMediaSource(player);
   ok(requests[0].withCredentials,
      'with credentials should be set to true if that option is passed in');
+  videojs.options.hls = hlsOptions;
 });
 
 test('if withCredentials src option is used, withCredentials is set on the XHR object', function() {
