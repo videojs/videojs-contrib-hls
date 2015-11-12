@@ -1113,9 +1113,9 @@ videojs.Hls.isSupported = function() {
     // Flash must be supported for the fallback to work
     videojs.Flash.isSupported() &&
     // Media sources must be available to stream bytes to Flash
-    videojs.MediaSource &&
+      typeof videojs.MediaSource == 'function' &&
     // Typed arrays are used to repackage the segments
-    window.Uint8Array;
+    typeof window.Uint8Array == 'function';
 };
 
 videojs.Hls.canPlaySource = function(srcObj) {
