@@ -493,25 +493,26 @@ videojs.HlsHandler.prototype.updateDuration = function(playlist) {
       setDuration = function() {
         this.mediaSource.duration = newDuration;
         this.tech_.trigger('durationchange');
+
+        // update seekable
+        if (seekable.length !== 0 && newDuration === Infinity) {
+          this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
+        }
         this.mediaSource.removeEventListener('sourceopen', setDuration);
       }.bind(this),
       seekable = this.seekable();
 
-  // TODO: Move to videojs-contrib-media-sources
-  if (seekable.length && newDuration === Infinity) {
-    if (isNaN(oldDuration)) {
-      oldDuration = 0;
-    }
-    newDuration = Math.max(oldDuration,
-      seekable.end(0) + playlist.targetDuration * 3);
-  }
-
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
+    // update the duration
     if (this.mediaSource.readyState !== 'open') {
       this.mediaSource.addEventListener('sourceopen', setDuration);
     } else if (!this.sourceBuffer || !this.sourceBuffer.updating) {
       this.mediaSource.duration = newDuration;
+      // update seekable
+      if (seekable.length !== 0 && newDuration === Infinity) {
+        this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
+      }
       this.tech_.trigger('durationchange');
     }
   }
