@@ -1911,10 +1911,10 @@ test('the source handler supports HLS mime types', function() {
 
     ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
       type: 'video/mp4'
-    }) instanceof videojs.Hls), 'does not support mp4');
+    }) instanceof videojs.HlsHandler), 'does not support mp4');
     ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
       type: 'video/x-flv'
-    }) instanceof videojs.Hls), 'does not support flv');
+    }) instanceof videojs.HlsHandler), 'does not support flv');
   });
 });
 
