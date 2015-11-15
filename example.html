@@ -9,21 +9,8 @@
   <!-- video.js -->
   <script src="node_modules/video.js/dist/video.js"></script>
 
-  <!-- transmuxing -->
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/lib/stream.js"></script>
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/flv-tag.js"></script>
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/exp-golomb.js"></script>
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/h264-extradata.js"></script>
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/h264-stream.js"></script>
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/aac-stream.js"></script>
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/metadata-stream.js"></script>
-  <script src="node_modules/videojs-contrib-media-sources/node_modules/mux.js/legacy/segment-parser.js"></script>
-
   <!-- Media Sources plugin -->
-  <script src="node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
-  <script>
-    videojs.MediaSource.webWorkerURI = 'node_modules/videojs-contrib-media-sources/src/transmuxer_worker.js';
-  </script>
+  <script src="node_modules/videojs-contrib-media-sources/dist/videojs-media-sources.js"></script>
 
   <!-- HLS plugin -->
   <script src="src/videojs-hls.js"></script>
