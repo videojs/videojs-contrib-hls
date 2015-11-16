@@ -44,11 +44,11 @@
     "karma-sauce-launcher": "~0.1.8",
     "qunitjs": "^1.18.0",
     "sinon": "1.10.2",
-    "video.js": "^5.1.0"
+    "video.js": "^5.2.1"
   },
   "dependencies": {
     "pkcs7": "^0.2.2",
-    "videojs-contrib-media-sources": "^2.0.0",
+    "videojs-contrib-media-sources": "^2.4.0",
     "videojs-swf": "^5.0.0"
   }
 }
