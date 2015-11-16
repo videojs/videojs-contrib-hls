@@ -39,6 +39,11 @@
       padding: 0 5px;
       margin: 20px 0;
     }
+    input {
+      margin-top: 15px;
+      min-width: 450px;
+      padding: 5px;
+    }
   </style>
 
 </head>
@@ -56,10 +61,31 @@
        src="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8"
        type="application/x-mpegURL">
   </video>
+
+  <form id=load-url>
+    <label>
+      Video URL:
+      <input id=url type=url value="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8">
+    </label>
+    <button type=submit>Load</button>
+  </form>
+
   <script>
     videojs.options.flash.swf = 'node_modules/videojs-swf/dist/video-js.swf';
     // initialize the player
     var player = videojs('video');
+
+    // hook up the video switcher
+    var loadUrl = document.getElementById('load-url');
+    var url = document.getElementById('url');
+    loadUrl.addEventListener('submit', function(event) {
+      event.preventDefault();
+      player.src({
+        src: url.value,
+        type: 'application/x-mpegURL'
+      });
+      return false;
+    });
   </script>
 </body>
 </html>
