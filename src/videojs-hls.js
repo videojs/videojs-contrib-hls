@@ -492,12 +492,12 @@ videojs.HlsHandler.prototype.updateDuration = function(playlist) {
       newDuration = videojs.Hls.Playlist.duration(playlist),
       setDuration = function() {
         this.mediaSource.duration = newDuration;
-        this.tech_.trigger('durationchange');
-
         // update seekable
         if (seekable.length !== 0 && newDuration === Infinity) {
           this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
         }
+        this.tech_.trigger('durationchange');
+
         this.mediaSource.removeEventListener('sourceopen', setDuration);
       }.bind(this),
       seekable = this.seekable();
