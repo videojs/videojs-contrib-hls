@@ -134,11 +134,6 @@ var
       type: 'sourceopen',
       swfId: player.tech_.el().id
     });
-
-    // endOfStream triggers an exception if flash isn't available
-    player.tech_.hls.mediaSource.endOfStream = function(error) {
-      this.error_ = error;
-    };
   },
   standardXHRResponse = function(request) {
     if (!request.url) {
@@ -170,6 +165,11 @@ var
   // a no-op MediaSource implementation to allow synchronous testing
   MockMediaSource = videojs.extend(videojs.EventTarget, {
     constructor: function() {},
+    duration: NaN,
+    seekable: videojs.createTimeRange(),
+    addSeekableRange_: function(start, end) {
+      this.seekable = videojs.createTimeRange(start, end);
+    },
     addSourceBuffer: function() {
       return new (videojs.extend(videojs.EventTarget, {
         constructor: function() {},
@@ -179,7 +179,10 @@ var
         remove: function() {}
       }))();
     },
-    endOfStream: function() {}
+    // endOfStream triggers an exception if flash isn't available
+    endOfStream: function(error) {
+      this.error_ = error;
+    }
   }),
 
   // do a shallow copy of the properties of source onto the target object
@@ -1180,16 +1183,24 @@ test('only makes one segment request at a time', function() {
 });
 
 test('only appends one segment at a time', function() {
+  var appends = 0;
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
   standardXHRResponse(requests.pop()); // media.m3u8
+  player.tech_.hls.sourceBuffer.appendBuffer = function() {
+    appends++;
+  };
+
   standardXHRResponse(requests.pop()); // segment 0
 
   player.tech_.hls.checkBuffer_();
   equal(requests.length, 0, 'did not request while updating');
+
+  player.tech_.hls.checkBuffer_();
+  equal(appends, 1, 'appended once');
 });
 
 test('waits to download new segments until the media playlist is stable', function() {
@@ -1377,7 +1388,7 @@ test('seeking in an empty playlist is a non-erroring noop', function() {
   equal(requests.length, requestsLength, 'made no additional requests');
 });
 
-test('tech\'s duration reports Infinity for live playlists', function() {
+test('sets seekable and duration for live playlists', function() {
   player.src({
     src: 'http://example.com/manifest/missingEndlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1386,13 +1397,19 @@ test('tech\'s duration reports Infinity for live playlists', function() {
 
   standardXHRResponse(requests[0]);
 
-  strictEqual(player.tech_.duration(),
-              Infinity,
-              'duration on the tech is infinity');
+  equal(player.tech_.hls.mediaSource.seekable.length,
+        1,
+        'set one seekable range');
+  equal(player.tech_.hls.mediaSource.seekable.start(0),
+        player.tech_.hls.seekable().start(0),
+        'set seekable start');
+  equal(player.tech_.hls.mediaSource.seekable.end(0),
+        player.tech_.hls.seekable().end(0),
+        'set seekable end');
 
-  notEqual(player.tech_.hls.mediaSource.duration,
+  strictEqual(player.tech_.hls.mediaSource.duration,
               Infinity,
-              'duration on the mediaSource is not infinity');
+              'duration on the mediaSource is infinity');
 });
 
 test('live playlist starts three target durations before live', function() {
@@ -1518,6 +1535,7 @@ test('reloads out-of-date live playlists when switching variants', function() {
 });
 
 test('if withCredentials global option is used, withCredentials is set on the XHR object', function() {
+  var hlsOptions = videojs.options.hls;
   player.dispose();
   videojs.options.hls = {
     withCredentials: true
@@ -1530,6 +1548,7 @@ test('if withCredentials global option is used, withCredentials is set on the XH
   openMediaSource(player);
   ok(requests[0].withCredentials,
      'with credentials should be set to true if that option is passed in');
+  videojs.options.hls = hlsOptions;
 });
 
 test('if withCredentials src option is used, withCredentials is set on the XHR object', function() {
@@ -1901,10 +1920,10 @@ test('the source handler supports HLS mime types', function() {
 
     ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
       type: 'video/mp4'
-    }) instanceof videojs.Hls), 'does not support mp4');
+    }) instanceof videojs.HlsHandler), 'does not support mp4');
     ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
       type: 'video/x-flv'
-    }) instanceof videojs.Hls), 'does not support flv');
+    }) instanceof videojs.HlsHandler), 'does not support flv');
   });
 });
 

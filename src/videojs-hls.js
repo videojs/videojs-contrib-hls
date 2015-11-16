@@ -23,7 +23,8 @@ keyFailed = function(key) {
   return key.retries && key.retries >= 2;
 };
 
-videojs.Hls = videojs.extend(Component, {
+videojs.Hls = {};
+videojs.HlsHandler = videojs.extend(Component, {
   constructor: function(tech, options) {
     var self = this, _player;
 
@@ -110,7 +111,7 @@ videojs.HlsSourceHandler = function(mode) {
           tech.trigger('loadstart');
         }, 1);
       }
-      tech.hls = new videojs.Hls(tech, {
+      tech.hls = new videojs.HlsHandler(tech, {
         source: source,
         mode: mode
       });
@@ -129,7 +130,7 @@ videojs.getComponent('Flash').registerSourceHandler(videojs.HlsSourceHandler('fl
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
 
-videojs.Hls.prototype.src = function(src) {
+videojs.HlsHandler.prototype.src = function(src) {
   var oldMediaPlaylist;
 
   // do nothing if the src is falsey
@@ -208,7 +209,7 @@ videojs.Hls.prototype.src = function(src) {
   this.tech_.src(videojs.URL.createObjectURL(this.mediaSource));
 };
 
-videojs.Hls.prototype.handleSourceOpen = function() {
+videojs.HlsHandler.prototype.handleSourceOpen = function() {
   // Only attempt to create the source buffer if none already exist.
   // handleSourceOpen is also called when we are "re-opening" a source buffer
   // after `endOfStream` has been called (in response to a seek for instance)
@@ -284,7 +285,7 @@ videojs.Hls.bufferedAdditions_ = function(original, update) {
   return result;
 };
 
-videojs.Hls.prototype.setupSourceBuffer_ = function() {
+videojs.HlsHandler.prototype.setupSourceBuffer_ = function() {
   var media = this.playlists.media(), mimeType;
 
   // wait until a media playlist is available and the Media Source is
@@ -375,7 +376,7 @@ videojs.Hls.prototype.setupSourceBuffer_ = function() {
  * Seek to the latest media position if this is a live video and the
  * player and video are loaded and initialized.
  */
-videojs.Hls.prototype.setupFirstPlay = function() {
+videojs.HlsHandler.prototype.setupFirstPlay = function() {
   var seekable, media;
   media = this.playlists.media();
 
@@ -405,7 +406,7 @@ videojs.Hls.prototype.setupFirstPlay = function() {
 /**
  * Begin playing the video.
  */
-videojs.Hls.prototype.play = function() {
+videojs.HlsHandler.prototype.play = function() {
   this.loadingState_ = 'segments';
 
   if (this.tech_.ended()) {
@@ -425,7 +426,7 @@ videojs.Hls.prototype.play = function() {
   }
 };
 
-videojs.Hls.prototype.setCurrentTime = function(currentTime) {
+videojs.HlsHandler.prototype.setCurrentTime = function(currentTime) {
   var
     buffered = this.findCurrentBuffered_();
 
@@ -461,7 +462,7 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   this.fillBuffer(this.playlists.getMediaIndexForTime_(currentTime));
 };
 
-videojs.Hls.prototype.duration = function() {
+videojs.HlsHandler.prototype.duration = function() {
   var playlists = this.playlists;
   if (playlists) {
     return videojs.Hls.Playlist.duration(playlists.media());
@@ -469,7 +470,7 @@ videojs.Hls.prototype.duration = function() {
   return 0;
 };
 
-videojs.Hls.prototype.seekable = function() {
+videojs.HlsHandler.prototype.seekable = function() {
   var media;
 
   if (!this.playlists) {
@@ -486,31 +487,32 @@ videojs.Hls.prototype.seekable = function() {
 /**
  * Update the player duration
  */
-videojs.Hls.prototype.updateDuration = function(playlist) {
+videojs.HlsHandler.prototype.updateDuration = function(playlist) {
   var oldDuration = this.mediaSource.duration,
       newDuration = videojs.Hls.Playlist.duration(playlist),
       setDuration = function() {
         this.mediaSource.duration = newDuration;
+        // update seekable
+        if (seekable.length !== 0 && newDuration === Infinity) {
+          this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
+        }
         this.tech_.trigger('durationchange');
+
         this.mediaSource.removeEventListener('sourceopen', setDuration);
       }.bind(this),
       seekable = this.seekable();
 
-  // TODO: Move to videojs-contrib-media-sources
-  if (seekable.length && newDuration === Infinity) {
-    if (isNaN(oldDuration)) {
-      oldDuration = 0;
-    }
-    newDuration = Math.max(oldDuration,
-      seekable.end(0) + playlist.targetDuration * 3);
-  }
-
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
+    // update the duration
     if (this.mediaSource.readyState !== 'open') {
       this.mediaSource.addEventListener('sourceopen', setDuration);
     } else if (!this.sourceBuffer || !this.sourceBuffer.updating) {
       this.mediaSource.duration = newDuration;
+      // update seekable
+      if (seekable.length !== 0 && newDuration === Infinity) {
+        this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
+      }
       this.tech_.trigger('durationchange');
     }
   }
@@ -521,7 +523,7 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
  * source. After this function is called, the tech should be in a
  * state suitable for switching to a different video.
  */
-videojs.Hls.prototype.resetSrc_ = function() {
+videojs.HlsHandler.prototype.resetSrc_ = function() {
   this.cancelSegmentXhr();
   this.cancelKeyXhr();
 
@@ -530,7 +532,7 @@ videojs.Hls.prototype.resetSrc_ = function() {
   }
 };
 
-videojs.Hls.prototype.cancelKeyXhr = function() {
+videojs.HlsHandler.prototype.cancelKeyXhr = function() {
   if (this.keyXhr_) {
     this.keyXhr_.onreadystatechange = null;
     this.keyXhr_.abort();
@@ -538,7 +540,7 @@ videojs.Hls.prototype.cancelKeyXhr = function() {
   }
 };
 
-videojs.Hls.prototype.cancelSegmentXhr = function() {
+videojs.HlsHandler.prototype.cancelSegmentXhr = function() {
   if (this.segmentXhr_) {
     // Prevent error handler from running.
     this.segmentXhr_.onreadystatechange = null;
@@ -552,7 +554,7 @@ videojs.Hls.prototype.cancelSegmentXhr = function() {
 /**
  * Abort all outstanding work and cleanup.
  */
-videojs.Hls.prototype.dispose = function() {
+videojs.HlsHandler.prototype.dispose = function() {
   this.stopCheckingBuffer_();
 
   if (this.playlists) {
@@ -569,7 +571,7 @@ videojs.Hls.prototype.dispose = function() {
  * @return the highest bitrate playlist less than the currently detected
  * bandwidth, accounting for some amount of bandwidth variance
  */
-videojs.Hls.prototype.selectPlaylist = function () {
+videojs.HlsHandler.prototype.selectPlaylist = function () {
   var
     effectiveBitrate,
     sortedPlaylists = this.playlists.master.playlists.slice(),
@@ -662,7 +664,7 @@ videojs.Hls.prototype.selectPlaylist = function () {
 /**
  * Periodically request new segments and append video data.
  */
-videojs.Hls.prototype.checkBuffer_ = function() {
+videojs.HlsHandler.prototype.checkBuffer_ = function() {
   // calling this method directly resets any outstanding buffer checks
   if (this.checkBufferTimeout_) {
     window.clearTimeout(this.checkBufferTimeout_);
@@ -681,7 +683,7 @@ videojs.Hls.prototype.checkBuffer_ = function() {
  * Setup a periodic task to request new segments if necessary and
  * append bytes into the SourceBuffer.
  */
-videojs.Hls.prototype.startCheckingBuffer_ = function() {
+videojs.HlsHandler.prototype.startCheckingBuffer_ = function() {
   // if the player ever stalls, check if there is video data available
   // to append immediately
   this.tech_.on('waiting', (this.drainBuffer).bind(this));
@@ -693,7 +695,7 @@ videojs.Hls.prototype.startCheckingBuffer_ = function() {
  * Stop the periodic task requesting new segments and feeding the
  * SourceBuffer.
  */
-videojs.Hls.prototype.stopCheckingBuffer_ = function() {
+videojs.HlsHandler.prototype.stopCheckingBuffer_ = function() {
   if (this.checkBufferTimeout_) {
     window.clearTimeout(this.checkBufferTimeout_);
     this.checkBufferTimeout_ = null;
@@ -705,7 +707,7 @@ videojs.Hls.prototype.stopCheckingBuffer_ = function() {
  * Attempts to find the buffered TimeRange where playback is currently
  * happening. Returns a new TimeRange with one or zero ranges.
  */
-videojs.Hls.prototype.findCurrentBuffered_ = function() {
+videojs.HlsHandler.prototype.findCurrentBuffered_ = function() {
   var
     ranges,
     i,
@@ -743,7 +745,7 @@ videojs.Hls.prototype.findCurrentBuffered_ = function() {
  * @param seekToTime (optional) {number} the offset into the downloaded segment
  * to seek to, in seconds
  */
-videojs.Hls.prototype.fillBuffer = function(mediaIndex) {
+videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   var
     tech = this.tech_,
     currentTime = tech.currentTime(),
@@ -840,7 +842,7 @@ videojs.Hls.prototype.fillBuffer = function(mediaIndex) {
   this.loadSegment(segmentInfo);
 };
 
-videojs.Hls.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
+videojs.HlsHandler.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
   var playListUrl;
     // resolve the segment URL relative to the playlist
   if (this.playlists.media().uri === this.source_.src) {
@@ -859,7 +861,7 @@ videojs.Hls.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
  *  * `bytesReceived` - amount of bytes downloaded
  * `bandwidth` is the only required property.
  */
-videojs.Hls.prototype.setBandwidth = function(xhr) {
+videojs.HlsHandler.prototype.setBandwidth = function(xhr) {
   // calculate the download bandwidth
   this.segmentXhrTime = xhr.roundTripTime;
   this.bandwidth = xhr.bandwidth;
@@ -868,7 +870,7 @@ videojs.Hls.prototype.setBandwidth = function(xhr) {
   this.tech_.trigger('bandwidthupdate');
 };
 
-videojs.Hls.prototype.loadSegment = function(segmentInfo) {
+videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
   var
     self = this,
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
@@ -927,7 +929,7 @@ videojs.Hls.prototype.loadSegment = function(segmentInfo) {
   });
 };
 
-videojs.Hls.prototype.drainBuffer = function(event) {
+videojs.HlsHandler.prototype.drainBuffer = function(event) {
   var
     segmentInfo,
     mediaIndex,
@@ -945,6 +947,12 @@ videojs.Hls.prototype.drainBuffer = function(event) {
   // if the buffer is empty or the source buffer hasn't been created
   // yet, do nothing
   if (!this.pendingSegment_ || !this.sourceBuffer) {
+    return;
+  }
+
+  // the pending segment has already been appended and we're waiting
+  // for updateend to fire
+  if (this.pendingSegment_.buffered) {
     return;
   }
 
@@ -1034,7 +1042,7 @@ videojs.Hls.prototype.drainBuffer = function(event) {
 /**
  * Attempt to retrieve the key for a particular media segment.
  */
-videojs.Hls.prototype.fetchKey_ = function(segment) {
+videojs.HlsHandler.prototype.fetchKey_ = function(segment) {
   var key, self, settings, receiveKey;
 
   // if there is a pending XHR or no segments, don't do anything
