@@ -294,6 +294,37 @@ videojs.Hls.bufferedAdditions_ = function(original, update) {
   return result;
 };
 
+/**
+ * Blacklist playlists that are known to be codec or
+ * stream-incompatible with the SourceBuffer configuration. For
+ * instance, Media Source Extensions would cause the video element to
+ * stall waiting for video data if you switched from a variant with
+ * video and audio to an audio-only one.
+ *
+ * @param media {object} a media playlist compatible with the current
+ * set of SourceBuffers. Variants in the current master playlist that
+ * do not appear to have compatible codec or stream configurations
+ * will be excluded from the default playlist selection algorithm
+ * indefinitely.
+ */
+videojs.HlsHandler.prototype.excludeIncompatibleStreams_ = function(media) {
+  var master = this.playlists.master, codecs = '';
+
+  if (media.attributes && media.attributes.CODECS) {
+    codecs = media.attributes.CODECS;
+  }
+  master.playlists.forEach(function(variant) {
+    var variantCodecs = '';
+    if (variant.attributes && variant.attributes.CODECS) {
+      variantCodecs = variant.attributes.CODECS;
+    }
+
+    if (variantCodecs !== codecs) {
+      variant.excludeUntil = Infinity;
+    }
+  });
+};
+
 videojs.HlsHandler.prototype.setupSourceBuffer_ = function() {
   var media = this.playlists.media(), mimeType;
 
@@ -310,6 +341,10 @@ videojs.HlsHandler.prototype.setupSourceBuffer_ = function() {
     mimeType += '; codecs="' + media.attributes.CODECS + '"';
   }
   this.sourceBuffer = this.mediaSource.addSourceBuffer(mimeType);
+
+  // exclude any incompatible variant streams from future playlist
+  // selection
+  this.excludeIncompatibleStreams_(media);
 
   // transition the sourcebuffer to the ended state if we've hit the end of
   // the playlist
@@ -388,6 +423,7 @@ videojs.HlsHandler.prototype.setupSourceBuffer_ = function() {
 videojs.HlsHandler.prototype.setupFirstPlay = function() {
   var seekable, media;
   media = this.playlists.media();
+
 
   // check that everything is ready to begin buffering
 
@@ -585,7 +621,8 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
     effectiveBitrate,
     sortedPlaylists = this.playlists.master.playlists.slice(),
     bandwidthPlaylists = [],
-    i = sortedPlaylists.length,
+    now = +new Date(),
+    i,
     variant,
     oldvariant,
     bandwidthBestVariant,
@@ -596,8 +633,18 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
 
   sortedPlaylists.sort(videojs.Hls.comparePlaylistBandwidth);
 
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  sortedPlaylists = sortedPlaylists.filter(function(variant) {
+    if (variant.excludeUntil !== undefined) {
+      return now >= variant.excludeUntil;
+    }
+    return true;
+  });
+
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
+  i = sortedPlaylists.length;
   while (i--) {
     variant = sortedPlaylists[i];
 

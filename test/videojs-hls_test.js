@@ -999,7 +999,7 @@ test('uses the lowest bitrate if no other is suitable', function() {
               'the lowest bitrate stream is selected');
 });
 
-  test('selects the correct rendition by player dimensions', function() {
+test('selects the correct rendition by player dimensions', function() {
   var playlist;
 
   player.src({
@@ -1069,6 +1069,130 @@ test('selects the highest bitrate playlist when the player dimensions are ' +
   equal(playlist.attributes.BANDWIDTH,
         1000,
         'selected the highest bandwidth variant');
+});
+
+test('filters playlists that are currently excluded', function() {
+  var playlist;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1e10;
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'media1.m3u8\n'); // master
+  standardXHRResponse(requests.shift()); // media
+
+  // exclude the current playlist
+  player.tech_.hls.playlists.master.playlists[0].excludeUntil = +new Date() + 1000;
+  playlist = player.tech_.hls.selectPlaylist();
+  equal(playlist, player.tech_.hls.playlists.master.playlists[1], 'respected exclusions');
+
+  // timeout the exclusion
+  clock.tick(1000);
+  playlist = player.tech_.hls.selectPlaylist();
+  equal(playlist, player.tech_.hls.playlists.master.playlists[0], 'expired the exclusion');
+});
+
+test('blacklists switching from video+audio playlists to audio only', function() {
+  var audioPlaylist;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1e10;
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="mp4a.40.2"\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=10,RESOLUTION=1x1\n' +
+                           'media1.m3u8\n'); // master
+
+  standardXHRResponse(requests.shift()); // media1
+  equal(player.tech_.hls.playlists.media(),
+        player.tech_.hls.playlists.master.playlists[1],
+        'selected video+audio');
+  audioPlaylist = player.tech_.hls.playlists.master.playlists[0];
+  equal(audioPlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
+});
+
+test('blacklists switching from audio-only playlists to video+audio', function() {
+  var videoAudioPlaylist;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1;
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="mp4a.40.2"\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=10,RESOLUTION=1x1\n' +
+                           'media1.m3u8\n'); // master
+
+  standardXHRResponse(requests.shift()); // media1
+  equal(player.tech_.hls.playlists.media(),
+        player.tech_.hls.playlists.master.playlists[0],
+        'selected audio only');
+  videoAudioPlaylist = player.tech_.hls.playlists.master.playlists[1];
+  equal(videoAudioPlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
+});
+
+test('blacklists switching from video-only playlists to video+audio', function() {
+  var videoAudioPlaylist;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1;
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.4d400d"\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=10,CODECS="avc1.4d400d,mp4a.40.2"\n' +
+                           'media1.m3u8\n'); // master
+
+  standardXHRResponse(requests.shift()); // media
+  equal(player.tech_.hls.playlists.media(),
+        player.tech_.hls.playlists.master.playlists[0],
+        'selected video only');
+  videoAudioPlaylist = player.tech_.hls.playlists.master.playlists[1];
+  equal(videoAudioPlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
+});
+
+test('blacklists switching between playlists with incompatible audio codecs', function() {
+  var alternatePlaylist;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1;
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.4d400d,mp4a.40.5"\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=10,CODECS="avc1.4d400d,mp4a.40.2"\n' +
+                           'media1.m3u8\n'); // master
+
+  standardXHRResponse(requests.shift()); // media
+  equal(player.tech_.hls.playlists.media(),
+        player.tech_.hls.playlists.master.playlists[0],
+        'selected HE-AAC stream');
+  alternatePlaylist = player.tech_.hls.playlists.master.playlists[1];
+  equal(alternatePlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
 });
 
 test('does not download the next segment if the buffer is full', function() {
