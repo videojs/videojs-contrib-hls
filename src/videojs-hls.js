@@ -294,6 +294,27 @@ videojs.Hls.bufferedAdditions_ = function(original, update) {
   return result;
 };
 
+
+var parseCodecs = function(codecs) {
+  var result = {
+    codecCount: 0,
+    videoCodec: null,
+    audioProfile: null
+  };
+
+  result.codecCount = codecs.split(',').length;
+  result.codecCount = result.codecCount || 2;
+
+  // parse the video codec but ignore the version
+  result.videoCodec = /(^|\s|,)+(avc1)[^ ,]*/i.exec(codecs);
+  result.videoCodec = result.videoCodec && result.videoCodec[2];
+
+  // parse the last field of the audio codec
+  result.audioProfile = /(^|\s|,)+mp4a.\d+\.(\d+)/i.exec(codecs);
+  result.audioProfile = result.audioProfile && result.audioProfile[2];
+
+  return result;
+};
 /**
  * Blacklist playlists that are known to be codec or
  * stream-incompatible with the SourceBuffer configuration. For
@@ -307,19 +328,46 @@ videojs.Hls.bufferedAdditions_ = function(original, update) {
  * will be excluded from the default playlist selection algorithm
  * indefinitely.
  */
-videojs.HlsHandler.prototype.excludeIncompatibleStreams_ = function(media) {
-  var master = this.playlists.master, codecs = '';
+videojs.HlsHandler.prototype.excludeIncompatibleVariants_ = function(media) {
+  var
+    master = this.playlists.master,
+    codecCount = 2,
+    videoCodec = null,
+    audioProfile = null,
+    codecs;
 
   if (media.attributes && media.attributes.CODECS) {
-    codecs = media.attributes.CODECS;
+    codecs = parseCodecs(media.attributes.CODECS);
+    videoCodec = codecs.videoCodec;
+    audioProfile = codecs.audioProfile;
+    codecCount = codecs.codecCount;
   }
   master.playlists.forEach(function(variant) {
-    var variantCodecs = '';
+    var variantCodecs = {
+      codecCount: 2,
+      videoCodec: null,
+      audioProfile: null
+    };
+
     if (variant.attributes && variant.attributes.CODECS) {
-      variantCodecs = variant.attributes.CODECS;
+      variantCodecs = parseCodecs(variant.attributes.CODECS);
     }
 
-    if (variantCodecs !== codecs) {
+    // if the streams differ in the presence or absence of audio or
+    // video, they are incompatible
+    if (variantCodecs.codecCount !== codecCount) {
+      variant.excludeUntil = Infinity;
+    }
+
+    // if h.264 is specified on the current playlist, some flavor of
+    // it must be specified on all compatible variants
+    if (variantCodecs.videoCodec !== videoCodec) {
+      variant.excludeUntil = Infinity;
+    }
+    // HE-AAC ("mp4a.40.5") is incompatible with all other versions of
+    // AAC audio in Chrome 46. Don't mix the two.
+    if ((variantCodecs.audioProfile === '5' && audioProfile !== '5') ||
+        (audioProfile === '5' && variantCodecs.audioProfile !== '5')) {
       variant.excludeUntil = Infinity;
     }
   });
@@ -344,7 +392,7 @@ videojs.HlsHandler.prototype.setupSourceBuffer_ = function() {
 
   // exclude any incompatible variant streams from future playlist
   // selection
-  this.excludeIncompatibleStreams_(media);
+  this.excludeIncompatibleVariants_(media);
 
   // transition the sourcebuffer to the ended state if we've hit the end of
   // the playlist

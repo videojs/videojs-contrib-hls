@@ -1171,6 +1171,50 @@ test('blacklists switching from video-only playlists to video+audio', function()
   equal(videoAudioPlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
 });
 
+test('does not blacklist compatible H.264 codec strings', function() {
+  var master;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1;
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.4d400d,mp4a.40.5"\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=10,CODECS="avc1.4d400f,mp4a.40.5"\n' +
+                           'media1.m3u8\n'); // master
+
+  standardXHRResponse(requests.shift()); // media
+  master = player.tech_.hls.playlists.master;
+  strictEqual(master.playlists[0].excludeUntil, undefined, 'did not blacklist');
+  strictEqual(master.playlists[1].excludeUntil, undefined, 'did not blacklist');
+});
+
+test('does not blacklist compatible AAC codec strings', function() {
+  var master;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1;
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.4d400d,mp4a.40.2"\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=10,CODECS="avc1.4d400d,mp4a.40.3"\n' +
+                           'media1.m3u8\n'); // master
+
+  standardXHRResponse(requests.shift()); // media
+  master = player.tech_.hls.playlists.master;
+  strictEqual(master.playlists[0].excludeUntil, undefined, 'did not blacklist');
+  strictEqual(master.playlists[1].excludeUntil, undefined, 'did not blacklist');
+});
+
 test('blacklists switching between playlists with incompatible audio codecs', function() {
   var alternatePlaylist;
   player.src({
