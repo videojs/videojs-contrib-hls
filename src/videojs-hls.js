@@ -397,73 +397,7 @@ videojs.HlsHandler.prototype.setupSourceBuffer_ = function() {
 
   // transition the sourcebuffer to the ended state if we've hit the end of
   // the playlist
-  this.sourceBuffer.addEventListener('updateend', function updateEndHandler() {
-    var
-      segmentInfo = this.pendingSegment_,
-      segment,
-      segments,
-      playlist,
-      currentMediaIndex,
-      currentBuffered,
-      timelineUpdates;
-
-    this.pendingSegment_ = null;
-
-    // stop here if the update errored or was aborted
-    if (!segmentInfo) {
-      return;
-    }
-
-    playlist = this.playlists.media();
-    segments = playlist.segments;
-    currentMediaIndex = segmentInfo.mediaIndex + (segmentInfo.mediaSequence - playlist.mediaSequence);
-    currentBuffered = this.findCurrentBuffered_();
-
-    // if we switched renditions don't try to add segment timeline
-    // information to the playlist
-    if (segmentInfo.playlist.uri !== this.playlists.media().uri) {
-      return this.fillBuffer();
-    }
-
-    // annotate the segment with any start and end time information
-    // added by the media processing
-    segment = playlist.segments[currentMediaIndex];
-
-    timelineUpdates = videojs.Hls.bufferedAdditions_(segmentInfo.buffered,
-                                                     this.tech_.buffered());
-
-    timelineUpdates.forEach(function (update) {
-      if (segment) {
-        if (update.end !== undefined) {
-          segment.end = update.end;
-        }
-      }
-    });
-
-    // if we've buffered to the end of the video, let the MediaSource know
-    if (this.playlists.media().endList &&
-        currentBuffered.length &&
-        segments[segments.length - 1].end <= currentBuffered.end(0) &&
-        this.mediaSource.readyState === 'open') {
-      this.mediaSource.endOfStream();
-      return;
-    }
-
-    if (timelineUpdates.length ||
-        segmentInfo.buffered.length !== this.tech_.buffered().length) {
-      this.updateDuration(playlist);
-      // check if it's time to download the next segment
-      this.fillBuffer();
-      return;
-    }
-
-    // the last segment append must have been entirely in the
-    // already buffered time ranges. just buffer forward until we
-    // find a segment that adds to the buffered time ranges and
-    // improves subsequent media index calculations.
-    this.fillBuffer(currentMediaIndex + 1);
-    return;
-  }.bind(this));
+  this.sourceBuffer.addEventListener('updateend', this.updateEndHandler_.bind(this));
 };
 
 /**
@@ -1149,6 +1083,74 @@ videojs.HlsHandler.prototype.drainBuffer = function(event) {
 
   // the segment is asynchronously added to the current buffered data
   this.sourceBuffer.appendBuffer(bytes);
+};
+
+videojs.HlsHandler.prototype.updateEndHandler_ = function () {
+  var
+    segmentInfo = this.pendingSegment_,
+    segment,
+    segments,
+    playlist,
+    currentMediaIndex,
+    currentBuffered,
+    timelineUpdates;
+
+  this.pendingSegment_ = null;
+
+  // stop here if the update errored or was aborted
+  if (!segmentInfo) {
+    return;
+  }
+
+  playlist = this.playlists.media();
+  segments = playlist.segments;
+  currentMediaIndex = segmentInfo.mediaIndex + (segmentInfo.mediaSequence - playlist.mediaSequence);
+  currentBuffered = this.findCurrentBuffered_();
+
+  // if we switched renditions don't try to add segment timeline
+  // information to the playlist
+  if (segmentInfo.playlist.uri !== this.playlists.media().uri) {
+    return this.fillBuffer();
+  }
+
+  // annotate the segment with any start and end time information
+  // added by the media processing
+  segment = playlist.segments[currentMediaIndex];
+
+  timelineUpdates = videojs.Hls.bufferedAdditions_(segmentInfo.buffered,
+                                                   this.tech_.buffered());
+
+  timelineUpdates.forEach(function (update) {
+    if (segment) {
+      if (update.end !== undefined) {
+        segment.end = update.end;
+      }
+    }
+  });
+
+  // if we've buffered to the end of the video, let the MediaSource know
+  if (this.playlists.media().endList &&
+      currentBuffered.length &&
+      segments[segments.length - 1].end <= currentBuffered.end(0) &&
+      this.mediaSource.readyState === 'open') {
+    this.mediaSource.endOfStream();
+    return;
+  }
+
+  if (timelineUpdates.length ||
+      segmentInfo.buffered.length !== this.tech_.buffered().length) {
+    this.updateDuration(playlist);
+    // check if it's time to download the next segment
+    this.fillBuffer();
+    return;
+  }
+
+  // the last segment append must have been entirely in the
+  // already buffered time ranges. just buffer forward until we
+  // find a segment that adds to the buffered time ranges and
+  // improves subsequent media index calculations.
+  this.fillBuffer(currentMediaIndex + 1);
+  return;
 };
 
 /**

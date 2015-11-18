@@ -142,7 +142,6 @@
     start = intervalDuration(playlist, playlist.mediaSequence);
     end = intervalDuration(playlist,
                            playlist.mediaSequence + Math.max(0, playlist.segments.length - 3));
-    end = Math.max(0, end);
     return videojs.createTimeRange(start, end);
   };
 
