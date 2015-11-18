@@ -141,8 +141,7 @@
     // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
     start = intervalDuration(playlist, playlist.mediaSequence);
     end = intervalDuration(playlist,
-                           playlist.mediaSequence + playlist.segments.length);
-    end -= (playlist.targetDuration || DEFAULT_TARGET_DURATION) * 3;
+                           playlist.mediaSequence + Math.max(0, playlist.segments.length - 3));
     end = Math.max(0, end);
     return videojs.createTimeRange(start, end);
   };

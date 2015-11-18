@@ -381,8 +381,8 @@
     });
     equal(seekable.start(0), 0, 'starts at the earliest available segment');
     equal(seekable.end(0),
-          9 - (2 * 3),
-          'allows seeking no further than three target durations from the end');
+          9 - (2 + 2 + 1),
+          'allows seeking no further than three segments from the end');
   });
 
 })(window, window.videojs);
