@@ -9,14 +9,15 @@
 var
   // a fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
-  bandwidthVariance = 1.1,
+  bandwidthVariance = 1.2,
   Component = videojs.getComponent('Component'),
 
   // the amount of time to wait between checking the state of the buffer
   bufferCheckInterval = 500,
 
   keyFailed,
-  resolveUrl;
+  resolveUrl,
+  TIME_FUDGE_FACTOR = 1 / 60;
 
 // returns true if a key has failed to download within a certain amount of retries
 keyFailed = function(key) {
@@ -396,7 +397,7 @@ videojs.HlsHandler.prototype.setupSourceBuffer_ = function() {
 
   // transition the sourcebuffer to the ended state if we've hit the end of
   // the playlist
-  this.sourceBuffer.addEventListener('updateend', function() {
+  this.sourceBuffer.addEventListener('updateend', function updateEndHandler() {
     var
       segmentInfo = this.pendingSegment_,
       segment,
@@ -448,7 +449,8 @@ videojs.HlsHandler.prototype.setupSourceBuffer_ = function() {
       return;
     }
 
-    if (timelineUpdates.length) {
+    if (timelineUpdates.length ||
+        segmentInfo.buffered.length !== this.tech_.buffered().length) {
       this.updateDuration(playlist);
       // check if it's time to download the next segment
       this.fillBuffer();
@@ -537,6 +539,11 @@ videojs.HlsHandler.prototype.setCurrentTime = function(currentTime) {
   // if the seek location is already buffered, continue buffering as
   // usual
   if (buffered && buffered.length) {
+    return currentTime;
+  }
+
+  // if we are in the middle of appending a segment, let it finish up
+  if (this.pendingSegment_ && this.pendingSegment_.buffered) {
     return currentTime;
   }
 
@@ -640,6 +647,7 @@ videojs.HlsHandler.prototype.cancelSegmentXhr = function() {
     this.segmentXhr_.abort();
     this.segmentXhr_ = null;
   }
+
   // clear out the segment being processed
   this.pendingSegment_ = null;
 };
@@ -828,8 +836,8 @@ videojs.HlsHandler.prototype.findCurrentBuffered_ = function() {
   if (buffered && buffered.length) {
     // Search for a range containing the play-head
     for (i = 0; i < buffered.length; i++) {
-      if (buffered.start(i) <= currentTime &&
-          buffered.end(i) >= currentTime) {
+      if (buffered.start(i) - TIME_FUDGE_FACTOR <= currentTime &&
+          buffered.end(i) + TIME_FUDGE_FACTOR >= currentTime) {
         ranges = videojs.createTimeRanges(buffered.start(i), buffered.end(i));
         ranges.indexOf = i;
         return ranges;
