@@ -7,17 +7,18 @@
 'use strict';
 
 var
-  // a fudge factor to apply to advertised playlist bitrates to account for
+  // A fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.2,
+  blacklistDuration = 5 * 60 * 1000, // 2 minute blacklist
+  TIME_FUDGE_FACTOR = 1 / 60, // Fudge factor to account for TimeRanges rounding
   Component = videojs.getComponent('Component'),
 
-  // the amount of time to wait between checking the state of the buffer
+  // The amount of time to wait between checking the state of the buffer
   bufferCheckInterval = 500,
 
   keyFailed,
-  resolveUrl,
-  TIME_FUDGE_FACTOR = 1 / 60;
+  resolveUrl;
 
 // returns true if a key has failed to download within a certain amount of retries
 keyFailed = function(key) {
@@ -179,15 +180,7 @@ videojs.HlsHandler.prototype.src = function(src) {
   }.bind(this));
 
   this.playlists.on('error', function() {
-    // close the media source with the appropriate error type
-    if (this.playlists.error.code === 2) {
-      this.mediaSource.endOfStream('network');
-    } else if (this.playlists.error.code === 4) {
-      this.mediaSource.endOfStream('decode');
-    }
-
-    // if this error is unrecognized, pass it along to the tech
-    this.tech_.error(this.playlists.error);
+    this.blacklistCurrentPlaylist_(this.playlists.error.code);
   }.bind(this));
 
   this.playlists.on('loadedplaylist', function() {
@@ -916,6 +909,26 @@ videojs.HlsHandler.prototype.setBandwidth = function(xhr) {
   this.tech_.trigger('bandwidthupdate');
 };
 
+videojs.HlsHandler.prototype.blacklistCurrentPlaylist_ = function(error) {
+  var nextPlaylist;
+
+  // Blacklist this playlist
+  this.playlists.media().excludeUntil = Date.now() + blacklistDuration;
+
+  // Select a new playlist
+  nextPlaylist = this.selectPlaylist();
+
+  if (nextPlaylist) {
+    videojs.log.warn('Problem encountered with the current HLS playlist. Switching to another playlist.');
+    return this.playlists.media(nextPlaylist);
+  } else {
+    videojs.log.warn('Problem encountered with the current HLS playlist. No suitable alternatives found.');
+    // We have no more playlists we can select so we must fail
+    this.error = error;
+    return this.mediaSource.endOfStream('network');
+  }
+};
+
 videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
   var
     self = this,
@@ -930,7 +943,11 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
   this.segmentXhr_ = videojs.Hls.xhr({
     uri: segmentInfo.uri,
     responseType: 'arraybuffer',
-    withCredentials: this.source_.withCredentials
+    withCredentials: this.source_.withCredentials,
+    // Set xhr timeout to 150% of the segment duration to allow us
+    // some time to switch renditions in the event of a catastrophic
+    // decrease in network performance or a server issue.
+    timeout: (segment.duration * 1.5) * 1000
   }, function(error, request) {
     // the segment request is no longer outstanding
     self.segmentXhr_ = null;
@@ -943,13 +960,12 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
 
     // otherwise, trigger a network error
     if (!request.aborted && error) {
-      self.error = {
+      self.pendingSegment_ = null;
+      return self.blacklistCurrentPlaylist_({
         status: request.status,
         message: 'HLS segment request error at URL: ' + segmentInfo.uri,
         code: (request.status >= 500) ? 4 : 2
-      };
-
-      return self.mediaSource.endOfStream('network');
+      });
     }
 
     // stop processing if the request was aborted
@@ -1021,9 +1037,10 @@ videojs.HlsHandler.prototype.drainBuffer = function(event) {
     // if the key download failed, we want to skip this segment
     // but if the key hasn't downloaded yet, we want to try again later
     if (keyFailed(segment.key)) {
-      videojs.log.warn('Network error retrieving key from "' +
-                       segment.key.uri + '"');
-      return this.mediaSource.endOfStream('network');
+      return this.blacklistCurrentPlaylist_({
+        message: 'HLS segment key request error.',
+        code: 4
+      });
     } else if (!segment.key.bytes) {
 
       // waiting for the key bytes, try again later
