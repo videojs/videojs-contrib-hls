@@ -831,21 +831,6 @@ test('selects a playlist after segment downloads', function() {
   strictEqual(calls, 3, 'selects after additional segments');
 });
 
-test('reports an error if a segment is unreachable', function() {
-  player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player);
-
-  player.tech_.hls.bandwidth = 20000;
-  standardXHRResponse(requests[0]); // master
-  standardXHRResponse(requests[1]); // media
-
-  requests[2].respond(400); // segment
-  strictEqual(player.tech_.hls.mediaSource.error_, 'network', 'network error is triggered');
-});
-
 test('updates the duration after switching playlists', function() {
   var selectedPlaylist = false;
   player.src({
@@ -1510,32 +1495,23 @@ test('playlist 404 should end stream with a network error', function() {
   equal(player.tech_.hls.mediaSource.error_, 'network', 'set a network error');
 });
 
-test('segment 404 should trigger MEDIA_ERR_NETWORK', function () {
+test('segment 404 should trigger blacklisting of media', function () {
+  var media;
+
   player.src({
-    src: 'manifest/media.m3u8',
+    src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-
   openMediaSource(player);
 
-  standardXHRResponse(requests[0]);
-  requests[1].respond(404);
-  ok(player.tech_.hls.error.message, 'an error message is available');
-  equal(2, player.tech_.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_NETWORK');
-});
+  player.tech_.hls.bandwidth = 20000;
+  standardXHRResponse(requests[0]); // master
+  standardXHRResponse(requests[1]); // media
 
-test('segment 500 should trigger MEDIA_ERR_ABORTED', function () {
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
+  media = player.tech_.hls.playlists.media_;
 
-  openMediaSource(player);
-
-  standardXHRResponse(requests[0]);
-  requests[1].respond(500);
-  ok(player.tech_.hls.error.message, 'an error message is available');
-  equal(4, player.tech_.hls.error.code, 'Player error code should be set to MediaError.MEDIA_ERR_ABORTED');
+  requests[2].respond(400); // segment
+  ok(media.excludeUntil > 0, 'original media blacklisted for some time');
 });
 
 test('seeking in an empty playlist is a non-erroring noop', function() {
@@ -2458,8 +2434,8 @@ test('retries key requests once upon failure', function() {
   equal(requests.length, 2, 'gives up after one retry');
 });
 
-test('errors if key requests fail more than once', function() {
-  var bytes = [];
+test('blacklists playlist if key requests fail more than once', function() {
+  var bytes = [], media;
 
   player.src({
     src: 'https://example.com/encrypted-media.m3u8',
@@ -2479,14 +2455,16 @@ test('errors if key requests fail more than once', function() {
   player.tech_.hls.sourceBuffer.appendBuffer = function(chunk) {
     bytes.push(chunk);
   };
+
+  media = player.tech_.hls.playlists.media_;
+
   standardXHRResponse(requests.pop()); // segment 1
   requests.shift().respond(404); // fail key
   requests.shift().respond(404); // fail key, again
   player.tech_.hls.checkBuffer_();
 
-  equal(player.tech_.hls.mediaSource.error_,
-        'network',
-        'triggered a network error');
+  ok(media.excludeUntil > 0,
+        'playlist blacklisted');
 });
 
 test('the key is supplied to the decrypter in the correct format', function() {
@@ -2624,8 +2602,9 @@ test('resolves relative key URLs against the playlist', function() {
   equal(requests[0].url, 'https://example.com/key.php?r=52', 'resolves the key URL');
 });
 
-test('treats invalid keys as a key request failure', function() {
-  var bytes = [];
+test('treats invalid keys as a key request failure and blacklists playlist', function() {
+  var bytes = [], media;
+
   player.src({
     src: 'https://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -2644,6 +2623,8 @@ test('treats invalid keys as a key request failure', function() {
   player.tech_.hls.sourceBuffer.appendBuffer = function(chunk) {
     bytes.push(chunk);
   };
+
+  media = player.tech_.hls.playlists.media_;
   // segment request
   standardXHRResponse(requests.pop());
   // keys should be 16 bytes long
@@ -2657,10 +2638,9 @@ test('treats invalid keys as a key request failure', function() {
   requests.shift().respond(200, null, '');
   player.tech_.hls.checkBuffer_();
 
-  // two failed attempts is a network error
-  equal(player.tech_.hls.mediaSource.error_,
-        'network',
-        'triggered a network error');
+  // two failed attempts is an error - blacklist this playlist
+  ok(media.excludeUntil > 0,
+        'blacklisted playlist');
 });
 
 test('live stream should not call endOfStream', function(){

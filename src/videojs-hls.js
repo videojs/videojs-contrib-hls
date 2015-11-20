@@ -180,7 +180,7 @@ videojs.HlsHandler.prototype.src = function(src) {
   }.bind(this));
 
   this.playlists.on('error', function() {
-    this.blacklistCurrentPlaylist_(this.playlists.error.code);
+    this.blacklistCurrentPlaylist_(this.playlists.error);
   }.bind(this));
 
   this.playlists.on('loadedplaylist', function() {
@@ -910,16 +910,26 @@ videojs.HlsHandler.prototype.setBandwidth = function(xhr) {
 };
 
 videojs.HlsHandler.prototype.blacklistCurrentPlaylist_ = function(error) {
-  var nextPlaylist;
+  var currentPlaylist, nextPlaylist;
 
-  // Blacklist this playlist
-  this.playlists.media().excludeUntil = Date.now() + blacklistDuration;
+  currentPlaylist = this.playlists.media();
+
+  // If there is no current playlist, then an error occurred while we were
+  // trying to load the master OR while we were disposing of the tech
+  if (!currentPlaylist) {
+    this.error = error;
+    return this.mediaSource.endOfStream('network');
+  }
 
   // Select a new playlist
   nextPlaylist = this.selectPlaylist();
 
   if (nextPlaylist) {
     videojs.log.warn('Problem encountered with the current HLS playlist. Switching to another playlist.');
+
+    // Blacklist this playlist
+    currentPlaylist.excludeUntil = Date.now() + blacklistDuration;
+
     return this.playlists.media(nextPlaylist);
   } else {
     videojs.log.warn('Problem encountered with the current HLS playlist. No suitable alternatives found.');
