@@ -110,7 +110,7 @@
     var match, event;
 
     //strip whitespace
-    line = line.replace(/^\s+|\s+$/g, '');
+    line = line.replace(/^[\u0000\s]+|[\u0000\s]+$/g, '');
     if (line.length === 0) {
       // ignore empty lines
       return;
