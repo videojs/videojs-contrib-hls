@@ -1514,6 +1514,33 @@ test('segment 404 should trigger blacklisting of media', function () {
   ok(media.excludeUntil > 0, 'original media blacklisted for some time');
 });
 
+test('playlist 404 should blacklist media', function () {
+  var media, url;
+
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1e10;
+  requests[0].respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'media1.m3u8\n'); // master
+
+  equal(player.tech_.hls.playlists.media_, undefined, 'no media is initially set');
+
+  requests[1].respond(400); // media
+
+  url = requests[1].url.slice(requests[1].url.lastIndexOf('/') + 1);
+  media = player.tech_.hls.playlists.master.playlists[url];
+
+  ok(media.excludeUntil > 0, 'original media blacklisted for some time');
+});
+
 test('seeking in an empty playlist is a non-erroring noop', function() {
   var requestsLength;
 

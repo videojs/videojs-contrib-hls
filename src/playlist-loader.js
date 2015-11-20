@@ -110,6 +110,7 @@
 
         if (error) {
           loader.error = {
+            playlist: loader.master.playlists[url],
             status: xhr.status,
             message: 'HLS playlist request error at URL: ' + url,
             responseText: xhr.responseText,
