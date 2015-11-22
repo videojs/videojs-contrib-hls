@@ -738,8 +738,8 @@ test('buffer checks are noops when only the master is ready', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  standardXHRResponse(requests.shift());
-  standardXHRResponse(requests.shift());
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
   // ignore any outstanding segment requests
   requests.length = 0;
 
@@ -752,7 +752,8 @@ test('buffer checks are noops when only the master is ready', function() {
   openMediaSource(player);
 
   // respond with the master playlist but don't send the media playlist yet
-  standardXHRResponse(requests.shift());
+  player.tech_.hls.bandwidth = 1; // force media1 to be requested
+  standardXHRResponse(requests.shift()); // master
   // trigger fillBuffer()
   player.tech_.hls.checkBuffer_();
 
@@ -1362,8 +1363,8 @@ test('waits to download new segments until the media playlist is stable', functi
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  standardXHRResponse(requests.shift()); // master
   player.tech_.hls.bandwidth = 1; // make sure we stay on the lowest variant
+  standardXHRResponse(requests.shift()); // master
   standardXHRResponse(requests.shift()); // media1
 
   // force a playlist switch

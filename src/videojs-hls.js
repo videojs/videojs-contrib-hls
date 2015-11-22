@@ -52,6 +52,9 @@ videojs.HlsHandler = videojs.extend(Component, {
     // being downloaded or processed
     this.pendingSegment_ = null;
 
+    // start playlist selection at a reasonable bandwidth for
+    // broadband internet
+    this.bandwidth = options.bandwidth || 4194304; // 0.5 Mbps
     this.bytesReceived = 0;
 
     // loadingState_ tracks how far along the buffering process we
