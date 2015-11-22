@@ -1,6 +1,6 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "engines": {
     "node": ">= 0.10.12"
   },
