@@ -42,6 +42,13 @@
     if (options.withCredentials) {
       request.withCredentials = true;
     }
+    if (options.headers) {
+      for (var header in options.headers) {
+        if (options.headers.hasOwnProperty(header)) {
+          request.setRequestHeader(header, options.headers[header]);
+        }
+      }
+    }
     if (options.timeout) {
       abortTimeout = window.setTimeout(function() {
         if (request.readyState !== 4) {
