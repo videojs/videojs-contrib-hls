@@ -693,8 +693,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     player = this.player(),
     buffered = player.buffered(),
     bufferedTime = 0,
-    segment,
-    segmentUri;
+    segment;
 
   // if preload is set to "none", do not download segments until playback is requested
   if (!player.hasClass('vjs-has-started') &&
@@ -750,10 +749,7 @@ videojs.Hls.prototype.fillBuffer = function(offset) {
     return;
   }
 
-  // resolve the segment URL relative to the playlist
-  segmentUri = this.playlistUriToUrl(segment.uri);
-
-  this.loadSegment(segmentUri, offset);
+  this.loadSegment(segment, offset);
 };
 
 videojs.Hls.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
@@ -765,6 +761,19 @@ videojs.Hls.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
     playListUrl = resolveUrl(resolveUrl(this.src_, this.playlists.media().uri || ''), segmentRelativeUrl);
   }
   return playListUrl;
+};
+
+/*  Turns segment byterange into a string suitable for use in
+ *  HTTP Range requests
+ */
+videojs.Hls.prototype.byterangeStr = function(byterange) {
+    var byterangeStart, byterangeEnd;
+
+    // Subtract 1 from byterange end because length includes the 1st byte,
+    // not the last one
+    byterangeEnd = byterange.offset + byterange.length - 1;
+    byterangeStart = byterange.offset;
+    return "bytes=" + byterangeStart + "-" + byterangeEnd;
 };
 
 /*
@@ -785,18 +794,26 @@ videojs.Hls.prototype.setBandwidth = function(xhr) {
   tech.trigger('bandwidthupdate');
 };
 
-videojs.Hls.prototype.loadSegment = function(segmentUri, offset) {
+videojs.Hls.prototype.loadSegment = function(segment, offset) {
   var
     tech = this,
     player = this.player(),
-    settings = player.options().hls || {};
+    settings = player.options().hls || {},
+    options;
+
+    options = {
+      url: this.playlistUriToUrl(segment.uri),
+      responseType: 'arraybuffer',
+      withCredentials: settings.withCredentials,
+      headers: {}
+    };
+
+    if ('byterange' in segment) {
+        options.headers['Range'] = this.byterangeStr(segment.byterange);
+    }
 
   // request the next segment
-  this.segmentXhr_ = videojs.Hls.xhr({
-    url: segmentUri,
-    responseType: 'arraybuffer',
-    withCredentials: settings.withCredentials
-  }, function(error, url) {
+  this.segmentXhr_ = videojs.Hls.xhr(options, function(error, url) {
     var segmentInfo;
 
     // the segment request is no longer outstanding
