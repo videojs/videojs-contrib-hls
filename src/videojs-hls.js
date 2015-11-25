@@ -750,6 +750,29 @@ videojs.HlsHandler.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
   return playListUrl;
 };
 
+/*  Turns segment byterange into a string suitable for use in
+ *  HTTP Range requests
+ */
+videojs.HlsHandler.prototype.byterangeStr = function(byterange) {
+    var byterangeStart, byterangeEnd;
+
+    // `byterangeEnd` is one less than `offset + length` because the HTTP range
+    // header uses inclusive ranges
+    byterangeEnd = byterange.offset + byterange.length - 1;
+    byterangeStart = byterange.offset;
+    return "bytes=" + byterangeStart + "-" + byterangeEnd;
+};
+
+/*  Defines headers for use in the xhr request for a particular segment.
+ */
+videojs.HlsHandler.prototype.segmentXhrHeaders = function(segment) {
+  var headers = {};
+  if ('byterange' in segment) {
+      headers['Range'] = this.byterangeStr(segment.byterange);
+  }
+  return headers;
+};
+
 /*
  * Sets `bandwidth`, `segmentXhrTime`, and appends to the `bytesReceived.
  * Expects an object with:
