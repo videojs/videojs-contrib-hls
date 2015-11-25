@@ -851,7 +851,7 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   // we have entered a state where we are fetching the same segment,
   // try to walk forward
   if (this.lastSegmentLoaded_ &&
-      this.lastSegmentLoaded_ === this.playlistUriToUrl(segment.uri)) {
+      this.lastSegmentLoaded_ === segment) {
     return this.fillBuffer(mediaIndex + 1);
   }
 
@@ -890,6 +890,29 @@ videojs.HlsHandler.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
     playListUrl = resolveUrl(resolveUrl(this.source_.src, this.playlists.media().uri || ''), segmentRelativeUrl);
   }
   return playListUrl;
+};
+
+/*  Turns segment byterange into a string suitable for use in
+ *  HTTP Range requests
+ */
+videojs.HlsHandler.prototype.byterangeStr = function(byterange) {
+    var byterangeStart, byterangeEnd;
+
+    // `byterangeEnd` is one less than `offset + length` because the HTTP range
+    // header uses inclusive ranges
+    byterangeEnd = byterange.offset + byterange.length - 1;
+    byterangeStart = byterange.offset;
+    return "bytes=" + byterangeStart + "-" + byterangeEnd;
+};
+
+/*  Defines headers for use in the xhr request for a particular segment.
+ */
+videojs.HlsHandler.prototype.segmentXhrHeaders = function(segment) {
+  var headers = {};
+  if ('byterange' in segment) {
+      headers['Range'] = this.byterangeStr(segment.byterange);
+  }
+  return headers;
 };
 
 /*
@@ -957,7 +980,8 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     // Set xhr timeout to 150% of the segment duration to allow us
     // some time to switch renditions in the event of a catastrophic
     // decrease in network performance or a server issue.
-    timeout: (segment.duration * 1.5) * 1000
+    timeout: (segment.duration * 1.5) * 1000,
+    headers: this.segmentXhrHeaders(segment)
   }, function(error, request) {
     // the segment request is no longer outstanding
     self.segmentXhr_ = null;
@@ -983,7 +1007,7 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
       return;
     }
 
-    self.lastSegmentLoaded_ = segmentInfo.uri;
+    self.lastSegmentLoaded_ = segment;
     self.setBandwidth(request);
 
     if (segment.key) {
