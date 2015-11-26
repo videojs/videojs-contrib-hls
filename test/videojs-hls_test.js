@@ -738,8 +738,8 @@ test('buffer checks are noops when only the master is ready', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  standardXHRResponse(requests.shift());
-  standardXHRResponse(requests.shift());
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
   // ignore any outstanding segment requests
   requests.length = 0;
 
@@ -752,7 +752,8 @@ test('buffer checks are noops when only the master is ready', function() {
   openMediaSource(player);
 
   // respond with the master playlist but don't send the media playlist yet
-  standardXHRResponse(requests.shift());
+  player.tech_.hls.bandwidth = 1; // force media1 to be requested
+  standardXHRResponse(requests.shift()); // master
   // trigger fillBuffer()
   player.tech_.hls.checkBuffer_();
 
@@ -1362,8 +1363,8 @@ test('waits to download new segments until the media playlist is stable', functi
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  standardXHRResponse(requests.shift()); // master
   player.tech_.hls.bandwidth = 1; // make sure we stay on the lowest variant
+  standardXHRResponse(requests.shift()); // master
   standardXHRResponse(requests.shift()); // media1
 
   // force a playlist switch
@@ -1511,6 +1512,33 @@ test('segment 404 should trigger blacklisting of media', function () {
   media = player.tech_.hls.playlists.media_;
 
   requests[2].respond(400); // segment
+  ok(media.excludeUntil > 0, 'original media blacklisted for some time');
+});
+
+test('playlist 404 should blacklist media', function () {
+  var media, url;
+
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  player.tech_.hls.bandwidth = 1e10;
+  requests[0].respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'media1.m3u8\n'); // master
+
+  equal(player.tech_.hls.playlists.media_, undefined, 'no media is initially set');
+
+  requests[1].respond(400); // media
+
+  url = requests[1].url.slice(requests[1].url.lastIndexOf('/') + 1);
+  media = player.tech_.hls.playlists.master.playlists[url];
+
   ok(media.excludeUntil > 0, 'original media blacklisted for some time');
 });
 

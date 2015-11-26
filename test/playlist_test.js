@@ -93,15 +93,50 @@
     equal(duration, 50.0002, 'calculated with mixed intervals');
   });
 
+  test('uses timeline values for the expired duration of live playlists', function() {
+    var playlist = {
+      mediaSequence: 12,
+      segments: [{
+        duration: 10,
+        end: 120.5,
+        uri: '0.ts'
+      }, {
+        duration: 9,
+        uri: '1.ts'
+      }]
+    }, duration;
+
+    duration = Playlist.duration(playlist, playlist.mediaSequence);
+    equal(duration, 110.5, 'used segment end time');
+    duration = Playlist.duration(playlist, playlist.mediaSequence + 1);
+    equal(duration, 120.5, 'used segment end time');
+    duration = Playlist.duration(playlist, playlist.mediaSequence + 2);
+    equal(duration, 120.5 + 9, 'used segment end time');
+  });
+
+  test('looks outside the queried interval for live playlist timeline values', function() {
+    var playlist = {
+      mediaSequence: 12,
+      segments: [{
+        duration: 10,
+        uri: '0.ts'
+      }, {
+        duration: 9,
+        end: 120.5,
+        uri: '1.ts'
+      }]
+    }, duration;
+
+    duration = Playlist.duration(playlist, playlist.mediaSequence);
+    equal(duration, 120.5 - 9 - 10, 'used segment end time');
+  });
+
   test('ignores discontinuity sequences later than the end', function() {
     var duration = Playlist.duration({
       mediaSequence: 0,
       discontinuityStarts: [1, 3],
       segments: [{
-        minVideoPts: 0,
-        minAudioPts: 0,
-        maxVideoPts: 10 * 1000,
-        maxAudioPts: 10 * 1000,
+        duration: 10,
         uri: '0.ts'
       }, {
         discontinuity: true,
@@ -200,71 +235,16 @@
       endList: true,
       discontinuityStarts: [1],
       segments: [{
-        minVideoPts: 0,
-        minAudioPts: 0,
-        maxVideoPts: 1 * 10 * 1000,
-        maxAudioPts: 1 * 10 * 1000,
+        duration: 10,
         uri: '0.ts'
       }, {
         discontinuity: true,
-        minVideoPts: 2 * 10 * 1000,
-        minAudioPts: 2 * 10 * 1000,
-        maxVideoPts: 3 * 10 * 1000,
-        maxAudioPts: 3 * 10 * 1000,
         duration: 10,
         uri: '1.ts'
       }]
     }, 2);
 
     equal(duration, 10 + 10, 'handles discontinuities');
-  });
-
-  test('does not count ending segment gaps across a discontinuity', function() {
-    var duration = Playlist.duration({
-      mediaSequence: 0,
-      discontinuityStarts: [1],
-      endList: true,
-      segments: [{
-        minVideoPts: 0,
-        minAudioPts: 0,
-        maxVideoPts: 1 * 10 * 1000,
-        maxAudioPts: 1 * 10 * 1000,
-        uri: '0.ts'
-      }, {
-        discontinuity: true,
-        minVideoPts: 1 * 10 * 1000 + 100,
-        minAudioPts: 1 * 10 * 1000 + 100,
-        maxVideoPts: 2 * 10 * 1000 + 100,
-        maxAudioPts: 2 * 10 * 1000 + 100,
-        duration: 10,
-        uri: '1.ts'
-      }]
-    }, 1);
-
-    equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
-  });
-
-  test('trailing duration on the final segment can be excluded', function() {
-    var duration = Playlist.duration({
-      mediaSequence: 0,
-      endList: true,
-      segments: [{
-        minVideoPts: 0,
-        minAudioPts: 0,
-        maxVideoPts: 1 * 10 * 1000,
-        maxAudioPts: 1 * 10 * 1000,
-        uri: '0.ts'
-      }, {
-        minVideoPts: 1 * 10 * 1000 + 100,
-        minAudioPts: 1 * 10 * 1000 + 100,
-        maxVideoPts: 2 * 10 * 1000 + 100,
-        maxAudioPts: 2 * 10 * 1000 + 100,
-        duration: 10,
-        uri: '1.ts'
-      }]
-    }, 1, false);
-
-    equal(duration, (1 * 10 * 1000) * 0.001, 'did not include the segment gap');
   });
 
   test('a non-positive length interval has zero duration', function() {
@@ -341,16 +321,19 @@
 
   test('only considers available segments', function() {
     var seekable = Playlist.seekable({
-      targetDuration: 10,
       mediaSequence: 7,
       segments: [{
-        uri: '8.ts'
+        uri: '8.ts',
+        duration: 10
       }, {
-        uri: '9.ts'
+        uri: '9.ts',
+        duration: 10
       }, {
-        uri: '10.ts'
+        uri: '10.ts',
+        duration: 10
       }, {
-        uri: '11.ts'
+        uri: '11.ts',
+        duration: 10
       }]
     });
     equal(seekable.length, 1, 'there are seekable ranges');

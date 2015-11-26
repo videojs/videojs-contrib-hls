@@ -4,23 +4,70 @@
 (function(window, videojs) {
   'use strict';
 
-  var DEFAULT_TARGET_DURATION = 10;
-  var duration, intervalDuration, optionalMin, optionalMax, seekable;
+  var duration, intervalDuration, backwardDuration, forwardDuration, seekable;
 
-  // Math.min that will return the alternative input if one of its
-  // parameters in undefined
-  optionalMin = function(left, right) {
-    left = isFinite(left) ? left : Infinity;
-    right = isFinite(right) ? right : Infinity;
-    return Math.min(left, right);
+  backwardDuration = function(playlist, endSequence) {
+    var result = 0, segment, i;
+
+    i = endSequence - playlist.mediaSequence;
+    // if a start time is available for segment immediately following
+    // the interval, use it
+    segment = playlist.segments[i];
+    // Walk backward until we find the latest segment with timeline
+    // information that is earlier than endSequence
+    if (segment) {
+      if (segment.start !== undefined) {
+        return { result: segment.start, precise: true };
+      }
+      if (segment.end !== undefined) {
+        return {
+          result: segment.end - segment.duration,
+          precise: true
+        };
+      }
+    }
+    while (i--) {
+      segment = playlist.segments[i];
+      if (segment.end !== undefined) {
+        return { result: result + segment.end, precise: true };
+      }
+
+      result += segment.duration;
+
+      if (segment.start !== undefined) {
+        return { result: result + segment.start, precise: true };
+      }
+    }
+    return { result: result, precise: false };
   };
 
-  // Math.max that will return the alternative input if one of its
-  // parameters in undefined
-  optionalMax = function(left, right) {
-    left = isFinite(left) ? left: -Infinity;
-    right = isFinite(right) ? right: -Infinity;
-    return Math.max(left, right);
+  forwardDuration = function(playlist, endSequence) {
+    var result = 0, segment, i;
+
+    i = endSequence - playlist.mediaSequence;
+    // Walk forward until we find the earliest segment with timeline
+    // information
+    for (; i < playlist.segments.length; i++) {
+      segment = playlist.segments[i];
+      if (segment.start !== undefined) {
+        return {
+          result: segment.start - result,
+          precise: true
+        };
+      }
+
+      result += segment.duration;
+
+      if (segment.end !== undefined) {
+        return {
+          result: segment.end - result,
+          precise: true
+        };
+      }
+
+    }
+    // indicate we didn't find a useful duration estimate
+    return { result: -1, precise: false };
   };
 
   /**
@@ -31,42 +78,40 @@
    * @param playlist {object} a media playlist object
    * @param endSequence {number} (optional) an exclusive upper boundary
    * for the playlist.  Defaults to playlist length.
-   * @return {number} the duration between the start index and end
-   * index.
+   * @return {number} the duration between the first available segment
+   * and end index.
    */
   intervalDuration = function(playlist, endSequence) {
-    var result = 0, segment, targetDuration, i;
+    var backward, forward;
 
     if (endSequence === undefined) {
-      endSequence = playlist.mediaSequence + (playlist.segments || []).length;
+      endSequence = playlist.mediaSequence + playlist.segments.length;
     }
-    if (endSequence < 0) {
+
+    if (endSequence < playlist.mediaSequence) {
       return 0;
     }
-    targetDuration = playlist.targetDuration || DEFAULT_TARGET_DURATION;
 
-    i = endSequence - playlist.mediaSequence;
-    // if a start time is available for segment immediately following
-    // the interval, use it
-    segment = playlist.segments[i];
-    // Walk backward until we find the latest segment with timeline
-    // information that is earlier than endSequence
-    if (segment && segment.start !== undefined) {
-      return segment.start;
+    // do a backward walk to estimate the duration
+    backward = backwardDuration(playlist, endSequence);
+    if (backward.precise) {
+      // if we were able to base our duration estimate on timing
+      // information provided directly from the Media Source, return
+      // it
+      return backward.result;
     }
-    while (i--) {
-      segment = playlist.segments[i];
-      if (segment.end !== undefined) {
-        return result + segment.end;
-      }
 
-      result += (segment.duration || targetDuration);
-
-      if (segment.start !== undefined) {
-        return result + segment.start;
-      }
+    // walk forward to see if a precise duration estimate can be made
+    // that way
+    forward = forwardDuration(playlist, endSequence);
+    if (forward.precise) {
+      // we found a segment that has been buffered and so it's
+      // position is known precisely
+      return forward.result;
     }
-    return result;
+
+    // return the less-precise, playlist-based duration estimate
+    return backward.result;
   };
 
   /**
