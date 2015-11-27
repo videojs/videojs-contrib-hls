@@ -1206,7 +1206,7 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
       var next = this.findNextBufferedRange_();
       if (next.length) {
         videojs.log('tried seeking to', this.tech_.currentTime(), 'but that was too early, retrying at', next.start(0));
-        this.tech_.setCurrentTime(next.start(0));
+        this.tech_.setCurrentTime(next.start(0) + TIME_FUDGE_FACTOR);
       }
     }
   }
