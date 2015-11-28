@@ -187,7 +187,7 @@ videojs.HlsHandler.prototype.src = function(src) {
   }.bind(this));
 
   this.playlists.on('loadedplaylist', function() {
-    var updatedPlaylist = this.playlists.media();
+    var updatedPlaylist = this.playlists.media(), seekable;
 
     if (!updatedPlaylist) {
       // select the initial variant
@@ -196,6 +196,14 @@ videojs.HlsHandler.prototype.src = function(src) {
     }
 
     this.updateDuration(this.playlists.media());
+
+    // update seekable
+    seekable = this.seekable();
+    if (this.duration() === Infinity &&
+        seekable.length !== 0) {
+      this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
+    }
+
     oldMediaPlaylist = updatedPlaylist;
   }.bind(this));
 
@@ -291,7 +299,6 @@ videojs.Hls.bufferedAdditions_ = function(original, update) {
   return result;
 };
 
-
 var parseCodecs = function(codecs) {
   var result = {
     codecCount: 0,
@@ -312,6 +319,7 @@ var parseCodecs = function(codecs) {
 
   return result;
 };
+
 /**
  * Blacklist playlists that are known to be codec or
  * stream-incompatible with the SourceBuffer configuration. For
@@ -445,15 +453,15 @@ videojs.HlsHandler.prototype.play = function() {
   // if the viewer has paused and we fell out of the live window,
   // seek forward to the earliest available position
   if (this.duration() === Infinity) {
-    if (this.tech_.currentTime() < this.tech_.seekable().start(0)) {
-      this.tech_.setCurrentTime(this.tech_.seekable().start(0));
+    if (this.tech_.currentTime() < this.seekable().start(0)) {
+      this.tech_.setCurrentTime(this.seekable().start(0));
     }
   }
 };
 
 videojs.HlsHandler.prototype.setCurrentTime = function(currentTime) {
   var
-    buffered = this.findCurrentBuffered_();
+    buffered = this.findBufferedRange_();
 
   if (!(this.playlists && this.playlists.media())) {
     // return immediately if the metadata is not ready yet
@@ -501,7 +509,7 @@ videojs.HlsHandler.prototype.duration = function() {
 };
 
 videojs.HlsHandler.prototype.seekable = function() {
-  var media;
+  var media, seekable;
 
   if (!this.playlists) {
     return videojs.createTimeRanges();
@@ -511,7 +519,25 @@ videojs.HlsHandler.prototype.seekable = function() {
     return videojs.createTimeRanges();
   }
 
-  return videojs.Hls.Playlist.seekable(media);
+  seekable = videojs.Hls.Playlist.seekable(media);
+  if (seekable.length === 0) {
+    return seekable;
+  }
+
+  // if the seekable start is zero, it may be because the player has
+  // been paused for a long time and stopped buffering. in that case,
+  // fall back to the playlist loader's running estimate of expired
+  // time
+  if (seekable.start(0) === 0) {
+   return videojs.createTimeRanges([[
+      this.playlists.expired_,
+      this.playlists.expired_ + seekable.end(0)
+    ]]);
+  }
+
+  // seekable has been calculated based on buffering video data so it
+  // can be returned directly
+  return seekable;
 };
 
 /**
@@ -522,15 +548,10 @@ videojs.HlsHandler.prototype.updateDuration = function(playlist) {
       newDuration = videojs.Hls.Playlist.duration(playlist),
       setDuration = function() {
         this.mediaSource.duration = newDuration;
-        // update seekable
-        if (seekable.length !== 0 && newDuration === Infinity) {
-          this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
-        }
         this.tech_.trigger('durationchange');
 
         this.mediaSource.removeEventListener('sourceopen', setDuration);
-      }.bind(this),
-      seekable = this.seekable();
+      }.bind(this);
 
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
@@ -539,10 +560,6 @@ videojs.HlsHandler.prototype.updateDuration = function(playlist) {
       this.mediaSource.addEventListener('sourceopen', setDuration);
     } else if (!this.sourceBuffer || !this.sourceBuffer.updating) {
       this.mediaSource.duration = newDuration;
-      // update seekable
-      if (seekable.length !== 0 && newDuration === Infinity) {
-        this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
-      }
       this.tech_.trigger('durationchange');
     }
   }
@@ -745,41 +762,61 @@ videojs.HlsHandler.prototype.stopCheckingBuffer_ = function() {
   this.tech_.off('waiting', this.drainBuffer);
 };
 
-/**
- * Attempts to find the buffered TimeRange where playback is currently
- * happening. Returns a new TimeRange with one or zero ranges.
- */
-videojs.HlsHandler.prototype.findCurrentBuffered_ = function() {
-  var
-    ranges,
-    i,
-    tech = this.tech_,
-    // !!The order of the next two lines is important!!
-    // `currentTime` must be equal-to or greater-than the start of the
-    // buffered range. Flash executes out-of-process so, every value can
-    // change behind the scenes from line-to-line. By reading `currentTime`
-    // after `buffered`, we ensure that it is always a current or later
-    // value during playback.
-    buffered = tech.buffered(),
-    currentTime = tech.currentTime();
+var filterBufferedRanges = function(predicate) {
+  return function(time) {
+    var
+      i,
+      ranges = [],
+      tech = this.tech_,
+      // !!The order of the next two assignments is important!!
+      // `currentTime` must be equal-to or greater-than the start of the
+      // buffered range. Flash executes out-of-process so, every value can
+      // change behind the scenes from line-to-line. By reading `currentTime`
+      // after `buffered`, we ensure that it is always a current or later
+      // value during playback.
+      buffered = tech.buffered();
 
-  if (buffered && buffered.length) {
-    // Search for a range containing the play-head
-    for (i = 0; i < buffered.length; i++) {
-      if (buffered.start(i) - TIME_FUDGE_FACTOR <= currentTime &&
-          buffered.end(i) + TIME_FUDGE_FACTOR >= currentTime) {
-        ranges = videojs.createTimeRanges(buffered.start(i), buffered.end(i));
-        ranges.indexOf = i;
-        return ranges;
+
+    if (time === undefined) {
+      time = tech.currentTime();
+    }
+
+    if (buffered && buffered.length) {
+      // Search for a range containing the play-head
+      for (i = 0; i < buffered.length; i++) {
+        if (predicate(buffered.start(i), buffered.end(i), time)) {
+          ranges.push([buffered.start(i), buffered.end(i)]);
+        }
       }
     }
-  }
 
-  // Return an empty range if no ranges exist
-  ranges = videojs.createTimeRanges();
-  ranges.indexOf = -1;
-  return ranges;
+    return videojs.createTimeRanges(ranges);
+  };
 };
+
+/**
+ * Attempts to find the buffered TimeRange that contains the specified
+ * time, or where playback is currently happening if no specific time
+ * is specified.
+ * @param time (optional) {number} the time to filter on. Defaults to
+ * currentTime.
+ * @return a new TimeRanges object.
+ */
+videojs.HlsHandler.prototype.findBufferedRange_ = filterBufferedRanges(function(start, end, time) {
+  return start - TIME_FUDGE_FACTOR <= time &&
+    end + TIME_FUDGE_FACTOR >= time;
+});
+
+/**
+ * Returns the TimeRanges that begin at or later than the specified
+ * time.
+ * @param time (optional) {number} the time to filter on. Defaults to
+ * currentTime.
+ * @return a new TimeRanges object.
+ */
+videojs.HlsHandler.prototype.findNextBufferedRange_ = filterBufferedRanges(function(start, end, time) {
+  return start - TIME_FUDGE_FACTOR >= time;
+});
 
 /**
  * Determines whether there is enough video data currently in the buffer
@@ -791,7 +828,7 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   var
     tech = this.tech_,
     currentTime = tech.currentTime(),
-    currentBuffered = this.findCurrentBuffered_(),
+    currentBuffered = this.findBufferedRange_(),
     currentBufferedEnd = 0,
     bufferedTime = 0,
     segment,
@@ -1025,7 +1062,7 @@ videojs.HlsHandler.prototype.drainBuffer = function(event) {
     segIv,
     segmentTimestampOffset = 0,
     hasBufferedContent = (this.tech_.buffered().length !== 0),
-    currentBuffered = this.findCurrentBuffered_(),
+    currentBuffered = this.findBufferedRange_(),
     outsideBufferedRanges = !(currentBuffered && currentBuffered.length);
 
   // if the buffer is empty or the source buffer hasn't been created
@@ -1132,6 +1169,7 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     playlist,
     currentMediaIndex,
     currentBuffered,
+    seekable,
     timelineUpdates;
 
   this.pendingSegment_ = null;
@@ -1144,7 +1182,7 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
   playlist = this.playlists.media();
   segments = playlist.segments;
   currentMediaIndex = segmentInfo.mediaIndex + (segmentInfo.mediaSequence - playlist.mediaSequence);
-  currentBuffered = this.findCurrentBuffered_();
+  currentBuffered = this.findBufferedRange_();
 
   // if we switched renditions don't try to add segment timeline
   // information to the playlist
@@ -1156,9 +1194,25 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
   // added by the media processing
   segment = playlist.segments[currentMediaIndex];
 
+  // when seeking to the beginning of the seekable range, it's
+  // possible that imprecise timing information may cause the seek to
+  // end up earlier than the start of the range
+  // in that case, seek again
+  seekable = this.seekable();
+  if (this.tech_.seeking() &&
+      currentBuffered.length === 0) {
+    if (seekable.length &&
+        this.tech_.currentTime() < seekable.start(0)) {
+      var next = this.findNextBufferedRange_();
+      if (next.length) {
+        videojs.log('tried seeking to', this.tech_.currentTime(), 'but that was too early, retrying at', next.start(0));
+        this.tech_.setCurrentTime(next.start(0) + TIME_FUDGE_FACTOR);
+      }
+    }
+  }
+
   timelineUpdates = videojs.Hls.bufferedAdditions_(segmentInfo.buffered,
                                                    this.tech_.buffered());
-
   timelineUpdates.forEach(function (update) {
     if (segment) {
       if (update.end !== undefined) {

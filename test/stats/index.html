@@ -45,6 +45,12 @@
     }
   </style>
 
+  <script>
+    if (window.location.search === '?flash') {
+      videojs.options.techOrder = ['flash'];
+    }
+  </script>
+
 </head>
 <body>
   <div class="info">
@@ -64,20 +70,35 @@
        type="application/x-mpegURL">
   </video>
   <section class="stats">
-    <h2>Player Stats</h2>
-    <dl>
-      <dt>Current Time:</dt>
-      <dd class="current-time-stat">0</dd>
-      <dt>Buffered:</dt>
-      <dd class="buffered-stat">-</dd>
-      <dt>Seekable:</dt>
-      <dd><span class="seekable-start-stat">-</span> - <span class="seekable-end-stat">-</span></dd>
-      <dt>Video Bitrate:</dt>
-      <dd class="video-bitrate-stat">0 kbps</dd>
-      <dt>Measured Bitrate:</dt>
-      <dd class="measured-bitrate-stat">0 kbps</dd>
-    </dl>
-    <h3>Bitrate Switching</h3>
+    <div class="player-stats">
+      <h2>Player Stats</h2>
+      <dl>
+        <dt>Current Time:</dt>
+        <dd class="current-time-stat">0</dd>
+        <dt>Buffered:</dt>
+        <dd class="buffered-stat">-</dd>
+        <dt>Seekable:</dt>
+        <dd><span class="seekable-start-stat">-</span> - <span class="seekable-end-stat">-</span></dd>
+        <dt>Video Bitrate:</dt>
+        <dd class="video-bitrate-stat">0 kbps</dd>
+        <dt>Measured Bitrate:</dt>
+        <dd class="measured-bitrate-stat">0 kbps</dd>
+      </dl>
+    </div>
+    <div class="event-counts">
+      <h2>Event Counts</h2>
+      <dl>
+        <dt>Play:</dt>
+        <dd class="play-count">0</dd>
+        <dt>Playing:</dt>
+        <dd class="playing-count">0</dd>
+        <dt>Seeking:</dt>
+        <dd class="seeking-count">0</dd>
+        <dt>Seeked:</dt>
+        <dd class="seeked-count">0</dd>
+      </dl>
+    </div>
+    <h3 class="bitrate-switching">Bitrate Switching</h3>
     <div class="switching-stats">
       Once the player begins loading, you'll see information about the
       operation of the adaptive quality switching here.
@@ -90,66 +111,96 @@
   <script>
     videojs.options.flash.swf = '../../node_modules/videojs-swf/dist/video-js.swf';
     // initialize the player
-    var player = videojs('video');
+    var player = videojs('video').ready(function() {
 
-    // ------------
-    // Player Stats
-    // ------------
+      // ------------
+      // Player Stats
+      // ------------
 
-    var currentTimeStat = document.querySelector('.current-time-stat');
-    var bufferedStat = document.querySelector('.buffered-stat');
-    var seekableStartStat = document.querySelector('.seekable-start-stat');
-    var seekableEndStat = document.querySelector('.seekable-end-stat');
-    var videoBitrateState = document.querySelector('.video-bitrate-stat');
-    var measuredBitrateStat = document.querySelector('.measured-bitrate-stat');
+      var currentTimeStat = document.querySelector('.current-time-stat');
+      var bufferedStat = document.querySelector('.buffered-stat');
+      var seekableStartStat = document.querySelector('.seekable-start-stat');
+      var seekableEndStat = document.querySelector('.seekable-end-stat');
+      var videoBitrateState = document.querySelector('.video-bitrate-stat');
+      var measuredBitrateStat = document.querySelector('.measured-bitrate-stat');
 
-    player.on('timeupdate', function() {
-      currentTimeStat.textContent = player.currentTime().toFixed(1);
+      player.on('timeupdate', function() {
+        currentTimeStat.textContent = player.currentTime().toFixed(1);
+      });
+
+      window.setInterval(function() {
+        var bufferedText = '', oldStart, oldEnd, i;
+
+        // buffered
+        var buffered = player.buffered();
+        if (buffered.length) {
+          bufferedText += buffered.start(0) + ' - ' + buffered.end(0);
+        }
+        for (i = 1; i < buffered.length; i++) {
+          bufferedText += ', ' + buffered.start(i) + ' - ' + buffered.end(i);
+        }
+        bufferedStat.textContent = bufferedText;
+
+        // seekable
+        var seekable = player.seekable();
+        if (seekable && seekable.length) {
+
+          oldStart = seekableStartStat.textContent;
+          if (seekable.start(0).toFixed(1) !== oldStart) {
+            seekableStartStat.textContent = seekable.start(0).toFixed(1);
+          }
+          oldEnd = seekableEndStat.textContent;
+          if (seekable.end(0).toFixed(1) !== oldEnd) {
+            seekableEndStat.textContent = seekable.end(0).toFixed(1);
+          }
+        }
+
+        // bitrates
+        var playlist = player.tech_.hls.playlists.media();
+        if (playlist && playlist.attributes && playlist.attributes.BANDWIDTH) {
+          videoBitrateState.textContent = (playlist.attributes.BANDWIDTH / 1024).toLocaleString(undefined, {
+            maximumFractionDigits: 1
+          }) + ' kbps';
+        }
+        if (player.tech_.hls.bandwidth) {
+          measuredBitrateStat.textContent = (player.tech_.hls.bandwidth / 1024).toLocaleString(undefined, {
+            maximumFractionDigits: 1
+          }) + ' kbps';
+        }
+      }, 1000);
+
+      var trackEventCount = function(eventName, selector) {
+        var count = 0, element = document.querySelector(selector);
+        player.on(eventName, function() {
+          count++;
+          element.innerHTML = count;
+        });
+      };
+      trackEventCount('play', '.play-count');
+      trackEventCount('playing', '.playing-count');
+      trackEventCount('seeking', '.seeking-count');
+      trackEventCount('seeked', '.seeked-count');
+
+      videojs.Hls.displayStats(document.querySelector('.switching-stats'), player);
+      videojs.Hls.displayCues(document.querySelector('.segment-timeline'), player);
     });
 
-    player.on('progress', function() {
-      var bufferedText = '', oldStart, oldEnd, i;
+    // -----------
+    // Tech Switch
+    // -----------
 
-      // buffered
-      var buffered = player.buffered();
-      if (buffered.length) {
-        bufferedText += buffered.start(0) + ' - ' + buffered.end(0);
-      }
-      for (i = 1; i < buffered.length; i++) {
-        bufferedText += ', ' + buffered.start(i) + ' - ' + buffered.end(i);
-      }
-      bufferedStat.textContent = bufferedText;
+    var techSwitch = document.createElement('a');
+    techSwitch.className = 'tech-switch';
+    if (player.el().querySelector('video')) {
+      techSwitch.href = window.location.origin + window.location.pathname + '?flash';
+      techSwitch.appendChild(document.createTextNode('Switch to the Flash tech'));
+    } else {
+      techSwitch.href = window.location.origin + window.location.pathname;
+      techSwitch.appendChild(document.createTextNode('Stop forcing Flash'));
+    }
 
-      // seekable
-      var seekable = player.seekable();
-      if (seekable && seekable.length) {
+    document.body.insertBefore(techSwitch, document.querySelector('.stats'));
 
-        oldStart = seekableStartStat.textContent;
-        if (seekable.start(0).toFixed(1) !== oldStart) {
-          seekableStartStat.textContent = seekable.start(0).toFixed(1);
-        }
-        oldEnd = seekableEndStat.textContent;
-        if (seekable.end(0).toFixed(1) !== oldEnd) {
-          seekableEndStat.textContent = seekable.end(0).toFixed(1);
-        }
-      }
-
-      // bitrates
-      var playlist = player.tech_.hls.playlists.media();
-      if (playlist && playlist.attributes && playlist.attributes.BANDWIDTH) {
-        videoBitrateState.textContent = (playlist.attributes.BANDWIDTH / 1024).toLocaleString(undefined, {
-          maximumFractionDigits: 1
-        }) + ' kbps';
-      }
-      if (player.tech_.hls.bandwidth) {
-        measuredBitrateStat.textContent = (player.tech_.hls.bandwidth / 1024).toLocaleString(undefined, {
-          maximumFractionDigits: 1
-        }) + ' kbps';
-      }
-    });
-
-    videojs.Hls.displayStats(document.querySelector('.switching-stats'), player);
-    videojs.Hls.displayCues(document.querySelector('.segment-timeline'), player);
   </script>
 </body>
 </html>

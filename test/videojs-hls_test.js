@@ -549,11 +549,11 @@ test('finds the correct buffered region based on currentTime', function() {
   standardXHRResponse(requests[1]);
   player.currentTime(3);
   clock.tick(1);
-  equal(player.tech_.hls.findCurrentBuffered_().end(0),
+  equal(player.tech_.hls.findBufferedRange_().end(0),
         5, 'inside the first buffered region');
   player.currentTime(6);
   clock.tick(1);
-  equal(player.tech_.hls.findCurrentBuffered_().end(0),
+  equal(player.tech_.hls.findBufferedRange_().end(0),
         12, 'inside the second buffered region');
 });
 
@@ -1634,6 +1634,41 @@ test('live playlist starts with correct currentTime value', function() {
   strictEqual(player.currentTime(),
               videojs.Hls.Playlist.seekable(player.tech_.hls.playlists.media()).end(0),
               'currentTime is updated at playback');
+});
+
+test('adjusts the seekable start based on the amount of expired live content', function() {
+  player.src({
+    src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  standardXHRResponse(requests.shift());
+
+  // add timeline info to the playlist
+  player.tech_.hls.playlists.media().segments[1].end = 29.5;
+  // expired_ should be ignored if there is timeline information on
+  // the playlist
+  player.tech_.hls.playlists.expired_ = 172;
+
+  equal(player.seekable().start(0),
+        29.5 - 29,
+        'offset the seekable start');
+});
+
+test('estimates seekable ranges for live streams that have been paused for a long time', function() {
+  player.src({
+    src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  standardXHRResponse(requests.shift());
+  player.tech_.hls.playlists.expired_ = 172;
+
+  equal(player.seekable().start(0),
+        player.tech_.hls.playlists.expired_,
+        'offset the seekable start');
 });
 
 test('resets the time to a seekable position when resuming a live stream ' +
