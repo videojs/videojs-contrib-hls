@@ -242,11 +242,11 @@ videojs.HlsHandler.prototype.handleSourceOpen = function() {
   }
 };
 
-// Returns the array of time range edge objects that were additively
-// modified between two TimeRanges.
-videojs.Hls.bufferedAdditions_ = function(original, update) {
-  var result = [], edges = [],
-      i, inOriginalRanges;
+// Search for any end-points in `update` that do not also exist
+// in `original`.
+// If we found only one such uncommon end-point return it.
+videojs.Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
+  var result = [], originalEnds = [];
 
   // if original or update are falsey, return an empty list of
   // additions
@@ -254,49 +254,25 @@ videojs.Hls.bufferedAdditions_ = function(original, update) {
     return result;
   }
 
-  // create a sorted array of time range start and end times
+  // Save all the end-points in the `original` TimeRanges object
   for (i = 0; i < original.length; i++) {
-    edges.push({ original: true, start: original.start(i) });
-    edges.push({ original: true, end: original.end(i) });
+    originalEnds.push(original.end(i));
   }
+
+  // Save any end-points in `update` that are not in the `original`
+  // TimeRanges object
   for (i = 0; i < update.length; i++) {
-    edges.push({ start: update.start(i) });
-    edges.push({ end: update.end(i) });
+    if (originalEnds.indexOf(update.end(i)) === -1) {
+      result.push(update.end(i));
+    }
   }
-  edges.sort(function(left, right) {
-    var leftTime, rightTime;
-    leftTime = left.start !== undefined ? left.start : left.end;
-    rightTime = right.start !== undefined ? right.start : right.end;
 
-    // when two times are equal, ensure the original edge covers the
-    // update
-    if (leftTime === rightTime) {
-      if (left.original) {
-        return left.start !== undefined ? -1 : 1;
-      }
-      return right.start !== undefined ? -1 : 1;
-    }
-    return leftTime - rightTime;
-  });
-
-  // filter out all time range edges that occur during a period that
-  // was already covered by `original`
-  inOriginalRanges = false;
-  for (i = 0; i < edges.length; i++) {
-    // if this is a transition point for `original`, track whether
-    // subsequent edges are additions
-    if (edges[i].original) {
-      inOriginalRanges = edges[i].start !== undefined;
-      continue;
-    }
-    // if we're in a time range that was in `original`, ignore this edge
-    if (inOriginalRanges) {
-      continue;
-    }
-    // this edge occurred outside the range of `original`
-    result.push(edges[i]);
+  // Return null if didn't find exactly one differing end-point
+  if (result.length !== 1) {
+    return null;
+  } else {
+    return result[0];
   }
-  return result;
 };
 
 var parseCodecs = function(codecs) {
@@ -1170,12 +1146,12 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     currentMediaIndex,
     currentBuffered,
     seekable,
-    timelineUpdates;
+    timelineUpdate;
 
-  this.pendingSegment_ = null;
 
   // stop here if the update errored or was aborted
   if (!segmentInfo) {
+    this.pendingSegment_ = null;
     return;
   }
 
@@ -1187,6 +1163,7 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
   // if we switched renditions don't try to add segment timeline
   // information to the playlist
   if (segmentInfo.playlist.uri !== this.playlists.media().uri) {
+    this.pendingSegment_ = null;
     return this.fillBuffer();
   }
 
@@ -1211,15 +1188,13 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     }
   }
 
-  timelineUpdates = videojs.Hls.bufferedAdditions_(segmentInfo.buffered,
-                                                   this.tech_.buffered());
-  timelineUpdates.forEach(function (update) {
-    if (segment) {
-      if (update.end !== undefined) {
-        segment.end = update.end;
-      }
-    }
-  });
+
+  timelineUpdate = videojs.Hls.findSoleUncommonTimeRangesEnd_(segmentInfo.buffered,
+                                                              this.tech_.buffered());
+
+  if (timelineUpdate && segment) {
+    segment.end = timelineUpdate;
+  }
 
   // if we've buffered to the end of the video, let the MediaSource know
   if (this.playlists.media().endList &&
@@ -1227,16 +1202,20 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
       segments[segments.length - 1].end <= currentBuffered.end(0) &&
       this.mediaSource.readyState === 'open') {
     this.mediaSource.endOfStream();
+    this.pendingSegment_ = null;
     return;
   }
 
-  if (timelineUpdates.length ||
+  if (timelineUpdate !== null ||
       segmentInfo.buffered.length !== this.tech_.buffered().length) {
     this.updateDuration(playlist);
+    this.pendingSegment_ = null;
     // check if it's time to download the next segment
     this.fillBuffer();
     return;
   }
+
+  this.pendingSegment_ = null;
 
   // the last segment append must have been entirely in the
   // already buffered time ranges. just buffer forward until we
