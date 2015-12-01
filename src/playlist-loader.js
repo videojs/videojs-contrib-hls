@@ -422,7 +422,6 @@
       i,
       segment,
       originalTime = time,
-      targetDuration = this.media_.targetDuration || 10,
       numSegments = this.media_.segments.length,
       lastSegment = numSegments - 1,
       startIndex,
@@ -442,70 +441,36 @@
 
     // find segments with known timing information that bound the
     // target time
-
-    // Walk backward until we find the first segment with timeline
-    // information that is earlier than `time`
-    for (i = lastSegment; i >= 0; i--) {
-      segment = this.media_.segments[i];
-      if (segment.end !== undefined && segment.end <= time) {
-        startIndex = i + 1;
-        knownStart = segment.end;
-        if (startIndex >= numSegments) {
-          // The last segment claims to end *before* the time we are
-          // searching for so just return it
-          return numSegments;
-        }
-        break;
-      }
-      if (segment.start !== undefined && segment.start <= time) {
-        if (segment.end !== undefined && segment.end > time) {
-          // we've found the target segment exactly
-          return i;
-        }
-        startIndex = i;
-        knownStart = segment.start;
-        break;
-      }
-    }
-
-    // Walk forward until we find the first segment with timeline
-    // information that is greater than `time`
     for (i = 0; i < numSegments; i++) {
       segment = this.media_.segments[i];
-      if (segment.start !== undefined && segment.start > time) {
-        endIndex = i - 1;
-        knownEnd = segment.start;
-        if (endIndex < 0) {
-          // The first segment claims to start *after* the time we are
-          // searching for so the target segment must no longer be
-          // available
-          return -1;
+      if (segment.end) {
+        if (segment.end > time) {
+          knownEnd = segment.end;
+          endIndex = i;
+          break;
+        } else {
+          knownStart = segment.end;
+          startIndex = i;
         }
-        break;
-      }
-      if (segment.end !== undefined && segment.end > time) {
-        endIndex = i;
-        knownEnd = segment.end;
-        break;
       }
     }
 
     // use the bounds we just found and playlist information to
     // estimate the segment that contains the time we are looking for
-
     if (startIndex !== undefined) {
       // We have a known-start point that is before our desired time so
       // walk from that point forwards
       time = time - knownStart;
       for (i = startIndex; i < (endIndex || numSegments); i++) {
         segment = this.media_.segments[i];
-        time -= segment.duration || targetDuration;
+        time -= segment.duration;
+
         if (time < 0) {
           return i;
         }
       }
 
-      if (i === endIndex) {
+      if (i >= endIndex) {
         // We haven't found a segment but we did hit a known end point
         // so fallback to interpolating between the segment index
         // based on the known span of the timeline we are dealing with
@@ -523,7 +488,8 @@
       time = knownEnd - time;
       for (i = endIndex; i >= 0; i--) {
         segment = this.media_.segments[i];
-        time -= segment.duration || targetDuration;
+        time -= segment.duration;
+
         if (time < 0) {
           return i;
         }
@@ -535,12 +501,14 @@
       // subtracting durations until we find a segment that contains
       // time and return it
       time = time - this.expired_;
+
       if (time < 0) {
         return -1;
       }
+
       for (i = 0; i < numSegments; i++) {
         segment = this.media_.segments[i];
-        time -= segment.duration || targetDuration;
+        time -= segment.duration;
         if (time < 0) {
           return i;
         }
