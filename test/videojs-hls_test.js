@@ -2745,47 +2745,72 @@ test('does not download segments if preload option set to none', function() {
 
 module('Buffer Inspection');
 
-test('detects time range edges added by updates', function() {
-  var edges;
+test('detects time range end-point changed by updates', function() {
+  var edge;
 
-  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[0, 10]]),
-                                         videojs.createTimeRange([[0, 11]]));
-  deepEqual(edges, [{ end: 11 }], 'detected a forward addition');
+  // Single-range changes
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
+                                                    videojs.createTimeRange([[0, 11]]));
+  strictEqual(edge, 11, 'detected a forward addition');
 
-  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[5, 10]]),
-                                         videojs.createTimeRange([[0, 10]]));
-  deepEqual(edges, [{ start: 0 }], 'detected a backward addition');
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[5, 10]]),
+                                                    videojs.createTimeRange([[0, 10]]));
+  strictEqual(edge, null, 'ignores backward addition');
 
-  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[5, 10]]),
-                                         videojs.createTimeRange([[0, 11]]));
-  deepEqual(edges, [
-    { start: 0 }, { end: 11 }
-  ], 'detected forward and backward additions');
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[5, 10]]),
+                                                    videojs.createTimeRange([[0, 11]]));
+  strictEqual(edge, 11, 'detected a forward addition & ignores a backward addition');
 
-  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[0, 10]]),
-                                         videojs.createTimeRange([[0, 10]]));
-  deepEqual(edges, [], 'detected no addition');
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
+                                                    videojs.createTimeRange([[0, 9]]));
+  strictEqual(edge, null, 'ignores a backwards addition resulting from a shrinking range');
 
-  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([]),
-                                         videojs.createTimeRange([[0, 10]]));
-  deepEqual(edges, [
-    { start: 0 },
-    { end: 10 }
-  ], 'detected an initial addition');
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
+                                                    videojs.createTimeRange([[2, 7]]));
+  strictEqual(edge, null, 'ignores a forward & backwards addition resulting from a shrinking range');
 
-  edges = videojs.Hls.bufferedAdditions_(videojs.createTimeRange([[0, 10]]),
-                                         videojs.createTimeRange([[0, 10], [20, 30]]));
-  deepEqual(edges, [
-    { start: 20 },
-    { end: 30}
-  ], 'detected a non-contiguous addition');
-});
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[2, 10]]),
+                                                    videojs.createTimeRange([[0, 7]]));
+  strictEqual(edge, null, 'ignores a forward & backwards addition resulting from a range shifted backward');
 
-test('treats null buffered ranges as no addition', function() {
-  var edges = videojs.Hls.bufferedAdditions_(null,
-                                             videojs.createTimeRange([[0, 11]]));
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[2, 10]]),
+                                                    videojs.createTimeRange([[5, 15]]));
+  strictEqual(edge, 15, 'detected a forwards addition resulting from a range shifted foward');
 
-  equal(edges.length, 0, 'no additions');
+  // Multiple-range changes
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
+                                                    videojs.createTimeRange([[0, 11], [12, 15]]));
+  strictEqual(edge, null, 'ignores multiple new forward additions');
+
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10], [20, 40]]),
+                                                    videojs.createTimeRange([[20, 50]]));
+  strictEqual(edge, 50, 'detected a forward addition & ignores range removal');
+
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10], [20, 40]]),
+                                                    videojs.createTimeRange([[0, 50]]));
+  strictEqual(edge, 50, 'detected a forward addition & ignores merges');
+
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10], [20, 40]]),
+                                                    videojs.createTimeRange([[0, 40]]));
+  strictEqual(edge, null, 'ignores merges');
+
+  // Empty input
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange(),
+                                                    videojs.createTimeRange([[0, 11]]));
+  strictEqual(edge, 11, 'handle an empty original TimeRanges object');
+
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 11]]),
+                                                    videojs.createTimeRange());
+  strictEqual(edge, null, 'handle an empty update TimeRanges object');
+
+  // Null input
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(null,
+                                                    videojs.createTimeRange([[0, 11]]));
+  strictEqual(edge, 11, 'treat null original buffer as an empty TimeRanges object');
+
+  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 11]]),
+                                                    null);
+  strictEqual(edge, null, 'treat null update buffer as an empty TimeRanges object');
 });
 
 })(window, window.videojs);

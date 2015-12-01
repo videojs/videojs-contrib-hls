@@ -450,7 +450,7 @@
           break;
         } else {
           knownStart = segment.end;
-          startIndex = i;
+          startIndex = i + 1;
         }
       }
     }
@@ -494,8 +494,13 @@
           return i;
         }
       }
-      // We haven't found a segment so load the first one
-      return 0;
+
+      // We haven't found a segment so load the first one if time is zero
+      if (time === 0) {
+        return 0;
+      } else {
+        return -1;
+      }
     } else {
       // We known nothing so walk from the front of the playlist,
       // subtracting durations until we find a segment that contains

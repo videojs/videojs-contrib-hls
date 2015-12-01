@@ -10,8 +10,8 @@ var
   // A fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.2,
-  blacklistDuration = 5 * 60 * 1000, // 2 minute blacklist
-  TIME_FUDGE_FACTOR = 1 / 60, // Fudge factor to account for TimeRanges rounding
+  blacklistDuration = 5 * 60 * 1000, // 5 minute blacklist
+  TIME_FUDGE_FACTOR = 1 / 30, // Fudge factor to account for TimeRanges rounding
   Component = videojs.getComponent('Component'),
 
   // The amount of time to wait between checking the state of the buffer
@@ -242,32 +242,52 @@ videojs.HlsHandler.prototype.handleSourceOpen = function() {
   }
 };
 
-// Search for any end-points in `update` that do not also exist
-// in `original`.
+// Search for a likely end time for the segment that was just appened
+// based on the state of the `buffered` property before and after the
+// append.
 // If we found only one such uncommon end-point return it.
 videojs.Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
-  var result = [], originalEnds = [];
+  var
+    i, start, end,
+    result = [],
+    edges = [],
+    // In order to qualify as a possible candidate, the end point must:
+    //  1) Not have already existed in the `original` ranges
+    //  2) Not result from the shrinking of a range that already existed
+    //     in the `original` ranges
+    //  3) Not be contained inside of a range that existed in `original`
+    checkEdges = function(span) {
+      return (span[0] <= end && span[1] > end) || span[1] === end;
+    };
 
-  // if original or update are falsey, return an empty list of
-  // additions
-  if (!original || !update) {
-    return result;
-  }
+  if (original) {
+    // Save all the edges in the `original` TimeRanges object
+    for (i = 0; i < original.length; i++) {
+      start = original.start(i);
+      end = original.end(i);
 
-  // Save all the end-points in the `original` TimeRanges object
-  for (i = 0; i < original.length; i++) {
-    originalEnds.push(original.end(i));
-  }
-
-  // Save any end-points in `update` that are not in the `original`
-  // TimeRanges object
-  for (i = 0; i < update.length; i++) {
-    if (originalEnds.indexOf(update.end(i)) === -1) {
-      result.push(update.end(i));
+      edges.push([start, end]);
     }
   }
 
-  // Return null if didn't find exactly one differing end-point
+  if (update) {
+    // Save any end-points in `update` that are not in the `original`
+    // TimeRanges object
+    for (i = 0; i < update.length; i++) {
+      start = update.start(i);
+      end = update.end(i);
+
+      if (edges.some(checkEdges)) {
+        continue;
+      }
+
+      // at this point it must be a unique non-shrinking end edge
+      result.push(end);
+    }
+  }
+
+  // we err on the side of caution and return null if didn't find
+  // exactly *one* differing end edge in the search above
   if (result.length !== 1) {
     return null;
   } else {
@@ -719,10 +739,6 @@ videojs.HlsHandler.prototype.checkBuffer_ = function() {
  * append bytes into the SourceBuffer.
  */
 videojs.HlsHandler.prototype.startCheckingBuffer_ = function() {
-  // if the player ever stalls, check if there is video data available
-  // to append immediately
-  this.tech_.on('waiting', (this.drainBuffer).bind(this));
-
   this.checkBuffer_();
 };
 
@@ -735,7 +751,6 @@ videojs.HlsHandler.prototype.stopCheckingBuffer_ = function() {
     window.clearTimeout(this.checkBufferTimeout_);
     this.checkBufferTimeout_ = null;
   }
-  this.tech_.off('waiting', this.drainBuffer);
 };
 
 var filterBufferedRanges = function(predicate) {
