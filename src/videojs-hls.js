@@ -984,17 +984,25 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     // decrease in network performance or a server issue.
     timeout: (segment.duration * 1.5) * 1000
   }, function(error, request) {
-    // the segment request is no longer outstanding
-    self.segmentXhr_ = null;
+    // This is a timeout of a previously aborted segment request
+    // so simply ignore it
+    if (!self.segmentXhr_ || request !== self.segmentXhr_) {
+      return;
+    }
 
     // if a segment request times out, we may have better luck with another playlist
     if (request.timedout) {
+      // the segment request is no longer outstanding
+      self.segmentXhr_ = null;
       self.bandwidth = 1;
       return self.playlists.media(self.selectPlaylist());
     }
 
     // otherwise, trigger a network error
     if (!request.aborted && error) {
+      // the segment request is no longer outstanding
+      self.segmentXhr_ = null;
+
       self.pendingSegment_ = null;
       return self.blacklistCurrentPlaylist_({
         status: request.status,
@@ -1005,6 +1013,8 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
 
     // stop processing if the request was aborted
     if (!request.response) {
+      // the segment request is no longer outstanding
+      self.segmentXhr_ = null;
       return;
     }
 
@@ -1016,9 +1026,14 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     } else {
       segmentInfo.bytes = new Uint8Array(request.response);
     }
+
     self.pendingSegment_ = segmentInfo;
+
     self.tech_.trigger('progress');
     self.drainBuffer();
+
+    // the segment request is no longer outstanding
+    self.segmentXhr_ = null;
 
     // figure out what stream the next segment should be downloaded from
     // with the updated bandwidth information
