@@ -508,7 +508,7 @@ videojs.Hls.prototype.resetSrc_ = function() {
   this.cancelSegmentXhr();
   this.cancelKeyXhr();
 
-  if (this.sourceBuffer) {
+  if (this.sourceBuffer && this.mediaSource.readyState === 'open') {
     this.sourceBuffer.abort();
   }
 };
