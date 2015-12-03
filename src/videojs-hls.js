@@ -434,7 +434,7 @@ videojs.Hls.prototype.setCurrentTime = function(currentTime) {
   this.mediaIndex = this.playlists.getMediaIndexForTime_(currentTime);
 
   // abort any segments still being decoded
-  if (this.sourceBuffer) {
+  if (this.sourceBuffer && this.mediaSource.readyState === 'open') {
     this.sourceBuffer.abort();
   }
 
@@ -508,7 +508,7 @@ videojs.Hls.prototype.resetSrc_ = function() {
   this.cancelSegmentXhr();
   this.cancelKeyXhr();
 
-  if (this.sourceBuffer) {
+  if (this.sourceBuffer && this.mediaSource.readyState === 'open') {
     this.sourceBuffer.abort();
   }
 };
