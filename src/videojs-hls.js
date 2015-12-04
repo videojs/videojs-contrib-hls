@@ -256,8 +256,8 @@ videojs.Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
     //  2) Not result from the shrinking of a range that already existed
     //     in the `original` ranges
     //  3) Not be contained inside of a range that existed in `original`
-    checkEdges = function(span) {
-      return (span[0] <= end && span[1] > end) || span[1] === end;
+    overlapsCurrentEnd = function(span) {
+      return (span[0] <= end && span[1] >= end);
     };
 
   if (original) {
@@ -277,7 +277,7 @@ videojs.Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
       start = update.start(i);
       end = update.end(i);
 
-      if (edges.some(checkEdges)) {
+      if (edges.some(overlapsCurrentEnd)) {
         continue;
       }
 
@@ -290,9 +290,9 @@ videojs.Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
   // exactly *one* differing end edge in the search above
   if (result.length !== 1) {
     return null;
-  } else {
-    return result[0];
   }
+
+  return result[0];
 };
 
 var parseCodecs = function(codecs) {
@@ -1005,20 +1005,17 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
       return;
     }
 
+    // the segment request is no longer outstanding
+    self.segmentXhr_ = null;
+
     // if a segment request times out, we may have better luck with another playlist
     if (request.timedout) {
-      // the segment request is no longer outstanding
-      self.segmentXhr_ = null;
       self.bandwidth = 1;
       return self.playlists.media(self.selectPlaylist());
     }
 
     // otherwise, trigger a network error
     if (!request.aborted && error) {
-      // the segment request is no longer outstanding
-      self.segmentXhr_ = null;
-
-      self.pendingSegment_ = null;
       return self.blacklistCurrentPlaylist_({
         status: request.status,
         message: 'HLS segment request error at URL: ' + segmentInfo.uri,
@@ -1028,8 +1025,6 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
 
     // stop processing if the request was aborted
     if (!request.response) {
-      // the segment request is no longer outstanding
-      self.segmentXhr_ = null;
       return;
     }
 
@@ -1047,13 +1042,11 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     self.tech_.trigger('progress');
     self.drainBuffer();
 
-    // the segment request is no longer outstanding
-    self.segmentXhr_ = null;
-
     // figure out what stream the next segment should be downloaded from
     // with the updated bandwidth information
     self.playlists.media(self.selectPlaylist());
   });
+
 };
 
 videojs.HlsHandler.prototype.drainBuffer = function(event) {
@@ -1178,10 +1171,10 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     seekable,
     timelineUpdate;
 
+  this.pendingSegment_ = null;
 
   // stop here if the update errored or was aborted
   if (!segmentInfo) {
-    this.pendingSegment_ = null;
     return;
   }
 
@@ -1193,7 +1186,6 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
   // if we switched renditions don't try to add segment timeline
   // information to the playlist
   if (segmentInfo.playlist.uri !== this.playlists.media().uri) {
-    this.pendingSegment_ = null;
     return this.fillBuffer();
   }
 
@@ -1232,20 +1224,16 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
       segments[segments.length - 1].end <= currentBuffered.end(0) &&
       this.mediaSource.readyState === 'open') {
     this.mediaSource.endOfStream();
-    this.pendingSegment_ = null;
     return;
   }
 
   if (timelineUpdate !== null ||
       segmentInfo.buffered.length !== this.tech_.buffered().length) {
     this.updateDuration(playlist);
-    this.pendingSegment_ = null;
     // check if it's time to download the next segment
     this.fillBuffer();
     return;
   }
-
-  this.pendingSegment_ = null;
 
   // the last segment append must have been entirely in the
   // already buffered time ranges. just buffer forward until we
