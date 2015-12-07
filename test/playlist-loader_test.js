@@ -811,7 +811,7 @@
                              '1001.ts\n' +
                              '#EXTINF:5,\n' +
                              '1002.ts\n');
-    loader.media().segments[0].start = 150;
+    loader.media().segments[0].end = 154;
 
     equal(loader.getMediaIndexForTime_(0), -1, 'the lowest returned value is  negative one');
     equal(loader.getMediaIndexForTime_(45), -1, 'expired content returns negative one');
@@ -819,6 +819,7 @@
     equal(loader.getMediaIndexForTime_(50 + 100), 0, 'calculates the earliest available position');
     equal(loader.getMediaIndexForTime_(50 + 100 + 2), 0, 'calculates within the first segment');
     equal(loader.getMediaIndexForTime_(50 + 100 + 2), 0, 'calculates within the first segment');
+    equal(loader.getMediaIndexForTime_(50 + 100 + 4), 1, 'calculates within the second segment');
     equal(loader.getMediaIndexForTime_(50 + 100 + 4.5), 1, 'calculates within the second segment');
     equal(loader.getMediaIndexForTime_(50 + 100 + 6), 1, 'calculates within the second segment');
   });
@@ -837,9 +838,9 @@
     loader.expired_ = 160;
     // annotate the first segment with a start time
     // this number would be coming from the Source Buffer in practice
-    loader.media().segments[0].start = 150;
+    loader.media().segments[0].end = 150;
 
-    equal(loader.getMediaIndexForTime_(151), 0, 'prefers the value on the first segment');
+    equal(loader.getMediaIndexForTime_(149), 0, 'prefers the value on the first segment');
 
     clock.tick(10 * 1000); // trigger a playlist refresh
     requests.shift().respond(200, null,

@@ -10,8 +10,8 @@ var
   // A fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.2,
-  blacklistDuration = 5 * 60 * 1000, // 2 minute blacklist
-  TIME_FUDGE_FACTOR = 1 / 60, // Fudge factor to account for TimeRanges rounding
+  blacklistDuration = 5 * 60 * 1000, // 5 minute blacklist
+  TIME_FUDGE_FACTOR = 1 / 30, // Fudge factor to account for TimeRanges rounding
   Component = videojs.getComponent('Component'),
 
   // The amount of time to wait between checking the state of the buffer
@@ -242,61 +242,57 @@ videojs.HlsHandler.prototype.handleSourceOpen = function() {
   }
 };
 
-// Returns the array of time range edge objects that were additively
-// modified between two TimeRanges.
-videojs.Hls.bufferedAdditions_ = function(original, update) {
-  var result = [], edges = [],
-      i, inOriginalRanges;
+// Search for a likely end time for the segment that was just appened
+// based on the state of the `buffered` property before and after the
+// append.
+// If we found only one such uncommon end-point return it.
+videojs.Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
+  var
+    i, start, end,
+    result = [],
+    edges = [],
+    // In order to qualify as a possible candidate, the end point must:
+    //  1) Not have already existed in the `original` ranges
+    //  2) Not result from the shrinking of a range that already existed
+    //     in the `original` ranges
+    //  3) Not be contained inside of a range that existed in `original`
+    overlapsCurrentEnd = function(span) {
+      return (span[0] <= end && span[1] >= end);
+    };
 
-  // if original or update are falsey, return an empty list of
-  // additions
-  if (!original || !update) {
-    return result;
+  if (original) {
+    // Save all the edges in the `original` TimeRanges object
+    for (i = 0; i < original.length; i++) {
+      start = original.start(i);
+      end = original.end(i);
+
+      edges.push([start, end]);
+    }
   }
 
-  // create a sorted array of time range start and end times
-  for (i = 0; i < original.length; i++) {
-    edges.push({ original: true, start: original.start(i) });
-    edges.push({ original: true, end: original.end(i) });
-  }
-  for (i = 0; i < update.length; i++) {
-    edges.push({ start: update.start(i) });
-    edges.push({ end: update.end(i) });
-  }
-  edges.sort(function(left, right) {
-    var leftTime, rightTime;
-    leftTime = left.start !== undefined ? left.start : left.end;
-    rightTime = right.start !== undefined ? right.start : right.end;
+  if (update) {
+    // Save any end-points in `update` that are not in the `original`
+    // TimeRanges object
+    for (i = 0; i < update.length; i++) {
+      start = update.start(i);
+      end = update.end(i);
 
-    // when two times are equal, ensure the original edge covers the
-    // update
-    if (leftTime === rightTime) {
-      if (left.original) {
-        return left.start !== undefined ? -1 : 1;
+      if (edges.some(overlapsCurrentEnd)) {
+        continue;
       }
-      return right.start !== undefined ? -1 : 1;
-    }
-    return leftTime - rightTime;
-  });
 
-  // filter out all time range edges that occur during a period that
-  // was already covered by `original`
-  inOriginalRanges = false;
-  for (i = 0; i < edges.length; i++) {
-    // if this is a transition point for `original`, track whether
-    // subsequent edges are additions
-    if (edges[i].original) {
-      inOriginalRanges = edges[i].start !== undefined;
-      continue;
+      // at this point it must be a unique non-shrinking end edge
+      result.push(end);
     }
-    // if we're in a time range that was in `original`, ignore this edge
-    if (inOriginalRanges) {
-      continue;
-    }
-    // this edge occurred outside the range of `original`
-    result.push(edges[i]);
   }
-  return result;
+
+  // we err on the side of caution and return null if didn't find
+  // exactly *one* differing end edge in the search above
+  if (result.length !== 1) {
+    return null;
+  }
+
+  return result[0];
 };
 
 var parseCodecs = function(codecs) {
@@ -743,10 +739,6 @@ videojs.HlsHandler.prototype.checkBuffer_ = function() {
  * append bytes into the SourceBuffer.
  */
 videojs.HlsHandler.prototype.startCheckingBuffer_ = function() {
-  // if the player ever stalls, check if there is video data available
-  // to append immediately
-  this.tech_.on('waiting', (this.drainBuffer).bind(this));
-
   this.checkBuffer_();
 };
 
@@ -759,7 +751,6 @@ videojs.HlsHandler.prototype.stopCheckingBuffer_ = function() {
     window.clearTimeout(this.checkBufferTimeout_);
     this.checkBufferTimeout_ = null;
   }
-  this.tech_.off('waiting', this.drainBuffer);
 };
 
 var filterBufferedRanges = function(predicate) {
@@ -1008,6 +999,12 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     // decrease in network performance or a server issue.
     timeout: (segment.duration * 1.5) * 1000
   }, function(error, request) {
+    // This is a timeout of a previously aborted segment request
+    // so simply ignore it
+    if (!self.segmentXhr_ || request !== self.segmentXhr_) {
+      return;
+    }
+
     // the segment request is no longer outstanding
     self.segmentXhr_ = null;
 
@@ -1019,7 +1016,6 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
 
     // otherwise, trigger a network error
     if (!request.aborted && error) {
-      self.pendingSegment_ = null;
       return self.blacklistCurrentPlaylist_({
         status: request.status,
         message: 'HLS segment request error at URL: ' + segmentInfo.uri,
@@ -1040,7 +1036,9 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     } else {
       segmentInfo.bytes = new Uint8Array(request.response);
     }
+
     self.pendingSegment_ = segmentInfo;
+
     self.tech_.trigger('progress');
     self.drainBuffer();
 
@@ -1048,6 +1046,7 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     // with the updated bandwidth information
     self.playlists.media(self.selectPlaylist());
   });
+
 };
 
 videojs.HlsHandler.prototype.drainBuffer = function(event) {
@@ -1170,7 +1169,7 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     currentMediaIndex,
     currentBuffered,
     seekable,
-    timelineUpdates;
+    timelineUpdate;
 
   this.pendingSegment_ = null;
 
@@ -1211,15 +1210,13 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     }
   }
 
-  timelineUpdates = videojs.Hls.bufferedAdditions_(segmentInfo.buffered,
-                                                   this.tech_.buffered());
-  timelineUpdates.forEach(function (update) {
-    if (segment) {
-      if (update.end !== undefined) {
-        segment.end = update.end;
-      }
-    }
-  });
+
+  timelineUpdate = videojs.Hls.findSoleUncommonTimeRangesEnd_(segmentInfo.buffered,
+                                                              this.tech_.buffered());
+
+  if (timelineUpdate && segment) {
+    segment.end = timelineUpdate;
+  }
 
   // if we've buffered to the end of the video, let the MediaSource know
   if (this.playlists.media().endList &&
@@ -1230,7 +1227,7 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     return;
   }
 
-  if (timelineUpdates.length ||
+  if (timelineUpdate !== null ||
       segmentInfo.buffered.length !== this.tech_.buffered().length) {
     this.updateDuration(playlist);
     // check if it's time to download the next segment
