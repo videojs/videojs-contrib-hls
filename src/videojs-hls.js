@@ -982,7 +982,26 @@ videojs.HlsHandler.prototype.blacklistCurrentPlaylist_ = function(error) {
 videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
   var
     self = this,
-    segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+    segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex],
+    removeToTime = 0,
+    seekable = this.seekable();
+
+  // Chrome has a hard limit of 150mb of buffer and a very conservative "garbage collector"
+  // We manually clear out the old buffer to ensure we don't trigger the QuotaExceeded error
+  // on the source buffer during subsequent appends
+  if (this.sourceBuffer) {
+    // If we have a seekable range use that as the limit for what can be removed safely
+    // otherwise remove anything older than 1 minute before the current play head
+    if (seekable.length && seekable.start(0) > 0) {
+      removeToTime = seekable.start(0);
+    } else {
+      removeToTime = this.tech_.currentTime() - 60;
+    }
+
+    if (removeToTime > 0) {
+      this.sourceBuffer.remove(0, removeToTime);
+    }
+  }
 
   // if the segment is encrypted, request the key
   if (segment.key) {
