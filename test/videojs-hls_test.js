@@ -373,6 +373,39 @@ test('duration is set when the source opens after the playlist is loaded', funct
   equal(player.tech_.hls.mediaSource.duration , 40, 'set the duration');
 });
 
+test('calls `remove` on sourceBuffer to when loading a segment', function() {
+  var removes = [];
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.tech_.hls.mediaSource.addSourceBuffer = function() {
+    return new (videojs.extend(videojs.EventTarget, {
+      constructor: function() {},
+      abort: function() {},
+      buffered: videojs.createTimeRange(),
+      appendBuffer: function() {},
+      remove: function(start, end) {
+        removes.push([start, end]);
+      }
+    }))();
+  };
+  player.tech_.hls.bandwidth = 20e10;
+  standardXHRResponse(requests[0]);
+  player.currentTime(120);
+  standardXHRResponse(requests[1]);
+  standardXHRResponse(requests[2]);
+
+  strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
+  strictEqual(requests[1].url,
+              absoluteUrl('manifest/media3.m3u8'),
+              'media playlist requested');
+  equal(removes.length, 1, 'remove called');
+  deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
+});
+
+
 test('codecs are passed to the source buffer', function() {
   var codecs = [];
   player.src({
