@@ -819,11 +819,14 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   var
     tech = this.tech_,
     currentTime = tech.currentTime(),
+    hasBufferedContent = (this.tech_.buffered().length !== 0),
     currentBuffered = this.findBufferedRange_(),
+    outsideBufferedRanges = !(currentBuffered && currentBuffered.length),
     currentBufferedEnd = 0,
     bufferedTime = 0,
     segment,
-    segmentInfo;
+    segmentInfo,
+    segmentTimestampOffset;
 
   // if preload is set to "none", do not download segments until playback is requested
   if (this.loadingState_ !== 'segments') {
@@ -906,8 +909,38 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
     // the state of the buffer before a segment is appended will be
     // stored here so that the actual segment duration can be
     // determined after it has been appended
-    buffered: null
+    buffered: null,
+    // The target timestampOffset for this segment when we append it
+    // to the source buffer
+    timestampOffset: null
   };
+
+  if (mediaIndex > 0) {
+    segmentTimestampOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist,
+      segmentInfo.playlist.mediaSequence + mediaIndex) + this.playlists.expired_;
+  }
+
+  // If we have seeked into a non-buffered time-range, remove all buffered
+  // time-ranges because they could have been incorrectly placed originally
+  if (this.tech_.seeking() && outsideBufferedRanges) {
+    // If there are discontinuities in the playlist, we can't be sure of anything
+    // related to time so we reset the timestamp offset and start appending data
+    // anew on every seek
+    if (segmentInfo.playlist.discontinuityStarts.length) {
+      // Now that the forward buffer is clear, we have to set timestamp offset to
+      // the start of the buffered region
+      segmentInfo.timestampOffset = segmentTimestampOffset;
+    }
+  } else if (segment.discontinuity && currentBuffered.length) {
+    // If we aren't seeking and are crossing a discontinuity, we should set
+    // timestampOffset for new segments to be appended the end of the current
+    // buffered time-range
+    segmentInfo.timestampOffset = currentBuffered.end(0);
+  } else if (!hasBufferedContent && this.tech_.currentTime() > 0.05) {
+    // If we are trying to play at a position that is not zero but we aren't
+    // currently seeking according to the video element
+    segmentInfo.timestampOffset = segmentTimestampOffset;
+  }
 
   this.loadSegment(segmentInfo);
 };
@@ -1068,7 +1101,7 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
 
 };
 
-videojs.HlsHandler.prototype.drainBuffer = function(event) {
+videojs.HlsHandler.prototype.drainBuffer = function() {
   var
     segmentInfo,
     mediaIndex,
@@ -1077,11 +1110,7 @@ videojs.HlsHandler.prototype.drainBuffer = function(event) {
     bytes,
     segment,
     decrypter,
-    segIv,
-    segmentTimestampOffset = 0,
-    hasBufferedContent = (this.tech_.buffered().length !== 0),
-    currentBuffered = this.findBufferedRange_(),
-    outsideBufferedRanges = !(currentBuffered && currentBuffered.length);
+    segIv;
 
   // if the buffer is empty or the source buffer hasn't been created
   // yet, do nothing
@@ -1144,36 +1173,11 @@ videojs.HlsHandler.prototype.drainBuffer = function(event) {
     }
   }
 
-  event = event || {};
-
-  if (segmentInfo.mediaIndex > 0) {
-    segmentTimestampOffset = videojs.Hls.Playlist.duration(segmentInfo.playlist,
-      playlist.mediaSequence + segmentInfo.mediaIndex);
-  }
-
-  // If we have seeked into a non-buffered time-range, remove all buffered
-  // time-ranges because they could have been incorrectly placed originally
-  if (this.tech_.seeking() && outsideBufferedRanges) {
-    // If there are discontinuities in the playlist, we can't be sure of anything
-    // related to time so we reset the timestamp offset and start appending data
-    // anew on every seek
-    if (segmentInfo.playlist.discontinuityStarts.length) {
-      // Now that the forward buffer is clear, we have to set timestamp offset to
-      // the start of the buffered region
-      this.sourceBuffer.timestampOffset = segmentTimestampOffset;
-    }
-  } else if (segment.discontinuity && currentBuffered.length) {
-    // If we aren't seeking and are crossing a discontinuity, we should set
-    // timestampOffset for new segments to be appended the end of the current
-    // buffered time-range
-    this.sourceBuffer.timestampOffset = currentBuffered.end(0);
-  } else if (!hasBufferedContent && this.tech_.currentTime() > 0.05) {
-    // If we are trying to play at a position that is not zero but we aren't
-    // currently seeking according to the video element
-    this.sourceBuffer.timestampOffset = segmentTimestampOffset;
-  }
-
   this.pendingSegment_.buffered = this.tech_.buffered();
+
+  if (segmentInfo.timestampOffset !== null) {
+    this.sourceBuffer.timestampOffset = segmentInfo.timestampOffset;
+  }
 
   // the segment is asynchronously added to the current buffered data
   this.sourceBuffer.appendBuffer(bytes);
