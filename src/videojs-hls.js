@@ -1143,6 +1143,13 @@ videojs.HlsHandler.prototype.drainBuffer = function(event) {
       // the start of the buffered region
       this.sourceBuffer.timestampOffset = segmentTimestampOffset;
     }
+  } else if (currentBuffered && currentBuffered.length &&
+    (currentBuffered.end(0) < this.sourceBuffer.timestampOffset ||
+    currentBuffered.start(0) > this.sourceBuffer.timestampOffset)) {
+    // If the timestamp offset is greater than the end of the buffered region
+    // or if the timestamp offset is less than the start of the buffered region
+    // set the timestamp offset to the end of the current buffered time range.
+    this.sourceBuffer.timestampOffset = currentBuffered.end(0);
   } else if (segment.discontinuity && currentBuffered.length) {
     // If we aren't seeking and are crossing a discontinuity, we should set
     // timestampOffset for new segments to be appended the end of the current
