@@ -989,7 +989,7 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
   // Chrome has a hard limit of 150mb of buffer and a very conservative "garbage collector"
   // We manually clear out the old buffer to ensure we don't trigger the QuotaExceeded error
   // on the source buffer during subsequent appends
-  if (this.sourceBuffer) {
+  if (this.sourceBuffer && !this.sourceBuffer.updating) {
     // If we have a seekable range use that as the limit for what can be removed safely
     // otherwise remove anything older than 1 minute before the current play head
     if (seekable.length && seekable.start(0) > 0) {
