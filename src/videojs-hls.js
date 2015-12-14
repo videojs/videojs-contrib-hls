@@ -926,15 +926,11 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
       segmentInfo.playlist.mediaSequence + mediaIndex) + this.playlists.expired_;
   }
 
-  // If we have seeked into a non-buffered time-range, remove all buffered
-  // time-ranges because they could have been incorrectly placed originally
   if (this.tech_.seeking() && outsideBufferedRanges) {
     // If there are discontinuities in the playlist, we can't be sure of anything
     // related to time so we reset the timestamp offset and start appending data
     // anew on every seek
     if (segmentInfo.playlist.discontinuityStarts.length) {
-      // Now that the forward buffer is clear, we have to set timestamp offset to
-      // the start of the buffered region
       segmentInfo.timestampOffset = segmentTimestampOffset;
     }
   } else if (segment.discontinuity && currentBuffered.length) {
