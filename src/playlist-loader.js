@@ -360,6 +360,10 @@
       return;
     }
 
+    if (update.uri !== outdated.uri) {
+      return;
+    }
+
     // try using precise timing from first segment of the updated
     // playlist
     if (update.segments.length) {
