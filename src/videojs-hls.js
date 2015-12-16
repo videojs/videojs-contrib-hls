@@ -430,6 +430,9 @@ videojs.HlsHandler.prototype.setupFirstPlay = function() {
       // at least HAVE_FUTURE_DATA
       this.tech_.readyState() >= 1) {
 
+    // trigger the playlist loader to start "expired time"-tracking
+    this.playlists.trigger('firstplay');
+
     // seek to the latest media position for live videos
     seekable = this.seekable();
     if (seekable.length) {

@@ -94,6 +94,10 @@
 
       PlaylistLoader.prototype.init.call(this);
 
+      // a flag that disables "expired time"-tracking this setting has
+      // no effect when not playing a live stream
+      this.trackExpiredTime_ = false;
+
       if (!srcUrl) {
         throw new Error('A non-empty playlist URL is required');
       }
@@ -267,6 +271,12 @@
         loader.bandwidth = xhr.bandwidth;
       };
 
+      // In a live list, don't keep track of the expired time until
+      // HLS tells us that "first play" has commenced
+      loader.on('firstplay', function() {
+        this.trackExpiredTime_ = true;
+      });
+
       // live playlist staleness timeout
       loader.on('mediaupdatetimeout', function() {
         if (loader.state !== 'HAVE_METADATA') {
@@ -360,6 +370,14 @@
       return;
     }
 
+    // don't track expired time until this flag is truthy
+    if (!this.trackExpiredTime_) {
+      return;
+    }
+
+    // if the update was the result of a rendition switch do not
+    // attempt to calculate expired_ since media-sequences need not
+    // correlate between renditions/variants
     if (update.uri !== outdated.uri) {
       return;
     }
