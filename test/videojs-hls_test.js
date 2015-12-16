@@ -335,7 +335,7 @@ test('autoplay seeks to the live point after playlist load', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(player);
-  player.tech_.readyState = 3;
+  player.tech_.readyState = function(){return 1;};
   player.tech_.trigger('play');
   standardXHRResponse(requests.shift());
   clock.tick(1);
@@ -357,7 +357,7 @@ test('autoplay seeks to the live point after media source open', function() {
   clock.tick(1);
   standardXHRResponse(requests.shift());
   openMediaSource(player);
-  player.tech_.readyState = 3;
+  player.tech_.readyState = function(){return 1;};
   player.tech_.trigger('play');
   clock.tick(1);
 
@@ -410,7 +410,7 @@ test('calls `remove` on sourceBuffer to when loading a live segment', function()
   player.tech_.hls.playlists.trigger('loadedmetadata');
   player.tech_.trigger('canplay');
   player.tech_.paused = function() { return false; };
-  player.tech_.readyState = 3;
+  player.tech_.readyState = function(){return 1;};
   player.tech_.trigger('play');
 
   clock.tick(1);
@@ -1688,7 +1688,7 @@ test('live playlist starts three target durations before live', function() {
   equal(requests.length, 0, 'no outstanding segment request');
 
   player.tech_.paused = function() { return false; };
-  player.tech_.readyState = 3;
+  player.tech_.readyState = function(){return 1;};
   player.tech_.trigger('play');
   clock.tick(1);
   mediaPlaylist = player.tech_.hls.playlists.media();
@@ -1709,7 +1709,7 @@ test('live playlist starts with correct currentTime value', function() {
   player.tech_.hls.playlists.trigger('loadedmetadata');
 
   player.tech_.paused = function() { return false; };
-  player.tech_.readyState = 3;
+  player.tech_.readyState = function(){return 1;};
   player.tech_.trigger('play');
   clock.tick(1);
 
