@@ -177,8 +177,37 @@
     strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
   });
 
+  test('does not increment expired seconds before firstplay is triggered', function() {
+    var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '3.ts\n');
+    clock.tick(10 * 1000); // 10s, one target duration
+    requests.pop().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:1\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '2.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '3.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '4.ts\n');
+    equal(loader.expired_, 0, 'expired one segment');
+  });
+
   test('increments expired seconds after a segment is removed', function() {
     var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    loader.trigger('firstplay');
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -207,6 +236,7 @@
 
   test('increments expired seconds after a discontinuity', function() {
     var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    loader.trigger('firstplay');
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -249,6 +279,7 @@
 
   test('tracks expired seconds properly when two discontinuities expire at once', function() {
     var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    loader.trigger('firstplay');
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -274,6 +305,7 @@
 
   test('estimates expired if an entire window elapses between live playlist updates', function() {
     var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
+    loader.trigger('firstplay');
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -826,6 +858,7 @@
 
   test('prefers precise segment timing when tracking expired time', function() {
     var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
+    loader.trigger('firstplay');
     requests.shift().respond(200, null,
                              '#EXTM3U\n' +
                              '#EXT-X-MEDIA-SEQUENCE:1001\n' +

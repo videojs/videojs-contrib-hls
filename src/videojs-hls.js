@@ -165,7 +165,7 @@ videojs.HlsHandler.prototype.src = function(src) {
   }
   this.playlists = new videojs.Hls.PlaylistLoader(this.source_.src, this.options_.withCredentials);
 
-  this.tech_.on('canplay', this.setupFirstPlay.bind(this));
+  this.tech_.one('canplay', this.setupFirstPlay.bind(this));
 
   this.playlists.on('loadedmetadata', function() {
     oldMediaPlaylist = this.playlists.media();
@@ -428,7 +428,10 @@ videojs.HlsHandler.prototype.setupFirstPlay = function() {
 
       // 5) the video element or flash player is in a readyState of
       // at least HAVE_FUTURE_DATA
-      this.tech_.readyState >= 3) {
+      this.tech_.readyState() >= 1) {
+
+    // trigger the playlist loader to start "expired time"-tracking
+    this.playlists.trigger('firstplay');
 
     // seek to the latest media position for live videos
     seekable = this.seekable();
