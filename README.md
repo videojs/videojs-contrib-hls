@@ -205,7 +205,7 @@ text. Cues are created for all other frame types and the data is
 attached to the generated cue:
 
 ```js
-cue.frame.data
+cue.value.data
 ```
 
 There are lots of guides and references to using text tracks [around
