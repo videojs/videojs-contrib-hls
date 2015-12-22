@@ -1,11 +1,13 @@
-# video.js HLS Tech
+# video.js HLS Source Handler
 
-A video.js tech that plays HLS video on platforms that don't support it but have Flash.
+Play back HLS with video.js, even where it's not natively supported.
 
 [![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
 
 ## Getting Started
-Download [videojs-contrib-media-sources](https://github.com/videojs/videojs-contrib-media-sources/releases) and [videojs-contrib-hls](https://github.com/videojs/videojs-contrib-hls/releases). Include them both in your web page along with video.js:
+Download
+[videojs-contrib-hls](https://github.com/videojs/videojs-contrib-hls/releases)
+and include it in your page along with video.js:
 
 ```html
 <video id=example-video width=600 height=300 class="video-js vjs-default-skin" controls>
@@ -14,7 +16,6 @@ Download [videojs-contrib-media-sources](https://github.com/videojs/videojs-cont
      type="application/x-mpegURL">
 </video>
 <script src="video.js"></script>
-<script src="videojs-media-sources.js"></script>
 <script src="videojs-hls.min.js"></script>
 <script>
 var player = videojs('example-video');
@@ -41,30 +42,40 @@ position of having to maintain alternate renditions of the same video
 and potentially having to forego HTML-based video entirely to provide
 the best desktop viewing experience.
 
-This tech attempts to address that situation by providing a polyfill
-for HLS on browsers that have Flash support. You can deploy a single
-HLS stream, code against the regular HTML5 video APIs, and create a
-fast, high-quality video experience across all the big web device
-categories.
+This project addresses that situation by providing a polyfill for HLS
+on browsers that have support for [Media Source
+Extensions](http://caniuse.com/#feat=mediasource), or failing that,
+support Flash. You can deploy a single HLS stream, code against the
+regular HTML5 video APIs, and create a fast, high-quality video
+experience across all the big web device categories.
 
 Check out the [full documentation](docs/) for details on how HLS works
 and advanced configuration. A description of the [adaptive switching
 behavior](docs/bitrate-switching.md) is available, too.
 
-The videojs-hls tech is still working towards a 1.0 release so it
-may not fit your requirements today. Specifically, there is _no_
-support for:
+videojs-contrib-hls support a bunch of HLS v2 and v3 features. Here
+are some highlights:
 
-- Alternate audio and video tracks
-- Subtitles
-- Segment codecs _other than_ H.264 with AAC audio
-- Internet Explorer < 10
+- video-on-demand and live playback modes
+- backup or redundant streams
+- mid-segment quality switching
+- AES-128 segment encryption
+- CEA-608 captions are automatically translated into standard HTML5
+  [caption text
+  tracks](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track)
+- Timed ID3 Metadata is automatically translated into HTML5 metedata
+  text tracks
+- Highly customizable adaptive bitrate selection
+- Automatic bandwidth tracking
+- Cross-domain credentials support with CORS
+- Tight integration with video.js and a philosophy of exposing as much
+  as possible with standard HTML APIs
 
 ### Options
 
-You may pass in an options object to the hls tech at player
-initialization. You can pass in options just like you would for any
-other tech:
+You may pass in an options object to the hls source handler at player
+initialization. You can pass in options just like you would for other
+parts of video.js:
 
 ```javascript
 videojs(video, {
@@ -88,14 +99,28 @@ See html5rocks's [article](http://www.html5rocks.com/en/tutorials/cors/)
 for more info.
 
 ### Runtime Properties
-#### player.hls.playlists.master
+Runtime properties are attached to the tech object when HLS is in
+use. You can get a reference to the HLS source handler like this:
+
+```js
+var hls = player.tech({ IWillNotUseThisInPlugins: true }).hls;
+```
+
+If you *were* thinking about modifying runtime properties in a
+video.js plugin, we'd recommend you avoid it. Your plugin won't work
+with videos that don't use videojs-contrib-hls and the best plugins
+work across all the media types that video.js supports. If you're
+deploying videojs-contrib-hls on your own website and want to make a
+couple tweaks though, go for it!
+
+#### hls.playlists.master
 Type: `object`
 
 An object representing the parsed master playlist. If a media playlist
 is loaded directly, a master playlist with only one entry will be
 created.
 
-#### player.hls.playlists.media
+#### hls.playlists.media
 Type: `function`
 
 A function that can be used to retrieve or modify the currently active
@@ -108,19 +133,13 @@ will kick off an asynchronous load of the specified media
 playlist. Once it has been retreived, it will become the active media
 playlist.
 
-#### player.hls.mediaIndex
-Type: `number`
-
-The index of the next video segment to be downloaded from
-`player.hls.media`.
-
-#### player.hls.segmentXhrTime
+#### hls.segmentXhrTime
 Type: `number`
 
 The number of milliseconds it took to download the last media segment.
 This value is updated after each segment download completes.
 
-#### player.hls.bandwidth
+#### hls.bandwidth
 Type: `number`
 
 The number of bits downloaded per second in the last segment download.
@@ -134,12 +153,12 @@ have a more accurate source of bandwidth information, you can override
 this value as soon as the HLS tech has loaded to provide an initial
 bandwidth estimate.
 
-#### player.hls.bytesReceived
+#### hls.bytesReceived
 Type: `number`
 
 The total number of content bytes downloaded by the HLS tech.
 
-#### player.hls.selectPlaylist
+#### hls.selectPlaylist
 Type: `function`
 
 A function that returns the media playlist object to use to download
@@ -149,6 +168,11 @@ adaptive streaming logic. You must, however, be sure to return a valid
 media playlist object that is present in `player.hls.master`.
 
 ### Events
+Standard HTML video events are handled by video.js automatically and
+are triggered on the player object. In addition, there are a couple
+specialized events you can listen to on the HLS object during
+playback:
+
 #### loadedmetadata
 
 Fired after the first media playlist is downloaded for a stream.
@@ -181,11 +205,21 @@ text. Cues are created for all other frame types and the data is
 attached to the generated cue:
 
 ```js
-cue.frame.data
+cue.value.data
 ```
 
 There are lots of guides and references to using text tracks [around
 the web](http://www.html5rocks.com/en/tutorials/track/basics/).
+
+## Hosting Considerations
+Unlike a native HLS implementation, the HLS tech has to comply with
+the browser's security policies. That means that all the files that
+make up the stream must be served from the same domain as the page
+hosting the video player or from a server that has appropriate [CORS
+headers](https://developer.mozilla.org/en-US/docs/HTTP/Access_control_CORS)
+configured. Easy [instructions are
+available](http://enable-cors.org/server.html) for popular webservers
+and most CDNs should have no trouble turning CORS on for your account.
 
 ### Testing
 
@@ -209,16 +243,6 @@ Possible options are:
 
 _<sup>1</sup>supported end-to-end browsers_<br />
 _<sup>2</sup>requires the [SafariDriver extension]( https://code.google.com/p/selenium/wiki/SafariDriver) to be installed_
-
-## Hosting Considerations
-Unlike a native HLS implementation, the HLS tech has to comply with
-the browser's security policies. That means that all the files that
-make up the stream must be served from the same domain as the page
-hosting the video player or from a server that has appropriate [CORS
-headers](https://developer.mozilla.org/en-US/docs/HTTP/Access_control_CORS)
-configured. Easy [instructions are
-available](http://enable-cors.org/server.html) for popular webservers
-and most CDNs should have no trouble turning CORS on for your account.
 
 ## Release History
 Check out the [changelog](CHANGELOG.md) for a summary of each release.
