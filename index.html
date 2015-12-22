@@ -82,12 +82,12 @@
           video to all major desktop and mobile browsers.
         </p>
 
-        <!-- 
+        <!--
           -- Your video element. Just like regular HTML5 video.
           -->
-        <video id=example-video width=600 height=300 class="video-js vjs-default-skin" controls>
+        <video id=example-video width=960 height=400 class="video-js vjs-default-skin" controls>
           <source
-             src="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8"
+             src="//s3.amazonaws.com/_bc_dml/example-content/tears-of-steel/playlist.m3u8"
              type="application/x-mpegURL">
         </video>
 
@@ -97,18 +97,16 @@
         <h2>Getting Started</h2>
         <p>
           Download
-          <a href="https://github.com/videojs/videojs-contrib-media-sources/releases">videojs-contrib-media-sources</a>
-          and <a href="https://github.com/videojs/videojs-contrib-hls/releases/latest">videojs-contrib-hls</a>. Include
-          them both in your web page along with video.js:
+          <a href="https://github.com/videojs/videojs-contrib-hls/releases/latest">videojs-contrib-hls</a>
+          and include it in your page alongside video.js:
         </p>
-        <pre>&lt;video id=example-video width=600 height=300 class="video-js vjs-default-skin" controls&gt;
+        <pre>&lt;video id=example-video width=960 height=540 class="video-js vjs-default-skin" controls&gt;
   &lt;source
      src="https://example.com/index.m3u8"
      type="application/x-mpegURL"&gt;
 &lt;/video&gt;
 &lt;script src="video.js"&gt;&lt;/script&gt;
-&lt;script src="videojs-media-sources.js"&gt;&lt;/script&gt;
-&lt;script src="videojs-hls.min.js"&gt;&lt;/script&gt;
+&lt;script src="videojs.hls.min.js"&gt;&lt;/script&gt;
 &lt;script&gt;
 var player = videojs('example-video');
 player.play();
@@ -130,22 +128,21 @@ player.play();
       --                      videojs-contrib-hls setup                       --
       ------------------------------------------------------------------------!>
 
-    <!-- 
+    <!--
       -- Make sure to include the video.js CSS. This could go in
       -- the <head>, too.
       -->
-    <link href="https://vjs.zencdn.net/4.12/video-js.css" rel="stylesheet">
+    <link href="//vjs.zencdn.net/5.4/video-js.css" rel="stylesheet">
 
-    <!-- 
-      -- Include video.js, videojs-contrib-media-sources, and
-      -- videojs-contrib-hls in your page
+    <!--
+      -- Include video.js and videojs-contrib-hls in your page
       -->
-    <script src="node_modules/video.js/dist/video-js/video.dev.js"></script>
-    <script src="node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js"></script>
-    <script src="https://github.com/videojs/videojs-contrib-hls/releases/download/v0.17.1/videojs.hls.min.js"></script>
 
-    <!-- 
-      -- Now, initialize your player. That's it! 
+    <script src="//vjs.zencdn.net/5.4/video.js"></script>
+    <script src="node_modules/videojs-contrib-hls/dist/videojs.hls.min.js"></script>
+
+    <!--
+      -- Now, initialize your player. That's it!
       -->
     <script>
       var player = videojs('example-video');
