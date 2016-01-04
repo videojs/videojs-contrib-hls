@@ -81,6 +81,7 @@ module.exports = function(config) {
       '../src/xhr.js',
       '../src/playlist.js',
       '../src/playlist-loader.js',
+      '../src/source-updater.js',
       '../src/decrypter.js',
       '../tmp/manifests.js',
       '../tmp/expected.js',
