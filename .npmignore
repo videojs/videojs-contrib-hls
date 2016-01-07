@@ -1,5 +1,4 @@
-*~
-*.iml
-*.swp
-tmp/**
-test/**
+!dist/
+!dist-test/
+!docs/
+!es5/
