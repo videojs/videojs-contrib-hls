@@ -4,47 +4,15 @@
 
   var SourceUpdater = videojs.Hls.SourceUpdater;
 
-  var MockSourceBuffer = videojs.extend(videojs.EventTarget, {
-    constructor: function() {
-      this.updates_ = [];
+  var mse, mediaSource;
 
-      this.on('updateend', function() {
-        this.updating = false;
-      });
-    },
-    appendBuffer: function(bytes) {
-      this.updates_.push({
-        append: bytes
-      });
-      this.updating = true;
-    },
-    remove: function(start, end) {
-      this.updates_.push({
-        remove: [start, end]
-      });
-      this.updating = true;
-    },
-
-    updateDuration: function(duration) {
-      this.updates_.push({
-        duration: duration
-      });
-    },
-
-    updating: false
-  });
-
-  var mediaSource;
-
-  module('SourceBuffer Updater', {
-    setup: function() {
+  module('Source Updater', {
+    beforeEach: function() {
+      mse = videojs.useFakeMediaSource();
       mediaSource = new videojs.MediaSource();
-      mediaSource.addSourceBuffer = function(mime) {
-        var sourceBuffer = new MockSourceBuffer();
-        sourceBuffer.mimeType_ = mime;
-        mediaSource.sourceBuffers.push(sourceBuffer);
-        return sourceBuffer;
-      };
+    },
+    afterEach: function() {
+      mse.restore();
     }
   });
 
@@ -78,7 +46,27 @@
               'appended the bytes');
   });
 
-  test('runs a callback when updateend fires', function() {
+  test('runs the completion callback when updateend fires', function() {
+    var
+      updater = new SourceUpdater(mediaSource, 'video/mp2t'),
+      updateends = 0,
+      sourceBuffer;
+
+    mediaSource.trigger('sourceopen');
+    sourceBuffer = mediaSource.sourceBuffers[0];
+    updater.appendBuffer(new Uint8Array([0, 1, 2]), function() {
+      updateends++;
+    });
+    updater.appendBuffer(new Uint8Array([2, 3, 4]), function() {
+      throw 'Wrong completion callback invoked!';
+    });
+
+    equal(updateends, 0, 'no completions yet');
+    sourceBuffer.trigger('updateend');
+    equal(updateends, 1, 'ran the completion callback');
+  });
+
+  test('runs the next callback after updateend fires', function() {
     var
       updater = new SourceUpdater(mediaSource, 'video/mp2t'),
       sourceBuffer;
@@ -147,6 +135,15 @@
               'appended the bytes');
   });
 
+  test('supports buffered', function() {
+    var updater = new SourceUpdater(mediaSource, 'video/mp2t');
+
+    equal(updater.buffered().length, 0, 'buffered is empty');
+
+    mediaSource.trigger('sourceopen');
+    ok(updater.buffered(), 'buffered is defined');
+  });
+
   test('supports removeBuffer', function() {
     var
       updater = new SourceUpdater(mediaSource, 'video/mp2t'),
@@ -162,17 +159,39 @@
               'removed the time range');
   });
 
-  test('supports updateDuration', function() {
+  test('supports setting duration', function() {
     var
       updater = new SourceUpdater(mediaSource, 'video/mp2t'),
       sourceBuffer;
 
     mediaSource.trigger('sourceopen');
     sourceBuffer = mediaSource.sourceBuffers[0];
-    updater.updateDuration(21);
+    updater.duration(21);
 
     equal(sourceBuffer.updates_.length, 1, 'ran an update');
     deepEqual(sourceBuffer.updates_[0].duration, 21, 'changed duration');
+  });
+
+  test('supports timestampOffset', function() {
+    var
+      updater = new SourceUpdater(mediaSource, 'video/mp2t'),
+      sourceBuffer;
+
+    mediaSource.trigger('sourceopen');
+    sourceBuffer = mediaSource.sourceBuffers[0];
+
+    equal(updater.timestampOffset(), 0, 'intialized to zero');
+    updater.timestampOffset(21);
+    equal(updater.timestampOffset(), 21, 'reflects changes immediately');
+    equal(sourceBuffer.timestampOffset, 21, 'applied the update');
+
+    updater.appendBuffer(new Uint8Array(2));
+    updater.timestampOffset(14);
+    equal(updater.timestampOffset(), 14, 'reflects changes immediately');
+    equal(sourceBuffer.timestampOffset, 21, 'queues application after updates');
+
+    sourceBuffer.trigger('updateend');
+    equal(sourceBuffer.timestampOffset, 14, 'applied the update');
   });
 
 })(window, window.videojs);
