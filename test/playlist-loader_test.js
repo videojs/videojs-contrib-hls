@@ -149,6 +149,60 @@
     strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
   });
 
+  test('resolves relative media playlist URIs', function() {
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-STREAM-INF:\n' +
+                             'video/media.m3u8\n');
+    equal(loader.master.playlists[0].resolvedUri,
+          urlTo('video/media.m3u8'),
+          'resolved media URI');
+  });
+
+  test('recognizes absolute URIs and requests them unmodified', function() {
+    var loader = new videojs.Hls.PlaylistLoader('manifest/media.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-STREAM-INF:\n' +
+                             'http://example.com/video/media.m3u8\n');
+    equal(loader.master.playlists[0].resolvedUri,
+          'http://example.com/video/media.m3u8',
+          'resolved media URI');
+
+
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXTINF:10,\n' +
+                             'http://example.com/00001.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+    equal(loader.media().segments[0].resolvedUri,
+          'http://example.com/00001.ts',
+          'resolved segment URI');
+  });
+
+  test('recognizes domain-relative URLs', function() {
+    var loader = new videojs.Hls.PlaylistLoader('manifest/media.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-STREAM-INF:\n' +
+                             '/media.m3u8\n');
+    equal(loader.master.playlists[0].resolvedUri,
+          window.location.protocol + '//' +
+          window.location.host + '/media.m3u8',
+          'resolved media URI');
+
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXTINF:10,\n' +
+                             '/00001.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+    equal(loader.media().segments[0].resolvedUri,
+          window.location.protocol + '//' +
+          window.location.host + '/00001.ts',
+          'resolved segment URI');
+  });
+
   test('moves to HAVE_CURRENT_METADATA when refreshing the playlist', function() {
     var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
     requests.pop().respond(200, null,

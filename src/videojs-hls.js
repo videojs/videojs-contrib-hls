@@ -11,7 +11,6 @@ var
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.2,
   blacklistDuration = 5 * 60 * 1000, // 5 minute blacklist
-  TIME_FUDGE_FACTOR = 1 / 30, // Fudge factor to account for TimeRanges rounding
   Component = videojs.getComponent('Component'),
 
   // The amount of time to wait between checking the state of the buffer
@@ -143,6 +142,8 @@ if (window.Uint8Array) {
 
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 30;
+// Fudge factor to account for TimeRanges rounding
+videojs.Hls.TIME_FUDGE_FACTOR = 1 / 30;
 
 videojs.HlsHandler.prototype.src = function(src) {
   var oldMediaPlaylist;
@@ -465,8 +466,7 @@ videojs.HlsHandler.prototype.play = function() {
 };
 
 videojs.HlsHandler.prototype.setCurrentTime = function(currentTime) {
-  var
-    buffered = this.findBufferedRange_();
+  var buffered = videojs.Hls.Ranges.findRange_(this.tech_.buffered(), currentTime);
 
   if (!(this.playlists && this.playlists.media())) {
     // return immediately if the metadata is not ready yet
@@ -803,8 +803,8 @@ var filterBufferedRanges = function(predicate) {
  * @return a new TimeRanges object.
  */
 videojs.HlsHandler.prototype.findBufferedRange_ = filterBufferedRanges(function(start, end, time) {
-  return start - TIME_FUDGE_FACTOR <= time &&
-    end + TIME_FUDGE_FACTOR >= time;
+  return start - videojs.Hls.TIME_FUDGE_FACTOR <= time &&
+    end + videojs.Hls.TIME_FUDGE_FACTOR >= time;
 });
 
 /**
@@ -815,7 +815,7 @@ videojs.HlsHandler.prototype.findBufferedRange_ = filterBufferedRanges(function(
  * @return a new TimeRanges object.
  */
 videojs.HlsHandler.prototype.findNextBufferedRange_ = filterBufferedRanges(function(start, end, time) {
-  return start - TIME_FUDGE_FACTOR >= time;
+  return start - videojs.Hls.TIME_FUDGE_FACTOR >= time;
 });
 
 /**
@@ -829,7 +829,14 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
     tech = this.tech_,
     currentTime = tech.currentTime(),
     hasBufferedContent = (this.tech_.buffered().length !== 0),
-    currentBuffered = this.findBufferedRange_(),
+
+    // !!The order of the next two assignments is important!!
+    // `currentTime` must be equal-to or greater-than the start of the
+    // buffered range. Flash executes out-of-process so, every value can
+    // change behind the scenes from line-to-line. By reading `currentTime`
+    // after `buffered`, we ensure that it is always a current or later
+    // value during playback.
+    currentBuffered = videojs.Hls.Ranges.findRange_(tech.buffered(), tech.currentTime()),
     outsideBufferedRanges = !(currentBuffered && currentBuffered.length),
     currentBufferedEnd = 0,
     bufferedTime = 0,
@@ -1208,7 +1215,14 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
   playlist = this.playlists.media();
   segments = playlist.segments;
   currentMediaIndex = segmentInfo.mediaIndex + (segmentInfo.mediaSequence - playlist.mediaSequence);
-  currentBuffered = this.findBufferedRange_();
+
+  // !!The order of the next two assignments is important!!
+  // `currentTime` must be equal-to or greater-than the start of the
+  // buffered range. Flash executes out-of-process so, every value can
+  // change behind the scenes from line-to-line. By reading `currentTime`
+  // after `buffered`, we ensure that it is always a current or later
+  // value during playback.
+  currentBuffered = videojs.Hls.Ranges.findRange_(this.tech_.buffered(), this.tech_.currentTime());
 
   // if we switched renditions don't try to add segment timeline
   // information to the playlist
@@ -1229,17 +1243,17 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
       currentBuffered.length === 0) {
     if (seekable.length &&
         this.tech_.currentTime() < seekable.start(0)) {
-      var next = this.findNextBufferedRange_();
+      var next = videojs.Hls.Ranges.findNextRange_(this.tech_.buffered(), this.tech_.currentTime());
       if (next.length) {
         videojs.log('tried seeking to', this.tech_.currentTime(), 'but that was too early, retrying at', next.start(0));
-        this.tech_.setCurrentTime(next.start(0) + TIME_FUDGE_FACTOR);
+        this.tech_.setCurrentTime(next.start(0) + videojs.Hls.TIME_FUDGE_FACTOR);
       }
     }
   }
 
 
-  timelineUpdate = videojs.Hls.findSoleUncommonTimeRangesEnd_(segmentInfo.buffered,
-                                                              this.tech_.buffered());
+  timelineUpdate = videojs.Hls.Ranges.findSoleUncommonTimeRangesEnd_(segmentInfo.buffered,
+                                                                     this.tech_.buffered());
 
   if (timelineUpdate && segment) {
     segment.end = timelineUpdate;
