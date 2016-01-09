@@ -44,27 +44,22 @@
       this.pendingSegment_ = null;
       this.sourceUpdater_ = new videojs.Hls.SourceUpdater(options.mediaSource);
     },
-    dispose: function() {},
+    dispose: function() {
+      this.abort_();
+    },
 
     abort: function() {
       if (this.state !== 'WAITING') {
         return;
       }
 
-      if (this.xhr_) {
-        // Prevent error handler from running.
-        this.xhr_.onreadystatechange = null;
-        this.xhr_.abort();
-        this.xhr_ = null;
-      }
-
-      // clear out the segment being processed
-      this.pendingSegment_ = null;
+      this.abort_();
 
       // don't wait for buffer check timeouts to begin fetching the
       // next segment
       if (!this.paused_) {
-        this.load();
+        this.state = 'READY';
+        this.fillBuffer_();
       }
     },
     error: function(error) {
@@ -76,29 +71,47 @@
       return this.error_;
     },
     load: function() {
-      var request;
+      this.paused_ = false;
+
+      // if we don't have a playlist yet, keep waiting for one to be
+      // specified
       if (!this.playlist_) {
-        throw new TypeError('No playlist specified');
+        return;
+      }
+
+      // if we're in the middle of processing a segment already, don't
+      // kick off an additional segment request
+      if (this.state !== 'READY' && this.state !== 'INIT') {
+        return;
       }
 
       this.state = 'READY';
-      this.paused_ = false;
-
-      // see if we need to begin loading immediately
-      request = this.checkBuffer_(this.sourceUpdater_.buffered(),
-                                  this.playlist_,
-                                  this.currentTime_(),
-                                  this.timestampOffset_);
-      if (request) {
-        this.loadSegment_(request);
-      }
+      this.fillBuffer_();
     },
     playlist: function(media) {
       this.playlist_ = media;
+
+      // if we were unpaused but waiting for a playlist, start
+      // buffering now
+      if (media && this.state === 'INIT' && !this.paused_) {
+        this.state = 'READY';
+        return this.fillBuffer_();
+      }
     },
+    /**
+     * Prevent the loader from fetching additional segments. If there
+     * is a segment request outstanding, it will finish processing
+     * before the loader halts. A segment loader can be unpaused by
+     * calling load().
+     */
     pause: function() {
       this.paused_ = true;
     },
+    /**
+     * Returns whether the segment loader is fetching additional
+     * segments when given the opportunity. This property can be
+     * modified through calls to pause() and load().
+     */
     paused: function() {
       return this.paused_;
     },
@@ -181,6 +194,30 @@
       };
     },
 
+    abort_: function() {
+      if (this.xhr_) {
+        // Prevent error handler from running.
+        this.xhr_.onreadystatechange = null;
+        this.xhr_.abort();
+        this.xhr_ = null;
+      }
+
+      // clear out the segment being processed
+      this.pendingSegment_ = null;
+    },
+
+    fillBuffer_: function() {
+      var request;
+
+      // see if we need to begin loading immediately
+      request = this.checkBuffer_(this.sourceUpdater_.buffered(),
+                                  this.playlist_,
+                                  this.currentTime_(),
+                                  this.timestampOffset_);
+      if (request) {
+        this.loadSegment_(request);
+      }
+    },
     loadSegment_: function(segmentInfo) {
       var segment;
 
@@ -217,7 +254,7 @@
         this.roundTrip = NaN;
         this.pendingSegment_ = null;
         this.state = 'READY';
-        return;
+        return this.trigger('progress');
       }
 
       // trigger an event for other errors
@@ -304,7 +341,7 @@
       this.state = 'READY';
 
       if (!this.paused_) {
-        this.load();
+        this.fillBuffer_();
       }
     },
     // annotate the segment with any start and end time information

@@ -6,21 +6,7 @@
     SegmentLoader = videojs.Hls.SegmentLoader,
     createTimeRanges = videojs.createTimeRanges;
 
-  var clock, xhr, requests, mse, useFakeEnvironment, restoreEnvironment;
-  useFakeEnvironment = function() {
-    clock = sinon.useFakeTimers();
-    xhr = sinon.useFakeXMLHttpRequest();
-    videojs.xhr.XMLHttpRequest = xhr;
-    requests = [];
-    xhr.onCreate = function(xhr) {
-      requests.push(xhr);
-    };
-  };
-  restoreEnvironment = function() {
-    clock.restore();
-    videojs.xhr.XMLHttpRequest = window.XMLHttpRequest;
-    xhr.restore();
-  };
+  var clock, xhr, requests, mse, env;
 
   var playlistWithDuration = function(time) {
     var
@@ -54,7 +40,9 @@
 
   module('Segment Loader', {
     beforeEach: function() {
-      useFakeEnvironment();
+      env = videojs.useFakeEnvironment();
+      clock = env.clock;
+      requests = env.requests;
       mse = videojs.useFakeMediaSource();
 
       currentTime = 0;
@@ -67,7 +55,7 @@
       });
     },
     afterEach: function() {
-      restoreEnvironment();
+      env.restore();
       mse.restore();
     }
   });
@@ -86,10 +74,14 @@
     }, 'requires a media source');
   });
 
-  test('load fails before specifying a playlist', function() {
-    throws(function() {
-      loader.load();
-    }, 'checks for a playlist');
+  test('load waits until a playlist is specified to proceed', function() {
+    loader.load();
+    equal(loader.state, 'INIT', 'waiting in init');
+    equal(loader.paused(), false, 'not paused');
+
+    loader.playlist(playlistWithDuration(10));
+    equal(requests.length, 1, 'made a request');
+    equal(loader.state, 'WAITING', 'transitioned states');
   });
 
   test('calling load begins buffering', function() {
@@ -102,6 +94,52 @@
     equal(loader.state, 'WAITING', 'moves to the ready state');
     ok(!loader.paused(), 'loading is not paused');
     equal(requests.length, 1, 'requested a segment');
+  });
+
+  test('calling load is idempotent', function() {
+    loader.playlist(playlistWithDuration(20));
+    loader.load();
+    equal(loader.state, 'WAITING', 'moves to the ready state');
+    equal(requests.length, 1, 'made one request');
+
+    loader.load();
+    equal(loader.state, 'WAITING', 'still in the ready state');
+    equal(requests.length, 1, 'still one request');
+
+    // some time passes and a response is received
+    clock.tick(100);
+    requests[0].response = new Uint8Array(10).buffer;
+    requests.shift().respond(200, null, '');
+    loader.load();
+    equal(requests.length, 0, 'load has no effect');
+  });
+
+  test('calling load should unpause', function() {
+    var sourceBuffer;
+    loader.playlist(playlistWithDuration(20));
+    loader.pause();
+    mediaSource.trigger('sourceopen');
+    sourceBuffer = mediaSource.sourceBuffers[0];
+
+    loader.load();
+    equal(loader.paused(), false, 'loading unpauses');
+
+    loader.pause();
+    clock.tick(1);
+    requests[0].response = new Uint8Array(10).buffer;
+    requests.shift().respond(200, null, '');
+
+    equal(loader.paused(), true, 'stayed paused');
+    loader.load();
+    equal(loader.paused(), false, 'unpaused during processing');
+
+    loader.pause();
+    sourceBuffer.trigger('updateend');
+    equal(loader.state, 'READY', 'finished processing');
+    ok(loader.paused(), 'stayed paused');
+
+    loader.load();
+    equal(loader.paused(), false, 'unpaused');
   });
 
   test('calculates bandwidth after downloading a segment', function() {
@@ -213,6 +251,9 @@
   test('cancels outstanding requests on abort', function() {
     loader.playlist(playlistWithDuration(20));
     loader.load();
+    loader.xhr_.onreadystatechange = function() {
+      throw 'onreadystatechange should not be called';
+    };
 
     loader.abort();
     ok(requests[0].aborted, 'aborted the first request');
@@ -322,6 +363,29 @@
     equal(endOfStreams, 1, 'triggered ended');
   });
 
+  test('live playlists do not trigger ended', function() {
+    var endOfStreams = 0, playlist;
+    playlist = playlistWithDuration(10);
+    playlist.endList = false;
+    loader.playlist(playlist);
+    loader.load();
+    mediaSource.trigger('sourceopen');
+    loader.mediaSource_ = {
+      readyState: 'open',
+      sourceBuffers: mediaSource.sourceBuffers,
+      endOfStream: function() {
+        endOfStreams++;
+      }
+    };
+
+    requests[0].response = new Uint8Array(10).buffer;
+    requests.shift().respond(200, null, '');
+    mediaSource.sourceBuffers[0].buffered = createTimeRanges([[0, 10]]);
+    mediaSource.sourceBuffers[0].trigger('updateend');
+    equal(endOfStreams, 0, 'did not trigger ended');
+  });
+
+
   test('respects the global withCredentials option', function() {
     var hlsOptions = videojs.options.hls;
     videojs.options.hls = {
@@ -376,6 +440,16 @@
     loader.playlist(playlistWithDuration(0));
     loader.load();
     equal(loader.state, 'READY', 'in the ready state');
+  });
+
+  test('dispose cleans up outstanding work', function() {
+    loader.playlist(playlistWithDuration(20));
+    loader.load();
+    mediaSource.trigger('sourceopen');
+
+    loader.dispose();
+    ok(requests[0].aborted, 'aborted segment request');
+    equal(requests.length, 1, 'did not open another request');
   });
 
   // --------------
@@ -753,7 +827,7 @@
 
   module('Segment Loading Calculation', {
     beforeEach: function() {
-      useFakeEnvironment();
+      env = videojs.useFakeEnvironment();
 
       currentTime = 0;
       loader = new SegmentLoader({
@@ -763,7 +837,9 @@
         mediaSource: new videojs.MediaSource()
       });
     },
-    afterEach: restoreEnvironment
+    afterEach: function() {
+      env.restore()
+    }
   });
 
   test('requests the first segment with an empty buffer', function() {

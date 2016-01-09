@@ -52,6 +52,7 @@
         mediaSource.sourceBuffers.push(sourceBuffer);
         return sourceBuffer;
       };
+
       return mediaSource;
     };
     videojs.MediaSource.supportsNativeMediaSources = RealMediaSource.supportsNativeMediaSources;
@@ -61,6 +62,27 @@
         videojs.MediaSource = RealMediaSource;
       }
     };
+  };
+
+  var clock, xhr, requests;
+  videojs.useFakeEnvironment = function() {
+    clock = sinon.useFakeTimers();
+    xhr = sinon.useFakeXMLHttpRequest();
+    videojs.xhr.XMLHttpRequest = xhr;
+    requests = [];
+    xhr.onCreate = function(xhr) {
+      requests.push(xhr);
+    };
+    return {
+      clock: clock,
+      requests: requests,
+      restore: videojs.restoreEnvironment
+    };
+  };
+  videojs.restoreEnvironment = function() {
+    clock.restore();
+    videojs.xhr.XMLHttpRequest = window.XMLHttpRequest;
+    xhr.restore();
   };
 
 })(window, window.videojs);
