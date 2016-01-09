@@ -427,6 +427,15 @@ test('creates a PlaylistLoader on init', function() {
               'the playlist is selected');
 });
 
+test('creates a SegmentLoader on init', function() {
+  player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  equal(player.tech_.hls.segments.state, 'INIT', 'created a segment loader');
+});
+
 test('re-initializes the playlist loader when switching sources', function() {
   // source is set
   player.src({
@@ -460,6 +469,48 @@ test('re-initializes the playlist loader when switching sources', function() {
 
   equal(requests.length, 1, 'made one request');
   ok(requests[0].url.indexOf('master.m3u8') >= 0, 'requested only the new playlist');
+});
+
+test('updates the segment loader on media changes', function() {
+  var updates = [], hls;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  hls = player.tech_.hls;
+
+  hls.bandwidth = 1;
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
+  hls.segments.playlist = function(update) {
+    updates.push(update);
+  };
+
+  // downloading the new segment will update bandwidth and cause a
+  // playlist change
+  standardXHRResponse(requests.shift()); // segment 0
+  standardXHRResponse(requests.shift()); // media
+  equal(updates.length, 1, 'updated the segment list');
+});
+
+test('updates the segment loader on live playlist refreshes', function() {
+  var updates = [], hls;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  hls = player.tech_.hls;
+
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
+  hls.segments.playlist = function(update) {
+    updates.push(update);
+  };
+
+  hls.playlists.trigger('loadedplaylist');
+  equal(updates.length, 1, 'updated the segment list');
 });
 
 test('sets the duration if one is available on the playlist', function() {

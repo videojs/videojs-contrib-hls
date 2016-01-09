@@ -175,6 +175,41 @@
     equal(requests.length, 0, 'only made one request');
   });
 
+  test('adjusts the playlist offset if no buffering progress is made', function() {
+    var sourceBuffer, playlist;
+    playlist = playlistWithDuration(40);
+    playlist.endList = false;
+    loader.playlist(playlist);
+    loader.load();
+    mediaSource.trigger('sourceopen');
+    sourceBuffer = mediaSource.sourceBuffers[0];
+
+    // buffer some content and switch playlists on progress
+    clock.tick(1);
+    requests[0].response = new Uint8Array(10).buffer;
+    requests.shift().respond(200, null, '');
+    loader.on('progress', function f() {
+      loader.off('progress', f);
+      // switch playlists
+      playlist = playlistWithDuration(40);
+      playlist.uri = 'alternate.m3u8';
+      playlist.endList = false;
+      loader.playlist(playlist);
+    });
+    sourceBuffer.buffered = createTimeRanges([[0, 10]]);
+    sourceBuffer.trigger('updateend');
+
+    // the next segment doesn't increase the buffer at all
+    equal(requests[0].url, '1.ts', 'requested the equivalent segment');
+    clock.tick(1);
+    requests[0].response = new Uint8Array(10).buffer;
+    requests.shift().respond(200, null, '');
+    sourceBuffer.trigger('updateend');
+
+    // so the loader should try the next segment
+    equal(requests[0].url, '2.ts', 'moved ahead a segment');
+  });
+
   test('cancels outstanding requests on abort', function() {
     loader.playlist(playlistWithDuration(20));
     loader.load();
@@ -791,8 +826,17 @@
     equal(segmentInfo.timestampOffset, 37.9, 'placed the discontinuous segment');
   });
 
-  test('makes progress when switching playlists and downloading a segment does not increase the buffer', function() {
-    ok(false, 'not implemented');
+  test('adjusts calculations based on an offset', function() {
+    var buffered, playlist, segmentInfo;
+    buffered = createTimeRanges([[0, 30]]);
+    playlist = playlistWithDuration(50);
+
+    segmentInfo = loader.checkBuffer_(buffered,
+                                      playlist,
+                                      40 - videojs.Hls.GOAL_BUFFER_LENGTH,
+                                      10);
+    ok(segmentInfo, 'fetched a segment');
+    equal(segmentInfo.uri, '2.ts', 'accounted for the offset');
   });
 
 })(window, window.videojs);

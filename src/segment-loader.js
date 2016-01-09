@@ -150,9 +150,10 @@
       // - find the closest discontinuity before the appended segment
       // - set the SourceBuffer's timestampOffset to the estimated
       //   start time of the first discontinuous segment
-      discontinuity = playlist.discontinuityStarts.slice().reverse().find(function(i) {
-        return i <= mediaIndex;
-      });
+      discontinuity = playlist.discontinuityStarts.slice().reverse()
+        .find(function(i) {
+          return i <= mediaIndex;
+        });
       if (discontinuity) {
         timestampOffset += duration(playlist, playlist.mediaSequence + mediaIndex);
       }
@@ -186,7 +187,7 @@
       segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
       this.pendingSegment_ = segmentInfo;
       this.xhr_ = videojs.Hls.xhr({
-        uri: segmentInfo.resolvedUri,
+        uri: segmentInfo.uri,
         responseType: 'arraybuffer',
         withCredentials: this.withCredentials_,
         // Set xhr timeout to 150% of the segment duration to allow us
