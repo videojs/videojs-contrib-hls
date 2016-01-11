@@ -461,7 +461,7 @@ test('re-initializes the playlist loader when switching sources', function() {
   equal(requests.length, 1, 'requested the new src');
 
   // buffer check
-  player.tech_.hls.checkBuffer_();
+  clock.tick(10 * 1000);
   equal(requests.length, 1, 'did not request a stale segment');
 
   // sourceopen
@@ -1731,7 +1731,7 @@ test('does not download segments if preload option set to none', function() {
   openMediaSource(player);
   standardXHRResponse(requests.shift()); // master
   standardXHRResponse(requests.shift()); // media
-  player.tech_.hls.checkBuffer_();
+  clock.tick(10 * 1000);
 
   requests = requests.filter(function(request) {
     return !/m3u8$/.test(request.uri);
