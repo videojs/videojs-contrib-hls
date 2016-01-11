@@ -497,6 +497,9 @@ videojs.Hls.prototype.updateDuration = function(playlist) {
   if (oldDuration !== newDuration) {
     player.trigger('durationchange');
   }
+  if (newDuration < this.currentTime()) {
+    this.setCurrentTime(newDuration);
+  }
 };
 
 /**
