@@ -13,7 +13,9 @@ var DEFAULTS = {
 
   exclude: [
     'test/bundle.js',
-    'test/files/**'
+    'test/files/**',
+    'test/manifest/**',
+    'test/test-data/ts-segment-bc*'
   ],
 
   plugins: [
@@ -37,6 +39,10 @@ var DEFAULTS = {
     transform: [
       'babelify',
       'browserify-shim'
+    ],
+    noParse: [
+      'test/files/**',
+      'test/test-data/ts-segment-bc*'
     ]
   }
 };

@@ -12,8 +12,11 @@ import {Decrypter, AsyncStream, decrypt} from './decrypter';
 import utils from './bin-utils';
 import xhr from './xhr';
 import resolveUrl from './resolve-url';
+import util from 'util';
 
-if(typeof videojs.prototype.MediaSource === 'undefined') {
+const Player = videojs.getComponent('Player');
+
+if(typeof Player.prototype.MediaSource === 'undefined') {
   videojs.plugin('MediaSource', MediaSource);
   videojs.plugin('URL', URL);
 }
@@ -153,8 +156,7 @@ HlsSourceHandler.canPlayType = function(type) {
 };
 
 // register source handlers with the appropriate techs
-console.log(MediaSource);
-if (videojs.MediaSource.supportsNativeMediaSources()) {
+if (MediaSource.prototype.supportsNativeMediaSources()) {
   videojs.getComponent('Html5').registerSourceHandler(HlsSourceHandler('html5'));
 }
 if (window.Uint8Array) {
@@ -172,7 +174,7 @@ HlsHandler.prototype.src = function(src) {
     return;
   }
 
-  this.mediaSource = new videojs.MediaSource({ mode: this.mode_ });
+  this.mediaSource = new Player.prototype.MediaSource({ mode: this.mode_ });
 
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen.bind(this));
@@ -242,7 +244,7 @@ HlsHandler.prototype.src = function(src) {
     return;
   }
 
-  this.tech_.src(videojs.URL.createObjectURL(this.mediaSource));
+  this.tech_.src(Player.prototype.URL.createObjectURL(this.mediaSource));
 };
 
 HlsHandler.prototype.handleSourceOpen = function() {
@@ -1439,4 +1441,9 @@ Hls.comparePlaylistResolution = function(left, right) {
 videojs.plugin('HlsHandler', HlsHandler);
 videojs.plugin('HlsSourceHandler', HlsSourceHandler);
 videojs.plugin('Hls', Hls);
-videojs.plugin('m3u8', m3u8);
+
+export default {
+  Hls,
+  HlsHandler,
+  HlsSourceHandler,
+};

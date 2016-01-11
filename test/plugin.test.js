@@ -4,14 +4,14 @@ import QUnit from 'qunit';
 import {Hls, HlsSourceHandler, HlsHandler} from '../src/plugin';
 
 var
-  Flash = videojs.getComponent('Flash'),
-  oldFlash,
+  this.Flash = videojs.getComponent('Flash'),
+  oldthis.Flash,
   clock,
   oldMediaSource,
   oldCreateUrl,
   oldSegmentParser,
   oldSourceBuffer,
-  oldFlashSupported,
+  oldthis.FlashSupported,
   oldNativeHlsSupport,
   oldDecrypt,
   oldGlobalOptions,
@@ -24,9 +24,9 @@ var
   // synchronously with sinon's fake timers
   mockTech = function(tech) {
     if (tech.isMocked_) {
-      // make this function idempotent because HTML and Flash based
+      // make this function idempotent because HTML and this.Flash based
       // playback have very different lifecycles. For HTML, the tech
-      // is available on player creation. For Flash, the tech isn't
+      // is available on player creation. For this.Flash, the tech isn't
       // ready until the source has been loaded and one tick has
       // expired.
       return;
@@ -104,7 +104,7 @@ var
     return player;
   },
   openMediaSource = function(player) {
-    // ensure the Flash tech is ready
+    // ensure the this.Flash tech is ready
     player.tech_.triggerReady();
     clock.tick(1);
     mockTech(player.tech_);
@@ -199,9 +199,9 @@ QUnit.module('HLS', {
       return 'blob:mock-vjs-object-url';
     };
 
-    // mock out Flash features for phantomjs
-    oldFlash = videojs.mergeOptions({}, Flash);
-    Flash.embed = function(swf, flashVars) {
+    // mock out this.Flash features for phantomjs
+    oldthis.Flash = videojs.mergeOptions({}, this.Flash);
+    this.Flash.embed = function(swf, flashVars) {
       var el = document.createElement('div');
       el.id = 'vjs_mock_flash_' + nextId++;
       el.className = 'vjs-tech vjs-mock-flash';
@@ -231,8 +231,8 @@ QUnit.module('HLS', {
 
       return el;
     };
-    oldFlashSupported = Flash.isSupported;
-    Flash.isSupported = function() {
+    oldthis.FlashSupported = Flash.isSupported;
+    this.Flash.isSupported = function() {
       return true;
     };
 
@@ -271,8 +271,8 @@ QUnit.module('HLS', {
     this.player.URL.createObjectURL = oldCreateUrl;
 
     merge(this.player.options, oldGlobalOptions);
-    Flash.isSupported = oldFlashSupported;
-    merge(Flash, oldFlash);
+    this.Flash.isSupported = oldFlashSupported;
+    merge(this.Flash, oldFlash);
 
     this.player.Hls.SegmentParser = oldSegmentParser;
     this.player.Hls.supportsNativeHls = oldNativeHlsSupport;
@@ -1499,9 +1499,9 @@ QUnit.test('when outstanding XHRs are cancelled, they get aborted properly', fun
 QUnit.test('segmentXhr is properly nulled out when dispose is called', function() {
   var
     readystatechanges = 0,
-    oldDispose = Flash.prototype.dispose,
+    oldDispose = this.Flash.prototype.dispose,
     player;
-  Flash.prototype.dispose = function() {};
+  this.Flash.prototype.dispose = function() {};
 
   player = createPlayer();
   player.src({
@@ -1525,7 +1525,7 @@ QUnit.test('segmentXhr is properly nulled out when dispose is called', function(
   QUnit.equal(player.tech_.hls.segmentXhr_, null, 'the segment xhr is nulled out');
   QUnit.strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
 
-  Flash.prototype.dispose = oldDispose;
+  this.Flash.prototype.dispose = oldDispose;
 });
 
 QUnit.test('does not modify the media index for in-buffer seeking', function() {
@@ -2202,7 +2202,7 @@ QUnit.test('the source handler supports HLS mime types', function() {
   });
 });
 
-QUnit.test('fires loadstart manually if Flash is used', function() {
+QUnit.test('fires loadstart manually if this.Flash is used', function() {
   var
     tech = new (videojs.extend(videojs.EventTarget, {
       buffered: function() {
