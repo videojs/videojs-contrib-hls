@@ -472,11 +472,23 @@ videojs.HlsHandler.prototype.setCurrentTime = function(currentTime) {
 };
 
 videojs.HlsHandler.prototype.duration = function() {
-  var playlists = this.playlists;
+  var
+    playlists = this.playlists,
+    playlistDuration;
+
   if (playlists) {
-    return videojs.Hls.Playlist.duration(playlists.media());
+    playlistDuration = videojs.Hls.Playlist.duration(playlists.media());
+  } else {
+    return 0;
   }
-  return 0;
+
+  if (playlistDuration === Infinity) {
+    return playlistDuration;
+  } else if (this.mediaSource) {
+    return this.mediaSource.duration;
+  } else {
+    return playlistDuration;
+  }
 };
 
 videojs.HlsHandler.prototype.seekable = function() {
