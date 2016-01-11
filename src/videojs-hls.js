@@ -214,7 +214,11 @@ videojs.HlsHandler.prototype.src = function(src) {
     oldMediaPlaylist = updatedPlaylist;
   }.bind(this));
 
+  this.playlists.on('mediachanging', function() {
+    this.segments.pause();
+  }.bind(this));
   this.playlists.on('mediachange', function() {
+    this.segments.load();
     this.tech_.trigger({
       type: 'mediachange',
       bubbles: true
@@ -748,8 +752,8 @@ videojs.HlsHandler.prototype.checkBuffer_ = function() {
     this.checkBufferTimeout_ = null;
   }
 
-  this.fillBuffer();
-  this.drainBuffer();
+  //this.fillBuffer();
+  //this.drainBuffer();
 
   // wait awhile and try again
   this.checkBufferTimeout_ = window.setTimeout((this.checkBuffer_).bind(this),

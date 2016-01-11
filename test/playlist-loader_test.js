@@ -811,9 +811,13 @@
   test('triggers an event when the active media changes', function() {
     var
       loader = new videojs.Hls.PlaylistLoader('master.m3u8'),
-      mediaChanges = 0;
+      mediaChanges = 0,
+       mediaChangings = 0;
     loader.on('mediachange', function() {
       mediaChanges++;
+    });
+    loader.on('mediachanging', function() {
+      mediaChangings++;
     });
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
@@ -827,9 +831,11 @@
                              '#EXTINF:10,\n' +
                              'low-0.ts\n' +
                              '#EXT-X-ENDLIST\n');
+    strictEqual(mediaChangings, 0, 'initial selection is not media changing');
     strictEqual(mediaChanges, 0, 'initial selection is not a media change');
 
     loader.media('high.m3u8');
+    strictEqual(mediaChangings, 1, 'mediachanging fires immediately');
     strictEqual(mediaChanges, 0, 'mediachange does not fire immediately');
 
     requests.shift().respond(200, null,
@@ -838,14 +844,17 @@
                              '#EXTINF:10,\n' +
                              'high-0.ts\n' +
                              '#EXT-X-ENDLIST\n');
+    strictEqual(mediaChangings, 1, 'still one mediachanging');
     strictEqual(mediaChanges, 1, 'fired a mediachange');
 
     // switch back to an already loaded playlist
     loader.media('low.m3u8');
+    strictEqual(mediaChangings, 2, 'mediachanging fires');
     strictEqual(mediaChanges, 2, 'fired a mediachange');
 
     // trigger a no-op switch
     loader.media('low.m3u8');
+    strictEqual(mediaChangings, 2, 'mediachanging ignored the no-op');
     strictEqual(mediaChanges, 2, 'ignored a no-op media change');
   });
 

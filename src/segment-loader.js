@@ -12,6 +12,8 @@
   var getMediaIndexForTime = videojs.Hls.Playlist.getMediaIndexForTime_;
   var duration = videojs.Hls.Playlist.duration;
 
+  var CHECK_BUFFER_DELAY = 500; // ms
+
   videojs.Hls.SegmentLoader = videojs.extend(videojs.EventTarget, {
     constructor: function(options) {
       var settings;
@@ -37,12 +39,13 @@
       this.currentTime_ = settings.currentTime;
       this.mediaSource_ = settings.mediaSource;
       this.withCredentials_ = settings.withCredentials;
-      this.paused_ = true;
+      this.checkBufferTimeout_ = null;
       this.error_ = undefined;
       this.timestampOffset_ = 0;
       this.xhr_ = null;
       this.pendingSegment_ = null;
-      this.sourceUpdater_ = new videojs.Hls.SourceUpdater(options.mediaSource);
+      this.sourceUpdater_ = new videojs.Hls.SourceUpdater(options.mediaSource,
+                                                          'video/mp2t');
     },
     dispose: function() {
       this.abort_();
@@ -57,7 +60,7 @@
 
       // don't wait for buffer check timeouts to begin fetching the
       // next segment
-      if (!this.paused_) {
+      if (!this.paused()) {
         this.state = 'READY';
         this.fillBuffer_();
       }
@@ -71,7 +74,7 @@
       return this.error_;
     },
     load: function() {
-      this.paused_ = false;
+      this.monitorBuffer_();
 
       // if we don't have a playlist yet, keep waiting for one to be
       // specified
@@ -93,7 +96,7 @@
 
       // if we were unpaused but waiting for a playlist, start
       // buffering now
-      if (media && this.state === 'INIT' && !this.paused_) {
+      if (media && this.state === 'INIT' && !this.paused()) {
         this.state = 'READY';
         return this.fillBuffer_();
       }
@@ -105,7 +108,11 @@
      * calling load().
      */
     pause: function() {
-      this.paused_ = true;
+      if (this.checkBufferTimeout_) {
+        window.clearTimeout(this.checkBufferTimeout_);
+
+        this.checkBufferTimeout_ = null;
+      }
     },
     /**
      * Returns whether the segment loader is fetching additional
@@ -113,12 +120,19 @@
      * modified through calls to pause() and load().
      */
     paused: function() {
-      return this.paused_;
+      return this.checkBufferTimeout_ === null;
     },
     timestampOffset: function(offset) {
       this.timestampOffset_ = offset;
     },
 
+    monitorBuffer_: function() {
+      if (this.state === 'READY') {
+        this.fillBuffer_();
+      }
+      this.checkBufferTimeout_ = window.setTimeout(this.monitorBuffer_.bind(this),
+                                                   CHECK_BUFFER_DELAY);
+    },
     /**
      * Determines what segment request should be made, given current
      * playback state.
@@ -340,7 +354,7 @@
 
       this.state = 'READY';
 
-      if (!this.paused_) {
+      if (!this.paused()) {
         this.fillBuffer_();
       }
     },

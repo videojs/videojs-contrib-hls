@@ -142,6 +142,46 @@
     equal(loader.paused(), false, 'unpaused');
   });
 
+  test('regularly checks the buffer while unpaused', function() {
+    var sourceBuffer;
+    loader.playlist(playlistWithDuration(90));
+    loader.load();
+    mediaSource.trigger('sourceopen');
+    sourceBuffer = mediaSource.sourceBuffers[0];
+
+    // fill the buffer
+    clock.tick(1);
+    requests[0].response = new Uint8Array(10).buffer;
+    requests.shift().respond(200, null, '');
+    sourceBuffer.buffered = createTimeRanges([[
+      0, videojs.Hls.GOAL_BUFFER_LENGTH
+    ]]);
+    sourceBuffer.trigger('updateend');
+    equal(requests.length, 0, 'no outstanding requests');
+
+    // play some video to drain the buffer
+    currentTime = videojs.Hls.GOAL_BUFFER_LENGTH;
+    clock.tick(10 * 1000);
+    equal(requests.length, 1, 'requested another segment');
+  });
+
+  test('does not check the buffer while paused', function() {
+    var sourceBuffer;
+    loader.playlist(playlistWithDuration(90));
+    loader.load();
+    mediaSource.trigger('sourceopen');
+    sourceBuffer = mediaSource.sourceBuffers[0];
+
+    loader.pause();
+    clock.tick(1);
+    requests[0].response = new Uint8Array(10).buffer;
+    requests.shift().respond(200, null, '');
+    sourceBuffer.trigger('updateend');
+
+    clock.tick(10 * 1000);
+    equal(requests.length, 0, 'did not make a request');
+  });
+
   test('calculates bandwidth after downloading a segment', function() {
     loader.playlist(playlistWithDuration(10));
     loader.load();
@@ -165,8 +205,7 @@
     clock.tick(100 * 1000);
 
     equal(loader.bandwidth, 1, 'reset bandwidth');
-    ok(isNaN(loader.roundTrip), 'reest round trip time');
-    equal(loader.state, 'READY', 'back to ready state');
+    ok(isNaN(loader.roundTrip), 'reset round trip time');
   });
 
   test('appending a segment triggers progress', function() {
