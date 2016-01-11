@@ -632,7 +632,6 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
     now = +new Date(),
     i,
     variant,
-    oldvariant,
     bandwidthBestVariant,
     resolutionPlusOne,
     resolutionBestVariant,
@@ -689,7 +688,6 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
   // iterate through the bandwidth-filtered playlists and find
   // best rendition by player dimension
   while (i--) {
-    oldvariant = variant;
     variant = bandwidthPlaylists[i];
 
     // ignore playlists without resolution information
@@ -700,9 +698,9 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
       continue;
     }
 
-
     // since the playlists are sorted, the first variant that has
     // dimensions less than or equal to the player size is the best
+
     if (variant.attributes.RESOLUTION.width === width &&
         variant.attributes.RESOLUTION.height === height) {
       // if we have the exact resolution as the player use it
@@ -711,14 +709,14 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
       break;
     } else if (variant.attributes.RESOLUTION.width < width &&
         variant.attributes.RESOLUTION.height < height) {
-      // if we don't have an exact match, see if we have a good higher quality variant to use
-      if (oldvariant && oldvariant.attributes && oldvariant.attributes.RESOLUTION &&
-          oldvariant.attributes.RESOLUTION.width && oldvariant.attributes.RESOLUTION.height) {
-        resolutionPlusOne = oldvariant;
-      }
-      resolutionBestVariant = variant;
+      // if both dimensions are less than the player use the
+      // previous (next-largest) variant
       break;
     }
+
+    // we still haven't found a good match so keep a reference
+    // to the previous variant for the next loop iteration
+    resolutionPlusOne = variant;
   }
 
   // fallback chain of variants
