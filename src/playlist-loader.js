@@ -395,30 +395,8 @@
     }
 
     // calculate expired by walking the outdated playlist
-    i = update.mediaSequence - outdated.mediaSequence - 1;
-
-    for (; i >= 0; i--) {
-      segment = outdated.segments[i];
-
-      if (!segment) {
-        // we missed information on this segment completely between
-        // playlist updates so we'll have to take an educated guess
-        // once we begin buffering again, any error we introduce can
-        // be corrected
-        this.expired_ += outdated.targetDuration || 10;
-        continue;
-      }
-
-      if (segment.end !== undefined) {
-        this.expired_ = segment.end;
-        return;
-      }
-      if (segment.start !== undefined) {
-        this.expired_ = segment.start + segment.duration;
-        return;
-      }
-      this.expired_ += segment.duration;
-    }
+    i = update.mediaSequence - outdated.mediaSequence;
+    this.expired_ = videojs.Hls.Playlist.intervalDuration(outdated, i) - videojs.Hls.Playlist.intervalDuration(outdated, 1);
   };
 
   /**
