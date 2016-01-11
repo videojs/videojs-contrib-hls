@@ -96,7 +96,12 @@
 
       // a flag that disables "expired time"-tracking this setting has
       // no effect when not playing a live stream
-      this.trackExpiredTime_ = false;
+      loader.trackExpiredTime_ = false;
+
+      // a flag that signals if we are in the process of retrying the
+      // process of fetching a live playlist because the last fetch
+      // introduced no changes
+      loader.retryUpdate_ = false;
 
       if (!srcUrl) {
         throw new Error('A non-empty playlist URL is required');
@@ -134,12 +139,24 @@
         update = updateMaster(loader.master, parser.manifest);
         refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
         if (update) {
+          loader.retryUpdate_ = false;
           loader.master = update;
           loader.updateMediaPlaylist_(parser.manifest);
-        } else {
+        } else if (!loader.retryUpdate_) {
           // if the playlist is unchanged since the last reload,
           // try again after half the target duration
           refreshDelay /= 2;
+          loader.retryUpdate_ = true;
+        } else {
+          // After retrying twice, emit an error to signal that HLS
+          // should blacklist this playlist and switch to another playlist
+          loader.retryUpdate_ = false;
+          loader.error = {
+            playlist: loader.master.playlists[url],
+            message: 'HLS playlist failed to update at URL: ' + url,
+            code: 2
+          };
+          return loader.trigger('error');
         }
 
         // refresh live playlists after a target duration passes
