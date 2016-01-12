@@ -57,7 +57,7 @@
     "postversion": "git push origin master && git push origin --tags",
     "watch": "npm run mkdirs && npm-run-all -p watch:*",
     "watch:js": "watchify src/plugin.js -t babelify -v -o dist/videojs-contrib-hls.js",
-    "watch:test": "watchify `find test -name '*.test.js'` -t babelify -o dist-test/videojs-contrib-hls.js"
+    "watch:test": "watchify `find test -name '*.test.js'` -t babelify -v -o dist-test/videojs-contrib-hls.js"
   },
   "dependencies": {
     "pkcs7": "^0.2.3",
@@ -88,7 +88,7 @@
     "portscanner": "^1.0.0",
     "qunitjs": "^1.0.0",
     "serve-static": "^1.10.0",
-    "sinon": "^1.17.2",
+    "sinon": "1.10.2",
     "uglify-js": "^2.5.0",
     "videojs-standard": "^4.0.0",
     "watchify": "^3.6.0"

@@ -12,25 +12,26 @@ import {Decrypter, AsyncStream, decrypt} from './decrypter';
 import utils from './bin-utils';
 import xhr from './xhr';
 import resolveUrl from './resolve-url';
-import util from 'util';
+import videojs from 'video.js';
 
 const Player = videojs.getComponent('Player');
 
-if(typeof Player.prototype.MediaSource === 'undefined') {
+if (typeof Player.prototype.MediaSource === 'undefined') {
   videojs.plugin('MediaSource', MediaSource);
   videojs.plugin('URL', URL);
 }
-var
-  // A fudge factor to apply to advertised playlist bitrates to account for
-  // temporary flucations in client bandwidth
-  bandwidthVariance = 1.2,
-  blacklistDuration = 5 * 60 * 1000, // 5 minute blacklist
-  TIME_FUDGE_FACTOR = 1 / 30, // Fudge factor to account for TimeRanges rounding
-  Component = videojs.getComponent('Component'),
+// A fudge factor to apply to advertised playlist bitrates to account for
+// temporary flucations in client bandwidth
+const bandwidthVariance = 1.2;
 
-  // The amount of time to wait between checking the state of the buffer
-  bufferCheckInterval = 500;
+// 5 minute blacklist
+const blacklistDuration = 5 * 60 * 1000;
+// Fudge factor to account for TimeRanges rounding
+const TIME_FUDGE_FACTOR = 1 / 30;
+const Component = videojs.getComponent('Component');
 
+// The amount of time to wait between checking the state of the buffer
+const bufferCheckInterval = 500;
 
 // returns true if a key has failed to download within a certain amount of retries
 const keyFailed = function(key) {
@@ -49,8 +50,11 @@ export const Hls = {
 };
 
 export const HlsHandler = videojs.extend(Component, {
-  constructor: function(tech, options) {
-    var self = this, _player;
+  constructor(tech, options) {
+    /* eslint-disable consistent-this */
+    let self = this;
+    /* eslint-enable consistent-this */
+    let _player;
 
     Component.call(this, tech);
 
@@ -60,7 +64,7 @@ export const HlsHandler = videojs.extend(Component, {
       _player = videojs(tech.options_.playerId);
       if (!_player.hls) {
         Object.defineProperty(_player, 'hls', {
-          get: function() {
+          get() {
             videojs.log.warn('player.hls is deprecated. Use player.tech.hls instead.');
             return self;
           }
@@ -76,7 +80,8 @@ export const HlsHandler = videojs.extend(Component, {
 
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
-    this.bandwidth = options.bandwidth || 4194304; // 0.5 Mbps
+    // 0.5 Mbps
+    this.bandwidth = options.bandwidth || 4194304;
     this.bytesReceived = 0;
 
     // loadingState_ tracks how far along the buffering process we
@@ -121,10 +126,10 @@ Hls.canPlaySource = function() {
  */
 export const HlsSourceHandler = function(mode) {
   return {
-    canHandleSource: function(srcObj) {
+    canHandleSource(srcObj) {
       return HlsSourceHandler.canPlayType(srcObj.type);
     },
-    handleSource: function(source, tech) {
+    handleSource(source, tech) {
       if (mode === 'flash') {
         // We need to trigger this asynchronously to give others the chance
         // to bind to the event when a source is set at player creation
@@ -133,20 +138,20 @@ export const HlsSourceHandler = function(mode) {
         }, 1);
       }
       tech.hls = new HlsHandler(tech, {
-        source: source,
-        mode: mode
+        source,
+        mode
       });
       tech.hls.src(source.src);
       return tech.hls;
     },
-    canPlayType: function(type) {
+    canPlayType(type) {
       return HlsSourceHandler.canPlayType(type);
     }
   };
 };
 
 HlsSourceHandler.canPlayType = function(type) {
-  var mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
+  let mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
   // favor native HLS support if it's available
   if (Hls.supportsNativeHls) {
@@ -167,7 +172,7 @@ if (window.Uint8Array) {
 Hls.GOAL_BUFFER_LENGTH = 30;
 
 HlsHandler.prototype.src = function(src) {
-  var oldMediaPlaylist;
+  let oldMediaPlaylist;
 
   // do nothing if the src is falsey
   if (!src) {
@@ -180,12 +185,15 @@ HlsHandler.prototype.src = function(src) {
   this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen.bind(this));
 
   this.options_ = {};
-  if (this.source_.withCredentials !== undefined) {
+  if (typeof this.source_.withCredentials !== 'undefined') {
     this.options_.withCredentials = this.source_.withCredentials;
   } else if (videojs.options.hls) {
     this.options_.withCredentials = videojs.options.hls.withCredentials;
   }
-  this.playlists = new Hls.PlaylistLoader(this.source_.src, this.options_.withCredentials);
+  this.playlists = new Hls.PlaylistLoader(
+    this.source_.src,
+    this.options_.withCredentials
+  );
 
   this.tech_.one('canplay', this.setupFirstPlay.bind(this));
 
@@ -211,7 +219,8 @@ HlsHandler.prototype.src = function(src) {
   }.bind(this));
 
   this.playlists.on('loadedplaylist', function() {
-    var updatedPlaylist = this.playlists.media(), seekable;
+    let updatedPlaylist = this.playlists.media();
+    let seekable;
 
     if (!updatedPlaylist) {
       // select the initial variant
@@ -271,18 +280,20 @@ HlsHandler.prototype.handleSourceOpen = function() {
 // append.
 // If we found only one such uncommon end-point return it.
 Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
-  var
-    i, start, end,
-    result = [],
-    edges = [],
-    // In order to qualify as a possible candidate, the end point must:
-    //  1) Not have already existed in the `original` ranges
-    //  2) Not result from the shrinking of a range that already existed
-    //     in the `original` ranges
-    //  3) Not be contained inside of a range that existed in `original`
-    overlapsCurrentEnd = function(span) {
-      return (span[0] <= end && span[1] >= end);
-    };
+  let i;
+  let start;
+  let end;
+  let result = [];
+  let edges = [];
+
+  // In order to qualify as a possible candidate, the end point must:
+  //  1) Not have already existed in the `original` ranges
+  //  2) Not result from the shrinking of a range that already existed
+  //     in the `original` ranges
+  //  3) Not be contained inside of a range that existed in `original`
+  let overlapsCurrentEnd = function(span) {
+    return (span[0] <= end && span[1] >= end);
+  };
 
   if (original) {
     // Save all the edges in the `original` TimeRanges object
@@ -319,8 +330,8 @@ Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
   return result[0];
 };
 
-var parseCodecs = function(codecs) {
-  var result = {
+const parseCodecs = function(codecs) {
+  let result = {
     codecCount: 0,
     videoCodec: null,
     audioProfile: null
@@ -330,11 +341,11 @@ var parseCodecs = function(codecs) {
   result.codecCount = result.codecCount || 2;
 
   // parse the video codec but ignore the version
-  result.videoCodec = /(^|\s|,)+(avc1)[^ ,]*/i.exec(codecs);
+  result.videoCodec = (/(^|\s|,)+(avc1)[^ ,]*/i).exec(codecs);
   result.videoCodec = result.videoCodec && result.videoCodec[2];
 
   // parse the last field of the audio codec
-  result.audioProfile = /(^|\s|,)+mp4a.\d+\.(\d+)/i.exec(codecs);
+  result.audioProfile = (/(^|\s|,)+mp4a.\d+\.(\d+)/i).exec(codecs);
   result.audioProfile = result.audioProfile && result.audioProfile[2];
 
   return result;
@@ -354,12 +365,11 @@ var parseCodecs = function(codecs) {
  * indefinitely.
  */
 HlsHandler.prototype.excludeIncompatibleVariants_ = function(media) {
-  var
-    master = this.playlists.master,
-    codecCount = 2,
-    videoCodec = null,
-    audioProfile = null,
-    codecs;
+  let master = this.playlists.master;
+  let codecCount = 2;
+  let videoCodec = null;
+  let audioProfile = null;
+  let codecs;
 
   if (media.attributes && media.attributes.CODECS) {
     codecs = parseCodecs(media.attributes.CODECS);
@@ -368,7 +378,7 @@ HlsHandler.prototype.excludeIncompatibleVariants_ = function(media) {
     codecCount = codecs.codecCount;
   }
   master.playlists.forEach(function(variant) {
-    var variantCodecs = {
+    let variantCodecs = {
       codecCount: 2,
       videoCodec: null,
       audioProfile: null
@@ -399,7 +409,8 @@ HlsHandler.prototype.excludeIncompatibleVariants_ = function(media) {
 };
 
 HlsHandler.prototype.setupSourceBuffer_ = function() {
-  var media = this.playlists.media(), mimeType;
+  let media = this.playlists.media();
+  let mimeType;
 
   // wait until a media playlist is available and the Media Source is
   // attached
@@ -429,9 +440,10 @@ HlsHandler.prototype.setupSourceBuffer_ = function() {
  * player and video are loaded and initialized.
  */
 HlsHandler.prototype.setupFirstPlay = function() {
-  var seekable, media;
-  media = this.playlists.media();
+  let seekable;
+  let media;
 
+  media = this.playlists.media();
 
   // check that everything is ready to begin buffering
 
@@ -487,8 +499,7 @@ HlsHandler.prototype.play = function() {
 };
 
 HlsHandler.prototype.setCurrentTime = function(currentTime) {
-  var
-    buffered = this.findBufferedRange_();
+  let buffered = this.findBufferedRange_();
 
   if (!(this.playlists && this.playlists.media())) {
     // return immediately if the metadata is not ready yet
@@ -528,7 +539,8 @@ HlsHandler.prototype.setCurrentTime = function(currentTime) {
 };
 
 HlsHandler.prototype.duration = function() {
-  var playlists = this.playlists;
+  let playlists = this.playlists;
+
   if (playlists) {
     return Hls.Playlist.duration(playlists.media());
   }
@@ -536,7 +548,8 @@ HlsHandler.prototype.duration = function() {
 };
 
 HlsHandler.prototype.seekable = function() {
-  var media, seekable;
+  let media;
+  let seekable;
 
   if (!this.playlists) {
     return videojs.createTimeRanges();
@@ -556,7 +569,7 @@ HlsHandler.prototype.seekable = function() {
   // fall back to the playlist loader's running estimate of expired
   // time
   if (seekable.start(0) === 0) {
-   return videojs.createTimeRanges([[
+    return videojs.createTimeRanges([[
       this.playlists.expired_,
       this.playlists.expired_ + seekable.end(0)
     ]]);
@@ -571,14 +584,16 @@ HlsHandler.prototype.seekable = function() {
  * Update the player duration
  */
 HlsHandler.prototype.updateDuration = function(playlist) {
-  var oldDuration = this.mediaSource.duration,
-      newDuration = Hls.Playlist.duration(playlist),
-      setDuration = function() {
-        this.mediaSource.duration = newDuration;
-        this.tech_.trigger('durationchange');
+  let oldDuration = this.mediaSource.duration;
 
-        this.mediaSource.removeEventListener('sourceopen', setDuration);
-      }.bind(this);
+  let newDuration = Hls.Playlist.duration(playlist);
+
+  let setDuration = function() {
+    this.mediaSource.duration = newDuration;
+    this.tech_.trigger('durationchange');
+
+    this.mediaSource.removeEventListener('sourceopen', setDuration);
+  }.bind(this);
 
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
@@ -646,28 +661,27 @@ HlsHandler.prototype.dispose = function() {
  * @return the highest bitrate playlist less than the currently detected
  * bandwidth, accounting for some amount of bandwidth variance
  */
-HlsHandler.prototype.selectPlaylist = function () {
-  var
-    effectiveBitrate,
-    sortedPlaylists = this.playlists.master.playlists.slice(),
-    bandwidthPlaylists = [],
-    now = +new Date(),
-    i,
-    variant,
-    oldvariant,
-    bandwidthBestVariant,
-    resolutionPlusOne,
-    resolutionBestVariant,
-    width,
-    height;
+HlsHandler.prototype.selectPlaylist = function() {
+  let effectiveBitrate;
+  let sortedPlaylists = this.playlists.master.playlists.slice();
+  let bandwidthPlaylists = [];
+  let now = +new Date();
+  let i;
+  let variant;
+  let oldvariant;
+  let bandwidthBestVariant;
+  let resolutionPlusOne;
+  let resolutionBestVariant;
+  let width;
+  let height;
 
   sortedPlaylists.sort(Hls.comparePlaylistBandwidth);
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
-  sortedPlaylists = sortedPlaylists.filter(function(variant) {
-    if (variant.excludeUntil !== undefined) {
-      return now >= variant.excludeUntil;
+  sortedPlaylists = sortedPlaylists.filter(function(localvariant) {
+    if (typeof localvariant.excludeUntil !== 'undefined') {
+      return now >= localvariant.excludeUntil;
     }
     return true;
   });
@@ -701,7 +715,8 @@ HlsHandler.prototype.selectPlaylist = function () {
   // sort variants by resolution
   bandwidthPlaylists.sort(Hls.comparePlaylistResolution);
 
-  // forget our old variant from above, or we might choose that in high-bandwidth scenarios
+  // forget our old variant from above,
+  // or we might choose that in high-bandwidth scenarios
   // (this could be the lowest bitrate rendition as  we go through all of them above)
   variant = null;
 
@@ -722,7 +737,6 @@ HlsHandler.prototype.selectPlaylist = function () {
       continue;
     }
 
-
     // since the playlists are sorted, the first variant that has
     // dimensions less than or equal to the player size is the best
     if (variant.attributes.RESOLUTION.width === width &&
@@ -732,10 +746,14 @@ HlsHandler.prototype.selectPlaylist = function () {
       resolutionBestVariant = variant;
       break;
     } else if (variant.attributes.RESOLUTION.width < width &&
-        variant.attributes.RESOLUTION.height < height) {
-      // if we don't have an exact match, see if we have a good higher quality variant to use
-      if (oldvariant && oldvariant.attributes && oldvariant.attributes.RESOLUTION &&
-          oldvariant.attributes.RESOLUTION.width && oldvariant.attributes.RESOLUTION.height) {
+      variant.attributes.RESOLUTION.height < height) {
+      // if we don't have an exact match,
+      // see if we have a good higher quality variant to use
+      if (oldvariant &&
+          oldvariant.attributes &&
+          oldvariant.attributes.RESOLUTION &&
+          oldvariant.attributes.RESOLUTION.width &&
+            oldvariant.attributes.RESOLUTION.height) {
         resolutionPlusOne = oldvariant;
       }
       resolutionBestVariant = variant;
@@ -744,7 +762,10 @@ HlsHandler.prototype.selectPlaylist = function () {
   }
 
   // fallback chain of variants
-  return resolutionPlusOne || resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+  return resolutionPlusOne ||
+    resolutionBestVariant ||
+    bandwidthBestVariant ||
+    sortedPlaylists[0];
 };
 
 /**
@@ -784,22 +805,20 @@ HlsHandler.prototype.stopCheckingBuffer_ = function() {
   }
 };
 
-var filterBufferedRanges = function(predicate) {
+const filterBufferedRanges = function(predicate) {
   return function(time) {
-    var
-      i,
-      ranges = [],
-      tech = this.tech_,
-      // !!The order of the next two assignments is important!!
-      // `currentTime` must be equal-to or greater-than the start of the
-      // buffered range. Flash executes out-of-process so, every value can
-      // change behind the scenes from line-to-line. By reading `currentTime`
-      // after `buffered`, we ensure that it is always a current or later
-      // value during playback.
-      buffered = tech.buffered();
+    let i;
+    let ranges = [];
+    let tech = this.tech_;
+    // !!The order of the next two assignments is important!!
+    // `currentTime` must be equal-to or greater-than the start of the
+    // buffered range. Flash executes out-of-process so, every value can
+    // change behind the scenes from line-to-line. By reading `currentTime`
+    // after `buffered`, we ensure that it is always a current or later
+    // value during playback.
+    let buffered = tech.buffered();
 
-
-    if (time === undefined) {
+    if (typeof time === 'undefined') {
       time = tech.currentTime();
     }
 
@@ -824,7 +843,8 @@ var filterBufferedRanges = function(predicate) {
  * currentTime.
  * @return a new TimeRanges object.
  */
-HlsHandler.prototype.findBufferedRange_ = filterBufferedRanges(function(start, end, time) {
+HlsHandler.prototype.findBufferedRange_ = filterBufferedRanges(
+function(start, end, time) {
   return start - TIME_FUDGE_FACTOR <= time &&
     end + TIME_FUDGE_FACTOR >= time;
 });
@@ -836,7 +856,8 @@ HlsHandler.prototype.findBufferedRange_ = filterBufferedRanges(function(start, e
  * currentTime.
  * @return a new TimeRanges object.
  */
-HlsHandler.prototype.findNextBufferedRange_ = filterBufferedRanges(function(start, end, time) {
+HlsHandler.prototype.findNextBufferedRange_ = filterBufferedRanges(
+function(start, end, time) {
   return start - TIME_FUDGE_FACTOR >= time;
 });
 
@@ -847,17 +868,16 @@ HlsHandler.prototype.findNextBufferedRange_ = filterBufferedRanges(function(star
  * to seek to, in seconds
  */
 HlsHandler.prototype.fillBuffer = function(mediaIndex) {
-  var
-    tech = this.tech_,
-    currentTime = tech.currentTime(),
-    hasBufferedContent = (this.tech_.buffered().length !== 0),
-    currentBuffered = this.findBufferedRange_(),
-    outsideBufferedRanges = !(currentBuffered && currentBuffered.length),
-    currentBufferedEnd = 0,
-    bufferedTime = 0,
-    segment,
-    segmentInfo,
-    segmentTimestampOffset;
+  let tech = this.tech_;
+  let currentTime = tech.currentTime();
+  let hasBufferedContent = (this.tech_.buffered().length !== 0);
+  let currentBuffered = this.findBufferedRange_();
+  let outsideBufferedRanges = !(currentBuffered && currentBuffered.length);
+  let currentBufferedEnd = 0;
+  let bufferedTime = 0;
+  let segment;
+  let segmentInfo;
+  let segmentTimestampOffset;
 
   // if preload is set to "none", do not download segments until playback is requested
   if (this.loadingState_ !== 'segments') {
@@ -880,7 +900,7 @@ HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   }
 
   // if no segments are available, do nothing
-  if (this.playlists.state === "HAVE_NOTHING" ||
+  if (this.playlists.state === 'HAVE_NOTHING' ||
       !this.playlists.media() ||
       !this.playlists.media().segments) {
     return;
@@ -891,7 +911,7 @@ HlsHandler.prototype.fillBuffer = function(mediaIndex) {
     return;
   }
 
-  if (mediaIndex === undefined) {
+  if (typeof mediaIndex === 'undefined') {
     if (currentBuffered && currentBuffered.length) {
       currentBufferedEnd = currentBuffered.end(0);
       mediaIndex = this.playlists.getMediaIndexForTime_(currentBufferedEnd);
@@ -925,12 +945,12 @@ HlsHandler.prototype.fillBuffer = function(mediaIndex) {
     // resolve the segment URL relative to the playlist
     uri: this.playlistUriToUrl(segment.uri),
     // the segment's mediaIndex & mediaSequence at the time it was requested
-    mediaIndex: mediaIndex,
+    mediaIndex,
     mediaSequence: this.playlists.media().mediaSequence,
     // the segment's playlist
     playlist: this.playlists.media(),
     // The state of the buffer when this segment was requested
-    currentBufferedEnd: currentBufferedEnd,
+    currentBufferedEnd,
     // unencrypted bytes of the segment
     bytes: null,
     // when a key is defined for this segment, the encrypted bytes
@@ -973,12 +993,16 @@ HlsHandler.prototype.fillBuffer = function(mediaIndex) {
 };
 
 HlsHandler.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
-  var playListUrl;
+  let playListUrl;
+
     // resolve the segment URL relative to the playlist
   if (this.playlists.media().uri === this.source_.src) {
     playListUrl = resolveUrl(this.source_.src, segmentRelativeUrl);
   } else {
-    playListUrl = resolveUrl(resolveUrl(this.source_.src, this.playlists.media().uri || ''), segmentRelativeUrl);
+    playListUrl = resolveUrl(
+      resolveUrl(this.source_.src, this.playlists.media().uri || ''),
+      segmentRelativeUrl
+    );
   }
   return playListUrl;
 };
@@ -991,11 +1015,11 @@ HlsHandler.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
  *  * `bytesReceived` - amount of bytes downloaded
  * `bandwidth` is the only required property.
  */
-HlsHandler.prototype.setBandwidth = function(xhr) {
+HlsHandler.prototype.setBandwidth = function(localxhr) {
   // calculate the download bandwidth
-  this.segmentXhrTime = xhr.roundTripTime;
-  this.bandwidth = xhr.bandwidth;
-  this.bytesReceived += xhr.bytesReceived || 0;
+  this.segmentXhrTime = localxhr.roundTripTime;
+  this.bandwidth = localxhr.bandwidth;
+  this.bytesReceived += localxhr.bytesReceived || 0;
 
   this.tech_.trigger('bandwidthupdate');
 };
@@ -1006,7 +1030,8 @@ HlsHandler.prototype.setBandwidth = function(xhr) {
  * and then forces a new playlist (rendition) selection.
  */
 HlsHandler.prototype.blacklistCurrentPlaylist_ = function(error) {
-  var currentPlaylist, nextPlaylist;
+  let currentPlaylist;
+  let nextPlaylist;
 
   // If the `error` was generated by the playlist loader, it will contain
   // the playlist we were trying to load (but failed) and that should be
@@ -1028,26 +1053,34 @@ HlsHandler.prototype.blacklistCurrentPlaylist_ = function(error) {
   nextPlaylist = this.selectPlaylist();
 
   if (nextPlaylist) {
-    videojs.log.warn('Problem encountered with the current HLS playlist. Switching to another playlist.');
+    videojs.log.warn(
+      'Problem encountered with the current' +
+      'HLS playlist. Switching to another playlist.'
+    );
 
     return this.playlists.media(nextPlaylist);
-  } else {
-    videojs.log.warn('Problem encountered with the current HLS playlist. No suitable alternatives found.');
-    // We have no more playlists we can select so we must fail
-    this.error = error;
-    return this.mediaSource.endOfStream('network');
   }
+  videojs.log.warn(
+    'Problem encountered with the current ' +
+    'HLS playlist. No suitable alternatives found.'
+  );
+  // We have no more playlists we can select so we must fail
+  this.error = error;
+  return this.mediaSource.endOfStream('network');
 };
 
 HlsHandler.prototype.loadSegment = function(segmentInfo) {
-  var
-    self = this,
-    segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex],
-    removeToTime = 0,
-    seekable = this.seekable();
+  /* eslint-disable consistent-this */
+  let self = this;
+  /* eslint-enable consistent-this */
+  let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+  let removeToTime = 0;
+  let seekable = this.seekable();
 
-  // Chrome has a hard limit of 150mb of buffer and a very conservative "garbage collector"
-  // We manually clear out the old buffer to ensure we don't trigger the QuotaExceeded error
+  // Chrome has a hard limit of 150mb of
+  // buffer and a very conservative "garbage collector"
+  // We manually clear out the old buffer to ensure
+  // we don't trigger the QuotaExceeded error
   // on the source buffer during subsequent appends
   if (this.sourceBuffer && !this.sourceBuffer.updating) {
     // If we have a seekable range use that as the limit for what can be removed safely
@@ -1129,15 +1162,16 @@ HlsHandler.prototype.loadSegment = function(segmentInfo) {
 };
 
 HlsHandler.prototype.drainBuffer = function() {
-  var
-    segmentInfo,
-    mediaIndex,
-    playlist,
-    offset,
-    bytes,
-    segment,
-    decrypter,
-    segIv;
+  let segmentInfo;
+  let mediaIndex;
+  let playlist;
+  let bytes;
+  let segment;
+  let decrypter;
+  let segIv;
+  /* eslint-disable no-unused-vars */
+  let offset;
+  /* eslint-enable no-unused-vars */
 
   // if the buffer is empty or the source buffer hasn't been created
   // yet, do nothing
@@ -1160,7 +1194,6 @@ HlsHandler.prototype.drainBuffer = function() {
   segmentInfo = this.pendingSegment_;
   mediaIndex = segmentInfo.mediaIndex;
   playlist = segmentInfo.playlist;
-  offset = segmentInfo.offset;
   bytes = segmentInfo.bytes;
   segment = playlist.segments[mediaIndex];
 
@@ -1174,29 +1207,31 @@ HlsHandler.prototype.drainBuffer = function() {
         code: 4
       });
     } else if (!segment.key.bytes) {
-
       // waiting for the key bytes, try again later
       return;
     } else if (segmentInfo.decrypter) {
-
       // decryption is in progress, try again later
       return;
-    } else {
-
-      // if the media sequence is greater than 2^32, the IV will be incorrect
-      // assuming 10s segments, that would be about 1300 years
-      segIv = segment.key.iv || new Uint32Array([0, 0, 0, mediaIndex + playlist.mediaSequence]);
-
-      // create a decrypter to incrementally decrypt the segment
-      decrypter = new Hls.Decrypter(segmentInfo.encryptedBytes,
-                                            segment.key.bytes,
-                                            segIv,
-                                            function(err, bytes) {
-                                              segmentInfo.bytes = bytes;
-                                            });
-      segmentInfo.decrypter = decrypter;
-      return;
     }
+    // if the media sequence is greater than 2^32, the IV will be incorrect
+    // assuming 10s segments, that would be about 1300 years
+    segIv = segment.key.iv ||
+      new Uint32Array([0, 0, 0, mediaIndex + playlist.mediaSequence]);
+
+    // create a decrypter to incrementally decrypt the segment
+    decrypter = new Hls.Decrypter(
+      segmentInfo.encryptedBytes,
+      segment.key.bytes,
+      segIv,
+      function(err, localBytes) {
+        if (err) {
+          throw new Error(err);
+        }
+        segmentInfo.bytes = localBytes;
+      }
+    );
+    segmentInfo.decrypter = decrypter;
+    return;
   }
 
   this.pendingSegment_.buffered = this.tech_.buffered();
@@ -1209,16 +1244,15 @@ HlsHandler.prototype.drainBuffer = function() {
   this.sourceBuffer.appendBuffer(bytes);
 };
 
-HlsHandler.prototype.updateEndHandler_ = function () {
-  var
-    segmentInfo = this.pendingSegment_,
-    segment,
-    segments,
-    playlist,
-    currentMediaIndex,
-    currentBuffered,
-    seekable,
-    timelineUpdate;
+HlsHandler.prototype.updateEndHandler_ = function() {
+  let segmentInfo = this.pendingSegment_;
+  let segment;
+  let segments;
+  let playlist;
+  let currentMediaIndex;
+  let currentBuffered;
+  let seekable;
+  let timelineUpdate;
 
   this.pendingSegment_ = null;
 
@@ -1229,7 +1263,8 @@ HlsHandler.prototype.updateEndHandler_ = function () {
 
   playlist = this.playlists.media();
   segments = playlist.segments;
-  currentMediaIndex = segmentInfo.mediaIndex + (segmentInfo.mediaSequence - playlist.mediaSequence);
+  currentMediaIndex = segmentInfo.mediaIndex +
+    (segmentInfo.mediaSequence - playlist.mediaSequence);
   currentBuffered = this.findBufferedRange_();
 
   // if we switched renditions don't try to add segment timeline
@@ -1251,17 +1286,22 @@ HlsHandler.prototype.updateEndHandler_ = function () {
       currentBuffered.length === 0) {
     if (seekable.length &&
         this.tech_.currentTime() < seekable.start(0)) {
-      var next = this.findNextBufferedRange_();
+      let next = this.findNextBufferedRange_();
+
       if (next.length) {
-        videojs.log('tried seeking to', this.tech_.currentTime(), 'but that was too early, retrying at', next.start(0));
+        videojs.log(
+          'tried seeking to', this.tech_.currentTime(),
+          'but that was too early, retrying at', next.start(0)
+        );
         this.tech_.setCurrentTime(next.start(0) + TIME_FUDGE_FACTOR);
       }
     }
   }
 
-
-  timelineUpdate = Hls.findSoleUncommonTimeRangesEnd_(segmentInfo.buffered,
-                                                              this.tech_.buffered());
+  timelineUpdate = Hls.findSoleUncommonTimeRangesEnd_(
+    segmentInfo.buffered,
+    this.tech_.buffered()
+  );
 
   if (timelineUpdate && segment) {
     segment.end = timelineUpdate;
@@ -1296,27 +1336,32 @@ HlsHandler.prototype.updateEndHandler_ = function () {
  * Attempt to retrieve the key for a particular media segment.
  */
 HlsHandler.prototype.fetchKey_ = function(segment) {
-  var key, self, settings, receiveKey;
+  let key;
+  /* eslint-disable consistent-this */
+  let self = this;
+  /* eslint-enable consistent-this */
+  let settings;
+  let receiveKey;
 
   // if there is a pending XHR or no segments, don't do anything
   if (this.keyXhr_) {
     return;
   }
 
-  self = this;
   settings = this.options_;
 
   /**
    * Handle a key XHR response.
    */
-  receiveKey = function(key) {
+  receiveKey = function(keyRecieved) {
     return function(error, request) {
-      var view;
+      let view;
+
       self.keyXhr_ = null;
 
       if (error || !request.response || request.response.byteLength !== 16) {
-        key.retries = key.retries || 0;
-        key.retries++;
+        keyRecieved.retries = keyRecieved.retries || 0;
+        keyRecieved.retries++;
         if (!request.aborted) {
           // try fetching again
           self.fetchKey_(segment);
@@ -1325,7 +1370,7 @@ HlsHandler.prototype.fetchKey_ = function(segment) {
       }
 
       view = new DataView(request.response);
-      key.bytes = new Uint32Array([
+      keyRecieved.bytes = new Uint32Array([
         view.getUint32(0),
         view.getUint32(4),
         view.getUint32(8),
@@ -1358,11 +1403,10 @@ HlsHandler.prototype.fetchKey_ = function(segment) {
 /**
  * Whether the browser has built-in HLS support.
  */
-Hls.supportsNativeHls = (function() {
-  var
-    video = document.createElement('video'),
-    xMpegUrl,
-    vndMpeg;
+Hls.supportsNativeHls = function() {
+  let video = document.createElement('video');
+  let xMpegUrl;
+  let vndMpeg;
 
   // native HLS is definitely not supported if HTML5 video isn't
   if (!videojs.getComponent('Html5').isSupported()) {
@@ -1373,13 +1417,15 @@ Hls.supportsNativeHls = (function() {
   vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
   return (/probably|maybe/).test(xMpegUrl) ||
     (/probably|maybe/).test(vndMpeg);
-})();
+};
 
 // HLS is a source handler, not a tech. Make sure attempts to use it
 // as one do not cause exceptions.
 Hls.isSupported = function() {
-  return videojs.log.warn('HLS is no longer a tech. Please remove it from ' +
-                          'your player\'s techOrder.');
+  return videojs.log.warn(
+    'HLS is no longer a tech. Please remove it from ' +
+    'your player\'s techOrder.'
+  );
 };
 
 /**
@@ -1392,7 +1438,9 @@ Hls.isSupported = function() {
  * exactly zero if the two are equal.
  */
 Hls.comparePlaylistBandwidth = function(left, right) {
-  var leftBandwidth, rightBandwidth;
+  let leftBandwidth;
+  let rightBandwidth;
+
   if (left.attributes && left.attributes.BANDWIDTH) {
     leftBandwidth = left.attributes.BANDWIDTH;
   }
@@ -1415,15 +1463,20 @@ Hls.comparePlaylistBandwidth = function(left, right) {
  * exactly zero if the two are equal.
  */
 Hls.comparePlaylistResolution = function(left, right) {
-  var leftWidth, rightWidth;
+  let leftWidth;
+  let rightWidth;
 
-  if (left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
+  if (left.attributes &&
+      left.attributes.RESOLUTION &&
+      left.attributes.RESOLUTION.width) {
     leftWidth = left.attributes.RESOLUTION.width;
   }
 
   leftWidth = leftWidth || window.Number.MAX_VALUE;
 
-  if (right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
+  if (right.attributes &&
+      right.attributes.RESOLUTION &&
+      right.attributes.RESOLUTION.width) {
     rightWidth = right.attributes.RESOLUTION.width;
   }
 
@@ -1431,11 +1484,12 @@ Hls.comparePlaylistResolution = function(left, right) {
 
   // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
   // have the same media dimensions/ resolution
-  if (leftWidth === rightWidth && left.attributes.BANDWIDTH && right.attributes.BANDWIDTH) {
+  if (leftWidth === rightWidth &&
+      left.attributes.BANDWIDTH &&
+      right.attributes.BANDWIDTH) {
     return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
-  } else {
-    return leftWidth - rightWidth;
   }
+  return leftWidth - rightWidth;
 };
 
 videojs.plugin('HlsHandler', HlsHandler);
@@ -1445,5 +1499,5 @@ videojs.plugin('Hls', Hls);
 export default {
   Hls,
   HlsHandler,
-  HlsSourceHandler,
+  HlsSourceHandler
 };

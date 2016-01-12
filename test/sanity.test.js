@@ -4,18 +4,9 @@ import QUnit from 'qunit';
 import sinon from 'sinon';
 import videojs from 'video.js';
 
-import {Hls, HlsHandler, HlsSourceHandler, m3u8} from '../src/plugin.js';
+import {Hls, HlsHandler, HlsSourceHandler} from '../src/plugin.js';
 
 const Player = videojs.getComponent('Player');
-
-QUnit.test('the environment is sane', function(assert) {
-  assert.strictEqual(typeof Array.isArray, 'function', 'es5 exists');
-  assert.strictEqual(typeof sinon, 'object', 'sinon exists');
-  assert.strictEqual(typeof videojs, 'function', 'videojs exists');
-  assert.strictEqual(typeof HlsHandler, 'function', 'HlsHandler is a function');
-  assert.strictEqual(typeof Hls, 'object', 'Hls is an object');
-  assert.strictEqual(typeof HlsSourceHandler, 'function', 'HlsSourceHandler is a function');
-});
 
 QUnit.module('videojs-contrib-hls - sanity', {
   beforeEach() {
@@ -36,6 +27,19 @@ QUnit.module('videojs-contrib-hls - sanity', {
     this.clock.restore();
     this.player.dispose();
   }
+});
+
+QUnit.test('the environment is sane', function(assert) {
+  assert.strictEqual(typeof Array.isArray, 'function', 'es5 exists');
+  assert.strictEqual(typeof sinon, 'object', 'sinon exists');
+  assert.strictEqual(typeof videojs, 'function', 'videojs exists');
+  assert.strictEqual(typeof HlsHandler, 'function', 'HlsHandler is a function');
+  assert.strictEqual(typeof Hls, 'object', 'Hls is an object');
+  assert.strictEqual(
+    typeof HlsSourceHandler,
+    'function',
+    'HlsSourceHandler is a function'
+  );
 });
 
 const isRegistered = function(testenv, objectName, expectedType) {

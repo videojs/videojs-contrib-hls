@@ -40,9 +40,9 @@ var DEFAULTS = {
       'babelify',
       'browserify-shim'
     ],
-    noParse: [
+    noparse: [
       'test/files/**',
-      'test/test-data/ts-segment-bc*'
+      'test/test-data/**'
     ]
   }
 };
