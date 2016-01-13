@@ -28,9 +28,13 @@
         request.timedout = false;
       }
 
-      // videojs.xhr no longer consider status codes outside of 200 and 0 (for file uris) to be
-      // errors but the old XHR did so emulate that behavior
-      if (!error && response.statusCode !== 200 && response.statusCode !== 0) {
+      // videojs.xhr no longer considers status codes outside of 200 and 0
+      // (for file uris) to be errors, but the old XHR did, so emulate that
+      // behavior. Status 206 may be used in response to byterange requests.
+      if (!error &&
+           response.statusCode !== 200 &&
+           response.statusCode !== 206 &&
+           response.statusCode !== 0) {
         error = new Error('XHR Failed with a response of: ' +
           (request && (request.response || request.responseText)));
       }
