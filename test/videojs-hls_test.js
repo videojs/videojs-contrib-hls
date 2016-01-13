@@ -324,6 +324,56 @@ test('starts playing if autoplay is specified', function() {
   strictEqual(1, plays, 'play was called');
 });
 
+test('XHR requests first byte range on play', function() {
+  player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.tech_.triggerReady();
+  clock.tick(1);
+  player.tech_.trigger('play');
+  openMediaSource(player);
+  standardXHRResponse(requests[0]);
+  equal(requests[1].headers.Range, "bytes=0-522827");
+});
+
+test('Seeking requests correct byte range', function() {
+  player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.tech_.triggerReady();
+  clock.tick(1);
+  player.tech_.trigger('play');
+  openMediaSource(player);
+  standardXHRResponse(requests[0]);
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+  clock.tick(1);
+  player.currentTime(40);
+  clock.tick(1);
+  equal(requests[2].headers.Range, "bytes=2299992-2835603");
+});
+
+test('if buffered, will request second segment byte range', function() {
+  player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.tech_.triggerReady();
+  clock.tick(1);
+  player.tech_.trigger('play');
+  openMediaSource(player);
+  player.tech_.buffered = function() {
+    return videojs.createTimeRange(0, 20);
+  };
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+  player.tech_.hls.checkBuffer_();
+  clock.tick(100);
+  equal(requests[2].headers.Range, "bytes=1823412-2299991");
+});
+
 test('autoplay seeks to the live point after playlist load', function() {
   var currentTime = 0;
   player.autoplay(true);
