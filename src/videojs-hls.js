@@ -218,6 +218,7 @@ videojs.HlsHandler.prototype.src = function(src) {
     this.segments.pause();
   }.bind(this));
   this.playlists.on('mediachange', function() {
+    this.segments.abort();
     this.segments.load();
     this.tech_.trigger({
       type: 'mediachange',
@@ -602,9 +603,6 @@ videojs.HlsHandler.prototype.updateDuration = function(playlist) {
  * state suitable for switching to a different video.
  */
 videojs.HlsHandler.prototype.resetSrc_ = function() {
-  this.cancelSegmentXhr();
-  this.cancelKeyXhr();
-
   if (this.sourceBuffer && this.mediaSource.readyState === 'open') {
     this.sourceBuffer.abort();
   }

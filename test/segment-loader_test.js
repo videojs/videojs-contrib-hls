@@ -8,17 +8,18 @@
 
   var clock, xhr, requests, mse, env;
 
-  var playlistWithDuration = function(time) {
+  var playlistWithDuration = function(time, conf) {
     var
       result = {
-        mediaSequence: 0,
+        mediaSequence: conf && conf.mediaSequence ? conf.mediaSequence : 0,
         discontinuityStarts: [],
         segments: [],
         endList: true
       },
       count = Math.floor(time / 10),
       remainder = time % 10,
-      i;
+      i,
+      isEncrypted = conf && conf.isEncrypted;
 
     for (i = 0; i < count ; i++) {
       result.segments.push({
@@ -26,6 +27,12 @@
         resolvedUri: i + '.ts',
         duration: 10
       });
+      if (isEncrypted) {
+        result.segments[i]['key'] = {
+          uri: i + '-key.php',
+          resolvedUri: i + '-key.php'
+        };
+      }
     }
     if (remainder) {
       result.segments.push({
@@ -290,7 +297,7 @@
   test('cancels outstanding requests on abort', function() {
     loader.playlist(playlistWithDuration(20));
     loader.load();
-    loader.xhr_.onreadystatechange = function() {
+    loader.xhr_.segmentXhr.onreadystatechange = function() {
       throw 'onreadystatechange should not be called';
     };
 
@@ -436,10 +443,13 @@
       },
       mediaSource: mediaSource
     });
-    loader.playlist(playlistWithDuration(10));
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
     loader.load();
 
-    ok(requests[0].withCredentials, 'used withCredentials');
+    equal(requests[0].url, '0-key.php', 'requested the first segment\'s key');
+    ok(requests[0].withCredentials, 'key request used withCredentials');
+    equal(requests[1].url, '0.ts', 'requested the first segment');
+    ok(requests[1].withCredentials, 'segment request used withCredentials');
     videojs.options.hls = hlsOptions;
   });
 
@@ -451,10 +461,13 @@
       mediaSource: mediaSource,
       withCredentials: true
     });
-    loader.playlist(playlistWithDuration(10));
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
     loader.load();
 
-    ok(requests[0].withCredentials, 'used withCredentials');
+    equal(requests[0].url, '0-key.php', 'requested the first segment\'s key');
+    ok(requests[0].withCredentials, 'key request used withCredentials');
+    equal(requests[1].url, '0.ts', 'requested the first segment');
+    ok(requests[1].withCredentials, 'segment request used withCredentials');
   });
 
   test('the withCredentials option overrides the global', function() {
@@ -469,10 +482,14 @@
       mediaSource: mediaSource,
       withCredentials: false
     });
-    loader.playlist(playlistWithDuration(10));
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
     loader.load();
 
-    ok(!requests[0].withCredentials, 'overrode withCredentials');
+    equal(requests[0].url, '0-key.php', 'requested the first segment\'s key');
+    ok(!requests[0].withCredentials, 'overrode key request withCredentials');
+    equal(requests[1].url, '0.ts', 'requested the first segment');
+    ok(!requests[1].withCredentials, 'overrode segment request withCredentials');
+    videojs.options.hls = hlsOptions;
   });
 
   test('remains ready if there are no segments', function() {
@@ -491,228 +508,131 @@
     equal(requests.length, 1, 'did not open another request');
   });
 
-  // --------------
-  // TO BE MIGRATED
-  // --------------
-
   // ----------
   // Decryption
   // ----------
 
-  QUnit.skip('keys are requested when an encrypted segment is loaded', function() {
-    player.src({
-      src: 'https://example.com/encrypted.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-    openMediaSource(player);
-    player.tech_.trigger('play');
-    standardXHRResponse(requests.shift()); // playlist
+  test('calling load with an encrypted segment requests key and segment', function() {
+    equal(loader.state, 'INIT', 'starts in the init state');
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+    equal(loader.state, 'INIT', 'starts in the init state');
+    ok(loader.paused(), 'starts paused');
 
-    strictEqual(requests.length, 2, 'a key XHR is created');
-    strictEqual(requests[0].url,
-                player.tech_.hls.playlists.media().segments[0].key.uri,
-                'key XHR is created with correct uri');
-    strictEqual(requests[1].url,
-                player.tech_.hls.playlists.media().segments[0].uri,
-                'segment XHR is created with correct uri');
+    loader.load();
+    equal(loader.state, 'WAITING', 'moves to the ready state');
+    ok(!loader.paused(), 'loading is not paused');
+    equal(requests.length, 2, 'requested a segment and key');
+    equal(requests[0].url, '0-key.php', 'requested the first segment\'s key');
+    equal(requests[1].url, '0.ts', 'requested the first segment');
   });
 
-  QUnit.skip('keys are resolved relative to the master playlist', function() {
-    player.src({
-      src: 'video/master-encrypted.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-    openMediaSource(player);
-    requests.shift().respond(200, null,
-                             '#EXTM3U\n' +
-                             '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=17\n' +
-                             'playlist/playlist.m3u8\n' +
-                             '#EXT-X-ENDLIST\n');
-    requests.shift().respond(200, null,
-                             '#EXTM3U\n' +
-                             '#EXT-X-TARGETDURATION:15\n' +
-                             '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
-                             '#EXTINF:2.833,\n' +
-                             'http://media.example.com/fileSequence1.ts\n' +
-                             '#EXT-X-ENDLIST\n');
-    equal(requests.length, 2, 'requested the key');
-    equal(requests[0].url,
-          absoluteUrl('video/playlist/keys/key.php'),
-          'resolves multiple relative paths');
-  });
-
-  QUnit.skip('keys are resolved relative to their containing playlist', function() {
-    player.src({
-      src: 'video/media-encrypted.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-    openMediaSource(player);
-    requests.shift().respond(200, null,
-                             '#EXTM3U\n' +
-                             '#EXT-X-TARGETDURATION:15\n' +
-                             '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
-                             '#EXTINF:2.833,\n' +
-                             'http://media.example.com/fileSequence1.ts\n' +
-                             '#EXT-X-ENDLIST\n');
-    equal(requests.length, 2, 'requested a key');
-    equal(requests[0].url,
-          absoluteUrl('video/keys/key.php'),
-          'resolves multiple relative paths');
-  });
-
-  QUnit.skip('a new key XHR is created when a the segment is requested', function() {
-    player.src({
-      src: 'https://example.com/encrypted-media.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-    openMediaSource(player);
-
-    requests.shift().respond(200, null,
-                             '#EXTM3U\n' +
-                             '#EXT-X-TARGETDURATION:15\n' +
-                             '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
-                             '#EXTINF:2.833,\n' +
-                             'http://media.example.com/fileSequence1.ts\n' +
-                             '#EXT-X-KEY:METHOD=AES-128,URI="keys/key2.php"\n' +
-                             '#EXTINF:2.833,\n' +
-                             'http://media.example.com/fileSequence2.ts\n' +
-                             '#EXT-X-ENDLIST\n');
-    standardXHRResponse(requests.shift()); // key 1
-    standardXHRResponse(requests.shift()); // segment 1
-    // "finish" decrypting segment 1
-    player.tech_.hls.pendingSegment_.bytes = new Uint8Array(16);
-    player.tech_.hls.checkBuffer_();
-    player.tech_.buffered = function() {
-      return videojs.createTimeRange(0, 2.833);
+  test('cancels outstanding key request on abort', function() {
+    loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
+    loader.load();
+    loader.xhr_.keyXhr.onreadystatechange = function() {
+      throw 'onreadystatechange should not be called';
     };
-    player.tech_.hls.sourceBuffer.trigger('updateend');
 
-    strictEqual(requests.length, 2, 'a key XHR is created');
-    strictEqual(requests[0].url,
-                'https://example.com/' +
-                player.tech_.hls.playlists.media().segments[1].key.uri,
-                'a key XHR is created with the correct uri');
+    equal(requests.length, 2, 'requested a segment and key');
+    loader.abort();
+    equal(requests[0].url, '0-key.php', 'requested the first segment\'s key');
+    ok(requests[0].aborted, 'aborted the first key request');
+    equal(requests.length, 4, 'started a new request');
+    equal(loader.state, 'WAITING', 'back to the waiting state');
   });
 
-  QUnit.skip('seeking should abort an outstanding key request and create a new one', function() {
-    player.src({
-      src: 'https://example.com/encrypted.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-    openMediaSource(player);
+  test('dispose cleans up key requests for encrypted segments', function() {
+    loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
+    loader.load();
+    mediaSource.trigger('sourceopen');
 
-    requests.shift().respond(200, null,
-                             '#EXTM3U\n' +
-                             '#EXT-X-TARGETDURATION:15\n' +
-                             '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
-                             '#EXTINF:9,\n' +
-                             'http://media.example.com/fileSequence1.ts\n' +
-                             '#EXT-X-KEY:METHOD=AES-128,URI="keys/key2.php"\n' +
-                             '#EXTINF:9,\n' +
-                             'http://media.example.com/fileSequence2.ts\n' +
-                             '#EXT-X-ENDLIST\n');
-    standardXHRResponse(requests.pop()); // segment 1
-
-    player.currentTime(11);
-    clock.tick(1);
-    ok(requests[0].aborted, 'the key XHR should be aborted');
-    requests.shift(); // aborted key 1
-
-    equal(requests.length, 2, 'requested the new key');
-    equal(requests[0].url,
-          'https://example.com/' +
-          player.tech_.hls.playlists.media().segments[1].key.uri,
-          'urls should match');
+    loader.dispose();
+    equal(requests.length, 2, 'requested a segment and key');
+    equal(requests[0].url, '0-key.php', 'requested the first segment\'s key');
+    ok(requests[0].aborted, 'aborted the first segment\s key request');
+    equal(requests.length, 2, 'did not open another request');
   });
 
-  QUnit.skip('retries key requests once upon failure', function() {
-    player.src({
-      src: 'https://example.com/encrypted.m3u8',
-      type: 'application/vnd.apple.mpegurl'
+  test('key 404s should trigger an error', function() {
+    var errors = [];
+
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+    loader.load();
+    loader.on('error', function(error) {
+      errors.push(error);
     });
-    openMediaSource(player);
-    player.tech_.trigger('play');
+    requests.shift().respond(404, null, '');
 
-    requests.shift().respond(200, null,
-                             '#EXTM3U\n' +
-                             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
-                             '#EXTINF:2.833,\n' +
-                             'http://media.example.com/fileSequence52-A.ts\n' +
-                             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=53"\n' +
-                             '#EXTINF:15.0,\n' +
-                             'http://media.example.com/fileSequence53-A.ts\n');
-    standardXHRResponse(requests.pop()); // segment
-    requests[0].respond(404);
-    equal(requests.length, 2, 'create a new XHR for the same key');
-    equal(requests[1].url, requests[0].url, 'should be the same key');
-
-    requests[1].respond(404);
-    equal(requests.length, 2, 'gives up after one retry');
+    equal(errors.length, 1, 'triggered an error');
+    equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
+    equal(loader.error().message, 'HLS key request error at URL: 0-key.php',
+          'receieved a key error message');
+    ok(loader.error().xhr, 'included the request object');
+    ok(loader.paused(), 'paused the loader');
+    equal(loader.state, 'READY', 'returned to the ready state');
   });
 
+  test('key 5xx status codes trigger an error', function() {
+    var errors = [];
 
-  QUnit.skip('the key is supplied to the decrypter in the correct format', function() {
-    var keys = [];
-
-    player.src({
-      src: 'https://example.com/encrypted-media.m3u8',
-      type: 'application/vnd.apple.mpegurl'
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+    loader.load();
+    loader.on('error', function(error) {
+      errors.push(error);
     });
-    openMediaSource(player);
-    player.tech_.trigger('play');
+    requests.shift().respond(500, null, '');
 
-    requests.pop().respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXT-X-MEDIA-SEQUENCE:5\n' +
-                           '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
-                           '#EXTINF:2.833,\n' +
-                           'http://media.example.com/fileSequence52-A.ts\n' +
-                           '#EXTINF:15.0,\n' +
-                           'http://media.example.com/fileSequence52-B.ts\n');
+    equal(errors.length, 1, 'triggered an error');
+    equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
+    equal(loader.error().message, 'HLS key request error at URL: 0-key.php',
+          'receieved a key error message');
+    ok(loader.error().xhr, 'included the request object');
+    ok(loader.paused(), 'paused the loader');
+    equal(loader.state, 'READY', 'returned to the ready state');
+  });
+
+  test('the key is supplied to the decrypter in the correct format', function() {
+    var keys = [], keyRequest, segmentRequest;
+
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+    loader.load();
 
     videojs.Hls.Decrypter = function(encrypted, key) {
       keys.push(key);
     };
 
-    standardXHRResponse(requests.pop()); // segment
-    requests[0].response = new Uint32Array([0,1,2,3]).buffer;
-    requests[0].respond(200, null, '');
-    requests.shift(); // key
+    keyRequest = requests.shift();
+    keyRequest.response = new Uint32Array([0,1,2,3]).buffer;
+    keyRequest.respond(200, null, '');
+
+    segmentRequest = requests.shift();
+    segmentRequest.response = new Uint8Array(10).buffer;
+    segmentRequest.respond(200, null, '');
 
     equal(keys.length, 1, 'only one Decrypter was constructed');
     deepEqual(keys[0],
               new Uint32Array([0, 0x01000000, 0x02000000, 0x03000000]),
               'passed the specified segment key');
-
   });
-  QUnit.skip('supplies the media sequence of current segment as the IV by default, if no IV is specified', function() {
-    var ivs = [];
 
-    player.src({
-      src: 'https://example.com/encrypted-media.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-    openMediaSource(player);
-    player.tech_.trigger('play');
+  test('supplies media sequence of current segment as the IV by default, if no IV is specified',
+       function() {
+    var ivs = [], keyRequest, segmentRequest;
 
-    requests.pop().respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXT-X-MEDIA-SEQUENCE:5\n' +
-                           '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
-                           '#EXTINF:2.833,\n' +
-                           'http://media.example.com/fileSequence52-A.ts\n' +
-                           '#EXTINF:15.0,\n' +
-                           'http://media.example.com/fileSequence52-B.ts\n');
-
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true, mediaSequence: 5}));
+    loader.load();
 
     videojs.Hls.Decrypter = function(encrypted, key, iv) {
       ivs.push(iv);
     };
 
-    requests[0].response = new Uint32Array([0,0,0,0]).buffer;
-    requests[0].respond(200, null, '');
-    requests.shift();
-    standardXHRResponse(requests.pop());
+    keyRequest = requests.shift();
+    keyRequest.response = new Uint32Array([0,0,0,0]).buffer;
+    keyRequest.respond(200, null, '');
+
+    segmentRequest = requests.shift();
+    segmentRequest.response = new Uint8Array(10).buffer;
+    segmentRequest.respond(200, null, '');
 
     equal(ivs.length, 1, 'only one Decrypter was constructed');
     deepEqual(ivs[0],
@@ -720,70 +640,68 @@
               'the IV for the segment is the media sequence');
   });
 
-  QUnit.skip('switching playlists with an outstanding key request does not stall playback', function() {
-    var buffered = [];
-    var media = '#EXTM3U\n' +
-        '#EXT-X-MEDIA-SEQUENCE:5\n' +
-        '#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n' +
-        '#EXTINF:2.833,\n' +
-        'http://media.example.com/fileSequence52-A.ts\n' +
-        '#EXTINF:15.0,\n' +
-        'http://media.example.com/fileSequence52-B.ts\n';
-    player.src({
-      src: 'https://example.com/master.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-    openMediaSource(player);
-    player.tech_.trigger('play');
+  test('segment with key has decrypted bytes appended during processing', function() {
+    var keyRequest, segmentRequest, didCallHandleSegment, origDecrypter;
 
-    player.tech_.hls.bandwidth = 1;
-    player.tech_.buffered = function() {
-      return videojs.createTimeRange(buffered);
+    origDecrypter = videojs.Hls.Decrypter;
+    videojs.Hls.Decrypter = function(encrypted, key, initVector, done) {
+      done(null, new Uint8Array(10).buffer);
     };
-    // master playlist
-    standardXHRResponse(requests.shift());
-    // media playlist
-    requests.shift().respond(200, null, media);
-    // mock out media switching from this point on
-    player.tech_.hls.playlists.media = function() {
-      return player.tech_.hls.playlists.master.playlists[1];
+    loader.handleSegment_ = function() {
+      didCallHandleSegment = true;
     };
-    // first segment of the original media playlist
-    standardXHRResponse(requests.pop());
 
-    // "switch" media
-    player.tech_.hls.playlists.trigger('mediachange');
-    ok(!requests[0].aborted, 'did not abort the key request');
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+    loader.load();
 
-    // "finish" decrypting segment 1
-    standardXHRResponse(requests.shift()); // key
-    player.tech_.hls.pendingSegment_.bytes = new Uint8Array(16);
-    player.tech_.hls.checkBuffer_();
-    buffered = [[0, 2.833]];
-    player.tech_.hls.sourceBuffer.trigger('updateend');
-    player.tech_.hls.checkBuffer_();
+    segmentRequest = requests.pop();
+    segmentRequest.response = new Uint8Array(10).buffer;
+    segmentRequest.respond(200, null, '');
+    ok(loader.pendingSegment_.encryptedBytes, 'encrypted bytes in segment');
+    ok(!loader.pendingSegment_.bytes, 'no decrypted bytes in segment');
 
-    equal(requests.length, 1, 'made a request');
-    equal(requests[0].url,
-          'http://media.example.com/fileSequence52-B.ts',
-          'requested the segment');
+    keyRequest = requests.shift();
+    keyRequest.response = new Uint32Array([0,0,0,0]).buffer;
+    keyRequest.respond(200, null, '');
+
+    ok(loader.pendingSegment_.bytes, 'decrypted bytes in segment');
+    ok(didCallHandleSegment, 'called to handle segment');
+
+    videojs.Hls.Decrypter = origDecrypter;
   });
 
-  QUnit.skip('resolves relative key URLs against the playlist', function() {
-    player.src({
-      src: 'https://example.com/media.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-    openMediaSource(player);
+  test('calling load with an encrypted segment waits for both key and segment before processing',
+       function() {
+    var keyRequest, segmentRequest;
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+    loader.load();
 
-    requests.shift().respond(200, null,
-                             '#EXTM3U\n' +
-                             '#EXT-X-MEDIA-SEQUENCE:5\n' +
-                             '#EXT-X-KEY:METHOD=AES-128,URI="key.php?r=52"\n' +
-                             '#EXTINF:2.833,\n' +
-                             'http://media.example.com/fileSequence52-A.ts\n' +
-                             '#EXT-X-ENDLIST\n');
-    equal(requests[0].url, 'https://example.com/key.php?r=52', 'resolves the key URL');
+    equal(loader.state, 'WAITING', 'moves to waiting state');
+    equal(requests.length, 2, 'requested a segment and key');
+    equal(requests[0].url, '0-key.php', 'requested the first segment\'s key');
+    equal(requests[1].url, '0.ts', 'requested the first segment');
+    segmentRequest = requests.shift();
+    segmentRequest.response = new Uint8Array(10).buffer;
+    segmentRequest.respond(200, null, '');
+    equal(loader.state, 'WAITING', 'still in waiting state');
+    keyRequest = requests.shift();
+    keyRequest.response = new Uint32Array([0,0,0,0]).buffer;
+    keyRequest.respond(200, null, '');
+    equal(loader.state, 'DECRYPTING', 'moves to decrypting state');
+  });
+
+  test('key request timeouts reset bandwidth', function() {
+    loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+    loader.load();
+
+    equal(requests[0].url, '0-key.php', 'requested the first segment\'s key');
+    equal(requests[1].url, '0.ts', 'requested the first segment');
+    // a lot of time passes so the request times out
+    requests[0].timedout = true;
+    clock.tick(100 * 1000);
+
+    equal(loader.bandwidth, 1, 'reset bandwidth');
+    ok(isNaN(loader.roundTrip), 'reset round trip time');
   });
 
  // --------------------
@@ -877,7 +795,7 @@
       });
     },
     afterEach: function() {
-      env.restore()
+      env.restore();
     }
   });
 
