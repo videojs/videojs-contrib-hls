@@ -53,7 +53,7 @@
                                                           media.segments,
                                                           media.mediaSequence - playlist.mediaSequence);
           }
-          // resolve any missing segment URIs
+          // resolve any missing segment and key URIs
           j = 0;
           if (result.playlists[i].segments) {
             j = result.playlists[i].segments.length;
@@ -62,6 +62,9 @@
             segment = result.playlists[i].segments[j];
             if (!segment.resolvedUri) {
               segment.resolvedUri = resolveUrl(playlist.resolvedUri, segment.uri);
+            }
+            if (segment.key && !segment.key.resolvedUri) {
+              segment.key.resolvedUri = resolveUrl(playlist.resolvedUri, segment.key.uri);
             }
           }
           changed = true;

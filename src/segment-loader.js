@@ -196,8 +196,6 @@
         bytes: null,
         // when a key is defined for this segment, the encrypted bytes
         encryptedBytes: null,
-        // optionally, the decrypter that is unencrypting the segment
-        decrypter: null,
         // the state of the buffer before a segment is appended will be
         // stored here so that the actual segment duration can be
         // determined after it has been appended
@@ -210,10 +208,7 @@
 
     abort_: function() {
       if (this.xhr_) {
-        // Prevent error handler from running.
-        this.xhr_.onreadystatechange = null;
         this.xhr_.abort();
-        this.xhr_ = null;
       }
 
       // clear out the segment being processed
@@ -233,50 +228,83 @@
       }
     },
     loadSegment_: function(segmentInfo) {
-      var segment;
+      var segment, requestTimeout, keyXhr, segmentXhr;
 
       segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+      // Set xhr timeout to 150% of the segment duration to allow us
+      // some time to switch renditions in the event of a catastrophic
+      // decrease in network performance or a server issue.
+      requestTimeout = (segment.duration * 1.5) * 1000;
+
+      if (segment.key) {
+        keyXhr = videojs.Hls.xhr({
+          uri: segment.key.resolvedUri,
+          responseType: 'arraybuffer',
+          withCredentials: this.withCredentials_,
+          timeout: requestTimeout
+        }, this.handleResponse_.bind(this));
+      }
       this.pendingSegment_ = segmentInfo;
-      this.xhr_ = videojs.Hls.xhr({
+      segmentXhr = videojs.Hls.xhr({
         uri: segmentInfo.uri,
         responseType: 'arraybuffer',
         withCredentials: this.withCredentials_,
-        // Set xhr timeout to 150% of the segment duration to allow us
-        // some time to switch renditions in the event of a catastrophic
-        // decrease in network performance or a server issue.
-        timeout: (segment.duration * 1.5) * 1000
+        timeout: requestTimeout
       }, this.handleResponse_.bind(this));
+
+      this.xhr_ = {
+        keyXhr: keyXhr,
+        segmentXhr: segmentXhr,
+        abort: function() {
+          if (this.segmentXhr) {
+            // Prevent error handler from running.
+            this.segmentXhr.onreadystatechange = null;
+            this.segmentXhr.abort();
+            this.segmentXhr = null;
+          }
+          if (this.keyXhr) {
+            // Prevent error handler from running.
+            this.keyXhr.onreadystatechange = null;
+            this.keyXhr.abort();
+            this.keyXhr = null;
+          }
+        }
+      };
 
       this.state = 'WAITING';
     },
     // triggered when a segment response is received
     handleResponse_: function(error, request) {
-      var segmentInfo, segment;
+      var segmentInfo, segment, segmentXhrRequest, keyXhrRequest, view;
 
-      // this is a timeout of a previously aborted segment request
-      // so simply ignore it
-      if (!this.xhr_ || request !== this.xhr_) {
+      segmentInfo = this.pendingSegment_;
+      segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+
+      // timeout of previously aborted request
+      if (!this.xhr_ ||
+          (request !== this.xhr_.segmentXhr && request !== this.xhr_.keyXhr)) {
         return;
       }
 
-      // the segment request is no longer outstanding
-      this.xhr_ = null;
-
-      // if a segment request times out, reset bandwidth tracking
+      // if a request times out, reset bandwidth tracking
       if (request.timedout) {
+        this.abort_();
         this.bandwidth = 1;
         this.roundTrip = NaN;
-        this.pendingSegment_ = null;
         this.state = 'READY';
         return this.trigger('progress');
       }
 
       // trigger an event for other errors
-      segmentInfo = this.pendingSegment_;
       if (!request.aborted && error) {
+        // abort will clear xhr_
+        keyXhrRequest = this.xhr_.keyXhr;
+        this.abort_();
         this.error({
           status: request.status,
-          message: 'HLS segment request error at URL: ' + segmentInfo.uri,
+          message: request === keyXhrRequest ?
+            'HLS key request error at URL: ' + segment.key.uri :
+            'HLS segment request error at URL: ' + segmentInfo.uri,
           code: 2,
           xhr: request
         });
@@ -287,28 +315,74 @@
 
       // stop processing if the request was aborted
       if (!request.response) {
+        this.abort_();
         return;
       }
 
-      // calculate the download bandwidth
-      this.roundTrip = request.roundTripTime;
-      this.bandwidth = request.bandwidth;
-      this.bytesReceived += request.bytesReceived || 0;
+      if (request === this.xhr_.segmentXhr) {
+        segmentXhrRequest = this.xhr_.segmentXhr;
+        // the segment request is no longer outstanding
+        this.xhr_.segmentXhr = null;
 
-      segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
-      if (segment.key) {
-        segmentInfo.encryptedBytes = new Uint8Array(request.response);
-      } else {
-        segmentInfo.bytes = new Uint8Array(request.response);
+        // calculate the download bandwidth based on segment request
+        this.roundTrip = request.roundTripTime;
+        this.bandwidth = request.bandwidth;
+        this.bytesReceived += request.bytesReceived || 0;
+
+        if (segment.key) {
+          segmentInfo.encryptedBytes = new Uint8Array(request.response);
+        } else {
+          segmentInfo.bytes = new Uint8Array(request.response);
+        }
       }
 
-      this.processResponse_();
+      if (request === this.xhr_.keyXhr) {
+        keyXhrRequest = this.xhr_.segmentXhr;
+        // the key request is no longer outstanding
+        this.xhr_.keyXhr = null;
+
+        view = new DataView(request.response);
+        segment.key.bytes = new Uint32Array([
+          view.getUint32(0),
+          view.getUint32(4),
+          view.getUint32(8),
+          view.getUint32(12)
+        ]);
+      }
+
+      if (!this.xhr_.segmentXhr && !this.xhr_.keyXhr) {
+        this.xhr_ = null;
+        this.processResponse_();
+      }
     },
 
     processResponse_: function() {
+      var segmentInfo, playlist, segment, mediaIndex, segIv;
+
       this.state = 'DECRYPTING';
 
-      this.handleSegment_();
+      segmentInfo = this.pendingSegment_;
+      playlist = segmentInfo.playlist;
+      mediaIndex = segmentInfo.mediaIndex;
+      segment = playlist.segments[mediaIndex];
+
+      if (segment.key) {
+        // this is an encrypted segment
+        // if the media sequence is greater than 2^32, the IV will be incorrect
+        // assuming 10s segments, that would be about 1300 years
+        segIv = segment.key.iv || new Uint32Array([0, 0, 0, mediaIndex + playlist.mediaSequence]);
+
+        // incrementally decrypt the segment
+        new videojs.Hls.Decrypter(segmentInfo.encryptedBytes,
+                                  segment.key.bytes,
+                                  segIv,
+                                  (function(err, bytes) {
+                                    segmentInfo.bytes = bytes;
+                                    this.handleSegment_();
+                                  }).bind(this));
+      } else {
+        this.handleSegment_();
+      }
     },
 
     handleSegment_: function() {

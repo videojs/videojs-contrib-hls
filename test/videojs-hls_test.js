@@ -1721,6 +1721,78 @@ QUnit.skip('treats invalid keys as a key request failure and blacklists playlist
         'blacklisted playlist');
 });
 
+test('seeking should abort an outstanding key request and create a new one', function() {
+  player.src({
+    src: 'https://example.com/encrypted.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-TARGETDURATION:15\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
+                           '#EXTINF:9,\n' +
+                           'http://media.example.com/fileSequence1.ts\n' +
+                           '#EXT-X-KEY:METHOD=AES-128,URI="keys/key2.php"\n' +
+                           '#EXTINF:9,\n' +
+                           'http://media.example.com/fileSequence2.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+  standardXHRResponse(requests.pop()); // segment 1
+
+  player.currentTime(11);
+  clock.tick(1);
+  ok(requests[0].aborted, 'the key XHR should be aborted');
+  requests.shift(); // aborted key 1
+
+  equal(requests.length, 2, 'requested the new key');
+  equal(requests[0].url,
+        'https://example.com/' +
+        player.tech_.hls.playlists.media().segments[1].key.uri,
+        'urls should match');
+});
+
+test('switching playlists with an outstanding key request aborts request and loads segment',
+     function() {
+  var media = '#EXTM3U\n' +
+      '#EXT-X-MEDIA-SEQUENCE:5\n' +
+      '#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n' +
+      '#EXTINF:2.833,\n' +
+      'http://media.example.com/fileSequence52-A.ts\n' +
+      '#EXTINF:15.0,\n' +
+      'http://media.example.com/fileSequence52-B.ts\n' +
+      '#EXT-X-ENDLIST\n',
+      keyXhr;
+  player.src({
+    src: 'https://example.com/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.tech_.trigger('play');
+
+  // master playlist
+  standardXHRResponse(requests.shift());
+  // media playlist
+  requests.shift().respond(200, null, media);
+  // first segment of the original media playlist
+  standardXHRResponse(requests.pop());
+
+  equal(requests.length, 1, 'key request only one outstanding');
+  keyXhr = requests.shift();
+  ok(!keyXhr.aborted, 'key request outstanding');
+
+  player.tech_.hls.playlists.trigger('mediachange');
+
+  ok(keyXhr.aborted, 'key request aborted');
+  equal(requests.length, 2, 'loaded key and segment');
+  equal(requests[0].url,
+        'https://priv.example.com/key.php?r=52',
+        'requested the key');
+  equal(requests[1].url,
+        'http://media.example.com/fileSequence52-A.ts',
+        'requested the segment');
+});
+
 test('does not download segments if preload option set to none', function() {
   player.preload('none');
   player.src({
