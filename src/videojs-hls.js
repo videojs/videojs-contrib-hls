@@ -854,7 +854,7 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   // we have entered a state where we are fetching the same segment,
   // try to walk forward
   if (this.lastSegmentLoaded_ &&
-      this.lastSegmentLoaded_ === segment) {
+      this.lastSegmentLoaded_ === this.playlistUriToUrl(segment.uri)) {
     return this.fillBuffer(mediaIndex + 1);
   }
 
@@ -898,7 +898,7 @@ videojs.HlsHandler.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
 /*  Turns segment byterange into a string suitable for use in
  *  HTTP Range requests
  */
-videojs.HlsHandler.prototype.byterangeStr = function(byterange) {
+videojs.HlsHandler.prototype.byterangeStr_ = function(byterange) {
     var byterangeStart, byterangeEnd;
 
     // `byterangeEnd` is one less than `offset + length` because the HTTP range
@@ -910,10 +910,10 @@ videojs.HlsHandler.prototype.byterangeStr = function(byterange) {
 
 /*  Defines headers for use in the xhr request for a particular segment.
  */
-videojs.HlsHandler.prototype.segmentXhrHeaders = function(segment) {
+videojs.HlsHandler.prototype.segmentXhrHeaders_ = function(segment) {
   var headers = {};
   if ('byterange' in segment) {
-      headers['Range'] = this.byterangeStr(segment.byterange);
+      headers['Range'] = this.byterangeStr_(segment.byterange);
   }
   return headers;
 };
@@ -993,7 +993,7 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     // some time to switch renditions in the event of a catastrophic
     // decrease in network performance or a server issue.
     timeout: (segment.duration * 1.5) * 1000,
-    headers: this.segmentXhrHeaders(segment)
+    headers: this.segmentXhrHeaders_(segment)
   }, function(error, request) {
     // the segment request is no longer outstanding
     self.segmentXhr_ = null;
