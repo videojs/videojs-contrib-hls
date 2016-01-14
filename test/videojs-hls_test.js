@@ -377,6 +377,79 @@ test('duration is set when the source opens after the playlist is loaded', funct
   equal(player.tech_.hls.mediaSource.duration , 40, 'set the duration');
 });
 
+test('calls `remove` on sourceBuffer to when loading a live segment', function() {
+  var
+    removes = [],
+    seekable = videojs.createTimeRanges([[60, 120]]);
+
+  player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.tech_.hls.seekable = function(){
+    return seekable;
+  };
+
+  openMediaSource(player);
+  player.tech_.hls.mediaSource.addSourceBuffer = function() {
+    return new (videojs.extend(videojs.EventTarget, {
+      constructor: function() {},
+      abort: function() {},
+      buffered: videojs.createTimeRange(),
+      appendBuffer: function() {},
+      remove: function(start, end) {
+        removes.push([start, end]);
+      }
+    }))();
+  };
+  player.tech_.hls.bandwidth = 20e10;
+  player.tech_.triggerReady();
+  standardXHRResponse(requests[0]);
+
+  player.tech_.hls.playlists.trigger('loadedmetadata');
+  player.tech_.trigger('canplay');
+  player.tech_.paused = function() { return false; };
+  player.tech_.readyState = function(){return 1;};
+  player.tech_.trigger('play');
+
+  clock.tick(1);
+  standardXHRResponse(requests[1]);
+
+  strictEqual(requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
+  equal(removes.length, 1, 'remove called');
+  deepEqual(removes[0], [0, seekable.start(0)], 'remove called with the right range');
+});
+
+test('calls `remove` on sourceBuffer to when loading a vod segment', function() {
+  var removes = [];
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.tech_.hls.mediaSource.addSourceBuffer = function() {
+    return new (videojs.extend(videojs.EventTarget, {
+      constructor: function() {},
+      abort: function() {},
+      buffered: videojs.createTimeRange(),
+      appendBuffer: function() {},
+      remove: function(start, end) {
+        removes.push([start, end]);
+      }
+    }))();
+  };
+  player.tech_.hls.bandwidth = 20e10;
+  standardXHRResponse(requests[0]);
+  player.currentTime(120);
+  standardXHRResponse(requests[1]);
+  standardXHRResponse(requests[2]);
+
+  strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
+  equal(removes.length, 1, 'remove called');
+  deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
+});
+
 test('codecs are passed to the source buffer', function() {
   var codecs = [];
   player.src({
@@ -592,10 +665,10 @@ test('downloads media playlists after loading the master', function() {
 
   strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
   strictEqual(requests[1].url,
-              absoluteUrl('manifest/media3.m3u8'),
+              absoluteUrl('manifest/media2.m3u8'),
               'media playlist requested');
   strictEqual(requests[2].url,
-              absoluteUrl('manifest/media3-00001.ts'),
+              absoluteUrl('manifest/media2-00001.ts'),
               'first segment requested');
 });
 
@@ -613,10 +686,10 @@ test('upshifts if the initial bandwidth hint is high', function() {
 
   strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
   strictEqual(requests[1].url,
-              absoluteUrl('manifest/media3.m3u8'),
+              absoluteUrl('manifest/media2.m3u8'),
               'media playlist requested');
   strictEqual(requests[2].url,
-              absoluteUrl('manifest/media3-00001.ts'),
+              absoluteUrl('manifest/media2-00001.ts'),
               'first segment requested');
 });
 
@@ -801,7 +874,10 @@ test('selects the correct rendition by player dimensions', function() {
 
   playlist = player.tech_.hls.selectPlaylist();
 
-  deepEqual(playlist.attributes.RESOLUTION, {width:960,height:540},'should return the correct resolution by player dimensions');
+  deepEqual(playlist.attributes.RESOLUTION, {
+    width: 960,
+    height:540
+  },'should return the correct resolution by player dimensions');
   equal(playlist.attributes.BANDWIDTH, 1928000, 'should have the expected bandwidth in case of multiple');
 
   player.width(1920);
@@ -826,6 +902,15 @@ test('selects the correct rendition by player dimensions', function() {
   },'should return the correct resolution by player dimensions, if exact match');
   equal(playlist.attributes.BANDWIDTH, 440000, 'should have the expected bandwidth in case of multiple, if exact match');
 
+  player.width(395);
+  player.height(222);
+  playlist = player.tech_.hls.selectPlaylist();
+
+  deepEqual(playlist.attributes.RESOLUTION, {
+    width:396,
+    height:224
+  },'should return the next larger resolution by player dimensions, if no exact match exists');
+  equal(playlist.attributes.BANDWIDTH, 440000, 'should have the expected bandwidth in case of multiple, if exact match');
 });
 
 test('selects the highest bitrate playlist when the player dimensions are ' +
