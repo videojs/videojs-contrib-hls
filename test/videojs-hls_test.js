@@ -496,9 +496,6 @@ test('calls `remove` on sourceBuffer to when loading a vod segment', function() 
   standardXHRResponse(requests[2]);
 
   strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
-  strictEqual(requests[1].url,
-              absoluteUrl('manifest/media3.m3u8'),
-              'media playlist requested');
   equal(removes.length, 1, 'remove called');
   deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
 });
@@ -773,10 +770,10 @@ test('downloads media playlists after loading the master', function() {
 
   strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
   strictEqual(requests[1].url,
-              absoluteUrl('manifest/media3.m3u8'),
+              absoluteUrl('manifest/media2.m3u8'),
               'media playlist requested');
   strictEqual(requests[2].url,
-              absoluteUrl('manifest/media3-00001.ts'),
+              absoluteUrl('manifest/media2-00001.ts'),
               'first segment requested');
 });
 
@@ -794,10 +791,10 @@ test('upshifts if the initial bandwidth hint is high', function() {
 
   strictEqual(requests[0].url, 'manifest/master.m3u8', 'master playlist requested');
   strictEqual(requests[1].url,
-              absoluteUrl('manifest/media3.m3u8'),
+              absoluteUrl('manifest/media2.m3u8'),
               'media playlist requested');
   strictEqual(requests[2].url,
-              absoluteUrl('manifest/media3-00001.ts'),
+              absoluteUrl('manifest/media2-00001.ts'),
               'first segment requested');
 });
 
@@ -1133,7 +1130,10 @@ test('selects the correct rendition by player dimensions', function() {
 
   playlist = player.tech_.hls.selectPlaylist();
 
-  deepEqual(playlist.attributes.RESOLUTION, {width:960,height:540},'should return the correct resolution by player dimensions');
+  deepEqual(playlist.attributes.RESOLUTION, {
+    width: 960,
+    height:540
+  },'should return the correct resolution by player dimensions');
   equal(playlist.attributes.BANDWIDTH, 1928000, 'should have the expected bandwidth in case of multiple');
 
   player.width(1920);
@@ -1158,6 +1158,15 @@ test('selects the correct rendition by player dimensions', function() {
   },'should return the correct resolution by player dimensions, if exact match');
   equal(playlist.attributes.BANDWIDTH, 440000, 'should have the expected bandwidth in case of multiple, if exact match');
 
+  player.width(395);
+  player.height(222);
+  playlist = player.tech_.hls.selectPlaylist();
+
+  deepEqual(playlist.attributes.RESOLUTION, {
+    width:396,
+    height:224
+  },'should return the next larger resolution by player dimensions, if no exact match exists');
+  equal(playlist.attributes.BANDWIDTH, 440000, 'should have the expected bandwidth in case of multiple, if exact match');
 });
 
 test('selects the highest bitrate playlist when the player dimensions are ' +
@@ -1498,7 +1507,7 @@ test('waits to download new segments until the media playlist is stable', functi
   standardXHRResponse(requests.shift()); // media1
 
   // force a playlist switch
-  player.tech_.hls.playlists.media('media3.m3u8');
+  player.tech_.hls.playlists.media('media2.m3u8');
 
   standardXHRResponse(requests.shift()); // segment 0
   player.tech_.hls.sourceBuffer.trigger('updateend');
