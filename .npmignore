@@ -1,4 +1,3 @@
-!dist/
-!dist-test/
-!docs/
-!es5/
+# Intentionally left blank, so that npm does not ignore anything by default,
+# but relies on the package.json "files" array to explicitly define what ends
+# up in the package.

@@ -2,6 +2,7 @@
   "name": "videojs-contrib-hls",
   "version": "1.3.4",
   "description": "A video.js tech that plays HLS video on platforms that don't support it but have Flash",
+  "main": "es5/plugin.js",
   "engines": {
     "node": ">= 0.10.12"
   },
@@ -9,17 +10,15 @@
     "type": "git",
     "url": "git@github.com:videojs/videojs-contrib-hls.git"
   },
-  "author": "Brightcove",
+  "author": "Brightcove, Inc",
   "license": "Apache-2.0",
-  "main": "es5/plugin.js",
   "keywords": [
     "videojs",
     "videojs-plugin"
   ],
   "browserify": {
     "transform": [
-      "browserify-shim",
-      "babelify"
+      "browserify-shim"
     ]
   },
   "browserify-shim": {
@@ -37,6 +36,17 @@
       "scripts"
     ]
   },
+  "files": [
+    "CONTRIBUTING.md",
+    "dist-test/",
+    "dist/",
+    "docs/",
+    "es5/",
+    "index.html",
+    "scripts/",
+    "src/",
+    "test/"
+  ],
   "scripts": {
     "prebuild": "npm run clean",
     "build": "npm-run-all -p build:*",
