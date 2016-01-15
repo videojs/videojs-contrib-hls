@@ -894,7 +894,8 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   // we have entered a state where we are fetching the same segment,
   // try to walk forward
   if (this.lastSegmentLoaded_ &&
-      this.lastSegmentLoaded_ === this.playlistUriToUrl(segment.uri)) {
+      this.playlistUriToUrl(this.lastSegmentLoaded_.uri) === this.playlistUriToUrl(segment.uri) &&
+      this.lastSegmentLoaded_.byterange === segment.byterange) {
     return this.fillBuffer(mediaIndex + 1);
   }
 
