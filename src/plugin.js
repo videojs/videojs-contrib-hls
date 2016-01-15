@@ -154,7 +154,7 @@ HlsSourceHandler.canPlayType = function(type) {
   let mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
   // favor native HLS support if it's available
-  if (Hls.supportsNativeHls) {
+  if (Hls.supportsNativeHls()) {
     return false;
   }
   return mpegurlRE.test(type);

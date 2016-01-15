@@ -88,7 +88,9 @@ QUnit.module('HLS:general', {
 
     // force the HLS tech to run
     this.old.NativeHlsSupport = Hls.supportsNativeHls;
-    Hls.supportsNativeHls = false;
+    Hls.supportsNativeHls = function() {
+      return false;
+    }
 
     this.old.Decrypt = Hls.Decrypter;
     Hls.Decrypter = function() {};
@@ -2434,12 +2436,15 @@ QUnit.test('fires loadstart manually if Flash is used', function() {
 QUnit.test('has no effect if native HLS is available', function() {
   let player;
 
-  Hls.supportsNativeHls = true;
+  Hls.supportsNativeHls = function() {
+    return true;
+  };
   player = Helper.createPlayer();
   player.src({
     src: 'http://example.com/manifest/master.m3u8',
     type: 'application/x-mpegURL'
   });
+  console.log(player.tech_);
 
   QUnit.ok(!player.tech_.hls, 'did not load hls tech');
   player.dispose();

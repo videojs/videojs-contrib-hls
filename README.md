@@ -189,13 +189,11 @@ the web](http://www.html5rocks.com/en/tutorials/track/basics/).
 
 ### Testing
 
-For testing, you can either run `npm test` or use `grunt` directly.
-If you use `npm test`, it will only run the karma and end-to-end tests using chrome.
-You can specify which browsers you want the tests to run via grunt's `test` task.
-You can use either grunt-style arguments or comma separated arguments:
+For testing, do `npm run test`
+If you use `npm test`, it will run the karma and end-to-end tests using chrome and firefox.
+You can specify which browsers you want the tests to run via the npm `test` script (defined in package.json)
 ```
-grunt test:chrome:firefox	# grunt-style
-grunt test:chrome,firefox	# comma-separated
+npm test:chrome
 ```
 Possible options are:
 * `chromecanary`
