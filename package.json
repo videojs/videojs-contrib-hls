@@ -33,7 +33,9 @@
       "docs",
       "es5",
       "test/karma",
-      "scripts"
+      "scripts",
+      "test/test-data",
+      "test/files"
     ]
   },
   "files": [
