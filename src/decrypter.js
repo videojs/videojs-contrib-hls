@@ -325,8 +325,7 @@ Decrypter = function(encrypted, key, initVector, done) {
   this.asyncStream_.push(this.decryptChunk_(encrypted32.subarray(i, i + step),
                                             key,
                                             initVector,
-                                            decrypted,
-                                            i));
+                                            decrypted));
   for (i = step; i < encrypted32.length; i += step) {
     initVector = new Uint32Array([
       ntoh(encrypted32[i - 4]),
