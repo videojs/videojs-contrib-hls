@@ -27,8 +27,8 @@
       var
         changed = false,
         result = mergeOptions(master, {}),
-        i,
-        playlist;
+        i, j,
+        playlist, segment;
 
       i = master.playlists.length;
       while (i--) {
@@ -52,6 +52,20 @@
             result.playlists[i].segments = updateSegments(playlist.segments,
                                                           media.segments,
                                                           media.mediaSequence - playlist.mediaSequence);
+          }
+          // resolve any missing segment and key URIs
+          j = 0;
+          if (result.playlists[i].segments) {
+            j = result.playlists[i].segments.length;
+          }
+          while (j--) {
+            segment = result.playlists[i].segments[j];
+            if (!segment.resolvedUri) {
+              segment.resolvedUri = resolveUrl(playlist.resolvedUri, segment.uri);
+            }
+            if (segment.key && !segment.key.resolvedUri) {
+              segment.key.resolvedUri = resolveUrl(playlist.resolvedUri, segment.key.uri);
+            }
           }
           changed = true;
         }
@@ -223,6 +237,7 @@
 
           // trigger media change if the active media has been updated
           if (mediaChange) {
+            loader.trigger('mediachanging');
             loader.trigger('mediachange');
           }
           return;
@@ -248,6 +263,9 @@
         }
 
         // request the new playlist
+        if (this.media_) {
+          this.trigger('mediachanging');
+        }
         request = xhr({
           uri: resolveUrl(loader.master.uri, playlist.uri),
           withCredentials: withCredentials
@@ -271,8 +289,8 @@
         loader.bandwidth = xhr.bandwidth;
       };
 
-      // In a live list, don't keep track of the expired time until
-      // HLS tells us that "first play" has commenced
+      // In a live playlist, don't keep track of the expired time
+      // until HLS tells us that "first play" has commenced
       loader.on('firstplay', function() {
         this.trackExpiredTime_ = true;
       });
@@ -298,7 +316,7 @@
         uri: srcUrl,
         withCredentials: withCredentials
       }, function(error, req) {
-        var parser, i;
+        var parser, playlist, i;
 
         // clear the loader's request reference
         request = null;
@@ -325,10 +343,12 @@
         if (parser.manifest.playlists) {
           loader.master = parser.manifest;
 
-          // setup by-URI lookups
+          // setup by-URI lookups and resolve media playlist URIs
           i = loader.master.playlists.length;
           while (i--) {
-            loader.master.playlists[loader.master.playlists[i].uri] = loader.master.playlists[i];
+            playlist = loader.master.playlists[i];
+            loader.master.playlists[playlist.uri] = playlist;
+            playlist.resolvedUri = resolveUrl(loader.master.uri, playlist.uri);
           }
 
           loader.trigger('loadedplaylist');
@@ -349,6 +369,7 @@
           }]
         };
         loader.master.playlists[srcUrl] = loader.master.playlists[0];
+        loader.master.playlists[0].resolvedUri = srcUrl;
         haveMetadata(null, req, srcUrl);
         return loader.trigger('loadedmetadata');
       });

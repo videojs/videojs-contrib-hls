@@ -149,6 +149,108 @@
     strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
   });
 
+  test('resolves relative media playlist URIs', function() {
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-STREAM-INF:\n' +
+                             'video/media.m3u8\n');
+    equal(loader.master.playlists[0].resolvedUri,
+          urlTo('video/media.m3u8'),
+          'resolved media URI');
+  });
+
+  test('recognizes absolute URIs and requests them unmodified', function() {
+    var loader = new videojs.Hls.PlaylistLoader('manifest/media.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-STREAM-INF:\n' +
+                             'http://example.com/video/media.m3u8\n');
+    equal(loader.master.playlists[0].resolvedUri,
+          'http://example.com/video/media.m3u8',
+          'resolved media URI');
+
+
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXTINF:10,\n' +
+                             'http://example.com/00001.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+    equal(loader.media().segments[0].resolvedUri,
+          'http://example.com/00001.ts',
+          'resolved segment URI');
+  });
+
+  test('recognizes domain-relative URLs', function() {
+    var loader = new videojs.Hls.PlaylistLoader('manifest/media.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-STREAM-INF:\n' +
+                             '/media.m3u8\n');
+    equal(loader.master.playlists[0].resolvedUri,
+          window.location.protocol + '//' +
+          window.location.host + '/media.m3u8',
+          'resolved media URI');
+
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXTINF:10,\n' +
+                             '/00001.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+    equal(loader.media().segments[0].resolvedUri,
+          window.location.protocol + '//' +
+          window.location.host + '/00001.ts',
+          'resolved segment URI');
+  });
+
+  test('recognizes key URLs relative to master and playlist', function() {
+    var loader = new videojs.Hls.PlaylistLoader('video/media-encrypted.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=17\n' +
+                             'playlist/playlist.m3u8\n' +
+                             '#EXT-X-ENDLIST\n');
+    equal(loader.master.playlists[0].resolvedUri,
+          window.location.protocol + '//' +
+          window.location.host + '/video/playlist/playlist.m3u8',
+          'resolved media URI');
+
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-TARGETDURATION:15\n' +
+                             '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
+                             '#EXTINF:2.833,\n' +
+                             'http://example.com/000001.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+    equal(loader.media().segments[0].key.resolvedUri,
+          window.location.protocol + '//' +
+          window.location.host + '/video/playlist/keys/key.php',
+          'resolved multiple relative paths for key URI');
+  });
+
+  test('recognizes absolute key URLs', function() {
+    var loader = new videojs.Hls.PlaylistLoader('video/media-encrypted.m3u8');
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=17\n' +
+                             'playlist/playlist.m3u8\n' +
+                             '#EXT-X-ENDLIST\n');
+    equal(loader.master.playlists[0].resolvedUri,
+          window.location.protocol + '//' +
+          window.location.host + '/video/playlist/playlist.m3u8',
+          'resolved media URI');
+
+    requests.shift().respond(200, null,
+                             '#EXTM3U\n' +
+                             '#EXT-X-TARGETDURATION:15\n' +
+                             '#EXT-X-KEY:METHOD=AES-128,URI="http://example.com/keys/key.php"\n' +
+                             '#EXTINF:2.833,\n' +
+                             'http://example.com/000001.ts\n' +
+                             '#EXT-X-ENDLIST\n');
+    equal(loader.media().segments[0].key.resolvedUri, 'http://example.com/keys/key.php',
+          'resolved absolute path for key URI');
+  });
+
   test('moves to HAVE_CURRENT_METADATA when refreshing the playlist', function() {
     var loader = new videojs.Hls.PlaylistLoader('live.m3u8');
     requests.pop().respond(200, null,
@@ -757,9 +859,13 @@
   test('triggers an event when the active media changes', function() {
     var
       loader = new videojs.Hls.PlaylistLoader('master.m3u8'),
-      mediaChanges = 0;
+      mediaChanges = 0,
+       mediaChangings = 0;
     loader.on('mediachange', function() {
       mediaChanges++;
+    });
+    loader.on('mediachanging', function() {
+      mediaChangings++;
     });
     requests.pop().respond(200, null,
                            '#EXTM3U\n' +
@@ -773,9 +879,11 @@
                              '#EXTINF:10,\n' +
                              'low-0.ts\n' +
                              '#EXT-X-ENDLIST\n');
+    strictEqual(mediaChangings, 0, 'initial selection is not media changing');
     strictEqual(mediaChanges, 0, 'initial selection is not a media change');
 
     loader.media('high.m3u8');
+    strictEqual(mediaChangings, 1, 'mediachanging fires immediately');
     strictEqual(mediaChanges, 0, 'mediachange does not fire immediately');
 
     requests.shift().respond(200, null,
@@ -784,14 +892,17 @@
                              '#EXTINF:10,\n' +
                              'high-0.ts\n' +
                              '#EXT-X-ENDLIST\n');
+    strictEqual(mediaChangings, 1, 'still one mediachanging');
     strictEqual(mediaChanges, 1, 'fired a mediachange');
 
     // switch back to an already loaded playlist
     loader.media('low.m3u8');
+    strictEqual(mediaChangings, 2, 'mediachanging fires');
     strictEqual(mediaChanges, 2, 'fired a mediachange');
 
     // trigger a no-op switch
     loader.media('low.m3u8');
+    strictEqual(mediaChangings, 2, 'mediachanging ignored the no-op');
     strictEqual(mediaChanges, 2, 'ignored a no-op media change');
   });
 
