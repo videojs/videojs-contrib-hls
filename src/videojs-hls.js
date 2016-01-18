@@ -712,19 +712,17 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
       // if both dimensions are less than the player use the
       // previous (next-largest) variant
       break;
-    }
+    } else if (!resolutionPlusOne ||
+               (variant.attributes.RESOLUTION.width < resolutionPlusOne.attributes.RESOLUTION.width &&
+                variant.attributes.RESOLUTION.height < resolutionPlusOne.attributes.RESOLUTION.height)) {
+      // If we still haven't found a good match keep a
+      // reference to the previous variant for the next loop
+      // iteration
 
-    // If we still haven't found a good match so keep a
-    // reference to the previous variant for the next loop
-    // iteration
-
-    // By only saving variants if they are smaller than the
-    // previously saved variant, we ensure that we also pick
-    // the highest bandwidth variant that is just-larger-than
-    // the video player
-    if(!resolutionPlusOne ||
-      (variant.attributes.RESOLUTION.width < resolutionPlusOne.attributes.RESOLUTION.width &&
-      variant.attributes.RESOLUTION.height < resolutionPlusOne.attributes.RESOLUTION.height)) {
+      // By only saving variants if they are smaller than the
+      // previously saved variant, we ensure that we also pick
+      // the highest bandwidth variant that is just-larger-than
+      // the video player
       resolutionPlusOne = variant;
     }
   }
