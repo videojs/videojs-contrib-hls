@@ -894,7 +894,8 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   // we have entered a state where we are fetching the same segment,
   // try to walk forward
   if (this.lastSegmentLoaded_ &&
-      this.lastSegmentLoaded_ === this.playlistUriToUrl(segment.uri)) {
+      this.playlistUriToUrl(this.lastSegmentLoaded_.uri) === this.playlistUriToUrl(segment.uri) &&
+      this.lastSegmentLoaded_.byterange === segment.byterange) {
     return this.fillBuffer(mediaIndex + 1);
   }
 
@@ -959,6 +960,29 @@ videojs.HlsHandler.prototype.playlistUriToUrl = function(segmentRelativeUrl) {
     playListUrl = resolveUrl(resolveUrl(this.source_.src, this.playlists.media().uri || ''), segmentRelativeUrl);
   }
   return playListUrl;
+};
+
+/*  Turns segment byterange into a string suitable for use in
+ *  HTTP Range requests
+ */
+videojs.HlsHandler.prototype.byterangeStr_ = function(byterange) {
+    var byterangeStart, byterangeEnd;
+
+    // `byterangeEnd` is one less than `offset + length` because the HTTP range
+    // header uses inclusive ranges
+    byterangeEnd = byterange.offset + byterange.length - 1;
+    byterangeStart = byterange.offset;
+    return "bytes=" + byterangeStart + "-" + byterangeEnd;
+};
+
+/*  Defines headers for use in the xhr request for a particular segment.
+ */
+videojs.HlsHandler.prototype.segmentXhrHeaders_ = function(segment) {
+  var headers = {};
+  if ('byterange' in segment) {
+      headers['Range'] = this.byterangeStr_(segment.byterange);
+  }
+  return headers;
 };
 
 /*
@@ -1054,7 +1078,8 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     // Set xhr timeout to 150% of the segment duration to allow us
     // some time to switch renditions in the event of a catastrophic
     // decrease in network performance or a server issue.
-    timeout: (segment.duration * 1.5) * 1000
+    timeout: (segment.duration * 1.5) * 1000,
+    headers: this.segmentXhrHeaders_(segment)
   }, function(error, request) {
     // This is a timeout of a previously aborted segment request
     // so simply ignore it
@@ -1085,7 +1110,7 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
       return;
     }
 
-    self.lastSegmentLoaded_ = segmentInfo.uri;
+    self.lastSegmentLoaded_ = segment;
     self.setBandwidth(request);
 
     if (segment.key) {
