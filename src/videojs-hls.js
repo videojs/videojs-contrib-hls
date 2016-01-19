@@ -1031,7 +1031,7 @@ videojs.HlsHandler.prototype.blacklistCurrentPlaylist_ = function(error) {
 
   if (nextPlaylist) {
     videojs.log.warn('Problem encountered with the current HLS playlist. Switching to another playlist.');
-
+    this.player.trigger('loadedmetadata');
     return this.playlists.media(nextPlaylist);
   } else {
     videojs.log.warn('Problem encountered with the current HLS playlist. No suitable alternatives found.');
