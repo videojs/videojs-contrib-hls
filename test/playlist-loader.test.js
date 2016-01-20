@@ -16,7 +16,7 @@
         .join('/');
     };
 
-  module('Playlist Loader', {
+  QUnit.module('Playlist Loader', {
     setup: function() {
       // fake XHRs
       sinonXhr = sinon.useFakeXMLHttpRequest();

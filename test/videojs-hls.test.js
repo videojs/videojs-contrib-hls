@@ -206,7 +206,7 @@ var
 
 MockMediaSource.open = function() {};
 
-module('HLS', {
+QUnit.module('HLS', {
   beforeEach: function() {
     oldMediaSource = videojs.MediaSource;
     videojs.MediaSource = MockMediaSource;
@@ -1102,13 +1102,13 @@ test('After an initial media playlist 404s, we fire loadedmetadata once we succe
     count += 1;
   });
   standardXHRResponse(requests.shift());      //master
-  equal(count, 0, 
+  equal(count, 0,
     'loadedMedia not triggered before requesting playlist');
-  requests.shift().respond(404);              //media           
-  equal(count, 0, 
+  requests.shift().respond(404);              //media
+  equal(count, 0,
     'loadedMedia not triggered after playlist 404');
   standardXHRResponse(requests.shift());      //media
-  equal(count, 1, 
+  equal(count, 1,
     'loadedMedia triggered after successful recovery from 404');
 });
 

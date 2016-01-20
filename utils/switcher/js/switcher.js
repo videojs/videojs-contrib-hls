@@ -142,6 +142,7 @@
     // mock out the environment
     clock = sinon.useFakeTimers();
     fakeXhr = sinon.useFakeXMLHttpRequest();
+    videojs.xhr.XMLHttpRequest = fakeXhr;
     requests = [];
     fakeXhr.onCreate = function(xhr) {
       xhr.startTime = +new Date();
@@ -156,7 +157,6 @@
     video.controls = true;
     fixture.appendChild(video);
     player = videojs(video, {
-      techOrder: ['hls'],
       sources: [{
         src: 'http://example.com/master.m3u8',
         type: 'application/x-mpegurl'
@@ -295,6 +295,8 @@
         done(null, results);
       }, 0);
     });
+    /// trigger the ready function through set timeout
+    clock.tick(1);
   };
   runButton = document.getElementById('run-simulation');
   runButton.addEventListener('click', function() {
