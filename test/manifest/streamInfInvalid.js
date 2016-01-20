@@ -11,5 +11,11 @@
       "uri": "media1.m3u8"
     }
   ],
-  "discontinuityStarts": []
+  "discontinuityStarts": [],
+  "mediaGroups": {
+    "VIDEO": {},
+    "AUDIO": {},
+    "CLOSED-CAPTIONS": {},
+    "SUBTITLES": {}
+  }
 }
