@@ -206,7 +206,7 @@ var
 
 MockMediaSource.open = function() {};
 
-module('HLS', {
+QUnit.module('HLS', {
   beforeEach: function() {
     oldMediaSource = videojs.MediaSource;
     videojs.MediaSource = MockMediaSource;
@@ -2906,7 +2906,7 @@ test('does not download segments if preload option set to none', function() {
   equal(requests.length, 0, 'did not download any segments');
 });
 
-module('Buffer Inspection');
+QUnit.module('Buffer Inspection');
 
 test('detects time range end-point changed by updates', function() {
   var edge;

@@ -3,7 +3,7 @@
   'use strict';
   var Playlist = videojs.Hls.Playlist;
 
-  module('Playlist Duration');
+  QUnit.module('Playlist Duration');
 
   test('total duration for live playlists is Infinity', function() {
     var duration = Playlist.duration({
@@ -16,7 +16,7 @@
     equal(duration, Infinity, 'duration is infinity');
   });
 
-  module('Playlist Interval Duration');
+  QUnit.module('Playlist Interval Duration');
 
   test('accounts for non-zero starting VOD media sequences', function() {
     var duration = Playlist.duration({
@@ -266,7 +266,7 @@
     equal(Playlist.duration(playlist, -1), 0, 'negative length duration is zero');
   });
 
-  module('Playlist Seekable');
+  QUnit.module('Playlist Seekable');
 
   test('calculates seekable time ranges from the available segments', function() {
     var playlist = {
