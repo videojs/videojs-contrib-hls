@@ -13,7 +13,7 @@
     M3U8 Test Suite
   */
 
-  module('LineStream', {
+  QUnit.module('LineStream', {
     setup: function() {
       lineStream = new LineStream();
     }
@@ -83,7 +83,7 @@
     strictEqual(2, permanentLines.length, 'new events are still received');
   });
 
-  module('ParseStream', {
+  QUnit.module('ParseStream', {
     setup: function() {
       lineStream = new LineStream();
       parseStream = new ParseStream();
@@ -622,13 +622,13 @@
     ok(!event, 'no event is triggered');
   });
 
-  module('m3u8 parser');
+  QUnit.module('m3u8 parser');
 
   test('can be constructed', function() {
     notStrictEqual(new Parser(), undefined, 'parser is defined');
   });
 
-  module('m3u8s');
+  QUnit.module('m3u8s');
 
   test('parses static manifests as expected', function() {
     var key;
