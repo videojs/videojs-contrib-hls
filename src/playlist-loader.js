@@ -90,6 +90,7 @@
         dispose,
         mediaUpdateTimeout,
         request,
+        playlistRequestError,
         haveMetadata;
 
       PlaylistLoader.prototype.init.call(this);
@@ -102,27 +103,36 @@
         throw new Error('A non-empty playlist URL is required');
       }
 
+      playlistRequestError = function(xhr, url, startingState) {
+        loader.setBandwidth(request || xhr);
+
+        // any in-flight request is now finished
+        request = null;
+        
+        if (startingState) {
+          loader.state = startingState;
+        }
+
+        loader.error = {
+          playlist: loader.master.playlists[url],
+          status: xhr.status,
+          message: 'HLS playlist request error at URL: ' + url,
+          responseText: xhr.responseText,
+          code: (xhr.status >= 500) ? 4 : 2
+        };
+        loader.trigger('error');
+      };
+
       // update the playlist loader's state in response to a new or
       // updated playlist.
-      haveMetadata = function(error, xhr, url) {
+
+      haveMetadata = function(xhr, url) {
         var parser, refreshDelay, update;
 
         loader.setBandwidth(request || xhr);
 
         // any in-flight request is now finished
         request = null;
-
-        if (error) {
-          loader.error = {
-            playlist: loader.master.playlists[url],
-            status: xhr.status,
-            message: 'HLS playlist request error at URL: ' + url,
-            responseText: xhr.responseText,
-            code: (xhr.status >= 500) ? 4 : 2
-          };
-          return loader.trigger('error');
-        }
-
         loader.state = 'HAVE_METADATA';
 
         parser = new videojs.m3u8.Parser();
@@ -252,11 +262,11 @@
           uri: resolveUrl(loader.master.uri, playlist.uri),
           withCredentials: withCredentials
         }, function(error, request) {
-          haveMetadata(error, request, playlist.uri);
-
           if (error) {
-            return;
+            return playlistRequestError(request, playlist.uri, startingState);
           }
+
+          haveMetadata(request, playlist.uri);
 
           // fire loadedmetadata the first time a media playlist is loaded
           if (startingState === 'HAVE_MASTER') {
@@ -289,7 +299,10 @@
           uri: resolveUrl(loader.master.uri, loader.media().uri),
           withCredentials: withCredentials
         }, function(error, request) {
-          haveMetadata(error, request, loader.media().uri);
+          if (error) {
+            return playlistRequestError(request, loader.media().uri);
+          }
+          haveMetadata(request, loader.media().uri);
         });
       });
 
@@ -349,7 +362,7 @@
           }]
         };
         loader.master.playlists[srcUrl] = loader.master.playlists[0];
-        haveMetadata(null, req, srcUrl);
+        haveMetadata(req, srcUrl);
         return loader.trigger('loadedmetadata');
       });
     };
