@@ -1090,6 +1090,28 @@ test('blacklists switching from video-only playlists to video+audio', function()
   equal(videoAudioPlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
 });
 
+test('After an initial media playlist 404s, we fire loadedmetadata once we successfully load a playlist', function() {
+  var count = 0;
+  player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.tech_.hls.bandwidth = 20000;
+  player.on('loadedmetadata', function() {
+    count += 1;
+  });
+  standardXHRResponse(requests.shift());      //master
+  equal(count, 0, 
+    'loadedMedia not triggered before requesting playlist');
+  requests.shift().respond(404);              //media           
+  equal(count, 0, 
+    'loadedMedia not triggered after playlist 404');
+  standardXHRResponse(requests.shift());      //media
+  equal(count, 1, 
+    'loadedMedia triggered after successful recovery from 404');
+});
+
 test('does not blacklist compatible H.264 codec strings', function() {
   var master;
   player.src({
