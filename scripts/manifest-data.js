@@ -64,12 +64,12 @@ var clean = function() {
   try {
     fs.unlinkSync(manifestFilepath);
   } catch(e) {
-    // ignore error, must not exist
+    console.log(e);
   }
   try {
     fs.unlinkSync(expectedFilepath);
   } catch(e) {
-    // ignore error, must not exist
+    console.log(e);
   }
 }
 
