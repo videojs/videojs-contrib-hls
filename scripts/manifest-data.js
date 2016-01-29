@@ -9,8 +9,8 @@ var expectedFilepath = testDataDir + '/expected.js';
 
 
 var build = function() {
-  var manifests = 'window.manifests = {\n';
-  var expected = 'window.expected = {\n';
+  var manifests = 'export default {\n';
+  var expected = 'export default {\n';
 
   var files = fs.readdirSync(manifestDir);
   while (files.length > 0) {

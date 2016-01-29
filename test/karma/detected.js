@@ -29,6 +29,7 @@ module.exports = function(config) {
         postDetection: function(availableBrowsers) {
           var safariIndex = availableBrowsers.indexOf('Safari');
           if(safariIndex !== -1) {
+            console.log("Not running safari it is/was broken");
             availableBrowsers.splice(safariIndex, 1);
           }
           return availableBrowsers;
