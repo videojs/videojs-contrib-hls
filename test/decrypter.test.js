@@ -32,7 +32,7 @@ var stringFromBytes = function(bytes) {
   return result;
 };
 
-module('Decryption');
+QUnit.module('Decryption');
 
 test('decrypts a single AES-128 with PKCS7 block', function() {
   var
@@ -74,7 +74,7 @@ test('decrypts multiple AES-128 blocks with CBC', function() {
 
 var clock;
 
-module('Incremental Processing', {
+QUnit.module('Incremental Processing', {
   setup: function() {
     clock = sinon.useFakeTimers();
   },
@@ -114,7 +114,7 @@ test('executes callback in series', function() {
 
 var decrypter;
 
-module('Incremental Decryption', {
+QUnit.module('Incremental Decryption', {
   setup: function() {
     clock = sinon.useFakeTimers();
   },
