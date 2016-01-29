@@ -4,6 +4,16 @@
 (function(window, videojs) {
   'use strict';
 
+  var Playlist = {
+    /**
+     * The number of segments that are unsafe to start playback at in
+     * a live stream. Changing this value can cause playback stalls.
+     * See HTTP Live Streaming, "Playing the Media Playlist File"
+     * https://tools.ietf.org/html/draft-pantos-http-live-streaming-18#section-6.3.3
+     */
+    UNSAFE_LIVE_SEGMENTS: 3
+  };
+
   var duration, intervalDuration, backwardDuration, forwardDuration,
       seekable, getMediaIndexForTime;
 
@@ -187,7 +197,8 @@
     // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
     start = intervalDuration(playlist, playlist.mediaSequence);
     end = intervalDuration(playlist,
-                           playlist.mediaSequence + Math.max(0, playlist.segments.length - 3));
+                           playlist.mediaSequence +
+                           Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS));
     return videojs.createTimeRange(start, end);
   };
 
@@ -315,9 +326,9 @@
   };
 
   // exports
-  videojs.Hls.Playlist = {
-    duration: duration,
-    seekable: seekable,
-    getMediaIndexForTime_: getMediaIndexForTime
-  };
+  Playlist.duration = duration;
+  Playlist.seekable = seekable;
+  Playlist.getMediaIndexForTime_ = getMediaIndexForTime
+  videojs.Hls.Playlist = Playlist;
+
 })(window, window.videojs);
