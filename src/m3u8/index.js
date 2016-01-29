@@ -6,7 +6,6 @@
  * ReadableStream-like interface.
  */
 
-import Parser from './parser';
 import Stream from '../stream';
 import {mergeOptions} from 'video.js';
 /**
@@ -355,7 +354,7 @@ export class ParseStream extends Stream {
 }
 
 
-export default class Parser extends Stream {
+export class Parser extends Stream {
   constructor() {
     super();
     this.lineStream = new LineStream();
