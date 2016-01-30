@@ -1,6 +1,8 @@
 {
   "name": "videojs-contrib-hls",
   "version": "1.3.5",
+  "description": "Play back HLS with video.js, even where it's not natively supported",
+  "main": "es5/videojs-hls.js",
   "engines": {
     "node": ">= 0.10.12"
   },
@@ -8,47 +10,116 @@
     "type": "git",
     "url": "git@github.com:videojs/videojs-contrib-hls.git"
   },
-  "license": "Apache-2.0",
   "scripts": {
-    "test": "grunt test",
-    "prepublish": "if [ -z \"$TRAVIS\" ]; then grunt; fi"
+    "prebuild": "npm run clean",
+    "build": "npm-run-all -p build:*",
+    "build:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.build();\"",
+    "build:js": "npm-run-all build:js:babel build:js:browserify build:js:bannerize build:js:uglify",
+    "build:js:babel": "babel src -d es5",
+    "build:js:bannerize": "bannerize dist/videojs-contrib-hls.js --banner=scripts/banner.ejs",
+    "build:js:browserify": "browserify . -s src/videojs-hls.js -o dist/videojs-contrib-hls.js",
+    "build:js:uglify": "uglifyjs dist/videojs-contrib-hls.js --comments --mangle --compress -o dist/videojs-contrib-hls.min.js",
+    "build:test": "node scripts/build-test.js",
+    "clean": "npm-run-all clean:*",
+    "clean:build": "node -e \"var s=require('shelljs'),d=['dist','dist-test','es5'];s.rm('-rf',d);s.mkdir('-p',d);\"",
+    "clean:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.clean();\"",
+    "docs": "npm-run-all docs:*",
+    "docs:api": "jsdoc src -r -d docs/api",
+    "docs:toc": "doctoc README.md",
+    "lint": "vjsstandard :",
+    "prestart": "npm-run-all docs build",
+    "start": "npm-run-all -p start:* watch:*",
+    "start:serve": "babel-node scripts/server.js",
+    "pretest": "npm-run-all lint build",
+    "test": "karma start test/karma/detected.js",
+    "test:chrome": "npm run pretest && karma start test/karma/chrome.js",
+    "test:firefox": "npm run pretest && karma start test/karma/firefox.js",
+    "test:ie": "npm run pretest && karma start test/karma/ie.js",
+    "test:safari": "npm run pretest && karma start test/karma/safari.js",
+    "preversion": "npm test",
+    "version": "npm run build",
+    "watch": "npm-run-all -p watch:*",
+    "watch:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.watch();\"",
+    "watch:js": "watchify src/videojs-hls.js -t babelify -v -o dist/videojs-contrib-hls.js",
+    "watch:test": "node scripts/watch-test.js",
+    "prepublish": "npm run build"
   },
   "keywords": [
     "videojs",
     "videojs-plugin"
   ],
-  "devDependencies": {
-    "chg": "^0.2.0",
-    "grunt": "^0.4.5",
-    "grunt-concurrent": "0.4.3",
-    "grunt-contrib-clean": "~0.4.0",
-    "grunt-contrib-concat": "~0.3.0",
-    "grunt-contrib-connect": "~0.6.0",
-    "grunt-contrib-jshint": "~0.6.0",
-    "grunt-contrib-uglify": "~0.2.0",
-    "grunt-contrib-watch": "~0.4.0",
-    "grunt-github-releaser": "^0.1.17",
-    "grunt-karma": "~0.6.2",
-    "grunt-open": "0.2.3",
-    "grunt-protractor-runner": "forbesjo/grunt-protractor-runner.git#webdriverManagerUpdate",
-    "grunt-shell": "0.6.1",
-    "grunt-version": "^1.0.0",
-    "karma": "~0.10.0",
-    "karma-chrome-launcher": "~0.1.2",
-    "karma-firefox-launcher": "~0.1.3",
-    "karma-ie-launcher": "~0.1.1",
-    "karma-opera-launcher": "~0.1.0",
-    "karma-phantomjs-launcher": "^0.1.4",
-    "karma-qunit": "~0.1.1",
-    "karma-safari-launcher": "~0.1.1",
-    "karma-sauce-launcher": "~0.1.8",
-    "qunitjs": "^1.18.0",
-    "sinon": "1.10.2",
-    "video.js": "^5.2.1"
+  "author": "Brightcove, Inc",
+  "license": "Apache-2.0",
+  "browserify": {
+    "transform": [
+      "browserify-shim"
+    ]
   },
+  "browserify-shim": {
+    "qunit": "global:QUnit",
+    "sinon": "global:sinon",
+    "video.js": "global:videojs"
+  },
+  "vjsstandard": {
+    "ignore": [
+      "dist",
+      "dist-test",
+      "docs",
+      "es5",
+      "test/karma",
+      "scripts",
+      "utils",
+      "test/data"
+    ]
+  },
+  "files": [
+    "CONTRIBUTING.md",
+    "dist-test/",
+    "dist/",
+    "docs/",
+    "es5/",
+    "index.html",
+    "scripts/",
+    "src/",
+    "test/",
+    "utils/"
+  ],
   "dependencies": {
-    "pkcs7": "^0.2.2",
-    "videojs-contrib-media-sources": "^2.4.0",
-    "videojs-swf": "^5.0.0"
+    "pkcs7": "^0.2.3",
+    "video.js": "^5.0.0",
+    "videojs-contrib-media-sources": "^2.4.4",
+    "videojs-swf": "^5.0.1"
+  },
+  "devDependencies": {
+    "babel": "^5.8.0",
+    "babelify": "^6.0.0",
+    "bannerize": "^1.0.0",
+    "browserify": "^11.0.0",
+    "browserify-shim": "^3.0.0",
+    "connect": "^3.4.0",
+    "cowsay": "^1.1.0",
+    "doctoc": "^0.15.0",
+    "glob": "^6.0.3",
+    "global": "^4.3.0",
+    "jsdoc": "^3.4.0",
+    "karma": "^0.13.0",
+    "karma-browserify": "^4.4.0",
+    "karma-chrome-launcher": "^0.2.0",
+    "karma-detect-browsers": "^2.0.0",
+    "karma-firefox-launcher": "^0.1.0",
+    "karma-ie-launcher": "^0.2.0",
+    "karma-qunit": "^0.1.9",
+    "karma-safari-launcher": "^0.1.0",
+    "lodash-compat": "^3.10.0",
+    "minimist": "^1.2.0",
+    "npm-run-all": "^1.2.0",
+    "portscanner": "^1.0.0",
+    "qunitjs": "^1.0.0",
+    "serve-static": "^1.10.0",
+    "shelljs": "^0.5.3",
+    "sinon": "1.10.2",
+    "uglify-js": "^2.5.0",
+    "videojs-standard": "^4.0.0",
+    "watchify": "^3.6.0"
   }
 }
