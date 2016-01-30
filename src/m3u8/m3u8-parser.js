@@ -126,7 +126,7 @@
     }
 
     // Comments
-    if (line.indexOf('#EXT') !== 0) {
+    if (line.indexOf('#EXT') !== 0 && line.indexOf('#ZEN-TOTAL-DURATION:') !== 0) {
       this.trigger('data', {
         type: 'comment',
         text: line.slice(1)
