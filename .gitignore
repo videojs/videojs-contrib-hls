@@ -34,5 +34,5 @@ dist-test/
 docs/api/
 es5/
 tmp
-test/data/manifests.js
-test/data/expected.js
+test/test-manifests.js
+test/test-expected.js
