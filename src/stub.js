@@ -1,5 +1,5 @@
 import m3u8 from './m3u8';
-import Stream from './Stream';
+import Stream from './stream';
 import videojs from 'video.js';
 
 if(typeof window.videojs.Hls === 'undefined') {
