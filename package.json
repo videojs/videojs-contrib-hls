@@ -71,7 +71,8 @@
       "test/karma",
       "scripts",
       "utils",
-      "test/data"
+      "test/test-manifests.js",
+      "test/test-expected.js"
     ]
   },
   "files": [
