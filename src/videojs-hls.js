@@ -52,6 +52,9 @@ videojs.HlsHandler = videojs.extend(Component, {
     // being downloaded or processed
     this.pendingSegment_ = null;
 
+      this.currentBuffer_fix = -1;
+      this.currentBuffer_fix_length = 0;
+
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
     this.bandwidth = options.bandwidth || 4194304; // 0.5 Mbps
@@ -79,7 +82,16 @@ videojs.HlsHandler = videojs.extend(Component, {
       this.stopCheckingBuffer_();
     });
 
-    this.on(this.tech_, 'play', this.play);
+      this.on(this.tech_, 'play', this.play);
+
+      this.on(this.tech_, 'timeupdate', function(e,o){
+          var current_tr = self.findBufferedRange_();
+          var next_tr = self.findNextBufferedRange_();
+          var buffer_length = current_tr.end()-self.tech_.currentTime();
+          if(buffer_length<0.1 && next_tr.start()-self.tech_.currentTime()<1){
+              self.tech_.setCurrentTime(next_tr.start());
+          }
+      });
   }
 });
 
@@ -878,8 +890,8 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   if (mediaIndex === undefined) {
     if (currentBuffered && currentBuffered.length) {
       currentBufferedEnd = currentBuffered.end(0);
-      mediaIndex = this.playlists.getMediaIndexForTime_(currentBufferedEnd);
-      bufferedTime = Math.max(0, currentBufferedEnd - currentTime);
+      mediaIndex = this.playlists.getMediaIndexForTime_(this.currentBuffer_fix_length);
+      bufferedTime = Math.max(0, this.currentBuffer_fix_length - currentTime);
 
       // if there is plenty of content in the buffer and we're not
       // seeking, relax for awhile
@@ -904,6 +916,12 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
       this.lastSegmentLoaded_.byterange === segment.byterange) {
     return this.fillBuffer(mediaIndex + 1);
   }
+
+
+    if(mediaIndex <= this.currentBuffer_fix){
+        return;
+    }
+    this.currentBuffer_fix = mediaIndex;
 
   // package up all the work to append the segment
   segmentInfo = {
@@ -1172,6 +1190,8 @@ videojs.HlsHandler.prototype.drainBuffer = function() {
   offset = segmentInfo.offset;
   bytes = segmentInfo.bytes;
   segment = playlist.segments[mediaIndex];
+
+    if(segment.duration)this.currentBuffer_fix_length += segment.duration;
 
   if (segment.key && !bytes) {
     // this is an encrypted segment
