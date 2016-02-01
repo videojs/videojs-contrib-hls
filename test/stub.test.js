@@ -1,5 +1,5 @@
-import manifests from './data/manifests';
-import expected from './data/expected';
+import manifests from './test-manifests';
+import expected from './test-expected';
 window.manifests = manifests;
 window.expected = expected;
 

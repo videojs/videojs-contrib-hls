@@ -35,29 +35,6 @@ export class LineStream extends Stream {
   }
 }
 
-/**
- * A line-level M3U8 parser event stream. It expects to receive input one
- * line at a time and performs a context-free parse of its contents. A stream
- * interpretation of a manifest can be useful if the manifest is expected to
- * be too large to fit comfortably into memory or the entirety of the input
- * is not immediately available. Otherwise, it's probably much easier to work
- * with a regular `Parser` object.
- *
- * Produces `data` events with an object that captures the parser's
- * interpretation of the input. That object has a property `tag` that is one
- * of `uri`, `comment`, or `tag`. URIs only have a single additional
- * property, `line`, which captures the entirety of the input without
- * interpretation. Comments similarly have a single additional property
- * `text` which is the input without the leading `#`.
- *
- * Tags always have a property `tagType` which is the lower-cased version of
- * the M3U8 directive without the `#EXT` or `#EXT-X-` prefix. For instance,
- * `#EXT-X-MEDIA-SEQUENCE` becomes `media-sequence` when parsed. Unrecognized
- * tags are given the tag type `unknown` and a single additional property
- * `data` with the remainder of the input.
- */
-
-
 // "forgiving" attribute list psuedo-grammar:
 // attributes -> keyvalue (',' keyvalue)*
 // keyvalue   -> key '=' value
@@ -95,6 +72,27 @@ const parseAttributes = function(attributes) {
   return result;
 };
 
+/**
+ * A line-level M3U8 parser event stream. It expects to receive input one
+ * line at a time and performs a context-free parse of its contents. A stream
+ * interpretation of a manifest can be useful if the manifest is expected to
+ * be too large to fit comfortably into memory or the entirety of the input
+ * is not immediately available. Otherwise, it's probably much easier to work
+ * with a regular `Parser` object.
+ *
+ * Produces `data` events with an object that captures the parser's
+ * interpretation of the input. That object has a property `tag` that is one
+ * of `uri`, `comment`, or `tag`. URIs only have a single additional
+ * property, `line`, which captures the entirety of the input without
+ * interpretation. Comments similarly have a single additional property
+ * `text` which is the input without the leading `#`.
+ *
+ * Tags always have a property `tagType` which is the lower-cased version of
+ * the M3U8 directive without the `#EXT` or `#EXT-X-` prefix. For instance,
+ * `#EXT-X-MEDIA-SEQUENCE` becomes `media-sequence` when parsed. Unrecognized
+ * tags are given the tag type `unknown` and a single additional property
+ * `data` with the remainder of the input.
+ */
 export class ParseStream extends Stream {
   constructor() {
     super();
@@ -341,7 +339,24 @@ export class ParseStream extends Stream {
   }
 }
 
-
+ /**
+  * A parser for M3U8 files. The current interpretation of the input is
+  * exposed as a property `manifest` on parser objects. It's just two lines to
+  * create and parse a manifest once you have the contents available as a string:
+  *
+  * ```js
+  * var parser = new videojs.m3u8.Parser();
+  * parser.push(xhr.responseText);
+  * ```
+  *
+  * New input can later be applied to update the manifest object by calling
+  * `push` again.
+  *
+  * The parser attempts to create a usable manifest object even if the
+  * underlying input is somewhat nonsensical. It emits `info` and `warning`
+  * events during the parse if it encounters input that seems invalid or
+  * requires some property of the manifest object to be defaulted.
+  */
 export class Parser extends Stream {
   constructor() {
     super();
@@ -493,10 +508,8 @@ export class Parser extends Stream {
               if (!currentUri.attributes) {
                 currentUri.attributes = {};
               }
-              currentUri.attributes = mergeOptions(
-                currentUri.attributes,
-                entry.attributes
-              );
+              currentUri.attributes = mergeOptions(currentUri.attributes,
+                                                   entry.attributes);
             },
             discontinuity() {
               currentUri.discontinuity = true;
