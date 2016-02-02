@@ -317,14 +317,12 @@ export const decrypt = function(encrypted, key, initVector) {
     encrypted3 = ntoh(encrypted32[wordIx + 3]);
 
     // decrypt the block
-    decipher.decrypt(
-      encrypted0,
-      encrypted1,
-      encrypted2,
-      encrypted3,
-      decrypted32,
-      wordIx
-    );
+    decipher.decrypt(encrypted0,
+                     encrypted1,
+                     encrypted2,
+                     encrypted3,
+                     decrypted32,
+                     wordIx);
 
     // XOR with the IV, and restore network byte-order to obtain the
     // plaintext
