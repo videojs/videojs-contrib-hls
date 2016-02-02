@@ -12,7 +12,6 @@ var DEFAULTS = {
     'node_modules/video.js/dist/video-js.css',
 
     // REMOVE ME WHEN BROWSERIFIED
-    'node_modules/pkcs7/dist/pkcs7.unpad.js',
     'node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js',
 
     // these two stub old functionality
@@ -22,7 +21,6 @@ var DEFAULTS = {
 
     'src/playlist.js',
     'src/playlist-loader.js',
-    'src/decrypter.js',
     'src/bin-utils.js',
 
     'test/stub.test.js',
@@ -47,7 +45,7 @@ var DEFAULTS = {
   ],
 
   preprocessors: {
-    'test/{stub,m3u8}.test.js': ['browserify']
+    'test/{decrypter,stub,m3u8}.test.js': ['browserify']
   },
 
   reporters: ['dots'],

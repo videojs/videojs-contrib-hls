@@ -2,7 +2,7 @@ var browserify = require('browserify');
 var fs = require('fs');
 var glob = require('glob');
 
-glob('test/{m3u8,stub}.test.js', function(err, files) {
+glob('test/{decryper,m3u8,stub}.test.js', function(err, files) {
   browserify(files)
     .transform('babelify')
     .bundle()
