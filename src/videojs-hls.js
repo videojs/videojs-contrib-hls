@@ -85,9 +85,9 @@ videojs.HlsHandler = videojs.extend(Component, {
           var current_tr = self.findBufferedRange_();
           var next_tr = self.findNextBufferedRange_();
           if(current_tr.length>0 && next_tr.length>0){
-              var buffer_length = current_tr.end()-self.tech_.currentTime();
-              if(buffer_length<0.1 && next_tr.start()-self.tech_.currentTime()<1){
-                  self.tech_.setCurrentTime(next_tr.start());
+              var buffer_length = current_tr.end(0)-self.tech_.currentTime();
+              if(buffer_length<0.1 && next_tr.start(0)-self.tech_.currentTime()<1){
+                  self.tech_.setCurrentTime(next_tr.start(0));
               }
           }
       });
