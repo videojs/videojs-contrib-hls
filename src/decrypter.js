@@ -1,17 +1,3 @@
-import Stream from './stream';
-import {unpad} from 'pkcs7';
-
-/**
- * Convert network-order (big-endian) bytes into their little-endian
- * representation.
- */
-const ntoh = function(word) {
-  return (word << 24) |
-    ((word & 0xff00) << 8) |
-    ((word & 0xff0000) >> 8) |
-    (word >>> 24);
-};
-
 /*
  *
  * This file contains an adaptation of the AES decryption algorithm
@@ -49,6 +35,19 @@ const ntoh = function(word) {
  * are those of the authors and should not be interpreted as representing
  * official policies, either expressed or implied, of the authors.
  */
+import Stream from './stream';
+import {unpad} from 'pkcs7';
+
+/**
+ * Convert network-order (big-endian) bytes into their little-endian
+ * representation.
+ */
+const ntoh = function(word) {
+  return (word << 24) |
+    ((word & 0xff00) << 8) |
+    ((word & 0xff0000) >> 8) |
+    (word >>> 24);
+};
 
 /**
  * Schedule out an AES key for both encryption and decryption. This
@@ -269,11 +268,9 @@ class AES {
 /* eslint-enable max-len */
 export const decrypt = function(encrypted, key, initVector) {
   // word-level access to the encrypted bytes
-  let encrypted32 = new Int32Array(
-    encrypted.buffer,
-    encrypted.byteOffset,
-    encrypted.byteLength >> 2
-  );
+  let encrypted32 = new Int32Array(encrypted.buffer,
+                                   encrypted.byteOffset,
+                                   encrypted.byteLength >> 2);
 
   let decipher = new AES(Array.prototype.slice.call(key));
 
