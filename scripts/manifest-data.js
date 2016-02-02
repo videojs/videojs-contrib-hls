@@ -1,16 +1,15 @@
 var fs = require('fs');
 var path = require('path');
 
-var basePath  = path.resolve(__dirname + '/..');
-var testDataDir = basePath + '/test/data';
-var manifestDir = basePath + '/utils/manifest';
-var manifestFilepath = testDataDir + '/manifests.js';
-var expectedFilepath = testDataDir + '/expected.js';
-
+var basePath  = path.resolve(__dirname, '..');
+var testDataDir = path.join(basePath,'test');
+var manifestDir = path.join(basePath, 'utils', 'manifest');
+var manifestFilepath = path.join(testDataDir, 'test-manifests.js');
+var expectedFilepath = path.join(testDataDir, 'test-expected.js');
 
 var build = function() {
-  var manifests = 'window.manifests = {\n';
-  var expected = 'window.expected = {\n';
+  var manifests = 'export default {\n';
+  var expected = 'export default {\n';
 
   var files = fs.readdirSync(manifestDir);
   while (files.length > 0) {

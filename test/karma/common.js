@@ -2,8 +2,7 @@ var merge = require('lodash-compat/object/merge');
 
 var DEFAULTS = {
   basePath: '../..',
-  //frameworks: ['browserify', 'qunit'],
-  frameworks: ['qunit'],
+  frameworks: ['browserify', 'qunit'],
 
 
   files: [
@@ -16,20 +15,19 @@ var DEFAULTS = {
     'node_modules/pkcs7/dist/pkcs7.unpad.js',
     'node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js',
 
-    'src/videojs-hls.js',
+    // these two stub old functionality
+    'src/videojs-contrib-hls.js',
     'src/xhr.js',
-    'src/stream.js',
-    'src/m3u8/m3u8-parser.js',
+    'dist/videojs-contrib-hls.js',
+
     'src/playlist.js',
     'src/playlist-loader.js',
     'src/decrypter.js',
     'src/bin-utils.js',
 
-    'test/data/manifests.js',
-    'test/data/expected.js',
-    'test/data/ts-segment-bc.js',
+    'test/stub.test.js',
 
-    'test/videojs-hls.test.js',
+    'test/videojs-contrib-hls.test.js',
     'test/m3u8.test.js',
     'test/playlist.test.js',
     'test/playlist-loader.test.js',
@@ -44,12 +42,12 @@ var DEFAULTS = {
   ],
 
   plugins: [
-  //  'karma-browserify',
+    'karma-browserify',
     'karma-qunit'
   ],
 
   preprocessors: {
-   // 'test/**/*.js': ['browserify']
+    'test/{stub,m3u8}.test.js': ['browserify']
   },
 
   reporters: ['dots'],
@@ -59,18 +57,16 @@ var DEFAULTS = {
   singleRun: true,
   concurrency: Infinity,
 
-  /*
   browserify: {
     debug: true,
     transform: [
       'babelify',
       'browserify-shim'
     ],
-    noparse: [
+    noParse: [
       'test/data/**',
     ]
   }
-  */
 };
 
 /**
