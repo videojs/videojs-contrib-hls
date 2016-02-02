@@ -50,6 +50,62 @@ const ntoh = function(word) {
 };
 
 /**
+ * Expand the S-box tables.
+ *
+ * @private
+ */
+const precompute = function() {
+  let _tables = [[[], [], [], [], []], [[], [], [], [], []]];
+  let encTable = _tables[0];
+  let decTable = _tables[1];
+  let sbox = encTable[4];
+  let sboxInv = decTable[4];
+  let i;
+  let x;
+  let xInv;
+  let d = [];
+  let th = [];
+  let x2;
+  let x4;
+  let x8;
+  let s;
+  let tEnc;
+  let tDec;
+
+  // Compute double and third tables
+  for (i = 0; i < 256; i++) {
+    th[(d[i] = i << 1 ^ (i >> 7) * 283) ^ i] = i;
+  }
+
+  for (x = xInv = 0; !sbox[x]; x ^= x2 || 1, xInv = th[xInv] || 1) {
+    // Compute sbox
+    s = xInv ^ xInv << 1 ^ xInv << 2 ^ xInv << 3 ^ xInv << 4;
+    s = s >> 8 ^ s & 255 ^ 99;
+    sbox[x] = s;
+    sboxInv[s] = x;
+
+    // Compute MixColumns
+    x8 = d[x4 = d[x2 = d[x]]];
+    tDec = x8 * 0x1010101 ^ x4 * 0x10001 ^ x2 * 0x101 ^ x * 0x1010100;
+    tEnc = d[s] * 0x101 ^ s * 0x1010100;
+
+    for (i = 0; i < 4; i++) {
+      encTable[i][x] = tEnc = tEnc << 24 ^ tEnc >>> 8;
+      decTable[i][s] = tDec = tDec << 24 ^ tDec >>> 8;
+    }
+  }
+
+  // Compactify. Considerable speedup on Firefox.
+  for (i = 0; i < 5; i++) {
+    encTable[i] = encTable[i].slice(0);
+    decTable[i] = decTable[i].slice(0);
+  }
+  return _tables;
+}
+
+let tables;
+
+/**
  * Schedule out an AES key for both encryption and decryption. This
  * is a low-level class. Use a cipher mode to do bulk encryption.
  *
@@ -70,8 +126,10 @@ class AES {
     *
     * @private
     */
-    this._tables = [[[], [], [], [], []], [[], [], [], [], []]];
-    this._precompute();
+    if (!tables) {
+      tables = precompute();
+    }
+    this._tables = tables;
     let i;
     let j;
     let tmp;
@@ -199,57 +257,6 @@ class AES {
     }
   }
 
-   /**
-    * Expand the S-box tables.
-    *
-    * @private
-    */
-  _precompute() {
-    let encTable = this._tables[0];
-    let decTable = this._tables[1];
-    let sbox = encTable[4];
-    let sboxInv = decTable[4];
-    let i;
-    let x;
-    let xInv;
-    let d = [];
-    let th = [];
-    let x2;
-    let x4;
-    let x8;
-    let s;
-    let tEnc;
-    let tDec;
-
-    // Compute double and third tables
-    for (i = 0; i < 256; i++) {
-      th[(d[i] = i << 1 ^ (i >> 7) * 283) ^ i] = i;
-    }
-
-    for (x = xInv = 0; !sbox[x]; x ^= x2 || 1, xInv = th[xInv] || 1) {
-      // Compute sbox
-      s = xInv ^ xInv << 1 ^ xInv << 2 ^ xInv << 3 ^ xInv << 4;
-      s = s >> 8 ^ s & 255 ^ 99;
-      sbox[x] = s;
-      sboxInv[s] = x;
-
-      // Compute MixColumns
-      x8 = d[x4 = d[x2 = d[x]]];
-      tDec = x8 * 0x1010101 ^ x4 * 0x10001 ^ x2 * 0x101 ^ x * 0x1010100;
-      tEnc = d[s] * 0x101 ^ s * 0x1010100;
-
-      for (i = 0; i < 4; i++) {
-        encTable[i][x] = tEnc = tEnc << 24 ^ tEnc >>> 8;
-        decTable[i][s] = tDec = tDec << 24 ^ tDec >>> 8;
-      }
-    }
-
-    // Compactify. Considerable speedup on Firefox.
-    for (i = 0; i < 5; i++) {
-      encTable[i] = encTable[i].slice(0);
-      decTable[i] = decTable[i].slice(0);
-    }
-  }
 }
 
 /* eslint-disable max-len */
