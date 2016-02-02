@@ -101,7 +101,7 @@ const precompute = function() {
     decTable[i] = decTable[i].slice(0);
   }
   return _tables;
-}
+};
 
 let tables;
 
@@ -367,12 +367,11 @@ export class AsyncStream extends Stream {
 }
 
 // the maximum number of bytes to process at one time
-const decrypterStep = 4 * 8000;
+const DecrypterStep = 4 * 8000;
 
-export class Decrypter extends Stream {
+export class Decrypter {
   constructor(encrypted, key, initVector, done) {
-    super(Stream);
-    let step = decrypterStep;
+    let step = DecrypterStep;
     let encrypted32 = new Int32Array(encrypted.buffer);
     let decrypted = new Uint8Array(encrypted.byteLength);
     let i = 0;
@@ -409,7 +408,7 @@ export class Decrypter extends Stream {
   }
 }
 
-Decrypter.STEP = decrypterStep;
+Decrypter.STEP = DecrypterStep;
 
 export default {
   decrypt,
