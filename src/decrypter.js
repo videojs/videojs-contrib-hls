@@ -103,7 +103,7 @@ const precompute = function() {
   return _tables;
 };
 
-let tables;
+let aesTables;
 
 /**
  * Schedule out an AES key for both encryption and decryption. This
@@ -126,10 +126,10 @@ class AES {
     *
     * @private
     */
-    if (!tables) {
-      tables = precompute();
+    if (!aesTables) {
+      aesTables = precompute();
     }
-    this._tables = tables;
+    this._tables = JSON.parse(JSON.stringify(aesTables));
     let i;
     let j;
     let tmp;
