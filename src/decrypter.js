@@ -366,12 +366,9 @@ export class AsyncStream extends Stream {
   }
 }
 
-// the maximum number of bytes to process at one time
-const DecrypterStep = 4 * 8000;
-
 export class Decrypter {
   constructor(encrypted, key, initVector, done) {
-    let step = DecrypterStep;
+    let step = Decrypter.STEP;
     let encrypted32 = new Int32Array(encrypted.buffer);
     let decrypted = new Uint8Array(encrypted.byteLength);
     let i = 0;
@@ -408,7 +405,9 @@ export class Decrypter {
   }
 }
 
-Decrypter.STEP = DecrypterStep;
+// the maximum number of bytes to process at one time
+// 4 * 8000;
+Decrypter.STEP = 32000;
 
 export default {
   decrypt,
