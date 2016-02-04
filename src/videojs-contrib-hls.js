@@ -473,22 +473,17 @@ videojs.HlsHandler.prototype.setCurrentTime = function(currentTime) {
 
 videojs.HlsHandler.prototype.duration = function() {
   var
-    playlists = this.playlists,
-    playlistDuration;
+    playlists = this.playlists;
 
-  if (playlists) {
-    playlistDuration = videojs.Hls.Playlist.duration(playlists.media());
-  } else {
+  if (!playlists) {
     return 0;
   }
 
-  if (playlistDuration === Infinity) {
-    return playlistDuration;
-  } else if (this.mediaSource) {
+  if (this.mediaSource) {
     return this.mediaSource.duration;
-  } else {
-    return playlistDuration;
   }
+
+  return videojs.Hls.Playlist.duration(playlists.media());
 };
 
 videojs.HlsHandler.prototype.seekable = function() {
@@ -529,12 +524,17 @@ videojs.HlsHandler.prototype.seekable = function() {
 videojs.HlsHandler.prototype.updateDuration = function(playlist) {
   var oldDuration = this.mediaSource.duration,
       newDuration = videojs.Hls.Playlist.duration(playlist),
+      buffered = this.tech_.buffered(),
       setDuration = function() {
         this.mediaSource.duration = newDuration;
         this.tech_.trigger('durationchange');
 
         this.mediaSource.removeEventListener('sourceopen', setDuration);
       }.bind(this);
+
+  if (buffered.length > 0) {
+    newDuration = Math.max(newDuration, buffered.end(buffered.length - 1));
+  }
 
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
