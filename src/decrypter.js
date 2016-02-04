@@ -134,9 +134,9 @@ class AES {
    * @private
    */
   _precompute() {
-    let _tables = [[[], [], [], [], []], [[], [], [], [], []]];
-    let encTable = _tables[0];
-    let decTable = _tables[1];
+    let tables = [[[], [], [], [], []], [[], [], [], [], []]];
+    let encTable = tables[0];
+    let decTable = tables[1];
     let sbox = encTable[4];
     let sboxInv = decTable[4];
     let i;
@@ -179,7 +179,7 @@ class AES {
       encTable[i] = encTable[i].slice(0);
       decTable[i] = decTable[i].slice(0);
     }
-    return _tables;
+    return tables;
   }
 
   /**
