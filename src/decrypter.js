@@ -35,21 +35,22 @@
  * are those of the authors and should not be interpreted as representing
  * official policies, either expressed or implied, of the authors.
  */
-(function(window, videojs, unpad) {
-'use strict';
-
-var AES, AsyncStream, Decrypter, decrypt, ntoh;
+import Stream from './stream';
+import {unpad} from 'pkcs7';
 
 /**
  * Convert network-order (big-endian) bytes into their little-endian
  * representation.
  */
-ntoh = function(word) {
+const ntoh = function(word) {
   return (word << 24) |
     ((word & 0xff00) << 8) |
     ((word & 0xff0000) >> 8) |
     (word >>> 24);
 };
+
+
+let aesTables;
 
 /**
  * Schedule out an AES key for both encryption and decryption. This
@@ -58,108 +59,128 @@ ntoh = function(word) {
  * @constructor
  * @param key {Array} The key as an array of 4, 6 or 8 words.
  */
-AES = function (key) {
-  this._precompute();
+class AES {
+  constructor(key) {
+   /**
+    * The expanded S-box and inverse S-box tables. These will be computed
+    * on the client so that we don't have to send them down the wire.
+    *
+    * There are two tables, _tables[0] is for encryption and
+    * _tables[1] is for decryption.
+    *
+    * The first 4 sub-tables are the expanded S-box with MixColumns. The
+    * last (_tables[01][4]) is the S-box itself.
+    *
+    * @private
+    */
+    this._tables = this._precompute();
+    let i;
+    let j;
+    let tmp;
+    let encKey;
+    let decKey;
+    let sbox = this._tables[0][4];
+    let decTable = this._tables[1];
+    let keyLen = key.length;
+    let rcon = 1;
 
-  var i, j, tmp,
-    encKey, decKey,
-    sbox = this._tables[0][4], decTable = this._tables[1],
-    keyLen = key.length, rcon = 1;
+    if (keyLen !== 4 && keyLen !== 6 && keyLen !== 8) {
+      throw new Error('Invalid aes key size');
+    }
 
-  if (keyLen !== 4 && keyLen !== 6 && keyLen !== 8) {
-    throw new Error("Invalid aes key size");
-  }
+    encKey = key.slice(0);
+    decKey = [];
+    this._key = [encKey, decKey];
 
-  encKey = key.slice(0);
-  decKey = [];
-  this._key = [encKey, decKey];
+    // schedule encryption keys
+    for (i = keyLen; i < 4 * keyLen + 28; i++) {
+      tmp = encKey[i - 1];
 
-  // schedule encryption keys
-  for (i = keyLen; i < 4 * keyLen + 28; i++) {
-    tmp = encKey[i-1];
+      // apply sbox
+      if (i % keyLen === 0 || (keyLen === 8 && i % keyLen === 4)) {
+        tmp = sbox[tmp >>> 24] << 24 ^
+          sbox[tmp >> 16 & 255] << 16 ^
+          sbox[tmp >> 8 & 255] << 8 ^
+          sbox[tmp & 255];
 
-    // apply sbox
-    if (i%keyLen === 0 || (keyLen === 8 && i%keyLen === 4)) {
-      tmp = sbox[tmp>>>24]<<24 ^ sbox[tmp>>16&255]<<16 ^ sbox[tmp>>8&255]<<8 ^ sbox[tmp&255];
+        // shift rows and add rcon
+        if (i % keyLen === 0) {
+          tmp = tmp << 8 ^ tmp >>> 24 ^ rcon << 24;
+          rcon = rcon << 1 ^ (rcon >> 7) * 283;
+        }
+      }
 
-      // shift rows and add rcon
-      if (i%keyLen === 0) {
-        tmp = tmp<<8 ^ tmp>>>24 ^ rcon<<24;
-        rcon = rcon<<1 ^ (rcon>>7)*283;
+      encKey[i] = encKey[i - keyLen] ^ tmp;
+    }
+
+    // schedule decryption keys
+    for (j = 0; i; j++, i--) {
+      tmp = encKey[j & 3 ? i : i - 4];
+      if (i <= 4 || j < 4) {
+        decKey[j] = tmp;
+      } else {
+        decKey[j] = decTable[0][sbox[tmp >>> 24 ]] ^
+          decTable[1][sbox[tmp >> 16 & 255]] ^
+          decTable[2][sbox[tmp >> 8 & 255]] ^
+          decTable[3][sbox[tmp & 255]];
       }
     }
-
-    encKey[i] = encKey[i-keyLen] ^ tmp;
   }
 
-  // schedule decryption keys
-  for (j = 0; i; j++, i--) {
-    tmp = encKey[j&3 ? i : i - 4];
-    if (i<=4 || j<4) {
-      decKey[j] = tmp;
-    } else {
-      decKey[j] = decTable[0][sbox[tmp>>>24      ]] ^
-                  decTable[1][sbox[tmp>>16  & 255]] ^
-                  decTable[2][sbox[tmp>>8   & 255]] ^
-                  decTable[3][sbox[tmp      & 255]];
-    }
-  }
-};
-
-AES.prototype = {
-  /**
-   * The expanded S-box and inverse S-box tables. These will be computed
-   * on the client so that we don't have to send them down the wire.
-   *
-   * There are two tables, _tables[0] is for encryption and
-   * _tables[1] is for decryption.
-   *
-   * The first 4 sub-tables are the expanded S-box with MixColumns. The
-   * last (_tables[01][4]) is the S-box itself.
-   *
-   * @private
-   */
-  _tables: [[[],[],[],[],[]],[[],[],[],[],[]]],
 
   /**
    * Expand the S-box tables.
    *
    * @private
    */
-  _precompute: function () {
-   var encTable = this._tables[0], decTable = this._tables[1],
-       sbox = encTable[4], sboxInv = decTable[4],
-       i, x, xInv, d=[], th=[], x2, x4, x8, s, tEnc, tDec;
+  _precompute() {
+    let tables = [[[], [], [], [], []], [[], [], [], [], []]];
+    let encTable = tables[0];
+    let decTable = tables[1];
+    let sbox = encTable[4];
+    let sboxInv = decTable[4];
+    let i;
+    let x;
+    let xInv;
+    let d = [];
+    let th = [];
+    let x2;
+    let x4;
+    let x8;
+    let s;
+    let tEnc;
+    let tDec;
 
     // Compute double and third tables
-   for (i = 0; i < 256; i++) {
-     th[( d[i] = i<<1 ^ (i>>7)*283 )^i]=i;
-   }
+    for (i = 0; i < 256; i++) {
+      th[(d[i] = i << 1 ^ (i >> 7) * 283) ^ i] = i;
+    }
 
-   for (x = xInv = 0; !sbox[x]; x ^= x2 || 1, xInv = th[xInv] || 1) {
-     // Compute sbox
-     s = xInv ^ xInv<<1 ^ xInv<<2 ^ xInv<<3 ^ xInv<<4;
-     s = s>>8 ^ s&255 ^ 99;
-     sbox[x] = s;
-     sboxInv[s] = x;
+    for (x = xInv = 0; !sbox[x]; x ^= x2 || 1, xInv = th[xInv] || 1) {
+      // Compute sbox
+      s = xInv ^ xInv << 1 ^ xInv << 2 ^ xInv << 3 ^ xInv << 4;
+      s = s >> 8 ^ s & 255 ^ 99;
+      sbox[x] = s;
+      sboxInv[s] = x;
 
-     // Compute MixColumns
-     x8 = d[x4 = d[x2 = d[x]]];
-     tDec = x8*0x1010101 ^ x4*0x10001 ^ x2*0x101 ^ x*0x1010100;
-     tEnc = d[s]*0x101 ^ s*0x1010100;
+      // Compute MixColumns
+      x8 = d[x4 = d[x2 = d[x]]];
+      tDec = x8 * 0x1010101 ^ x4 * 0x10001 ^ x2 * 0x101 ^ x * 0x1010100;
+      tEnc = d[s] * 0x101 ^ s * 0x1010100;
 
-     for (i = 0; i < 4; i++) {
-       encTable[i][x] = tEnc = tEnc<<24 ^ tEnc>>>8;
-       decTable[i][s] = tDec = tDec<<24 ^ tDec>>>8;
-     }
-   }
+      for (i = 0; i < 4; i++) {
+        encTable[i][x] = tEnc = tEnc << 24 ^ tEnc >>> 8;
+        decTable[i][s] = tDec = tDec << 24 ^ tDec >>> 8;
+      }
+    }
 
-   // Compactify. Considerable speedup on Firefox.
-   for (i = 0; i < 5; i++) {
-     encTable[i] = encTable[i].slice(0);
-     decTable[i] = decTable[i].slice(0);
-   }
-  },
+    // Compactify. Considerable speedup on Firefox.
+    for (i = 0; i < 5; i++) {
+      encTable[i] = encTable[i].slice(0);
+      decTable[i] = decTable[i].slice(0);
+    }
+    return tables;
+  }
 
   /**
    * Decrypt 16 bytes, specified as four 32-bit words.
@@ -173,50 +194,71 @@ AES.prototype = {
    * writing results
    * @return {Array} The plaintext.
    */
-  decrypt:function (encrypted0, encrypted1, encrypted2, encrypted3, out, offset) {
-    var key = this._key[1],
-        // state variables a,b,c,d are loaded with pre-whitened data
-        a = encrypted0 ^ key[0],
-        b = encrypted3 ^ key[1],
-        c = encrypted2 ^ key[2],
-        d = encrypted1 ^ key[3],
-        a2, b2, c2,
+  decrypt(encrypted0, encrypted1, encrypted2, encrypted3, out, offset) {
+    let key = this._key[1];
+    // state variables a,b,c,d are loaded with pre-whitened data
+    let a = encrypted0 ^ key[0];
+    let b = encrypted3 ^ key[1];
+    let c = encrypted2 ^ key[2];
+    let d = encrypted1 ^ key[3];
+    let a2;
+    let b2;
+    let c2;
 
-        nInnerRounds = key.length / 4 - 2, // key.length === 2 ?
-        i,
-        kIndex = 4,
-        table = this._tables[1],
+    // key.length === 2 ?
+    let nInnerRounds = key.length / 4 - 2;
+    let i;
+    let kIndex = 4;
+    let table = this._tables[1];
 
-        // load up the tables
-        table0    = table[0],
-        table1    = table[1],
-        table2    = table[2],
-        table3    = table[3],
-        sbox  = table[4];
+    // load up the tables
+    let table0 = table[0];
+    let table1 = table[1];
+    let table2 = table[2];
+    let table3 = table[3];
+    let sbox = table[4];
 
     // Inner rounds. Cribbed from OpenSSL.
     for (i = 0; i < nInnerRounds; i++) {
-      a2 = table0[a>>>24] ^ table1[b>>16 & 255] ^ table2[c>>8 & 255] ^ table3[d & 255] ^ key[kIndex];
-      b2 = table0[b>>>24] ^ table1[c>>16 & 255] ^ table2[d>>8 & 255] ^ table3[a & 255] ^ key[kIndex + 1];
-      c2 = table0[c>>>24] ^ table1[d>>16 & 255] ^ table2[a>>8 & 255] ^ table3[b & 255] ^ key[kIndex + 2];
-      d  = table0[d>>>24] ^ table1[a>>16 & 255] ^ table2[b>>8 & 255] ^ table3[c & 255] ^ key[kIndex + 3];
+      a2 = table0[a >>> 24] ^
+        table1[b >> 16 & 255] ^
+        table2[c >> 8 & 255] ^
+        table3[d & 255] ^
+        key[kIndex];
+      b2 = table0[b >>> 24] ^
+        table1[c >> 16 & 255] ^
+        table2[d >> 8 & 255] ^
+        table3[a & 255] ^
+        key[kIndex + 1];
+      c2 = table0[c >>> 24] ^
+        table1[d >> 16 & 255] ^
+        table2[a >> 8 & 255] ^
+        table3[b & 255] ^
+        key[kIndex + 2];
+      d = table0[d >>> 24] ^
+        table1[a >> 16 & 255] ^
+        table2[b >> 8 & 255] ^
+        table3[c & 255] ^
+        key[kIndex + 3];
       kIndex += 4;
-      a=a2; b=b2; c=c2;
+      a = a2; b = b2; c = c2;
     }
 
     // Last round.
     for (i = 0; i < 4; i++) {
       out[(3 & -i) + offset] =
-        sbox[a>>>24      ]<<24 ^
-        sbox[b>>16  & 255]<<16 ^
-        sbox[c>>8   & 255]<<8  ^
-        sbox[d      & 255]     ^
+        sbox[a >>> 24] << 24 ^
+        sbox[b >> 16 & 255] << 16 ^
+        sbox[c >> 8 & 255] << 8 ^
+        sbox[d & 255] ^
         key[kIndex++];
-      a2=a; a=b; b=c; c=d; d=a2;
+      a2 = a; a = b; b = c; c = d; d = a2;
     }
   }
-};
 
+}
+
+/* eslint-disable max-len */
 /**
  * Decrypt bytes using AES-128 with CBC and PKCS#7 padding.
  * @param encrypted {Uint8Array} the encrypted bytes
@@ -229,24 +271,32 @@ AES.prototype = {
  * @see http://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#Cipher_Block_Chaining_.28CBC.29
  * @see https://tools.ietf.org/html/rfc2315
  */
-decrypt = function(encrypted, key, initVector) {
-  var
-    // word-level access to the encrypted bytes
-    encrypted32 = new Int32Array(encrypted.buffer, encrypted.byteOffset, encrypted.byteLength >> 2),
+/* eslint-enable max-len */
+export const decrypt = function(encrypted, key, initVector) {
+  // word-level access to the encrypted bytes
+  let encrypted32 = new Int32Array(encrypted.buffer,
+                                   encrypted.byteOffset,
+                                   encrypted.byteLength >> 2);
 
-    decipher = new AES(Array.prototype.slice.call(key)),
+  let decipher = new AES(Array.prototype.slice.call(key));
 
-    // byte and word-level access for the decrypted output
-    decrypted = new Uint8Array(encrypted.byteLength),
-    decrypted32 = new Int32Array(decrypted.buffer),
+  // byte and word-level access for the decrypted output
+  let decrypted = new Uint8Array(encrypted.byteLength);
+  let decrypted32 = new Int32Array(decrypted.buffer);
 
-    // temporary variables for working with the IV, encrypted, and
-    // decrypted data
-    init0, init1, init2, init3,
-    encrypted0, encrypted1, encrypted2, encrypted3,
+  // temporary variables for working with the IV, encrypted, and
+  // decrypted data
+  let init0;
+  let init1;
+  let init2;
+  let init3;
+  let encrypted0;
+  let encrypted1;
+  let encrypted2;
+  let encrypted3;
 
-    // iteration variable
-    wordIx;
+  // iteration variable
+  let wordIx;
 
   // pull out the words of the IV to ensure we don't modify the
   // passed-in reference and easier access
@@ -275,7 +325,7 @@ decrypt = function(encrypted, key, initVector) {
 
     // XOR with the IV, and restore network byte-order to obtain the
     // plaintext
-    decrypted32[wordIx]     = ntoh(decrypted32[wordIx] ^ init0);
+    decrypted32[wordIx] = ntoh(decrypted32[wordIx] ^ init0);
     decrypted32[wordIx + 1] = ntoh(decrypted32[wordIx + 1] ^ init1);
     decrypted32[wordIx + 2] = ntoh(decrypted32[wordIx + 2] ^ init2);
     decrypted32[wordIx + 3] = ntoh(decrypted32[wordIx + 3] ^ init3);
@@ -290,75 +340,76 @@ decrypt = function(encrypted, key, initVector) {
   return decrypted;
 };
 
-AsyncStream = function() {
-  this.jobs = [];
-  this.delay = 1;
-  this.timeout_ = null;
-};
-AsyncStream.prototype = new videojs.Hls.Stream();
-AsyncStream.prototype.processJob_ = function() {
-  this.jobs.shift()();
-  if (this.jobs.length) {
-    this.timeout_ = setTimeout(this.processJob_.bind(this),
-                               this.delay);
-  } else {
+export class AsyncStream extends Stream {
+  constructor() {
+    super(Stream);
+    this.jobs = [];
+    this.delay = 1;
     this.timeout_ = null;
   }
-};
-AsyncStream.prototype.push = function(job) {
-  this.jobs.push(job);
-  if (!this.timeout_) {
-    this.timeout_ = setTimeout(this.processJob_.bind(this),
-                               this.delay);
+  processJob_() {
+    this.jobs.shift()();
+    if (this.jobs.length) {
+      this.timeout_ = setTimeout(this.processJob_.bind(this),
+                                 this.delay);
+    } else {
+      this.timeout_ = null;
+    }
   }
-};
+  push(job) {
+    this.jobs.push(job);
+    if (!this.timeout_) {
+      this.timeout_ = setTimeout(this.processJob_.bind(this),
+                                 this.delay);
+    }
+  }
+}
 
-Decrypter = function(encrypted, key, initVector, done) {
-  var
-    step = Decrypter.STEP,
-    encrypted32 = new Int32Array(encrypted.buffer),
-    decrypted = new Uint8Array(encrypted.byteLength),
-    i = 0;
-  this.asyncStream_ = new AsyncStream();
+export class Decrypter {
+  constructor(encrypted, key, initVector, done) {
+    let step = Decrypter.STEP;
+    let encrypted32 = new Int32Array(encrypted.buffer);
+    let decrypted = new Uint8Array(encrypted.byteLength);
+    let i = 0;
 
-  // split up the encryption job and do the individual chunks asynchronously
-  this.asyncStream_.push(this.decryptChunk_(encrypted32.subarray(i, i + step),
-                                            key,
-                                            initVector,
-                                            decrypted));
-  for (i = step; i < encrypted32.length; i += step) {
-    initVector = new Uint32Array([
-      ntoh(encrypted32[i - 4]),
-      ntoh(encrypted32[i - 3]),
-      ntoh(encrypted32[i - 2]),
-      ntoh(encrypted32[i - 1])
-    ]);
+    this.asyncStream_ = new AsyncStream();
+
+    // split up the encryption job and do the individual chunks asynchronously
     this.asyncStream_.push(this.decryptChunk_(encrypted32.subarray(i, i + step),
                                               key,
                                               initVector,
                                               decrypted));
+    for (i = step; i < encrypted32.length; i += step) {
+      initVector = new Uint32Array([ntoh(encrypted32[i - 4]),
+                                    ntoh(encrypted32[i - 3]),
+                                    ntoh(encrypted32[i - 2]),
+                                    ntoh(encrypted32[i - 1])]);
+      this.asyncStream_.push(this.decryptChunk_(encrypted32.subarray(i, i + step),
+                                                key,
+                                                initVector,
+                                                decrypted));
+    }
+    // invoke the done() callback when everything is finished
+    this.asyncStream_.push(function() {
+      // remove pkcs#7 padding from the decrypted bytes
+      done(null, unpad(decrypted));
+    });
   }
-  // invoke the done() callback when everything is finished
-  this.asyncStream_.push(function() {
-    // remove pkcs#7 padding from the decrypted bytes
-    done(null, unpad(decrypted));
-  });
-};
-Decrypter.prototype = new videojs.Hls.Stream();
-Decrypter.prototype.decryptChunk_ = function(encrypted, key, initVector, decrypted) {
-  return function() {
-    var bytes = decrypt(encrypted,
-                        key,
-                        initVector);
-    decrypted.set(bytes, encrypted.byteOffset);
-  };
-};
+  decryptChunk_(encrypted, key, initVector, decrypted) {
+    return function() {
+      let bytes = decrypt(encrypted, key, initVector);
+
+      decrypted.set(bytes, encrypted.byteOffset);
+    };
+  }
+}
+
 // the maximum number of bytes to process at one time
-Decrypter.STEP = 4 * 8000;
+// 4 * 8000;
+Decrypter.STEP = 32000;
 
-// exports
-videojs.Hls.decrypt = decrypt;
-videojs.Hls.Decrypter = Decrypter;
-videojs.Hls.AsyncStream = AsyncStream;
-
-})(window, window.videojs, window.pkcs7.unpad);
+export default {
+  decrypt,
+  Decrypter,
+  AsyncStream
+};
