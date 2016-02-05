@@ -1,3 +1,10 @@
+/**
+ * This file contains the `Decrypter` class which manages
+ * AES decryption through the `decrypt` function (which uses
+ * the `AES` class for lower level decrypting) and Asynchronous
+ * Streams from the `AsyncStream` class
+ */
+
 import AES from './aes';
 import AsyncStream from './async-stream';
 import {unpad} from 'pkcs7';
@@ -95,6 +102,11 @@ export const decrypt = function(encrypted, key, initVector) {
   return decrypted;
 };
 
+/**
+ * The `Decrypter` class that manages decryption of AES
+ * data through `AsyncStream` objects and the `decrypt`
+ * function
+ */
 export class Decrypter {
   constructor(encrypted, key, initVector, done) {
     let step = Decrypter.STEP;
