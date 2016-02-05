@@ -88,10 +88,10 @@ const updateMaster = function(master, media) {
 export default class PlaylistLoader extends Stream {
   constructor(srcUrl, withCredentials) {
     super();
-    this.srcUrl = srcUrl;
-    this.withCredentials = withCredentials;
+    this.srcUrl_ = srcUrl;
+    this.withCredentials_ = withCredentials;
 
-    this.mediaUpdateTimeout = null;
+    this.mediaUpdateTimeout_ = null;
 
     // initialize the loader state
     this.state = 'HAVE_NOTHING';
@@ -105,7 +105,7 @@ export default class PlaylistLoader extends Stream {
     // no effect when not playing a live stream
     this.trackExpiredTime_ = false;
 
-    if (!this.srcUrl) {
+    if (!this.srcUrl_) {
       throw new Error('A non-empty playlist URL is required');
     }
 
@@ -123,32 +123,32 @@ export default class PlaylistLoader extends Stream {
       }
 
       this.state = 'HAVE_CURRENT_METADATA';
-      this.request = XhrModule({
+      this.request_ = XhrModule({
         uri: resolveUrl(this.master.uri, this.media().uri),
-        withCredentials: this.withCredentials
+        withCredentials: this.withCredentials_
       }, (error, request) => {
         if (error) {
-          return this.playlistRequestError(request, this.media().uri);
+          return this.playlistRequestError_(request, this.media().uri);
         }
-        this.haveMetadata(request, this.media().uri);
+        this.haveMetadata_(request, this.media().uri);
       });
     });
 
     // request the specified URL
-    this.request = XhrModule({
-      uri: this.srcUrl,
-      withCredentials: this.withCredentials
+    this.request_ = XhrModule({
+      uri: this.srcUrl_,
+      withCredentials: this.withCredentials_
     }, (error, request) => {
       let parser = new m3u8.Parser();
       let i;
 
       // clear the loader's request reference
-      this.request = null;
+      this.request_ = null;
 
       if (error) {
         this.error = {
           status: request.status,
-          message: 'HLS playlist request error at URL: ' + this.srcUrl,
+          message: 'HLS playlist request error at URL: ' + this.srcUrl_,
           responseText: request.responseText,
           // MEDIA_ERR_NETWORK
           code: 2
@@ -161,7 +161,7 @@ export default class PlaylistLoader extends Stream {
 
       this.state = 'HAVE_MASTER';
 
-      parser.manifest.uri = this.srcUrl;
+      parser.manifest.uri = this.srcUrl_;
 
       // loaded a master playlist
       if (parser.manifest.playlists) {
@@ -175,7 +175,7 @@ export default class PlaylistLoader extends Stream {
         }
 
         this.trigger('loadedplaylist');
-        if (!this.request) {
+        if (!this.request_) {
           // no media playlist was specifically selected so start
           // from the first listed one
           this.media(parser.manifest.playlists[0]);
@@ -188,20 +188,20 @@ export default class PlaylistLoader extends Stream {
       this.master = {
         uri: window.location.href,
         playlists: [{
-          uri: this.srcUrl
+          uri: this.srcUrl_
         }]
       };
-      this.master.playlists[this.srcUrl] = this.master.playlists[0];
-      this.haveMetadata(request, this.srcUrl);
+      this.master.playlists[this.srcUrl_] = this.master.playlists[0];
+      this.haveMetadata_(request, this.srcUrl_);
       return this.trigger('loadedmetadata');
     });
   }
 
-  playlistRequestError(xhr, url, startingState) {
-    this.setBandwidth(this.request || xhr);
+  playlistRequestError_(xhr, url, startingState) {
+    this.setBandwidth(this.request_ || xhr);
 
     // any in-flight request is now finished
-    this.request = null;
+    this.request_ = null;
 
     if (startingState) {
       this.state = startingState;
@@ -219,15 +219,15 @@ export default class PlaylistLoader extends Stream {
 
   // update the playlist loader's state in response to a new or
   // updated playlist.
-  haveMetadata(xhr, url) {
+  haveMetadata_(xhr, url) {
     let parser;
     let refreshDelay;
     let update;
 
-    this.setBandwidth(this.request || xhr);
+    this.setBandwidth(this.request_ || xhr);
 
     // any in-flight request is now finished
-    this.request = null;
+    this.request_ = null;
 
     this.state = 'HAVE_METADATA';
 
@@ -251,7 +251,7 @@ export default class PlaylistLoader extends Stream {
     // refresh live playlists after a target duration passes
     if (!this.media().endList) {
       this.clearMediaUpdateTimeout_();
-      this.mediaUpdateTimeout = window.setTimeout(() => {
+      this.mediaUpdateTimeout_ = window.setTimeout(() => {
         this.trigger('mediaupdatetimeout');
       }, refreshDelay);
     }
@@ -260,16 +260,16 @@ export default class PlaylistLoader extends Stream {
   }
 
   clearMediaUpdateTimeout_() {
-    if (this.mediaUpdateTimeout) {
-      window.clearTimeout(this.mediaUpdateTimeout);
+    if (this.mediaUpdateTimeout_) {
+      window.clearTimeout(this.mediaUpdateTimeout_);
     }
   }
 
   requestDispose_() {
-    if (this.request) {
-      this.request.onreadystatechange = null;
-      this.request.abort();
-      this.request = null;
+    if (this.request_) {
+      this.request_.onreadystatechange = null;
+      this.request_.abort();
+      this.request_ = null;
     }
   }
 
@@ -339,8 +339,8 @@ export default class PlaylistLoader extends Stream {
     this.state = 'SWITCHING_MEDIA';
 
     // there is already an outstanding playlist request
-    if (this.request) {
-      if (resolveUrl(this.master.uri, playlist.uri) === this.request.url) {
+    if (this.request_) {
+      if (resolveUrl(this.master.uri, playlist.uri) === this.request_.url) {
         // requesting to switch to the same playlist multiple times
         // has no effect after the first
         return;
@@ -349,14 +349,14 @@ export default class PlaylistLoader extends Stream {
     }
 
     // request the new playlist
-    this.request = XhrModule({
+    this.request_ = XhrModule({
       uri: resolveUrl(this.master.uri, playlist.uri),
-      withCredentials: this.withCredentials
+      withCredentials: this.withCredentials_
     }, (error, request) => {
       if (error) {
-        return this.playlistRequestError(request, playlist.uri, startingState);
+        return this.playlistRequestError_(request, playlist.uri, startingState);
       }
-      this.haveMetadata(request, playlist.uri);
+      this.haveMetadata_(request, playlist.uri);
 
       if (error) {
         return;
