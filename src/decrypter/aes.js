@@ -111,7 +111,6 @@ export default class AES {
     }
   }
 
-
   /**
    * Expand the S-box tables.
    *
