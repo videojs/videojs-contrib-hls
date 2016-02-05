@@ -13,7 +13,6 @@ const ntoh = function(word) {
     (word >>> 24);
 };
 
-
 /* eslint-disable max-len */
 /**
  * Decrypt bytes using AES-128 with CBC and PKCS#7 padding.
@@ -95,7 +94,6 @@ export const decrypt = function(encrypted, key, initVector) {
 
   return decrypted;
 };
-
 
 export class Decrypter {
   constructor(encrypted, key, initVector, done) {
