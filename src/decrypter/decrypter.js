@@ -1,8 +1,8 @@
-/**
- * This file contains the `Decrypter` class which manages
- * AES decryption through the `decrypt` function (which uses
- * the `AES` class for lower level decrypting) and Asynchronous
- * Streams from the `AsyncStream` class
+/*
+ * decrypter.js
+ *
+ * An asynchronous implementation of AES-128 CBC decryption with
+ * PKCS#7 padding.
  */
 
 import AES from './aes';

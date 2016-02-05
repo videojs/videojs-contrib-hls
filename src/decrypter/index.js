@@ -1,9 +1,10 @@
-/**
- * Main file for Decrypter so that we can neatly export
- * all of our functionality as one object in one file
- * and we will only have to require the top level directory
- * in this case that would look like:
- * ``` JavaScript
+/*
+ * index.js
+ *
+ * Index module to easily import the primary components of AES-128
+ * decryption. Like this:
+ *
+ * ```js
  * import {Decrypter, decrypt, AsyncStream} from './src/decrypter';
  * ```
  */
