@@ -74,11 +74,10 @@ const updateMaster = function(master, media) {
       // if the update could overlap existing segment information,
       // merge the two lists
       if (playlist.segments) {
-        result.playlists[i].segments = updateSegments(
-          playlist.segments,
-          media.segments,
-          media.mediaSequence - playlist.mediaSequence
-        );
+        result.playlists[i].segments = updateSegments(playlist.segments,
+                                                      media.segments,
+                                                      media.mediaSequence -
+                                                      playlist.mediaSequence);
       }
       changed = true;
     }
@@ -518,9 +517,9 @@ export default class PlaylistLoader extends Stream {
         // so fallback to interpolating between the segment index
         // based on the known span of the timeline we are dealing with
         // and the number of segments inside that span
-        return startIndex + Math.floor(
-          ((originalTime - knownStart) / (knownEnd - knownStart)) *
-          (endIndex - startIndex));
+        return startIndex + Math.floor(((originalTime - knownStart) /
+                                        (knownEnd - knownStart)) *
+                                        (endIndex - startIndex));
       }
 
       // We _still_ haven't found a segment so load the last one
