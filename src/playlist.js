@@ -319,10 +319,9 @@ export const seekable = function(playlist) {
   // of content from the end of the playlist
   // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
   start = intervalDuration(playlist, playlist.mediaSequence);
-  end = intervalDuration(
-    playlist,
-    playlist.mediaSequence + Math.max(0, playlist.segments.length - 3)
-  );
+  end = intervalDuration(playlist,
+                         playlist.mediaSequence +
+                         Math.max(0, playlist.segments.length - 3));
   return createTimeRange(start, end);
 };
 
