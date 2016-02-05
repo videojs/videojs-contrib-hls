@@ -1,5 +1,9 @@
 import Stream from '../stream';
 
+/**
+ * A wrapper around the Stream class to use setTiemout
+ * and run stream "jobs" Asynchronously
+ */
 export default class AsyncStream extends Stream {
   constructor() {
     super(Stream);
