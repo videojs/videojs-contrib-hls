@@ -1,6 +1,5 @@
-import decrypt from './decrypt';
+import {decrypt, Decrypter} from './decrypter';
 import AsyncStream from './async-stream';
-import Decrypter from './decrypter';
 
 export default {
   decrypt,
