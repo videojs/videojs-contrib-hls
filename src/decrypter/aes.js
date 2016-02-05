@@ -38,6 +38,62 @@
  */
 
 /**
+ * Expand the S-box tables.
+ *
+ * @private
+ */
+const precompute = function() {
+  let tables = [[[], [], [], [], []], [[], [], [], [], []]];
+  let encTable = tables[0];
+  let decTable = tables[1];
+  let sbox = encTable[4];
+  let sboxInv = decTable[4];
+  let i;
+  let x;
+  let xInv;
+  let d = [];
+  let th = [];
+  let x2;
+  let x4;
+  let x8;
+  let s;
+  let tEnc;
+  let tDec;
+
+  // Compute double and third tables
+  for (i = 0; i < 256; i++) {
+    th[(d[i] = i << 1 ^ (i >> 7) * 283) ^ i] = i;
+  }
+
+  for (x = xInv = 0; !sbox[x]; x ^= x2 || 1, xInv = th[xInv] || 1) {
+    // Compute sbox
+    s = xInv ^ xInv << 1 ^ xInv << 2 ^ xInv << 3 ^ xInv << 4;
+    s = s >> 8 ^ s & 255 ^ 99;
+    sbox[x] = s;
+    sboxInv[s] = x;
+
+    // Compute MixColumns
+    x8 = d[x4 = d[x2 = d[x]]];
+    tDec = x8 * 0x1010101 ^ x4 * 0x10001 ^ x2 * 0x101 ^ x * 0x1010100;
+    tEnc = d[s] * 0x101 ^ s * 0x1010100;
+
+    for (i = 0; i < 4; i++) {
+      encTable[i][x] = tEnc = tEnc << 24 ^ tEnc >>> 8;
+      decTable[i][s] = tDec = tDec << 24 ^ tDec >>> 8;
+    }
+  }
+
+  // Compactify. Considerable speedup on Firefox.
+  for (i = 0; i < 5; i++) {
+    encTable[i] = encTable[i].slice(0);
+    decTable[i] = decTable[i].slice(0);
+  }
+  return tables;
+}
+
+
+let aesTables = null;
+/**
  * Schedule out an AES key for both encryption and decryption. This
  * is a low-level class. Use a cipher mode to do bulk encryption.
  *
@@ -58,7 +114,22 @@ export default class AES {
     *
     * @private
     */
-    this._tables = this._precompute();
+    // if we have yet to precompute the S-box tables
+    // do so now
+    if(!aesTables) {
+      aesTables = precompute();
+    }
+    // then make a copy of that object for use
+    this._tables = [[aesTables[0][0].slice(),
+                     aesTables[0][1].slice(),
+                     aesTables[0][2].slice(),
+                     aesTables[0][3].slice(),
+                     aesTables[0][4].slice()],
+                    [aesTables[1][0].slice(),
+                     aesTables[1][1].slice(),
+                     aesTables[1][2].slice(),
+                     aesTables[1][3].slice(),
+                     aesTables[1][4].slice()]];
     let i;
     let j;
     let tmp;
@@ -110,60 +181,6 @@ export default class AES {
           decTable[3][sbox[tmp & 255]];
       }
     }
-  }
-
-  /**
-   * Expand the S-box tables.
-   *
-   * @private
-   */
-  _precompute() {
-    let tables = [[[], [], [], [], []], [[], [], [], [], []]];
-    let encTable = tables[0];
-    let decTable = tables[1];
-    let sbox = encTable[4];
-    let sboxInv = decTable[4];
-    let i;
-    let x;
-    let xInv;
-    let d = [];
-    let th = [];
-    let x2;
-    let x4;
-    let x8;
-    let s;
-    let tEnc;
-    let tDec;
-
-    // Compute double and third tables
-    for (i = 0; i < 256; i++) {
-      th[(d[i] = i << 1 ^ (i >> 7) * 283) ^ i] = i;
-    }
-
-    for (x = xInv = 0; !sbox[x]; x ^= x2 || 1, xInv = th[xInv] || 1) {
-      // Compute sbox
-      s = xInv ^ xInv << 1 ^ xInv << 2 ^ xInv << 3 ^ xInv << 4;
-      s = s >> 8 ^ s & 255 ^ 99;
-      sbox[x] = s;
-      sboxInv[s] = x;
-
-      // Compute MixColumns
-      x8 = d[x4 = d[x2 = d[x]]];
-      tDec = x8 * 0x1010101 ^ x4 * 0x10001 ^ x2 * 0x101 ^ x * 0x1010100;
-      tEnc = d[s] * 0x101 ^ s * 0x1010100;
-
-      for (i = 0; i < 4; i++) {
-        encTable[i][x] = tEnc = tEnc << 24 ^ tEnc >>> 8;
-        decTable[i][s] = tDec = tDec << 24 ^ tDec >>> 8;
-      }
-    }
-
-    // Compactify. Considerable speedup on Firefox.
-    for (i = 0; i < 5; i++) {
-      encTable[i] = encTable[i].slice(0);
-      decTable[i] = decTable[i].slice(0);
-    }
-    return tables;
   }
 
   /**
