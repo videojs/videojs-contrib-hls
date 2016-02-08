@@ -21,3 +21,4 @@ env:
   - secure: AnduYGXka5ft1x7V3SuVYqvlKLvJGhUaRNFdy4UDJr3ZVuwpQjE4TMDG8REmJIJvXfHbh4qY4N1cFSGnXkZ4bH21Xk0v9DLhsxbarKz+X2BvPgXs+Af9EQ6vLEy/5S1vMLxfT5+y+Ec5bVNGOsdUZby8Y21CRzSg6ADN9kwPGlE=
 addons:
   sauce_connect: true
+  firefox: latest
