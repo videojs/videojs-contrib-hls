@@ -2906,6 +2906,40 @@ test('does not download segments if preload option set to none', function() {
   equal(requests.length, 0, 'did not download any segments');
 });
 
+test('does not process update end until buffered value has been set', function() {
+  var drainBufferCallCount = 0, origDrainBuffer;
+
+  player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  origDrainBuffer = player.tech_.hls.drainBuffer;
+  player.tech_.hls.drainBuffer = function() {
+    drainBufferCallCount++;
+  };
+
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
+
+  equal(drainBufferCallCount, 0, 'drainBuffer not called yet');
+
+  standardXHRResponse(requests.shift()); // segment
+
+  ok(player.tech_.hls.pendingSegment_, 'pending segment exists');
+  equal(drainBufferCallCount, 1, 'drainBuffer called');
+
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+  ok(player.tech_.hls.pendingSegment_, 'pending segment exists');
+
+  player.tech_.hls.drainBuffer = origDrainBuffer;
+  player.tech_.hls.drainBuffer();
+  ok(player.tech_.hls.pendingSegment_, 'pending segment exists');
+
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+  ok(!player.tech_.hls.pendingSegment_, 'pending segment cleared out');
+});
+
 module('Buffer Inspection');
 
 test('detects time range end-point changed by updates', function() {

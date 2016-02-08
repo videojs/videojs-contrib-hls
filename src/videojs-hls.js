@@ -1229,12 +1229,19 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     seekable,
     timelineUpdate;
 
-  this.pendingSegment_ = null;
-
   // stop here if the update errored or was aborted
   if (!segmentInfo) {
     return;
   }
+
+  // In Firefox, the updateend event is triggered for both removing from the buffer and
+  // adding to the buffer. To prevent this code from executing on removals, we wait for
+  // segmentInfo to have a filled in buffered value before we continue processing.
+  if (!segmentInfo.buffered) {
+    return;
+  }
+
+  this.pendingSegment_ = null;
 
   playlist = this.playlists.media();
   segments = playlist.segments;
