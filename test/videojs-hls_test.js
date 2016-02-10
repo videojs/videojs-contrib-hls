@@ -2144,6 +2144,79 @@ test('tracks segment end times as they are buffered', function() {
   equal(player.tech_.hls.mediaSource.duration, 10 + 9.5, 'updated duration');
 });
 
+test('updates first segment duration as it is buffered', function() {
+  var bufferEnd = 0;
+  player.src({
+    src: 'media.m3u8',
+    type: 'application/x-mpegURL'
+  });
+  openMediaSource(player);
+
+  // as new segments are downloaded, the buffer end is updated
+  player.tech_.buffered = function() {
+    return videojs.createTimeRange(0, bufferEnd);
+  };
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+
+  // 0.ts is shorter than advertised
+  standardXHRResponse(requests.shift());
+  equal(player.tech_.hls.mediaSource.duration, 20, 'original duration is from the m3u8');
+  equal(player.tech_.hls.playlists.media().segments[0].duration, 10,
+    'segment duration initially based on playlist');
+
+  bufferEnd = 9.5;
+  player.tech_.hls.sourceBuffer.trigger('update');
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+  equal(player.tech_.hls.playlists.media().segments[0].duration, 9.5,
+    'updated segment duration');
+});
+
+test('updates segment durations as they are buffered', function() {
+  var bufferEnd = 0;
+  player.src({
+    src: 'media.m3u8',
+    type: 'application/x-mpegURL'
+  });
+  openMediaSource(player);
+
+  // as new segments are downloaded, the buffer end is updated
+  player.tech_.buffered = function() {
+    return videojs.createTimeRange(0, bufferEnd);
+  };
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+
+  // 0.ts is shorter than advertised
+  standardXHRResponse(requests.shift());
+  equal(player.tech_.hls.mediaSource.duration, 20, 'original duration is from the m3u8');
+
+  equal(player.tech_.hls.playlists.media().segments[1].duration, 10,
+    'segment duration initially based on playlist');
+
+  bufferEnd = 9.5;
+  player.tech_.hls.sourceBuffer.trigger('update');
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+  clock.tick(1);
+  standardXHRResponse(requests.shift());
+  bufferEnd = 19;
+  player.tech_.hls.sourceBuffer.trigger('update');
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+
+  equal(player.tech_.hls.playlists.media().segments[1].duration, 9.5,
+    'updated segment duration');
+});
+
 QUnit.skip('seeking does not fail when targeted between segments', function() {
   var currentTime, segmentUrl;
   player.src({
@@ -2428,7 +2501,7 @@ test('can be disposed before finishing initialization', function() {
   }
 });
 
-test('calls ended() on the media source at the end of a playlist', function() {
+test('calls endOfStream on the media source after appending the last segment', function() {
   var endOfStreams = 0, buffered = [[]];
   player.src({
     src: 'http://example.com/media.m3u8',
@@ -2441,11 +2514,15 @@ test('calls ended() on the media source at the end of a playlist', function() {
   player.tech_.hls.mediaSource.endOfStream = function() {
     endOfStreams++;
   };
+  player.currentTime(20);
+  clock.tick(1);
   // playlist response
   requests.shift().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXTINF:10,\n' +
                            '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
                            '#EXT-X-ENDLIST\n');
   // segment response
   requests[0].response = new ArrayBuffer(17);
@@ -2454,7 +2531,50 @@ test('calls ended() on the media source at the end of a playlist', function() {
 
   buffered =[[0, 10]];
   player.tech_.hls.sourceBuffer.trigger('updateend');
-  strictEqual(endOfStreams, 1, 'ended media source');
+  strictEqual(endOfStreams, 1, 'called endOfStream on the media source');
+});
+
+test('calls endOfStream on the media source when the current buffer ends at duration', function() {
+  var endOfStreams = 0, buffered = [[]];
+  player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.tech_.buffered = function() {
+    return videojs.createTimeRanges(buffered);
+  };
+  player.tech_.hls.mediaSource.endOfStream = function() {
+    endOfStreams++;
+  };
+  player.currentTime(19);
+  clock.tick(1);
+  // playlist response
+  requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXTINF:10,\n' +
+                           '0.ts\n' +
+                           '#EXTINF:10,\n' +
+                           '1.ts\n' +
+                           '#EXT-X-ENDLIST\n');
+  // segment response
+  requests[0].response = new ArrayBuffer(17);
+  requests.shift().respond(200, null, '');
+  strictEqual(endOfStreams, 0, 'waits for the buffer update to finish');
+
+  buffered =[[10, 20]];
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+
+  player.currentTime(5);
+  clock.tick(1);
+  // segment response
+  requests[0].response = new ArrayBuffer(17);
+  requests.shift().respond(200, null, '');
+
+  buffered =[[0, 20]];
+  player.tech_.hls.sourceBuffer.trigger('updateend');
+
+  strictEqual(endOfStreams, 2, 'called endOfStream on the media source twice');
 });
 
 test('calling play() at the end of a video replays', function() {

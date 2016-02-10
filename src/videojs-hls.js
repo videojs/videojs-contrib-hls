@@ -297,6 +297,72 @@ videojs.Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
   return result[0];
 };
 
+/**
+ * Updates segment with information about its end-point in time and, optionally,
+ * the segment duration if we have enough information to determine a segment duration
+ * accurately.
+ * @param playlist {object} a media playlist object
+ * @param segmentIndex {number} the index of segment we last appended
+ * @param segmentEnd {number} the known of the segment referenced by segmentIndex
+ */
+videojs.HlsHandler.prototype.updateSegmentMetadata_ = function(playlist, segmentIndex, segmentEnd) {
+  var
+    segment,
+    previousSegment;
+
+  if (!playlist) {
+    return;
+  }
+
+  segment = playlist.segments[segmentIndex];
+  previousSegment = playlist.segments[segmentIndex - 1];
+
+  if (segmentEnd && segment) {
+    segment.end = segmentEnd;
+
+    // fix up segment durations based on segment end data
+    if (!previousSegment) {
+      // first segment is always has a start time of 0 making its duration
+      // equal to the segment end
+      segment.duration = segment.end;
+    } else if (previousSegment.end) {
+      segment.duration = segment.end - previousSegment.end;
+    }
+  }
+};
+
+/**
+ * Determines if we should call endOfStream on the media source based on the state
+ * of the buffer or if appened segment was the final segment in the playlist.
+ * @param playlist {object} a media playlist object
+ * @param segmentIndex {number} the index of segment we last appended
+ * @param currentBuffered {object} the buffered region that currentTime resides in
+ * @return {boolean} whether the calling function should call endOfStream on the MediaSource
+ */
+videojs.HlsHandler.prototype.isEndOfStream_ = function(playlist, segmentIndex, currentBuffered) {
+  var
+    segments = playlist.segments,
+    appendedLastSegment,
+    bufferedToEnd;
+
+  if (!playlist) {
+    return false;
+  }
+
+  // determine a few boolean values to help make the branch below easier
+  // to read
+  appendedLastSegment = (segmentIndex === segments.length - 1);
+  bufferedToEnd = (currentBuffered.length &&
+    segments[segments.length - 1].end <= currentBuffered.end(0));
+
+  // if we've buffered to the end of the video, we need to call endOfStream
+  // so that MediaSources can trigger the `ended` event when it runs out of
+  // buffered data instead of waiting for me
+  return playlist.endList &&
+    this.mediaSource.readyState === 'open' &&
+    (appendedLastSegment || bufferedToEnd);
+};
+
 var parseCodecs = function(codecs) {
   var result = {
     codecCount: 0,
@@ -506,11 +572,18 @@ videojs.HlsHandler.prototype.setCurrentTime = function(currentTime) {
 };
 
 videojs.HlsHandler.prototype.duration = function() {
-  var playlists = this.playlists;
-  if (playlists) {
-    return videojs.Hls.Playlist.duration(playlists.media());
+  var
+    playlists = this.playlists;
+
+  if (!playlists) {
+    return 0;
   }
-  return 0;
+
+  if (this.mediaSource) {
+    return this.mediaSource.duration;
+  }
+
+  return videojs.Hls.Playlist.duration(playlists.media());
 };
 
 videojs.HlsHandler.prototype.seekable = function() {
@@ -551,12 +624,17 @@ videojs.HlsHandler.prototype.seekable = function() {
 videojs.HlsHandler.prototype.updateDuration = function(playlist) {
   var oldDuration = this.mediaSource.duration,
       newDuration = videojs.Hls.Playlist.duration(playlist),
+      buffered = this.tech_.buffered(),
       setDuration = function() {
         this.mediaSource.duration = newDuration;
         this.tech_.trigger('durationchange');
 
         this.mediaSource.removeEventListener('sourceopen', setDuration);
       }.bind(this);
+
+  if (buffered.length > 0) {
+    newDuration = Math.max(newDuration, buffered.end(buffered.length - 1));
+  }
 
   // if the duration has changed, invalidate the cached value
   if (oldDuration !== newDuration) {
@@ -1227,7 +1305,8 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     currentMediaIndex,
     currentBuffered,
     seekable,
-    timelineUpdate;
+    timelineUpdate,
+    isEndOfStream;
 
   // stop here if the update errored or was aborted
   if (!segmentInfo) {
@@ -1243,14 +1322,18 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
 
   this.pendingSegment_ = null;
 
-  playlist = this.playlists.media();
+  playlist = segmentInfo.playlist;
   segments = playlist.segments;
   currentMediaIndex = segmentInfo.mediaIndex + (segmentInfo.mediaSequence - playlist.mediaSequence);
   currentBuffered = this.findBufferedRange_();
+  isEndOfStream = this.isEndOfStream_(playlist, currentMediaIndex, currentBuffered);
 
   // if we switched renditions don't try to add segment timeline
   // information to the playlist
   if (segmentInfo.playlist.uri !== this.playlists.media().uri) {
+    if (isEndOfStream) {
+      return this.mediaSource.endOfStream();
+    }
     return this.fillBuffer();
   }
 
@@ -1275,21 +1358,16 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
     }
   }
 
-
   timelineUpdate = videojs.Hls.findSoleUncommonTimeRangesEnd_(segmentInfo.buffered,
                                                               this.tech_.buffered());
 
-  if (timelineUpdate && segment) {
-    segment.end = timelineUpdate;
-  }
+  // Update segment meta-data (duration and end-point) based on timeline
+  this.updateSegmentMetadata_(playlist, currentMediaIndex, timelineUpdate);
 
-  // if we've buffered to the end of the video, let the MediaSource know
-  if (this.playlists.media().endList &&
-      currentBuffered.length &&
-      segments[segments.length - 1].end <= currentBuffered.end(0) &&
-      this.mediaSource.readyState === 'open') {
-    this.mediaSource.endOfStream();
-    return;
+  // If we decide to signal the end of stream, then we can return instead
+  // of trying to fetch more segments
+  if (isEndOfStream) {
+    return this.mediaSource.endOfStream();
   }
 
   if (timelineUpdate !== null ||
