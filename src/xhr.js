@@ -35,10 +35,8 @@ const xhr = function(options, callback) {
         response.statusCode !== 200 &&
         response.statusCode !== 206 &&
         response.statusCode !== 0) {
-      error = new Error(
-        'XHR Failed with a response of: ' +
-        (request && (request.response || request.responseText))
-      );
+      error = new Error('XHR Failed with a response of: ' +
+                        (request && (request.response || request.responseText)));
     }
 
     callback(error, request);
