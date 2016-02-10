@@ -1052,7 +1052,8 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     self = this,
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex],
     removeToTime = 0,
-    seekable = this.seekable();
+    seekable = this.seekable(),
+    currentTime = this.tech_.currentTime();
 
   // Chrome has a hard limit of 150mb of buffer and a very conservative "garbage collector"
   // We manually clear out the old buffer to ensure we don't trigger the QuotaExceeded error
@@ -1060,10 +1061,10 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
   if (this.sourceBuffer && !this.sourceBuffer.updating) {
     // If we have a seekable range use that as the limit for what can be removed safely
     // otherwise remove anything older than 1 minute before the current play head
-    if (seekable.length && seekable.start(0) > 0) {
+    if (seekable.length && seekable.start(0) > 0 && seekable.start(0) < currentTime) {
       removeToTime = seekable.start(0);
     } else {
-      removeToTime = this.tech_.currentTime() - 60;
+      removeToTime = currentTime - 60;
     }
 
     if (removeToTime > 0) {

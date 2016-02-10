@@ -427,7 +427,7 @@ test('duration is set when the source opens after the playlist is loaded', funct
   equal(player.tech_.hls.mediaSource.duration , 40, 'set the duration');
 });
 
-test('calls `remove` on sourceBuffer to when loading a live segment', function() {
+test('calls `remove` based on seekable when loading a live segment', function() {
   var
     removes = [],
     seekable = videojs.createTimeRanges([[60, 120]]);
@@ -471,7 +471,53 @@ test('calls `remove` on sourceBuffer to when loading a live segment', function()
   deepEqual(removes[0], [0, seekable.start(0)], 'remove called with the right range');
 });
 
-test('calls `remove` on sourceBuffer to when loading a vod segment', function() {
+test('calls `remove` based on currentTime when loading a live segment '+
+     'if seekable start is after currentTime', function() {
+  var
+    removes = [],
+    seekable = videojs.createTimeRanges([[0, 80]]);
+
+  player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  player.tech_.hls.seekable = function(){
+    return seekable;
+  };
+
+  openMediaSource(player);
+  player.tech_.hls.mediaSource.addSourceBuffer = function() {
+    return new (videojs.extend(videojs.EventTarget, {
+      constructor: function() {},
+      abort: function() {},
+      buffered: videojs.createTimeRange(),
+      appendBuffer: function() {},
+      remove: function(start, end) {
+        removes.push([start, end]);
+      }
+    }))();
+  };
+  player.tech_.hls.bandwidth = 20e10;
+  player.tech_.triggerReady();
+  standardXHRResponse(requests[0]);
+  player.tech_.hls.playlists.trigger('loadedmetadata');
+  player.tech_.trigger('canplay');
+  player.tech_.paused = function() { return false; };
+  player.tech_.readyState = function(){return 1;};
+  player.tech_.trigger('play');
+  clock.tick(1);
+  // Change seekable so that it starts *after* the currentTime which was set
+  // based on the previous seekable range (the end of 80)
+  seekable = videojs.createTimeRanges([[100, 120]]);
+  standardXHRResponse(requests[1]);
+
+  strictEqual(requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
+  equal(removes.length, 1, 'remove called');
+  deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
+});
+
+test('calls `remove` based on currentTime when loading a vod segment', function() {
   var removes = [];
   player.src({
     src: 'manifest/master.m3u8',
@@ -1308,13 +1354,13 @@ test('After an initial media playlist 404s, we fire loadedmetadata once we succe
     count += 1;
   });
   standardXHRResponse(requests.shift());      //master
-  equal(count, 0, 
+  equal(count, 0,
     'loadedMedia not triggered before requesting playlist');
-  requests.shift().respond(404);              //media           
-  equal(count, 0, 
+  requests.shift().respond(404);              //media
+  equal(count, 0,
     'loadedMedia not triggered after playlist 404');
   standardXHRResponse(requests.shift());      //media
-  equal(count, 1, 
+  equal(count, 1,
     'loadedMedia triggered after successful recovery from 404');
 });
 
