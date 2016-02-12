@@ -3106,6 +3106,26 @@ test('does not process update end until buffered value has been set', function()
   ok(!player.tech_.hls.pendingSegment_, 'pending segment cleared out');
 });
 
+// workaround https://bugzilla.mozilla.org/show_bug.cgi?id=548397
+test('selectPlaylist does not fail if getComputedStyle returns null', function() {
+  var oldGetComputedStyle = window.getComputedStyle;
+  window.getComputedStyle = function() {
+    return null;
+  };
+
+  player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(player);
+  standardXHRResponse(requests.shift()); // master
+  standardXHRResponse(requests.shift()); // media
+
+  player.tech_.hls.selectPlaylist();
+  ok(true, 'should not throw');
+  window.getComputedStyle = oldGetComputedStyle;
+});
+
 module('Buffer Inspection');
 
 test('detects time range end-point changed by updates', function() {
