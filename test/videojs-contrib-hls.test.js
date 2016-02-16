@@ -2014,23 +2014,27 @@ test('does not download segments if preload option set to none', function() {
   equal(requests.length, 0, 'did not download any segments');
 });
 
+
 // workaround https://bugzilla.mozilla.org/show_bug.cgi?id=548397
 test('selectPlaylist does not fail if getComputedStyle returns null', function() {
   var oldGetComputedStyle = window.getComputedStyle;
+
   window.getComputedStyle = function() {
     return null;
   };
 
-  player.src({
+  this.player.src({
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  openMediaSource(player);
-  standardXHRResponse(requests.shift()); // master
-  standardXHRResponse(requests.shift()); // media
+  openMediaSource(this.player, this.clock);
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
 
-  player.tech_.hls.selectPlaylist();
-  ok(true, 'should not throw');
+  this.player.tech_.hls.selectPlaylist();
+  QUnit.ok(true, 'should not throw');
   window.getComputedStyle = oldGetComputedStyle;
 });
 
