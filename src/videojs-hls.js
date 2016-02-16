@@ -17,6 +17,7 @@ var
   // The amount of time to wait between checking the state of the buffer
   bufferCheckInterval = 500,
 
+  safeGetComputedStyle,
   keyFailed,
   resolveUrl;
 
@@ -683,6 +684,27 @@ videojs.HlsHandler.prototype.cancelSegmentXhr = function() {
 };
 
 /**
+ * Returns the CSS value for the specified property on an element
+ * using `getComputedStyle`. Firefox has a long-standing issue where
+ * getComputedStyle() may return null when running in an iframe with
+ * `display: none`.
+ * @see https://bugzilla.mozilla.org/show_bug.cgi?id=548397
+ */
+safeGetComputedStyle = function(el, property) {
+  var result;
+  if (!el) {
+    return '';
+  }
+
+  result = getComputedStyle(el);
+  if (!result) {
+    return '';
+  }
+
+  return result[property];
+};
+
+/**
  * Abort all outstanding work and cleanup.
  */
 videojs.HlsHandler.prototype.dispose = function() {
@@ -760,8 +782,8 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
   // (this could be the lowest bitrate rendition as  we go through all of them above)
   variant = null;
 
-  width = parseInt(getComputedStyle(this.tech_.el()).width, 10);
-  height = parseInt(getComputedStyle(this.tech_.el()).height, 10);
+  width = parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10);
+  height = parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10);
 
   // iterate through the bandwidth-filtered playlists and find
   // best rendition by player dimension
