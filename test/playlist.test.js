@@ -112,8 +112,7 @@ QUnit.test('uses timeline values for the expired duration of live playlists', fu
   QUnit.equal(duration, 120.5 + 9, 'used segment end time');
 });
 
-QUnit.test(
-'looks outside the queried interval for live playlist timeline values',
+QUnit.test('looks outside the queried interval for live playlist timeline values',
 function() {
   let playlist = {
     mediaSequence: 12,
@@ -211,8 +210,7 @@ QUnit.test('uses timeline intervals when segments have them', function() {
   QUnit.equal(duration, 30.1, 'used the timeline-based interval');
 });
 
-QUnit.test(
-'counts the time between segments as part of the earlier segment\'s duration',
+QUnit.test('counts the time between segments as part of the earlier segment\'s duration',
 function() {
   let duration = Playlist.duration({
     mediaSequence: 0,
@@ -302,8 +300,7 @@ QUnit.test('master playlists have empty seekable ranges', function() {
   QUnit.equal(seekable.length, 0, 'no seekable ranges from a master playlist');
 });
 
-QUnit.test(
-'seekable end is three target durations from the actual end of live playlists',
+QUnit.test('seekable end is three target durations from the actual end of live playlists',
 function() {
   let seekable = Playlist.seekable({
     mediaSequence: 0,
@@ -347,11 +344,9 @@ QUnit.test('only considers available segments', function() {
 
   QUnit.equal(seekable.length, 1, 'there are seekable ranges');
   QUnit.equal(seekable.start(0), 0, 'starts at the earliest available segment');
-  QUnit.equal(
-    seekable.end(0),
-    10,
-    'ends three target durations from the last available segment'
-  );
+  QUnit.equal(seekable.end(0),
+              10,
+              'ends three target durations from the last available segment');
 });
 
 QUnit.test('seekable end accounts for non-standard target durations', function() {
@@ -377,9 +372,7 @@ QUnit.test('seekable end accounts for non-standard target durations', function()
   });
 
   QUnit.equal(seekable.start(0), 0, 'starts at the earliest available segment');
-  QUnit.equal(
-    seekable.end(0),
-    9 - (2 + 2 + 1),
-    'allows seeking no further than three segments from the end'
-  );
+  QUnit.equal(seekable.end(0),
+              9 - (2 + 2 + 1),
+              'allows seeking no further than three segments from the end');
 });
