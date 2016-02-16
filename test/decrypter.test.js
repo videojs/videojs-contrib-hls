@@ -90,7 +90,6 @@ function() {
 
 });
 
-
 QUnit.module('Incremental Processing', {
   beforeEach() {
     this.clock = sinon.useFakeTimers();

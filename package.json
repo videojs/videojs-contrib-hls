@@ -2,7 +2,7 @@
   "name": "videojs-contrib-hls",
   "version": "1.3.5",
   "description": "Play back HLS with video.js, even where it's not natively supported",
-  "main": "es5/stub.js",
+  "main": "es5/videojs-contrib-hls.js",
   "engines": {
     "node": ">= 0.10.12"
   },
@@ -27,7 +27,7 @@
     "docs": "npm-run-all docs:*",
     "docs:api": "jsdoc src -r -d docs/api",
     "docs:toc": "doctoc README.md",
-    "lint": "vjsstandard :",
+    "lint": "vjsstandard",
     "prestart": "npm-run-all docs build",
     "start": "npm-run-all -p start:* watch:*",
     "start:serve": "babel-node scripts/server.js",
@@ -40,7 +40,7 @@
     "preversion": "npm test",
     "version": "npm run build",
     "watch": "npm-run-all -p watch:*",
-    "watch:js": "watchify src/stub.js -t babelify -v -o dist/videojs-contrib-hls.js",
+    "watch:js": "watchify src/videojs-contrib-hls.js -t babelify -v -o dist/videojs-contrib-hls.js",
     "watch:test": "npm-run-all -p watch:test:*",
     "watch:test:js": "node scripts/watch-test.js",
     "watch:test:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.watch();\"",
@@ -72,7 +72,8 @@
       "scripts",
       "utils",
       "test/test-manifests.js",
-      "test/test-expected.js"
+      "test/test-expected.js",
+      "src/playlist-loader.js"
     ]
   },
   "files": [

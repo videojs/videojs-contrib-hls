@@ -1,13 +1,8 @@
 /**
  * A lightweight readable stream implemention that handles event dispatching.
- * Objects that inherit from streams should call init in their constructors.
  */
 export default class Stream {
   constructor() {
-    this.init();
-  }
-
-  init() {
     this.listeners = {};
   }
 
