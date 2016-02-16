@@ -3079,12 +3079,12 @@ test('does not process update end until buffered value has been set', function()
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+
+  openMediaSource(player);
   origDrainBuffer = player.tech_.hls.drainBuffer;
   player.tech_.hls.drainBuffer = function() {
     drainBufferCallCount++;
   };
-
-  openMediaSource(player);
   standardXHRResponse(requests.shift()); // master
   standardXHRResponse(requests.shift()); // media
 
