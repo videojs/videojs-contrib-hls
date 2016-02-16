@@ -16,11 +16,8 @@ var DEFAULTS = {
 
     // these two stub old functionality
     'src/videojs-contrib-hls.js',
-    'src/xhr.js',
     'dist/videojs-contrib-hls.js',
 
-    'src/playlist.js',
-    'src/playlist-loader.js',
     'src/bin-utils.js',
 
     'test/stub.test.js',
@@ -45,7 +42,7 @@ var DEFAULTS = {
   ],
 
   preprocessors: {
-    'test/{decrypter,stub,m3u8}.test.js': ['browserify']
+    'test/{playlist*,decrypter,stub,m3u8}.test.js': ['browserify']
   },
 
   reporters: ['dots'],
