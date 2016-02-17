@@ -21,6 +21,10 @@
       min-width: 450px;
       padding: 5px;
     }
+    .video-container {
+      float: left;
+      padding: 20px;
+    }
   </style>
 
 </head>
@@ -29,16 +33,46 @@
     <p>The video below is an <a href="https://developer.apple.com/library/ios/documentation/networkinginternet/conceptual/streamingmediaguide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008332-CH1-SW1">HTTP Live Stream</a>. On desktop browsers other than Safari, the HLS plugin will polyfill support for the format on top of the video.js Flash tech.</p>
     <p>Due to security restrictions in Flash, you will have to load this page over HTTP(S) to see the example in action.</p>
   </div>
-  <video id="videojs-contrib-hls-player" class="video-js vjs-default-skin" controls>
-    <source src="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8" type="application/x-mpegURL">
-  </video>
+  <div id="fixture">
+  </div>
 
-  <form id=load-url>
+  <form id="load-url">
     <label>
-      Video URL:
-      <input id=url type=url value="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8">
+      URL to Load:
+      <input id="url-to-load" type="url" value="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8">
     </label>
-    <button type=submit>Load</button>
+    <br>
+    <label>
+      Player Options:
+      <input id="player-options" type="text" value='{}'>
+    </label>
+    <br>
+    <label>
+      URL Content Type:
+      <input id="url-content-type" type="text" value="application/x-mpegURL">
+    </label>
+    <br>
+    <label>
+      Default Caption Track Label (blank for none):
+      <input id="caption-track" type="text" value="">
+    </label>
+    <br>
+    <label>
+      Technology Mode:
+      <input type="radio" name="technology-mode" value="auto" checked> Auto
+      <input type="radio" name="technology-mode" value="html"> HTML
+      <input type="radio" name="technology-mode" value="flash"> Flash
+    </label>
+    <br>
+    <label>
+      Autoplay:
+      <input type="radio" name="autoplay" value="on"> On
+      <input type="radio" name="autoplay" value="off" checked> Off
+    </label>
+
+    <br>
+    <br>
+    <button type="submit">Load</button>
   </form>
   <ul>
     <li><a href="/test/">Run unit tests in browser.</a></li>
@@ -46,22 +80,99 @@
   </ul>
 
   <script src="/node_modules/video.js/dist/video.js"></script>
-  <script src="/node_modules/videojs-contrib-media-sources/dist/videojs-media-sources.js"></script>
-  <script src="/src/videojs-contrib-hls.js"></script>
   <script src="/dist/videojs-contrib-hls.js"></script>
-  <script src="/src/bin-utils.js"></script>
   <script>
-    (function(window, videojs) {
-      var player = window.player = videojs('videojs-contrib-hls-player');
-      // hook up the video switcher
-      var loadUrl = document.getElementById('load-url');
-      var url = document.getElementById('url');
-      loadUrl.addEventListener('submit', function(event) {
-        event.preventDefault();
-        player.src({
-          src: url.value,
-          type: 'application/x-mpegURL'
+    function getCheckedValue(name) {
+      var radios = document.getElementsByName(name);
+      var value;
+
+      for (var i = 0, length = radios.length; i < length; i++) {
+        if (radios[i].checked) {
+          value = radios[i].value;
+          break;
+        }
+      }
+      return value;
+    }
+
+    function createPlayer() {
+      // dispose of existing player
+      if(window.player) {
+        window.player.dispose();
+      }
+
+      // create video element in the dom
+      var video = document.createElement('video');
+      video.id = 'videojs-contrib-hls-player';
+      video.className = 'video-js vjs-default-skin';
+      video.setAttribute('controls', true);
+      video.setAttribute('height', 300);
+      video.setAttribute('width', 600);
+      document.querySelector('#fixture').appendChild(video);
+
+      var techRadios = document.getElementsByName('technology-mode');
+      var techMode = getCheckedValue('technology-mode') || 'auto';
+      var autoplay = getCheckedValue('autoplay') || 'off';
+      var captionTrack = document.getElementById('caption-track').value || "";
+      var url = document.getElementById('url-to-load').value || "";
+      var options = {};
+
+      // try to parse options from the form
+      try {
+        options = JSON.parse(document.getElementById('player-options').value);
+      } catch(err) {
+        console.log("Reseting options to {}, JSON Parse Error:", err);
+      }
+
+      if(typeof options.techOrder === 'undefined') {
+        if (techMode === 'html') {
+          options.techOrder = ['html5'];
+        } else if (techMode === 'flash') {
+          options.techOrder = ['flash'];
+        }
+      }
+
+      if(typeof options.autoplay === 'undefined') {
+        if (autoplay === 'on') {
+          options.autoplay = true;
+        } else if (techMode === 'off') {
+          options.autoplay = false;
+        }
+      }
+
+      var type = document.getElementById('url-content-type').value;
+
+      // use the form data to add a src to the player
+      try {
+        window.player = videojs(video.id, options);
+        if(captionTrack) {
+          // hackey way to show captions
+          window.player.on('loadeddata', function(event) {
+            textTracks = this.textTracks().tracks_;
+            for(var i = 0; i < textTracks.length; i++) {
+              if(textTracks[i].label === captionTrack) {
+                console.log("Found matching track, going to show " + captionTrack);
+                textTracks[i].mode = "showing";
+                break;
+              }
+            }
+          });
+        }
+        window.player.src({
+          src: url,
+          type: type
         });
+      } catch(err) {
+        console.log("caught an error trying to create and add src to player:", err);
+      }
+    }
+    (function(window, videojs) {
+      videojs.options.flash.swf = 'node_modules/videojs-swf/dist/video-js.swf';
+      createPlayer();
+      // hook up the video switcher
+      document.getElementById('load-url').addEventListener('submit', function(event) {
+        event.preventDefault();
+        createPlayer();
         return false;
       });
     }(window, window.videojs));
