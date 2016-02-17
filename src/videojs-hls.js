@@ -80,7 +80,7 @@ videojs.HlsHandler = videojs.extend(Component, {
     });
 
       this.on(this.tech_, 'play', this.play);
-
+      this.hasEnded = false;
       this.on(this.tech_, 'timeupdate', function(e,o){
           var current_tr = self.findBufferedRange_();
           var next_tr = self.findNextBufferedRange_();
@@ -89,6 +89,12 @@ videojs.HlsHandler = videojs.extend(Component, {
               if(buffer_length<0.1 && next_tr.start(0)-self.tech_.currentTime()<1){
                   self.tech_.setCurrentTime(next_tr.start(0));
               }
+          }
+          if (!self.hasEnded && self.tech_.currentTime() >0 && self.tech_.currentTime() >= self.tech_.duration()-0.1) {
+              self.hasEnded = true;
+              self.tech_.trigger('ended');
+          }else{
+              self.hasEnded = false;
           }
       });
   }
