@@ -90,7 +90,7 @@ videojs.HlsHandler = videojs.extend(Component, {
                   self.tech_.setCurrentTime(next_tr.start(0));
               }
           }
-          if (self.tech_.currentTime() >0 && self.tech_.currentTime() >= self.tech_.duration()-0.5 && self.tech_.duration()< 30 && self.lastTime == self.tech_.currentTime()) {
+          if (self.tech_.currentTime() >0 && self.tech_.currentTime() >= self.tech_.duration()-0.5 && self.lastTime == self.tech_.currentTime()) {
               self.tech_.setCurrentTime(0);
               self.tech_.trigger('ended');
           }else{
