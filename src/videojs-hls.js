@@ -81,7 +81,7 @@ videojs.HlsHandler = videojs.extend(Component, {
 
       this.on(this.tech_, 'play', this.play);
       this.lastTime = 0;
-      this.on(this.tech_, 'timeupdate', function(e,o){
+      this.on(this.tech_, 'timeupdate', function(){
           var current_tr = self.findBufferedRange_();
           var next_tr = self.findNextBufferedRange_();
           if(current_tr.length>0 && next_tr.length>0){
@@ -90,7 +90,7 @@ videojs.HlsHandler = videojs.extend(Component, {
                   self.tech_.setCurrentTime(next_tr.start(0));
               }
           }
-          if (self.tech_.currentTime() >0 && self.tech_.currentTime() >= self.tech_.duration()-0.5 && self.lastTime == self.tech_.currentTime()) {
+          if (self.tech_.currentTime() >0 && self.tech_.currentTime() >= self.tech_.duration()-0.5 && self.lastTime === self.tech_.currentTime()) {
               self.tech_.setCurrentTime(0);
               self.tech_.trigger('ended');
           }else{
