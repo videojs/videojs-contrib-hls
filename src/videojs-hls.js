@@ -96,9 +96,12 @@ videojs.HlsHandler = videojs.extend(Component, {
               self.tech_.setCurrentTime(0);
               self.tech_.trigger('ended');
           }else{
-              if(self.lastTime === self.tech_.currentTime() && self.tech_.currentTime() >0){
+              if(self.lastTime === self.tech_.currentTime()){
                   self.repeats++;
-                  if(self.repeats > 3){
+                  if(self.repeats > 50){
+                      self.tech_.trigger('playing');
+                      self.mediaSource.endOfStream('network');
+                  }else if(self.repeats > 3){
                       self.tech_.trigger('waiting');
                   }
               }else if(self.tech_.currentTime() >0){
