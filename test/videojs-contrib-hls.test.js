@@ -1,3 +1,5 @@
+/* eslint-disable max-len */
+
 import document from 'global/document';
 import videojs from 'video.js';
 import sinon from 'sinon';
@@ -8,7 +10,6 @@ import testDataManifests from './test-manifests.js';
 import Hls from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 
-const bcSegment = new Uint8Array(1);
 const Flash = videojs.getComponent('Flash');
 let nextId = 0;
 
@@ -25,10 +26,9 @@ const mockTech = function(tech) {
   }
 
   tech.isMocked_ = true;
-
-  tech.hls = tech.hls;
   tech.src_ = null;
   tech.time_ = null;
+
   tech.paused_ = !tech.autoplay();
   tech.paused = function() {
     return tech.paused_;
@@ -102,11 +102,12 @@ const createPlayer = function(options) {
 };
 
 const openMediaSource = function(player, clock) {
-  mockTech(player.tech_);
-
   // ensure the Flash tech is ready
   player.tech_.triggerReady();
   clock.tick(1);
+  // mock the tech *after* it has finished loading so that we don't
+  // mock a tech that will be unloaded on the next tick
+  mockTech(player.tech_);
 
   // simulate the sourceopen event
   player.tech_.hls.mediaSource.readyState = 'open';
@@ -162,14 +163,19 @@ const absoluteUrl = function(relativeUrl) {
         .join('/')
     );
 };
+
 // a no-op MediaSource implementation to allow synchronous testing
-const MockMediaSource = videojs.extend(videojs.EventTarget, {
-  constructor() {},
-  duration: NaN,
-  seekable: videojs.createTimeRange(),
+class MockMediaSource extends videojs.EventTarget {
+  static open() {}
+
+  constructor() {
+    super();
+    this.duration = NaN;
+    this.seekable = videojs.createTimeRange();
+  }
   addSeekableRange_(start, end) {
     this.seekable = videojs.createTimeRange(start, end);
-  },
+  }
   addSourceBuffer() {
     return new (videojs.extend(videojs.EventTarget, {
       constructor() {},
@@ -178,13 +184,12 @@ const MockMediaSource = videojs.extend(videojs.EventTarget, {
       appendBuffer() {},
       remove() {}
     }))();
-  },
+  }
   // endOfStream triggers an exception if flash isn't available
   endOfStream(error) {
     this.error_ = error;
-  },
-  open() {}
-});
+  }
+}
 const URL = {
   createObjectURL() {
     return 'blob:mock-vjs-object-url';
@@ -193,14 +198,13 @@ const URL = {
 
 QUnit.module('HLS -', {
   beforeEach() {
-    // Mock the environment's timers because certain things - particularly
-    // player readiness - are asynchronous in video.js 5.
-    this.clock = sinon.useFakeTimers();
-
-    // setup a player
-    this.player = createPlayer();
-
     this.old = {};
+
+    // Mock Media Sources
+    this.old.MediaSource = videojs.MediaSource;
+    videojs.MediaSource = MockMediaSource;
+    this.old.URL = videojs.URL;
+    videojs.URL = URL;
 
     // mock out Flash features for phantomjs
     this.old.Flash = videojs.mergeOptions({}, Flash);
@@ -242,17 +246,6 @@ QUnit.module('HLS -', {
       return true;
     };
 
-    // fake XHRs
-    this.old.XHR = videojs.xhr.XMLHttpRequest;
-    this.sinonXHR = sinon.useFakeXMLHttpRequest();
-    this.requests = [];
-    this.sinonXHR.onCreate = (xhr) => {
-      // force the XHR2 timeout polyfill
-      xhr.timeout = null;
-      this.requests.push(xhr);
-    };
-    videojs.xhr.XMLHttpRequest = this.sinonXHR;
-
     // Fake sourcebuffer
     this.old.SourceBuffer = window.videojs.SourceBuffer;
     window.videojs.SourceBuffer = function() {
@@ -265,28 +258,31 @@ QUnit.module('HLS -', {
 
     // force the HLS tech to run
     this.old.NativeHlsSupport = videojs.Hls.supportsNativeHls;
-    videojs.Hls.supportsNativeHls = function() {
-      return false;
-    };
+    videojs.Hls.supportsNativeHls = false;
 
     this.old.Decrypt = videojs.Hls.Decrypter;
     videojs.Hls.Decrypter = function() {};
 
-    // Mock Media Sources
-    this.old.MediaSource = videojs.MediaSource;
-    videojs.MediaSource = MockMediaSource;
-    this.old.URL = videojs.URL;
-    videojs.URL = URL;
+    // fake XHRs
+    this.old.XHR = videojs.xhr.XMLHttpRequest;
+    this.sinonXHR = sinon.useFakeXMLHttpRequest();
+    this.requests = [];
+    this.sinonXHR.onCreate = (xhr) => {
+      // force the XHR2 timeout polyfill
+      xhr.timeout = null;
+      this.requests.push(xhr);
+    };
+    videojs.xhr.XMLHttpRequest = this.sinonXHR;
+
+    // Mock the environment's timers because certain things - particularly
+    // player readiness - are asynchronous in video.js 5.
+    this.clock = sinon.useFakeTimers();
+
+    // setup a player
+    this.player = createPlayer();
   },
 
   afterEach() {
-    // The clock _must_ be restored before disposing the player; otherwise,
-    // certain timeout listeners that happen inside video.js may throw errors.
-    this.clock.restore();
-    this.player.dispose();
-
-    this.sinonXHR.restore();
-    videojs.xhr.XMLHttpRequest = this.old.XHR;
     videojs.MediaSource = this.old.MediaSource;
     videojs.URL = this.old.URL;
 
@@ -297,6 +293,16 @@ QUnit.module('HLS -', {
     videojs.Hls.supportsNativeHls = this.old.NativeHlsSupport;
     videojs.Hls.Decrypter = this.old.Decrypt;
     videojs.SourceBuffer = this.old.SourceBuffer;
+
+    // The clock _must_ be restored before disposing the player; otherwise,
+    // certain timeout listeners that happen inside video.js may throw errors.
+    this.clock.restore();
+    // XXX TODO WHY!?!?!?
+    this.player.dispose();
+
+    this.sinonXHR.restore();
+    videojs.xhr.XMLHttpRequest = this.old.XHR;
+
   }
 });
 
@@ -308,9 +314,7 @@ QUnit.test('starts playing if autoplay is specified', function() {
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  // REMOVEME workaround https://github.com/videojs/video.js/issues/2326
-  // this.player.tech_.triggerReady();
-  // this.clock.tick(1);
+
   // make sure play() is called *after* the media source opens
   this.player.tech_.hls.play = function() {
     plays++;
@@ -417,8 +421,7 @@ QUnit.test('autoplay seeks to the live point after media source open', function(
   QUnit.notEqual(currentTime, 0, 'seeked on autoplay');
 });
 
-QUnit.test('duration is set when the source opens after the playlist is loaded',
-function() {
+QUnit.test('duration is set when the source opens after the playlist is loaded', function() {
   this.player.src({
     src: 'media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -527,11 +530,8 @@ QUnit.test('codecs are passed to the source buffer', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
-  let addSourceBuffer = this.player.tech_.hls.mediaSource.addSourceBuffer;
-
   this.player.tech_.hls.mediaSource.addSourceBuffer = function(codec) {
     codecs.push(codec);
-    return addSourceBuffer.call(this, codec);
   };
 
   this.requests.shift().respond(200, null,
@@ -920,7 +920,7 @@ QUnit.test('buffer checks are noops when only the master is ready', function() {
   standardXHRResponse(this.requests.shift());
   // media
   standardXHRResponse(this.requests.shift());
-  // ignore any outstanding segmentthis.requests
+  // ignore any outstanding segment requests
   this.requests.length = 0;
 
   // load in a new playlist which will cause playlists.media() to be
@@ -1083,7 +1083,7 @@ QUnit.test('downloads additional playlists if required', function() {
   this.requests[2].respond(200, null, '');
   standardXHRResponse(this.requests[3]);
 
-  QUnit.strictEqual(4, this.requests.length, 'this.requestswere made');
+  QUnit.strictEqual(4, this.requests.length, 'requests were made');
   QUnit.strictEqual(this.requests[3].url,
                     absoluteUrl('manifest/' + playlist.uri),
                     'made playlist request');
@@ -1200,7 +1200,7 @@ QUnit.test('selects the correct rendition by player dimensions', function() {
 
   QUnit.deepEqual(playlist.attributes.RESOLUTION,
                   {width: 960, height: 540},
-                  'should return the correct resolution by playerdimensions');
+                  'should return the correct resolution by player dimensions');
   QUnit.equal(playlist.attributes.BANDWIDTH,
               1928000,
               'should have the expected bandwidth in case of multiple');
@@ -1227,7 +1227,7 @@ QUnit.test('selects the correct rendition by player dimensions', function() {
   QUnit.deepEqual(playlist.attributes.RESOLUTION,
                   {width: 396, height: 224},
                   'should return the correct resolution by ' +
-                  'this.playerdimensions, if exact match');
+                  'player dimensions, if exact match');
   QUnit.equal(playlist.attributes.BANDWIDTH,
               440000,
               'should have the expected bandwidth in case of multiple, if exact match');
@@ -1245,7 +1245,7 @@ QUnit.test('selects the correct rendition by player dimensions', function() {
               'should have the expected bandwidth in case of multiple, if exact match');
 });
 
-QUnit.test('selects the highest bitrate playlist when the this.playerdimensions are ' +
+QUnit.test('selects the highest bitrate playlist when the player dimensions are ' +
      'larger than any of the variants', function() {
   let playlist;
 
@@ -1396,9 +1396,7 @@ QUnit.test('blacklists switching from video-only playlists to video+audio', func
               'excluded incompatible playlist');
 });
 
-QUnit.test('After an initial media playlist 404s, ' +
-'we fire loadedmetadata once we successfully load a playlist',
-function() {
+QUnit.test('After an initial media playlist 404s, we fire loadedmetadata once we successfully load a playlist', function() {
   let count = 0;
 
   this.player.src({
@@ -1480,15 +1478,14 @@ QUnit.test('does not blacklist compatible AAC codec strings', function() {
   standardXHRResponse(this.requests.shift());
   master = this.player.tech_.hls.playlists.master;
   QUnit.strictEqual(typeof master.playlists[0].excludeUntil,
-                      'undefined',
+                    'undefined',
                     'did not blacklist');
   QUnit.strictEqual(typeof master.playlists[1].excludeUntil,
                     'undefined',
                     'did not blacklist');
 });
 
-QUnit.test('blacklists switching between playlists with incompatible audio codecs',
-function() {
+QUnit.test('blacklists switching between playlists with incompatible audio codecs', function() {
   let alternatePlaylist;
 
   this.player.src({
@@ -1548,7 +1545,7 @@ QUnit.test('downloads the next segment if the buffer is getting low', function()
   standardXHRResponse(this.requests[0]);
   standardXHRResponse(this.requests[1]);
 
-  QUnit.strictEqual(this.requests.length, 2, 'made two this.requests');
+  QUnit.strictEqual(this.requests.length, 2, 'made two requests');
   this.player.tech_.currentTime = function() {
     return 15;
   };
@@ -1588,7 +1585,7 @@ QUnit.test('buffers based on the correct TimeRange if multiple ranges exist', fu
   standardXHRResponse(this.requests[0]);
   standardXHRResponse(this.requests[1]);
 
-  QUnit.strictEqual(this.requests.length, 2, 'made two this.requests');
+  QUnit.strictEqual(this.requests.length, 2, 'made two requests');
   QUnit.strictEqual(this.requests[1].url,
                     absoluteUrl('manifest/media-00002.ts'),
                     'made segment request');
@@ -1596,7 +1593,7 @@ QUnit.test('buffers based on the correct TimeRange if multiple ranges exist', fu
   currentTime = 22;
   this.player.tech_.hls.sourceBuffer.trigger('updateend');
   this.player.tech_.hls.checkBuffer_();
-  QUnit.strictEqual(this.requests.length, 3, 'made three this.requests');
+  QUnit.strictEqual(this.requests.length, 3, 'made three requests');
   QUnit.strictEqual(this.requests[2].url,
                     absoluteUrl('manifest/media-00003.ts'),
                     'made segment request');
@@ -1654,8 +1651,7 @@ QUnit.test('only appends one segment at a time', function() {
   QUnit.equal(appends, 1, 'appended once');
 });
 
-QUnit.test('waits to download new segments until the media playlist is stable',
-function() {
+QUnit.test('waits to download new segments until the media playlist is stable', function() {
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1770,6 +1766,7 @@ QUnit.test('segmentXhr is properly nulled out when dispose is called', function(
 
   Flash.prototype.dispose = oldDispose;
 });
+
 QUnit.test('does not modify the media index for in-buffer seeking', function() {
   let mediaIndex;
 
@@ -1872,7 +1869,7 @@ QUnit.test('seeking in an empty playlist is a non-erroring noop', function() {
   this.player.tech_.setCurrentTime(183);
   this.clock.tick(1);
 
-  QUnit.equal(this.requests.length, requestsLength, 'made no additional this.requests');
+  QUnit.equal(this.requests.length, requestsLength, 'made no additional requests');
 });
 
 QUnit.test('sets seekable and duration for live playlists', function() {
@@ -1900,10 +1897,6 @@ QUnit.test('sets seekable and duration for live playlists', function() {
 });
 
 QUnit.test('live playlist starts three target durations before live', function() {
-  /* eslint-disable no-unused-vars */
-  let mediaPlaylist;
-  /* eslint-enable no-unused-vars */
-
   this.player.src({
     src: 'live.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1933,7 +1926,6 @@ QUnit.test('live playlist starts three target durations before live', function()
   };
   this.player.tech_.trigger('play');
   this.clock.tick(1);
-  mediaPlaylist = this.player.tech_.hls.playlists.media();
   QUnit.equal(this.player.currentTime(),
               this.player.tech_.hls.seekable().end(0),
               'seeked to the seekable end');
@@ -1961,14 +1953,14 @@ QUnit.test('live playlist starts with correct currentTime value', function() {
   this.player.tech_.trigger('play');
   this.clock.tick(1);
 
+  let media = this.player.tech_.hls.playlists.media();
+
   QUnit.strictEqual(this.player.currentTime(),
-                    videojs.Hls.Playlist.seekable(this.player.tech_.hls.playlists.media())
-                      .end(0),
+                    videojs.Hls.Playlist.seekable(media).end(0),
                     'currentTime is updated at playback');
 });
 
-QUnit.test('adjusts the seekable start based on the amount of expired live content',
-function() {
+QUnit.test('adjusts the seekable start based on the amount of expired live content', function() {
   this.player.src({
     src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1988,9 +1980,7 @@ function() {
               'offset the seekable start');
 });
 
-QUnit.test('estimates seekable ranges for live streams ' +
-'that have been paused for a long time',
-function() {
+QUnit.test('estimates seekable ranges for live streams that have been paused for a long time', function() {
   this.player.src({
     src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -2006,7 +1996,7 @@ function() {
 });
 
 QUnit.test('resets the time to a seekable position when resuming a live stream ' +
-     'after a long break', function() {
+           'after a long break', function() {
   let seekTarget;
 
   this.player.src({
@@ -2019,7 +2009,7 @@ QUnit.test('resets the time to a seekable position when resuming a live stream '
                                 '#EXT-X-MEDIA-SEQUENCE:16\n' +
                                 '#EXTINF:10,\n' +
                                 '16.ts\n');
-  // mock out the this.playerto simulate a live stream that has been
+  // mock out the player to simulate a live stream that has been
   // playing for awhile
   this.player.tech_.hls.seekable = function() {
     return videojs.createTimeRange(160, 170);
@@ -2041,50 +2031,7 @@ QUnit.test('resets the time to a seekable position when resuming a live stream '
   this.player.tech_.trigger('seeked');
 });
 
-QUnit.test('reloads out-of-date live playlists when switching variants', function() {
-  let oldManifest = testDataManifests['variant-update'];
-
-  this.player.src({
-    src: 'http://example.com/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.player.tech_.hls.master = {
-    playlists: [{
-      mediaSequence: 15,
-      segments: [1, 1, 1]
-    }, {
-      uri: 'http://example.com/variant-update.m3u8',
-      mediaSequence: 0,
-      segments: [1, 1]
-    }]
-  };
-  // playing segment 15 on playlist zero
-  this.player.tech_.hls.media = this.player.tech_.hls.master.playlists[0];
-  this.player.mediaIndex = 1;
-
-  testDataManifests['variant-update'] = '#EXTM3U\n' +
-    '#EXT-X-MEDIA-SEQUENCE:16\n' +
-    '#EXTINF:10,\n' +
-    '16.ts\n' +
-    '#EXTINF:10,\n' +
-    '17.ts\n';
-
-  // switch playlists
-  this.player.tech_.hls.selectPlaylist = function() {
-    return this.player.tech_.hls.master.playlists[1];
-  };
-  // timeupdate downloads segment 16 then switches playlists
-  this.player.trigger('timeupdate');
-
-  QUnit.strictEqual(this.player.mediaIndex, 1, 'mediaIndex points at the next segment');
-  testDataManifests['variant-update'] = oldManifest;
-});
-
-QUnit.test('if withCredentials global option is used, ' +
-           'withCredentials is set on the XHR object',
-function() {
+QUnit.test('if withCredentials global option is used, withCredentials is set on the XHR object', function() {
   let hlsOptions = videojs.options.hls;
 
   this.player.dispose();
@@ -2102,9 +2049,7 @@ function() {
   videojs.options.hls = hlsOptions;
 });
 
-QUnit.test('if withCredentials src option is used, ' +
-           'withCredentials is set on the XHR object',
-function() {
+QUnit.test('if withCredentials src option is used, withCredentials is set on the XHR object', function() {
   this.player.dispose();
   this.player = createPlayer();
   this.player.src({
@@ -2129,27 +2074,6 @@ QUnit.test('src level credentials supersede the global options', function() {
   QUnit.ok(this.requests[0].withCredentials,
            'with credentials should be set to true if that option is passed in');
 
-});
-
-QUnit.test('does not break if the playlist has no segments', function() {
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  try {
-    openMediaSource(this.player, this.clock);
-    this.requests[0].respond(200, null,
-                             '#EXTM3U\n' +
-                             '#EXT-X-PLAYLIST-TYPE:VOD\n' +
-                             '#EXT-X-TARGETDURATION:10\n');
-  } catch (e) {
-    QUnit.ok(false, 'an error was thrown');
-    throw e;
-  }
-  QUnit.ok(true, 'no error was thrown');
-  QUnit.strictEqual(this.requests.length,
-                    1,
-                    'no this.requestsfor non-existent segments were queued');
 });
 
 QUnit.test('aborts segment processing on seek', function() {
@@ -2382,10 +2306,12 @@ QUnit.skip('seeking does not fail when targeted between segments', function() {
 
   // seek to a time that is greater than the last tag in segment 0 but
   // less than the first in segment 1
+
   /* eslint-disable no-warning-comments */
   // FIXME: it's not possible to seek here without timestamp-based
-  /* eslint-enable no-warning-comments */
   // segment durations
+  /* eslint-enable no-warning-comments */
+
   this.player.tech_.setCurrentTime(9.4);
   this.clock.tick(1);
   QUnit.equal(this.requests[0].url, segmentUrl, 'requested the later segment');
@@ -2506,8 +2432,7 @@ QUnit.test('the source handler supports HLS mime types', function() {
     QUnit.ok(videojs.HlsSourceHandler(techName).canHandleSource({
       type: 'aPplicatiOn/VnD.aPPle.MpEgUrL'
     }), 'supports vnd.apple.mpegurl');
-    QUnit.ok(videojs.HlsSourceHandler(techName)
-             .canPlayType('aPplicatiOn/VnD.aPPle.MpEgUrL'),
+    QUnit.ok(videojs.HlsSourceHandler(techName).canPlayType('aPplicatiOn/VnD.aPPle.MpEgUrL'),
             'supports vnd.apple.mpegurl');
     QUnit.ok(videojs.HlsSourceHandler(techName).canPlayType('aPplicatiOn/x-MPegUrl'),
              'supports x-mpegurl');
@@ -2560,9 +2485,7 @@ QUnit.test('fires loadstart manually if Flash is used', function() {
 QUnit.test('has no effect if native HLS is available', function() {
   let player;
 
-  videojs.Hls.supportsNativeHls = function() {
-    return true;
-  };
+  videojs.Hls.supportsNativeHls = true;
   player = createPlayer();
   player.src({
     src: 'http://example.com/manifest/master.m3u8',
@@ -2840,8 +2763,7 @@ QUnit.test('a new key XHR is created when a the segment is requested', function(
                     'a key XHR is created with the correct uri');
 });
 
-QUnit.test('seeking should abort an outstanding key request and create a new one',
-function() {
+QUnit.test('seeking should abort an outstanding key request and create a new one', function() {
   this.player.src({
     src: 'https://example.com/encrypted.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -2874,7 +2796,7 @@ function() {
               'urls should match');
 });
 
-QUnit.test('retries key this.requestsonce upon failure', function() {
+QUnit.test('retries key requests once upon failure', function() {
   this.player.src({
     src: 'https://example.com/encrypted.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -2901,7 +2823,7 @@ QUnit.test('retries key this.requestsonce upon failure', function() {
   QUnit.equal(this.requests.length, 2, 'gives up after one retry');
 });
 
-QUnit.test('blacklists playlist if key this.requestsfail more than once', function() {
+QUnit.test('blacklists playlist if key requests fail more than once', function() {
   let bytes = [];
   let media;
 
@@ -2975,9 +2897,8 @@ QUnit.test('the key is supplied to the decrypter in the correct format', functio
                   'passed the specified segment key');
 
 });
-QUnit.test('supplies the media sequence of current segment' +
-' as the IV by default, if no IV is specified',
-function() {
+
+QUnit.test('supplies the media sequence of current segment as the IV by default, if no IV is specified', function() {
   let ivs = [];
 
   this.player.src({
@@ -3012,8 +2933,7 @@ function() {
                   'the IV for the segment is the media sequence');
 });
 
-QUnit.test('switching playlists with an outstanding key request does not stall playback',
-function() {
+QUnit.test('switching playlists with an outstanding key request does not stall playback', function() {
   let buffered = [];
   let media = '#EXTM3U\n' +
     '#EXT-X-MEDIA-SEQUENCE:5\n' +
@@ -3084,8 +3004,7 @@ QUnit.test('resolves relative key URLs against the playlist', function() {
               'resolves the key URL');
 });
 
-QUnit.test('treats invalid keys as a key request failure and blacklists playlist',
-function() {
+QUnit.test('treats invalid keys as a key request failure and blacklists playlist', function() {
   let bytes = [];
   let media;
 
@@ -3142,7 +3061,7 @@ QUnit.test('live stream should not call endOfStream', function() {
                            '#EXT-X-MEDIA-SEQUENCE:0\n' +
                            '#EXTINF:1\n' +
                            '0.ts\n');
-  this.requests[1].response = bcSegment;
+  this.requests[1].response = new Uint8Array(1);
   this.requests[1].respond(200, null, '');
   QUnit.equal('open',
               this.player.tech_.hls.mediaSource.readyState,
@@ -3176,53 +3095,53 @@ QUnit.test('detects time range end-point changed by updates', function() {
 
   // Single-range changes
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
-    videojs.createTimeRange([[0, 11]]));
+                                                    videojs.createTimeRange([[0, 11]]));
   QUnit.strictEqual(edge, 11, 'detected a forward addition');
 
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[5, 10]]),
-    videojs.createTimeRange([[0, 10]]));
+                                                    videojs.createTimeRange([[0, 10]]));
   QUnit.strictEqual(edge, null, 'ignores backward addition');
 
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[5, 10]]),
-    videojs.createTimeRange([[0, 11]]));
+                                                    videojs.createTimeRange([[0, 11]]));
   QUnit.strictEqual(edge,
                     11,
                     'detected a forward addition & ignores a backward addition');
 
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
-    videojs.createTimeRange([[0, 9]]));
+                                                    videojs.createTimeRange([[0, 9]]));
   QUnit.strictEqual(edge,
                     null,
                     'ignores a backwards addition resulting from a shrinking range');
 
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
-    videojs.createTimeRange([[2, 7]]));
+                                                    videojs.createTimeRange([[2, 7]]));
   QUnit.strictEqual(edge,
                     null,
                     'ignores a forward & backwards addition ' +
                     'resulting from a shrinking range');
 
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[2, 10]]),
-    videojs.createTimeRange([[0, 7]]));
+                                                    videojs.createTimeRange([[0, 7]]));
   QUnit.strictEqual(edge,
                     null,
                     'ignores a forward & backwards addition resulting ' +
                     'from a range shifted backward');
 
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[2, 10]]),
-    videojs.createTimeRange([[5, 15]]));
+                                                    videojs.createTimeRange([[5, 15]]));
   QUnit.strictEqual(edge,
                     15,
                     'detected a forwards addition resulting from a range shifted foward');
 
   // Multiple-range changes
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
-    videojs.createTimeRange([[0, 11], [12, 15]]));
+                                                    videojs.createTimeRange([[0, 11], [12, 15]]));
   QUnit.strictEqual(edge, null, 'ignores multiple new forward additions');
 
   edge = videojs.Hls
     .findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10], [20, 40]]),
-    videojs.createTimeRange([[20, 50]]));
+                                    videojs.createTimeRange([[20, 50]]));
   QUnit.strictEqual(edge, 50, 'detected a forward addition & ignores range removal');
 
   edge =
@@ -3239,20 +3158,19 @@ QUnit.test('detects time range end-point changed by updates', function() {
 
   // Empty input
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange(),
-    videojs.createTimeRange([[0, 11]]));
+                                                    videojs.createTimeRange([[0, 11]]));
   QUnit.strictEqual(edge, 11, 'handle an empty original TimeRanges object');
 
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 11]]),
-    videojs.createTimeRange());
+                                                    videojs.createTimeRange());
   QUnit.strictEqual(edge, null, 'handle an empty update TimeRanges object');
 
   // Null input
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(null,
-    videojs.createTimeRange([[0, 11]]));
+                                                    videojs.createTimeRange([[0, 11]]));
   QUnit.strictEqual(edge, 11, 'treat null original buffer as an empty TimeRanges object');
 
   edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 11]]),
-    null);
+                                                    null);
   QUnit.strictEqual(edge, null, 'treat null update buffer as an empty TimeRanges object');
 });
-
