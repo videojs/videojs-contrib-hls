@@ -1071,7 +1071,11 @@ videojs.HlsHandler.prototype.blacklistCurrentPlaylist_ = function(error) {
   // trying to load the master OR while we were disposing of the tech
   if (!currentPlaylist) {
     this.error = error;
-    return this.mediaSource.endOfStream('network');
+      if(this.mediaSource.readyState === "open"){
+          return this.mediaSource.endOfStream('network');
+      }else{
+          return this.tech_.error(2);
+      }
   }
 
   // Blacklist this playlist
