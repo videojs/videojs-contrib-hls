@@ -91,7 +91,7 @@ Hls.findSoleUncommonTimeRangesEnd_ = function(original, update) {
 /**
  * Whether the browser has built-in HLS support.
  */
-Hls.supportsNativeHls = function() {
+Hls.supportsNativeHls = (function() {
   let video = document.createElement('video');
   let xMpegUrl;
   let vndMpeg;
@@ -105,7 +105,7 @@ Hls.supportsNativeHls = function() {
   vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
   return (/probably|maybe/).test(xMpegUrl) ||
     (/probably|maybe/).test(vndMpeg);
-};
+}());
 
 // HLS is a source handler, not a tech. Make sure attempts to use it
 // as one do not cause exceptions.
@@ -772,6 +772,7 @@ export default class HlsHandler extends Component {
     let variant;
     let bandwidthBestVariant;
     let resolutionPlusOne;
+    let resolutionPlusOneAttribute;
     let resolutionBestVariant;
     let width;
     let height;
@@ -780,9 +781,9 @@ export default class HlsHandler extends Component {
 
     // filter out any playlists that have been excluded due to
     // incompatible configurations or playback errors
-    sortedPlaylists = sortedPlaylists.filter((localvariant) => {
-      if (typeof localvariant.excludeUntil !== 'undefined') {
-        return now >= localvariant.excludeUntil;
+    sortedPlaylists = sortedPlaylists.filter((localVariant) => {
+      if (typeof localVariant.excludeUntil !== 'undefined') {
+        return now >= localVariant.excludeUntil;
       }
       return true;
     });
@@ -840,21 +841,22 @@ export default class HlsHandler extends Component {
       // since the playlists are sorted, the first variant that has
       // dimensions less than or equal to the player size is the best
 
-      if (variant.attributes.RESOLUTION.width === width &&
-          variant.attributes.RESOLUTION.height === height) {
+      let variantResolution = variant.attributes.RESOLUTION;
+
+      if (variantResolution.width === width &&
+          variantResolution.height === height) {
         // if we have the exact resolution as the player use it
         resolutionPlusOne = null;
         resolutionBestVariant = variant;
         break;
-      } else if (variant.attributes.RESOLUTION.width < width &&
-        variant.attributes.RESOLUTION.height < height) {
+      } else if (variantResolution.width < width &&
+                 variantResolution.height < height) {
         // if both dimensions are less than the player use the
         // previous (next-largest) variant
         break;
-      } else if (!resolutionPlusOne || (variant.attributes.RESOLUTION.width <
-                                        resolutionPlusOne.attributes.RESOLUTION.width &&
-                                        variant.attributes.RESOLUTION.height <
-                                        resolutionPlusOne.attributes.RESOLUTION.height)) {
+      } else if (!resolutionPlusOne ||
+                 (variantResolution.width < resolutionPlusOneAttribute.width &&
+                  variantResolution.height < resolutionPlusOneAttribute.height)) {
         // If we still haven't found a good match keep a
         // reference to the previous variant for the next loop
         // iteration
@@ -864,6 +866,7 @@ export default class HlsHandler extends Component {
         // the highest bandwidth variant that is just-larger-than
         // the video player
         resolutionPlusOne = variant;
+        resolutionPlusOneAttribute = resolutionPlusOneAttribute.attributes.RESOLUTION;
       }
     }
 
@@ -983,10 +986,10 @@ export default class HlsHandler extends Component {
  * @return a new TimeRanges object.
  */
 HlsHandler.prototype.findBufferedRange_ =
-filterBufferedRanges(function(start, end, time) {
-  return start - TIME_FUDGE_FACTOR <= time &&
-         end + TIME_FUDGE_FACTOR >= time;
-});
+  filterBufferedRanges(function(start, end, time) {
+    return start - TIME_FUDGE_FACTOR <= time &&
+      end + TIME_FUDGE_FACTOR >= time;
+  });
 /**
  * Returns the TimeRanges that begin at or later than the specified
  * time.
@@ -995,9 +998,9 @@ filterBufferedRanges(function(start, end, time) {
  * @return a new TimeRanges object.
  */
 HlsHandler.prototype.findNextBufferedRange_ =
-filterBufferedRanges(function(start, end, time) {
-  return start - TIME_FUDGE_FACTOR >= time;
-});
+  filterBufferedRanges(function(start, end, time) {
+    return start - TIME_FUDGE_FACTOR >= time;
+  });
 
 /**
  * The Source Handler object, which informs video.js what additional
@@ -1036,7 +1039,7 @@ HlsSourceHandler.canPlayType = function(type) {
   let mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
 
   // favor native HLS support if it's available
-  if (Hls.supportsNativeHls()) {
+  if (Hls.supportsNativeHls) {
     return false;
   }
   return mpegurlRE.test(type);
