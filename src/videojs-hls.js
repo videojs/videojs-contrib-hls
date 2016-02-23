@@ -101,7 +101,12 @@ videojs.HlsHandler = videojs.extend(Component, {
                   self.repeats++;
                   if(self.repeats > 50){
                       self.tech_.trigger('playing');
-                      self.mediaSource.endOfStream('network');
+
+                      return self.blacklistCurrentPlaylist_({
+                          status: 404,
+                          message: 'Playback Timeout. Network failed.',
+                          code: 2
+                      });
                   }else if(self.repeats > 3){
                       self.tech_.trigger('waiting');
                   }
@@ -1083,7 +1088,11 @@ videojs.HlsHandler.prototype.blacklistCurrentPlaylist_ = function(error) {
     videojs.log.warn('Problem encountered with the current HLS playlist. No suitable alternatives found.');
     // We have no more playlists we can select so we must fail
     this.error = error;
-    return this.mediaSource.endOfStream('network');
+      if(this.mediaSource.readyState === "open"){
+          return this.mediaSource.endOfStream('network');
+      }else{
+          return this.tech_.error(2);
+      }
   }
 };
 
@@ -1141,7 +1150,8 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
       self.bandwidth = 1;
       return self.playlists.media(self.selectPlaylist());
     }
-
+      //Don't throw error while still having a buffer up
+    error = null;
     // otherwise, trigger a network error
     if (!request.aborted && error) {
       return self.blacklistCurrentPlaylist_({
