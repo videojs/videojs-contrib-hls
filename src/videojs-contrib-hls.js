@@ -866,7 +866,7 @@ export default class HlsHandler extends Component {
         // the highest bandwidth variant that is just-larger-than
         // the video player
         resolutionPlusOne = variant;
-        resolutionPlusOneAttribute = resolutionPlusOneAttribute.attributes.RESOLUTION;
+        resolutionPlusOneAttribute = resolutionPlusOne.attributes.RESOLUTION;
       }
     }
 

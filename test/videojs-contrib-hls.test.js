@@ -294,15 +294,11 @@ QUnit.module('HLS -', {
     videojs.Hls.Decrypter = this.old.Decrypt;
     videojs.SourceBuffer = this.old.SourceBuffer;
 
-    // The clock _must_ be restored before disposing the player; otherwise,
-    // certain timeout listeners that happen inside video.js may throw errors.
-    this.clock.restore();
-    // XXX TODO WHY!?!?!?
     this.player.dispose();
 
     this.sinonXHR.restore();
     videojs.xhr.XMLHttpRequest = this.old.XHR;
-
+    this.clock.restore();
   }
 });
 
@@ -1082,7 +1078,6 @@ QUnit.test('selects the correct rendition by player dimensions', function() {
   this.player.height(360);
   this.player.tech_.hls.segments.bandwidth = 3000000;
 
-  this.clock.tick(1);
   playlist = this.player.tech_.hls.selectPlaylist();
 
   QUnit.deepEqual(playlist.attributes.RESOLUTION,
@@ -1096,7 +1091,6 @@ QUnit.test('selects the correct rendition by player dimensions', function() {
   this.player.height(1080);
   this.player.tech_.hls.segments.bandwidth = 3000000;
 
-  this.clock.tick(1);
   playlist = this.player.tech_.hls.selectPlaylist();
 
   QUnit.deepEqual(playlist.attributes.RESOLUTION,
@@ -1108,7 +1102,6 @@ QUnit.test('selects the correct rendition by player dimensions', function() {
 
   this.player.width(396);
   this.player.height(224);
-  this.clock.tick(1);
   playlist = this.player.tech_.hls.selectPlaylist();
 
   QUnit.deepEqual(playlist.attributes.RESOLUTION,

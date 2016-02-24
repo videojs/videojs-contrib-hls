@@ -89,10 +89,10 @@
     "utils/"
   ],
   "dependencies": {
-    "pkcs7": "^0.2.3",
-    "video.js": "^5.0.0",
+    "pkcs7": "^0.2.2",
+    "video.js": "^5.2.1",
     "videojs-contrib-media-sources": "^2.4.4",
-    "videojs-swf": "^5.0.1"
+    "videojs-swf": "^5.0.0"
   },
   "devDependencies": {
     "babel": "^5.8.0",
@@ -118,7 +118,7 @@
     "minimist": "^1.2.0",
     "npm-run-all": "^1.2.0",
     "portscanner": "^1.0.0",
-    "qunitjs": "^1.0.0",
+    "qunitjs": "^1.18.0",
     "serve-static": "^1.10.0",
     "shelljs": "^0.5.3",
     "sinon": "1.10.2",
