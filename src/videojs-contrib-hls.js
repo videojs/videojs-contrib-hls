@@ -811,7 +811,7 @@ export default class HlsHandler extends Component {
         // the highest bandwidth variant that is just-larger-than
         // the video player
         resolutionPlusOne = variant;
-        resolutionPlusOneAttribute = resolutionPlusOneAttribute.attributes.RESOLUTION;
+        resolutionPlusOneAttribute = resolutionPlusOne.attributes.RESOLUTION;
       }
     }
 
@@ -933,13 +933,11 @@ export default class HlsHandler extends Component {
 
     // we have entered a state where we are fetching the same segment,
     // try to walk forward
-    /* eslint-disable max-len */
     if (this.lastSegmentLoaded_ &&
         this.playlistUriToUrl(this.lastSegmentLoaded_.uri) === this.playlistUriToUrl(segment.uri) &&
         this.lastSegmentLoaded_.byterange === segment.byterange) {
       return this.fillBuffer(mediaIndex + 1);
     }
-    /* eslint-enable max-len */
 
     // package up all the work to append the segment
     segmentInfo = {
