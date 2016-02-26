@@ -3,7 +3,7 @@ var fs = require('fs');
 var glob = require('glob');
 var watchify = require('watchify');
 
-glob('test/{playlist*,decrypter,m3u8,stub}.test.js', function(err, files) {
+glob('test/**/*.test.js', function(err, files) {
   var b = browserify(files, {
     cache: {},
     packageCache: {},

@@ -89,10 +89,9 @@ const precompute = function() {
     decTable[i] = decTable[i].slice(0);
   }
   return tables;
-}
-
-
+};
 let aesTables = null;
+
 /**
  * Schedule out an AES key for both encryption and decryption. This
  * is a low-level class. Use a cipher mode to do bulk encryption.
@@ -116,7 +115,7 @@ export default class AES {
     */
     // if we have yet to precompute the S-box tables
     // do so now
-    if(!aesTables) {
+    if (!aesTables) {
       aesTables = precompute();
     }
     // then make a copy of that object for use

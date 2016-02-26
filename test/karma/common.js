@@ -11,29 +11,11 @@ var DEFAULTS = {
     'node_modules/video.js/dist/video.js',
     'node_modules/video.js/dist/video-js.css',
 
-    // REMOVE ME WHEN BROWSERIFIED
-    'node_modules/videojs-contrib-media-sources/src/videojs-media-sources.js',
-
-    // these two stub old functionality
-    'src/videojs-contrib-hls.js',
-    'dist/videojs-contrib-hls.js',
-
-    'src/bin-utils.js',
-
-    'test/stub.test.js',
-
-    'test/videojs-contrib-hls.test.js',
-    'test/m3u8.test.js',
-    'test/playlist.test.js',
-    'test/playlist-loader.test.js',
-    'test/decrypter.test.js',
-    // END REMOVE ME
-    // 'test/**/*.js'
+    'test/**/*.test.js'
   ],
 
   exclude: [
-    'test/bundle.js',
-//    'test/data/**'
+    'test/data/**'
   ],
 
   plugins: [
@@ -42,7 +24,7 @@ var DEFAULTS = {
   ],
 
   preprocessors: {
-    'test/{playlist*,decrypter,stub,m3u8}.test.js': ['browserify']
+    'test/**/*.test.js': ['browserify']
   },
 
   reporters: ['dots'],
