@@ -311,6 +311,10 @@ QUnit.test('starts playing if autoplay is specified', function() {
     type: 'application/vnd.apple.mpegurl'
   });
 
+  // REMOVEME workaround https://github.com/videojs/video.js/issues/2326
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+
   // make sure play() is called *after* the media source opens
   this.player.tech_.hls.play = function() {
     plays++;
