@@ -197,6 +197,88 @@ const keyFailed = function(key) {
   return key.retries && key.retries >= 2;
 };
 
+/**
+ * Returns the CSS value for the specified property on an element
+ * using `getComputedStyle`. Firefox has a long-standing issue where
+ * getComputedStyle() may return null when running in an iframe with
+ * `display: none`.
+ * @see https://bugzilla.mozilla.org/show_bug.cgi?id=548397
+ */
+const safeGetComputedStyle = function(el, property) {
+  let result;
+
+  if (!el) {
+    return '';
+  }
+
+  result = getComputedStyle(el);
+  if (!result) {
+    return '';
+  }
+
+  return result[property];
+};
+
+/**
+ * Updates segment with information about its end-point in time and, optionally,
+ * the segment duration if we have enough information to determine a segment duration
+ * accurately.
+ * @param playlist {object} a media playlist object
+ * @param segmentIndex {number} the index of segment we last appended
+ * @param segmentEnd {number} the known of the segment referenced by segmentIndex
+ */
+const updateSegmentMetadata = function(playlist, segmentIndex, segmentEnd) {
+  if (!playlist) {
+    return;
+  }
+
+  let segment = playlist.segments[segmentIndex];
+  let previousSegment = playlist.segments[segmentIndex - 1];
+
+  if (segmentEnd && segment) {
+    segment.end = segmentEnd;
+
+    // fix up segment durations based on segment end data
+    if (!previousSegment) {
+      // first segment is always has a start time of 0 making its duration
+      // equal to the segment end
+      segment.duration = segment.end;
+    } else if (previousSegment.end) {
+      segment.duration = segment.end - previousSegment.end;
+    }
+  }
+};
+
+/**
+ * Determines if we should call endOfStream on the media source based on the state
+ * of the buffer or if appened segment was the final segment in the playlist.
+ * @param playlist {object} a media playlist object
+ * @param mediaSource {object} the MediaSource object
+ * @param segmentIndex {number} the index of segment we last appended
+ * @param currentBuffered {object} the buffered region that currentTime resides in
+ * @return {boolean} whether the calling function should call endOfStream on the MediaSource
+ */
+const detectEndOfStream = function(playlist, mediaSource, segmentIndex, currentBuffered) {
+  if (!playlist) {
+    return false;
+  }
+
+  let segments = playlist.segments;
+
+  // determine a few boolean values to help make the branch below easier
+  // to read
+  let appendedLastSegment = (segmentIndex === segments.length - 1);
+  let bufferedToEnd = (currentBuffered.length &&
+    segments[segments.length - 1].end <= currentBuffered.end(0));
+
+  // if we've buffered to the end of the video, we need to call endOfStream
+  // so that MediaSources can trigger the `ended` event when it runs out of
+  // buffered data instead of waiting for me
+  return playlist.endList &&
+    mediaSource.readyState === 'open' &&
+    (appendedLastSegment || bufferedToEnd);
+};
+
 const parseCodecs = function(codecs) {
   let result = {
     codecCount: 0,
@@ -592,10 +674,15 @@ export default class HlsHandler extends Component {
   duration() {
     let playlists = this.playlists;
 
-    if (playlists) {
-      return Hls.Playlist.duration(playlists.media());
+    if (!playlists) {
+      return 0;
     }
-    return 0;
+
+    if (this.mediaSource) {
+      return this.mediaSource.duration;
+    }
+
+    return Hls.Playlist.duration(playlists.media());
   }
 
   seekable() {
@@ -635,12 +722,17 @@ export default class HlsHandler extends Component {
   updateDuration(playlist) {
     let oldDuration = this.mediaSource.duration;
     let newDuration = Hls.Playlist.duration(playlist);
+    let buffered = this.tech_.buffered();
     let setDuration = () => {
       this.mediaSource.duration = newDuration;
       this.tech_.trigger('durationchange');
 
       this.mediaSource.removeEventListener('sourceopen', setDuration);
     };
+
+    if (buffered.length > 0) {
+      newDuration = Math.max(newDuration, buffered.end(buffered.length - 1));
+    }
 
     // if the duration has changed, invalidate the cached value
     if (oldDuration !== newDuration) {
@@ -767,8 +859,8 @@ export default class HlsHandler extends Component {
     // (this could be the lowest bitrate rendition as  we go through all of them above)
     variant = null;
 
-    width = parseInt(getComputedStyle(this.tech_.el()).width, 10);
-    height = parseInt(getComputedStyle(this.tech_.el()).height, 10);
+    width = parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10);
+    height = parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10);
 
     // iterate through the bandwidth-filtered playlists and find
     // best rendition by player dimension
@@ -1094,6 +1186,7 @@ export default class HlsHandler extends Component {
     let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
     let removeToTime = 0;
     let seekable = this.seekable();
+    let currentTime = this.tech_.currentTime();
 
     // Chrome has a hard limit of 150mb of
     // buffer and a very conservative "garbage collector"
@@ -1103,10 +1196,10 @@ export default class HlsHandler extends Component {
     if (this.sourceBuffer && !this.sourceBuffer.updating) {
       // If we have a seekable range use that as the limit for what can be removed safely
       // otherwise remove anything older than 1 minute before the current play head
-      if (seekable.length && seekable.start(0) > 0) {
+      if (seekable.length && seekable.start(0) > 0 && seekable.start(0) < currentTime) {
         removeToTime = seekable.start(0);
       } else {
-        removeToTime = this.tech_.currentTime() - 60;
+        removeToTime = currentTime - 60;
       }
 
       if (removeToTime > 0) {
@@ -1260,36 +1353,42 @@ export default class HlsHandler extends Component {
 
   updateEndHandler_() {
     let segmentInfo = this.pendingSegment_;
-    let segment;
-    let segments;
     let playlist;
     let currentMediaIndex;
     let currentBuffered;
     let seekable;
     let timelineUpdate;
-
-    this.pendingSegment_ = null;
+    let isEndOfStream;
 
     // stop here if the update errored or was aborted
     if (!segmentInfo) {
+      this.pendingSegment_ = null;
       return;
     }
 
-    playlist = this.playlists.media();
-    segments = playlist.segments;
+    // In Firefox, the updateend event is triggered for both removing from the buffer and
+    // adding to the buffer. To prevent this code from executing on removals, we wait for
+    // segmentInfo to have a filled in buffered value before we continue processing.
+    if (!segmentInfo.buffered) {
+      return;
+    }
+
+    this.pendingSegment_ = null;
+
+    playlist = segmentInfo.playlist;
     currentMediaIndex = segmentInfo.mediaIndex +
       (segmentInfo.mediaSequence - playlist.mediaSequence);
     currentBuffered = this.findBufferedRange_();
+    isEndOfStream = detectEndOfStream(playlist, this.mediaSource, currentMediaIndex, currentBuffered);
 
     // if we switched renditions don't try to add segment timeline
     // information to the playlist
     if (segmentInfo.playlist.uri !== this.playlists.media().uri) {
+      if (isEndOfStream) {
+        return this.mediaSource.endOfStream();
+      }
       return this.fillBuffer();
     }
-
-    // annotate the segment with any start and end time information
-    // added by the media processing
-    segment = playlist.segments[currentMediaIndex];
 
     // when seeking to the beginning of the seekable range, it's
     // possible that imprecise timing information may cause the seek to
@@ -1313,17 +1412,13 @@ export default class HlsHandler extends Component {
     timelineUpdate = Hls.findSoleUncommonTimeRangesEnd_(segmentInfo.buffered,
                                                         this.tech_.buffered());
 
-    if (timelineUpdate && segment) {
-      segment.end = timelineUpdate;
-    }
+    // Update segment meta-data (duration and end-point) based on timeline
+    updateSegmentMetadata(playlist, currentMediaIndex, timelineUpdate);
 
-    // if we've buffered to the end of the video, let the MediaSource know
-    if (this.playlists.media().endList &&
-        currentBuffered.length &&
-        segments[segments.length - 1].end <= currentBuffered.end(0) &&
-        this.mediaSource.readyState === 'open') {
-      this.mediaSource.endOfStream();
-      return;
+    // If we decide to signal the end of stream, then we can return instead
+    // of trying to fetch more segments
+    if (isEndOfStream) {
+      return this.mediaSource.endOfStream();
     }
 
     if (timelineUpdate !== null ||

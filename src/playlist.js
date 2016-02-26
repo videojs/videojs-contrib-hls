@@ -3,6 +3,16 @@
  */
 import {createTimeRange} from 'video.js';
 
+let Playlist = {
+  /**
+   * The number of segments that are unsafe to start playback at in
+   * a live stream. Changing this value can cause playback stalls.
+   * See HTTP Live Streaming, "Playing the Media Playlist File"
+   * https://tools.ietf.org/html/draft-pantos-http-live-streaming-18#section-6.3.3
+   */
+  UNSAFE_LIVE_SEGMENTS: 3
+};
+
 const backwardDuration = function(playlist, endSequence) {
   let result = 0;
   let i = endSequence - playlist.mediaSequence;
@@ -187,12 +197,12 @@ export const seekable = function(playlist) {
   start = intervalDuration(playlist, playlist.mediaSequence);
   end = intervalDuration(playlist,
                          playlist.mediaSequence +
-                         Math.max(0, playlist.segments.length - 3));
+                         Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS));
   return createTimeRange(start, end);
 };
 
+Playlist.duration = duration;
+Playlist.seekable = seekable;
+
 // exports
-export default {
-  duration,
-  seekable
-};
+export default Playlist;
