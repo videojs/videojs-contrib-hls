@@ -91,7 +91,7 @@
   "dependencies": {
     "pkcs7": "^0.2.2",
     "video.js": "^5.2.1",
-    "videojs-contrib-media-sources": "^2.4.4",
+    "videojs-contrib-media-sources": "^3.0.0",
     "videojs-swf": "^5.0.0"
   },
   "devDependencies": {
@@ -124,6 +124,7 @@
     "sinon": "1.10.2",
     "uglify-js": "^2.5.0",
     "videojs-standard": "^4.0.0",
-    "watchify": "^3.6.0"
+    "watchify": "^3.6.0",
+    "webworkify": "^1.1.0"
   }
 }
