@@ -172,6 +172,11 @@ class MockMediaSource extends videojs.EventTarget {
     super();
     this.duration = NaN;
     this.seekable = videojs.createTimeRange();
+    this.mediaSource_ = {
+      // Mock a fake sourceBuffer array because of an IE11 work-around
+      // in `filterBufferedRanges`
+      sourceBuffers: ['fake']
+    };
   }
   addSeekableRange_(start, end) {
     this.seekable = videojs.createTimeRange(start, end);
@@ -779,12 +784,40 @@ QUnit.test('triggers an error when a master playlist request errors', function()
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+
   openMediaSource(this.player, this.clock);
   this.requests.pop().respond(500);
 
   QUnit.equal(this.player.tech_.hls.mediaSource.error_,
               'network',
               'a network error is triggered');
+});
+
+QUnit.test('always returns an empty buffered region when there are no SourceBuffers', function() {
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.tech_.buffered = function() {
+    return videojs.createTimeRanges([[0, 10]]);
+  };
+  openMediaSource(this.player, this.clock);
+
+  standardXHRResponse(this.requests[0]);
+  standardXHRResponse(this.requests[1]);
+  this.player.currentTime(3);
+  this.clock.tick(1);
+
+  QUnit.equal(this.player.tech_.hls.findBufferedRange_().end(0),
+              10,
+              'inside the first buffered region');
+
+  // Simulate the condition with no source buffers
+  this.player.hls.mediaSource.mediaSource_.sourceBuffers = [];
+
+  QUnit.equal(this.player.tech_.hls.findBufferedRange_().length,
+              0,
+              'empty TimeRanges returned');
 });
 
 QUnit.test('finds the correct buffered region based on currentTime', function() {
