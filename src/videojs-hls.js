@@ -887,6 +887,15 @@ var filterBufferedRanges = function(predicate) {
       time = tech.currentTime();
     }
 
+    // IE 11 has a bug where it will report a the video as fully buffered
+    // before any data has been loaded. This is a work around where we
+    // report a fully empty buffer until SourceBuffers have been created
+    // which is after a segment has been loaded and transmuxed.
+    if (!this.mediaSource ||
+        !this.mediaSource.mediaSource_.sourceBuffers.length) {
+      return videojs.createTimeRanges([]);
+    }
+
     if (buffered && buffered.length) {
       // Search for a range containing the play-head
       for (i = 0; i < buffered.length; i++) {
