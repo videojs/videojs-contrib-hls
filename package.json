@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "pkcs7": "^0.2.2",
-    "videojs-contrib-media-sources": "^2.4.0",
+    "videojs-contrib-media-sources": "^2.5.0",
     "videojs-swf": "^5.0.0"
   }
 }
