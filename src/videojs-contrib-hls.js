@@ -305,6 +305,7 @@ const filterBufferedRanges = function(predicate) {
     let i;
     let ranges = [];
     let tech = this.tech_;
+
     // !!The order of the next two assignments is important!!
     // `currentTime` must be equal-to or greater-than the start of the
     // buffered range. Flash executes out-of-process so, every value can
@@ -315,6 +316,15 @@ const filterBufferedRanges = function(predicate) {
 
     if (typeof time === 'undefined') {
       time = tech.currentTime();
+    }
+
+    // IE 11 has a bug where it will report a the video as fully buffered
+    // before any data has been loaded. This is a work around where we
+    // report a fully empty buffer until SourceBuffers have been created
+    // which is after a segment has been loaded and transmuxed.
+    if (!this.mediaSource ||
+        !this.mediaSource.mediaSource_.sourceBuffers.length) {
+      return videojs.createTimeRanges([]);
     }
 
     if (buffered && buffered.length) {
