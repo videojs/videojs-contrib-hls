@@ -164,7 +164,13 @@ var
 
   // a no-op MediaSource implementation to allow synchronous testing
   MockMediaSource = videojs.extend(videojs.EventTarget, {
-    constructor: function() {},
+    constructor: function() {
+      this.mediaSource_ = {
+        // Mock a fake sourceBuffer array because of an IE11 work-around
+        // in `filterBufferedRanges`
+        sourceBuffers: ['fake']
+      };
+    },
     duration: NaN,
     seekable: videojs.createTimeRange(),
     addSeekableRange_: function(start, end) {
@@ -706,6 +712,33 @@ test('starts downloading a segment on loadedmetadata', function() {
   strictEqual(requests[1].url,
               absoluteUrl('manifest/media-00001.ts'),
               'the first segment is requested');
+});
+
+test('always returns an empty buffered region when there are no SourceBuffers', function() {
+  player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  player.tech_.buffered = function() {
+    return videojs.createTimeRanges([[0, 10]]);
+  };
+  openMediaSource(player);
+
+  standardXHRResponse(requests[0]);
+  standardXHRResponse(requests[1]);
+  player.currentTime(3);
+  clock.tick(1);
+
+  equal(player.tech_.hls.findBufferedRange_().end(0),
+        10,
+        'inside the first buffered region');
+
+  // Simulate the condition with no source buffers
+  player.hls.mediaSource.mediaSource_.sourceBuffers = [];
+
+  equal(player.tech_.hls.findBufferedRange_().length,
+        0,
+        'empty TimeRanges returned');
 });
 
 test('finds the correct buffered region based on currentTime', function() {
