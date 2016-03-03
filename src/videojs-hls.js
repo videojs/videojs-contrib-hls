@@ -852,6 +852,43 @@ videojs.HlsHandler.prototype.findBufferedRange_ = filterBufferedRanges(function(
 });
 
 /**
+ * Returns all buffered ranges.
+ * @param time (optional) {number} the time to filter on. Defaults to
+ * currentTime.
+ * @return a new TimeRanges object.
+ */
+videojs.HlsHandler.prototype.findCompleteBufferedRange_ = function() {
+    var
+        i,
+        ranges = [],
+        tech = this.tech_,
+    // !!The order of the next two assignments is important!!
+    // `currentTime` must be equal-to or greater-than the start of the
+    // buffered range. Flash executes out-of-process so, every value can
+    // change behind the scenes from line-to-line. By reading `currentTime`
+    // after `buffered`, we ensure that it is always a current or later
+    // value during playback.
+        buffered = tech.buffered();
+
+    if (buffered && buffered.length) {
+        // Search for a range containing the play-head
+        var a,b;
+        for (i = 0; i < buffered.length; i++) {
+            a = buffered.start(i);
+            if(b && a-b < 0.5 && ranges.length>0){
+                b =  buffered.end(i);
+                ranges[ranges.length-1][1]= buffered.end(i);
+            }else{
+                b =  buffered.end(i);
+                ranges.push([buffered.start(i), buffered.end(i)]);
+            }
+        }
+    }
+
+    return videojs.createTimeRanges(ranges);
+};
+
+/**
  * Returns the TimeRanges that begin at or later than the specified
  * time.
  * @param time (optional) {number} the time to filter on. Defaults to
@@ -915,14 +952,8 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
 
   if (mediaIndex === undefined) {
     if (currentBuffered && currentBuffered.length) {
-      currentBufferedEnd = currentBuffered.end(0);
-        var next_tr = this.findNextBufferedRange_();
-        if(next_tr.length>0){
-            var gap = next_tr.start(0)-currentBufferedEnd;
-            if(gap<0.5){
-                currentBufferedEnd = next_tr.end(0);
-            }
-        }
+        var completeBuffered = this.findCompleteBufferedRange_();
+      currentBufferedEnd = completeBuffered.end(0);
       mediaIndex = this.playlists.getMediaIndexForTime_(currentBufferedEnd);
       bufferedTime = Math.max(0, currentBufferedEnd - currentTime);
 
