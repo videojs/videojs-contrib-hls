@@ -892,6 +892,7 @@ var filterBufferedRanges = function(predicate) {
     // report a fully empty buffer until SourceBuffers have been created
     // which is after a segment has been loaded and transmuxed.
     if (!this.mediaSource ||
+        !this.mediaSource.mediaSource_ ||
         !this.mediaSource.mediaSource_.sourceBuffers.length) {
       return videojs.createTimeRanges([]);
     }

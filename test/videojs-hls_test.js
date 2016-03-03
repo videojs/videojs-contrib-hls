@@ -739,6 +739,13 @@ test('always returns an empty buffered region when there are no SourceBuffers', 
   equal(player.tech_.hls.findBufferedRange_().length,
         0,
         'empty TimeRanges returned');
+
+  // Simulate the condition with no media source
+  player.hls.mediaSource.mediaSource_ = undefined;
+
+  equal(player.tech_.hls.findBufferedRange_().length,
+        0,
+        'empty TimeRanges returned');
 });
 
 test('finds the correct buffered region based on currentTime', function() {
