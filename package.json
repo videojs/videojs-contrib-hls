@@ -28,8 +28,7 @@
     "docs:api": "jsdoc src -r -d docs/api",
     "docs:toc": "doctoc README.md",
     "lint": "vjsstandard",
-    "prestart": "npm-run-all docs build",
-    "start": "npm-run-all -p start:* watch:*",
+    "start": "npm-run-all -p watch start:*",
     "start:serve": "babel-node scripts/server.js",
     "pretest": "npm-run-all lint build",
     "test": "karma start test/karma/detected.js",
@@ -40,7 +39,10 @@
     "preversion": "npm test",
     "version": "npm run build",
     "watch": "npm-run-all -p watch:*",
-    "watch:js": "watchify src/videojs-contrib-hls.js -t babelify -v -o dist/videojs-contrib-hls.js",
+    "watch:docs": "nodemon --watch src/ --exec npm run docs",
+    "watch:js": "npm-run-all -p watch:js:babel watch:js:browserify",
+    "watch:js:babel": "npm run build:js:babel -- --watch",
+    "watch:js:browserify": "watchify . -v -o dist/videojs-contrib-hls.js",
     "watch:test": "npm-run-all -p watch:test:*",
     "watch:test:js": "node scripts/watch-test.js",
     "watch:test:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.watch();\"",
@@ -73,20 +75,18 @@
   },
   "files": [
     "CONTRIBUTING.md",
-    "dist-test/",
     "dist/",
     "docs/",
     "es5/",
     "index.html",
     "scripts/",
     "src/",
-    "test/",
-    "utils/"
+    "test/"
   ],
   "dependencies": {
     "pkcs7": "^0.2.2",
-    "video.js": "^5.2.1",
-    "videojs-contrib-media-sources": "^3.0.0",
+    "video.js": "5.9.0-2",
+    "videojs-contrib-media-sources": "^3.1.0-0",
     "videojs-swf": "^5.0.0"
   },
   "devDependencies": {
@@ -111,6 +111,7 @@
     "karma-safari-launcher": "^0.1.0",
     "lodash-compat": "^3.10.0",
     "minimist": "^1.2.0",
+    "nodemon": "^1.9.1",
     "npm-run-all": "^1.2.0",
     "portscanner": "^1.0.0",
     "qunitjs": "^1.18.0",

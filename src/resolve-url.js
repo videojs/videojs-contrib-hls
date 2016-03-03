@@ -1,15 +1,17 @@
+/**
+ * @file resolve-url.js
+ */
 import document from 'global/document';
-/* eslint-disable max-len */
 /**
  * Constructs a new URI by interpreting a path relative to another
  * URI.
- * @param basePath {string} a relative or absolute URI
- * @param path {string} a path part to combine with the base
- * @return {string} a URI that is equivalent to composing `base`
- * with `path`
+ *
  * @see http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
+ * @param {String} basePath a relative or absolute URI
+ * @param {String} path a path part to combine with the base
+ * @return {String} a URI that is equivalent to composing `base`
+ * with `path`
  */
-/* eslint-enable max-len */
 const resolveUrl = function(basePath, path) {
   // use the base element to get the browser to handle URI resolution
   let oldBase = document.querySelector('base');
