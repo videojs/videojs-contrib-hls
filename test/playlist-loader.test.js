@@ -152,7 +152,7 @@ QUnit.test('recognizes domain-relative URLs', function() {
 });
 
 QUnit.test('recognizes key URLs relative to master and playlist', function() {
-  let loader = new PlaylistLoader('video/media-encrypted.m3u8');
+  let loader = new PlaylistLoader('/video/media-encrypted.m3u8');
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
@@ -178,7 +178,7 @@ QUnit.test('recognizes key URLs relative to master and playlist', function() {
 });
 
 QUnit.test('recognizes absolute key URLs', function() {
-  let loader = new PlaylistLoader('video/media-encrypted.m3u8');
+  let loader = new PlaylistLoader('/video/media-encrypted.m3u8');
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
