@@ -777,6 +777,13 @@ QUnit.test('always returns an empty buffered region when there are no SourceBuff
   QUnit.equal(this.player.tech_.hls.findBufferedRange_().length,
               0,
               'empty TimeRanges returned');
+
+   // Simulate the condition with no media source
+   this.player.hls.mediaSource.mediaSource_ = undefined;
+
+   QUnit.equal(this.player.tech_.hls.findBufferedRange_().length,
+              0,
+              'empty TimeRanges returned');
 });
 
 QUnit.test('finds the correct buffered region based on currentTime', function() {
