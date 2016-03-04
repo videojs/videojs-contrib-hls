@@ -13,7 +13,7 @@ import {getMediaIndexForTime_ as getMediaIndexForTime, duration} from './playlis
 import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import xhr from './xhr';
-import Decrypter from './decrypter/decrypter';
+import {Decrypter} from './decrypter';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;

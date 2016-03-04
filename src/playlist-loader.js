@@ -111,7 +111,7 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
   let request;
   let haveMetadata;
 
-  PlaylistLoader.prototype.init.call(this);
+  PlaylistLoader.prototype.constructor.call(this);
 
   // a flag that disables "expired time"-tracking this setting has
   // no effect when not playing a live stream

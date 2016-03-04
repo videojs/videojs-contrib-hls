@@ -1,7 +1,8 @@
 import document from 'global/document';
 import videojs from 'video.js';
-import testDataManifests from './manifests.js';
+import testDataManifests from './test-manifests.js';
 import {MediaSource} from 'videojs-contrib-media-sources';
+import sinon from 'sinon';
 
 // a SourceBuffer that tracks updates but otherwise is a noop
 export const MockSourceBuffer = videojs.extend(videojs.EventTarget, {
@@ -254,7 +255,7 @@ let Helper = {
     return {
       clock: this.clock,
       requests: this.requests
-    }
+    };
   },
   restoreEnvironment() {
     this.clock.restore();
