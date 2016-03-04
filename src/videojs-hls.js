@@ -963,7 +963,11 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
         return;
       }
     } else {
-      mediaIndex = this.playlists.getMediaIndexForTime_(this.tech_.currentTime());
+        var time = this.tech_.currentTime();
+      mediaIndex = this.playlists.getMediaIndexForTime_(time);
+        if (mediaIndex === -1 && this.tech_.currentTime() === 0){
+            mediaIndex = 0;
+        }
     }
   }
   segment = this.playlists.media().segments[mediaIndex];
