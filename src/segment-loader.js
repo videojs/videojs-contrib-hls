@@ -21,6 +21,69 @@ const CHECK_BUFFER_DELAY = 500;
 // the desired length of video to maintain in the buffer, in seconds
 export const GOAL_BUFFER_LENGTH = 30;
 
+
+/**
+ * Updates segment with information about its end-point in time and, optionally,
+ * the segment duration if we have enough information to determine a segment duration
+ * accurately.
+ * @param playlist {object} a media playlist object
+ * @param segmentIndex {number} the index of segment we last appended
+ * @param segmentEnd {number} the known of the segment referenced by segmentIndex
+ */
+const updateSegmentMetadata = function(playlist, segmentIndex, segmentEnd) {
+  if (!playlist) {
+    return false;
+  }
+
+  let segment = playlist.segments[segmentIndex];
+  let previousSegment = playlist.segments[segmentIndex - 1];
+
+  if (segmentEnd && segment) {
+    segment.end = segmentEnd;
+
+    // fix up segment durations based on segment end data
+    if (!previousSegment) {
+      // first segment is always has a start time of 0 making its duration
+      // equal to the segment end
+      segment.duration = segment.end;
+    } else if (previousSegment.end) {
+      segment.duration = segment.end - previousSegment.end;
+    }
+    return true;
+  }
+  return false;
+};
+
+/**
+ * Determines if we should call endOfStream on the media source based on the state
+ * of the buffer or if appened segment was the final segment in the playlist.
+ * @param playlist {object} a media playlist object
+ * @param mediaSource {object} the MediaSource object
+ * @param segmentIndex {number} the index of segment we last appended
+ * @param currentBuffered {object} the buffered region that currentTime resides in
+ * @return {boolean} whether the calling function should call endOfStream on the MediaSource
+ */
+const detectEndOfStream = function(playlist, mediaSource, segmentIndex, currentBuffered) {
+  if (!playlist) {
+    return false;
+  }
+
+  let segments = playlist.segments;
+
+  // determine a few boolean values to help make the branch below easier
+  // to read
+  let appendedLastSegment = (segmentIndex === segments.length - 1);
+  let bufferedToEnd = (currentBuffered.length &&
+    segments[segments.length - 1].end <= currentBuffered.end(0));
+
+  // if we've buffered to the end of the video, we need to call endOfStream
+  // so that MediaSources can trigger the `ended` event when it runs out of
+  // buffered data instead of waiting for me
+  return playlist.endList &&
+    mediaSource.readyState === 'open' &&
+    (appendedLastSegment || bufferedToEnd);
+};
+
 export default videojs.extend(videojs.EventTarget, {
   constructor(options) {
     let settings;
@@ -425,12 +488,8 @@ export default videojs.extend(videojs.EventTarget, {
   },
 
   handleUpdateEnd_() {
-    let buffered;
-    let end;
-    let segments;
-    let segmentInfo;
+    let segmentInfo = this.pendingSegment_;
 
-    segmentInfo = this.pendingSegment_;
     this.pendingSegment_ = null;
 
     // add segment timeline information if we're still using the
@@ -440,16 +499,21 @@ export default videojs.extend(videojs.EventTarget, {
       this.trigger('progress');
     }
 
+    let currentMediaIndex = segmentInfo.mediaIndex;
+
+    currentMediaIndex += segmentInfo.playlist.mediaSequence - this.playlist_.mediaSequence;
+
+    let currentBuffered = findRange(this.sourceUpdater_.buffered(), this.currentTime_());
+
     // any time an update finishes and the last segment is in the
     // buffer, end the stream. this ensures the "ended" event will
     // fire if playback reaches that point.
-    buffered = this.sourceUpdater_.buffered();
-    end = buffered.length - 1;
-    segments = segmentInfo.playlist.segments;
-    if (segmentInfo.playlist.endList &&
-        buffered.length &&
-        segments[segments.length - 1].end <= buffered.end(end) &&
-        this.mediaSource_.readyState === 'open') {
+    let isEndOfStream = detectEndOfStream(segmentInfo.playlist,
+                                          this.mediaSource_,
+                                          currentMediaIndex,
+                                          currentBuffered);
+
+    if (isEndOfStream) {
       this.mediaSource_.endOfStream();
     }
 
@@ -462,14 +526,13 @@ export default videojs.extend(videojs.EventTarget, {
   // annotate the segment with any start and end time information
   // added by the media processing
   updateTimeline_(segmentInfo) {
-    let currentMediaIndex;
     let segment;
     let timelineUpdate;
+    let playlist = segmentInfo.playlist;
+    let currentMediaIndex = segmentInfo.mediaIndex;
 
-    currentMediaIndex = segmentInfo.mediaIndex;
-    currentMediaIndex +=
-      segmentInfo.playlist.mediaSequence - this.playlist_.mediaSequence;
-    segment = segmentInfo.playlist.segments[currentMediaIndex];
+    currentMediaIndex += playlist.mediaSequence - this.playlist_.mediaSequence;
+    segment = playlist.segments[currentMediaIndex];
 
     if (!segment) {
       return;
@@ -478,16 +541,18 @@ export default videojs.extend(videojs.EventTarget, {
     timelineUpdate = findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
                                                    this.sourceUpdater_.buffered());
 
-    if (timelineUpdate) {
-      segment.end = timelineUpdate;
-      return;
-    }
+    // Update segment meta-data (duration and end-point) based on timeline
+    let timelineUpdated = updateSegmentMetadata(playlist,
+                                                currentMediaIndex,
+                                                timelineUpdate);
 
     // the last segment append must have been entirely in the
     // already buffered time ranges. adjust the timestamp offset to
     // fetch forward until we find a segment that adds to the
     // buffered time ranges and improves subsequent media index
     // calculations.
-    this.timestampOffset_ -= segment.duration;
+    if (!timelineUpdated) {
+      this.timestampOffset_ -= segment.duration;
+    }
   }
 });
