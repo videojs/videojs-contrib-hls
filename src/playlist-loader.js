@@ -109,6 +109,7 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
   let dispose;
   let mediaUpdateTimeout;
   let request;
+  let playlistRequestError;
   let haveMetadata;
 
   PlaylistLoader.prototype.constructor.call(this);
@@ -121,9 +122,30 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     throw new Error('A non-empty playlist URL is required');
   }
 
+  playlistRequestError = function(xhr, url, startingState) {
+    loader.setBandwidth(request || xhr);
+
+    // any in-flight request is now finished
+    request = null;
+
+    if (startingState) {
+      loader.state = startingState;
+    }
+
+    loader.error = {
+      playlist: loader.master.playlists[url],
+      status: xhr.status,
+      message: 'HLS playlist request error at URL: ' + url,
+      responseText: xhr.responseText,
+      code: (xhr.status >= 500) ? 4 : 2
+    };
+
+    loader.trigger('error');
+  };
+
   // update the playlist loader's state in response to a new or
   // updated playlist.
-  haveMetadata = function(error, xhr, url) {
+  haveMetadata = function(xhr, url) {
     let parser;
     let refreshDelay;
     let update;
@@ -132,17 +154,6 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
 
     // any in-flight request is now finished
     request = null;
-
-    if (error) {
-      loader.error = {
-        playlist: loader.master.playlists[url],
-        status: xhr.status,
-        message: 'HLS playlist request error at URL: ' + url,
-        responseText: xhr.responseText,
-        code: (xhr.status >= 500) ? 4 : 2
-      };
-      return loader.trigger('error');
-    }
 
     loader.state = 'HAVE_METADATA';
 
@@ -279,11 +290,11 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
       uri: resolveUrl(loader.master.uri, playlist.uri),
       withCredentials
     }, function(error, req) {
-      haveMetadata(error, req, playlist.uri);
-
       if (error) {
-        return;
+        return playlistRequestError(request, playlist.uri, startingState);
       }
+
+      haveMetadata(req, playlist.uri);
 
       // fire loadedmetadata the first time a media playlist is loaded
       if (startingState === 'HAVE_MASTER') {
@@ -316,7 +327,10 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
       uri: resolveUrl(loader.master.uri, loader.media().uri),
       withCredentials
     }, function(error, req) {
-      haveMetadata(error, req, loader.media().uri);
+      if (error) {
+        return playlistRequestError(request, loader.media().uri);
+      }
+      haveMetadata(request, loader.media().uri);
     });
   });
 
@@ -382,7 +396,7 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     };
     loader.master.playlists[srcUrl] = loader.master.playlists[0];
     loader.master.playlists[0].resolvedUri = srcUrl;
-    haveMetadata(null, req, srcUrl);
+    haveMetadata(req, srcUrl);
     return loader.trigger('loadedmetadata');
   });
 };
