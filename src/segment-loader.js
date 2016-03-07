@@ -21,7 +21,6 @@ const CHECK_BUFFER_DELAY = 500;
 // the desired length of video to maintain in the buffer, in seconds
 export const GOAL_BUFFER_LENGTH = 30;
 
-
 /**
  * Updates segment with information about its end-point in time and, optionally,
  * the segment duration if we have enough information to determine a segment duration
@@ -55,13 +54,16 @@ const updateSegmentMetadata = function(playlist, segmentIndex, segmentEnd) {
 };
 
 /**
- * Determines if we should call endOfStream on the media source based on the state
- * of the buffer or if appened segment was the final segment in the playlist.
+ * Determines if we should call endOfStream on the media source based
+ * on the state of the buffer or if appened segment was the final
+ * segment in the playlist.
  * @param playlist {object} a media playlist object
  * @param mediaSource {object} the MediaSource object
  * @param segmentIndex {number} the index of segment we last appended
- * @param currentBuffered {object} the buffered region that currentTime resides in
- * @return {boolean} whether the calling function should call endOfStream on the MediaSource
+ * @param currentBuffered {object} the buffered region that
+ * currentTime resides in
+ * @return {boolean} whether the calling function should call
+ * endOfStream on the MediaSource
  */
 const detectEndOfStream = function(playlist, mediaSource, segmentIndex, currentBuffered) {
   if (!playlist) {
@@ -88,21 +90,23 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex, currentB
  *  HTTP Range requests
  */
 const byterangeStr = function(byterange) {
-  var byterangeStart, byterangeEnd;
+  let byterangeStart;
+  let byterangeEnd;
 
   // `byterangeEnd` is one less than `offset + length` because the HTTP range
   // header uses inclusive ranges
   byterangeEnd = byterange.offset + byterange.length - 1;
   byterangeStart = byterange.offset;
-  return "bytes=" + byterangeStart + "-" + byterangeEnd;
+  return 'bytes=' + byterangeStart + '-' + byterangeEnd;
 };
 
 /*  Defines headers for use in the xhr request for a particular segment.
  */
 const segmentXhrHeaders = function(segment) {
-  var headers = {};
+  let headers = {};
+
   if ('byterange' in segment) {
-      headers['Range'] = byterangeStr(segment.byterange);
+    headers.Range = byterangeStr(segment.byterange);
   }
   return headers;
 };
@@ -525,7 +529,8 @@ export default videojs.extend(videojs.EventTarget, {
 
     let currentMediaIndex = segmentInfo.mediaIndex;
 
-    currentMediaIndex += segmentInfo.playlist.mediaSequence - this.playlist_.mediaSequence;
+    currentMediaIndex +=
+      segmentInfo.playlist.mediaSequence - this.playlist_.mediaSequence;
 
     let currentBuffered = findRange(this.sourceUpdater_.buffered(), this.currentTime_());
 
