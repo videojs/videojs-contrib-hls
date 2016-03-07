@@ -84,6 +84,29 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex, currentB
     (appendedLastSegment || bufferedToEnd);
 };
 
+/*  Turns segment byterange into a string suitable for use in
+ *  HTTP Range requests
+ */
+const byterangeStr = function(byterange) {
+  var byterangeStart, byterangeEnd;
+
+  // `byterangeEnd` is one less than `offset + length` because the HTTP range
+  // header uses inclusive ranges
+  byterangeEnd = byterange.offset + byterange.length - 1;
+  byterangeStart = byterange.offset;
+  return "bytes=" + byterangeStart + "-" + byterangeEnd;
+};
+
+/*  Defines headers for use in the xhr request for a particular segment.
+ */
+const segmentXhrHeaders = function(segment) {
+  var headers = {};
+  if ('byterange' in segment) {
+      headers['Range'] = byterangeStr(segment.byterange);
+  }
+  return headers;
+};
+
 export default videojs.extend(videojs.EventTarget, {
   constructor(options) {
     let settings;
@@ -330,7 +353,8 @@ export default videojs.extend(videojs.EventTarget, {
       uri: segmentInfo.uri,
       responseType: 'arraybuffer',
       withCredentials: this.withCredentials_,
-      timeout: requestTimeout
+      timeout: requestTimeout,
+      headers: segmentXhrHeaders(segment)
     }, this.handleResponse_.bind(this));
 
     this.xhr_ = {

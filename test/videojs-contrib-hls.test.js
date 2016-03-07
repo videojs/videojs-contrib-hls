@@ -2291,3 +2291,52 @@ function() {
   this.clock.tick(10 * 1000);
   QUnit.equal(this.requests.length, 1, 'resumes segment fetching');
 });
+
+QUnit.test('XHR requests first byte range on play', function() {
+  this.player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  this.player.tech_.trigger('play');
+  openMediaSource(this.player, this.clock);
+  standardXHRResponse(this.requests[0]);
+  QUnit.equal(this.requests[1].headers.Range, "bytes=0-522827");
+});
+
+QUnit.test('Seeking requests correct byte range', function() {
+  this.player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  this.player.tech_.trigger('play');
+  openMediaSource(this.player, this.clock);
+  standardXHRResponse(this.requests[0]);
+  this.player.tech_.hls.mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+  this.player.currentTime(40);
+  this.clock.tick(1);
+  QUnit.equal(this.requests[2].headers.Range, "bytes=2299992-2835603");
+});
+
+QUnit.test('if buffered, will request second segment byte range', function() {
+  this.player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  this.player.tech_.trigger('play');
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.hls.segments.sourceUpdater_.buffered = function() {
+    return videojs.createTimeRanges([[0, 20]]);
+  };
+  standardXHRResponse(this.requests[0]);
+  standardXHRResponse(this.requests[1]);
+  this.player.tech_.hls.mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(10 * 1000);
+  QUnit.equal(this.requests[2].headers.Range, "bytes=1823412-2299991");
+});
