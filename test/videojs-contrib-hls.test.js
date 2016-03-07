@@ -1339,6 +1339,29 @@ QUnit.test('seeking in an empty playlist is a non-erroring noop', function() {
   QUnit.equal(this.requests.length, requestsLength, 'made no additional this.requests');
 });
 
+QUnit.test('fire loadedmetadata once we successfully load a playlist', function() {
+  let count = 0;
+
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.hls.bandwidth = 20000;
+  this.player.on('loadedmetadata', function() {
+    count += 1;
+  });
+  standardXHRResponse(this.requests.shift());      //master
+  QUnit.equal(count, 0,
+    'loadedMedia not triggered before requesting playlist');
+  this.requests.shift().respond(404);              //media
+  QUnit.equal(count, 0,
+    'loadedMedia not triggered after playlist 404');
+  standardXHRResponse(this.requests.shift());      //media
+  QUnit.equal(count, 1,
+    'loadedMedia triggered after successful recovery from 404');
+});
+
 QUnit.test('sets seekable and duration for live playlists', function() {
   this.player.src({
     src: 'http://example.com/manifest/missingEndlist.m3u8',

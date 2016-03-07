@@ -177,6 +177,32 @@ QUnit.test('recognizes key URLs relative to master and playlist', function() {
         'resolved multiple relative paths for key URI');
 });
 
+QUnit.test('trigger an error event when a media playlist 404s', function() {
+  let count = 0;
+  let loader = new PlaylistLoader('manifest/master.m3u8');
+
+  loader.on('error', function() {
+    count += 1;
+  });
+
+  //master
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=17\n' +
+                                'playlist/playlist.m3u8\n' +
+                                '#EXT-X-STREAM-INF:PROGRAM-ID=2,BANDWIDTH=170\n' +
+                                'playlist/playlist2.m3u8\n' +
+                                '#EXT-X-ENDLIST\n');
+  QUnit.equal(count, 0,
+    'error not triggered before requesting playlist');
+
+  //playlist
+  this.requests.shift().respond(404);
+
+  QUnit.equal(count, 1,
+    'error triggered after playlist 404');
+});
+
 QUnit.test('recognizes absolute key URLs', function() {
   let loader = new PlaylistLoader('/video/media-encrypted.m3u8');
 
