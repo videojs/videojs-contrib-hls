@@ -206,7 +206,7 @@ const URL = {
   }
 };
 
-QUnit.module('HLS:general', {
+QUnit.module('HLS', {
   beforeEach() {
     this.old = {};
 
