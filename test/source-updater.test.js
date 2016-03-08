@@ -1,10 +1,14 @@
 import SourceUpdater from '../src/source-updater';
 import QUnit from 'qunit';
-import {MockSourceBufferMediaSource} from './plugin-helpers';
+import { useFakeMediaSource } from './plugin-helpers';
 
 QUnit.module('Source Updater', {
   beforeEach() {
-    this.mediaSource = new MockSourceBufferMediaSource();
+    this.mse = useFakeMediaSource();
+    this.mediaSource = new videojs.MediaSource();
+  },
+  afterEach() {
+    this.mse.restore();
   }
 });
 

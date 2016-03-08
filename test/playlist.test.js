@@ -1,7 +1,7 @@
 import Playlist from '../src/playlist';
 import PlaylistLoader from '../src/playlist-loader';
 import QUnit from 'qunit';
-import Helper from './plugin-helpers';
+import {useFakeEnvironment, restoreEnvironment} from './plugin-helpers';
 QUnit.module('Playlist Duration');
 
 QUnit.test('total duration for live playlists is Infinity', function() {
@@ -383,12 +383,12 @@ QUnit.module('Playlist Media Index For Time', {
   beforeEach() {
     let fakeEnvironment;
 
-    fakeEnvironment = Helper.useFakeEnvironment();
+    fakeEnvironment = useFakeEnvironment();
     this.clock = fakeEnvironment.clock;
     this.requests = fakeEnvironment.requests;
   },
   afterEach() {
-    Helper.restoreEnvironment();
+    restoreEnvironment();
   }
 });
 

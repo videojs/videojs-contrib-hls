@@ -1,6 +1,6 @@
 import QUnit from 'qunit';
 import PlaylistLoader from '../src/playlist-loader';
-import Helper from './plugin-helpers';
+import { useFakeEnvironment, restoreEnvironment } from './plugin-helpers';
 
 // Attempts to produce an absolute URL to a given relative path
 // based on window.location.href
@@ -16,12 +16,12 @@ QUnit.module('Playlist Loader', {
   beforeEach() {
     let fakeEnvironment;
 
-    fakeEnvironment = Helper.useFakeEnvironment();
+    fakeEnvironment = useFakeEnvironment();
     this.clock = fakeEnvironment.clock;
     this.requests = fakeEnvironment.requests;
   },
   afterEach() {
-    Helper.restoreEnvironment();
+    restoreEnvironment();
   }
 });
 
