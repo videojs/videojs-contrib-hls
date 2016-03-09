@@ -255,27 +255,6 @@ const filterBufferedRanges = function(predicate) {
   };
 };
 
-const parseCodecs = function(codecs) {
-  var result = {
-    codecCount: 0,
-    videoCodec: null,
-    audioProfile: null
-  };
-
-  result.codecCount = codecs.split(',').length;
-  result.codecCount = result.codecCount || 2;
-
-  // parse the video codec but ignore the version
-  result.videoCodec = /(^|\s|,)+(avc1)[^ ,]*/i.exec(codecs);
-  result.videoCodec = result.videoCodec && result.videoCodec[2];
-
-  // parse the last field of the audio codec
-  result.audioProfile = /(^|\s|,)+mp4a.\d+\.(\d+)/i.exec(codecs);
-  result.audioProfile = result.audioProfile && result.audioProfile[2];
-
-  return result;
-};
-
 /**
  * Returns the CSS value for the specified property on an element
  * using `getComputedStyle`. Firefox has a long-standing issue where
