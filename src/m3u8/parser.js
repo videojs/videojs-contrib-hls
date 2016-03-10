@@ -186,7 +186,7 @@ export default class Parser extends Stream {
               currentUri.attributes = mergeOptions(currentUri.attributes,
                                                    entry.attributes);
             },
-            'media'() {
+            media() {
               this.manifest.mediaGroups =
                 this.manifest.mediaGroups || defaultMediaGroups;
 
@@ -201,12 +201,11 @@ export default class Parser extends Stream {
               }
 
               // find the media group, creating defaults as necessary
-              this.manifest.mediaGroups[entry.attributes.TYPE]
-                [entry.attributes['GROUP-ID']] =
-                  this.manifest.mediaGroups[entry.attributes.TYPE]
-                    [entry.attributes['GROUP-ID']] || {};
-              mediaGroup = this.manifest.mediaGroups[entry.attributes.TYPE]
-                [entry.attributes['GROUP-ID']];
+              let mediaGroupType = this.manifest.mediaGroups[entry.attributes.TYPE];
+
+              mediaGroupType[entry.attributes['GROUP-ID']] =
+                mediaGroupType[entry.attributes['GROUP-ID']] || {};
+              mediaGroup = mediaGroupType[entry.attributes['GROUP-ID']];
 
               // collect the rendition metadata
               rendition = {
@@ -298,4 +297,3 @@ export default class Parser extends Stream {
   }
 
 }
-

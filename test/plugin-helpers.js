@@ -76,7 +76,7 @@ export const useFakeEnvironment = function() {
   return {
     clock: clock,
     requests: requests,
-    restore: videojs.restoreEnvironment
+    restore: restoreEnvironment
   };
 };
 export const restoreEnvironment = function() {
