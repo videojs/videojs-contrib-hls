@@ -200,13 +200,17 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     * Abort any outstanding work and clean up.
     */
   loader.dispose = function() {
+    loader.stopRequest();
+    window.clearTimeout(mediaUpdateTimeout);
+    dispose.call(this);
+  };
+
+  loader.stopRequest = () => {
     if (request) {
       request.onreadystatechange = null;
       request.abort();
       request = null;
     }
-    window.clearTimeout(mediaUpdateTimeout);
-    dispose.call(this);
   };
 
   /**
@@ -399,6 +403,11 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     haveMetadata(req, srcUrl);
     return loader.trigger('loadedmetadata');
   });
+
+  loader.pause = () => {
+    loader.stopRequest();
+    window.clearTimeout(mediaUpdateTimeout);
+  };
 };
 
 PlaylistLoader.prototype = new Stream();
