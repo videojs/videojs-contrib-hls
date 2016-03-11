@@ -1,9 +1,7 @@
 import QUnit from 'qunit';
 import {GOAL_BUFFER_LENGTH, default as SegmentLoader} from '../src/segment-loader';
 import videojs from 'video.js';
-import {
-  useFakeEnvironment, restoreEnvironment, useFakeMediaSource
-} from './plugin-helpers.js';
+import { useFakeEnvironment, useFakeMediaSource } from './plugin-helpers.js';
 
 const playlistWithDuration = function(time, conf) {
   let result = {
@@ -45,9 +43,9 @@ let loader;
 
 QUnit.module('Segment Loader', {
   beforeEach() {
-    let fakeEnvironment = useFakeEnvironment();
-    this.clock = fakeEnvironment.clock;
-    this.requests = fakeEnvironment.requests;
+    this.env = useFakeEnvironment();
+    this.clock = this.env.clock;
+    this.requests = this.env.requests;
 
     this.mse = useFakeMediaSource();
 
@@ -61,7 +59,7 @@ QUnit.module('Segment Loader', {
     });
   },
   afterEach() {
-    restoreEnvironment();
+    this.env.restore();
     this.mse.restore();
   }
 });
@@ -520,6 +518,7 @@ QUnit.test('dispose cleans up outstanding work', function() {
   QUnit.equal(this.requests.length, 1, 'did not open another request');
   mediaSource.sourceBuffers.forEach((sourceBuffer, i) => {
     let lastOperation = sourceBuffer.updates_.slice(-1)[0];
+
     QUnit.ok(lastOperation.abort, 'aborted source buffer ' + i);
   });
 });
@@ -730,6 +729,7 @@ QUnit.test('key request timeouts reset bandwidth', function() {
 });
 
 // --------------------
+/* eslint-disable */
 
 QUnit.skip('cleans up the buffer when loading live segments', function() {
   let removes = [];
@@ -864,10 +864,11 @@ QUnit.skip('cleans up the buffer when loading VOD segments', function() {
   QUnit.equal(removes.length, 1, 'remove called');
   QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
 });
+/* eslint-enable */
 
 QUnit.module('Segment Loading Calculation', {
   beforeEach() {
-    useFakeEnvironment();
+    this.env = useFakeEnvironment();
     this.mse = useFakeMediaSource();
 
     currentTime = 0;
@@ -879,7 +880,7 @@ QUnit.module('Segment Loading Calculation', {
     });
   },
   afterEach() {
-    restoreEnvironment();
+    this.env.restore();
     this.mse.restore();
   }
 });

@@ -1,3 +1,4 @@
+import sinon from 'sinon';
 import videojs from 'video.js';
 
 // a SourceBuffer that tracks updates but otherwise is a noop
@@ -15,12 +16,12 @@ class MockSourceBuffer extends videojs.EventTarget {
     this.duration_ = NaN;
 
     Object.defineProperty(this, 'duration', {
-      get: function() {
+      get() {
         return this.duration_;
       },
-      set: function(duration) {
+      set(duration) {
         this.updates_.push({
-          duration: duration
+          duration
         });
         this.duration_ = duration;
         this.updating = true;
@@ -54,7 +55,7 @@ class MockMediaSource extends videojs.EventTarget {
     super();
     this.readyState = 'closed';
     this.on('sourceopen', function() {
-      this.readyState = 'open'
+      this.readyState = 'open';
     });
 
     this.sourceBuffers = [];
@@ -65,6 +66,7 @@ class MockMediaSource extends videojs.EventTarget {
 
   addSourceBuffer(mime) {
     let sourceBuffer = new MockSourceBuffer();
+
     sourceBuffer.mimeType_ = mime;
     this.sourceBuffers.push(sourceBuffer);
     return sourceBuffer;
@@ -81,37 +83,39 @@ export const useFakeMediaSource = function() {
   let id = 0;
 
   videojs.MediaSource = MockMediaSource;
-  videojs.MediaSource.supportsNativeMediaSources = RealMediaSource.supportsNativeMediaSources;
+  videojs.MediaSource.supportsNativeMediaSources =
+    RealMediaSource.supportsNativeMediaSources;
   videojs.URL.createObjectURL = function() {
     id++;
     return 'blob:videojs-contrib-hls-mock-url' + id;
   };
 
   return {
-    restore: function() {
+    restore() {
       videojs.MediaSource = RealMediaSource;
       videojs.URL.createObjectURL = realCreateObjectURL;
     }
   };
 };
 
-let clock, xhr, requests;
-export const useFakeEnvironment = function() {
-  clock = sinon.useFakeTimers();
-  xhr = sinon.useFakeXMLHttpRequest();
-  videojs.xhr.XMLHttpRequest = xhr;
-  requests = [];
-  xhr.onCreate = function(xhr) {
-    requests.push(xhr);
-  };
-  return {
-    clock: clock,
-    requests: requests,
-    restore: restoreEnvironment
-  };
+let fakeEnvironment = {
+  requests: [],
+  restore() {
+    this.clock.restore();
+    videojs.xhr.XMLHttpRequest = window.XMLHttpRequest;
+    this.xhr.restore();
+  }
 };
-export const restoreEnvironment = function() {
-  clock.restore();
-  videojs.xhr.XMLHttpRequest = window.XMLHttpRequest;
-  xhr.restore();
+
+export const useFakeEnvironment = function() {
+  fakeEnvironment.clock = sinon.useFakeTimers();
+
+  fakeEnvironment.xhr = sinon.useFakeXMLHttpRequest();
+  fakeEnvironment.requests.length = 0;
+  fakeEnvironment.xhr.onCreate = function(xhr) {
+    fakeEnvironment.requests.push(xhr);
+  };
+  videojs.xhr.XMLHttpRequest = fakeEnvironment.xhr;
+
+  return fakeEnvironment;
 };

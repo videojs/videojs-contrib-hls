@@ -181,6 +181,7 @@ export const duration = function(playlist, endSequence, includeTrailingTime) {
 export const seekable = function(playlist) {
   let start;
   let end;
+  let endSequence;
 
   // without segments, there are no seekable ranges
   if (!playlist.segments) {
@@ -195,9 +196,9 @@ export const seekable = function(playlist) {
   // of content from the end of the playlist
   // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
   start = intervalDuration(playlist, playlist.mediaSequence);
+  endSequence = Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS);
   end = intervalDuration(playlist,
-                         playlist.mediaSequence +
-                         Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS));
+                         playlist.mediaSequence + endSequence);
   return createTimeRange(start, end);
 };
 
