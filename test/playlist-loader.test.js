@@ -1,6 +1,6 @@
 import QUnit from 'qunit';
 import PlaylistLoader from '../src/playlist-loader';
-import { useFakeEnvironment, restoreEnvironment } from './plugin-helpers';
+import { useFakeEnvironment } from './plugin-helpers';
 
 // Attempts to produce an absolute URL to a given relative path
 // based on window.location.href
@@ -14,14 +14,12 @@ const urlTo = function(path) {
 
 QUnit.module('Playlist Loader', {
   beforeEach() {
-    let fakeEnvironment;
-
-    fakeEnvironment = useFakeEnvironment();
-    this.clock = fakeEnvironment.clock;
-    this.requests = fakeEnvironment.requests;
+    this.env = useFakeEnvironment();
+    this.clock = this.env.clock;
+    this.requests = this.env.requests;
   },
   afterEach() {
-    restoreEnvironment();
+    this.env.restore();
   }
 });
 
@@ -185,7 +183,7 @@ QUnit.test('trigger an error event when a media playlist 404s', function() {
     count += 1;
   });
 
-  //master
+  // master
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
                                 '#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=17\n' +
@@ -196,7 +194,7 @@ QUnit.test('trigger an error event when a media playlist 404s', function() {
   QUnit.equal(count, 0,
     'error not triggered before requesting playlist');
 
-  //playlist
+  // playlist
   this.requests.shift().respond(404);
 
   QUnit.equal(count, 1,

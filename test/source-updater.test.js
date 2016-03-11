@@ -1,5 +1,6 @@
 import SourceUpdater from '../src/source-updater';
 import QUnit from 'qunit';
+import videojs from 'video.js';
 import { useFakeMediaSource } from './plugin-helpers';
 
 QUnit.module('Source Updater', {
@@ -119,11 +120,12 @@ QUnit.test('runs updates immediately if possible', function() {
 
 QUnit.test('supports abort', function() {
   let updater = new SourceUpdater(this.mediaSource, 'video/mp2t');
+  let sourceBuffer;
 
   updater.abort();
   this.mediaSource.trigger('sourceopen');
 
-  let sourceBuffer = this.mediaSource.sourceBuffers[0];
+  sourceBuffer = this.mediaSource.sourceBuffers[0];
   QUnit.ok(sourceBuffer.updates_[0].abort, 'aborted the source buffer');
 });
 

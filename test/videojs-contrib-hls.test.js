@@ -185,10 +185,11 @@ class MockMediaSource extends videojs.EventTarget {
     this.seekable = videojs.createTimeRange(start, end);
   }
   addSourceBuffer() {
-    let self = this;
+    let sourceBuffers = this.sourceBuffers;
+
     return new (videojs.extend(videojs.EventTarget, {
       constructor() {
-        self.sourceBuffers.push(this);
+        sourceBuffers.push(this);
       },
       abort() {},
       buffered: videojs.createTimeRange(),
@@ -1369,13 +1370,16 @@ QUnit.test('fire loadedmetadata once we successfully load a playlist', function(
   this.player.on('loadedmetadata', function() {
     count += 1;
   });
-  standardXHRResponse(this.requests.shift());      //master
+  // master
+  standardXHRResponse(this.requests.shift());
   QUnit.equal(count, 0,
     'loadedMedia not triggered before requesting playlist');
-  this.requests.shift().respond(404);              //media
+  // media
+  this.requests.shift().respond(404);
   QUnit.equal(count, 0,
     'loadedMedia not triggered after playlist 404');
-  standardXHRResponse(this.requests.shift());      //media
+  // media
+  standardXHRResponse(this.requests.shift());
   QUnit.equal(count, 1,
     'loadedMedia triggered after successful recovery from 404');
 });
@@ -2028,7 +2032,8 @@ QUnit.test('does not download segments if preload option set to none', function(
 
 // workaround https://bugzilla.mozilla.org/show_bug.cgi?id=548397
 QUnit.test('selectPlaylist does not fail if getComputedStyle returns null', function() {
-  var oldGetComputedStyle = window.getComputedStyle;
+  let oldGetComputedStyle = window.getComputedStyle;
+
   window.getComputedStyle = function() {
     return null;
   };
@@ -2038,8 +2043,10 @@ QUnit.test('selectPlaylist does not fail if getComputedStyle returns null', func
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
-  standardXHRResponse(this.requests.shift()); // master
-  standardXHRResponse(this.requests.shift()); // media
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
 
   this.player.tech_.hls.selectPlaylist();
   QUnit.ok(true, 'should not throw');
@@ -2066,14 +2073,14 @@ QUnit.test('resolves relative key URLs against the playlist', function() {
 });
 
 QUnit.module('HLS Integration', {
-  beforeEach: function() {
+  beforeEach() {
     this.env = useFakeEnvironment();
     this.clock = this.env.clock;
     this.requests = this.env.requests;
-    this.mse = useFakeMediaSource()
+    this.mse = useFakeMediaSource();
     this.tech = new (videojs.getTech('Html5'))({});
   },
-  afterEach: function() {
+  afterEach() {
     this.env.restore();
     this.mse.restore();
   }
@@ -2123,6 +2130,7 @@ QUnit.test('aborts all in-flight work when disposed', function() {
   QUnit.ok(this.requests[0].aborted, 'aborted the old segment request');
   hls.mediaSource.sourceBuffers.forEach(sourceBuffer => {
     let lastUpdate = sourceBuffer.updates_[sourceBuffer.updates_.length - 1];
+
     QUnit.ok(lastUpdate.abort, 'aborted the source buffer');
   });
 });
@@ -2196,7 +2204,6 @@ QUnit.test('downloads additional playlists if required', function() {
   }, this.tech);
 
   hls.mediaSource.trigger('sourceopen');
-
   hls.bandwidth = 1;
   // master
   standardXHRResponse(this.requests[0]);
@@ -2259,8 +2266,8 @@ QUnit.test('live playlist starts three target durations before live', function()
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   }, this.tech);
-  hls.mediaSource.trigger('sourceopen');
 
+  hls.mediaSource.trigger('sourceopen');
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
                                 '#EXT-X-MEDIA-SEQUENCE:101\n' +
@@ -2293,13 +2300,13 @@ QUnit.test('live playlist starts three target durations before live', function()
 });
 
 QUnit.module('HLS - Encryption', {
-  beforeEach: function() {
+  beforeEach() {
     this.env = useFakeEnvironment();
     this.requests = this.env.requests;
-    this.mse = useFakeMediaSource()
+    this.mse = useFakeMediaSource();
     this.tech = new (videojs.getTech('Html5'))({});
   },
-  afterEach: function() {
+  afterEach() {
     this.env.restore();
     this.mse.restore();
   }
@@ -2312,7 +2319,6 @@ QUnit.test('blacklists playlist if key requests fail', function() {
   }, this.tech);
 
   hls.mediaSource.trigger('sourceopen');
-
   this.requests.shift()
     .respond(200, null,
              '#EXTM3U\n' +
@@ -2337,8 +2343,8 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
     src: 'manifest/encrypted-media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   }, this.tech);
-  hls.mediaSource.trigger('sourceopen');
 
+  hls.mediaSource.trigger('sourceopen');
   this.requests.shift()
     .respond(200, null,
              '#EXTM3U\n' +
