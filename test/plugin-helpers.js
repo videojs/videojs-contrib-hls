@@ -10,8 +10,10 @@ class MockSourceBuffer extends videojs.EventTarget {
     this.on('updateend', function() {
       this.updating = false;
     });
+
     this.buffered = videojs.createTimeRanges();
     this.duration_ = NaN;
+
     Object.defineProperty(this, 'duration', {
       get: function() {
         return this.duration_;
@@ -23,6 +25,12 @@ class MockSourceBuffer extends videojs.EventTarget {
         this.duration_ = duration;
         this.updating = true;
       }
+    });
+  }
+
+  abort() {
+    this.updates_.push({
+      abort: true
     });
   }
 
@@ -41,25 +49,48 @@ class MockSourceBuffer extends videojs.EventTarget {
   }
 }
 
+class MockMediaSource extends videojs.EventTarget {
+  constructor() {
+    super();
+    this.readyState = 'closed';
+    this.on('sourceopen', function() {
+      this.readyState = 'open'
+    });
+
+    this.sourceBuffers = [];
+    this.duration = NaN;
+  }
+
+  addSeekableRange_() {}
+
+  addSourceBuffer(mime) {
+    let sourceBuffer = new MockSourceBuffer();
+    sourceBuffer.mimeType_ = mime;
+    this.sourceBuffers.push(sourceBuffer);
+    return sourceBuffer;
+  }
+
+  endOfStream() {
+    this.readyState = 'closed';
+  }
+}
+
 export const useFakeMediaSource = function() {
-  var RealMediaSource = videojs.MediaSource;
+  let RealMediaSource = videojs.MediaSource;
+  let realCreateObjectURL = window.URL.createObjectURL;
+  let id = 0;
 
-  videojs.MediaSource = function() {
-    var mediaSource = new RealMediaSource();
-    mediaSource.addSourceBuffer = function(mime) {
-      var sourceBuffer = new MockSourceBuffer();
-      sourceBuffer.mimeType_ = mime;
-      mediaSource.sourceBuffers.push(sourceBuffer);
-      return sourceBuffer;
-    };
-
-    return mediaSource;
-  };
+  videojs.MediaSource = MockMediaSource;
   videojs.MediaSource.supportsNativeMediaSources = RealMediaSource.supportsNativeMediaSources;
+  videojs.URL.createObjectURL = function() {
+    id++;
+    return 'blob:videojs-contrib-hls-mock-url' + id;
+  };
 
   return {
     restore: function() {
       videojs.MediaSource = RealMediaSource;
+      videojs.URL.createObjectURL = realCreateObjectURL;
     }
   };
 };

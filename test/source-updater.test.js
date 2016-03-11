@@ -117,6 +117,16 @@ QUnit.test('runs updates immediately if possible', function() {
                   'appended the bytes');
 });
 
+QUnit.test('supports abort', function() {
+  let updater = new SourceUpdater(this.mediaSource, 'video/mp2t');
+
+  updater.abort();
+  this.mediaSource.trigger('sourceopen');
+
+  let sourceBuffer = this.mediaSource.sourceBuffers[0];
+  QUnit.ok(sourceBuffer.updates_[0].abort, 'aborted the source buffer');
+});
+
 QUnit.test('supports buffered', function() {
   let updater = new SourceUpdater(this.mediaSource, 'video/mp2t');
 
