@@ -518,6 +518,10 @@ QUnit.test('dispose cleans up outstanding work', function() {
   loader.dispose();
   QUnit.ok(this.requests[0].aborted, 'aborted segment request');
   QUnit.equal(this.requests.length, 1, 'did not open another request');
+  mediaSource.sourceBuffers.forEach((sourceBuffer, i) => {
+    let lastOperation = sourceBuffer.updates_.slice(-1)[0];
+    QUnit.ok(lastOperation.abort, 'aborted source buffer ' + i);
+  });
 });
 
 // ----------
@@ -688,8 +692,7 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
 });
 
 QUnit.test('calling load with an encrypted segment waits for both key and segment ' +
-           'before processing',
-function() {
+           'before processing', function() {
   let keyRequest;
   let segmentRequest;
 
@@ -700,10 +703,12 @@ function() {
   QUnit.equal(this.requests.length, 2, 'requested a segment and key');
   QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
   QUnit.equal(this.requests[1].url, '0.ts', 'requested the first segment');
-  segmentRequest = this.requests.shift();
+  // respond to the segment first
+  segmentRequest = this.requests.pop();
   segmentRequest.response = new Uint8Array(10).buffer;
   segmentRequest.respond(200, null, '');
   QUnit.equal(loader.state, 'WAITING', 'still in waiting state');
+  // then respond to the key
   keyRequest = this.requests.shift();
   keyRequest.response = new Uint32Array([0, 0, 0, 0]).buffer;
   keyRequest.respond(200, null, '');
@@ -773,6 +778,58 @@ QUnit.skip('cleans up the buffer when loading live segments', function() {
   QUnit.equal(removes.length, 1, 'remove called');
   QUnit.deepEqual(removes[0], [0, seekable.start(0)],
                   'remove called with the right range');
+});
+
+QUnit.skip('cleans up the buffer based on currentTime when loading a live segment ' +
+           'if seekable start is after currentTime', function() {
+  let removes = [];
+  let seekable = videojs.createTimeRanges([[0, 80]]);
+
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.hls.seekable = function() {
+    return seekable;
+  };
+
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
+    return new (videojs.extend(videojs.EventTarget, {
+      constructor() {},
+      abort() {},
+      buffered: videojs.createTimeRange(),
+      appendBuffer() {},
+      remove(start, end) {
+        removes.push([start, end]);
+      }
+    }))();
+  };
+  this.player.tech_.hls.segments.bandwidth = 20e10;
+  this.player.tech_.triggerReady();
+  standardXHRResponse(this.requests[0]);
+  this.player.tech_.hls.playlists.trigger('loadedmetadata');
+  this.player.tech_.trigger('canplay');
+
+  this.player.tech_.paused = function() {
+    return false;
+  };
+
+  this.player.tech_.readyState = function() {
+    return 1;
+  };
+
+  this.player.tech_.trigger('play');
+  this.clock.tick(1);
+  // Change seekable so that it starts *after* the currentTime which was set
+  // based on the previous seekable range (the end of 80)
+  seekable = videojs.createTimeRanges([[100, 120]]);
+  standardXHRResponse(this.requests[1]);
+
+  QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
+  QUnit.equal(removes.length, 1, 'remove called');
+  QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
 });
 
 QUnit.skip('cleans up the buffer when loading VOD segments', function() {

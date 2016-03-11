@@ -319,6 +319,8 @@ export default class HlsHandler extends Component {
       // with the updated bandwidth information
       this.bandwidth = this.segments.bandwidth;
       this.playlists.media(this.selectPlaylist());
+
+      this.tech_.trigger('progress');
     });
     this.segments.on('error', () => {
       this.blacklistCurrentPlaylist_(this.segments.error());
@@ -452,19 +454,22 @@ export default class HlsHandler extends Component {
         this.sourceBuffer &&
 
         // 4) the active media playlist is available
-        media &&
+        media) {
 
-        // 5) the video element or flash player is in a readyState of
-        // at least HAVE_FUTURE_DATA
-        this.tech_.readyState() >= 1) {
+      this.segments.load();
 
-      // trigger the playlist loader to start "expired time"-tracking
-      this.playlists.trigger('firstplay');
+      // 5) the video element or flash player is in a readyState of
+      // at least HAVE_FUTURE_DATA
+      if (this.tech_.readyState() >= 1) {
 
-      // seek to the latest media position for live videos
-      seekable = this.seekable();
-      if (seekable.length) {
-        this.tech_.setCurrentTime(seekable.end(0));
+        // trigger the playlist loader to start "expired time"-tracking
+        this.playlists.trigger('firstplay');
+
+        // seek to the latest media position for live videos
+        seekable = this.seekable();
+        if (seekable.length) {
+          this.tech_.setCurrentTime(seekable.end(0));
+        }
       }
     }
   }

@@ -50,6 +50,16 @@ export default videojs.extend(null, {
   },
 
   /**
+   * Aborts the current segment and resets the segment parser.
+   * @see http://w3c.github.io/media-source/#widl-SourceBuffer-abort-void
+   */
+  abort(done) {
+    this.queueCallback_(function() {
+      this.sourceBuffer_.abort();
+    }, done);
+  },
+
+  /**
    * Queue an update to append an ArrayBuffer.
    * @see http://www.w3.org/TR/media-source/
    *      #widl-SourceBuffer-appendBuffer-void-ArrayBuffer-data

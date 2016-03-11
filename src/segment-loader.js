@@ -318,6 +318,8 @@ export default videojs.extend(videojs.EventTarget, {
 
     // clear out the segment being processed
     this.pendingSegment_ = null;
+
+    this.sourceUpdater_.abort();
   },
 
   fillBuffer_() {
@@ -452,6 +454,19 @@ export default videojs.extend(videojs.EventTarget, {
       // the key request is no longer outstanding
       this.xhr_.keyXhr = null;
 
+      if (request.response.byteLength !== 16) {
+        this.abort_();
+        this.error({
+          status: request.status,
+          message: 'Invalid HLS key at URL: ' + segment.key.uri,
+          code: 2,
+          xhr: request
+        });
+        this.state = 'READY';
+        this.pause();
+        return this.trigger('error');
+      }
+
       view = new DataView(request.response);
       segment.key.bytes = new Uint32Array([
         view.getUint32(0),
@@ -462,8 +477,9 @@ export default videojs.extend(videojs.EventTarget, {
 
       // if the media sequence is greater than 2^32, the IV will be incorrect
       // assuming 10s segments, that would be about 1300 years
-      segment.key.iv = segment.key.iv || new Uint32Array(
-        [0, 0, 0, segmentInfo.mediaIndex + segmentInfo.playlist.mediaSequence]);
+      segment.key.iv = segment.key.iv || new Uint32Array([
+        0, 0, 0, segmentInfo.mediaIndex + segmentInfo.playlist.mediaSequence
+      ]);
     }
 
     if (!this.xhr_.segmentXhr && !this.xhr_.keyXhr) {
