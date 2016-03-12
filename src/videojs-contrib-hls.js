@@ -309,7 +309,7 @@ export default class HlsHandler extends Component {
     });
 
     this.segments = new SegmentLoader({
-      currentTime: this.tech_.currentTime.bind(this.tech_),
+      currentTime: () => this.tech_.currentTime(),
       mediaSource: this.mediaSource,
       withCredentials: this.options_.withCredentials
     });
