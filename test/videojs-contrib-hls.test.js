@@ -315,25 +315,17 @@ QUnit.module('HLS', {
 });
 
 QUnit.test('starts playing if autoplay is specified', function() {
-  let plays = 0;
-
   this.player.autoplay(true);
   this.player.src({
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
 
-  // REMOVEME workaround https://github.com/videojs/video.js/issues/2326
-  // this.player.tech_.triggerReady();
-  // this.clock.tick(1);
   // make sure play() is called *after* the media source opens
-  this.player.tech_.hls.play = function() {
-    plays++;
-  };
   openMediaSource(this.player, this.clock);
 
   standardXHRResponse(this.requests[0]);
-  QUnit.strictEqual(1, plays, 'play was called');
+  QUnit.ok(!this.player.paused(), 'not paused');
 });
 
 QUnit.test('XHR requests first byte range on play', function() {
@@ -354,12 +346,9 @@ QUnit.test('Seeking requests correct byte range', function() {
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  this.player.tech_.triggerReady();
-  this.clock.tick(1);
   this.player.tech_.trigger('play');
   openMediaSource(this.player, this.clock);
   standardXHRResponse(this.requests[0]);
-  this.player.tech_.hls.mediaSource.sourceBuffers[0].trigger('updateend');
   this.clock.tick(1);
   this.player.currentTime(40);
   this.clock.tick(1);
