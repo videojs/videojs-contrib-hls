@@ -315,25 +315,17 @@ QUnit.module('HLS', {
 });
 
 QUnit.test('starts playing if autoplay is specified', function() {
-  let plays = 0;
-
   this.player.autoplay(true);
   this.player.src({
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
 
-  // REMOVEME workaround https://github.com/videojs/video.js/issues/2326
-  // this.player.tech_.triggerReady();
-  // this.clock.tick(1);
   // make sure play() is called *after* the media source opens
-  this.player.tech_.hls.play = function() {
-    plays++;
-  };
   openMediaSource(this.player, this.clock);
 
   standardXHRResponse(this.requests[0]);
-  QUnit.strictEqual(1, plays, 'play was called');
+  QUnit.ok(!this.player.paused(), 'not paused');
 });
 
 QUnit.test('XHR requests first byte range on play', function() {
@@ -354,12 +346,9 @@ QUnit.test('Seeking requests correct byte range', function() {
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  this.player.tech_.triggerReady();
-  this.clock.tick(1);
   this.player.tech_.trigger('play');
   openMediaSource(this.player, this.clock);
   standardXHRResponse(this.requests[0]);
-  this.player.tech_.hls.mediaSource.sourceBuffers[0].trigger('updateend');
   this.clock.tick(1);
   this.player.currentTime(40);
   this.clock.tick(1);
@@ -2072,6 +2061,57 @@ QUnit.test('resolves relative key URLs against the playlist', function() {
               'resolves the key URL');
 });
 
+QUnit.test('adds 1 empty audio track if we have not parsed any, and the playlist is loaded', function() {
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
+
+  openMediaSource(this.player, this.clock);
+  let hls = this.player.tech_.hls;
+
+  // master
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(this.player.audioTracks().length, 1, `one audio track after load`);
+});
+
+QUnit.test('adds audio tracks if we have parsed some from a playlist', function() {
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
+
+  openMediaSource(this.player, this.clock);
+  let hls = this.player.tech_.hls;
+
+  // master
+  standardXHRResponse(this.requests.shift());
+
+  let at = this.player.audioTracks();
+  QUnit.equal(at.length, 3, `three audio tracks after load`);
+
+  QUnit.equal(at[0].label, 'English', `track 1 - label = NAME`);
+  QUnit.equal(at[0].enabled, true, `track 1 - enabled = DEFAULT`);
+  QUnit.equal(at[0].language, 'eng', `track 1 - language = LANG`);
+  QUnit.equal(at[0].kind, 'main', `track 1 - kind = main if DEFAULT is YES`);
+
+  QUnit.equal(at[1].label, 'Français', `track 2 - label = NAME`);
+  QUnit.equal(at[1].enabled, false, `track 2 - enabled = DEFAULT`);
+  QUnit.equal(at[1].language, 'fre', `track 2 - language = LANG`);
+  QUnit.equal(at[1].kind, 'alternative', `track 2 - kind = alternative if DEFAULT is NO`);
+
+  QUnit.equal(at[2].label, 'Espanol', `track 3 - label = NAME`);
+  QUnit.equal(at[2].enabled, false, `track 3 - enabled = DEFAULT`);
+  QUnit.equal(at[2].language, 'sp', `track 3 - language = LANG`);
+  QUnit.equal(at[2].kind, 'alternative', `track 3 - kind = alternative if DEFAULT is NO`);
+});
+
+
 QUnit.module('HLS Integration', {
   beforeEach() {
     this.env = useFakeEnvironment();
@@ -2299,6 +2339,7 @@ QUnit.test('live playlist starts three target durations before live', function()
   QUnit.equal(this.requests.length, 1, 'begins buffering');
 });
 
+
 QUnit.module('HLS - Encryption', {
   beforeEach() {
     this.env = useFakeEnvironment();
@@ -2371,3 +2412,5 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
   QUnit.ok(hls.playlists.media().excludeUntil > 0,
            'blacklisted playlist');
 });
+
+
