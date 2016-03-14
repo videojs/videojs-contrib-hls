@@ -134,11 +134,6 @@ export default class HlsHandler extends Component {
       return;
     }
 
-    this.mediaSource = new videojs.MediaSource({ mode: this.mode_ });
-
-    // load the MediaSource into the player
-    this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen.bind(this));
-
     this.options_ = {};
     if (typeof this.source_.withCredentials !== 'undefined') {
       this.options_.withCredentials = this.source_.withCredentials;
@@ -150,12 +145,13 @@ export default class HlsHandler extends Component {
       url: this.source_.src,
       withCredentials: this.options_.withCredentials,
       currentTimeFunc: this.tech_.currentTime.bind(this.tech_),
-      mediaSource: this.mediaSource,
+      mediaSourceMode: this.mode_,
       hlsHandler: this,
       externHls: Hls
     });
 
-    this.tech_.one('canplay', this.setupFirstPlay.bind(this));
+    this.tech_.one('canplay',
+      this.masterPlaylistController_.setupFirstPlay.bind(this.masterPlaylistController_));
 
     // do nothing if the tech has been disposed already
     // this can occur if someone sets the src in player.ready(), for instance
@@ -163,27 +159,11 @@ export default class HlsHandler extends Component {
       return;
     }
 
-    this.tech_.src(videojs.URL.createObjectURL(this.mediaSource));
-  }
-  handleSourceOpen() {
-    // Only attempt to create the source buffer if none already exist.
-    // handleSourceOpen is also called when we are "re-opening" a source buffer
-    // after `endOfStream` has been called (in response to a seek for instance)
-    if (!this.sourceBuffer) {
-      this.setupSourceBuffer_();
-    }
-
-    // if autoplay is enabled, begin playback. This is duplicative of
-    // code in video.js but is required because play() must be invoked
-    // *after* the media source has opened.
-    // NOTE: moving this invocation of play() after
-    // sourceBuffer.appendBuffer() below caused live streams with
-    // autoplay to stall
-    if (this.tech_.autoplay()) {
-      this.play();
-    }
+    this.tech_.src(videojs.URL.createObjectURL(
+      this.masterPlaylistController_.mediaSource));
   }
 
+  // TODO - unused, used to be used with sourceBuffer creation
   /**
    * Blacklist playlists that are known to be codec or
    * stream-incompatible with the SourceBuffer configuration. For
@@ -241,70 +221,6 @@ export default class HlsHandler extends Component {
     });
   }
 
-  setupSourceBuffer_() {
-    let media = this.playlists.media();
-    let mimeType;
-
-    // wait until a media playlist is available and the Media Source is
-    // attached
-    if (!media || this.mediaSource.readyState !== 'open') {
-      return;
-    }
-
-    // if the codecs were explicitly specified, pass them along to the
-    // source buffer
-    mimeType = 'video/mp2t';
-    if (media.attributes && media.attributes.CODECS) {
-      mimeType += '; codecs="' + media.attributes.CODECS + '"';
-    }
-    this.sourceBuffer = this.mediaSource.addSourceBuffer(mimeType);
-
-    // exclude any incompatible variant streams from future playlist
-    // selection
-    this.excludeIncompatibleVariants_(media);
-  }
-
-  /**
-   * Seek to the latest media position if this is a live video and the
-   * player and video are loaded and initialized.
-   */
-  setupFirstPlay() {
-    let seekable;
-    let media = this.playlists.media();
-
-    // check that everything is ready to begin buffering
-
-    // 1) the video is a live stream of unknown duration
-    if (this.duration() === Infinity &&
-
-        // 2) the player has not played before and is not paused
-        this.tech_.played().length === 0 &&
-        !this.tech_.paused() &&
-
-        // 3) the Media Source and Source Buffers are ready
-        this.sourceBuffer &&
-
-        // 4) the active media playlist is available
-        media) {
-
-      this.masterPlaylistController_.load();
-
-      // 5) the video element or flash player is in a readyState of
-      // at least HAVE_FUTURE_DATA
-      if (this.tech_.readyState() >= 1) {
-
-        // trigger the playlist loader to start "expired time"-tracking
-        this.playlists.trigger('firstplay');
-
-        // seek to the latest media position for live videos
-        seekable = this.seekable();
-        if (seekable.length) {
-          this.tech_.setCurrentTime(seekable.end(0));
-        }
-      }
-    }
-  }
-
   /**
    * Begin playing the video.
    */
@@ -314,7 +230,7 @@ export default class HlsHandler extends Component {
     }
 
     if (this.tech_.played().length === 0) {
-      return this.setupFirstPlay();
+      return this.masterPlaylistController_.setupFirstPlay();
     }
 
     // if the viewer has paused and we fell out of the live window,
@@ -331,89 +247,11 @@ export default class HlsHandler extends Component {
   }
 
   duration() {
-    let playlists = this.playlists;
-
-    if (!playlists) {
-      return 0;
-    }
-
-    if (this.mediaSource) {
-      return this.mediaSource.duration;
-    }
-
-    return Hls.Playlist.duration(playlists.media());
+    return this.masterPlaylistController_.duration();
   }
 
   seekable() {
-    let media;
-    let seekable;
-
-    if (!this.playlists) {
-      return videojs.createTimeRanges();
-    }
-    media = this.playlists.media();
-    if (!media) {
-      return videojs.createTimeRanges();
-    }
-
-    seekable = Hls.Playlist.seekable(media);
-    if (seekable.length === 0) {
-      return seekable;
-    }
-
-    // if the seekable start is zero, it may be because the player has
-    // been paused for a long time and stopped buffering. in that case,
-    // fall back to the playlist loader's running estimate of expired
-    // time
-    if (seekable.start(0) === 0) {
-      return videojs.createTimeRanges([[this.playlists.expired_,
-                                        this.playlists.expired_ + seekable.end(0)]]);
-    }
-
-    // seekable has been calculated based on buffering video data so it
-    // can be returned directly
-    return seekable;
-  }
-
-  /**
-   * Update the player duration
-   */
-  updateDuration(playlist) {
-    let oldDuration = this.mediaSource.duration;
-    let newDuration = Hls.Playlist.duration(playlist);
-    let buffered = this.tech_.buffered();
-    let setDuration = () => {
-      this.mediaSource.duration = newDuration;
-      this.tech_.trigger('durationchange');
-
-      this.mediaSource.removeEventListener('sourceopen', setDuration);
-    };
-
-    if (buffered.length > 0) {
-      newDuration = Math.max(newDuration, buffered.end(buffered.length - 1));
-    }
-
-    // if the duration has changed, invalidate the cached value
-    if (oldDuration !== newDuration) {
-      // update the duration
-      if (this.mediaSource.readyState !== 'open') {
-        this.mediaSource.addEventListener('sourceopen', setDuration);
-      } else if (!this.sourceBuffer || !this.sourceBuffer.updating) {
-        this.mediaSource.duration = newDuration;
-        this.tech_.trigger('durationchange');
-      }
-    }
-  }
-
-  /**
-   * Clear all buffers and reset any state relevant to the current
-   * source. After this function is called, the tech should be in a
-   * state suitable for switching to a different video.
-   */
-  resetSrc_() {
-    if (this.sourceBuffer && this.mediaSource.readyState === 'open') {
-      this.sourceBuffer.abort();
-    }
+    return this.masterPlaylistController_.seekable();
   }
 
   /**
@@ -424,10 +262,10 @@ export default class HlsHandler extends Component {
       this.masterPlaylistController_.dispose();
     }
 
-    this.resetSrc_();
     super.dispose();
   }
 
+  // TODO no longer used internally
   playlistUriToUrl(segmentRelativeUrl) {
     let playListUrl;
 
@@ -442,6 +280,7 @@ export default class HlsHandler extends Component {
     return playListUrl;
   }
 
+  // TODO no longer used internally
   /*
    * Sets `bandwidth`, `segmentXhrTime`, and appends to the `bytesReceived.
    * Expects an object with:
