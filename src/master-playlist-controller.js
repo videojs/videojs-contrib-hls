@@ -156,26 +156,41 @@ const selectPlaylist = function() {
 };
 
 export default class MasterPlaylistController extends Stream {
-  constructor({url, withCredentials, currentTimeFunc, mediaSource, hlsHandler,
+  constructor({url, withCredentials, currentTimeFunc, mediaSourceMode, hlsHandler,
     externHls}) {
     super();
 
-    this.segmentLoader_ = new SegmentLoader({
-      mediaSource,
-      currentTime: currentTimeFunc,
-      withCredentials
-    });
-    this.hlsHandler = hlsHandler;
-
     Hls = externHls;
 
+    this.withCredentials = withCredentials;
+    this.currentTimeFunc = currentTimeFunc;
+    this.mediaSourceMode = mediaSourceMode;
+
+    this.mediaSource = new videojs.MediaSource({ mode: this.mediaSourceMode });
+    // load the media source into the player
+    this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
+
+    // combined audio/video or just video when alternate audio track is selected
+    this.mainSegmentLoader_ = new SegmentLoader({
+      mediaSource: this.mediaSource,
+      currentTime: this.currentTimeFunc,
+      withCredentials: this.withCredentials
+    });
+    // alternate audio track
+    this.audioSegmentLoader_ = new SegmentLoader({
+      mediaSource: this.mediaSource,
+      currentTime: this.currentTimeFunc,
+      withCredentials: this.withCredentials
+    });
+
+    this.hlsHandler = hlsHandler;
     this.hlsHandler.selectPlaylist = this.hlsHandler.selectPlaylist || selectPlaylist;
 
     if (!url) {
       throw new Error('A non-empty playlist URL is required');
     }
 
-    this.masterPlaylistLoader_ = new PlaylistLoader(url, withCredentials);
+    this.masterPlaylistLoader_ = new PlaylistLoader(url, this.withCredentials);
     this.hlsHandler.playlists = this.masterPlaylistLoader_;
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
@@ -184,12 +199,11 @@ export default class MasterPlaylistController extends Stream {
       if (this.masterPlaylistLoader_.media().endList &&
           this.hlsHandler.tech_.preload() !== 'metadata' &&
           this.hlsHandler.tech_.preload() !== 'none') {
-        this.segmentLoader_.playlist(this.masterPlaylistLoader_.media());
-        this.segmentLoader_.load();
+        this.mainSegmentLoader_.playlist(this.masterPlaylistLoader_.media());
+        this.mainSegmentLoader_.load();
       }
 
-      this.hlsHandler.setupSourceBuffer_();
-      this.hlsHandler.setupFirstPlay();
+      this.setupFirstPlay();
       this.hlsHandler.tech_.trigger('loadedmetadata');
     });
 
@@ -203,13 +217,13 @@ export default class MasterPlaylistController extends Stream {
         return;
       }
 
-      this.segmentLoader_.playlist(updatedPlaylist);
-      this.hlsHandler.updateDuration(this.masterPlaylistLoader_.media());
+      this.mainSegmentLoader_.playlist(updatedPlaylist);
+      this.updateDuration(this.masterPlaylistLoader_.media());
 
       // update seekable
       seekable = this.hlsHandler.seekable();
       if (this.hlsHandler.duration() === Infinity && seekable.length !== 0) {
-        this.hlsHandler.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
+        this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
       }
     });
 
@@ -218,34 +232,127 @@ export default class MasterPlaylistController extends Stream {
     });
 
     this.masterPlaylistLoader_.on('mediachanging', () => {
-      this.segmentLoader_.pause();
+      this.mainSegmentLoader_.pause();
     });
 
     this.masterPlaylistLoader_.on('mediachange', () => {
-      this.segmentLoader_.abort();
-      this.segmentLoader_.load();
+      this.mainSegmentLoader_.abort();
+      this.mainSegmentLoader_.load();
       this.hlsHandler.tech_.trigger({
         type: 'mediachange',
         bubbles: true
       });
     });
 
-    this.segmentLoader_.on('progress', () => {
+    this.mainSegmentLoader_.on('progress', () => {
       // figure out what stream the next segment should be downloaded from
       // with the updated bandwidth information
-      this.hlsHandler.bandwidth = this.segmentLoader_.bandwidth;
+      this.hlsHandler.bandwidth = this.mainSegmentLoader_.bandwidth;
       this.masterPlaylistLoader_.media(this.hlsHandler.selectPlaylist());
 
-      this.tech_.trigger('progress');
+      this.hlsHandler.tech_.trigger('progress');
     });
 
-    this.segmentLoader_.on('error', () => {
-      this.blacklistCurrentPlaylist_(this.segmentLoader_.error());
+    this.mainSegmentLoader_.on('error', () => {
+      this.blacklistCurrentPlaylist_(this.mainSegmentLoader_.error());
     });
   }
 
   load() {
     this.mainSegmentLoader_.load();
+    if (this.audioPlaylistLoader_) {
+      this.audioSegmentLoader_.load();
+    }
+  }
+
+  loadAlternateAudioPlaylist(playlistLoader) {
+    this.audioPlaylistLoader_ = playlistLoader;
+
+    this.audioPlaylistLoader_.on('loadedmetadata', () => {
+      this.audioSegmentLoader_.playlist(this.audioPlaylistLoader_.media());
+
+      // if the video is already playing, or if this isn't a live video and preload
+      // permits, start downloading segments
+      if (!this.hlsHandler.tech_.paused() ||
+            (this.audioPlaylistLoader_.media().endList &&
+            this.hlsHandler.tech_.preload() !== 'metadata' &&
+            this.hlsHandler.tech_.preload() !== 'none')) {
+        this.audioSegmentLoader_.load();
+      }
+    });
+
+    this.audioPlaylistLoader_.on('loadedplaylist', () => {
+      let updatedPlaylist = this.audioPlaylistLoader_.media();
+      let seekable;
+
+      if (!updatedPlaylist) {
+        // only one playlist to select
+        this.audioPlaylistLoader_.media(
+          this.audioPlaylistLoader_.playlists.master.playlists[0]);
+        return;
+      }
+
+      this.audioSegmentLoader_.playlist(updatedPlaylist);
+    });
+
+    this.audioPlaylistLoader_.on('error', () => {
+      this.audioSegmentLoader_.abort();
+      this.audioPlaylistLoader_ = null;
+      // TODO go back to using combined
+    });
+
+    this.audioSegmentLoader_.on('error', () => {
+      this.audioSegmentLoader_.abort();
+      this.audioPlaylistLoader_ = null;
+      // TODO go back to using combined
+    });
+  }
+
+  /**
+   * Seek to the latest media position if this is a live video and the
+   * player and video are loaded and initialized.
+   */
+  setupFirstPlay() {
+    let seekable;
+    let media = this.masterPlaylistLoader_.media();
+
+    // check that everything is ready to begin buffering
+
+    // 1) the video is a live stream of unknown duration
+    if (this.hlsHandler.duration() === Infinity &&
+
+        // 2) the player has not played before and is not paused
+        this.hlsHandler.tech_.played().length === 0 &&
+        !this.hlsHandler.tech_.paused() &&
+
+        // 3) the active media playlist is available
+        media) {
+
+      this.load();
+
+      // 4) the video element or flash player is in a readyState of
+      // at least HAVE_FUTURE_DATA
+      if (this.hlsHandler.tech_.readyState() >= 1) {
+
+        // trigger the playlist loader to start "expired time"-tracking
+        this.masterPlaylistLoader_.trigger('firstplay');
+
+        // seek to the latest media position for live videos
+        seekable = this.hlsHandler.seekable();
+        if (seekable.length) {
+          this.hlsHandler.tech_.setCurrentTime(seekable.end(0));
+        }
+      }
+    }
+  }
+
+  handleSourceOpen_() {
+    // if autoplay is enabled, begin playback. This is duplicative of
+    // code in video.js but is required because play() must be invoked
+    // *after* the media source has opened.
+    if (this.hlsHandler.tech_.autoplay()) {
+      this.hlsHandler.play();
+    }
   }
 
   /*
@@ -267,7 +374,7 @@ export default class MasterPlaylistController extends Stream {
     // trying to load the master OR while we were disposing of the tech
     if (!currentPlaylist) {
       this.hlsHandler.error = error;
-      return this.hlsHandler.mediaSource.endOfStream('network');
+      return this.mediaSource.endOfStream('network');
     }
 
     // Blacklist this playlist
@@ -286,11 +393,14 @@ export default class MasterPlaylistController extends Stream {
                      'HLS playlist. No suitable alternatives found.');
     // We have no more playlists we can select so we must fail
     this.hlsHandler.error = error;
-    return this.hlsHandler.mediaSource.endOfStream('network');
+    return this.mediaSource.endOfStream('network');
   }
 
   pause() {
-    this.segmentLoader_.pause();
+    this.mainSegmentLoader_.pause();
+    if (this.audioPlaylistLoader_) {
+      this.audioSegmentLoader_.pause();
+    }
   }
 
   setCurrentTime(currentTime) {
@@ -315,15 +425,95 @@ export default class MasterPlaylistController extends Stream {
 
     // cancel outstanding requests so we begin buffering at the new
     // location
-    this.segmentLoader_.abort();
+    this.mainSegmentLoader_.abort();
+    if (this.audioPlaylistLoader_) {
+      this.audioSegmentLoader_.abort();
+    }
 
     if (!this.hlsHandler.tech_.paused()) {
-      this.segmentLoader_.load();
+      this.mainSegmentLoader_.load();
+      if (this.audioPlaylistLoader_) {
+        this.audioSegmentLoader_.load();
+      }
+    }
+  }
+
+  duration() {
+    if (!this.masterPlaylistLoader_) {
+      return 0;
+    }
+
+    if (this.mediaSource) {
+      return this.mediaSource.duration;
+    }
+
+    return Hls.Playlist.duration(this.masterPlaylistLoader_.media());
+  }
+
+  seekable() {
+    let media;
+    let seekable;
+
+    if (!this.masterPlaylistLoader_) {
+      return videojs.createTimeRanges();
+    }
+    media = this.masterPlaylistLoader_.media();
+    if (!media) {
+      return videojs.createTimeRanges();
+    }
+
+    seekable = Hls.Playlist.seekable(media);
+    if (seekable.length === 0) {
+      return seekable;
+    }
+
+    // if the seekable start is zero, it may be because the player has
+    // been paused for a long time and stopped buffering. in that case,
+    // fall back to the playlist loader's running estimate of expired
+    // time
+    if (seekable.start(0) === 0) {
+      return videojs.createTimeRanges([[this.masterPlaylistLoader_.expired_,
+                                        this.masterPlaylistLoader_.expired_ +
+                                          seekable.end(0)]]);
+    }
+
+    // seekable has been calculated based on buffering video data so it
+    // can be returned directly
+    return seekable;
+  }
+
+  /**
+   * Update the player duration
+   */
+  updateDuration(playlist) {
+    let oldDuration = this.mediaSource.duration;
+    let newDuration = Hls.Playlist.duration(playlist);
+    let buffered = this.hlsHandler.tech_.buffered();
+    let setDuration = () => {
+      this.mediaSource.duration = newDuration;
+      this.hlsHandler.tech_.trigger('durationchange');
+
+      this.mediaSource.removeEventListener('sourceopen', setDuration);
+    };
+
+    if (buffered.length > 0) {
+      newDuration = Math.max(newDuration, buffered.end(buffered.length - 1));
+    }
+
+    // if the duration has changed, invalidate the cached value
+    if (oldDuration !== newDuration) {
+      // update the duration
+      if (this.mediaSource.readyState !== 'open') {
+        this.mediaSource.addEventListener('sourceopen', setDuration);
+      } else {
+        setDuration();
+      }
     }
   }
 
   dispose() {
     this.masterPlaylistLoader_.dispose();
-    this.segmentLoader_.dispose();
+    this.mainSegmentLoader_.dispose();
+    this.audioSegmentLoader_.dispose();
   }
 }
