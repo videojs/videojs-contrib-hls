@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>videojs-contrib-hls Demo</title>
+  <link href="/node_modules/video.js/dist/video-js.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .info {
+      background-color: #eee;
+      border: thin solid #333;
+      border-radius: 3px;
+      padding: 0 5px;
+      margin: 20px 0;
+    }
+    input {
+      margin-top: 15px;
+      min-width: 450px;
+      padding: 5px;
+    }
+  </style>
+
+</head>
+<body>
+  <div class="info">
+    <p>The video below is an <a href="https://developer.apple.com/library/ios/documentation/networkinginternet/conceptual/streamingmediaguide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008332-CH1-SW1">HTTP Live Stream</a>. On desktop browsers other than Safari, the HLS plugin will polyfill support for the format on top of the video.js Flash tech.</p>
+    <p>Due to security restrictions in Flash, you will have to load this page over HTTP(S) to see the example in action.</p>
+  </div>
+  <video id="videojs-contrib-hls-player" class="video-js vjs-default-skin" controls>
+    <source src="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8" type="application/x-mpegURL">
+  </video>
+
+  <form id=load-url>
+    <label>
+      Video URL:
+      <input id=url type=url value="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8">
+    </label>
+    <button type=submit>Load</button>
+  </form>
+  <ul>
+    <li><a href="/test/">Run unit tests in browser.</a></li>
+    <li><a href="/docs/api/">Read generated docs.</a></li>
+  </ul>
+
+  <script src="/node_modules/video.js/dist/video.js"></script>
+  <script src="/dist/videojs-contrib-hls.js"></script>
+  <script>
+    (function(window, videojs) {
+      var player = window.player = videojs('videojs-contrib-hls-player');
+      // hook up the video switcher
+      var loadUrl = document.getElementById('load-url');
+      var url = document.getElementById('url');
+      loadUrl.addEventListener('submit', function(event) {
+        event.preventDefault();
+        player.src({
+          src: url.value,
+          type: 'application/x-mpegURL'
+        });
+        return false;
+      });
+    }(window, window.videojs));
+  </script>
+</body>
+</html>

@@ -1,9 +1,38 @@
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 .DS_Store
-dist/*
-/node_modules/
+._*
+
+# Editors
 *~
-*.iml
-*.ipr
-*.iws
 *.swp
-tmp/**.*.swo
+*.tmproj
+*.tmproject
+*.sublime-*
+.idea/
+.project/
+.settings/
+.vscode/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependency directories
+bower_components/
+node_modules/
+
+# Yeoman meta-data
+.yo-rc.json
+
+# Build-related directories
+dist/
+dist-test/
+docs/api/
+es5/
+tmp
+test/test-manifests.js
+test/test-expected.js
