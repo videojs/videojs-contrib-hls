@@ -114,17 +114,6 @@ export default class HlsHandler extends Component {
     this.bandwidth = options.bandwidth || 4194304;
     this.bytesReceived = 0;
 
-    // loadingState_ tracks how far along the buffering process we
-    // have been given permission to proceed. There are three possible
-    // values:
-    // - none: do not load playlists or segments
-    // - meta: load playlists but not segments
-    // - segments: load everything
-    this.loadingState_ = 'none';
-    if (this.tech_.preload() !== 'none') {
-      this.loadingState_ = 'meta';
-    }
-
     this.on(this.tech_, 'seeking', function() {
       this.setCurrentTime(this.tech_.currentTime());
     });
@@ -295,7 +284,7 @@ export default class HlsHandler extends Component {
         // 4) the active media playlist is available
         media) {
 
-      this.segments.load();
+      this.masterPlaylistController_.load();
 
       // 5) the video element or flash player is in a readyState of
       // at least HAVE_FUTURE_DATA
@@ -317,8 +306,6 @@ export default class HlsHandler extends Component {
    * Begin playing the video.
    */
   play() {
-    this.loadingState_ = 'segments';
-
     if (this.tech_.ended()) {
       this.tech_.setCurrentTime(0);
     }
