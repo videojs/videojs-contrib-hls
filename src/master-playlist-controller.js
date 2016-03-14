@@ -244,6 +244,10 @@ export default class MasterPlaylistController extends Stream {
     });
   }
 
+  load() {
+    this.mainSegmentLoader_.load();
+  }
+
   /*
    * Blacklists a playlist when an error occurs for a set amount of time
    * making it unavailable for selection by the rendition selection algorithm
