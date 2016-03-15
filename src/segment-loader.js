@@ -7,6 +7,7 @@
 
 import {
   findRange_ as findRange,
+  findNextRange_ as findNextRange,
   findSoleUncommonTimeRangesEnd_ as findSoleUncommonTimeRangesEnd
 } from './ranges';
 import {getMediaIndexForTime_ as getMediaIndexForTime, duration} from './playlist';
@@ -17,6 +18,9 @@ import {Decrypter} from './decrypter';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
+
+// in seconds
+const TIME_FUDGE_FACTOR = 0.1;
 
 // the desired length of video to maintain in the buffer, in seconds
 export const GOAL_BUFFER_LENGTH = 30;
@@ -135,6 +139,8 @@ export default videojs.extend(videojs.EventTarget, {
 
     // private properties
     this.currentTime_ = settings.currentTime;
+    this.seekable_ = settings.seekable;
+    this.seeking_ = settings.seeking;
     this.mediaSource_ = settings.mediaSource;
     this.withCredentials_ = settings.withCredentials;
     this.checkBufferTimeout_ = null;
@@ -262,9 +268,19 @@ export default videojs.extend(videojs.EventTarget, {
       // find the segment containing currentTime
       mediaIndex = getMediaIndexForTime(playlist, currentTime, timestampOffset);
     } else {
-      // find the segment adjacent to the end of the current
-      // buffered region
-      currentBufferedEnd = currentBuffered.end(0);
+      // IE 11 has a bug where it will report a the video as fully buffered
+      // before any data has been loaded. This is a work around where we
+      // report a fully empty buffer until we have successfully downloaded
+      // a segment
+      if (isNaN(this.bandwidth)) {
+        // find the segment adjacent to the end of the current
+        // buffered region
+        currentBufferedEnd = 0;
+      } else {
+        // find the segment adjacent to the end of the current
+        // buffered region
+        currentBufferedEnd = currentBuffered.end(0);
+      }
       bufferedTime = Math.max(0, currentBufferedEnd - currentTime);
 
       // if there is plenty of content buffered, relax for awhile
@@ -342,6 +358,30 @@ export default videojs.extend(videojs.EventTarget, {
     let requestTimeout;
     let keyXhr;
     let segmentXhr;
+    let seekable = this.seekable_();
+    let currentTime = this.currentTime_();
+    let removeToTime = 0;
+
+    // Chrome has a hard limit of 150mb of
+    // buffer and a very conservative "garbage collector"
+    // We manually clear out the old buffer to ensure
+    // we don't trigger the QuotaExceeded error
+    // on the source buffer during subsequent appends
+
+    // If we have a seekable range use that as the limit for what can be removed safely
+    // otherwise remove anything older than 1 minute before the current play head
+    if (seekable.length &&
+        seekable.start(0) > 0 &&
+        seekable.start(0) < currentTime) {
+      removeToTime = seekable.start(0);
+    } else {
+      removeToTime = currentTime - 60;
+    }
+
+    if (removeToTime > 0) {
+      console.log('removing', 0, removeToTime);
+      this.sourceUpdater_.remove(0, removeToTime);
+    }
 
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
     // Set xhr timeout to 150% of the segment duration to allow us
@@ -536,7 +576,7 @@ export default videojs.extend(videojs.EventTarget, {
 
   handleUpdateEnd_() {
     let segmentInfo = this.pendingSegment_;
-
+    let currentTime = this.currentTime_();
     this.pendingSegment_ = null;
 
     // add segment timeline information if we're still using the
@@ -551,7 +591,7 @@ export default videojs.extend(videojs.EventTarget, {
     currentMediaIndex +=
       segmentInfo.playlist.mediaSequence - this.playlist_.mediaSequence;
 
-    let currentBuffered = findRange(this.sourceUpdater_.buffered(), this.currentTime_());
+    let currentBuffered = findRange(this.sourceUpdater_.buffered(), currentTime);
 
     // any time an update finishes and the last segment is in the
     // buffer, end the stream. this ensures the "ended" event will

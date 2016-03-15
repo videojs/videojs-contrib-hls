@@ -192,23 +192,27 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     // load the media source into the player
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
 
+    this.hlsHandler = hlsHandler;
+    this.hlsHandler.mediaSource = this.mediaSource;
+    this.hlsHandler.selectPlaylist = this.hlsHandler.selectPlaylist || selectPlaylist;
+
     // combined audio/video or just video when alternate audio track is selected
     this.mainSegmentLoader_ = new SegmentLoader({
       mediaSource: this.mediaSource,
       currentTime: this.currentTimeFunc,
-      withCredentials: this.withCredentials
+      withCredentials: this.withCredentials,
+      seekable: () => this.seekable(),
+      seeking: () => this.hlsHandler.tech_.seeking()
     });
     // alternate audio track
     this.audioSegmentLoader_ = new SegmentLoader({
       mediaSource: this.mediaSource,
       codecs: ['mp4a.40.2'],
       currentTime: this.currentTimeFunc,
-      withCredentials: this.withCredentials
+      withCredentials: this.withCredentials,
+      seekable: () => this.seekable(),
+      seeking: () => this.hlsHandler.tech_.seeking()
     });
-
-    this.hlsHandler = hlsHandler;
-    this.hlsHandler.mediaSource = this.mediaSource;
-    this.hlsHandler.selectPlaylist = this.hlsHandler.selectPlaylist || selectPlaylist;
 
     if (!url) {
       throw new Error('A non-empty playlist URL is required');
