@@ -12,6 +12,9 @@
   <!-- HLS plugin -->
   <script src="../../dist/videojs-contrib-hls.js"></script>
 
+  <!-- Track Selector plugin -->
+  <script src="audio-track-selector.js"></script>
+
   <!-- player stats visualization -->
   <link href="stats.css" rel="stylesheet">
   <script src="../switcher/js/vendor/d3.min.js"></script>
@@ -48,7 +51,7 @@
   <form id="load-url">
     <label>
       URL to Load:
-      <input id="url-to-load" type="url" value="http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8">
+      <input id="url-to-load" type="url" value="https://devimages.apple.com.edgekey.net/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8">
     </label>
     <br>
     <label>
@@ -84,21 +87,6 @@
     <button type="submit">Load</button>
   </form>
   <br>
-
-  <div class="audio-tracks">
-    <label>Select Audio Track:
-      <select></select>
-    </label>
-    <div class="track-info"></div>
-  </div>
-  <br>
-
-  <div class="video-tracks">
-    <label>Select Video Track:
-      <select></select>
-    </label>
-    <div class="track-info"></div>
-  </div>
 
   <section class="stats">
     <div class="player-stats">
@@ -229,58 +217,10 @@
     player.ready(function() {
 
       // ------------
-      // Audio/Video Track Switcher
+      // Audio Track Switcher
       // ------------
 
-      //TODO: mock, remove this
-      player.audioTracks = function() {
-        return [{label:'English',enabled:false},{label:'Spanish',enabled:false}];
-      };
-      player.videoTracks = function() {
-        return [{label:'English',enabled:false},{label:'Spanish',enabled:false}];
-      };
-      //TODO: mock, remove this
-
-      player.on('loadstart', function() {
-        var
-          audioTracks = player.audioTracks(),
-          videoTracks = player.audioTracks(),
-          select;
-
-        if (audioTracks.length) {
-          select = document.querySelector('.audio-tracks select');
-          select.innerHTML = '';
-          audioTracks.map(function(track, i) {
-            var option = document.createElement('option');
-            option.label = track.label || i;
-            option.value = i;
-            select.appendChild(option);
-          });
-
-          select.onchange = function() {
-            player.audioTracks()[this.value].enabled = true;
-
-            document.querySelector('.audio-tracks .track-info').innerText = JSON.stringify(player.audioTracks());
-          };
-        }
-
-        if (videoTracks.length) {
-          select = document.querySelector('.video-tracks select');
-          select.innerHTML = '';
-          videoTracks.map(function(track, i) {
-            var option = document.createElement('option');
-            option.label = track.label || i;
-            option.value = i;
-            select.appendChild(option);
-          });
-
-          select.onchange = function() {
-            player.videoTracks()[this.value].enabled = true;
-
-            document.querySelector('.video-tracks .track-info').innerText = JSON.stringify(player.videoTracks());
-          };
-        }
-      });
+      player.controlBar.addChild('AudioTrackButton', {}, 13);
 
       // ------------
       // Player Stats
