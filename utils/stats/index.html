@@ -139,7 +139,8 @@
       }
       return value;
     }
-    function createPlayer() {
+
+    function createPlayer(cb) {
       // dispose of existing player
       if(window.player) {
         window.player.dispose();
@@ -199,101 +200,105 @@
           src: url,
           type: type
         });
+
+        cb(player);
       } catch(err) {
         console.log("caught an error trying to create and add src to player:", err);
       }
     }
+
+    function setup(player) {
+      player.ready(function() {
+
+        // ------------
+        // Audio Track Switcher
+        // ------------
+
+        player.controlBar.addChild('AudioTrackButton', {}, 13);
+
+        // ------------
+        // Player Stats
+        // ------------
+
+        var currentTimeStat = document.querySelector('.current-time-stat');
+        var bufferedStat = document.querySelector('.buffered-stat');
+        var seekableStartStat = document.querySelector('.seekable-start-stat');
+        var seekableEndStat = document.querySelector('.seekable-end-stat');
+        var videoBitrateState = document.querySelector('.video-bitrate-stat');
+        var measuredBitrateStat = document.querySelector('.measured-bitrate-stat');
+
+        player.on('timeupdate', function() {
+          currentTimeStat.textContent = player.currentTime().toFixed(1);
+        });
+
+        window.setInterval(function() {
+          var bufferedText = '', oldStart, oldEnd, i;
+
+          // buffered
+          var buffered = player.buffered();
+          if (buffered.length) {
+            bufferedText += buffered.start(0) + ' - ' + buffered.end(0);
+          }
+          for (i = 1; i < buffered.length; i++) {
+            bufferedText += ', ' + buffered.start(i) + ' - ' + buffered.end(i);
+          }
+          bufferedStat.textContent = bufferedText;
+
+          // seekable
+          var seekable = player.seekable();
+          if (seekable && seekable.length) {
+
+            oldStart = seekableStartStat.textContent;
+            if (seekable.start(0).toFixed(1) !== oldStart) {
+              seekableStartStat.textContent = seekable.start(0).toFixed(1);
+            }
+            oldEnd = seekableEndStat.textContent;
+            if (seekable.end(0).toFixed(1) !== oldEnd) {
+              seekableEndStat.textContent = seekable.end(0).toFixed(1);
+            }
+          }
+
+          // bitrates
+          var playlist = player.tech_.hls.playlists.media();
+          if (playlist && playlist.attributes && playlist.attributes.BANDWIDTH) {
+            videoBitrateState.textContent = (playlist.attributes.BANDWIDTH / 1024).toLocaleString(undefined, {
+              maximumFractionDigits: 1
+            }) + ' kbps';
+          }
+          if (player.tech_.hls.bandwidth) {
+            measuredBitrateStat.textContent = (player.tech_.hls.bandwidth / 1024).toLocaleString(undefined, {
+              maximumFractionDigits: 1
+            }) + ' kbps';
+          }
+        }, 1000);
+
+        var trackEventCount = function(eventName, selector) {
+          var count = 0, element = document.querySelector(selector);
+          player.on(eventName, function() {
+            count++;
+            element.innerHTML = count;
+          });
+        };
+        trackEventCount('play', '.play-count');
+        trackEventCount('playing', '.playing-count');
+        trackEventCount('seeking', '.seeking-count');
+        trackEventCount('seeked', '.seeked-count');
+
+        videojs.Hls.displayStats(document.querySelector('.switching-stats'), player);
+        videojs.Hls.displayCues(document.querySelector('.segment-timeline'), player);
+      });
+    }
+
     (function(window, videojs) {
       videojs.options.flash.swf = '../../node_modules/videojs-swf/dist/video-js.swf';
-      createPlayer();
+      createPlayer(setup);
       // hook up the video switcher
       document.getElementById('load-url').addEventListener('submit', function(event) {
         event.preventDefault();
-        createPlayer();
+        createPlayer(setup);
         return false;
       });
     }(window, window.videojs));
-
-    player.ready(function() {
-
-      // ------------
-      // Audio Track Switcher
-      // ------------
-
-      player.controlBar.addChild('AudioTrackButton', {}, 13);
-
-      // ------------
-      // Player Stats
-      // ------------
-
-      var currentTimeStat = document.querySelector('.current-time-stat');
-      var bufferedStat = document.querySelector('.buffered-stat');
-      var seekableStartStat = document.querySelector('.seekable-start-stat');
-      var seekableEndStat = document.querySelector('.seekable-end-stat');
-      var videoBitrateState = document.querySelector('.video-bitrate-stat');
-      var measuredBitrateStat = document.querySelector('.measured-bitrate-stat');
-
-      player.on('timeupdate', function() {
-        currentTimeStat.textContent = player.currentTime().toFixed(1);
-      });
-
-      window.setInterval(function() {
-        var bufferedText = '', oldStart, oldEnd, i;
-
-        // buffered
-        var buffered = player.buffered();
-        if (buffered.length) {
-          bufferedText += buffered.start(0) + ' - ' + buffered.end(0);
-        }
-        for (i = 1; i < buffered.length; i++) {
-          bufferedText += ', ' + buffered.start(i) + ' - ' + buffered.end(i);
-        }
-        bufferedStat.textContent = bufferedText;
-
-        // seekable
-        var seekable = player.seekable();
-        if (seekable && seekable.length) {
-
-          oldStart = seekableStartStat.textContent;
-          if (seekable.start(0).toFixed(1) !== oldStart) {
-            seekableStartStat.textContent = seekable.start(0).toFixed(1);
-          }
-          oldEnd = seekableEndStat.textContent;
-          if (seekable.end(0).toFixed(1) !== oldEnd) {
-            seekableEndStat.textContent = seekable.end(0).toFixed(1);
-          }
-        }
-
-        // bitrates
-        var playlist = player.tech_.hls.playlists.media();
-        if (playlist && playlist.attributes && playlist.attributes.BANDWIDTH) {
-          videoBitrateState.textContent = (playlist.attributes.BANDWIDTH / 1024).toLocaleString(undefined, {
-            maximumFractionDigits: 1
-          }) + ' kbps';
-        }
-        if (player.tech_.hls.bandwidth) {
-          measuredBitrateStat.textContent = (player.tech_.hls.bandwidth / 1024).toLocaleString(undefined, {
-            maximumFractionDigits: 1
-          }) + ' kbps';
-        }
-      }, 1000);
-
-      var trackEventCount = function(eventName, selector) {
-        var count = 0, element = document.querySelector(selector);
-        player.on(eventName, function() {
-          count++;
-          element.innerHTML = count;
-        });
-      };
-      trackEventCount('play', '.play-count');
-      trackEventCount('playing', '.playing-count');
-      trackEventCount('seeking', '.seeking-count');
-      trackEventCount('seeked', '.seeked-count');
-
-      videojs.Hls.displayStats(document.querySelector('.switching-stats'), player);
-      videojs.Hls.displayCues(document.querySelector('.segment-timeline'), player);
-    });
-
   </script>
 </body>
 </html>
