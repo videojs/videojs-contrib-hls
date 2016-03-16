@@ -2070,7 +2070,6 @@ QUnit.test('adds 1 empty audio track if we have not parsed any, and the playlist
   QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
 
   openMediaSource(this.player, this.clock);
-  let hls = this.player.tech_.hls;
 
   // master
   standardXHRResponse(this.requests.shift());
@@ -2087,12 +2086,11 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
 
   openMediaSource(this.player, this.clock);
-  let hls = this.player.tech_.hls;
 
   // master
   standardXHRResponse(this.requests.shift());
-
   let at = this.player.audioTracks();
+
   QUnit.equal(at.length, 3, `three audio tracks after load`);
 
   QUnit.equal(at[0].label, 'English', `track 1 - label = NAME`);
@@ -2110,7 +2108,6 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   QUnit.equal(at[2].language, 'sp', `track 3 - language = LANG`);
   QUnit.equal(at[2].kind, 'alternative', `track 3 - kind = alternative if DEFAULT is NO`);
 });
-
 
 QUnit.module('HLS Integration', {
   beforeEach() {
@@ -2339,7 +2336,6 @@ QUnit.test('live playlist starts three target durations before live', function()
   QUnit.equal(this.requests.length, 1, 'begins buffering');
 });
 
-
 QUnit.module('HLS - Encryption', {
   beforeEach() {
     this.env = useFakeEnvironment();
@@ -2412,5 +2408,4 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
   QUnit.ok(hls.playlists.media().excludeUntil > 0,
            'blacklisted playlist');
 });
-
 
