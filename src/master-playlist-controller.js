@@ -1,4 +1,3 @@
-import Stream from './stream';
 import PlaylistLoader from './playlist-loader';
 import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
@@ -155,7 +154,7 @@ const selectPlaylist = function() {
     sortedPlaylists[0];
 };
 
-export default class MasterPlaylistController extends Stream {
+export default class MasterPlaylistController extends videojs.EventTarget {
   constructor({url, withCredentials, currentTimeFunc, mediaSourceMode, hlsHandler,
     externHls}) {
     super();
@@ -221,8 +220,8 @@ export default class MasterPlaylistController extends Stream {
       this.updateDuration(this.masterPlaylistLoader_.media());
 
       // update seekable
-      seekable = this.hlsHandler.seekable();
-      if (this.hlsHandler.duration() === Infinity && seekable.length !== 0) {
+      seekable = this.seekable();
+      if (!updatedPlaylist.endList && seekable.length !== 0) {
         this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
       }
     });
@@ -318,8 +317,8 @@ export default class MasterPlaylistController extends Stream {
 
     // check that everything is ready to begin buffering
 
-    // 1) the video is a live stream of unknown duration
-    if (this.hlsHandler.duration() === Infinity &&
+    // 1) the video is a live stream
+    if (!media.endList &&
 
         // 2) the player has not played before and is not paused
         this.hlsHandler.tech_.played().length === 0 &&
@@ -338,7 +337,7 @@ export default class MasterPlaylistController extends Stream {
         this.masterPlaylistLoader_.trigger('firstplay');
 
         // seek to the latest media position for live videos
-        seekable = this.hlsHandler.seekable();
+        seekable = this.seekable();
         if (seekable.length) {
           this.hlsHandler.tech_.setCurrentTime(seekable.end(0));
         }
@@ -396,7 +395,7 @@ export default class MasterPlaylistController extends Stream {
     return this.mediaSource.endOfStream('network');
   }
 
-  pause() {
+  pauseLoading() {
     this.mainSegmentLoader_.pause();
     if (this.audioPlaylistLoader_) {
       this.audioSegmentLoader_.pause();
