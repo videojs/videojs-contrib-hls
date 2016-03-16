@@ -122,7 +122,7 @@ export default class HlsHandler extends Component {
     });
     this.on(this.tech_, 'error', function() {
       if (this.masterPlaylistController_) {
-        this.masterPlaylistController_.pause();
+        this.masterPlaylistController_.pauseLoading();
       }
     });
 
@@ -149,9 +149,6 @@ export default class HlsHandler extends Component {
       hlsHandler: this,
       externHls: Hls
     });
-
-    this.tech_.one('canplay',
-      this.masterPlaylistController_.setupFirstPlay.bind(this.masterPlaylistController_));
 
     // do nothing if the tech has been disposed already
     // this can occur if someone sets the src in player.ready(), for instance
