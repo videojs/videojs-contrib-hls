@@ -154,6 +154,27 @@ const selectPlaylist = function() {
     sortedPlaylists[0];
 };
 
+const parseCodecs = function(codecs) {
+  let result = {
+    codecCount: 0,
+    videoCodec: null,
+    audioProfile: null
+  };
+
+  result.codecCount = codecs.split(',').length;
+  result.codecCount = result.codecCount || 2;
+
+  // parse the video codec but ignore the version
+  result.videoCodec = (/(^|\s|,)+(avc1)[^ ,]*/i).exec(codecs);
+  result.videoCodec = result.videoCodec && result.videoCodec[2];
+
+  // parse the last field of the audio codec
+  result.audioProfile = (/(^|\s|,)+mp4a.\d+\.(\d+)/i).exec(codecs);
+  result.audioProfile = result.audioProfile && result.audioProfile[2];
+
+  return result;
+};
+
 export default class MasterPlaylistController extends videojs.EventTarget {
   constructor({url, withCredentials, currentTimeFunc, mediaSourceMode, hlsHandler,
     externHls}) {
@@ -183,6 +204,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.hlsHandler = hlsHandler;
+    this.hlsHandler.mediaSource = this.mediaSource;
     this.hlsHandler.selectPlaylist = this.hlsHandler.selectPlaylist || selectPlaylist;
 
     if (!url) {
@@ -193,15 +215,18 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.hlsHandler.playlists = this.masterPlaylistLoader_;
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
+      let media = this.masterPlaylistLoader_.media();
+
       // if this isn't a live video and preload permits, start
       // downloading segments
-      if (this.masterPlaylistLoader_.media().endList &&
+      if (media.endList &&
           this.hlsHandler.tech_.preload() !== 'metadata' &&
           this.hlsHandler.tech_.preload() !== 'none') {
-        this.mainSegmentLoader_.playlist(this.masterPlaylistLoader_.media());
+        this.mainSegmentLoader_.playlist(media);
         this.mainSegmentLoader_.load();
       }
 
+      this.excludeIncompatibleVariants_(media);
       this.setupFirstPlay();
       this.hlsHandler.tech_.trigger('loadedmetadata');
     });
@@ -282,7 +307,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.audioPlaylistLoader_.on('loadedplaylist', () => {
       let updatedPlaylist = this.audioPlaylistLoader_.media();
-      let seekable;
 
       if (!updatedPlaylist) {
         // only one playlist to select
@@ -297,13 +321,17 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.audioPlaylistLoader_.on('error', () => {
       this.audioSegmentLoader_.abort();
       this.audioPlaylistLoader_ = null;
+      /*eslint-disable */
       // TODO go back to using combined
+      /*eslint-enable */
     });
 
     this.audioSegmentLoader_.on('error', () => {
       this.audioSegmentLoader_.abort();
       this.audioPlaylistLoader_ = null;
+      /*eslint-disable */
       // TODO go back to using combined
+      /*eslint-enable */
     });
   }
 
@@ -317,15 +345,15 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     // check that everything is ready to begin buffering
 
-    // 1) the video is a live stream
-    if (!media.endList &&
+    // 1) the active media playlist is available
+    if (media &&
 
-        // 2) the player has not played before and is not paused
+        // 2) the video is a live stream
+        !media.endList &&
+
+        // 3) the player has not played before and is not paused
         this.hlsHandler.tech_.played().length === 0 &&
-        !this.hlsHandler.tech_.paused() &&
-
-        // 3) the active media playlist is available
-        media) {
+        !this.hlsHandler.tech_.paused()) {
 
       this.load();
 
@@ -514,5 +542,62 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.dispose();
     this.mainSegmentLoader_.dispose();
     this.audioSegmentLoader_.dispose();
+  }
+
+  /**
+   * Blacklist playlists that are known to be codec or
+   * stream-incompatible with the SourceBuffer configuration. For
+   * instance, Media Source Extensions would cause the video element to
+   * stall waiting for video data if you switched from a variant with
+   * video and audio to an audio-only one.
+   *
+   * @param media {object} a media playlist compatible with the current
+   * set of SourceBuffers. Variants in the current master playlist that
+   * do not appear to have compatible codec or stream configurations
+   * will be excluded from the default playlist selection algorithm
+   * indefinitely.
+   */
+  excludeIncompatibleVariants_(media) {
+    let master = this.masterPlaylistLoader_.master;
+    let codecCount = 2;
+    let videoCodec = null;
+    let audioProfile = null;
+    let codecs;
+
+    if (media.attributes && media.attributes.CODECS) {
+      codecs = parseCodecs(media.attributes.CODECS);
+      videoCodec = codecs.videoCodec;
+      audioProfile = codecs.audioProfile;
+      codecCount = codecs.codecCount;
+    }
+    master.playlists.forEach(function(variant) {
+      let variantCodecs = {
+        codecCount: 2,
+        videoCodec: null,
+        audioProfile: null
+      };
+
+      if (variant.attributes && variant.attributes.CODECS) {
+        variantCodecs = parseCodecs(variant.attributes.CODECS);
+      }
+
+      // if the streams differ in the presence or absence of audio or
+      // video, they are incompatible
+      if (variantCodecs.codecCount !== codecCount) {
+        variant.excludeUntil = Infinity;
+      }
+
+      // if h.264 is specified on the current playlist, some flavor of
+      // it must be specified on all compatible variants
+      if (variantCodecs.videoCodec !== videoCodec) {
+        variant.excludeUntil = Infinity;
+      }
+      // HE-AAC ("mp4a.40.5") is incompatible with all other versions of
+      // AAC audio in Chrome 46. Don't mix the two.
+      if ((variantCodecs.audioProfile === '5' && audioProfile !== '5') ||
+          (audioProfile === '5' && variantCodecs.audioProfile !== '5')) {
+        variant.excludeUntil = Infinity;
+      }
+    });
   }
 }
