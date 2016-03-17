@@ -228,7 +228,8 @@ QUnit.test('recognizes absolute key URLs', function() {
               'http://example.com/keys/key.php', 'resolved absolute path for key URI');
 });
 
-QUnit.test('jumps to HAVE_METADATA when initialized with a live media playlist', function() {
+QUnit.test('jumps to HAVE_METADATA when initialized with a live media playlist',
+function() {
   let loader = new PlaylistLoader('media.m3u8');
 
   this.requests.pop().respond(200, null,
