@@ -12,6 +12,7 @@ import MasterPlaylistController from '../src/master-playlist-controller';
 // we need this so that it can register hls with videojs
 import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
+import Playlist from '../src/playlist';
 
 QUnit.module('MasterPlaylistController', {
   beforeEach() {
@@ -385,4 +386,104 @@ QUnit.test('updates the duration after switching playlists', function() {
   QUnit.ok(selectedPlaylist, 'selected playlist');
   QUnit.ok(this.masterPlaylistController.mediaSource.duration !== 0,
            'updates the duration');
+});
+
+QUnit.test('seekable uses the intersection of alternate audio and combined tracks',
+function() {
+  let origSeekable = Playlist.seekable;
+  let mainMedia = {};
+  let audioMedia = {};
+  let mainTimeRanges = [];
+  let audioTimeRanges = [];
+  let assertTimeRangesEqual = (left, right, message) => {
+    if (left.length === 0 && right.length === 0) {
+      return;
+    }
+
+    QUnit.equal(left.length, 1, message);
+    QUnit.equal(right.length, 1, message);
+
+    QUnit.equal(left.start(0), right.start(0), message);
+    QUnit.equal(left.end(0), right.end(0), message);
+  };
+
+  this.masterPlaylistController.masterPlaylistLoader_.media = () => mainMedia;
+
+  Playlist.seekable = (media) => {
+    if (media === mainMedia) {
+      return videojs.createTimeRanges(mainTimeRanges);
+    }
+    return videojs.createTimeRanges(audioTimeRanges);
+  };
+
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges(),
+                        'empty when main empty');
+  mainTimeRanges = [[0, 10]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[0, 10]]),
+                        'main when no audio');
+
+  this.masterPlaylistController.audioPlaylistLoader_ = {
+    media: () => audioMedia,
+    expired_: 0
+  };
+
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges(),
+                        'empty when both empty');
+  mainTimeRanges = [[0, 10]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges(),
+                        'empty when audio empty');
+  mainTimeRanges = [];
+  audioTimeRanges = [[0, 10]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges(),
+                        'empty when main empty');
+  mainTimeRanges = [[0, 10]];
+  audioTimeRanges = [[0, 10]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[0, 10]]),
+                        'ranges equal');
+  mainTimeRanges = [[5, 10]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[5, 10]]),
+                        'main later start');
+  mainTimeRanges = [[0, 10]];
+  audioTimeRanges = [[5, 10]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[5, 10]]),
+                        'audio later start');
+  mainTimeRanges = [[0, 9]];
+  audioTimeRanges = [[0, 10]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[0, 9]]),
+                        'main earlier end');
+  mainTimeRanges = [[0, 10]];
+  audioTimeRanges = [[0, 9]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[0, 9]]),
+                        'audio earlier end');
+  mainTimeRanges = [[1, 10]];
+  audioTimeRanges = [[0, 9]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[1, 9]]),
+                        'main later start, audio earlier end');
+  mainTimeRanges = [[0, 9]];
+  audioTimeRanges = [[1, 10]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[1, 9]]),
+                        'audio later start, main earlier end');
+  mainTimeRanges = [[2, 9]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[2, 9]]),
+                        'main later start, main earlier end');
+  mainTimeRanges = [[1, 10]];
+  audioTimeRanges = [[2, 9]];
+  assertTimeRangesEqual(this.masterPlaylistController.seekable(),
+                        videojs.createTimeRanges([[2, 9]]),
+                        'audio later start, audio earlier end');
+
+  Playlist.seekable = origSeekable;
 });
