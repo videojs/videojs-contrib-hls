@@ -62,27 +62,6 @@ Hls.isSupported = function() {
 
 const Component = videojs.getComponent('Component');
 
-const parseCodecs = function(codecs) {
-  let result = {
-    codecCount: 0,
-    videoCodec: null,
-    audioProfile: null
-  };
-
-  result.codecCount = codecs.split(',').length;
-  result.codecCount = result.codecCount || 2;
-
-  // parse the video codec but ignore the version
-  result.videoCodec = (/(^|\s|,)+(avc1)[^ ,]*/i).exec(codecs);
-  result.videoCodec = result.videoCodec && result.videoCodec[2];
-
-  // parse the last field of the audio codec
-  result.audioProfile = (/(^|\s|,)+mp4a.\d+\.(\d+)/i).exec(codecs);
-  result.audioProfile = result.audioProfile && result.audioProfile[2];
-
-  return result;
-};
-
 export default class HlsHandler extends Component {
   constructor(tech, options) {
     super(tech);
@@ -157,64 +136,6 @@ export default class HlsHandler extends Component {
       this.masterPlaylistController_.mediaSource));
   }
 
-  // TODO - unused, used to be used with sourceBuffer creation
-  /**
-   * Blacklist playlists that are known to be codec or
-   * stream-incompatible with the SourceBuffer configuration. For
-   * instance, Media Source Extensions would cause the video element to
-   * stall waiting for video data if you switched from a variant with
-   * video and audio to an audio-only one.
-   *
-   * @param media {object} a media playlist compatible with the current
-   * set of SourceBuffers. Variants in the current master playlist that
-   * do not appear to have compatible codec or stream configurations
-   * will be excluded from the default playlist selection algorithm
-   * indefinitely.
-   */
-  excludeIncompatibleVariants_(media) {
-    let master = this.playlists.master;
-    let codecCount = 2;
-    let videoCodec = null;
-    let audioProfile = null;
-    let codecs;
-
-    if (media.attributes && media.attributes.CODECS) {
-      codecs = parseCodecs(media.attributes.CODECS);
-      videoCodec = codecs.videoCodec;
-      audioProfile = codecs.audioProfile;
-      codecCount = codecs.codecCount;
-    }
-    master.playlists.forEach(function(variant) {
-      let variantCodecs = {
-        codecCount: 2,
-        videoCodec: null,
-        audioProfile: null
-      };
-
-      if (variant.attributes && variant.attributes.CODECS) {
-        variantCodecs = parseCodecs(variant.attributes.CODECS);
-      }
-
-      // if the streams differ in the presence or absence of audio or
-      // video, they are incompatible
-      if (variantCodecs.codecCount !== codecCount) {
-        variant.excludeUntil = Infinity;
-      }
-
-      // if h.264 is specified on the current playlist, some flavor of
-      // it must be specified on all compatible variants
-      if (variantCodecs.videoCodec !== videoCodec) {
-        variant.excludeUntil = Infinity;
-      }
-      // HE-AAC ("mp4a.40.5") is incompatible with all other versions of
-      // AAC audio in Chrome 46. Don't mix the two.
-      if ((variantCodecs.audioProfile === '5' && audioProfile !== '5') ||
-          (audioProfile === '5' && variantCodecs.audioProfile !== '5')) {
-        variant.excludeUntil = Infinity;
-      }
-    });
-  }
-
   /**
    * Begin playing the video.
    */
@@ -259,7 +180,9 @@ export default class HlsHandler extends Component {
     super.dispose();
   }
 
+  /* eslint-disable */
   // TODO no longer used internally
+  /* eslint-enable */
   playlistUriToUrl(segmentRelativeUrl) {
     let playListUrl;
 
@@ -274,7 +197,9 @@ export default class HlsHandler extends Component {
     return playListUrl;
   }
 
+  /* eslint-disable */
   // TODO no longer used internally
+  // eslint-enable
   /*
    * Sets `bandwidth`, `segmentXhrTime`, and appends to the `bytesReceived.
    * Expects an object with:
