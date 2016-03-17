@@ -141,18 +141,18 @@ export default videojs.extend(videojs.EventTarget, {
     this.currentTime_ = settings.currentTime;
     this.seekable_ = settings.seekable;
     this.seeking_ = settings.seeking;
+    this.setCurrentTime_ = settings.setCurrentTime;
     this.mediaSource_ = settings.mediaSource;
     this.withCredentials_ = settings.withCredentials;
     this.checkBufferTimeout_ = null;
     this.error_ = void 0;
-    this.timestampOffset_ = 0;
+    this.expired_ = 0;
+    this.currentTimeline_ = 0;
     this.xhr_ = null;
     this.pendingSegment_ = null;
-
-    let mimeType = 'video/mp2t' + (options.codecs ? '; codecs="' + options.codecs.join(',') + '"' : '');
-
-    this.sourceUpdater_ = new SourceUpdater(options.mediaSource, mimeType);
+    this.sourceUpdater_ = null;
   },
+
   dispose() {
     this.abort_();
   },
@@ -171,6 +171,7 @@ export default videojs.extend(videojs.EventTarget, {
       this.fillBuffer_();
     }
   },
+
   error(error) {
     if (typeof error !== 'undefined') {
       this.error_ = error;
@@ -179,6 +180,7 @@ export default videojs.extend(videojs.EventTarget, {
     this.pendingSegment_ = null;
     return this.error_;
   },
+
   load() {
     this.monitorBuffer_();
 
@@ -190,19 +192,24 @@ export default videojs.extend(videojs.EventTarget, {
 
     // if we're in the middle of processing a segment already, don't
     // kick off an additional segment request
-    if (this.state !== 'READY' && this.state !== 'INIT') {
+    if (!this.sourceUpdater_ ||
+        (this.state !== 'READY' &&
+        this.state !== 'INIT')) {
       return;
     }
 
     this.state = 'READY';
     this.fillBuffer_();
   },
+
   playlist(media) {
     this.playlist_ = media;
-
     // if we were unpaused but waiting for a playlist, start
     // buffering now
-    if (media && this.state === 'INIT' && !this.paused()) {
+    if (this.sourceUpdater_ &&
+        media &&
+        this.state === 'INIT' &&
+        !this.paused()) {
       this.state = 'READY';
       return this.fillBuffer_();
     }
@@ -228,8 +235,25 @@ export default videojs.extend(videojs.EventTarget, {
   paused() {
     return this.checkBufferTimeout_ === null;
   },
-  timestampOffset(offset) {
-    this.timestampOffset_ = offset;
+
+  expired(expired) {
+    this.expired_ = expired;
+  },
+
+  mimeType(mimeType) {
+    // TODO Allow source buffers to be re-created with different mime-types
+    if (!this.sourceUpdater_) {
+      this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, mimeType);
+
+      // if we were unpaused but waiting for a sourceUpdater, start
+      // buffering now
+      if (this.playlist_ &&
+          this.state === 'INIT' &&
+          !this.paused()) {
+        this.state = 'READY';
+        return this.fillBuffer_();
+      }
+    }
   },
 
   monitorBuffer_() {
@@ -245,17 +269,14 @@ export default videojs.extend(videojs.EventTarget, {
    * @param buffered {TimeRanges} the state of the buffer
    * @param playlist {object} the playlist object to fetch segments from
    * @param currentTime {number} the playback position in seconds
-   * @param timestampOffset (optional} {number} the duration of
-   * content, in seconds, that has been removed from the front of
-   * this playlist. If unspecified, it is assumed to be zero.
    * @return {object} a segment info object that describes the
    * request that should be made or null if no request is necessary
    */
-  checkBuffer_(buffered, playlist, currentTime, timestampOffset) {
+  checkBuffer_(buffered, playlist, currentTime) {
     let currentBuffered = findRange(buffered, currentTime);
     let bufferedTime;
     let currentBufferedEnd;
-    let discontinuity;
+    let timestampOffset = this.sourceUpdater_.timestampOffset();
     let segment;
     let mediaIndex;
 
@@ -263,10 +284,9 @@ export default videojs.extend(videojs.EventTarget, {
       return;
     }
 
-    timestampOffset = timestampOffset || 0;
     if (currentBuffered.length === 0) {
       // find the segment containing currentTime
-      mediaIndex = getMediaIndexForTime(playlist, currentTime, timestampOffset);
+      mediaIndex = getMediaIndexForTime(playlist, currentTime, this.expired_);
     } else {
       // IE 11 has a bug where it will report a the video as fully buffered
       // before any data has been loaded. This is a work around where we
@@ -287,26 +307,25 @@ export default videojs.extend(videojs.EventTarget, {
       if (bufferedTime >= GOAL_BUFFER_LENGTH) {
         return null;
       }
-      mediaIndex = getMediaIndexForTime(playlist, currentBufferedEnd, timestampOffset);
-      if (!mediaIndex || mediaIndex === playlist.segments.length) {
-        return null;
-      }
+      mediaIndex = getMediaIndexForTime(playlist, currentBufferedEnd, this.expired_);
+    }
+
+    if (mediaIndex < 0 || mediaIndex === playlist.segments.length) {
+      return null;
     }
 
     segment = playlist.segments[mediaIndex];
 
-    // if the timestampOffset on the SourceBuffer is different from
-    // the timestampOffset for the closest discontinuity before the
-    // segment, update the timestampOffset:
-    // - find the closest discontinuity before the appended segment
-    // - set the SourceBuffer's timestampOffset to the estimated
-    //   start time of the first discontinuous segment
-    discontinuity = playlist.discontinuityStarts.slice().reverse()
-      .find(function(i) {
-        return i <= mediaIndex;
-      });
-    if (discontinuity) {
-      timestampOffset += duration(playlist, playlist.mediaSequence + mediaIndex);
+    // We will need to change timestampOffset of the sourceBuffer if either of
+    // the following conditions are true:
+    // - The segment.timeline !== this.currentTimeline (we are crossing a discontinuity somehow)
+    // - The "timestampOffset" for the start of this segment is less than
+    //   the currently set timestampOffset
+    let startOfSegment = duration(playlist, playlist.mediaSequence + mediaIndex);
+
+    if (segment.timeline !== this.currentTimeline_ ||
+        startOfSegment < this.sourceUpdater_.timestampOffset()) {
+      timestampOffset = startOfSegment;
     }
 
     return {
@@ -326,7 +345,9 @@ export default videojs.extend(videojs.EventTarget, {
       buffered: null,
       // The target timestampOffset for this segment when we append it
       // to the source buffer
-      timestampOffset
+      timestampOffset,
+      // The timeline that the segment is in
+      timeline: segment.timeline
     };
   },
 
@@ -337,8 +358,6 @@ export default videojs.extend(videojs.EventTarget, {
 
     // clear out the segment being processed
     this.pendingSegment_ = null;
-
-    this.sourceUpdater_.abort();
   },
 
   fillBuffer_() {
@@ -379,7 +398,6 @@ export default videojs.extend(videojs.EventTarget, {
     }
 
     if (removeToTime > 0) {
-      console.log('removing', 0, removeToTime);
       this.sourceUpdater_.remove(0, removeToTime);
     }
 
@@ -562,10 +580,12 @@ export default videojs.extend(videojs.EventTarget, {
     let segmentInfo;
 
     this.state = 'APPENDING';
-
     segmentInfo = this.pendingSegment_;
     segmentInfo.buffered = this.sourceUpdater_.buffered();
+    this.currentTimeline_ = segmentInfo.timeline;
 
+    console.log('disc', this.currentTimeline_);
+    console.log('tso', segmentInfo.timestampOffset, this.sourceUpdater_.timestampOffset());
     if (segmentInfo.timestampOffset !== this.sourceUpdater_.timestampOffset()) {
       this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
     }
@@ -605,6 +625,26 @@ export default videojs.extend(videojs.EventTarget, {
       this.mediaSource_.endOfStream();
     }
 
+    // when seeking to the beginning of the seekable range, it's
+    // possible that imprecise timing information may cause the seek to
+    // end up earlier than the start of the range
+    // in that case, seek again
+    let seekable = this.seekable_();
+    let next = findNextRange(this.sourceUpdater_.buffered(), currentTime);
+
+    if (this.seeking_() &&
+        currentBuffered.length === 0) {
+      if (seekable.length &&
+          currentTime < seekable.start(0)) {
+
+        if (next.length) {
+          videojs.log('tried seeking to', currentTime,
+                      'but that was too early, retrying at', next.start(0));
+          this.setCurrentTime_(next.start(0) + TIME_FUDGE_FACTOR);
+        }
+      }
+    }
+
     this.state = 'READY';
 
     if (!this.paused()) {
@@ -640,7 +680,7 @@ export default videojs.extend(videojs.EventTarget, {
     // buffered time ranges and improves subsequent media index
     // calculations.
     if (!timelineUpdated) {
-      this.timestampOffset_ -= segment.duration;
+  //    this.expired_ -= segment.duration;
     }
   }
 });

@@ -202,16 +202,17 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       currentTime: this.currentTimeFunc,
       withCredentials: this.withCredentials,
       seekable: () => this.seekable(),
-      seeking: () => this.hlsHandler.tech_.seeking()
+      seeking: () => this.hlsHandler.tech_.seeking(),
+      setCurrentTime: (a) => this.setCurrentTime(a)
     });
     // alternate audio track
     this.audioSegmentLoader_ = new SegmentLoader({
       mediaSource: this.mediaSource,
-      codecs: ['mp4a.40.2'],
       currentTime: this.currentTimeFunc,
       withCredentials: this.withCredentials,
       seekable: () => this.seekable(),
-      seeking: () => this.hlsHandler.tech_.seeking()
+      seeking: () => this.hlsHandler.tech_.seeking(),
+      setCurrentTime: (a) => this.setCurrentTime(a)
     });
 
     if (!url) {
@@ -232,6 +233,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
           this.hlsHandler.tech_.preload() !== 'metadata' &&
           this.hlsHandler.tech_.preload() !== 'none') {
         this.mainSegmentLoader_.playlist(media);
+        this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
         this.mainSegmentLoader_.load();
       }
 
@@ -250,7 +252,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
           }
         }
       }
-      this.excludeIncompatibleVariants_(media);
+
+      this.setupSourceBuffer_();
       this.setupFirstPlay();
       this.hlsHandler.tech_.trigger('loadedmetadata');
     });
@@ -301,6 +304,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       }
 
       this.mainSegmentLoader_.playlist(updatedPlaylist);
+      this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
       this.updateDuration(this.masterPlaylistLoader_.media());
 
       // update seekable
@@ -400,6 +404,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       let media = this.audioPlaylistLoader_.media();
 
       this.audioSegmentLoader_.playlist(media);
+      this.addMimeType_(this.audioSegmentLoader_, media);
 
       // if the video is already playing, or if this isn't a live video and preload
       // permits, start downloading segments
@@ -479,6 +484,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
   }
 
   handleSourceOpen_() {
+    // Only attempt to create the source buffer if none already exist.
+    // handleSourceOpen is also called when we are "re-opening" a source buffer
+    // after `endOfStream` has been called (in response to a seek for instance)
+    this.setupSourceBuffer_();
+
     // if autoplay is enabled, begin playback. This is duplicative of
     // code in video.js but is required because play() must be invoked
     // *after* the media source has opened.
@@ -669,6 +679,34 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.dispose();
     this.mainSegmentLoader_.dispose();
     this.audioSegmentLoader_.dispose();
+  }
+
+  setupSourceBuffer_() {
+    let media = this.masterPlaylistLoader_.media();
+    let mimeType;
+
+    // wait until a media playlist is available and the Media Source is
+    // attached
+    if (!media || this.mediaSource.readyState !== 'open') {
+      return;
+    }
+
+    this.addMimeType_(this.mainSegmentLoader_, media);
+
+    // exclude any incompatible variant streams from future playlist
+    // selection
+    this.excludeIncompatibleVariants_(media);
+  }
+
+  addMimeType_(segmentLoader, media) {
+    let mimeType = 'video/mp2t';
+
+    // if the codecs were explicitly specified, pass them along to the
+    // source buffer
+    if (media.attributes && media.attributes.CODECS) {
+      mimeType += '; codecs="' + media.attributes.CODECS + '"';
+    }
+    segmentLoader.mimeType(mimeType);
   }
 
   /**

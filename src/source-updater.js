@@ -24,6 +24,7 @@ export default videojs.extend(null, {
       // run completion handlers and process callbacks as updateend
       // events fire
       this.sourceBuffer_.addEventListener('updateend', function() {
+        console.log('updateend',this.pendingCallback_ && this.pendingCallback_.name);
         let pendingCallback = this.pendingCallback_;
 
         this.pendingCallback_ = null;
@@ -54,7 +55,7 @@ export default videojs.extend(null, {
    * @see http://w3c.github.io/media-source/#widl-SourceBuffer-abort-void
    */
   abort(done) {
-    this.queueCallback_(function() {
+    this.queueCallback_(function abort() {
       this.sourceBuffer_.abort();
     }, done);
   },
@@ -65,7 +66,7 @@ export default videojs.extend(null, {
    *      #widl-SourceBuffer-appendBuffer-void-ArrayBuffer-data
    */
   appendBuffer(bytes, done) {
-    this.queueCallback_(function() {
+    this.queueCallback_(function appendBuffer() {
       this.sourceBuffer_.appendBuffer(bytes);
     }, done);
   },
@@ -86,7 +87,7 @@ export default videojs.extend(null, {
    * @see http://www.w3.org/TR/media-source/#widl-MediaSource-duration
    */
   duration(duration) {
-    this.queueCallback_(function() {
+    this.queueCallback_(function duration() {
       this.sourceBuffer_.duration = duration;
     });
   },
@@ -97,14 +98,14 @@ export default videojs.extend(null, {
    *      #widl-SourceBuffer-remove-void-double-start-unrestricted-double-end
    */
   remove(start, end) {
-    this.queueCallback_(function() {
+    this.queueCallback_(function remove() {
       this.sourceBuffer_.remove(start, end);
     });
   },
 
   timestampOffset(offset) {
     if (typeof offset !== 'undefined') {
-      this.queueCallback_(function() {
+      this.queueCallback_(function timestampOffset() {
         this.sourceBuffer_.timestampOffset = offset;
       });
       this.timestampOffset_ = offset;
@@ -125,6 +126,7 @@ export default videojs.extend(null, {
         this.callbacks_.length) {
       callbacks = this.callbacks_.shift();
       this.pendingCallback_ = callbacks[1];
+      console.log('calling', callbacks[0].name);
       callbacks[0]();
     }
   }

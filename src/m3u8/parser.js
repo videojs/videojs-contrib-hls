@@ -40,6 +40,8 @@ export default class Parser extends Stream {
       'CLOSED-CAPTIONS': {},
       'SUBTITLES': {}
     };
+    // group segments into numbered timelines delineated by discontinuities
+    let currentTimeline = 0;
 
     // the manifest is empty until the parse stream begins delivering data
     this.manifest = {
@@ -105,7 +107,6 @@ export default class Parser extends Stream {
               }
 
               this.manifest.segments = uris;
-
             },
             key() {
               if (!entry.attributes) {
@@ -158,6 +159,7 @@ export default class Parser extends Stream {
                 return;
               }
               this.manifest.discontinuitySequence = entry.number;
+              currentTimeline = entry.number;
             },
             'playlist-type'() {
               if (!(/VOD|EVENT/).test(entry.playlistType)) {
@@ -227,6 +229,7 @@ export default class Parser extends Stream {
               mediaGroup[entry.attributes.NAME] = rendition;
             },
             discontinuity() {
+              currentTimeline += 1;
               currentUri.discontinuity = true;
               this.manifest.discontinuityStarts.push(uris.length);
             },
@@ -266,6 +269,7 @@ export default class Parser extends Stream {
           if (key) {
             currentUri.key = key;
           }
+          currentUri.timeline = currentTimeline;
 
           // prepare for the next URI
           currentUri = {};
