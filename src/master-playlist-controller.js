@@ -216,6 +216,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.masterPlaylistLoader_.media();
+      let master = this.masterPlaylistLoader_.master;
 
       // if this isn't a live video and preload permits, start
       // downloading segments
@@ -226,6 +227,17 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.load();
       }
 
+      this.audioPlaylistLoaders_ = [];
+      if (master.mediaGroups && master.mediaGroups.AUDIO) {
+        for (let groupKey in master.mediaGroups.AUDIO) {
+          for (let labelKey in master.mediaGroups.AUDIO[groupKey]) {
+            this.audioPlaylistLoaders_.push(new PlaylistLoader(
+              master.mediaGroups.AUDIO[groupKey][labelKey].uri,
+              this.withCredentials,
+              true));
+          }
+        }
+      }
       this.excludeIncompatibleVariants_(media);
       this.setupFirstPlay();
       this.hlsHandler.tech_.trigger('loadedmetadata');
@@ -280,6 +292,12 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_.on('error', () => {
       this.blacklistCurrentPlaylist_(this.mainSegmentLoader_.error());
     });
+
+    this.audioSegmentLoader_.on('error', () => {
+      this.audioSegmentLoader_.abort();
+      this.audioPlaylistLoader_ = null;
+      this.useAudio('main');
+    });
   }
 
   load() {
@@ -289,7 +307,39 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
-  loadAlternateAudioPlaylist_(playlistLoader) {
+  useAudio(label) {
+    let audioEntry;
+    let newAudioPlaylistLoader;
+    let mediaGroupName = this.masterPlaylistLoader_.media().attributes.AUDIO;
+
+    if (this.audioPlaylistLoader_) {
+      this.audioPlaylistLoader_.pause();
+      this.audioPlaylistLoader_ = null;
+      this.audioSegmentLoader_.pause();
+    }
+
+    if (label === 'main') {
+      return;
+    }
+
+    audioEntry =
+      this.masterPlaylistLoader_.master.mediaGroups.AUDIO[mediaGroupName][label];
+
+    this.audioPlaylistLoaders_.forEach((audioPlaylistLoader) => {
+      if (audioPlaylistLoader.srcUrl === audioEntry.uri) {
+        newAudioPlaylistLoader = audioPlaylistLoader;
+      }
+    });
+
+    if (!newAudioPlaylistLoader.started) {
+      this.loadAlternateAudioPlaylistLoader_(newAudioPlaylistLoader);
+    } else {
+      newAudioPlaylistLoader.resume();
+      this.audioSegmentLoader_.load();
+    }
+  }
+
+  loadAlternateAudioPlaylistLoader_(playlistLoader) {
     this.audioPlaylistLoader_ = playlistLoader;
 
     this.audioPlaylistLoader_.on('loadedmetadata', () => {
@@ -328,18 +378,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.audioPlaylistLoader_.on('error', () => {
       this.audioSegmentLoader_.abort();
       this.audioPlaylistLoader_ = null;
-      /*eslint-disable */
-      // TODO go back to using combined
-      /*eslint-enable */
+      this.useAudio('main');
     });
 
-    this.audioSegmentLoader_.on('error', () => {
-      this.audioSegmentLoader_.abort();
-      this.audioPlaylistLoader_ = null;
-      /*eslint-disable */
-      // TODO go back to using combined
-      /*eslint-enable */
-    });
+    this.audioPlaylistLoader_.start();
   }
 
   /**
