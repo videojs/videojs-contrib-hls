@@ -2061,7 +2061,7 @@ QUnit.test('resolves relative key URLs against the playlist', function() {
               'resolves the key URL');
 });
 
-QUnit.test('adds 1 empty audio track if we have not parsed any, and the playlist is loaded', function() {
+QUnit.test('adds 1 default  audio track if we have not parsed any, and the playlist is loaded', function() {
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
