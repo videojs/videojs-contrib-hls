@@ -12,9 +12,6 @@ import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from './m3u8';
 import videojs from 'video.js';
 import resolveUrl from './resolve-url';
-import SegmentLoader from './segment-loader';
-import Ranges from './ranges';
-import {AudioTrack} from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
 
 const Hls = {
