@@ -103,6 +103,15 @@ export default class HlsHandler extends Component {
     });
 
     this.on(this.tech_, 'play', this.play);
+
+    this.tech_.audioTracks().on('change', () => {
+      for (let i = 0; i < this.tech_.audioTracks().length; i++) {
+        if (this.tech_.audioTracks()[i].enabled) {
+          return this.masterPlaylistController_.updateAudio(
+            this.tech_.audioTracks()[i].label);
+        }
+      }
+    });
   }
   src(src) {
     // do nothing if the src is falsey
