@@ -214,12 +214,17 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       throw new Error('A non-empty playlist URL is required');
     }
 
-    this.masterPlaylistLoader_ = new PlaylistLoader(url, this.withCredentials);
+    this.masterPlaylistLoader_ = new PlaylistLoader({
+      srcUrl: url,
+      withCredentials: this.withCredentials,
+      startLoading: true
+    });
     this.hlsHandler.playlists = this.masterPlaylistLoader_;
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.masterPlaylistLoader_.media();
       let master = this.masterPlaylistLoader_.master;
+      let alternateAudioUri;
 
       // if this isn't a live video and preload permits, start
       // downloading segments
@@ -230,7 +235,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.load();
       }
 
-      this.audioPlaylistLoaders_ = [];
+      this.audioPlaylistLoaders_ = {};
       if (master.mediaGroups && master.mediaGroups.AUDIO) {
         for (let groupKey in master.mediaGroups.AUDIO) {
           for (let labelKey in master.mediaGroups.AUDIO[groupKey]) {
@@ -240,10 +245,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
             if (!audio.resolvedUri) {
               continue;
             }
-            this.audioPlaylistLoaders_.push(new PlaylistLoader(
-              audio.resolvedUri,
-              this.withCredentials,
-              true));
+            this.audioPlaylistLoaders_[audio.resolvedUri] = new PlaylistLoader(
+              audio.resolvedUri, this.withCredentials);
           }
         }
       }
@@ -338,10 +341,14 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.audioSegmentLoader_.on('error', () => {
+      videojs.log.warn('Problem encountered with the current alternate audio track' +
+                       '. Switching back to default.');
       this.audioSegmentLoader_.abort();
       this.audioPlaylistLoader_ = null;
       this.useAudio('main');
     });
+
+    this.masterPlaylistLoader_.load();
   }
 
   load() {
@@ -369,16 +376,12 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     audioEntry =
       this.masterPlaylistLoader_.master.mediaGroups.AUDIO[mediaGroupName][label];
 
-    this.audioPlaylistLoaders_.forEach((audioPlaylistLoader) => {
-      if (audioPlaylistLoader.srcUrl === audioEntry.resolvedUri) {
-        newAudioPlaylistLoader = audioPlaylistLoader;
-      }
-    });
+    newAudioPlaylistLoader = this.audioPlaylistLoaders_[audioEntry.resolvedUri];
 
     if (!newAudioPlaylistLoader.started) {
       this.loadAlternateAudioPlaylistLoader_(newAudioPlaylistLoader);
     } else {
-      newAudioPlaylistLoader.resume();
+      newAudioPlaylistLoader.load();
       this.audioSegmentLoader_.load();
     }
   }
@@ -420,6 +423,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.audioPlaylistLoader_.on('error', () => {
+      videojs.log.warn('Problem encountered loading the alternate audio track' +
+                       '. Switching back to default.');
       this.audioSegmentLoader_.abort();
       this.audioPlaylistLoader_ = null;
       this.useAudio('main');

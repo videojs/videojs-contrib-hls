@@ -102,7 +102,7 @@ const updateMaster = function(master, media) {
   return changed ? result : null;
 };
 
-const PlaylistLoader = function(srcUrl, withCredentials, startsPaused) {
+const PlaylistLoader = function({srcUrl, withCredentials, startLoading}) {
   /* eslint-disable consistent-this */
   let loader = this;
   /* eslint-enable consistent-this */
@@ -184,8 +184,6 @@ const PlaylistLoader = function(srcUrl, withCredentials, startsPaused) {
 
     loader.trigger('loadedplaylist');
   };
-
-  loader.srcUrl = srcUrl;
 
   // initialize the loader state
   loader.state = 'HAVE_NOTHING';
@@ -345,8 +343,12 @@ const PlaylistLoader = function(srcUrl, withCredentials, startsPaused) {
     window.clearTimeout(mediaUpdateTimeout);
   };
 
-  loader.resume = () => {
-    loader.trigger('mediaupdatetimeout');
+  loader.load = () => {
+    if (loader.started) {
+      loader.trigger('mediaupdatetimeout');
+    } else {
+      loader.start();
+    }
   };
 
   loader.start = () => {
@@ -430,11 +432,9 @@ const PlaylistLoader = function(srcUrl, withCredentials, startsPaused) {
     });
   };
 
-  if (startsPaused) {
-    return;
+  if (startLoading) {
+    loader.load();
   }
-
-  loader.start();
 };
 
 PlaylistLoader.prototype = new Stream();
