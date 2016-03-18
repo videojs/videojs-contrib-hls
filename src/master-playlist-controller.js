@@ -211,11 +211,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       throw new Error('A non-empty playlist URL is required');
     }
 
-    this.masterPlaylistLoader_ = new PlaylistLoader({
-      srcUrl: url,
-      withCredentials: this.withCredentials,
-      startLoading: true
-    });
+    this.masterPlaylistLoader_ = new PlaylistLoader(url, this.withCredentials);
     this.hlsHandler.playlists = this.masterPlaylistLoader_;
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {

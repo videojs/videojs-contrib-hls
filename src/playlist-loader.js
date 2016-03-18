@@ -102,7 +102,7 @@ const updateMaster = function(master, media) {
   return changed ? result : null;
 };
 
-const PlaylistLoader = function({srcUrl, withCredentials, startLoading}) {
+const PlaylistLoader = function(srcUrl, withCredentials) {
   /* eslint-disable consistent-this */
   let loader = this;
   /* eslint-enable consistent-this */
@@ -420,10 +420,6 @@ const PlaylistLoader = function({srcUrl, withCredentials, startLoading}) {
       return loader.trigger('loadedmetadata');
     });
   };
-
-  if (startLoading) {
-    loader.load();
-  }
 };
 
 PlaylistLoader.prototype = new Stream();
