@@ -14,6 +14,7 @@ import videojs from 'video.js';
 import resolveUrl from './resolve-url';
 import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
+import {AudioTrack} from 'video.js';
 
 const Hls = {
   PlaylistLoader,
@@ -278,8 +279,42 @@ export default class HlsHandler extends Component {
       let seekable;
 
       if (!updatedPlaylist) {
+        let selectedPlaylist = this.selectPlaylist();
+
+        if (!selectedPlaylist.attributes.AUDIO) {
+          // from safari defaults
+          this.tech_.audioTracks().addTrack(new AudioTrack({
+            enabled: true,
+            id: '1',
+            kind: 'main',
+            tech: this.tech_
+          }));
+        } else {
+          let audioMediaGroupName = selectedPlaylist.attributes.AUDIO;
+          let mg = this.playlists.master.mediaGroups.AUDIO[audioMediaGroupName];
+
+          for (let label in mg) {
+            let language = mg[label].language || '';
+            /* eslint-disable dot-notation */
+            // we need to use non dot notation around defaul for ie8
+            let enabled = mg[label]['default'] || false;
+            /* eslint-enable dot-notation */
+            let kind = 'alternative';
+
+            if (enabled) {
+              kind = 'main';
+            }
+            this.tech_.audioTracks().addTrack(new AudioTrack({
+              language,
+              enabled,
+              kind,
+              label,
+              tech: this.tech_
+            }));
+          }
+        }
         // select the initial variant
-        this.playlists.media(this.selectPlaylist());
+        this.playlists.media(selectedPlaylist);
         return;
       }
 
@@ -301,6 +336,7 @@ export default class HlsHandler extends Component {
     });
     this.playlists.on('mediachange', () => {
       this.segments.abort();
+
       this.segments.load();
       this.tech_.trigger({
         type: 'mediachange',
