@@ -200,13 +200,17 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     * Abort any outstanding work and clean up.
     */
   loader.dispose = function() {
+    loader.stopRequest();
+    window.clearTimeout(mediaUpdateTimeout);
+    dispose.call(this);
+  };
+
+  loader.stopRequest = () => {
     if (request) {
       request.onreadystatechange = null;
       request.abort();
       request = null;
     }
-    window.clearTimeout(mediaUpdateTimeout);
-    dispose.call(this);
   };
 
   /**
@@ -334,71 +338,88 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     });
   });
 
-  // request the specified URL
-  request = XhrModule({
-    uri: srcUrl,
-    withCredentials
-  }, function(error, req) {
-    let parser;
-    let playlist;
-    let i;
+  loader.pause = () => {
+    loader.stopRequest();
+    window.clearTimeout(mediaUpdateTimeout);
+  };
 
-    // clear the loader's request reference
-    request = null;
+  loader.load = () => {
+    if (loader.started) {
+      loader.trigger('mediaupdatetimeout');
+    } else {
+      loader.start();
+    }
+  };
 
-    if (error) {
-      loader.error = {
-        status: req.status,
-        message: 'HLS playlist request error at URL: ' + srcUrl,
-        responseText: req.responseText,
-        // MEDIA_ERR_NETWORK
-        code: 2
+  loader.start = () => {
+    loader.started = true;
+
+    // request the specified URL
+    request = XhrModule({
+      uri: srcUrl,
+      withCredentials
+    }, function(error, req) {
+      let parser;
+      let playlist;
+      let i;
+
+      // clear the loader's request reference
+      request = null;
+
+      if (error) {
+        loader.error = {
+          status: req.status,
+          message: 'HLS playlist request error at URL: ' + srcUrl,
+          responseText: req.responseText,
+          // MEDIA_ERR_NETWORK
+          code: 2
+        };
+        return loader.trigger('error');
+      }
+
+      parser = new m3u8.Parser();
+      parser.push(req.responseText);
+      parser.end();
+
+      loader.state = 'HAVE_MASTER';
+
+      parser.manifest.uri = srcUrl;
+
+      // loaded a master playlist
+      if (parser.manifest.playlists) {
+        loader.master = parser.manifest;
+
+        // setup by-URI lookups and resolve media playlist URIs
+        i = loader.master.playlists.length;
+        while (i--) {
+          playlist = loader.master.playlists[i];
+          loader.master.playlists[playlist.uri] = playlist;
+          playlist.resolvedUri = resolveUrl(loader.master.uri, playlist.uri);
+        }
+
+        loader.trigger('loadedplaylist');
+        if (!request) {
+          // no media playlist was specifically selected so start
+          // from the first listed one
+          loader.media(parser.manifest.playlists[0]);
+        }
+        return;
+      }
+
+      // loaded a media playlist
+      // infer a master playlist if none was previously requested
+      loader.master = {
+        uri: window.location.href,
+        playlists: [{
+          uri: srcUrl
+        }]
       };
-      return loader.trigger('error');
-    }
-
-    parser = new m3u8.Parser();
-    parser.push(req.responseText);
-    parser.end();
-
-    loader.state = 'HAVE_MASTER';
-
-    parser.manifest.uri = srcUrl;
-
-    // loaded a master playlist
-    if (parser.manifest.playlists) {
-      loader.master = parser.manifest;
-
-      // setup by-URI lookups and resolve media playlist URIs
-      i = loader.master.playlists.length;
-      while (i--) {
-        playlist = loader.master.playlists[i];
-        loader.master.playlists[playlist.uri] = playlist;
-        playlist.resolvedUri = resolveUrl(loader.master.uri, playlist.uri);
-      }
-
-      loader.trigger('loadedplaylist');
-      if (!request) {
-        // no media playlist was specifically selected so start
-        // from the first listed one
-        loader.media(parser.manifest.playlists[0]);
-      }
-      return;
-    }
-
-    // loaded a media playlist
-    // infer a master playlist if none was previously requested
-    loader.master = {
-      uri: window.location.href,
-      playlists: [{
-        uri: srcUrl
-      }]
-    };
-    loader.master.playlists[srcUrl] = loader.master.playlists[0];
-    loader.master.playlists[0].resolvedUri = srcUrl;
-    haveMetadata(req, srcUrl);
-    return loader.trigger('loadedmetadata');
-  });
+      loader.master.playlists[srcUrl] = loader.master.playlists[0];
+      loader.master.playlists[0].resolvedUri = srcUrl;
+      haveMetadata(req, srcUrl);
+      return loader.trigger('loadedmetadata');
+    });
+  };
 };
 
 PlaylistLoader.prototype = new Stream();

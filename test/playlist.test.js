@@ -394,6 +394,8 @@ QUnit.test('can get media index by playback position for non-live videos', funct
   let media;
   let loader = new PlaylistLoader('media.m3u8');
 
+  loader.load();
+
   this.requests.shift().respond(200, null,
     '#EXTM3U\n' +
     '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -421,6 +423,8 @@ QUnit.test('returns the lower index when calculating for a segment boundary', fu
   let media;
   let loader = new PlaylistLoader('media.m3u8');
 
+  loader.load();
+
   this.requests.shift().respond(200, null,
     '#EXTM3U\n' +
     '#EXT-X-MEDIA-SEQUENCE:0\n' +
@@ -443,6 +447,8 @@ QUnit.test(
 function() {
   let media;
   let loader = new PlaylistLoader('media.m3u8');
+
+  loader.load();
 
   this.requests.shift().respond(200, null,
     '#EXTM3U\n' +
@@ -519,6 +525,8 @@ QUnit.test('prefers precise segment timing when tracking expired time', function
   let media;
   let loader = new PlaylistLoader('media.m3u8');
 
+  loader.load();
+
   loader.trigger('firstplay');
   this.requests.shift().respond(200, null,
     '#EXTM3U\n' +
@@ -565,6 +573,8 @@ QUnit.test('accounts for expired time when calculating media index', function() 
   let media;
   let loader = new PlaylistLoader('media.m3u8');
   let expired = 150;
+
+  loader.load();
 
   this.requests.shift().respond(200, null,
     '#EXTM3U\n' +
