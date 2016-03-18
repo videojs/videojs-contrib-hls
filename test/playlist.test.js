@@ -392,7 +392,10 @@ QUnit.module('Playlist Media Index For Time', {
 
 QUnit.test('can get media index by playback position for non-live videos', function() {
   let media;
-  let loader = new PlaylistLoader('media.m3u8');
+  let loader = new PlaylistLoader({
+    srcUrl: 'media.m3u8',
+    startLoading: true
+  });
 
   this.requests.shift().respond(200, null,
     '#EXTM3U\n' +
@@ -419,7 +422,10 @@ QUnit.test('can get media index by playback position for non-live videos', funct
 
 QUnit.test('returns the lower index when calculating for a segment boundary', function() {
   let media;
-  let loader = new PlaylistLoader('media.m3u8');
+  let loader = new PlaylistLoader({
+    srcUrl: 'media.m3u8',
+    startLoading: true
+  });
 
   this.requests.shift().respond(200, null,
     '#EXTM3U\n' +
@@ -442,7 +448,10 @@ QUnit.test(
 'accounts for non-zero starting segment time when calculating media index',
 function() {
   let media;
-  let loader = new PlaylistLoader('media.m3u8');
+  let loader = new PlaylistLoader({
+    srcUrl: 'media.m3u8',
+    startLoading: true
+  });
 
   this.requests.shift().respond(200, null,
     '#EXTM3U\n' +
@@ -517,7 +526,10 @@ function() {
 
 QUnit.test('prefers precise segment timing when tracking expired time', function() {
   let media;
-  let loader = new PlaylistLoader('media.m3u8');
+  let loader = new PlaylistLoader({
+    srcUrl: 'media.m3u8',
+    startLoading: true
+  });
 
   loader.trigger('firstplay');
   this.requests.shift().respond(200, null,
@@ -563,7 +575,10 @@ QUnit.test('prefers precise segment timing when tracking expired time', function
 
 QUnit.test('accounts for expired time when calculating media index', function() {
   let media;
-  let loader = new PlaylistLoader('media.m3u8');
+  let loader = new PlaylistLoader({
+    srcUrl: 'media.m3u8',
+    startLoading: true
+  });
   let expired = 150;
 
   this.requests.shift().respond(200, null,
