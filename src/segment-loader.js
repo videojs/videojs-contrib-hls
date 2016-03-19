@@ -142,7 +142,10 @@ export default videojs.extend(videojs.EventTarget, {
     this.timestampOffset_ = 0;
     this.xhr_ = null;
     this.pendingSegment_ = null;
-    this.sourceUpdater_ = new SourceUpdater(options.mediaSource, 'video/mp2t');
+
+    let mimeType = 'video/mp2t' + (options.codecs ? '; codecs="' + options.codecs.join(',') + '"' : '');
+
+    this.sourceUpdater_ = new SourceUpdater(options.mediaSource, mimeType);
   },
   dispose() {
     this.abort_();
