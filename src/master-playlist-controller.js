@@ -341,7 +341,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
                        '. Switching back to default.');
       this.audioSegmentLoader_.abort();
       this.audioPlaylistLoader_ = null;
-      this.useAudio('main');
+      this.useAudio();
     });
 
     this.masterPlaylistLoader_.load();
@@ -359,13 +359,15 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     let newAudioPlaylistLoader;
     let mediaGroupName = this.masterPlaylistLoader_.media().attributes.AUDIO;
 
+    // Pause any alternative audio
     if (this.audioPlaylistLoader_) {
       this.audioPlaylistLoader_.pause();
       this.audioPlaylistLoader_ = null;
       this.audioSegmentLoader_.pause();
     }
 
-    if (label === 'main') {
+    // if no label was passed in we are switching to main audio
+    if (!label) {
       return;
     }
 
@@ -374,6 +376,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     newAudioPlaylistLoader = this.audioPlaylistLoaders_[audioEntry.resolvedUri];
 
+    // the label we are trying to use does not have a resolvedUri
+    // this means that it is likely the main track
+    if (!newAudioPlaylistLoader) {
+      return;
+    }
     if (!newAudioPlaylistLoader.started) {
       this.loadAlternateAudioPlaylistLoader_(newAudioPlaylistLoader);
     } else {
@@ -401,7 +408,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       if (!media.endList) {
         // trigger the playlist loader to start "expired time"-tracking
-        this.masterPlaylistLoader_.trigger('firstplay');
+        this.audioPlaylistLoader_.trigger('firstplay');
       }
     });
 
@@ -423,7 +430,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
                        '. Switching back to default.');
       this.audioSegmentLoader_.abort();
       this.audioPlaylistLoader_ = null;
-      this.useAudio('main');
+      this.useAudio();
     });
 
     this.audioPlaylistLoader_.start();
