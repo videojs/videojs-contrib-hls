@@ -374,8 +374,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.audioSegmentLoader_.pause();
     }
 
+
     // if no label was passed in we are switching to main audio
     if (!label) {
+      this.mainSegmentLoader_.clearBuffer();
       return;
     }
 
@@ -387,13 +389,16 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     // the label we are trying to use does not have a resolvedUri
     // this means that it is likely the main track
     if (!newAudioPlaylistLoader) {
+      this.mainSegmentLoader_.clearBuffer();
       return;
     }
+
     if (!newAudioPlaylistLoader.started) {
       this.loadAlternateAudioPlaylistLoader_(newAudioPlaylistLoader);
     } else {
       newAudioPlaylistLoader.load();
       this.audioSegmentLoader_.load();
+      this.audioSegmentLoader_.clearBuffer();
     }
   }
 
@@ -404,7 +409,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       let media = this.audioPlaylistLoader_.media();
 
       this.audioSegmentLoader_.playlist(media);
-      this.addMimeType_(this.audioSegmentLoader_, media);
+      this.addMimeType_(this.audioSegmentLoader_, 'mp4a.40.2', media);
 
       // if the video is already playing, or if this isn't a live video and preload
       // permits, start downloading segments
@@ -691,20 +696,22 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    this.addMimeType_(this.mainSegmentLoader_, media);
+    this.addMimeType_(this.mainSegmentLoader_, 'avc1.4d400d, mp4a.40.2', media);
 
     // exclude any incompatible variant streams from future playlist
     // selection
     this.excludeIncompatibleVariants_(media);
   }
 
-  addMimeType_(segmentLoader, media) {
+  addMimeType_(segmentLoader, defaultCodecs, media) {
     let mimeType = 'video/mp2t';
 
     // if the codecs were explicitly specified, pass them along to the
     // source buffer
     if (media.attributes && media.attributes.CODECS) {
       mimeType += '; codecs="' + media.attributes.CODECS + '"';
+    } else {
+      mimeType += '; codecs="' + defaultCodecs +'"';
     }
     segmentLoader.mimeType(mimeType);
   }

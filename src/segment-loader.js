@@ -147,7 +147,7 @@ export default videojs.extend(videojs.EventTarget, {
     this.checkBufferTimeout_ = null;
     this.error_ = void 0;
     this.expired_ = 0;
-    this.currentTimeline_ = 0;
+    this.currentTimeline_ = -1;
     this.xhr_ = null;
     this.pendingSegment_ = null;
     this.sourceUpdater_ = null;
@@ -244,6 +244,7 @@ export default videojs.extend(videojs.EventTarget, {
     // TODO Allow source buffers to be re-created with different mime-types
     if (!this.sourceUpdater_) {
       this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, mimeType);
+      this.clearBuffer();
 
       // if we were unpaused but waiting for a sourceUpdater, start
       // buffering now
@@ -548,7 +549,11 @@ export default videojs.extend(videojs.EventTarget, {
       this.processResponse_();
     }
   },
-
+  clearBuffer() {
+    if (this.sourceUpdater_) {
+      this.sourceUpdater_.remove(0, Infinity);
+    }
+  },
   processResponse_() {
     let segmentInfo;
     let segment;
@@ -679,8 +684,8 @@ export default videojs.extend(videojs.EventTarget, {
     // fetch forward until we find a segment that adds to the
     // buffered time ranges and improves subsequent media index
     // calculations.
-    if (!timelineUpdated) {
-  //    this.expired_ -= segment.duration;
-    }
+//    if (!timelineUpdated) {
+//      this.expired_ -= segment.duration;
+//    }
   }
 });
