@@ -1,9 +1,7 @@
-/* eslint-disable */
 import PlaylistLoader from './playlist-loader';
 import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
-import {AudioTrack} from 'video.js';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -225,7 +223,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.masterPlaylistLoader_.media();
       let master = this.masterPlaylistLoader_.master;
-      let alternateAudioUri;
 
       // if this isn't a live video and preload permits, start
       // downloading segments
@@ -244,6 +241,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
             // TODO: use one playlist loader for alternate audio and
             // update the src when it is being used
             let audio = master.mediaGroups.AUDIO[groupKey][labelKey];
+
             if (!audio.resolvedUri) {
               continue;
             }
@@ -255,8 +253,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       this.setupSourceBuffer_();
       this.setupFirstPlay();
-      this.hlsHandler.tech_.trigger('loadedmetadata');
-      this.useAudio();
+      this.trigger('loadedmetadata');
     });
 
     this.masterPlaylistLoader_.on('loadedplaylist', () => {
@@ -266,47 +263,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       if (!updatedPlaylist) {
         // select the initial variant
         let media = this.hlsHandler.selectPlaylist();
+
         this.masterPlaylistLoader_.media(media);
-
-        // Don't use alternate audio tracks if we are in flash-mode
-        if (!media.attributes.AUDIO || this.mediaSourceMode !== 'html5') {
-          // TODO: fire an event, have hls pick it up and fill in the
-          // audio tracks (aka move this back to hls)
-          this.hlsHandler.tech_.audioTracks().addTrack(new AudioTrack({
-            enabled: true,
-            id: '1',
-            kind: 'main'
-          }));
-          return;
-        }
-
-        if (!this.masterPlaylistLoader_.master.mediaGroups) {
-          return;
-        }
-
-        let mediaGroupName = media.attributes.AUDIO;
-        let mediaGroup = this.masterPlaylistLoader_.master.mediaGroups.AUDIO[mediaGroupName];
-
-        if (!mediaGroup) {
-          return;
-        }
-
-        for (let key in mediaGroup) {
-          let label = key;
-          let language = mediaGroup[key].language || '';
-          let enabled = mediaGroup[key]['default'] || false;
-          let kind = 'alternative';
-
-          if (enabled) {
-            kind = 'main';
-          }
-          this.hlsHandler.tech_.audioTracks().addTrack(new AudioTrack({
-            language,
-            enabled,
-            kind,
-            label
-          }));
-        }
         return;
       }
 
@@ -369,10 +327,20 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
-  useAudio(label) {
-    let audioEntry;
-    let newAudioPlaylistLoader;
-    let mediaGroupName = this.masterPlaylistLoader_.media().attributes.AUDIO;
+  useAudio() {
+    let media = this.masterPlaylistLoader_.media();
+    let master = this.masterPlaylistLoader_.master;
+
+    if (!media || !media.attributes || !media.attributes.AUDIO ||
+        !master.mediaGroups || !master.mediaGroups.AUDIO) {
+      return;
+    }
+    let mediaGroupName = media.attributes.AUDIO;
+
+    if (!master.mediaGroups.AUDIO[mediaGroupName]) {
+      return;
+    }
+    let audioEntries = master.mediaGroups.AUDIO[mediaGroupName];
 
     // Pause any alternative audio
     if (this.audioPlaylistLoader_) {
@@ -381,48 +349,41 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.audioSegmentLoader_.pause();
     }
 
-    // if no label was passed in we are switching to main audio
-    if (!label) {
+    let label = null;
 
-      for (let i = 0; i < this.hlsHandler.tech_.audioTracks().length; i++) {
-        if (this.hlsHandler.tech_.audioTracks()[i].enabled) {
-          label = this.hlsHandler.tech_.audioTracks()[i].label;
-        }
-      }
-
-      if (!label) {
-        this.mainSegmentLoader_.clearBuffer();
-        return;
+    // if no label was passed in we are switching to the currently enabled audio
+    for (let i = 0; i < this.hlsHandler.tech_.audioTracks().length; i++) {
+      if (this.hlsHandler.tech_.audioTracks()[i].enabled) {
+        label = this.hlsHandler.tech_.audioTracks()[i].label;
+        break;
       }
     }
+    if (!label) {
+      return;
+    }
 
-    audioEntry =
-      this.masterPlaylistLoader_.master.mediaGroups.AUDIO[mediaGroupName][label];
-
-    newAudioPlaylistLoader = this.audioPlaylistLoaders_[audioEntry.resolvedUri];
+    let audioEntry = audioEntries[label];
 
     // the label we are trying to use does not have a resolvedUri
-    // this means that it is likely the main track
-    if (!newAudioPlaylistLoader) {
+    // this means that it is in a combined stream in the main track
+    if (!audioEntry || !audioEntry.resolvedUri) {
       this.mainSegmentLoader_.clearBuffer();
       return;
     }
 
-    if (!newAudioPlaylistLoader.started) {
-      this.loadAlternateAudioPlaylistLoader_(newAudioPlaylistLoader);
-    } else {
-      this.audioPlaylistLoader_ = newAudioPlaylistLoader;
-      newAudioPlaylistLoader.load();
+    this.audioPlaylistLoader_ = this.audioPlaylistLoaders_[audioEntry.resolvedUri];
+
+    if (this.audioPlaylistLoader_.started) {
+      this.audioPlaylistLoader_.load();
       this.audioSegmentLoader_.load();
       this.audioSegmentLoader_.clearBuffer();
+      return;
     }
-  }
-
-  loadAlternateAudioPlaylistLoader_(playlistLoader) {
-    this.audioPlaylistLoader_ = playlistLoader;
 
     this.audioPlaylistLoader_.on('loadedmetadata', () => {
+      /* eslint-disable no-shadow */
       let media = this.audioPlaylistLoader_.media();
+      /* eslint-enable no-shadow */
 
       this.audioSegmentLoader_.playlist(media);
       this.addMimeType_(this.audioSegmentLoader_, 'mp4a.40.2', media);
@@ -572,7 +533,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
   }
 
   setCurrentTime(currentTime) {
-    let buffered = Ranges.findRange_(this.hlsHandler.tech_.buffered(), currentTime);
+    let buffered = Ranges.findRange(this.hlsHandler.tech_.buffered(), currentTime);
 
     if (!(this.masterPlaylistLoader_ && this.masterPlaylistLoader_.media())) {
       // return immediately if the metadata is not ready yet
@@ -703,13 +664,15 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
   dispose() {
     this.masterPlaylistLoader_.dispose();
+    this.audioPlaylistLoaders_.forEach((loader) => {
+      loader.dispose();
+    });
     this.mainSegmentLoader_.dispose();
     this.audioSegmentLoader_.dispose();
   }
 
   setupSourceBuffer_() {
     let media = this.masterPlaylistLoader_.media();
-    let mimeType;
 
     // wait until a media playlist is available and the Media Source is
     // attached
@@ -732,7 +695,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     if (media.attributes && media.attributes.CODECS) {
       mimeType += '; codecs="' + media.attributes.CODECS + '"';
     } else {
-      mimeType += '; codecs="' + defaultCodecs +'"';
+      mimeType += '; codecs="' + defaultCodecs + '"';
     }
     segmentLoader.mimeType(mimeType);
   }

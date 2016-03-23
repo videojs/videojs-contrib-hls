@@ -114,8 +114,8 @@ const findSoleUncommonTimeRangesEnd = function(original, update) {
 };
 
 export default {
-  findRange_: findRange,
-  findNextRange_: findNextRange,
-  findSoleUncommonTimeRangesEnd_: findSoleUncommonTimeRangesEnd,
+  findRange,
+  findNextRange,
+  findSoleUncommonTimeRangesEnd,
   TIME_FUDGE_FACTOR
 };
