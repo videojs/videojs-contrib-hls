@@ -345,7 +345,9 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
 
   loader.load = () => {
     if (loader.started) {
-      loader.trigger('mediaupdatetimeout');
+      if (!loader.media().endList) {
+        loader.trigger('mediaupdatetimeout');
+      }
     } else {
       loader.start();
     }
