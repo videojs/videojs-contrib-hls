@@ -13,6 +13,7 @@ import m3u8 from './m3u8';
 import videojs from 'video.js';
 import resolveUrl from './resolve-url';
 import MasterPlaylistController from './master-playlist-controller';
+import {AudioTrack} from 'video.js';
 
 const Hls = {
   PlaylistLoader,
@@ -132,6 +133,39 @@ export default class HlsHandler extends Component {
       mediaSourceMode: this.mode_,
       hlsHandler: this,
       externHls: Hls
+    });
+
+    this.masterPlaylistController_.on('loadedmetadata', () => {
+      let mediaGroups = this.masterPlaylistController_.masterPlaylistLoader_.master.mediaGroups;
+      let media = this.masterPlaylistController_.masterPlaylistLoader_.media();
+      let attributes = {
+        audio: mediaGroups.AUDIO[media.attributes.AUDIO] || {main: {default: true}},
+      };
+      let audioTracks = this.tech_.audioTracks();
+      // clear current audioTracks
+      let i = audioTracks.length;
+      while (i--) {
+        audioTracks.removeTrack(audioTracks[i]);
+      }
+
+      for (let label in attributes.audio) {
+        let hlstrack = attributes.audio[label];
+        let kind = 'alternative';
+        let enabled = hlstrack.default || false;
+        let language = hlstrack.language || '';
+        if (enabled) {
+          kind = 'main';
+        }
+
+        let track = new AudioTrack({
+          kind,
+          label,
+          language,
+          enabled
+        });
+        audioTracks.addTrack(track);
+      }
+      this.trigger('loadedmetadata');
     });
 
     // do nothing if the tech has been disposed already
