@@ -24,7 +24,6 @@ export default videojs.extend(null, {
       // run completion handlers and process callbacks as updateend
       // events fire
       this.sourceBuffer_.addEventListener('updateend', function() {
-        console.log('updateend',this.pendingCallback_ && this.pendingCallback_.name);
         let pendingCallback = this.pendingCallback_;
 
         this.pendingCallback_ = null;
@@ -126,7 +125,6 @@ export default videojs.extend(null, {
         this.callbacks_.length) {
       callbacks = this.callbacks_.shift();
       this.pendingCallback_ = callbacks[1];
-      console.log('calling', callbacks[0].name);
       callbacks[0]();
     }
   }

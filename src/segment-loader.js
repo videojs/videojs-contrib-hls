@@ -589,8 +589,6 @@ export default videojs.extend(videojs.EventTarget, {
     segmentInfo.buffered = this.sourceUpdater_.buffered();
     this.currentTimeline_ = segmentInfo.timeline;
 
-    console.log('disc', this.currentTimeline_);
-    console.log('tso', segmentInfo.timestampOffset, this.sourceUpdater_.timestampOffset());
     if (segmentInfo.timestampOffset !== this.sourceUpdater_.timestampOffset()) {
       this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
     }
