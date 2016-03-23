@@ -16,7 +16,7 @@ import videojs from 'video.js';
  * @param mimeType {string} the desired MIME type of the underlying
  * SourceBuffer
  */
-export default videojs.extend(null, {
+export default class SourceUpdater {
   constructor(mediaSource, mimeType) {
     let createSourceBuffer = function() {
       this.sourceBuffer_ = mediaSource.addSourceBuffer(mimeType);
@@ -47,7 +47,7 @@ export default videojs.extend(null, {
     } else {
       createSourceBuffer();
     }
-  },
+  }
 
   /**
    * Aborts the current segment and resets the segment parser.
@@ -57,7 +57,7 @@ export default videojs.extend(null, {
     this.queueCallback_(function abort() {
       this.sourceBuffer_.abort();
     }, done);
-  },
+  }
 
   /**
    * Queue an update to append an ArrayBuffer.
@@ -68,7 +68,7 @@ export default videojs.extend(null, {
     this.queueCallback_(function appendBuffer() {
       this.sourceBuffer_.appendBuffer(bytes);
     }, done);
-  },
+  }
 
   /**
    * Indicates what TimeRanges are buffered in the managed SourceBuffer.
@@ -79,17 +79,17 @@ export default videojs.extend(null, {
       return videojs.createTimeRanges();
     }
     return this.sourceBuffer_.buffered;
-  },
+  }
 
   /**
    * Queue an update to set the duration.
    * @see http://www.w3.org/TR/media-source/#widl-MediaSource-duration
    */
-  duration(duration) {
+  duration(localDuration) {
     this.queueCallback_(function duration() {
-      this.sourceBuffer_.duration = duration;
+      this.sourceBuffer_.duration = localDuration;
     });
-  },
+  }
 
   /**
    * Queue an update to remove a time range from the buffer.
@@ -100,7 +100,7 @@ export default videojs.extend(null, {
     this.queueCallback_(function remove() {
       this.sourceBuffer_.remove(start, end);
     });
-  },
+  }
 
   /**
    * Queue an update to remove a time range from the buffer.
@@ -109,7 +109,7 @@ export default videojs.extend(null, {
    */
   updating() {
     return this.sourceBuffer_.updating;
-  },
+  }
 
   timestampOffset(offset) {
     if (typeof offset !== 'undefined') {
@@ -119,12 +119,12 @@ export default videojs.extend(null, {
       this.timestampOffset_ = offset;
     }
     return this.timestampOffset_;
-  },
+  }
 
   queueCallback_(callback, done) {
     this.callbacks_.push([callback.bind(this), done]);
     this.runCallback_();
-  },
+  }
 
   runCallback_() {
     let callbacks;
@@ -137,4 +137,4 @@ export default videojs.extend(null, {
       callbacks[0]();
     }
   }
-});
+}
