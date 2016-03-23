@@ -150,20 +150,13 @@ export default class HlsHandler extends Component {
 
       for (let label in attributes.audio) {
         let hlstrack = attributes.audio[label];
-        let kind = 'alternative';
-        let enabled = hlstrack.default || false;
-        let language = hlstrack.language || '';
-        if (enabled) {
-          kind = 'main';
-        }
 
-        let track = new AudioTrack({
-          kind,
+        audioTracks.addTrack(new AudioTrack({
+          kind: hlstrack.default ? 'main' : 'alternative',
+          language: hlstrack.language || '',
+          enabled: hlstrack.default ||  false,
           label,
-          language,
-          enabled
-        });
-        audioTracks.addTrack(track);
+        }));
       }
       this.trigger('loadedmetadata');
     });

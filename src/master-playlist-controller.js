@@ -295,7 +295,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         type: 'mediachange',
         bubbles: true
       });
-      this.trigger('mediachange');
     });
 
     this.mainSegmentLoader_.on('progress', () => {
@@ -315,7 +314,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       videojs.log.warn('Problem encountered with the current alternate audio track' +
                        '. Switching back to default.');
       this.audioSegmentLoader_.abort();
-      this.audioPlaylistLoader_.dispose();
+      this.audioPlaylistLoader_ = null;
       this.useAudio();
     });
 
@@ -337,7 +336,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     // Pause any alternative audio
     if (this.audioPlaylistLoader_) {
       this.audioPlaylistLoader_.pause();
-      this.audioPlaylistLoader_.dispose();
+      this.audioPlaylistLoader_ = null;
       this.audioSegmentLoader_.pause();
     }
 
@@ -368,19 +367,17 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
+    this.audioPlaylistLoader_ = newAudioPlaylistLoader;
     if (!newAudioPlaylistLoader.started) {
-      this.loadAlternateAudioPlaylistLoader_(newAudioPlaylistLoader);
+      this.loadAlternateAudioPlaylistLoader_();
     } else {
-      this.audioPlaylistLoader_ = newAudioPlaylistLoader;
-      newAudioPlaylistLoader.load();
+      this.audioPlaylistLoader_.load();
       this.audioSegmentLoader_.load();
       this.audioSegmentLoader_.clearBuffer();
     }
   }
 
-  loadAlternateAudioPlaylistLoader_(playlistLoader) {
-    this.audioPlaylistLoader_ = playlistLoader;
-
+  loadAlternateAudioPlaylistLoader_() {
     this.audioPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.audioPlaylistLoader_.media();
 
@@ -423,7 +420,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       videojs.log.warn('Problem encountered loading the alternate audio track' +
                        '. Switching back to default.');
       this.audioSegmentLoader_.abort();
-      this.audioPlaylistLoader_.dispose();
+      this.audioPlaylistLoader_ = null;
       this.useAudio();
     });
 
