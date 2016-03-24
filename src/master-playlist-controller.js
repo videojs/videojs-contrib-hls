@@ -368,16 +368,13 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
 
     this.audioPlaylistLoader_ = newAudioPlaylistLoader;
-    if (!newAudioPlaylistLoader.started) {
-      this.loadAlternateAudioPlaylistLoader_();
-    } else {
+    if (newAudioPlaylistLoader.started) {
       this.audioPlaylistLoader_.load();
       this.audioSegmentLoader_.load();
       this.audioSegmentLoader_.clearBuffer();
+      return;
     }
-  }
 
-  loadAlternateAudioPlaylistLoader_() {
     this.audioPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.audioPlaylistLoader_.media();
 
