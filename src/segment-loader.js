@@ -309,7 +309,8 @@ export default videojs.extend(videojs.EventTarget, {
 
     // We will need to change timestampOffset of the sourceBuffer if either of
     // the following conditions are true:
-    // - The segment.timeline !== this.currentTimeline (we are crossing a discontinuity somehow)
+    // - The segment.timeline !== this.currentTimeline
+    //   (we are crossing a discontinuity somehow)
     // - The "timestampOffset" for the start of this segment is less than
     //   the currently set timestampOffset
     let startOfSegment = duration(playlist, playlist.mediaSequence + mediaIndex);
@@ -594,8 +595,8 @@ export default videojs.extend(videojs.EventTarget, {
   handleUpdateEnd_() {
     let segmentInfo = this.pendingSegment_;
     let currentTime = this.currentTime_();
-    this.pendingSegment_ = null;
 
+    this.pendingSegment_ = null;
     // add segment timeline information if we're still using the
     // same playlist
     if (segmentInfo && segmentInfo.playlist.uri === this.playlist_.uri) {
@@ -667,9 +668,10 @@ export default videojs.extend(videojs.EventTarget, {
                                                    this.sourceUpdater_.buffered());
 
     // Update segment meta-data (duration and end-point) based on timeline
-    let timelineUpdated = updateSegmentMetadata(playlist,
-                                                currentMediaIndex,
-                                                timelineUpdate);
+    // let timelineUpdated =
+    updateSegmentMetadata(playlist,
+                          currentMediaIndex,
+                          timelineUpdate);
 
     // the last segment append must have been entirely in the
     // already buffered time ranges. adjust the timestamp offset to

@@ -105,10 +105,12 @@ export default class HlsHandler extends Component {
 
     this.on(this.tech_, 'play', this.play);
 
-    this.tech_.audioTracks().addEventListener('change', () => {
-      for (let i = 0; i < this.tech_.audioTracks().length; i++) {
-        if (this.tech_.audioTracks()[i].enabled) {
-          return this.masterPlaylistController_.useAudio(this.tech_.audioTracks()[i].label);
+    let audioTrackList = this.tech_.audioTracks();
+
+    audioTrackList.addEventListener('change', () => {
+      for (let i = 0; i < audioTrackList.length; i++) {
+        if (audioTrackList[i].enabled) {
+          return this.masterPlaylistController_.useAudio(audioTrackList[i].label);
         }
       }
     });
@@ -136,14 +138,16 @@ export default class HlsHandler extends Component {
     });
 
     this.masterPlaylistController_.on('loadedmetadata', () => {
-      let mediaGroups = this.masterPlaylistController_.masterPlaylistLoader_.master.mediaGroups;
+      let mediaGroups =
+        this.masterPlaylistController_.masterPlaylistLoader_.master.mediaGroups;
       let media = this.masterPlaylistController_.masterPlaylistLoader_.media();
       let attributes = {
-        audio: mediaGroups.AUDIO[media.attributes.AUDIO] || {main: {default: true}},
+        audio: mediaGroups.AUDIO[media.attributes.AUDIO] || {main: {default: true}}
       };
       let audioTracks = this.tech_.audioTracks();
       // clear current audioTracks
       let i = audioTracks.length;
+
       while (i--) {
         audioTracks.removeTrack(audioTracks[i]);
       }
@@ -154,8 +158,8 @@ export default class HlsHandler extends Component {
         audioTracks.addTrack(new AudioTrack({
           kind: hlstrack.default ? 'main' : 'alternative',
           language: hlstrack.language || '',
-          enabled: hlstrack.default ||  false,
-          label,
+          enabled: hlstrack.default || false,
+          label
         }));
       }
       this.trigger('loadedmetadata');
