@@ -4,6 +4,33 @@ Play back HLS with video.js, even where it's not natively supported.
 
 [![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Getting Started](#getting-started)
+- [Documentation](#documentation)
+  - [Options](#options)
+    - [withCredentials](#withcredentials)
+  - [Runtime Properties](#runtime-properties)
+    - [hls.playlists.master](#hlsplaylistsmaster)
+    - [hls.playlists.media](#hlsplaylistsmedia)
+    - [hls.segmentXhrTime](#hlssegmentxhrtime)
+    - [hls.bandwidth](#hlsbandwidth)
+    - [hls.bytesReceived](#hlsbytesreceived)
+    - [hls.selectPlaylist](#hlsselectplaylist)
+  - [Events](#events)
+    - [loadedmetadata](#loadedmetadata)
+    - [loadedplaylist](#loadedplaylist)
+    - [mediachange](#mediachange)
+  - [In-Band Metadata](#in-band-metadata)
+- [Hosting Considerations](#hosting-considerations)
+  - [Testing](#testing)
+- [Release History](#release-history)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+
 ## Getting Started
 Download
 [videojs-contrib-hls](https://github.com/videojs/videojs-contrib-hls/releases)
