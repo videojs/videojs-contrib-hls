@@ -162,6 +162,7 @@ export default class HlsHandler extends Component {
           label
         }));
       }
+      this.masterPlaylistController_.useAudio();
       this.trigger('loadedmetadata');
     });
 

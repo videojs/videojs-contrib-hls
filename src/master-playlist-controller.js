@@ -254,7 +254,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       this.setupSourceBuffer_();
       this.setupFirstPlay();
-      this.useAudio();
       this.trigger('loadedmetadata');
     });
 
@@ -329,9 +328,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
   }
 
   useAudio(label) {
-    let audioEntry;
-    let newAudioPlaylistLoader;
     let mediaGroupName = this.masterPlaylistLoader_.media().attributes.AUDIO;
+    let audioEntries = this.masterPlaylistLoader_.master.mediaGroups.AUDIO[mediaGroupName];
 
     // Pause any alternative audio
     if (this.audioPlaylistLoader_) {
@@ -340,35 +338,29 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.audioSegmentLoader_.pause();
     }
 
-    // if no label was passed in we are switching to main audio
+    // if no label was passed in we are switching to the currently enabled audio
     if (!label) {
-
       for (let i = 0; i < this.hlsHandler.tech_.audioTracks().length; i++) {
         if (this.hlsHandler.tech_.audioTracks()[i].enabled) {
           label = this.hlsHandler.tech_.audioTracks()[i].label;
+          break;
         }
-      }
-
-      if (!label) {
-        this.mainSegmentLoader_.clearBuffer();
-        return;
       }
     }
 
-    audioEntry =
-      this.masterPlaylistLoader_.master.mediaGroups.AUDIO[mediaGroupName][label];
-
-    newAudioPlaylistLoader = this.audioPlaylistLoaders_[audioEntry.resolvedUri];
+    let audioEntry = audioEntries[label];
 
     // the label we are trying to use does not have a resolvedUri
-    // this means that it is likely the main track
-    if (!newAudioPlaylistLoader) {
+    // this means that it is in a combined stream in the main track
+    if (!audioEntry || !audioEntry.resolvedUri) {
       this.mainSegmentLoader_.clearBuffer();
       return;
     }
 
-    this.audioPlaylistLoader_ = newAudioPlaylistLoader;
-    if (newAudioPlaylistLoader.started) {
+
+    this.audioPlaylistLoader_ = this.audioPlaylistLoaders_[audioEntry.resolvedUri];
+
+    if (this.audioPlaylistLoader_.started) {
       this.audioPlaylistLoader_.load();
       this.audioSegmentLoader_.load();
       this.audioSegmentLoader_.clearBuffer();
