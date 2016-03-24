@@ -347,6 +347,8 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     if (loader.started) {
       if (!loader.media().endList) {
         loader.trigger('mediaupdatetimeout');
+      } else {
+        loader.trigger('loadedplaylist');
       }
     } else {
       loader.start();

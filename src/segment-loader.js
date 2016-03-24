@@ -289,19 +289,9 @@ export default videojs.extend(videojs.EventTarget, {
       // find the segment containing currentTime
       mediaIndex = getMediaIndexForTime(playlist, currentTime, this.expired_);
     } else {
-      // IE 11 has a bug where it will report a the video as fully buffered
-      // before any data has been loaded. This is a work around where we
-      // report a fully empty buffer until we have successfully downloaded
-      // a segment
-      if (isNaN(this.bandwidth)) {
-        // find the segment adjacent to the end of the current
-        // buffered region
-        currentBufferedEnd = 0;
-      } else {
-        // find the segment adjacent to the end of the current
-        // buffered region
-        currentBufferedEnd = currentBuffered.end(0);
-      }
+      // find the segment adjacent to the end of the current
+      // buffered region
+      currentBufferedEnd = currentBuffered.end(0);
       bufferedTime = Math.max(0, currentBufferedEnd - currentTime);
 
       // if there is plenty of content buffered, relax for awhile
@@ -363,6 +353,10 @@ export default videojs.extend(videojs.EventTarget, {
 
   fillBuffer_() {
     let request;
+
+    if (this.sourceUpdater_.updating()) {
+      return;
+    }
 
     // see if we need to begin loading immediately
     request = this.checkBuffer_(this.sourceUpdater_.buffered(),

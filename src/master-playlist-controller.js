@@ -256,6 +256,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.setupSourceBuffer_();
       this.setupFirstPlay();
       this.hlsHandler.tech_.trigger('loadedmetadata');
+      this.useAudio();
     });
 
     this.masterPlaylistLoader_.on('loadedplaylist', () => {
@@ -374,11 +375,19 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.audioSegmentLoader_.pause();
     }
 
-
     // if no label was passed in we are switching to main audio
     if (!label) {
-      this.mainSegmentLoader_.clearBuffer();
-      return;
+
+      for (let i = 0; i < this.hlsHandler.tech_.audioTracks().length; i++) {
+        if (this.hlsHandler.tech_.audioTracks()[i].enabled) {
+          label = this.hlsHandler.tech_.audioTracks()[i].label;
+        }
+      }
+
+      if (!label) {
+        this.mainSegmentLoader_.clearBuffer();
+        return;
+      }
     }
 
     audioEntry =
@@ -396,6 +405,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     if (!newAudioPlaylistLoader.started) {
       this.loadAlternateAudioPlaylistLoader_(newAudioPlaylistLoader);
     } else {
+      this.audioPlaylistLoader_ = newAudioPlaylistLoader;
       newAudioPlaylistLoader.load();
       this.audioSegmentLoader_.load();
       this.audioSegmentLoader_.clearBuffer();
@@ -427,7 +437,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.audioPlaylistLoader_.on('loadedplaylist', () => {
-      let updatedPlaylist = this.audioPlaylistLoader_.media();
+      let updatedPlaylist;
+
+      if (this.audioPlaylistLoader_) {
+        updatedPlaylist = this.audioPlaylistLoader_.media();
+      }
 
       if (!updatedPlaylist) {
         // only one playlist to select
@@ -447,6 +461,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.useAudio();
     });
 
+    this.audioSegmentLoader_.clearBuffer();
     this.audioPlaylistLoader_.start();
   }
 

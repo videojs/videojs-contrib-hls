@@ -102,6 +102,15 @@ export default videojs.extend(null, {
     });
   },
 
+  /**
+   * Queue an update to remove a time range from the buffer.
+   * @see http://www.w3.org/TR/media-source/
+   *      #widl-SourceBuffer-remove-void-double-start-unrestricted-double-end
+   */
+  updating() {
+    return this.sourceBuffer_.updating;
+  },
+
   timestampOffset(offset) {
     if (typeof offset !== 'undefined') {
       this.queueCallback_(function timestampOffset() {
