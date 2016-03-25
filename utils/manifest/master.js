@@ -10,6 +10,7 @@
           "height": 224
         }
       },
+      "timeline": 0,
       "uri": "media.m3u8"
     },
     {
@@ -17,6 +18,7 @@
         "PROGRAM-ID": 1,
         "BANDWIDTH": 40000
       },
+      "timeline": 0,
       "uri": "media1.m3u8"
     },
     {
@@ -28,6 +30,7 @@
           "height": 224
         }
       },
+      "timeline": 0,
       "uri": "media2.m3u8"
     },
     {
@@ -39,6 +42,7 @@
           "height": 540
         }
       },
+      "timeline": 0,
       "uri": "media3.m3u8"
     }
   ],
