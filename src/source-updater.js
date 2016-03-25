@@ -41,6 +41,7 @@ export default class SourceUpdater {
     this.callbacks_ = [];
     this.pendingCallback_ = null;
     this.timestampOffset_ = 0;
+    this.mediaSource = mediaSource;
 
     if (mediaSource.readyState === 'closed') {
       mediaSource.addEventListener('sourceopen', createSourceBuffer);
@@ -137,6 +138,12 @@ export default class SourceUpdater {
       callbacks = this.callbacks_.shift();
       this.pendingCallback_ = callbacks[1];
       callbacks[0]();
+    }
+  }
+
+  dispose() {
+    if (this.sourceBuffer_ && this.mediaSource.readyState === 'open') {
+      this.sourceBuffer_.abort();
     }
   }
 }

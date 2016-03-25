@@ -149,6 +149,9 @@ export default class SegmentLoader extends videojs.EventTarget {
   dispose() {
     this.state = 'DISPOSED';
     this.abort_();
+    if (this.sourceUpdater_) {
+      this.sourceUpdater_.dispose();
+    }
   }
 
   abort() {

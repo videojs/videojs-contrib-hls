@@ -336,8 +336,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    // we have been called but there is no audio track data
-    // so we only have the main one (that we know about)
+    // We have been called but there is no audio track data so we only have the main one
+    // (that we know about). An example of this is when the source URL was a playlist
+    // manifest, not a master.
     if (!media.attributes || !media.attributes.AUDIO ||
         !master.mediaGroups || !master.mediaGroups.AUDIO) {
       return;
