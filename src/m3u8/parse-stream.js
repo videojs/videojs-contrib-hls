@@ -280,7 +280,7 @@ export default class ParseStream extends Stream {
         event.attributes = parseAttributes(match[1]);
         // parse the IV string into a Uint32Array
         if (event.attributes.IV) {
-          if (event.attributes.IV.substring(0, 2) === '0x') {
+          if (event.attributes.IV.substring(0, 2).toLowerCase() === '0x') {
             event.attributes.IV = event.attributes.IV.substring(2);
           }
 
