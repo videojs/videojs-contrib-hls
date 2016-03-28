@@ -238,7 +238,9 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   mimeType(mimeType) {
+    /* eslint-disable */
     // TODO Allow source buffers to be re-created with different mime-types
+    /* eslint-enable */
     if (!this.sourceUpdater_) {
       this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, mimeType);
       this.clearBuffer();
@@ -656,6 +658,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   updateTimeline_(segmentInfo) {
     let segment;
     let timelineUpdate;
+    let timelineUpdated;
     let playlist = segmentInfo.playlist;
     let currentMediaIndex = segmentInfo.mediaIndex;
 
@@ -670,18 +673,15 @@ export default class SegmentLoader extends videojs.EventTarget {
                                                    this.sourceUpdater_.buffered());
 
     // Update segment meta-data (duration and end-point) based on timeline
-    // let timelineUpdated =
-    updateSegmentMetadata(playlist,
-                          currentMediaIndex,
-                          timelineUpdate);
+    timelineUpdated = updateSegmentMetadata(playlist, currentMediaIndex, timelineUpdate);
 
     // the last segment append must have been entirely in the
     // already buffered time ranges. adjust the timestamp offset to
     // fetch forward until we find a segment that adds to the
     // buffered time ranges and improves subsequent media index
     // calculations.
-//    if (!timelineUpdated) {
-//      this.expired_ -= segment.duration;
-//    }
+    if (!timelineUpdated) {
+      this.expired_ -= segment.duration;
+    }
   }
 }

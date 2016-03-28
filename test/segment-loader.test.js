@@ -46,8 +46,11 @@ QUnit.module('Segment Loader', {
     this.env = useFakeEnvironment();
     this.clock = this.env.clock;
     this.requests = this.env.requests;
-
     this.mse = useFakeMediaSource();
+    this.seekable = {
+      length: 0
+    };
+    this.mimeType = 'video/mp2t';
 
     currentTime = 0;
     mediaSource = new videojs.MediaSource();
@@ -55,6 +58,8 @@ QUnit.module('Segment Loader', {
       currentTime() {
         return currentTime;
       },
+      seekable: () => this.seekable,
+      seeking: () => false,
       mediaSource
     });
   },
@@ -80,23 +85,30 @@ QUnit.test('fails without required initialization options', function() {
   /* eslint-enable */
 });
 
-QUnit.test('load waits until a playlist is specified to proceed', function() {
+QUnit.test('load waits until a playlist and mime type are specified to proceed',
+function() {
   loader.load();
   QUnit.equal(loader.state, 'INIT', 'waiting in init');
   QUnit.equal(loader.paused(), false, 'not paused');
 
   loader.playlist(playlistWithDuration(10));
+  QUnit.equal(this.requests.length, 0, 'have not made a request yet');
+  loader.mimeType(this.mimeType);
+
   QUnit.equal(this.requests.length, 1, 'made a request');
   QUnit.equal(loader.state, 'WAITING', 'transitioned states');
 });
 
-QUnit.test('calling load begins buffering', function() {
+QUnit.test('calling mime type and load begins buffering', function() {
   QUnit.equal(loader.state, 'INIT', 'starts in the init state');
   loader.playlist(playlistWithDuration(10));
   QUnit.equal(loader.state, 'INIT', 'starts in the init state');
   QUnit.ok(loader.paused(), 'starts paused');
 
+  loader.mimeType(this.mimeType);
+  QUnit.equal(loader.state, 'INIT', 'still in the init state');
   loader.load();
+
   QUnit.equal(loader.state, 'WAITING', 'moves to the ready state');
   QUnit.ok(!loader.paused(), 'loading is not paused');
   QUnit.equal(this.requests.length, 1, 'requested a segment');
@@ -104,6 +116,7 @@ QUnit.test('calling load begins buffering', function() {
 
 QUnit.test('calling load is idempotent', function() {
   loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
   loader.load();
   QUnit.equal(loader.state, 'WAITING', 'moves to the ready state');
   QUnit.equal(this.requests.length, 1, 'made one request');
@@ -126,6 +139,8 @@ QUnit.test('calling load should unpause', function() {
   loader.playlist(playlistWithDuration(20));
   loader.pause();
   mediaSource.trigger('sourceopen');
+
+  loader.mimeType(this.mimeType);
   sourceBuffer = mediaSource.sourceBuffers[0];
 
   loader.load();
@@ -153,6 +168,7 @@ QUnit.test('regularly checks the buffer while unpaused', function() {
   let sourceBuffer;
 
   loader.playlist(playlistWithDuration(90));
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
   sourceBuffer = mediaSource.sourceBuffers[0];
@@ -177,6 +193,7 @@ QUnit.test('does not check the buffer while paused', function() {
   let sourceBuffer;
 
   loader.playlist(playlistWithDuration(90));
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
   sourceBuffer = mediaSource.sourceBuffers[0];
@@ -193,6 +210,7 @@ QUnit.test('does not check the buffer while paused', function() {
 
 QUnit.test('calculates bandwidth after downloading a segment', function() {
   loader.playlist(playlistWithDuration(10));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   // some time passes and a response is received
@@ -207,6 +225,7 @@ QUnit.test('calculates bandwidth after downloading a segment', function() {
 
 QUnit.test('segment request timeouts reset bandwidth', function() {
   loader.playlist(playlistWithDuration(10));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   // a lot of time passes so the request times out
@@ -224,6 +243,7 @@ QUnit.test('appending a segment triggers progress', function() {
     progresses++;
   });
   loader.playlist(playlistWithDuration(10));
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
 
@@ -237,6 +257,7 @@ QUnit.test('appending a segment triggers progress', function() {
 
 QUnit.test('only requests one segment at a time', function() {
   loader.playlist(playlistWithDuration(10));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   // a bunch of time passes without recieving a response
@@ -246,6 +267,7 @@ QUnit.test('only requests one segment at a time', function() {
 
 QUnit.test('only appends one segment at a time', function() {
   loader.playlist(playlistWithDuration(10));
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
 
@@ -257,8 +279,8 @@ QUnit.test('only appends one segment at a time', function() {
   // a lot of time goes by without "updateend"
   this.clock.tick(20 * 1000);
 
-  QUnit.equal(mediaSource.sourceBuffers[0].updates_.length, 1, 'made one update');
-  QUnit.ok(mediaSource.sourceBuffers[0].updates_[0].append, 'appended');
+  QUnit.equal(mediaSource.sourceBuffers[0].updates_.filter(
+    update => update.append).length, 1, 'only one append');
   QUnit.equal(this.requests.length, 0, 'only made one request');
 });
 
@@ -269,6 +291,7 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
   playlist = playlistWithDuration(40);
   playlist.endList = false;
   loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
   sourceBuffer = mediaSource.sourceBuffers[0];
@@ -301,6 +324,7 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
 
 QUnit.test('cancels outstanding requests on abort', function() {
   loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
   loader.load();
   loader.xhr_.segmentXhr.onreadystatechange = function() {
     throw new Error('onreadystatechange should not be called');
@@ -314,6 +338,7 @@ QUnit.test('cancels outstanding requests on abort', function() {
 
 QUnit.test('abort does not cancel segment processing in progress', function() {
   loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   this.requests[0].response = new Uint8Array(10).buffer;
@@ -323,12 +348,13 @@ QUnit.test('abort does not cancel segment processing in progress', function() {
   QUnit.equal(loader.state, 'APPENDING', 'still appending');
 });
 
-QUnit.test('sets the timestampOffset on discontinuity', function() {
+QUnit.test('sets the timestampOffset on timeline change', function() {
   let playlist = playlistWithDuration(40);
 
   playlist.discontinuityStarts = [1];
-  playlist.segments[1].discontinuity = true;
+  playlist.segments[1].timeline = 1;
   loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
 
@@ -348,6 +374,7 @@ QUnit.test('tracks segment end times as they are buffered', function() {
   let playlist = playlistWithDuration(20);
 
   loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
 
@@ -365,6 +392,7 @@ QUnit.test('segment 404s should trigger an error', function() {
   let errors = [];
 
   loader.playlist(playlistWithDuration(10));
+  loader.mimeType(this.mimeType);
   loader.load();
   loader.on('error', function(error) {
     errors.push(error);
@@ -382,6 +410,7 @@ QUnit.test('segment 5xx status codes trigger an error', function() {
   let errors = [];
 
   loader.playlist(playlistWithDuration(10));
+  loader.mimeType(this.mimeType);
   loader.load();
   loader.on('error', function(error) {
     errors.push(error);
@@ -399,6 +428,7 @@ QUnit.test('fires ended at the end of a playlist', function() {
   let endOfStreams = 0;
 
   loader.playlist(playlistWithDuration(10));
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
   loader.mediaSource_ = {
@@ -423,6 +453,7 @@ QUnit.test('live playlists do not trigger ended', function() {
   playlist = playlistWithDuration(10);
   playlist.endList = false;
   loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
   loader.mediaSource_ = {
@@ -450,9 +481,11 @@ QUnit.test('respects the global withCredentials option', function() {
     currentTime() {
       return currentTime;
     },
+    seekable: () => this.seekable,
     mediaSource
   });
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
@@ -467,10 +500,12 @@ QUnit.test('respects the withCredentials option', function() {
     currentTime() {
       return currentTime;
     },
+    seekable: () => this.seekable,
     mediaSource,
     withCredentials: true
   });
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
@@ -490,9 +525,11 @@ QUnit.test('the withCredentials option overrides the global', function() {
       return currentTime;
     },
     mediaSource,
+    seekable: () => this.seekable,
     withCredentials: false
   });
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
@@ -504,12 +541,14 @@ QUnit.test('the withCredentials option overrides the global', function() {
 
 QUnit.test('remains ready if there are no segments', function() {
   loader.playlist(playlistWithDuration(0));
+  loader.mimeType(this.mimeType);
   loader.load();
   QUnit.equal(loader.state, 'READY', 'in the ready state');
 });
 
 QUnit.test('dispose cleans up outstanding work', function() {
   loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
 
@@ -533,6 +572,7 @@ QUnit.test('calling load with an encrypted segment requests key and segment', fu
   QUnit.equal(loader.state, 'INIT', 'starts in the init state');
   QUnit.ok(loader.paused(), 'starts paused');
 
+  loader.mimeType(this.mimeType);
   loader.load();
   QUnit.equal(loader.state, 'WAITING', 'moves to the ready state');
   QUnit.ok(!loader.paused(), 'loading is not paused');
@@ -543,6 +583,7 @@ QUnit.test('calling load with an encrypted segment requests key and segment', fu
 
 QUnit.test('cancels outstanding key request on abort', function() {
   loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
   loader.xhr_.keyXhr.onreadystatechange = function() {
     throw new Error('onreadystatechange should not be called');
@@ -558,6 +599,7 @@ QUnit.test('cancels outstanding key request on abort', function() {
 
 QUnit.test('dispose cleans up key requests for encrypted segments', function() {
   loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
   mediaSource.trigger('sourceopen');
 
@@ -572,6 +614,7 @@ QUnit.test('key 404s should trigger an error', function() {
   let errors = [];
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
   loader.on('error', function(error) {
     errors.push(error);
@@ -591,6 +634,7 @@ QUnit.test('key 5xx status codes trigger an error', function() {
   let errors = [];
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
   loader.on('error', function(error) {
     errors.push(error);
@@ -613,6 +657,7 @@ QUnit.test('the key is saved to the segment in the correct format', function() {
   let segmentInfo;
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   // stop processing so we can examine segment info
@@ -643,6 +688,7 @@ function() {
   let segmentInfo;
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true, mediaSequence: 5}));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   // stop processing so we can examine segment info
@@ -671,6 +717,7 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   loader.handleSegment_ = function() {};
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   segmentRequest = this.requests.pop();
@@ -696,6 +743,7 @@ QUnit.test('calling load with an encrypted segment waits for both key and segmen
   let segmentRequest;
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   QUnit.equal(loader.state, 'WAITING', 'moves to waiting state');
@@ -716,6 +764,7 @@ QUnit.test('calling load with an encrypted segment waits for both key and segmen
 
 QUnit.test('key request timeouts reset bandwidth', function() {
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+  loader.mimeType(this.mimeType);
   loader.load();
 
   QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
@@ -886,6 +935,8 @@ QUnit.module('Segment Loading Calculation', {
 });
 
 QUnit.test('requests the first segment with an empty buffer', function() {
+  loader.mimeType(this.mimeType);
+
   let segmentInfo = loader.checkBuffer_(videojs.createTimeRanges(),
                                         playlistWithDuration(20),
                                         0);
@@ -897,6 +948,8 @@ QUnit.test('requests the first segment with an empty buffer', function() {
 QUnit.test('does not download the next segment if the buffer is full', function() {
   let buffered;
   let segmentInfo;
+
+  loader.mimeType(this.mimeType);
 
   buffered = videojs.createTimeRanges([
     [0, 15 + GOAL_BUFFER_LENGTH]
@@ -910,6 +963,8 @@ QUnit.test('downloads the next segment if the buffer is getting low', function()
   let buffered;
   let segmentInfo;
 
+  loader.mimeType(this.mimeType);
+
   buffered = videojs.createTimeRanges([[0, 19.999]]);
   segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(30), 15);
 
@@ -920,6 +975,8 @@ QUnit.test('downloads the next segment if the buffer is getting low', function()
 QUnit.test('buffers based on the correct TimeRange if multiple ranges exist', function() {
   let buffered;
   let segmentInfo;
+
+  loader.mimeType(this.mimeType);
 
   buffered = videojs.createTimeRanges([[0, 10], [20, 30]]);
   segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(40), 8);
@@ -936,6 +993,8 @@ QUnit.test('stops downloading segments at the end of the playlist', function() {
   let buffered;
   let segmentInfo;
 
+  loader.mimeType(this.mimeType);
+
   buffered = videojs.createTimeRanges([[0, 60]]);
   segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(60), 0);
 
@@ -947,6 +1006,8 @@ function() {
   let buffered;
   let segmentInfo;
   let playlist;
+
+  loader.mimeType(this.mimeType);
 
   buffered = videojs.createTimeRanges([[0, 59.9]]);
   playlist = playlistWithDuration(60);
@@ -960,27 +1021,34 @@ QUnit.test('calculates timestampOffset for discontinuities', function() {
   let segmentInfo;
   let playlist;
 
+  loader.mimeType(this.mimeType);
+
   playlist = playlistWithDuration(60);
   playlist.segments[3].end = 37.9;
   playlist.discontinuityStarts = [4];
   playlist.segments[4].discontinuity = true;
+  playlist.segments[4].timeline = 1;
 
   segmentInfo = loader.checkBuffer_(videojs.createTimeRanges([[0, 37.9]]), playlist, 36);
   QUnit.equal(segmentInfo.timestampOffset, 37.9, 'placed the discontinuous segment');
 });
 
-QUnit.test('adjusts calculations based on an offset', function() {
+QUnit.test('adjusts calculations based on expired time', function() {
   let buffered;
   let playlist;
   let segmentInfo;
 
+  loader.mimeType(this.mimeType);
+
   buffered = videojs.createTimeRanges([[0, 30]]);
   playlist = playlistWithDuration(50);
 
+  loader.expired(10);
+
   segmentInfo = loader.checkBuffer_(buffered,
                                     playlist,
-                                    40 - GOAL_BUFFER_LENGTH,
-                                    10);
+                                    40 - GOAL_BUFFER_LENGTH);
+
   QUnit.ok(segmentInfo, 'fetched a segment');
-  QUnit.equal(segmentInfo.uri, '2.ts', 'accounted for the offset');
+  QUnit.equal(segmentInfo.uri, '2.ts', 'accounted for expired time');
 });

@@ -61,6 +61,8 @@ QUnit.test('obeys preload option', function() {
   // playlist
   standardXHRResponse(this.requests.shift());
 
+  openMediaSource(this.player, this.clock);
+
   QUnit.equal(this.requests.length, 0, 'no segment requests when preload is none');
 
   this.player.src({
@@ -74,6 +76,8 @@ QUnit.test('obeys preload option', function() {
   standardXHRResponse(this.requests.shift());
   // playlist
   standardXHRResponse(this.requests.shift());
+
+  openMediaSource(this.player, this.clock);
 
   QUnit.equal(this.requests.length, 1, 'segment request when preload is auto');
 });
@@ -112,12 +116,15 @@ QUnit.test('if buffered, will request second segment byte range', function() {
   this.player.tech_.triggerReady();
   this.clock.tick(1);
   this.player.tech_.trigger('play');
+
   openMediaSource(this.player, this.clock);
+  // playlist
+  standardXHRResponse(this.requests[0]);
+
   this.masterPlaylistController.mainSegmentLoader_.sourceUpdater_.buffered = () => {
     return videojs.createTimeRanges([[0, 20]]);
   };
-  // playlist
-  standardXHRResponse(this.requests[0]);
+
   // segment
   standardXHRResponse(this.requests[1]);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');

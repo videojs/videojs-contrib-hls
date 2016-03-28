@@ -44,6 +44,7 @@ class MockSourceBuffer extends videojs.EventTarget {
     this.updates_.push({
       append: bytes
     });
+    this.updating = true;
   }
 
   remove(start, end) {
