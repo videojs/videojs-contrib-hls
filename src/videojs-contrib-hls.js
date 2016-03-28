@@ -395,6 +395,45 @@ export default class HlsHandler extends Component {
     });
 
     this.on(this.tech_, 'play', this.play);
+
+    this.lastTime = 0;
+    this.repeats = 0;
+    let self = this;
+    this.on(this.tech_, 'timeupdate', function(){
+      let current_tr = self.findBufferedRange_();
+      let next_tr = self.findNextBufferedRange_();
+      if(current_tr.length>0 && next_tr.length>0){
+        let buffer_length = current_tr.end(0)-self.tech_.currentTime();
+        if(buffer_length<0.1 && next_tr.start(0)-self.tech_.currentTime()<1){
+          self.tech_.setCurrentTime(next_tr.start(0));
+        }
+      }
+      if (self.tech_.duration() >0 && self.tech_.currentTime() >0 && self.tech_.currentTime() >= self.tech_.duration()-0.5 && self.lastTime === self.tech_.currentTime()) {
+        self.tech_.setCurrentTime(0);
+        self.tech_.trigger('ended');
+
+      }else{
+        if(self.lastTime === self.tech_.currentTime()){
+          self.repeats++;
+          if(self.repeats > 50){
+            self.tech_.trigger('playing');
+
+            return self.blacklistCurrentPlaylist_({
+              status: 404,
+              message: 'Playback Timeout. Network failed.',
+              code: 2
+            });
+          }else if(self.repeats > 3){
+            self.tech_.trigger('waiting');
+          }
+        }else if(self.tech_.currentTime() >0){
+          self.repeats = 0;
+          self.tech_.trigger('playing');
+        }
+
+        self.lastTime = self.tech_.currentTime();
+      }
+    });
   }
   src(src) {
     let oldMediaPlaylist;
