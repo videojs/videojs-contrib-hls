@@ -1053,7 +1053,8 @@ export default class HlsHandler extends Component {
 
     if (typeof mediaIndex === 'undefined') {
       if (currentBuffered && currentBuffered.length) {
-        currentBufferedEnd = currentBuffered.end(0);
+        let completeBuffered = this.findCompleteBufferedRange_();
+        currentBufferedEnd = completeBuffered.end(0);
         mediaIndex = this.playlists.getMediaIndexForTime_(currentBufferedEnd);
         bufferedTime = Math.max(0, currentBufferedEnd - currentTime);
 
@@ -1064,6 +1065,9 @@ export default class HlsHandler extends Component {
         }
       } else {
         mediaIndex = this.playlists.getMediaIndexForTime_(this.tech_.currentTime());
+        if (mediaIndex === -1 && this.tech_.currentTime() === 0){
+          mediaIndex = 0;
+        }
       }
     }
     segment = this.playlists.media().segments[mediaIndex];
@@ -1578,6 +1582,42 @@ HlsHandler.prototype.findNextBufferedRange_ =
     return start - TIME_FUDGE_FACTOR >= time;
   });
 
+/**
+ * Returns all buffered ranges.
+ * @param time (optional) {number} the time to filter on. Defaults to
+ * currentTime.
+ * @return a new TimeRanges object.
+ */
+HlsHandler.prototype.findCompleteBufferedRange_ = function() {
+  let
+      i,
+      ranges = [],
+      tech = this.tech_,
+  // !!The order of the next two assignments is important!!
+  // `currentTime` must be equal-to or greater-than the start of the
+  // buffered range. Flash executes out-of-process so, every value can
+  // change behind the scenes from line-to-line. By reading `currentTime`
+  // after `buffered`, we ensure that it is always a current or later
+  // value during playback.
+      buffered = tech.buffered();
+
+  if (buffered && buffered.length) {
+    // Search for a range containing the play-head
+    let a,b;
+    for (i = 0; i < buffered.length; i++) {
+      a = buffered.start(i);
+      if(b && a-b < 0.5 && ranges.length>0){
+        b =  buffered.end(i);
+        ranges[ranges.length-1][1]= buffered.end(i);
+      }else{
+        b =  buffered.end(i);
+        ranges.push([buffered.start(i), buffered.end(i)]);
+      }
+    }
+  }
+
+  return videojs.createTimeRanges(ranges);
+};
 /**
  * The Source Handler object, which informs video.js what additional
  * MIME types are supported and sets up playback. It is registered
