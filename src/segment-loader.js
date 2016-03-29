@@ -154,6 +154,7 @@ export default videojs.extend(videojs.EventTarget, {
   },
 
   dispose() {
+    this.state = 'DISPOSED';
     this.abort_();
   },
 
@@ -544,7 +545,8 @@ export default videojs.extend(videojs.EventTarget, {
     }
   },
   clearBuffer() {
-    if (this.sourceUpdater_) {
+    if (this.sourceUpdater_ &&
+        this.sourceUpdater_.buffered().length) {
       this.sourceUpdater_.remove(0, Infinity);
     }
   },

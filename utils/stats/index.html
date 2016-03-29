@@ -141,10 +141,14 @@
     }
 
     function createPlayer(cb) {
+      if (window.stats_timer) {
+        clearInterval(window.stats_timer);
+      }
       // dispose of existing player
       if(window.player) {
         window.player.dispose();
       }
+
       // create video element in the dom
       var video = document.createElement('video');
       video.id = 'videojs-contrib-hls-player';
@@ -231,7 +235,7 @@
           currentTimeStat.textContent = player.currentTime().toFixed(1);
         });
 
-        window.setInterval(function() {
+        window.stats_timer = window.setInterval(function() {
           var bufferedText = '', oldStart, oldEnd, i;
 
           // buffered

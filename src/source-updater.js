@@ -18,12 +18,12 @@ import videojs from 'video.js';
  */
 export default videojs.extend(null, {
   constructor(mediaSource, mimeType) {
-    let createSourceBuffer = function() {
+    let createSourceBuffer = () => {
       this.sourceBuffer_ = mediaSource.addSourceBuffer(mimeType);
 
       // run completion handlers and process callbacks as updateend
       // events fire
-      this.sourceBuffer_.addEventListener('updateend', function() {
+      this.sourceBuffer_.addEventListener('updateend', () => {
         let pendingCallback = this.pendingCallback_;
 
         this.pendingCallback_ = null;
@@ -31,12 +31,12 @@ export default videojs.extend(null, {
         if (pendingCallback) {
           pendingCallback();
         }
-      }.bind(this));
+      });
       this.sourceBuffer_.addEventListener('updateend',
                                           this.runCallback_.bind(this));
 
       this.runCallback_();
-    }.bind(this);
+    };
 
     this.callbacks_ = [];
     this.pendingCallback_ = null;
