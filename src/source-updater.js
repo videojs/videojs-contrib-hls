@@ -85,9 +85,9 @@ export default videojs.extend(null, {
    * Queue an update to set the duration.
    * @see http://www.w3.org/TR/media-source/#widl-MediaSource-duration
    */
-  duration(duration) {
+  duration(localDuration) {
     this.queueCallback_(function duration() {
-      this.sourceBuffer_.duration = duration;
+      this.sourceBuffer_.duration = localDuration;
     });
   },
 
