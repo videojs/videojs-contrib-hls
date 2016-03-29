@@ -152,6 +152,8 @@ export default class HlsHandler extends Component {
       this.tech_.setCurrentTime(0);
     }
 
+    this.masterPlaylistController_.load();
+
     if (this.tech_.played().length === 0) {
       return this.masterPlaylistController_.setupFirstPlay();
     }

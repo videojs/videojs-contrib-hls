@@ -268,22 +268,29 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         let media = this.hlsHandler.selectPlaylist();
         this.masterPlaylistLoader_.media(media);
 
-
-        if (!media.attributes.AUDIO) {
+        // Don't use alternate audio tracks if we are in flash-mode
+        if (!media.attributes.AUDIO || this.mediaSourceMode !== 'html5') {
           // TODO: fire an event, have hls pick it up and fill in the
           // audio tracks (aka move this back to hls)
           this.hlsHandler.tech_.audioTracks().addTrack(new AudioTrack({
             enabled: true,
             id: '1',
-            kind: 'main',
-            tech: this.hlsHandler.tech_
+            kind: 'main'
           }));
           return;
         }
 
+        if (!this.masterPlaylistLoader_.master.mediaGroups) {
+          return;
+        }
+
         let mediaGroupName = media.attributes.AUDIO;
-        let mediaGroup =
-            this.masterPlaylistLoader_.master.mediaGroups.AUDIO[mediaGroupName];
+        let mediaGroup = this.masterPlaylistLoader_.master.mediaGroups.AUDIO[mediaGroupName];
+
+        if (!mediaGroup) {
+          return;
+        }
+
         for (let key in mediaGroup) {
           let label = key;
           let language = mediaGroup[key].language || '';
@@ -297,8 +304,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
             language,
             enabled,
             kind,
-            label,
-            tech: this.hlsHandler.tech_
+            label
           }));
         }
         return;
