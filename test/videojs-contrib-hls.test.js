@@ -208,9 +208,6 @@ QUnit.test('duration is set when the source opens after the playlist is loaded',
               'set the duration');
 });
 
-/* eslint-disable */
-// TODO - segment loader extraction changes responsibility for codec passing
-/* eslint-enable */
 QUnit.test('codecs are passed to the source buffer', function() {
   let codecs = [];
 
@@ -351,15 +348,13 @@ QUnit.test('starts downloading a segment on loadedmetadata', function() {
                     'the first segment is requested');
 });
 
-/* eslint-disable */
-// TODO - segment loader extraction changes ownership for source buffer
-// /* eslint-enable */
-QUnit.skip('re-initializes the handler for each source', function() {
+QUnit.test('re-initializes the handler for each source', function() {
   let firstPlaylists;
   let secondPlaylists;
   let firstMSE;
   let secondMSE;
   let aborts = 0;
+  let masterPlaylistController;
 
   this.player.src({
     src: 'manifest/master.m3u8',
@@ -370,7 +365,8 @@ QUnit.skip('re-initializes the handler for each source', function() {
   firstMSE = this.player.tech_.hls.mediaSource;
   standardXHRResponse(this.requests.shift());
   standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.sourceBuffer.abort = function() {
+  masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  masterPlaylistController.mainSegmentLoader_.sourceUpdater_.sourceBuffer_.abort = () => {
     aborts++;
   };
 
@@ -401,45 +397,6 @@ QUnit.test('triggers an error when a master playlist request errors', function()
   QUnit.equal(this.player.tech_.hls.mediaSource.error_,
               'network',
               'a network error is triggered');
-});
-
-/* eslint-disable */
-// TODO - segment loader extraction changes ownership for source buffer
-/* eslint-enable */
-QUnit.skip('re-initializes the handler for each source', function() {
-  let firstPlaylists;
-  let secondPlaylists;
-  let firstMSE;
-  let secondMSE;
-  let aborts = 0;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  firstPlaylists = this.player.tech_.hls.playlists;
-  firstMSE = this.player.tech_.hls.mediaSource;
-  standardXHRResponse(this.requests.shift());
-  standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.sourceBuffer.abort = function() {
-    aborts++;
-  };
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  secondPlaylists = this.player.tech_.hls.playlists;
-  secondMSE = this.player.tech_.hls.mediaSource;
-
-  QUnit.equal(1, aborts, 'aborted the old source buffer');
-  QUnit.ok(this.requests[0].aborted, 'aborted the old segment request');
-  QUnit.notStrictEqual(firstPlaylists,
-                       secondPlaylists,
-                       'the playlist object is not reused');
-  QUnit.notStrictEqual(firstMSE, secondMSE, 'the media source object is not reused');
 });
 
 QUnit.test('downloads media playlists after loading the master', function() {
