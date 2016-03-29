@@ -11,7 +11,6 @@ import utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from './m3u8';
 import videojs from 'video.js';
-import resolveUrl from './resolve-url';
 import MasterPlaylistController from './master-playlist-controller';
 import {AudioTrack} from 'video.js';
 
@@ -232,43 +231,6 @@ export default class HlsHandler extends Component {
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
 
     super.dispose();
-  }
-
-  /* eslint-disable */
-  // TODO no longer used internally
-  /* eslint-enable */
-  playlistUriToUrl(segmentRelativeUrl) {
-    let playListUrl;
-
-      // resolve the segment URL relative to the playlist
-    if (this.playlists.media().uri === this.source_.src) {
-      playListUrl = resolveUrl(this.source_.src, segmentRelativeUrl);
-    } else {
-      playListUrl =
-        resolveUrl(resolveUrl(this.source_.src, this.playlists.media().uri || ''),
-                   segmentRelativeUrl);
-    }
-    return playListUrl;
-  }
-
-  /* eslint-disable */
-  // TODO no longer used internally
-  // eslint-enable
-  /*
-   * Sets `bandwidth`, `segmentXhrTime`, and appends to the `bytesReceived.
-   * Expects an object with:
-   *  * `roundTripTime` - the round trip time for the request we're setting the time for
-   *  * `bandwidth` - the bandwidth we want to set
-   *  * `bytesReceived` - amount of bytes downloaded
-   * `bandwidth` is the only required property.
-   */
-  setBandwidth(localXhr) {
-    // calculate the download bandwidth
-    this.segmentXhrTime = localXhr.roundTripTime;
-    this.bandwidth = localXhr.bandwidth;
-    this.bytesReceived += localXhr.bytesReceived || 0;
-
-    this.tech_.trigger('bandwidthupdate');
   }
 }
 
