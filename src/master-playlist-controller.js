@@ -238,8 +238,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       if (master.mediaGroups && master.mediaGroups.AUDIO) {
         for (let groupKey in master.mediaGroups.AUDIO) {
           for (let labelKey in master.mediaGroups.AUDIO[groupKey]) {
+            /* eslint-disable no-warning-comments */
             // TODO: use one playlist loader for alternate audio and
             // update the src when it is being used
+            /* eslint-enable no-warning-comments */
             let audio = master.mediaGroups.AUDIO[groupKey][labelKey];
 
             if (!audio.resolvedUri) {
@@ -262,9 +264,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       if (!updatedPlaylist) {
         // select the initial variant
-        let media = this.hlsHandler.selectPlaylist();
+        this.initialMedia_ = this.hlsHandler.selectPlaylist();
 
-        this.masterPlaylistLoader_.media(media);
+        this.masterPlaylistLoader_.media(this.initialMedia_);
+        this.trigger('selectedinitialmedia');
         return;
       }
 
@@ -679,15 +682,22 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
   dispose() {
     this.masterPlaylistLoader_.dispose();
-
     for (let loader in this.audioPlaylistLoaders_) {
       if (this.audioPlaylistLoaders_.hasOwnProperty(loader)) {
         this.audioPlaylistLoaders_[loader].dispose();
       }
     }
-
     this.mainSegmentLoader_.dispose();
     this.audioSegmentLoader_.dispose();
+  }
+
+  master() {
+    return this.masterPlaylistLoader_.master;
+  }
+
+  media() {
+    // playlist loader will not return media if it has not been fully loaded
+    return this.masterPlaylistLoader_.media() || this.initialMedia_;
   }
 
   setupSourceBuffer_() {

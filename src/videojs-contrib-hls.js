@@ -10,9 +10,8 @@ import {Decrypter, AsyncStream, decrypt} from './decrypter';
 import utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from './m3u8';
-import videojs from 'video.js';
+import {default as videojs, AudioTrack} from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
-import {AudioTrack} from 'video.js';
 
 const Hls = {
   PlaylistLoader,
@@ -135,14 +134,20 @@ export default class HlsHandler extends Component {
       this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
     });
 
-    this.masterPlaylistController_.on('loadedmetadata', () => {
+    this.masterPlaylistController_.on('selectedinitialmedia', () => {
       let audioTrackList = this.tech_.audioTracks();
-      let media = this.masterPlaylistController_.masterPlaylistLoader_.media();
-      let mediaGroups =
-        this.masterPlaylistController_.masterPlaylistLoader_.master.mediaGroups;
+      let media = this.masterPlaylistController_.media();
+      let master = this.masterPlaylistController_.master();
+      let mediaGroups = master.mediaGroups;
       let attributes = {
         audio: {main: {default: true}}
       };
+
+      if (!media.attributes) {
+        // source URL was playlist manifest, not master
+        // no audio tracks to add
+        return;
+      }
 
       // only do alternative audio tracks in html5 mode, and if we have them
       if (this.mode_ === 'html5' &&
@@ -173,7 +178,10 @@ export default class HlsHandler extends Component {
         /* eslint-enable dot-notation */
       }
       this.masterPlaylistController_.useAudio();
-      this.trigger('loadedmetadata');
+    });
+
+    this.masterPlaylistController_.on('loadedmetadata', () => {
+      this.tech_.trigger('loadedmetadata');
     });
 
     // do nothing if the tech has been disposed already
