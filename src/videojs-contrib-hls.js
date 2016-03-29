@@ -84,9 +84,6 @@ export default class HlsHandler extends Component {
     this.tech_ = tech;
     this.source_ = options.source;
     this.mode_ = options.mode;
-    // the segment info object for a segment that is in the process of
-    // being downloaded or processed
-    this.pendingSegment_ = null;
 
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
