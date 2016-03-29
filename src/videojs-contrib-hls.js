@@ -13,6 +13,7 @@ import m3u8 from './m3u8';
 import videojs from 'video.js';
 import resolveUrl from './resolve-url';
 import MasterPlaylistController from './master-playlist-controller';
+import {AudioTrack} from 'video.js';
 
 const Hls = {
   PlaylistLoader,
@@ -104,10 +105,12 @@ export default class HlsHandler extends Component {
 
     this.on(this.tech_, 'play', this.play);
 
-    this.tech_.audioTracks().addEventListener('change', () => {
-      for (let i = 0; i < this.tech_.audioTracks().length; i++) {
-        if (this.tech_.audioTracks()[i].enabled) {
-          return this.masterPlaylistController_.useAudio(this.tech_.audioTracks()[i].label);
+    let audioTrackList = this.tech_.audioTracks();
+
+    audioTrackList.addEventListener('change', () => {
+      for (let i = 0; i < audioTrackList.length; i++) {
+        if (audioTrackList[i].enabled) {
+          return this.masterPlaylistController_.useAudio(audioTrackList[i].label);
         }
       }
     });
@@ -132,6 +135,35 @@ export default class HlsHandler extends Component {
       mediaSourceMode: this.mode_,
       hlsHandler: this,
       externHls: Hls
+    });
+
+    this.masterPlaylistController_.on('loadedmetadata', () => {
+      let mediaGroups =
+        this.masterPlaylistController_.masterPlaylistLoader_.master.mediaGroups;
+      let media = this.masterPlaylistController_.masterPlaylistLoader_.media();
+      let attributes = {
+        audio: mediaGroups.AUDIO[media.attributes.AUDIO] || {main: {default: true}}
+      };
+      let audioTracks = this.tech_.audioTracks();
+      // clear current audioTracks
+      let i = audioTracks.length;
+
+      while (i--) {
+        audioTracks.removeTrack(audioTracks[i]);
+      }
+
+      for (let label in attributes.audio) {
+        let hlstrack = attributes.audio[label];
+
+        audioTracks.addTrack(new AudioTrack({
+          kind: hlstrack.default ? 'main' : 'alternative',
+          language: hlstrack.language || '',
+          enabled: hlstrack.default || false,
+          label
+        }));
+      }
+      this.masterPlaylistController_.useAudio();
+      this.trigger('loadedmetadata');
     });
 
     // do nothing if the tech has been disposed already
