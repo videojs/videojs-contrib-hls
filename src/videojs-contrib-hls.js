@@ -134,7 +134,7 @@ export default class HlsHandler extends Component {
     });
 
     this.masterPlaylistController_.on('loadedmetadata', () => {
-      let audioTracks = this.tech_.audioTracks();
+      let audioTrackList = this.tech_.audioTracks();
       let media = this.masterPlaylistController_.masterPlaylistLoader_.media();
       let mediaGroups =
         this.masterPlaylistController_.masterPlaylistLoader_.master.mediaGroups;
@@ -150,10 +150,10 @@ export default class HlsHandler extends Component {
       }
 
       // clear current audioTracks
-      while (audioTracks.length > 0) {
-        let last = audioTracks.length - 1;
+      while (audioTrackList.length > 0) {
+        let track = audioTrackList[(audioTrackList.length - 1)];
 
-        audioTracks.removeTrack(audioTracks[last]);
+        audioTrackList.removeTrack(track);
       }
 
       for (let label in attributes.audio) {
@@ -161,7 +161,7 @@ export default class HlsHandler extends Component {
 
         // disable eslint here so ie8 works
         /* eslint-disable dot-notation */
-        audioTracks.addTrack(new AudioTrack({
+        audioTrackList.addTrack(new AudioTrack({
           kind: hlstrack['default'] ? 'main' : 'alternative',
           language: hlstrack.language || '',
           enabled: hlstrack['default'] || false,

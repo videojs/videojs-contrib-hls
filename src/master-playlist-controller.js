@@ -331,13 +331,23 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     let media = this.masterPlaylistLoader_.media();
     let master = this.masterPlaylistLoader_.master;
 
-    if (!media || !media.attributes || !media.attributes.AUDIO ||
+    // we have been called to early
+    if (!media || !master) {
+      videojs.log.warn('useAudio() was called before playlist was loaded');
+      return;
+    }
+
+    // we have been called but there is no audio track data
+    // so we only have the main one (that we know about)
+    if (!media.attributes || !media.attributes.AUDIO ||
         !master.mediaGroups || !master.mediaGroups.AUDIO) {
       return;
     }
     let mediaGroupName = media.attributes.AUDIO;
 
     if (!master.mediaGroups.AUDIO[mediaGroupName]) {
+      videojs.log.warn('useAudio() was called with a mediaGroup ' + mediaGroupName +
+                       ' that does not exist in the master');
       return;
     }
     let audioEntries = master.mediaGroups.AUDIO[mediaGroupName];
@@ -358,6 +368,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         break;
       }
     }
+
+    // all audio tracks are disabled somehow
     if (!label) {
       return;
     }
