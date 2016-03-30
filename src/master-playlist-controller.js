@@ -331,7 +331,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     let media = this.masterPlaylistLoader_.media();
     let master = this.masterPlaylistLoader_.master;
 
-    // we have been called to early
     if (!media || !master) {
       videojs.log.warn('useAudio() was called before playlist was loaded');
       return;
@@ -369,7 +368,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       }
     }
 
-    // all audio tracks are disabled somehow
+    // all audio tracks are disabled somehow, safari keeps playing
+    // so should we
     if (!label) {
       return;
     }
