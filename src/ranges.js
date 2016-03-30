@@ -113,9 +113,100 @@ const findSoleUncommonTimeRangesEnd = function(original, update) {
   return result[0];
 };
 
+/**
+ * Calculate the intersection of two TimeRanges
+ * @param bufferA {TimeRanges}
+ * @param bufferB {TimeRanges}
+ * @return {TimeRanges} The interesection of `bufferA` with `bufferB`
+ */
+const bufferIntersection = function(bufferA, bufferB) {
+    let start = null;
+    let end = null;
+    let arity = 0;
+    let extents = [];
+    let ranges = [];
+
+    if (!bufferA || !bufferA.length || !bufferB || !bufferB.length) {
+      return videojs.createTimeRange();
+    }
+
+    // Handle the case where we have both buffers and create an
+    // intersection of the two
+    let count = bufferA.length;
+
+    // A) Gather up all start and end times
+    while (count--) {
+      extents.push({time: bufferA.start(count), type: 'start'});
+      extents.push({time: bufferA.end(count), type: 'end'});
+    }
+    count = bufferB.length;
+    while (count--) {
+      extents.push({time: bufferB.start(count), type: 'start'});
+      extents.push({time: bufferB.end(count), type: 'end'});
+    }
+    // B) Sort them by time
+    extents.sort(function(a, b) {
+      return a.time - b.time;
+    });
+
+    // C) Go along one by one incrementing arity for start and decrementing
+    //    arity for ends
+    for (count = 0; count < extents.length; count++) {
+      if (extents[count].type === 'start') {
+        arity++;
+
+        // D) If arity is ever incremented to 2 we are entering an
+        //    overlapping range
+        if (arity === 2) {
+          start = extents[count].time;
+        }
+      } else if (extents[count].type === 'end') {
+        arity--;
+
+        // E) If arity is ever decremented to 1 we leaving an
+        //    overlapping range
+        if (arity === 1) {
+          end = extents[count].time;
+        }
+      }
+
+      // F) Record overlapping ranges
+      if (start !== null && end !== null) {
+        ranges.push([start, end]);
+        start = null;
+        end = null;
+      }
+    }
+
+    return videojs.createTimeRanges(ranges);
+};
+
+/**
+ * Calculates the percentage of `segmentRange` that overlaps the
+ * `buffered` time ranges.
+ * @param segmentRange {TimeRanges} the time range that the segment covers
+ * @param buffered {TimeRanges} the currently buffered time ranges
+ * @return {Number} percent of the segment currently buffered
+ */
+const calculateBufferedPercent = function(segmentRange, buffered) {
+  let segmentDuration = segmentRange.end(0) - segmentRange.start(0);
+
+  let intersection = bufferIntersection(segmentRange, buffered);
+
+  let overlapDuration = 0;
+  let count = intersection.length;
+
+  while (count--) {
+    overlapDuration += intersection.end(count) - intersection.start(count);
+  }
+
+  return (overlapDuration / segmentDuration) * 100;
+};
+
 export default {
   findRange,
   findNextRange,
   findSoleUncommonTimeRangesEnd,
+  calculateBufferedPercent,
   TIME_FUDGE_FACTOR
 };
