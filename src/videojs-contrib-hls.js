@@ -145,8 +145,8 @@ export default class HlsHandler extends Component {
       // only do alternative audio tracks in html5 mode, and if we have them
       if (this.mode_ === 'html5' &&
           media.attributes.AUDIO &&
-         mediaGroups[media.attributes.AUDIO]) {
-        attributes.audio = mediaGroups[media.attributes.AUDIO];
+         mediaGroups.AUDIO[media.attributes.AUDIO]) {
+        attributes.audio = mediaGroups.AUDIO[media.attributes.AUDIO];
       }
 
       // clear current audioTracks
