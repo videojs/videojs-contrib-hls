@@ -13,6 +13,7 @@ import m3u8 from './m3u8';
 import videojs from 'video.js';
 import resolveUrl from './resolve-url';
 import MasterPlaylistController from './master-playlist-controller';
+import {AudioTrack} from 'video.js';
 
 const Hls = {
   PlaylistLoader,
@@ -104,12 +105,10 @@ export default class HlsHandler extends Component {
 
     this.on(this.tech_, 'play', this.play);
 
-    this.tech_.audioTracks().addEventListener('change', () => {
-      for (let i = 0; i < this.tech_.audioTracks().length; i++) {
-        if (this.tech_.audioTracks()[i].enabled) {
-          return this.masterPlaylistController_.useAudio(this.tech_.audioTracks()[i].label);
-        }
-      }
+    let audioTrackList = this.tech_.audioTracks();
+
+    audioTrackList.addEventListener('change', () => {
+      this.masterPlaylistController_.useAudio();
     });
   }
   src(src) {
@@ -132,6 +131,46 @@ export default class HlsHandler extends Component {
       mediaSourceMode: this.mode_,
       hlsHandler: this,
       externHls: Hls
+    });
+
+    this.masterPlaylistController_.on('loadedmetadata', () => {
+      let audioTrackList = this.tech_.audioTracks();
+      let media = this.masterPlaylistController_.masterPlaylistLoader_.media();
+      let mediaGroups =
+        this.masterPlaylistController_.masterPlaylistLoader_.master.mediaGroups;
+      let attributes = {
+        audio: {main: {default: true}}
+      };
+
+      // only do alternative audio tracks in html5 mode, and if we have them
+      if (this.mode_ === 'html5' &&
+          media.attributes.AUDIO &&
+         mediaGroups.AUDIO[media.attributes.AUDIO]) {
+        attributes.audio = mediaGroups.AUDIO[media.attributes.AUDIO];
+      }
+
+      // clear current audioTracks
+      while (audioTrackList.length > 0) {
+        let track = audioTrackList[(audioTrackList.length - 1)];
+
+        audioTrackList.removeTrack(track);
+      }
+
+      for (let label in attributes.audio) {
+        let hlstrack = attributes.audio[label];
+
+        // disable eslint here so ie8 works
+        /* eslint-disable dot-notation */
+        audioTrackList.addTrack(new AudioTrack({
+          kind: hlstrack['default'] ? 'main' : 'alternative',
+          language: hlstrack.language || '',
+          enabled: hlstrack['default'] || false,
+          label
+        }));
+        /* eslint-enable dot-notation */
+      }
+      this.masterPlaylistController_.useAudio();
+      this.trigger('loadedmetadata');
     });
 
     // do nothing if the tech has been disposed already
