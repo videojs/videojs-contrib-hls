@@ -658,7 +658,6 @@ export default class SegmentLoader extends videojs.EventTarget {
   updateTimeline_(segmentInfo) {
     let segment;
     let timelineUpdate;
-    let timelineUpdated;
     let playlist = segmentInfo.playlist;
     let currentMediaIndex = segmentInfo.mediaIndex;
 
@@ -673,15 +672,15 @@ export default class SegmentLoader extends videojs.EventTarget {
                                                    this.sourceUpdater_.buffered());
 
     // Update segment meta-data (duration and end-point) based on timeline
-    timelineUpdated = updateSegmentMetadata(playlist, currentMediaIndex, timelineUpdate);
+    updateSegmentMetadata(playlist, currentMediaIndex, timelineUpdate);
 
     // the last segment append must have been entirely in the
     // already buffered time ranges. adjust the timestamp offset to
     // fetch forward until we find a segment that adds to the
     // buffered time ranges and improves subsequent media index
     // calculations.
-    if (!timelineUpdated) {
-      this.expired_ -= segment.duration;
-    }
+    // if (!timelineUpdated) {
+    //   this.expired_ -= segment.duration;
+    // }
   }
 }
