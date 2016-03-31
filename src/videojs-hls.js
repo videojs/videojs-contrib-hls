@@ -10,12 +10,12 @@ var
   // A fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   bandwidthVariance = 1.2,
-  blacklistDuration = 5 * 60 * 1000, // 5 minute blacklist
+  blacklistDuration = 5 * 60, // 300 ms to blacklist
   TIME_FUDGE_FACTOR = 1 / 30, // Fudge factor to account for TimeRanges rounding
   Component = videojs.getComponent('Component'),
 
   // The amount of time to wait between checking the state of the buffer
-  bufferCheckInterval = 500,
+  bufferCheckInterval = 250,
 
   keyFailed,
   resolveUrl;
@@ -142,7 +142,7 @@ if (window.Uint8Array) {
 }
 
 // the desired length of video to maintain in the buffer, in seconds
-videojs.Hls.GOAL_BUFFER_LENGTH = 30;
+videojs.Hls.GOAL_BUFFER_LENGTH = 120;
 
 videojs.HlsHandler.prototype.src = function(src) {
   var oldMediaPlaylist;
@@ -1103,10 +1103,10 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     uri: segmentInfo.uri,
     responseType: 'arraybuffer',
     withCredentials: this.source_.withCredentials,
-    // Set xhr timeout to 150% of the segment duration to allow us
+    // Set xhr timeout to ~~150%~~ 1000% of the segment duration to allow us
     // some time to switch renditions in the event of a catastrophic
     // decrease in network performance or a server issue.
-    timeout: (segment.duration * 1.5) * 1000,
+    timeout: (segment.duration * 10) * 1000,
     headers: this.segmentXhrHeaders_(segment)
   }, function(error, request) {
     // This is a timeout of a previously aborted segment request
