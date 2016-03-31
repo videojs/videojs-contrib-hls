@@ -132,6 +132,9 @@ export default class HlsHandler extends Component {
       externHls: Hls
     });
 
+    this.tech_.one('canplay',
+      this.masterPlaylistController_.setupFirstPlay.bind(this.masterPlaylistController_));
+
     this.masterPlaylistController_.on('sourceopen', () => {
       this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
     });
