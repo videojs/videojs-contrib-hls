@@ -254,6 +254,18 @@ export default class ParseStream extends Stream {
       this.trigger('data', event);
       return;
     }
+    match = (/^#EXT-X-MEDIA:?(.*)$/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'media'
+      };
+      if (match[1]) {
+        event.attributes = parseAttributes(match[1]);
+      }
+      this.trigger('data', event);
+      return;
+    }
     match = (/^#EXT-X-ENDLIST/).exec(line);
     if (match) {
       this.trigger('data', {

@@ -5,143 +5,21 @@ import videojs from 'video.js';
 import sinon from 'sinon';
 import QUnit from 'qunit';
 import testDataManifests from './test-manifests.js';
+import {
+  useFakeEnvironment,
+  useFakeMediaSource,
+  createPlayer,
+  openMediaSource,
+  standardXHRResponse,
+  absoluteUrl
+} from './plugin-helpers.js';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
-import Hls from '../src/videojs-contrib-hls';
+import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 
 const Flash = videojs.getComponent('Flash');
 let nextId = 0;
-
-// patch over some methods of the provided tech so it can be tested
-// synchronously with sinon's fake timers
-const mockTech = function(tech) {
-  if (tech.isMocked_) {
-    // make this function idempotent because HTML and Flash based
-    // playback have very different lifecycles. For HTML, the tech
-    // is available on player creation. For Flash, the tech isn't
-    // ready until the source has been loaded and one tick has
-    // expired.
-    return;
-  }
-
-  tech.isMocked_ = true;
-  tech.src_ = null;
-  tech.time_ = null;
-
-  tech.paused_ = !tech.autoplay();
-  tech.paused = function() {
-    return tech.paused_;
-  };
-
-  if (!tech.currentTime_) {
-    tech.currentTime_ = tech.currentTime;
-  }
-  tech.currentTime = function() {
-    return tech.time_ === null ? tech.currentTime_() : tech.time_;
-  };
-
-  tech.setSrc = function(src) {
-    tech.src_ = src;
-  };
-  tech.src = function(src) {
-    if (src !== null) {
-      return tech.setSrc(src);
-    }
-    return tech.src_ === null ? tech.src : tech.src_;
-  };
-  tech.currentSrc_ = tech.currentSrc;
-  tech.currentSrc = function() {
-    return tech.src_ === null ? tech.currentSrc_() : tech.src_;
-  };
-
-  tech.play_ = tech.play;
-  tech.play = function() {
-    tech.play_();
-    tech.paused_ = false;
-    tech.trigger('play');
-  };
-  tech.pause_ = tech.pause_;
-  tech.pause = function() {
-    tech.pause_();
-    tech.paused_ = true;
-    tech.trigger('pause');
-  };
-
-  tech.setCurrentTime = function(time) {
-    tech.time_ = time;
-
-    setTimeout(function() {
-      tech.trigger('seeking');
-      setTimeout(function() {
-        tech.trigger('seeked');
-      }, 1);
-    }, 1);
-  };
-};
-
-const createPlayer = function(options) {
-  let video;
-  let player;
-
-  video = document.createElement('video');
-  video.className = 'video-js';
-  document.querySelector('#qunit-fixture').appendChild(video);
-  player = videojs(video, options || {
-    flash: {
-      swf: ''
-    }
-  });
-
-  player.buffered = function() {
-    return videojs.createTimeRange(0, 0);
-  };
-  mockTech(player.tech_);
-
-  return player;
-};
-
-const openMediaSource = function(player, clock) {
-  // ensure the Flash tech is ready
-  player.tech_.triggerReady();
-  clock.tick(1);
-  // mock the tech *after* it has finished loading so that we don't
-  // mock a tech that will be unloaded on the next tick
-  mockTech(player.tech_);
-
-  // simulate the sourceopen event
-  player.tech_.hls.mediaSource.readyState = 'open';
-  player.tech_.hls.mediaSource.dispatchEvent({
-    type: 'sourceopen',
-    swfId: player.tech_.el().id
-  });
-};
-
-const standardXHRResponse = function(request) {
-  if (!request.url) {
-    return;
-  }
-
-  let contentType = 'application/json';
-  // contents off the global object
-  let manifestName = (/(?:.*\/)?(.*)\.m3u8/).exec(request.url);
-
-  if (manifestName) {
-    manifestName = manifestName[1];
-  } else {
-    manifestName = request.url;
-  }
-
-  if (/\.m3u8?/.test(request.url)) {
-    contentType = 'application/vnd.apple.mpegurl';
-  } else if (/\.ts/.test(request.url)) {
-    contentType = 'video/MP2T';
-  }
-
-  request.response = new Uint8Array(16).buffer;
-  request.respond(200, { 'Content-Type': contentType },
-                  testDataManifests[manifestName]);
-};
 
 // do a shallow copy of the properties of source onto the target object
 const merge = function(target, source) {
@@ -152,26 +30,16 @@ const merge = function(target, source) {
   }
 };
 
-// return an absolute version of a page-relative URL
-const absoluteUrl = function(relativeUrl) {
-  return window.location.protocol + '//' +
-    window.location.host +
-    (window.location.pathname
-        .split('/')
-        .slice(0, -1)
-        .concat(relativeUrl)
-        .join('/')
-    );
-};
-
 // a no-op MediaSource implementation to allow synchronous testing
 class MockMediaSource extends videojs.EventTarget {
   static open() {}
 
   constructor() {
     super();
+
     this.duration = NaN;
     this.seekable = videojs.createTimeRange();
+    this.sourceBuffers = [];
     this.mediaSource_ = {
       // Mock a fake sourceBuffer array because of an IE11 work-around
       // in `filterBufferedRanges`
@@ -182,8 +50,12 @@ class MockMediaSource extends videojs.EventTarget {
     this.seekable = videojs.createTimeRange(start, end);
   }
   addSourceBuffer() {
+    let sourceBuffers = this.sourceBuffers;
+
     return new (videojs.extend(videojs.EventTarget, {
-      constructor() {},
+      constructor() {
+        sourceBuffers.push(this);
+      },
       abort() {},
       buffered: videojs.createTimeRange(),
       appendBuffer() {},
@@ -201,7 +73,7 @@ const URL = {
   }
 };
 
-QUnit.module('HLS -', {
+QUnit.module('HLS', {
   beforeEach() {
     this.old = {};
 
@@ -308,26 +180,17 @@ QUnit.module('HLS -', {
 });
 
 QUnit.test('starts playing if autoplay is specified', function() {
-  let plays = 0;
-
   this.player.autoplay(true);
   this.player.src({
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
 
-  // REMOVEME workaround https://github.com/videojs/video.js/issues/2326
-  this.player.tech_.triggerReady();
-  this.clock.tick(1);
-
   // make sure play() is called *after* the media source opens
-  this.player.tech_.hls.play = function() {
-    plays++;
-  };
   openMediaSource(this.player, this.clock);
 
   standardXHRResponse(this.requests[0]);
-  QUnit.strictEqual(1, plays, 'play was called');
+  QUnit.ok(!this.player.paused(), 'not paused');
 });
 
 QUnit.test('XHR requests first byte range on play', function() {
@@ -348,36 +211,13 @@ QUnit.test('Seeking requests correct byte range', function() {
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  this.player.tech_.triggerReady();
-  this.clock.tick(1);
   this.player.tech_.trigger('play');
   openMediaSource(this.player, this.clock);
   standardXHRResponse(this.requests[0]);
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
   this.clock.tick(1);
   this.player.currentTime(40);
   this.clock.tick(1);
   QUnit.equal(this.requests[2].headers.Range, 'bytes=2299992-2835603');
-});
-
-QUnit.test('if buffered, will request second segment byte range', function() {
-  this.player.src({
-    src: 'manifest/playlist.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.player.tech_.triggerReady();
-  this.clock.tick(1);
-  this.player.tech_.trigger('play');
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(0, 20);
-  };
-  standardXHRResponse(this.requests[0]);
-  standardXHRResponse(this.requests[1]);
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  this.player.tech_.hls.checkBuffer_();
-  this.clock.tick(100);
-  QUnit.equal(this.requests[2].headers.Range, 'bytes=1823412-2299991');
 });
 
 QUnit.test('autoplay seeks to the live point after playlist load', function() {
@@ -441,145 +281,10 @@ QUnit.test('duration is set when the source opens after the playlist is loaded',
               'set the duration');
 });
 
-QUnit.test('calls `remove` based on seekable when loading a live segment', function() {
-  let removes = [];
-  let seekable = videojs.createTimeRanges([[60, 120]]);
-
-  this.player.src({
-    src: 'liveStart30sBefore.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.seekable = function() {
-    return seekable;
-  };
-
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
-    return new (videojs.extend(videojs.EventTarget, {
-      constructor() {},
-      abort() {},
-      buffered: videojs.createTimeRange(),
-      appendBuffer() {},
-      remove(start, end) {
-        removes.push([start, end]);
-      }
-    }))();
-  };
-  this.player.tech_.hls.bandwidth = 20e10;
-  this.player.tech_.triggerReady();
-  standardXHRResponse(this.requests[0]);
-
-  this.player.tech_.hls.playlists.trigger('loadedmetadata');
-  this.player.tech_.trigger('canplay');
-  this.player.tech_.paused = function() {
-    return false;
-  };
-  this.player.tech_.readyState = function() {
-    return 1;
-  };
-  this.player.tech_.trigger('play');
-
-  this.clock.tick(1);
-  standardXHRResponse(this.requests[1]);
-
-  QUnit.strictEqual(this.requests[0].url,
-                    'liveStart30sBefore.m3u8',
-                    'master playlist requested');
-  QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0],
-                  [0, seekable.start(0)],
-                  'remove called with the right range');
-});
-
-QUnit.test('calls `remove` based on currentTime when loading a live segment ' +
-           'if seekable start is after currentTime', function() {
-  let removes = [];
-  let seekable = videojs.createTimeRanges([[0, 80]]);
-
-  this.player.src({
-    src: 'liveStart30sBefore.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.seekable = function() {
-    return seekable;
-  };
-
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
-    return new (videojs.extend(videojs.EventTarget, {
-      constructor() {},
-      abort() {},
-      buffered: videojs.createTimeRange(),
-      appendBuffer() {},
-      remove(start, end) {
-        removes.push([start, end]);
-      }
-    }))();
-  };
-  this.player.tech_.hls.bandwidth = 20e10;
-  this.player.tech_.triggerReady();
-  standardXHRResponse(this.requests[0]);
-  this.player.tech_.hls.playlists.trigger('loadedmetadata');
-  this.player.tech_.trigger('canplay');
-
-  this.player.tech_.paused = function() {
-    return false;
-  };
-
-  this.player.tech_.readyState = function() {
-    return 1;
-  };
-
-  this.player.tech_.trigger('play');
-  this.clock.tick(1);
-  // Change seekable so that it starts *after* the currentTime which was set
-  // based on the previous seekable range (the end of 80)
-  seekable = videojs.createTimeRanges([[100, 120]]);
-  standardXHRResponse(this.requests[1]);
-
-  QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
-  QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
-});
-
-QUnit.test('calls `remove` based on currentTime when loading a vod segment', function() {
-  let removes = [];
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
-    return new (videojs.extend(videojs.EventTarget, {
-      constructor() {},
-      abort() {},
-      buffered: videojs.createTimeRange(),
-      appendBuffer() {},
-      remove(start, end) {
-        removes.push([start, end]);
-      }
-    }))();
-  };
-  this.player.tech_.hls.bandwidth = 20e10;
-  standardXHRResponse(this.requests[0]);
-  this.player.currentTime(120);
-  standardXHRResponse(this.requests[1]);
-  standardXHRResponse(this.requests[2]);
-
-  QUnit.strictEqual(this.requests[0].url,
-                    'manifest/master.m3u8',
-                    'master playlist requested');
-  QUnit.strictEqual(absoluteUrl('manifest/media2.m3u8'),
-                    this.requests[1].url,
-                    'media playlist requested');
-  QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
-});
-
-QUnit.test('codecs are passed to the source buffer', function() {
+/* eslint-disable */
+// TODO - segment loader extraction changes responsibility for codec passing
+/* eslint-enable */
+QUnit.skip('codecs are passed to the source buffer', function() {
   let codecs = [];
 
   this.player.src({
@@ -587,8 +292,11 @@ QUnit.test('codecs are passed to the source buffer', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+  let addSourceBuffer = this.player.tech_.hls.mediaSource.addSourceBuffer;
+
   this.player.tech_.hls.mediaSource.addSourceBuffer = function(codec) {
     codecs.push(codec);
+    return addSourceBuffer.call(this, codec);
   };
 
   this.requests.shift().respond(200, null,
@@ -632,42 +340,6 @@ QUnit.test('creates a PlaylistLoader on init', function() {
   QUnit.strictEqual(this.player.tech_.hls.playlists.master.playlists[0],
                     this.player.tech_.hls.playlists.media(),
                     'the playlist is selected');
-});
-
-QUnit.test('re-initializes the playlist loader when switching sources', function() {
-  // source is set
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  // loader gets media playlist
-  standardXHRResponse(this.requests.shift());
-  // request a segment
-  standardXHRResponse(this.requests.shift());
-  // change the source
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  // maybe not needed if https://github.com/videojs/video.js/issues/2326 gets fixed
-  this.clock.tick(1);
-  QUnit.ok(!this.player.tech_.hls.playlists.media(), 'no media playlist');
-  QUnit.equal(this.player.tech_.hls.playlists.state,
-              'HAVE_NOTHING',
-              'reset the playlist loader state');
-  QUnit.equal(this.requests.length, 1, 'requested the new src');
-
-  // buffer check
-  this.player.tech_.hls.checkBuffer_();
-  QUnit.equal(this.requests.length, 1, 'did not request a stale segment');
-
-  // sourceopen
-  openMediaSource(this.player, this.clock);
-
-  QUnit.equal(this.requests.length, 1, 'made one request');
-  QUnit.ok(this.requests[0].url.indexOf('master.m3u8') >= 0,
-           'requested only the new playlist');
 });
 
 QUnit.test('sets the duration if one is available on the playlist', function() {
@@ -752,94 +424,10 @@ QUnit.test('starts downloading a segment on loadedmetadata', function() {
                     'the first segment is requested');
 });
 
-QUnit.test('always returns an empty buffered region when there are no SourceBuffers', function() {
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRanges([[0, 10]]);
-  };
-  openMediaSource(this.player, this.clock);
-
-  standardXHRResponse(this.requests[0]);
-  standardXHRResponse(this.requests[1]);
-  this.player.currentTime(3);
-  this.clock.tick(1);
-
-  QUnit.equal(this.player.tech_.hls.findBufferedRange_().end(0),
-              10,
-              'inside the first buffered region');
-
-  // Simulate the condition with no source buffers
-  this.player.hls.mediaSource.mediaSource_.sourceBuffers = [];
-
-  QUnit.equal(this.player.tech_.hls.findBufferedRange_().length,
-              0,
-              'empty TimeRanges returned');
-
-   // Simulate the condition with no media source
-  delete this.player.hls.mediaSource.mediaSource_;
-
-  QUnit.equal(this.player.tech_.hls.findBufferedRange_().length,
-              0,
-              'empty TimeRanges returned');
-});
-
-QUnit.test('finds the correct buffered region based on currentTime', function() {
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRanges([[0, 5], [6, 12]]);
-  };
-  openMediaSource(this.player, this.clock);
-
-  standardXHRResponse(this.requests[0]);
-  standardXHRResponse(this.requests[1]);
-  this.player.currentTime(3);
-  this.clock.tick(1);
-  QUnit.equal(this.player.tech_.hls.findBufferedRange_().end(0),
-              5,
-              'inside the first buffered region');
-  this.player.currentTime(6);
-  this.clock.tick(1);
-  QUnit.equal(this.player.tech_.hls.findBufferedRange_().end(0),
-              12,
-              'inside the second buffered region');
-});
-
-QUnit.test('recognizes absolute URIs and requests them unmodified', function() {
-  this.player.src({
-    src: 'manifest/absoluteUris.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  standardXHRResponse(this.requests[0]);
-  standardXHRResponse(this.requests[1]);
-  QUnit.strictEqual(this.requests[1].url,
-                    'http://example.com/00001.ts',
-                    'the first segment is requested');
-});
-
-QUnit.test('recognizes domain-relative URLs', function() {
-  this.player.src({
-    src: 'manifest/domainUris.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  standardXHRResponse(this.requests[0]);
-  standardXHRResponse(this.requests[1]);
-  QUnit.strictEqual(this.requests[1].url,
-                    window.location.protocol + '//' + window.location.host +
-                    '/00001.ts',
-                    'the first segment is requested');
-});
-
-QUnit.test('re-initializes the handler for each source', function() {
+/* eslint-disable */
+// TODO - segment loader extraction changes ownership for source buffer
+// /* eslint-enable */
+QUnit.skip('re-initializes the handler for each source', function() {
   let firstPlaylists;
   let secondPlaylists;
   let firstMSE;
@@ -888,6 +476,45 @@ QUnit.test('triggers an error when a master playlist request errors', function()
               'a network error is triggered');
 });
 
+/* eslint-disable */
+// TODO - segment loader extraction changes ownership for source buffer
+/* eslint-enable */
+QUnit.skip('re-initializes the handler for each source', function() {
+  let firstPlaylists;
+  let secondPlaylists;
+  let firstMSE;
+  let secondMSE;
+  let aborts = 0;
+
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  firstPlaylists = this.player.tech_.hls.playlists;
+  firstMSE = this.player.tech_.hls.mediaSource;
+  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests.shift());
+  this.player.tech_.hls.sourceBuffer.abort = function() {
+    aborts++;
+  };
+
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  secondPlaylists = this.player.tech_.hls.playlists;
+  secondMSE = this.player.tech_.hls.mediaSource;
+
+  QUnit.equal(1, aborts, 'aborted the old source buffer');
+  QUnit.ok(this.requests[0].aborted, 'aborted the old segment request');
+  QUnit.notStrictEqual(firstPlaylists,
+                       secondPlaylists,
+                       'the playlist object is not reused');
+  QUnit.notStrictEqual(firstMSE, secondMSE, 'the media source object is not reused');
+});
+
 QUnit.test('downloads media playlists after loading the master', function() {
   this.player.src({
     src: 'manifest/master.m3u8',
@@ -923,15 +550,21 @@ QUnit.test('upshifts if the initial bandwidth hint is high', function() {
   standardXHRResponse(this.requests[1]);
   standardXHRResponse(this.requests[2]);
 
-  QUnit.strictEqual(this.requests[0].url,
-                    'manifest/master.m3u8',
-                    'master playlist requested');
-  QUnit.strictEqual(this.requests[1].url,
-                    absoluteUrl('manifest/media2.m3u8'),
-                    'media playlist requested');
-  QUnit.strictEqual(this.requests[2].url,
-                    absoluteUrl('manifest/media2-00001.ts'),
-                    'first segment requested');
+  QUnit.strictEqual(
+    this.requests[0].url,
+    'manifest/master.m3u8',
+    'master playlist requested'
+  );
+  QUnit.strictEqual(
+    this.requests[1].url,
+    absoluteUrl('manifest/media2.m3u8'),
+    'media playlist requested'
+  );
+  QUnit.strictEqual(
+    this.requests[2].url,
+    absoluteUrl('manifest/media2-00001.ts'),
+    'first segment requested'
+  );
 });
 
 QUnit.test('downshifts if the initial bandwidth hint is low', function() {
@@ -957,43 +590,13 @@ QUnit.test('downshifts if the initial bandwidth hint is low', function() {
                     'first segment requested');
 });
 
-QUnit.test('starts checking the buffer on init', function() {
-  let player;
-  let fills = 0;
-  let drains = 0;
-
-  player = createPlayer();
-  player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player, this.clock);
-
-  // wait long enough for the buffer check interval to expire and
-  // trigger fill/drainBuffer
-  player.tech_.hls.fillBuffer = function() {
-    fills++;
-  };
-  player.tech_.hls.drainBuffer = function() {
-    drains++;
-  };
-  this.clock.tick(500);
-  QUnit.equal(fills, 1, 'called fillBuffer');
-  QUnit.equal(drains, 1, 'called drainBuffer');
-
-  player.dispose();
-  this.clock.tick(100 * 1000);
-  QUnit.equal(fills, 1, 'did not call fillBuffer again');
-  QUnit.equal(drains, 1, 'did not call drainBuffer again');
-});
-
 QUnit.test('buffer checks are noops until a media playlist is ready', function() {
   this.player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.checkBuffer_();
+  this.clock.tick(10 * 1000);
 
   QUnit.strictEqual(1, this.requests.length, 'one request was made');
   QUnit.strictEqual(this.requests[0].url,
@@ -1027,162 +630,12 @@ QUnit.test('buffer checks are noops when only the master is ready', function() {
   this.player.tech_.hls.bandwidth = 1;
   // master
   standardXHRResponse(this.requests.shift());
-  // trigger fillBuffer()
-  this.player.tech_.hls.checkBuffer_();
+  this.clock.tick(10 * 1000);
 
   QUnit.strictEqual(1, this.requests.length, 'one request was made');
   QUnit.strictEqual(this.requests[0].url,
                     absoluteUrl('manifest/media1.m3u8'),
                     'media playlist requested');
-});
-
-QUnit.test('calculates the bandwidth after downloading a segment', function() {
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  standardXHRResponse(this.requests[0]);
-
-  // set the request time to be a bit earlier so our bandwidth calculations are not NaN
-  this.requests[1].requestTime = (new Date()) - 100;
-
-  standardXHRResponse(this.requests[1]);
-
-  QUnit.ok(this.player.tech_.hls.bandwidth, 'bandwidth is calculated');
-  QUnit.ok(this.player.tech_.hls.bandwidth > 0,
-           'bandwidth is positive: ' + this.player.tech_.hls.bandwidth);
-  QUnit.ok(this.player.tech_.hls.segmentXhrTime >= 0,
-           'saves segment request time: ' + this.player.tech_.hls.segmentXhrTime + 's');
-});
-
-QUnit.test('fires a progress event after downloading a segment', function() {
-  let progressCount = 0;
-
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  standardXHRResponse(this.requests.shift());
-  this.player.on('progress', function() {
-    progressCount++;
-  });
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(progressCount, 1, 'fired a progress event');
-});
-
-QUnit.test('selects a playlist after segment downloads', function() {
-  let calls = 0;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.selectPlaylist = () => {
-    calls++;
-    return this.player.tech_.hls.playlists.master.playlists[0];
-  };
-
-  // master
-  standardXHRResponse(this.requests[0]);
-  // media
-  standardXHRResponse(this.requests[1]);
-  // segment
-  standardXHRResponse(this.requests[2]);
-
-  QUnit.strictEqual(calls, 2, 'selects after the initial segment');
-  this.player.currentTime = function() {
-    return 1;
-  };
-  this.player.buffered = function() {
-    return videojs.createTimeRange(0, 2);
-  };
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  this.player.tech_.hls.checkBuffer_();
-
-  standardXHRResponse(this.requests[3]);
-
-  QUnit.strictEqual(calls, 3, 'selects after additional segments');
-});
-
-QUnit.test('updates the duration after switching playlists', function() {
-  let selectedPlaylist = false;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.player.tech_.hls.bandwidth = 1e20;
-  // master
-  standardXHRResponse(this.requests[0]);
-  // media3
-  standardXHRResponse(this.requests[1]);
-
-  this.player.tech_.hls.selectPlaylist = () => {
-    selectedPlaylist = true;
-
-    // this duration should be overwritten by the playlist change
-    this.player.tech_.hls.mediaSource.duration = -Infinity;
-
-    return this.player.tech_.hls.playlists.master.playlists[1];
-  };
-
-  // segment 0
-  standardXHRResponse(this.requests[2]);
-  // media1
-  standardXHRResponse(this.requests[3]);
-  QUnit.ok(selectedPlaylist, 'selected playlist');
-  QUnit.ok(this.player.tech_.hls.mediaSource.duration !== -Infinity,
-           'updates the duration');
-});
-
-QUnit.test('downloads additional playlists if required', function() {
-  let called = false;
-  let playlist = {
-    uri: 'media3.m3u8'
-  };
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.player.tech_.hls.bandwidth = 20000;
-  standardXHRResponse(this.requests[0]);
-
-  standardXHRResponse(this.requests[1]);
-  // before an m3u8 is downloaded, no segments are available
-  this.player.tech_.hls.selectPlaylist = function() {
-    if (!called) {
-      called = true;
-      return playlist;
-    }
-    playlist.segments = [1, 1, 1];
-    return playlist;
-  };
-
-  // the playlist selection is revisited after a new segment is downloaded
-  this.player.trigger('timeupdate');
-
-  this.requests[2].bandwidth = 3000000;
-  this.requests[2].response = new Uint8Array([0]);
-  this.requests[2].respond(200, null, '');
-  standardXHRResponse(this.requests[3]);
-
-  QUnit.strictEqual(4, this.requests.length, 'requests were made');
-  QUnit.strictEqual(this.requests[3].url,
-                    absoluteUrl('manifest/' + playlist.uri),
-                    'made playlist request');
-  QUnit.strictEqual(playlist.uri,
-                    this.player.tech_.hls.playlists.media().uri,
-                    'a new playlists was selected');
-  QUnit.ok(this.player.tech_.hls.playlists.media().segments,
-           'segments are now available');
 });
 
 QUnit.test('selects a playlist below the current bandwidth', function() {
@@ -1223,7 +676,7 @@ QUnit.test('allows initial bandwidth to be provided', function() {
                                 '#EXT-X-TARGETDURATION:10\n');
   QUnit.equal(this.player.tech_.hls.bandwidth,
               500,
-              'prefers user-specified intial bandwidth');
+              'prefers user-specified initial bandwidth');
 });
 
 QUnit.test('raises the minimum bitrate for a stream proportionially', function() {
@@ -1271,51 +724,53 @@ QUnit.test('uses the lowest bitrate if no other is suitable', function() {
                     'the lowest bitrate stream is selected');
 });
 
-QUnit.test('selects the correct rendition by player dimensions', function() {
+QUnit.test('selects the correct rendition by tech dimensions', function() {
   let playlist;
+  let hls;
 
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-
   openMediaSource(this.player, this.clock);
   standardXHRResponse(this.requests[0]);
 
+  hls = this.player.tech_.hls;
+
   this.player.width(640);
   this.player.height(360);
-  this.player.tech_.hls.bandwidth = 3000000;
+  hls.bandwidth = 3000000;
 
-  playlist = this.player.tech_.hls.selectPlaylist();
+  playlist = hls.selectPlaylist();
 
   QUnit.deepEqual(playlist.attributes.RESOLUTION,
                   {width: 960, height: 540},
-                  'should return the correct resolution by player dimensions');
+                  'should return the correct resolution by tech dimensions');
   QUnit.equal(playlist.attributes.BANDWIDTH,
               1928000,
               'should have the expected bandwidth in case of multiple');
 
   this.player.width(1920);
   this.player.height(1080);
-  this.player.tech_.hls.bandwidth = 3000000;
+  hls.bandwidth = 3000000;
 
-  playlist = this.player.tech_.hls.selectPlaylist();
+  playlist = hls.selectPlaylist();
 
   QUnit.deepEqual(playlist.attributes.RESOLUTION,
                   {width: 960, height: 540},
-                  'should return the correct resolution by playerdimensions');
+                  'should return the correct resolution by tech dimensions');
   QUnit.equal(playlist.attributes.BANDWIDTH,
               1928000,
               'should have the expected bandwidth in case of multiple');
 
   this.player.width(396);
   this.player.height(224);
-  playlist = this.player.tech_.hls.selectPlaylist();
+  playlist = hls.selectPlaylist();
 
   QUnit.deepEqual(playlist.attributes.RESOLUTION,
                   {width: 396, height: 224},
                   'should return the correct resolution by ' +
-                  'player dimensions, if exact match');
+                  'tech dimensions, if exact match');
   QUnit.equal(playlist.attributes.BANDWIDTH,
               440000,
               'should have the expected bandwidth in case of multiple, if exact match');
@@ -1326,7 +781,7 @@ QUnit.test('selects the correct rendition by player dimensions', function() {
 
   QUnit.deepEqual(playlist.attributes.RESOLUTION,
                   {width: 396, height: 224},
-                  'should return the next larger resolution by player dimensions, ' +
+                  'should return the next larger resolution by tech dimensions, ' +
                   'if no exact match exists');
   QUnit.equal(playlist.attributes.BANDWIDTH,
               440000,
@@ -1398,121 +853,6 @@ QUnit.test('filters playlists that are currently excluded', function() {
               'expired the exclusion');
 });
 
-QUnit.test('blacklists switching from video+audio playlists to audio only', function() {
-  let audioPlaylist;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.player.tech_.hls.bandwidth = 1e10;
-  // master
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="mp4a.40.2"\n' +
-                                'media.m3u8\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=10,RESOLUTION=1x1\n' +
-                                'media1.m3u8\n');
-
-  // media1
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(this.player.tech_.hls.playlists.media(),
-              this.player.tech_.hls.playlists.master.playlists[1],
-              'selected video+audio');
-  audioPlaylist = this.player.tech_.hls.playlists.master.playlists[0];
-  QUnit.equal(audioPlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
-});
-
-QUnit.test('blacklists switching from audio-only playlists to video+audio', function() {
-  let videoAudioPlaylist;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.player.tech_.hls.bandwidth = 1;
-  // master
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="mp4a.40.2"\n' +
-                                'media.m3u8\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=10,RESOLUTION=1x1\n' +
-                                'media1.m3u8\n');
-
-  // media1
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(this.player.tech_.hls.playlists.media(),
-              this.player.tech_.hls.playlists.master.playlists[0],
-              'selected audio only');
-  videoAudioPlaylist = this.player.tech_.hls.playlists.master.playlists[1];
-  QUnit.equal(videoAudioPlaylist.excludeUntil,
-              Infinity,
-              'excluded incompatible playlist');
-});
-
-QUnit.test('blacklists switching from video-only playlists to video+audio', function() {
-  let videoAudioPlaylist;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.player.tech_.hls.bandwidth = 1;
-  // master
-  this.requests.shift()
-    .respond(200, null,
-             '#EXTM3U\n' +
-             '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.4d400d"\n' +
-             'media.m3u8\n' +
-             '#EXT-X-STREAM-INF:BANDWIDTH=10,CODECS="avc1.4d400d,mp4a.40.2"\n' +
-             'media1.m3u8\n');
-
-  // media
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(this.player.tech_.hls.playlists.media(),
-              this.player.tech_.hls.playlists.master.playlists[0],
-              'selected video only');
-  videoAudioPlaylist = this.player.tech_.hls.playlists.master.playlists[1];
-  QUnit.equal(videoAudioPlaylist.excludeUntil,
-              Infinity,
-              'excluded incompatible playlist');
-});
-
-QUnit.test('After an initial media playlist 404s, we fire loadedmetadata once we successfully load a playlist', function() {
-  let count = 0;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.bandwidth = 20000;
-  this.player.on('loadedmetadata', function() {
-    count += 1;
-  });
-  // master
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(count,
-    0,
-    'loadedMedia not triggered before requesting playlist');
-  // media
-  this.requests.shift().respond(404);
-  QUnit.equal(count,
-              0,
-              'loadedMedia not triggered after playlist 404');
-  // media
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(count,
-              1,
-              'loadedMedia triggered after successful recovery from 404');
-});
-
 QUnit.test('does not blacklist compatible H.264 codec strings', function() {
   let master;
 
@@ -1573,202 +913,6 @@ QUnit.test('does not blacklist compatible AAC codec strings', function() {
                     'did not blacklist');
 });
 
-QUnit.test('blacklists switching between playlists with incompatible audio codecs', function() {
-  let alternatePlaylist;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.player.tech_.hls.bandwidth = 1;
-  // master
-  this.requests.shift()
-    .respond(200, null,
-             '#EXTM3U\n' +
-             '#EXT-X-STREAM-INF:BANDWIDTH=1,CODECS="avc1.4d400d,mp4a.40.5"\n' +
-             'media.m3u8\n' +
-             '#EXT-X-STREAM-INF:BANDWIDTH=10,CODECS="avc1.4d400d,mp4a.40.2"\n' +
-             'media1.m3u8\n');
-
-  // media
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(this.player.tech_.hls.playlists.media(),
-              this.player.tech_.hls.playlists.master.playlists[0],
-              'selected HE-AAC stream');
-  alternatePlaylist = this.player.tech_.hls.playlists.master.playlists[1];
-  QUnit.equal(alternatePlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
-});
-
-QUnit.test('does not download the next segment if the buffer is full', function() {
-  let currentTime = 15;
-
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.player.tech_.currentTime = function() {
-    return currentTime;
-  };
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(0, currentTime + videojs.Hls.GOAL_BUFFER_LENGTH);
-  };
-  openMediaSource(this.player, this.clock);
-
-  standardXHRResponse(this.requests[0]);
-
-  this.player.trigger('timeupdate');
-
-  QUnit.strictEqual(this.requests.length, 1, 'no segment request was made');
-});
-
-QUnit.test('downloads the next segment if the buffer is getting low', function() {
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  standardXHRResponse(this.requests[0]);
-  standardXHRResponse(this.requests[1]);
-
-  QUnit.strictEqual(this.requests.length, 2, 'made two requests');
-  this.player.tech_.currentTime = function() {
-    return 15;
-  };
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(0, 19.999);
-  };
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  this.player.tech_.hls.checkBuffer_();
-
-  standardXHRResponse(this.requests[2]);
-
-  QUnit.strictEqual(this.requests.length, 3, 'made a request');
-  QUnit.strictEqual(this.requests[2].url,
-                    absoluteUrl('manifest/media-00002.ts'),
-                    'made segment request');
-});
-
-QUnit.test('buffers based on the correct TimeRange if multiple ranges exist', function() {
-  let currentTime;
-  let buffered;
-
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.player.tech_.currentTime = function() {
-    return currentTime;
-  };
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(buffered);
-  };
-  currentTime = 8;
-  buffered = [[0, 10], [20, 30]];
-
-  standardXHRResponse(this.requests[0]);
-  standardXHRResponse(this.requests[1]);
-
-  QUnit.strictEqual(this.requests.length, 2, 'made two requests');
-  QUnit.strictEqual(this.requests[1].url,
-                    absoluteUrl('manifest/media-00002.ts'),
-                    'made segment request');
-
-  currentTime = 22;
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  this.player.tech_.hls.checkBuffer_();
-  QUnit.strictEqual(this.requests.length, 3, 'made three requests');
-  QUnit.strictEqual(this.requests[2].url,
-                    absoluteUrl('manifest/media-00003.ts'),
-                    'made segment request');
-});
-
-QUnit.test('stops downloading segments at the end of the playlist', function() {
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  standardXHRResponse(this.requests[0]);
-  this.requests = [];
-  this.player.tech_.hls.mediaIndex = 4;
-  this.player.trigger('timeupdate');
-
-  QUnit.strictEqual(this.requests.length, 0, 'no request is made');
-});
-
-QUnit.test('only makes one segment request at a time', function() {
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  standardXHRResponse(this.requests.pop());
-  this.player.trigger('timeupdate');
-
-  QUnit.strictEqual(1, this.requests.length, 'one XHR is made');
-  this.player.trigger('timeupdate');
-  QUnit.strictEqual(1, this.requests.length, 'only one XHR is made');
-});
-
-QUnit.test('only appends one segment at a time', function() {
-  let appends = 0;
-
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  // media.m3u8
-  standardXHRResponse(this.requests.pop());
-  this.player.tech_.hls.sourceBuffer.appendBuffer = function() {
-    appends++;
-  };
-
-  // segment 0
-  standardXHRResponse(this.requests.pop());
-
-  this.player.tech_.hls.checkBuffer_();
-  QUnit.equal(this.requests.length, 0, 'did not request while updating');
-
-  this.player.tech_.hls.checkBuffer_();
-  QUnit.equal(appends, 1, 'appended once');
-});
-
-QUnit.test('waits to download new segments until the media playlist is stable', function() {
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  // make sure we stay on the lowest variant
-  this.player.tech_.hls.bandwidth = 1;
-  // master
-  standardXHRResponse(this.requests.shift());
-  // media1
-  standardXHRResponse(this.requests.shift());
-
-  // force a playlist switch
-  this.player.tech_.hls.playlists.media('media2.m3u8');
-
-  // segment 0
-  standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-
-  QUnit.equal(this.requests.length, 1, 'only the playlist request outstanding');
-  this.player.tech_.hls.checkBuffer_();
-  QUnit.equal(this.requests.length, 1, 'delays segment fetching');
-
-  // media3
-  standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.checkBuffer_();
-  QUnit.equal(this.requests.length, 1, 'resumes segment fetching');
-});
-
 QUnit.test('cancels outstanding XHRs when seeking', function() {
   this.player.src({
     src: 'manifest/media.m3u8',
@@ -1794,70 +938,7 @@ QUnit.test('cancels outstanding XHRs when seeking', function() {
   QUnit.strictEqual(this.requests.length, 3, 'opened new XHR');
 });
 
-QUnit.test('when outstanding XHRs are cancelled, they get aborted properly', function() {
-  let readystatechanges = 0;
-
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  standardXHRResponse(this.requests[0]);
-
-  // trigger a segment download request
-  this.player.trigger('timeupdate');
-
-  this.player.tech_.hls.segmentXhr_.onreadystatechange = function() {
-    readystatechanges++;
-  };
-
-  // attempt to seek while the download is in progress
-  this.player.currentTime(12);
-  this.clock.tick(1);
-
-  QUnit.ok(this.requests[1].aborted, 'XHR aborted');
-  QUnit.strictEqual(this.requests.length, 3, 'opened new XHR');
-  QUnit.notEqual(this.player.tech_.hls.segmentXhr_.url,
-                 this.requests[1].url,
-                 'a new segment is request that is not the aborted one');
-  QUnit.strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
-});
-
-QUnit.test('segmentXhr is properly nulled out when dispose is called', function() {
-  let readystatechanges = 0;
-  let oldDispose = Flash.prototype.dispose;
-  let player;
-
-  Flash.prototype.dispose = function() {};
-
-  player = createPlayer();
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player, this.clock);
-  standardXHRResponse(this.requests[0]);
-
-  // trigger a segment download request
-  player.trigger('timeupdate');
-
-  player.tech_.hls.segmentXhr_.onreadystatechange = function() {
-    readystatechanges++;
-  };
-
-  player.tech_.hls.dispose();
-
-  QUnit.ok(this.requests[1].aborted, 'XHR aborted');
-  QUnit.strictEqual(this.requests.length, 2, 'did not open a new XHR');
-  QUnit.equal(player.tech_.hls.segmentXhr_, null, 'the segment xhr is nulled out');
-  QUnit.strictEqual(readystatechanges, 0, 'onreadystatechange was not called');
-
-  Flash.prototype.dispose = oldDispose;
-});
-
-QUnit.test('does not modify the media index for in-buffer seeking', function() {
-  let mediaIndex;
-
+QUnit.test('does not abort segment loading for in-buffer seeking', function() {
   this.player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1867,13 +948,9 @@ QUnit.test('does not modify the media index for in-buffer seeking', function() {
   this.player.tech_.buffered = function() {
     return videojs.createTimeRange(0, 20);
   };
-  mediaIndex = this.player.tech_.hls.mediaIndex;
 
   this.player.tech_.setCurrentTime(11);
   this.clock.tick(1);
-  QUnit.equal(this.player.tech_.hls.mediaIndex,
-              mediaIndex,
-              'did not interrupt buffering');
   QUnit.equal(this.requests.length, 1, 'did not abort the outstanding request');
 });
 
@@ -1960,6 +1037,32 @@ QUnit.test('seeking in an empty playlist is a non-erroring noop', function() {
   QUnit.equal(this.requests.length, requestsLength, 'made no additional requests');
 });
 
+QUnit.test('fire loadedmetadata once we successfully load a playlist', function() {
+  let count = 0;
+
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.hls.bandwidth = 20000;
+  this.player.on('loadedmetadata', function() {
+    count += 1;
+  });
+  // master
+  standardXHRResponse(this.requests.shift());
+  QUnit.equal(count, 0,
+    'loadedMedia not triggered before requesting playlist');
+  // media
+  this.requests.shift().respond(404);
+  QUnit.equal(count, 0,
+    'loadedMedia not triggered after playlist 404');
+  // media
+  standardXHRResponse(this.requests.shift());
+  QUnit.equal(count, 1,
+    'loadedMedia triggered after successful recovery from 404');
+});
+
 QUnit.test('sets seekable and duration for live playlists', function() {
   this.player.src({
     src: 'http://example.com/manifest/missingEndlist.m3u8',
@@ -1982,43 +1085,6 @@ QUnit.test('sets seekable and duration for live playlists', function() {
   QUnit.strictEqual(this.player.tech_.hls.mediaSource.duration,
                     Infinity,
                     'duration on the mediaSource is infinity');
-});
-
-QUnit.test('live playlist starts three target durations before live', function() {
-  this.player.src({
-    src: 'live.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-MEDIA-SEQUENCE:101\n' +
-                                '#EXTINF:10,\n' +
-                                '0.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '1.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '2.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '3.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '4.ts\n');
-
-  QUnit.equal(this.requests.length, 0, 'no outstanding segment request');
-
-  this.player.tech_.paused = function() {
-    return false;
-  };
-  this.player.tech_.readyState = function() {
-    return 1;
-  };
-  this.player.tech_.trigger('play');
-  this.clock.tick(1);
-  QUnit.equal(this.player.currentTime(),
-              this.player.tech_.hls.seekable().end(0),
-              'seeked to the seekable end');
-
-  QUnit.equal(this.requests.length, 1, 'begins buffering');
 });
 
 QUnit.test('live playlist starts with correct currentTime value', function() {
@@ -2044,7 +1110,7 @@ QUnit.test('live playlist starts with correct currentTime value', function() {
   let media = this.player.tech_.hls.playlists.media();
 
   QUnit.strictEqual(this.player.currentTime(),
-                    videojs.Hls.Playlist.seekable(media).end(0),
+                    Hls.Playlist.seekable(media).end(0),
                     'currentTime is updated at playback');
 });
 
@@ -2119,6 +1185,47 @@ QUnit.test('resets the time to a seekable position when resuming a live stream '
   this.player.tech_.trigger('seeked');
 });
 
+QUnit.test('reloads out-of-date live playlists when switching variants', function() {
+  let oldManifest = testDataManifests['variant-update'];
+
+  this.player.src({
+    src: 'http://example.com/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  this.player.tech_.hls.master = {
+    playlists: [{
+      mediaSequence: 15,
+      segments: [1, 1, 1]
+    }, {
+      uri: 'http://example.com/variant-update.m3u8',
+      mediaSequence: 0,
+      segments: [1, 1]
+    }]
+  };
+  // playing segment 15 on playlist zero
+  this.player.tech_.hls.media = this.player.tech_.hls.master.playlists[0];
+  this.player.mediaIndex = 1;
+
+  testDataManifests['variant-update'] = '#EXTM3U\n' +
+    '#EXT-X-MEDIA-SEQUENCE:16\n' +
+    '#EXTINF:10,\n' +
+    '16.ts\n' +
+    '#EXTINF:10,\n' +
+    '17.ts\n';
+
+  // switch playlists
+  this.player.tech_.hls.selectPlaylist = function() {
+    return this.player.tech_.hls.master.playlists[1];
+  };
+  // timeupdate downloads segment 16 then switches playlists
+  this.player.trigger('timeupdate');
+
+  QUnit.strictEqual(this.player.mediaIndex, 1, 'mediaIndex points at the next segment');
+  testDataManifests['variant-update'] = oldManifest;
+});
+
 QUnit.test('if withCredentials global option is used, withCredentials is set on the XHR object', function() {
   let hlsOptions = videojs.options.hls;
 
@@ -2164,7 +1271,30 @@ QUnit.test('src level credentials supersede the global options', function() {
 
 });
 
-QUnit.test('aborts segment processing on seek', function() {
+QUnit.test('does not break if the playlist has no segments', function() {
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  try {
+    openMediaSource(this.player, this.clock);
+    this.requests[0].respond(200, null,
+                        '#EXTM3U\n' +
+                        '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                        '#EXT-X-TARGETDURATION:10\n');
+  } catch (e) {
+    QUnit.ok(false, 'an error was thrown');
+    throw e;
+  }
+  QUnit.ok(true, 'no error was thrown');
+  QUnit.strictEqual(
+    this.requests.length,
+    1,
+    'no this.requestsfor non-existent segments were queued'
+  );
+});
+
+QUnit.skip('aborts segment processing on seek', function() {
   let currentTime = 0;
 
   this.player.src({
@@ -2200,81 +1330,6 @@ QUnit.test('aborts segment processing on seek', function() {
   QUnit.ok(!this.player.tech_.hls.pendingSegment_, 'aborted processing');
 });
 
-QUnit.test('calls mediaSource\'s timestampOffset on discontinuity', function() {
-  let buffered = [[]];
-
-  this.player.src({
-    src: 'discontinuity.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.play();
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(buffered);
-  };
-
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXTINF:10,0\n' +
-                                '1.ts\n' +
-                                '#EXT-X-DISCONTINUITY\n' +
-                                '#EXTINF:10,0\n' +
-                                '2.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-  this.player.tech_.hls.sourceBuffer.timestampOffset = 0;
-  // 1.ts
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(this.player.tech_.hls.sourceBuffer.timestampOffset,
-              0,
-              'timestampOffset starts at zero');
-
-  buffered = [[0, 10]];
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  // 2.ts
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(this.player.tech_.hls.sourceBuffer.timestampOffset,
-              10,
-              'timestampOffset set after discontinuity');
-});
-
-QUnit.test('sets timestampOffset when seeking with discontinuities', function() {
-  let timeRange = videojs.createTimeRange(0, 10);
-
-  this.player.src({
-    src: 'discontinuity.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.play();
-  this.player.tech_.buffered = function() {
-    return timeRange;
-  };
-  this.player.tech_.seeking = function() {
-    return true;
-  };
-
-  this.requests.pop().respond(200, null,
-                              '#EXTM3U\n' +
-                              '#EXTINF:10,0\n' +
-                              '1.ts\n' +
-                              '#EXTINF:10,0\n' +
-                              '2.ts\n' +
-                              '#EXT-X-DISCONTINUITY\n' +
-                              '#EXTINF:10,0\n' +
-                              '3.ts\n' +
-                              '#EXT-X-ENDLIST\n');
-  this.player.tech_.hls.sourceBuffer.timestampOffset = 0;
-  this.player.currentTime(21);
-  this.clock.tick(1);
-  QUnit.equal(this.requests.shift().aborted, true, 'aborted first request');
-  // 3.ts
-  standardXHRResponse(this.requests.pop());
-  this.clock.tick(1000);
-  QUnit.equal(this.player.tech_.hls.sourceBuffer.timestampOffset,
-              20,
-              'timestampOffset starts at zero');
-});
-
 QUnit.test('can seek before the source buffer opens', function() {
   this.player.src({
     src: 'media.m3u8',
@@ -2287,202 +1342,6 @@ QUnit.test('can seek before the source buffer opens', function() {
 
   this.player.currentTime(1);
   QUnit.equal(this.player.currentTime(), 1, 'seeked');
-});
-
-QUnit.skip('sets the timestampOffset after seeking to discontinuity', function() {
-  let bufferEnd;
-
-  this.player.src({
-    src: 'discontinuity.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(0, bufferEnd);
-  };
-
-  this.requests.pop().respond(200, null,
-                              '#EXTM3U\n' +
-                              '#EXTINF:10,0\n' +
-                              '1.ts\n' +
-                              '#EXT-X-DISCONTINUITY\n' +
-                              '#EXTINF:10,0\n' +
-                              '2.ts\n' +
-                              '#EXT-X-ENDLIST\n');
-  // 1.ts
-  standardXHRResponse(this.requests.pop());
-
-  // seek to a discontinuity
-  this.player.tech_.setCurrentTime(10);
-  bufferEnd = 9.9;
-  this.clock.tick(1);
-  // 1.ts, again
-  standardXHRResponse(this.requests.pop());
-  this.player.tech_.hls.checkBuffer_();
-  // 2.ts
-  standardXHRResponse(this.requests.pop());
-  QUnit.equal(this.player.tech_.hls.sourceBuffer.timestampOffset,
-              9.9,
-              'set the timestamp offset');
-});
-
-QUnit.test('tracks segment end times as they are buffered', function() {
-  let bufferEnd = 0;
-
-  this.player.src({
-    src: 'media.m3u8',
-    type: 'application/x-mpegURL'
-  });
-  openMediaSource(this.player, this.clock);
-
-  // as new segments are downloaded, the buffer end is updated
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(0, bufferEnd);
-  };
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXTINF:10,\n' +
-                                '0.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '1.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-
-  // 0.ts is shorter than advertised
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(this.player.tech_.hls.mediaSource.duration,
-              20,
-              'original duration is from the m3u8');
-
-  bufferEnd = 9.5;
-  this.player.tech_.hls.sourceBuffer.trigger('update');
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  QUnit.equal(this.player.tech_.hls.mediaSource.duration, 10 + 9.5, 'updated duration');
-});
-
-QUnit.test('updates first segment duration as it is buffered', function() {
-  let bufferEnd = 0;
-
-  this.player.src({
-    src: 'media.m3u8',
-    type: 'application/x-mpegURL'
-  });
-  openMediaSource(this.player, this.clock);
-
-  // as new segments are downloaded, the buffer end is updated
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(0, bufferEnd);
-  };
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXTINF:10,\n' +
-                                '0.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '1.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-
-  // 0.ts is shorter than advertised
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(this.player.tech_.hls.mediaSource.duration, 20, 'original duration is from the m3u8');
-  QUnit.equal(this.player.tech_.hls.playlists.media().segments[0].duration, 10,
-    'segment duration initially based on playlist');
-
-  bufferEnd = 9.5;
-  this.player.tech_.hls.sourceBuffer.trigger('update');
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  QUnit.equal(this.player.tech_.hls.playlists.media().segments[0].duration, 9.5,
-    'updated segment duration');
-});
-
-QUnit.test('updates segment durations as they are buffered', function() {
-  let bufferEnd = 0;
-
-  this.player.src({
-    src: 'media.m3u8',
-    type: 'application/x-mpegURL'
-  });
-  openMediaSource(this.player, this.clock);
-
-  // as new segments are downloaded, the buffer end is updated
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(0, bufferEnd);
-  };
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXTINF:10,\n' +
-                                '0.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '1.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-
-  // 0.ts is shorter than advertised
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(this.player.tech_.hls.mediaSource.duration, 20, 'original duration is from the m3u8');
-
-  QUnit.equal(this.player.tech_.hls.playlists.media().segments[1].duration, 10,
-    'segment duration initially based on playlist');
-
-  bufferEnd = 9.5;
-  this.player.tech_.hls.sourceBuffer.trigger('update');
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  this.clock.tick(1);
-  standardXHRResponse(this.requests.shift());
-  bufferEnd = 19;
-  this.player.tech_.hls.sourceBuffer.trigger('update');
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-
-  QUnit.equal(this.player.tech_.hls.playlists.media().segments[1].duration, 9.5,
-    'updated segment duration');
-});
-
-QUnit.skip('seeking does not fail when targeted between segments', function() {
-  let currentTime;
-  let segmentUrl;
-
-  this.player.src({
-    src: 'media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  // mock out the currentTime callbacks
-  /* eslint-disable camelcase */
-  this.player.tech_.el().vjs_setProperty = function(property, value) {
-    if (property === 'currentTime') {
-      currentTime = value;
-    }
-  };
-  this.player.tech_.el().vjs_getProperty = function(property) {
-    if (property === 'currentTime') {
-      return currentTime;
-    }
-  };
-  /* eslint-enable camelcase */
-
-  // media
-  standardXHRResponse(this.requests.shift());
-  // segment 0
-  standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.checkBuffer_();
-  segmentUrl = this.requests[0].url;
-  // segment 1
-  standardXHRResponse(this.requests.shift());
-
-  // seek to a time that is greater than the last tag in segment 0 but
-  // less than the first in segment 1
-
-  /* eslint-disable no-warning-comments */
-  // FIXME: it's not possible to seek here without timestamp-based
-  // segment durations
-  /* eslint-enable no-warning-comments */
-
-  this.player.tech_.setCurrentTime(9.4);
-  this.clock.tick(1);
-  QUnit.equal(this.requests[0].url, segmentUrl, 'requested the later segment');
-
-  // segment 1
-  standardXHRResponse(this.requests.shift());
-  this.player.tech_.trigger('seeked');
-  QUnit.equal(this.player.currentTime(), 9.5, 'seeked to the later time');
 });
 
 QUnit.test('resets the switching algorithm if a request times out', function() {
@@ -2499,6 +1358,7 @@ QUnit.test('resets the switching algorithm if a request times out', function() {
   standardXHRResponse(this.requests.shift());
   // simulate a segment timeout
   this.requests[0].timedout = true;
+  // segment
   this.requests.shift().abort();
 
   standardXHRResponse(this.requests.shift());
@@ -2558,57 +1418,28 @@ QUnit.test('remove event handlers on dispose', function() {
   QUnit.ok(unscoped <= 0, 'no unscoped handlers');
 });
 
-QUnit.test('aborts the source buffer on disposal', function() {
-  let aborts = 0;
-  let player;
-
-  player = createPlayer();
-  player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player, this.clock);
-  player.dispose();
-  QUnit.ok(true, 'disposed before creating the source buffer');
-  this.requests.length = 0;
-
-  player = createPlayer();
-  player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(player, this.clock);
-  standardXHRResponse(this.requests.shift());
-  player.tech_.hls.sourceBuffer.abort = function() {
-    aborts++;
-  };
-
-  player.dispose();
-  QUnit.strictEqual(aborts, 1, 'aborted the source buffer');
-});
-
 QUnit.test('the source handler supports HLS mime types', function() {
   ['html5', 'flash'].forEach(function(techName) {
-    QUnit.ok(videojs.HlsSourceHandler(techName).canHandleSource({
+    QUnit.ok(HlsSourceHandler(techName).canHandleSource({
       type: 'aPplicatiOn/x-MPegUrl'
     }), 'supports x-mpegurl');
-    QUnit.ok(videojs.HlsSourceHandler(techName).canHandleSource({
+    QUnit.ok(HlsSourceHandler(techName).canHandleSource({
       type: 'aPplicatiOn/VnD.aPPle.MpEgUrL'
     }), 'supports vnd.apple.mpegurl');
-    QUnit.ok(videojs.HlsSourceHandler(techName).canPlayType('aPplicatiOn/VnD.aPPle.MpEgUrL'),
-            'supports vnd.apple.mpegurl');
-    QUnit.ok(videojs.HlsSourceHandler(techName).canPlayType('aPplicatiOn/x-MPegUrl'),
+    QUnit.ok(HlsSourceHandler(techName).canPlayType('aPplicatiOn/VnD.aPPle.MpEgUrL'),
+             'supports vnd.apple.mpegurl');
+    QUnit.ok(HlsSourceHandler(techName).canPlayType('aPplicatiOn/x-MPegUrl'),
              'supports x-mpegurl');
 
-    QUnit.ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
+    QUnit.ok(!(HlsSourceHandler(techName).canHandleSource({
       type: 'video/mp4'
-    }) instanceof videojs.HlsHandler), 'does not support mp4');
-    QUnit.ok(!(videojs.HlsSourceHandler(techName).canHandleSource({
+    }) instanceof HlsHandler), 'does not support mp4');
+    QUnit.ok(!(HlsSourceHandler(techName).canHandleSource({
       type: 'video/x-flv'
-    }) instanceof videojs.HlsHandler), 'does not support flv');
-    QUnit.ok(!(videojs.HlsSourceHandler(techName).canPlayType('video/mp4')),
+    }) instanceof HlsHandler), 'does not support flv');
+    QUnit.ok(!(HlsSourceHandler(techName).canPlayType('video/mp4')),
              'does not support mp4');
-    QUnit.ok(!(videojs.HlsSourceHandler(techName).canPlayType('video/x-flv')),
+    QUnit.ok(!(HlsSourceHandler(techName).canPlayType('video/x-flv')),
              'does not support flv');
   });
 });
@@ -2628,14 +1459,19 @@ QUnit.test('fires loadstart manually if Flash is used', function() {
       return 'auto';
     },
     src() {},
-    setTimeout: window.setTimeout
+    setTimeout: window.setTimeout,
+    audioTracks() {
+      return {
+        on: () => {}
+      };
+    }
   }))();
   let loadstarts = 0;
 
   tech.on('loadstart', function() {
     loadstarts++;
   });
-  videojs.HlsSourceHandler('flash').handleSource({
+  HlsSourceHandler('flash').handleSource({
     src: 'movie.m3u8',
     type: 'application/x-mpegURL'
   }, tech);
@@ -2648,7 +1484,7 @@ QUnit.test('fires loadstart manually if Flash is used', function() {
 QUnit.test('has no effect if native HLS is available', function() {
   let player;
 
-  videojs.Hls.supportsNativeHls = true;
+  Hls.supportsNativeHls = true;
   player = createPlayer();
   player.src({
     src: 'http://example.com/manifest/master.m3u8',
@@ -2667,36 +1503,6 @@ QUnit.test('is not supported on browsers without typed arrays', function() {
 
   // cleanup
   window.Uint8Array = oldArray;
-});
-
-QUnit.test('tracks the bytes downloaded', function() {
-  this.player.src({
-    src: 'http://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  QUnit.strictEqual(this.player.tech_.hls.bytesReceived, 0, 'no bytes received');
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXTINF:10,\n' +
-                                '0.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '1.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-  // transmit some segment bytes
-  this.requests[0].response = new ArrayBuffer(17);
-  this.requests.shift().respond(200, null, '');
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-
-  QUnit.strictEqual(this.player.tech_.hls.bytesReceived, 17, 'tracked bytes received');
-
-  this.player.tech_.hls.checkBuffer_();
-
-  // transmit some more
-  this.requests[0].response = new ArrayBuffer(5);
-  this.requests.shift().respond(200, null, '');
-
-  QUnit.strictEqual(this.player.tech_.hls.bytesReceived, 22, 'tracked more bytes');
 });
 
 QUnit.test('re-emits mediachange events', function() {
@@ -2742,86 +1548,6 @@ QUnit.test('can be disposed before finishing initialization', function() {
   }
 });
 
-QUnit.test('calls endOfStream on the media source after appending the last segment', function() {
-  let endOfStreams = 0;
-  let buffered = [[]];
-
-  this.player.src({
-    src: 'http://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRanges(buffered);
-  };
-  this.player.tech_.hls.mediaSource.endOfStream = function() {
-    endOfStreams++;
-  };
-  this.player.currentTime(20);
-  this.clock.tick(1);
-  // playlist response
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXTINF:10,\n' +
-                                '0.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '1.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-  // segment response
-  this.requests[0].response = new ArrayBuffer(17);
-  this.requests.shift().respond(200, null, '');
-  QUnit.strictEqual(endOfStreams, 0, 'waits for the buffer update to finish');
-
-  buffered = [[0, 10]];
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  QUnit.strictEqual(endOfStreams, 1, 'called endOfStream on the media source');
-});
-
-QUnit.test('calls endOfStream on the media source when the current buffer ends at duration', function() {
-  let endOfStreams = 0;
-  let buffered = [[]];
-
-  this.player.src({
-    src: 'http://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRanges(buffered);
-  };
-  this.player.tech_.hls.mediaSource.endOfStream = function() {
-    endOfStreams++;
-  };
-  this.player.currentTime(19);
-  this.clock.tick(1);
-  // playlist response
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXTINF:10,\n' +
-                                '0.ts\n' +
-                                '#EXTINF:10,\n' +
-                                '1.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-  // segment response
-  this.requests[0].response = new ArrayBuffer(17);
-  this.requests.shift().respond(200, null, '');
-  QUnit.strictEqual(endOfStreams, 0, 'waits for the buffer update to finish');
-
-  buffered = [[10, 20]];
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-
-  this.player.currentTime(5);
-  this.clock.tick(1);
-  // segment response
-  this.requests[0].response = new ArrayBuffer(17);
-  this.requests.shift().respond(200, null, '');
-
-  buffered = [[0, 20]];
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-
-  QUnit.strictEqual(endOfStreams, 2, 'called endOfStream on the media source twice');
-});
-
 QUnit.test('calling play() at the end of a video replays', function() {
   let seekTime = -1;
 
@@ -2848,52 +1574,6 @@ QUnit.test('calling play() at the end of a video replays', function() {
 
   this.player.tech_.trigger('play');
   QUnit.equal(seekTime, 0, 'seeked to the beginning');
-});
-
-QUnit.test('segments remain pending without a source buffer', function() {
-  this.player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php?r=52"\n' +
-                                '#EXTINF:10,\n' +
-                                'http://media.example.com/fileSequence52-A.ts' +
-                                '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php?r=53"\n' +
-                                '#EXTINF:10,\n' +
-                                'http://media.example.com/fileSequence53-B.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-
-  this.player.tech_.hls.sourceBuffer = null;
-
-  // key
-  standardXHRResponse(this.requests.shift());
-  // segment
-  standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.checkBuffer_();
-  QUnit.ok(this.player.tech_.hls.pendingSegment_, 'waiting for the source buffer');
-});
-
-QUnit.test('keys are requested when an encrypted segment is loaded', function() {
-  this.player.src({
-    src: 'https://example.com/encrypted.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.trigger('play');
-  // playlist
-  standardXHRResponse(this.requests.shift());
-
-  QUnit.strictEqual(this.requests.length, 2, 'a key XHR is created');
-  QUnit.strictEqual(this.requests[0].url,
-                    this.player.tech_.hls.playlists.media().segments[0].key.uri,
-                    'key XHR is created with correct uri');
-  QUnit.strictEqual(this.requests[1].url,
-                    this.player.tech_.hls.playlists.media().segments[0].uri,
-                    'segment XHR is created with correct uri');
 });
 
 QUnit.test('keys are resolved relative to the master playlist', function() {
@@ -2939,42 +1619,6 @@ QUnit.test('keys are resolved relative to their containing playlist', function()
               'resolves multiple relative paths');
 });
 
-QUnit.test('a new key XHR is created when a the segment is requested', function() {
-  this.player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-TARGETDURATION:15\n' +
-                                '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
-                                '#EXTINF:2.833,\n' +
-                                'http://media.example.com/fileSequence1.ts\n' +
-                                '#EXT-X-KEY:METHOD=AES-128,URI="keys/key2.php"\n' +
-                                '#EXTINF:2.833,\n' +
-                                'http://media.example.com/fileSequence2.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-  // key 1
-  standardXHRResponse(this.requests.shift());
-  // segment 1
-  standardXHRResponse(this.requests.shift());
-  // "finish" decrypting segment 1
-  this.player.tech_.hls.pendingSegment_.bytes = new Uint8Array(16);
-  this.player.tech_.hls.checkBuffer_();
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(0, 2.833);
-  };
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-
-  QUnit.strictEqual(this.requests.length, 2, 'a key XHR is created');
-  QUnit.strictEqual(this.requests[0].url,
-                    'https://example.com/' +
-                    this.player.tech_.hls.playlists.media().segments[1].key.uri,
-                    'a key XHR is created with the correct uri');
-});
-
 QUnit.test('seeking should abort an outstanding key request and create a new one', function() {
   this.player.src({
     src: 'https://example.com/encrypted.m3u8',
@@ -3008,152 +1652,17 @@ QUnit.test('seeking should abort an outstanding key request and create a new one
               'urls should match');
 });
 
-QUnit.test('retries key requests once upon failure', function() {
-  this.player.src({
-    src: 'https://example.com/encrypted.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.trigger('play');
-
-  this.requests.shift()
-    .respond(200, null,
-             '#EXTM3U\n' +
-             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
-             '#EXTINF:2.833,\n' +
-             'http://media.example.com/fileSequence52-A.ts\n' +
-             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=53"\n' +
-             '#EXTINF:15.0,\n' +
-             'http://media.example.com/fileSequence53-A.ts\n');
-    // segment
-  standardXHRResponse(this.requests.pop());
-  this.requests[0].respond(404);
-  QUnit.equal(this.requests.length, 2, 'create a new XHR for the same key');
-  QUnit.equal(this.requests[1].url, this.requests[0].url, 'should be the same key');
-
-  this.requests[1].respond(404);
-  QUnit.equal(this.requests.length, 2, 'gives up after one retry');
-});
-
-QUnit.test('blacklists playlist if key requests fail more than once', function() {
-  let bytes = [];
-  let media;
-
-  this.player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.trigger('play');
-
-  this.requests.shift()
-    .respond(200, null,
-             '#EXTM3U\n' +
-             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
-             '#EXTINF:2.833,\n' +
-             'http://media.example.com/fileSequence52-A.ts\n' +
-             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=53"\n' +
-             '#EXTINF:15.0,\n' +
-             'http://media.example.com/fileSequence53-A.ts\n');
-  this.player.tech_.hls.sourceBuffer.appendBuffer = function(chunk) {
-    bytes.push(chunk);
-  };
-
-  media = this.player.tech_.hls.playlists.media_;
-
-  // segment 1
-  standardXHRResponse(this.requests.pop());
-  // fail key
-  this.requests.shift().respond(400);
-  // fail key, again
-  this.requests.shift().respond(400);
-  this.player.tech_.hls.checkBuffer_();
-
-  QUnit.ok(media.excludeUntil > 0,
-           'playlist blacklisted');
-});
-
-QUnit.test('the key is supplied to the decrypter in the correct format', function() {
-  let keys = [];
-
-  this.player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.trigger('play');
-
-  this.requests.pop()
-    .respond(200, null,
-             '#EXTM3U\n' +
-             '#EXT-X-MEDIA-SEQUENCE:5\n' +
-             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
-             '#EXTINF:2.833,\n' +
-             'http://media.example.com/fileSequence52-A.ts\n' +
-             '#EXTINF:15.0,\n' +
-             'http://media.example.com/fileSequence52-B.ts\n');
-
-  videojs.Hls.Decrypter = function(encrypted, key) {
-    keys.push(key);
-  };
-
-  // segment
-  standardXHRResponse(this.requests.pop());
-  this.requests[0].response = new Uint32Array([0, 1, 2, 3]).buffer;
-  this.requests[0].respond(200, null, '');
-  // key
-  this.requests.shift();
-  QUnit.equal(keys.length, 1, 'only one Decrypter was constructed');
-  QUnit.deepEqual(keys[0],
-                  new Uint32Array([0, 0x01000000, 0x02000000, 0x03000000]),
-                  'passed the specified segment key');
-
-});
-
-QUnit.test('supplies the media sequence of current segment as the IV by default, if no IV is specified', function() {
-  let ivs = [];
-
-  this.player.src({
-    src: 'https://example.com/encrypted-media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.trigger('play');
-
-  this.requests.pop()
-    .respond(200, null,
-             '#EXTM3U\n' +
-             '#EXT-X-MEDIA-SEQUENCE:5\n' +
-             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
-             '#EXTINF:2.833,\n' +
-             'http://media.example.com/fileSequence52-A.ts\n' +
-             '#EXTINF:15.0,\n' +
-             'http://media.example.com/fileSequence52-B.ts\n');
-
-  videojs.Hls.Decrypter = function(encrypted, key, iv) {
-    ivs.push(iv);
-  };
-
-  this.requests[0].response = new Uint32Array([0, 0, 0, 0]).buffer;
-  this.requests[0].respond(200, null, '');
-  this.requests.shift();
-  standardXHRResponse(this.requests.pop());
-
-  QUnit.equal(ivs.length, 1, 'only one Decrypter was constructed');
-  QUnit.deepEqual(ivs[0],
-                  new Uint32Array([0, 0, 0, 5]),
-                  'the IV for the segment is the media sequence');
-});
-
-QUnit.test('switching playlists with an outstanding key request does not stall playback', function() {
-  let buffered = [];
+QUnit.test('switching playlists with an outstanding key request aborts request and ' +
+           'loads segment', function() {
+  let keyXhr;
   let media = '#EXTM3U\n' +
-    '#EXT-X-MEDIA-SEQUENCE:5\n' +
-    '#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n' +
-    '#EXTINF:2.833,\n' +
-    'http://media.example.com/fileSequence52-A.ts\n' +
-    '#EXTINF:15.0,\n' +
-    'http://media.example.com/fileSequence52-B.ts\n';
+      '#EXT-X-MEDIA-SEQUENCE:5\n' +
+      '#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n' +
+      '#EXTINF:2.833,\n' +
+      'http://media.example.com/fileSequence52-A.ts\n' +
+      '#EXTINF:15.0,\n' +
+      'http://media.example.com/fileSequence52-B.ts\n' +
+      '#EXT-X-ENDLIST\n';
 
   this.player.src({
     src: 'https://example.com/master.m3u8',
@@ -3162,123 +1671,27 @@ QUnit.test('switching playlists with an outstanding key request does not stall p
   openMediaSource(this.player, this.clock);
   this.player.tech_.trigger('play');
 
-  this.player.tech_.hls.bandwidth = 1;
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange(buffered);
-  };
   // master playlist
   standardXHRResponse(this.requests.shift());
   // media playlist
   this.requests.shift().respond(200, null, media);
-  // mock out media switching from this point on
-  this.player.tech_.hls.playlists.media = () => {
-    return this.player.tech_.hls.playlists.master.playlists[1];
-  };
   // first segment of the original media playlist
   standardXHRResponse(this.requests.pop());
 
-  // "switch" media
+  QUnit.equal(this.requests.length, 1, 'key request only one outstanding');
+  keyXhr = this.requests.shift();
+  QUnit.ok(!keyXhr.aborted, 'key request outstanding');
+
   this.player.tech_.hls.playlists.trigger('mediachange');
-  QUnit.ok(!this.requests[0].aborted, 'did not abort the key request');
 
-  // "finish" decrypting segment 1
-  // key
-  standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.pendingSegment_.bytes = new Uint8Array(16);
-  this.player.tech_.hls.checkBuffer_();
-  buffered = [[0, 2.833]];
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  this.player.tech_.hls.checkBuffer_();
-
-  QUnit.equal(this.requests.length, 1, 'made a request');
-  QUnit.equal(this.requests[0].url,
-              'http://media.example.com/fileSequence52-B.ts',
-              'requested the segment');
-});
-
-QUnit.test('resolves relative key URLs against the playlist', function() {
-  this.player.src({
-    src: 'https://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  this.requests.shift()
-    .respond(200, null,
-             '#EXTM3U\n' +
-             '#EXT-X-MEDIA-SEQUENCE:5\n' +
-             '#EXT-X-KEY:METHOD=AES-128,URI="key.php?r=52"\n' +
-             '#EXTINF:2.833,\n' +
-             'http://media.example.com/fileSequence52-A.ts\n' +
-             '#EXT-X-ENDLIST\n');
-  QUnit.equal(this.requests[0].url,
-              'https://example.com/key.php?r=52',
-              'resolves the key URL');
-});
-
-QUnit.test('treats invalid keys as a key request failure and blacklists playlist', function() {
-  let bytes = [];
-  let media;
-
-  this.player.src({
-    src: 'https://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.trigger('play');
-  this.requests.shift()
-    .respond(200, null,
-             '#EXTM3U\n' +
-             '#EXT-X-MEDIA-SEQUENCE:5\n' +
-             '#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n' +
-             '#EXTINF:2.833,\n' +
-             'http://media.example.com/fileSequence52-A.ts\n' +
-             '#EXT-X-KEY:METHOD=NONE\n' +
-             '#EXTINF:15.0,\n' +
-             'http://media.example.com/fileSequence52-B.ts\n');
-  this.player.tech_.hls.sourceBuffer.appendBuffer = function(chunk) {
-    bytes.push(chunk);
-  };
-
-  media = this.player.tech_.hls.playlists.media_;
-  // segment request
-  standardXHRResponse(this.requests.pop());
-  // keys should be 16 bytes long
-  this.requests[0].response = new Uint8Array(1).buffer;
-  this.requests.shift().respond(200, null, '');
-
+  QUnit.ok(keyXhr.aborted, 'key request aborted');
+  QUnit.equal(this.requests.length, 2, 'loaded key and segment');
   QUnit.equal(this.requests[0].url,
               'https://priv.example.com/key.php?r=52',
-              'retries the key');
-
-  // the retried response is invalid, too
-  this.requests[0].response = new Uint8Array(1);
-  this.requests.shift().respond(200, null, '');
-  this.player.tech_.hls.checkBuffer_();
-
-  // two failed attempts is an error - blacklist this playlist
-  QUnit.ok(media.excludeUntil > 0,
-           'blacklisted playlist');
-});
-
-QUnit.test('live stream should not call endOfStream', function() {
-  this.player.src({
-    src: 'https://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.trigger('play');
-  this.requests[0].respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXT-X-MEDIA-SEQUENCE:0\n' +
-                           '#EXTINF:1\n' +
-                           '0.ts\n');
-  this.requests[1].response = new Uint8Array(1);
-  this.requests[1].respond(200, null, '');
-  QUnit.equal('open',
-              this.player.tech_.hls.mediaSource.readyState,
-              'media source should be in open state, not ended ' +
-              'state for live stream after the last segment in m3u8 downloaded');
+              'requested the key');
+  QUnit.equal(this.requests[1].url,
+              'http://media.example.com/fileSequence52-A.ts',
+              'requested the segment');
 });
 
 QUnit.test('does not download segments if preload option set to none', function() {
@@ -3293,51 +1706,12 @@ QUnit.test('does not download segments if preload option set to none', function(
   standardXHRResponse(this.requests.shift());
   // media
   standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.checkBuffer_();
+  this.clock.tick(10 * 1000);
 
   this.requests = this.requests.filter(function(request) {
     return !(/m3u8$/).test(request.uri);
   });
   QUnit.equal(this.requests.length, 0, 'did not download any segments');
-});
-
-QUnit.test('does not process update end until buffered value has been set', function() {
-  let drainBufferCallCount = 0;
-  let origDrainBuffer;
-
-  this.player.src({
-    src: 'master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  openMediaSource(this.player, this.clock);
-  origDrainBuffer = this.player.tech_.hls.drainBuffer;
-  this.player.tech_.hls.drainBuffer = function() {
-    drainBufferCallCount++;
-  };
-
-  // master
-  standardXHRResponse(this.requests.shift());
-  // media
-  standardXHRResponse(this.requests.shift());
-
-  QUnit.equal(drainBufferCallCount, 0, 'drainBuffer not called yet');
-
-  // segment
-  standardXHRResponse(this.requests.shift());
-
-  QUnit.ok(this.player.tech_.hls.pendingSegment_, 'pending segment exists');
-  QUnit.equal(drainBufferCallCount, 1, 'drainBuffer called');
-
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  QUnit.ok(this.player.tech_.hls.pendingSegment_, 'pending segment exists');
-
-  this.player.tech_.hls.drainBuffer = origDrainBuffer;
-  this.player.tech_.hls.drainBuffer();
-  QUnit.ok(this.player.tech_.hls.pendingSegment_, 'pending segment exists');
-
-  this.player.tech_.hls.sourceBuffer.trigger('updateend');
-  QUnit.ok(!this.player.tech_.hls.pendingSegment_, 'pending segment cleared out');
 });
 
 // workaround https://bugzilla.mozilla.org/show_bug.cgi?id=548397
@@ -3363,88 +1737,281 @@ QUnit.test('selectPlaylist does not fail if getComputedStyle returns null', func
   window.getComputedStyle = oldGetComputedStyle;
 });
 
-QUnit.module('Buffer Inspection');
-QUnit.test('detects time range end-point changed by updates', function() {
-  let edge;
-
-  // Single-range changes
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
-                                                    videojs.createTimeRange([[0, 11]]));
-  QUnit.strictEqual(edge, 11, 'detected a forward addition');
-
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[5, 10]]),
-                                                    videojs.createTimeRange([[0, 10]]));
-  QUnit.strictEqual(edge, null, 'ignores backward addition');
-
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[5, 10]]),
-                                                    videojs.createTimeRange([[0, 11]]));
-  QUnit.strictEqual(edge,
-                    11,
-                    'detected a forward addition & ignores a backward addition');
-
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
-                                                    videojs.createTimeRange([[0, 9]]));
-  QUnit.strictEqual(edge,
-                    null,
-                    'ignores a backwards addition resulting from a shrinking range');
-
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
-                                                    videojs.createTimeRange([[2, 7]]));
-  QUnit.strictEqual(edge,
-                    null,
-                    'ignores a forward & backwards addition ' +
-                    'resulting from a shrinking range');
-
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[2, 10]]),
-                                                    videojs.createTimeRange([[0, 7]]));
-  QUnit.strictEqual(edge,
-                    null,
-                    'ignores a forward & backwards addition resulting ' +
-                    'from a range shifted backward');
-
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[2, 10]]),
-                                                    videojs.createTimeRange([[5, 15]]));
-  QUnit.strictEqual(edge,
-                    15,
-                    'detected a forwards addition resulting from a range shifted foward');
-
-  // Multiple-range changes
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10]]),
-                                                    videojs.createTimeRange([[0, 11], [12, 15]]));
-  QUnit.strictEqual(edge, null, 'ignores multiple new forward additions');
-
-  edge = videojs.Hls
-    .findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10], [20, 40]]),
-                                    videojs.createTimeRange([[20, 50]]));
-  QUnit.strictEqual(edge, 50, 'detected a forward addition & ignores range removal');
-
-  edge =
-    videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10],
-                                                                       [20, 40]]),
-                                               videojs.createTimeRange([[0, 50]]));
-  QUnit.strictEqual(edge, 50, 'detected a forward addition & ignores merges');
-
-  edge =
-    videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 10],
-                                                                       [20, 40]]),
-                                               videojs.createTimeRange([[0, 40]]));
-  QUnit.strictEqual(edge, null, 'ignores merges');
-
-  // Empty input
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange(),
-                                                    videojs.createTimeRange([[0, 11]]));
-  QUnit.strictEqual(edge, 11, 'handle an empty original TimeRanges object');
-
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 11]]),
-                                                    videojs.createTimeRange());
-  QUnit.strictEqual(edge, null, 'handle an empty update TimeRanges object');
-
-  // Null input
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(null,
-                                                    videojs.createTimeRange([[0, 11]]));
-  QUnit.strictEqual(edge, 11, 'treat null original buffer as an empty TimeRanges object');
-
-  edge = videojs.Hls.findSoleUncommonTimeRangesEnd_(videojs.createTimeRange([[0, 11]]),
-                                                    null);
-  QUnit.strictEqual(edge, null, 'treat null update buffer as an empty TimeRanges object');
+QUnit.test('resolves relative key URLs against the playlist', function() {
+  this.player.src({
+    src: 'https://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  this.requests.shift()
+    .respond(200, null,
+             '#EXTM3U\n' +
+             '#EXT-X-MEDIA-SEQUENCE:5\n' +
+             '#EXT-X-KEY:METHOD=AES-128,URI="key.php?r=52"\n' +
+             '#EXTINF:2.833,\n' +
+             'http://media.example.com/fileSequence52-A.ts\n' +
+             '#EXT-X-ENDLIST\n');
+  QUnit.equal(this.requests[0].url,
+              'https://example.com/key.php?r=52',
+              'resolves the key URL');
 });
+
+QUnit.test('adds 1 default  audio track if we have not parsed any, and the playlist is loaded', function() {
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
+
+  openMediaSource(this.player, this.clock);
+
+  // master
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(this.player.audioTracks().length, 1, `one audio track after load`);
+});
+
+QUnit.test('adds audio tracks if we have parsed some from a playlist', function() {
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
+
+  openMediaSource(this.player, this.clock);
+
+  // master
+  standardXHRResponse(this.requests.shift());
+  let at = this.player.audioTracks();
+
+  QUnit.equal(at.length, 3, `three audio tracks after load`);
+
+  QUnit.equal(at[0].label, 'English', `track 1 - label = NAME`);
+  QUnit.equal(at[0].enabled, true, `track 1 - enabled = DEFAULT`);
+  QUnit.equal(at[0].language, 'eng', `track 1 - language = LANG`);
+  QUnit.equal(at[0].kind, 'main', `track 1 - kind = main if DEFAULT is YES`);
+
+  QUnit.equal(at[1].label, 'Français', `track 2 - label = NAME`);
+  QUnit.equal(at[1].enabled, false, `track 2 - enabled = DEFAULT`);
+  QUnit.equal(at[1].language, 'fre', `track 2 - language = LANG`);
+  QUnit.equal(at[1].kind, 'alternative', `track 2 - kind = alternative if DEFAULT is NO`);
+
+  QUnit.equal(at[2].label, 'Espanol', `track 3 - label = NAME`);
+  QUnit.equal(at[2].enabled, false, `track 3 - enabled = DEFAULT`);
+  QUnit.equal(at[2].language, 'sp', `track 3 - language = LANG`);
+  QUnit.equal(at[2].kind, 'alternative', `track 3 - kind = alternative if DEFAULT is NO`);
+});
+
+QUnit.module('HLS Integration', {
+  beforeEach() {
+    this.env = useFakeEnvironment();
+    this.clock = this.env.clock;
+    this.requests = this.env.requests;
+    this.mse = useFakeMediaSource();
+    this.tech = new (videojs.getTech('Html5'))({});
+  },
+  afterEach() {
+    this.env.restore();
+    this.mse.restore();
+  }
+});
+
+QUnit.test('aborts all in-flight work when disposed', function() {
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  hls.dispose();
+  QUnit.ok(this.requests[0].aborted, 'aborted the old segment request');
+  hls.mediaSource.sourceBuffers.forEach(sourceBuffer => {
+    let lastUpdate = sourceBuffer.updates_[sourceBuffer.updates_.length - 1];
+
+    QUnit.ok(lastUpdate.abort, 'aborted the source buffer');
+  });
+});
+
+QUnit.test('downloads additional playlists if required', function() {
+  let originalPlaylist;
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  hls.bandwidth = 1;
+  // master
+  standardXHRResponse(this.requests[0]);
+  // media
+  standardXHRResponse(this.requests[1]);
+  originalPlaylist = hls.playlists.media();
+
+  // the playlist selection is revisited after a new segment is downloaded
+  this.requests[2].bandwidth = 3000000;
+  // segment
+  standardXHRResponse(this.requests[2]);
+  hls.mediaSource.sourceBuffers[0].trigger('updateend');
+
+  // new media
+  standardXHRResponse(this.requests[3]);
+
+  QUnit.ok((/manifest\/media\d+.m3u8$/).test(this.requests[3].url),
+           'made a playlist request');
+  QUnit.notEqual(originalPlaylist.resolvedUri,
+                 hls.playlists.media().resolvedUri,
+                 'a new playlists was selected');
+  QUnit.ok(hls.playlists.media().segments, 'segments are now available');
+});
+
+QUnit.test('waits to download new segments until the media playlist is stable', function() {
+  let sourceBuffer;
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  sourceBuffer = hls.mediaSource.sourceBuffers[0];
+
+  // make sure we stay on the lowest variant
+  hls.bandwidth = 1;
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media1
+  standardXHRResponse(this.requests.shift());
+
+  // segment 0
+  standardXHRResponse(this.requests.shift());
+  // no time has elapsed, so bandwidth is really high and we'll switch
+  // playlists
+  sourceBuffer.trigger('updateend');
+
+  QUnit.equal(this.requests.length, 1, 'only the playlist request outstanding');
+  this.clock.tick(10 * 1000);
+  QUnit.equal(this.requests.length, 1, 'delays segment fetching');
+
+  // another media playlist
+  standardXHRResponse(this.requests.shift());
+  this.clock.tick(10 * 1000);
+  QUnit.equal(this.requests.length, 1, 'resumes segment fetching');
+});
+
+QUnit.test('live playlist starts three target durations before live', function() {
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXT-X-MEDIA-SEQUENCE:101\n' +
+                                '#EXTINF:10,\n' +
+                                '0.ts\n' +
+                                '#EXTINF:10,\n' +
+                                '1.ts\n' +
+                                '#EXTINF:10,\n' +
+                                '2.ts\n' +
+                                '#EXTINF:10,\n' +
+                                '3.ts\n' +
+                                '#EXTINF:10,\n' +
+                                '4.ts\n');
+
+  QUnit.equal(this.requests.length, 0, 'no outstanding segment request');
+
+  this.tech.paused = function() {
+    return false;
+  };
+  this.tech.readyState = function() {
+    return 1;
+  };
+  this.tech.trigger('play');
+  this.clock.tick(1);
+  QUnit.equal(this.tech.currentTime(),
+              hls.seekable().end(0),
+              'seeked to the seekable end');
+
+  QUnit.equal(this.requests.length, 1, 'begins buffering');
+});
+
+QUnit.module('HLS - Encryption', {
+  beforeEach() {
+    this.env = useFakeEnvironment();
+    this.requests = this.env.requests;
+    this.mse = useFakeMediaSource();
+    this.tech = new (videojs.getTech('Html5'))({});
+  },
+  afterEach() {
+    this.env.restore();
+    this.mse.restore();
+  }
+});
+
+QUnit.test('blacklists playlist if key requests fail', function() {
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/encrypted-media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  this.requests.shift()
+    .respond(200, null,
+             '#EXTM3U\n' +
+             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
+             '#EXTINF:2.833,\n' +
+             'http://media.example.com/fileSequence52-A.ts\n' +
+             '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=53"\n' +
+             '#EXTINF:15.0,\n' +
+             'http://media.example.com/fileSequence53-A.ts\n' +
+             '#EXT-X-ENDLIST\n');
+
+  // segment 1
+  standardXHRResponse(this.requests.shift());
+  // fail key
+  this.requests.shift().respond(404);
+  QUnit.ok(hls.playlists.media().excludeUntil > 0,
+           'playlist blacklisted');
+});
+
+QUnit.test('treats invalid keys as a key request failure and blacklists playlist', function() {
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/encrypted-media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  this.requests.shift()
+    .respond(200, null,
+             '#EXTM3U\n' +
+             '#EXT-X-MEDIA-SEQUENCE:5\n' +
+             '#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n' +
+             '#EXTINF:2.833,\n' +
+             'http://media.example.com/fileSequence52-A.ts\n' +
+             '#EXT-X-KEY:METHOD=NONE\n' +
+             '#EXTINF:15.0,\n' +
+             'http://media.example.com/fileSequence52-B.ts\n' +
+             '#EXT-X-ENDLIST\n');
+
+  // segment request
+  standardXHRResponse(this.requests.pop());
+
+  QUnit.equal(this.requests[0].url,
+              'https://priv.example.com/key.php?r=52',
+              'requested the key');
+  // keys *should* be 16 bytes long -- this one is too small
+  this.requests[0].response = new Uint8Array(1).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  // blacklist this playlist
+  QUnit.ok(hls.playlists.media().excludeUntil > 0,
+           'blacklisted playlist');
+});
+

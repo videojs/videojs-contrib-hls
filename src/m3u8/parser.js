@@ -34,6 +34,14 @@ export default class Parser extends Stream {
     let currentUri = {};
     let key;
     let noop = function() {};
+    let defaultMediaGroups = {
+      'AUDIO': {},
+      'VIDEO': {},
+      'CLOSED-CAPTIONS': {},
+      'SUBTITLES': {}
+    };
+    // group segments into numbered timelines delineated by discontinuities
+    let currentTimeline = 0;
 
     // the manifest is empty until the parse stream begins delivering data
     this.manifest = {
@@ -43,6 +51,9 @@ export default class Parser extends Stream {
 
     // update the manifest with the m3u8 entry from the parse stream
     this.parseStream.on('data', function(entry) {
+      let mediaGroup;
+      let rendition;
+
       ({
         tag() {
           // switch based on the tag type
@@ -96,7 +107,6 @@ export default class Parser extends Stream {
               }
 
               this.manifest.segments = uris;
-
             },
             key() {
               if (!entry.attributes) {
@@ -149,6 +159,7 @@ export default class Parser extends Stream {
                 return;
               }
               this.manifest.discontinuitySequence = entry.number;
+              currentTimeline = entry.number;
             },
             'playlist-type'() {
               if (!(/VOD|EVENT/).test(entry.playlistType)) {
@@ -161,6 +172,8 @@ export default class Parser extends Stream {
             },
             'stream-inf'() {
               this.manifest.playlists = uris;
+              this.manifest.mediaGroups =
+                this.manifest.mediaGroups || defaultMediaGroups;
 
               if (!entry.attributes) {
                 this.trigger('warn', {
@@ -175,7 +188,48 @@ export default class Parser extends Stream {
               currentUri.attributes = mergeOptions(currentUri.attributes,
                                                    entry.attributes);
             },
+            media() {
+              this.manifest.mediaGroups =
+                this.manifest.mediaGroups || defaultMediaGroups;
+
+              if (!(entry.attributes &&
+                    entry.attributes.TYPE &&
+                    entry.attributes['GROUP-ID'] &&
+                    entry.attributes.NAME)) {
+                this.trigger('warn', {
+                  message: 'ignoring incomplete or missing media group'
+                });
+                return;
+              }
+
+              // find the media group, creating defaults as necessary
+              let mediaGroupType = this.manifest.mediaGroups[entry.attributes.TYPE];
+
+              mediaGroupType[entry.attributes['GROUP-ID']] =
+                mediaGroupType[entry.attributes['GROUP-ID']] || {};
+              mediaGroup = mediaGroupType[entry.attributes['GROUP-ID']];
+
+              // collect the rendition metadata
+              rendition = {
+                default: (/yes/i).test(entry.attributes.DEFAULT)
+              };
+              if (rendition.default) {
+                rendition.autoselect = true;
+              } else {
+                rendition.autoselect = (/yes/i).test(entry.attributes.AUTOSELECT);
+              }
+              if (entry.attributes.LANGUAGE) {
+                rendition.language = entry.attributes.LANGUAGE;
+              }
+              if (entry.attributes.URI) {
+                rendition.uri = entry.attributes.URI;
+              }
+
+              // insert the new rendition
+              mediaGroup[entry.attributes.NAME] = rendition;
+            },
             discontinuity() {
+              currentTimeline += 1;
               currentUri.discontinuity = true;
               this.manifest.discontinuityStarts.push(uris.length);
             },
@@ -215,6 +269,7 @@ export default class Parser extends Stream {
           if (key) {
             currentUri.key = key;
           }
+          currentUri.timeline = currentTimeline;
 
           // prepare for the next URI
           currentUri = {};
@@ -246,4 +301,3 @@ export default class Parser extends Stream {
   }
 
 }
-
