@@ -1596,10 +1596,10 @@ if (window.Uint8Array) {
   videojs.getComponent('Flash').registerSourceHandler(HlsSourceHandler('flash'));
 }
 
-videojs.HlsHandler = HlsHandler;
-videojs.HlsSourceHandler = HlsSourceHandler;
-videojs.Hls = Hls;
-videojs.m3u8 = m3u8;
+videojs.registerComponent('HlsHandler', HlsHandler);
+videojs.registerComponent('HlsSourceHandler', HlsSourceHandler);
+videojs.registerComponent('Hls', Hls);
+videojs.registerComponent('m3u8', m3u8);
 
 export default {
   Hls,
