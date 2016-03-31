@@ -648,6 +648,28 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
     }
     return true;
   });
+  // BEGIN custom logic for HD/SD quality setting.
+  // Sometimes we select playlist before player is ready, in which case player_ is undefined.
+  // This is OK, since playlist is updated every time a new segment is fetched.
+  // Bandwidth = 1 indicates that the request for the segment timed out, in which case we should force SD.
+  if(this.mediaSource.player_ && this.mediaSource.player_.currentRes === 'HD' && this.bandwidth > 1) {
+    var sortedHDPlaylists = sortedPlaylists.filter(function(variant) {
+      return variant.attributes && variant.attributes.BANDWIDTH >= 1200000;
+    });
+    if(sortedHDPlaylists.length === 0) {
+      sortedHDPlaylists.push(sortedPlaylists[sortedPlaylists.length - 1]);
+    }
+    sortedPlaylists = sortedHDPlaylists;
+  } else if(this.mediaSource.player_ && this.mediaSource.player_.currentRes === 'SD') {
+    var sortedSDPlaylists = sortedPlaylists.filter(function(variant) {
+      return variant.attributes && variant.attributes.BANDWIDTH < 1200000;
+    });
+    if(sortedSDPlaylists.length === 0) {
+      sortedSDPlaylists.push(sortedPlaylists[0]);
+    }
+    sortedPlaylists = sortedSDPlaylists;
+  }
+  // END custom logic for HD quality setting.
 
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
