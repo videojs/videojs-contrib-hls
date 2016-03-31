@@ -103,14 +103,13 @@ export default class HlsHandler extends Component {
       }
     });
 
-    this.on(this.tech_, 'play', this.play);
-
-    let audioTrackList = this.tech_.audioTracks();
-
-    audioTrackList.addEventListener('change', () => {
+    this.audioTrackChange_ = () => {
       this.masterPlaylistController_.useAudio();
-    });
+    };
+
+    this.on(this.tech_, 'play', this.play);
   }
+
   src(src) {
     // do nothing if the src is falsey
     if (!src) {
@@ -133,6 +132,10 @@ export default class HlsHandler extends Component {
       externHls: Hls
     });
 
+    this.masterPlaylistController_.on('sourceopen', () => {
+      this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
+    });
+
     this.masterPlaylistController_.on('loadedmetadata', () => {
       let audioTrackList = this.tech_.audioTracks();
       let media = this.masterPlaylistController_.masterPlaylistLoader_.media();
@@ -144,6 +147,7 @@ export default class HlsHandler extends Component {
 
       // only do alternative audio tracks in html5 mode, and if we have them
       if (this.mode_ === 'html5' &&
+          media.attributes &&
           media.attributes.AUDIO &&
          mediaGroups.AUDIO[media.attributes.AUDIO]) {
         attributes.audio = mediaGroups.AUDIO[media.attributes.AUDIO];
@@ -225,6 +229,7 @@ export default class HlsHandler extends Component {
     if (this.masterPlaylistController_) {
       this.masterPlaylistController_.dispose();
     }
+    this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
 
     super.dispose();
   }

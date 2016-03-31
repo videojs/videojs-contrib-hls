@@ -184,7 +184,7 @@ export const seekable = function(playlist) {
   let endSequence;
 
   // without segments, there are no seekable ranges
-  if (!playlist.segments) {
+  if (!playlist || !playlist.segments) {
     return createTimeRange();
   }
   // when the playlist is complete, the entire duration is seekable

@@ -494,6 +494,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     if (this.hlsHandler.tech_.autoplay()) {
       this.hlsHandler.play();
     }
+
+    this.trigger('sourceopen');
   }
 
   /*
