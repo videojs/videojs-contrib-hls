@@ -678,9 +678,13 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
   dispose() {
     this.masterPlaylistLoader_.dispose();
-    this.audioPlaylistLoaders_.forEach((loader) => {
-      loader.dispose();
-    });
+
+    for (let loader in this.audioPlaylistLoaders_) {
+      if (this.audioPlaylistLoaders_.hasOwnProperty(loader)) {
+        this.audioPlaylistLoaders_[loader].dispose();
+      }
+    }
+
     this.mainSegmentLoader_.dispose();
     this.audioSegmentLoader_.dispose();
   }
