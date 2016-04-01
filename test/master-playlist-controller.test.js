@@ -36,6 +36,7 @@ QUnit.module('MasterPlaylistController', {
     this.env.restore();
     this.mse.restore();
     videojs.Hls.supportsNativeHls = this.origSupportsNativeHls;
+    this.player.dispose();
   }
 });
 

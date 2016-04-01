@@ -207,9 +207,11 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
 
   loader.stopRequest = () => {
     if (request) {
-      request.onreadystatechange = null;
-      request.abort();
+      let oldRequest = request;
+
       request = null;
+      oldRequest.onreadystatechange = null;
+      oldRequest.abort();
     }
   };
 
@@ -294,6 +296,11 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
       uri: resolveUrl(loader.master.uri, playlist.uri),
       withCredentials
     }, function(error, req) {
+      // disposed
+      if (!request) {
+        return;
+      }
+
       if (error) {
         return playlistRequestError(request, playlist.uri, startingState);
       }
@@ -331,6 +338,11 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
       uri: resolveUrl(loader.master.uri, loader.media().uri),
       withCredentials
     }, function(error, req) {
+      // disposed
+      if (!request) {
+        return;
+      }
+
       if (error) {
         return playlistRequestError(request, loader.media().uri);
       }
@@ -366,6 +378,11 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
       let parser;
       let playlist;
       let i;
+
+      // disposed
+      if (!request) {
+        return;
+      }
 
       // clear the loader's request reference
       request = null;
