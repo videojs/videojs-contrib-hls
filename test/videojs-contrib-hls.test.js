@@ -3366,17 +3366,15 @@ QUnit.test('selectPlaylist does not fail if getComputedStyle returns null', func
 QUnit.test('Allows specifying the beforeRequest functionon the player', function() {
   let beforeRequestCalled = false;
 
-  this.player.ready(function() {
-    this.hls.xhr.beforeRequest = function() {
-      beforeRequestCalled = true;
-    };
-  });
   this.player.src({
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-
   openMediaSource(this.player, this.clock);
+
+  this.player.hls.xhr.beforeRequest = function() {
+    beforeRequestCalled = true;
+  };
   // master
   standardXHRResponse(this.requests.shift());
   // media
@@ -3396,6 +3394,9 @@ QUnit.test('Allows specifying the beforeRequest function globally', function() {
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  openMediaSource(this.player, this.clock);
+  // master
+  standardXHRResponse(this.requests.shift());
 
   QUnit.ok(beforeRequestCalled, 'beforeRequest was called');
 
@@ -3414,13 +3415,11 @@ QUnit.test('Allows overriding the global beforeRequest function', function() {
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  this.player.ready(function() {
-    this.hls.xhr.beforeRequest = function() {
-      beforeLocalRequestCalled++;
-    };
-  });
-
   openMediaSource(this.player, this.clock);
+
+  this.player.hls.xhr.beforeRequest = function() {
+    beforeLocalRequestCalled++;
+  };
   // master
   standardXHRResponse(this.requests.shift());
   // media
