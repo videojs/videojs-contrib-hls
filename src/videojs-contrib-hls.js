@@ -5,7 +5,7 @@
  */
 import PlaylistLoader from './playlist-loader';
 import Playlist from './playlist';
-import xhr from './xhr';
+import xhrFactory from './xhr';
 import {Decrypter, AsyncStream, decrypt} from './decrypter';
 import utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
@@ -20,7 +20,7 @@ const Hls = {
   AsyncStream,
   decrypt,
   utils,
-  xhr
+  xhr: xhrFactory()
 };
 
 // the desired length of video to maintain in the buffer, in seconds
@@ -416,6 +416,7 @@ export default class HlsHandler extends Component {
       this.options_.withCredentials = videojs.options.hls.withCredentials;
     }
     this.playlists = new Hls.PlaylistLoader(this.source_.src,
+                                            this.tech_.hls,
                                             this.options_.withCredentials);
 
     this.tech_.one('canplay', this.setupFirstPlay.bind(this));
@@ -1224,7 +1225,7 @@ export default class HlsHandler extends Component {
     }
 
     // request the next segment
-    this.segmentXhr_ = Hls.xhr({
+    this.segmentXhr_ = this.tech_.hls.xhr({
       uri: segmentInfo.uri,
       responseType: 'arraybuffer',
       withCredentials: this.source_.withCredentials,
@@ -1504,7 +1505,7 @@ export default class HlsHandler extends Component {
 
     // request the key if the retry limit hasn't been reached
     if (!key.bytes && !keyFailed(key)) {
-      this.keyXhr_ = Hls.xhr({
+      this.keyXhr_ = this.tech_.hls.xhr({
         uri: this.playlistUriToUrl(key.uri),
         responseType: 'arraybuffer',
         withCredentials: settings.withCredentials
@@ -1563,6 +1564,14 @@ const HlsSourceHandler = function(mode) {
         source,
         mode
       });
+
+      tech.hls.xhr = xhrFactory();
+      // Use a global `before` function if specified on videojs.Hls.xhr
+      // but still allow for a per-player override
+      if (videojs.Hls.xhr.beforeRequest) {
+        tech.hls.xhr.beforeRequest = videojs.Hls.xhr.beforeRequest;
+      }
+
       tech.hls.src(source.src);
       return tech.hls;
     },

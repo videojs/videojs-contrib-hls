@@ -3363,6 +3363,79 @@ QUnit.test('selectPlaylist does not fail if getComputedStyle returns null', func
   window.getComputedStyle = oldGetComputedStyle;
 });
 
+QUnit.test('Allows specifying the beforeRequest functionon the player', function() {
+  let beforeRequestCalled = false;
+
+  this.player.ready(function() {
+    this.hls.xhr.beforeRequest = function() {
+      beforeRequestCalled = true;
+    };
+  });
+  this.player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  openMediaSource(this.player, this.clock);
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.ok(beforeRequestCalled, 'beforeRequest was called');
+});
+
+QUnit.test('Allows specifying the beforeRequest function globally', function() {
+  let beforeRequestCalled = false;
+
+  videojs.Hls.xhr.beforeRequest = function() {
+    beforeRequestCalled = true;
+  };
+
+  this.player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.ok(beforeRequestCalled, 'beforeRequest was called');
+
+  delete videojs.Hls.xhr.beforeRequest;
+});
+
+QUnit.test('Allows overriding the global beforeRequest function', function() {
+  let beforeGlobalRequestCalled = 0;
+  let beforeLocalRequestCalled = 0;
+
+  videojs.Hls.xhr.beforeRequest = function() {
+    beforeGlobalRequestCalled++;
+  };
+
+  this.player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.ready(function() {
+    this.hls.xhr.beforeRequest = function() {
+      beforeLocalRequestCalled++;
+    };
+  });
+
+  openMediaSource(this.player, this.clock);
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+  // ts
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(beforeLocalRequestCalled, 2, 'local beforeRequest was called twice ' +
+                                           'for the media playlist and media');
+  QUnit.equal(beforeGlobalRequestCalled, 1, 'global beforeRequest was called once ' +
+                                            'for the master playlist');
+
+  delete videojs.Hls.xhr.beforeRequest;
+});
+
 QUnit.module('Buffer Inspection');
 QUnit.test('detects time range end-point changed by updates', function() {
   let edge;
