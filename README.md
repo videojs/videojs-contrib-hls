@@ -19,6 +19,7 @@ Play back HLS with video.js, even where it's not natively supported.
     - [hls.bandwidth](#hlsbandwidth)
     - [hls.bytesReceived](#hlsbytesreceived)
     - [hls.selectPlaylist](#hlsselectplaylist)
+    - [hls.xhr](#hlsxhr)
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
     - [loadedplaylist](#loadedplaylist)
@@ -193,6 +194,44 @@ the next segment. It is invoked by the tech immediately before a new
 segment is downloaded. You can override this function to provide your
 adaptive streaming logic. You must, however, be sure to return a valid
 media playlist object that is present in `player.hls.master`.
+
+#### hls.xhr
+Type: `function`
+
+The xhr function that is used by HLS internally is exposed on the per-
+player `hls` object. While it is possible, we do not recommend replacing
+the function with your own implementation. Instead, the `xhr` provides
+the ability to specify a `beforeRequest` function that will be called
+with an object containing the options that will be used to create the
+xhr request.
+
+Example:
+```javascript
+player.hls.xhr.beforeRequest = function(options) {
+  options.uri = options.uri.replace('example.com', 'foo.com');
+
+  return options;
+};
+```
+
+The global `videojs.Hls` also exposes an `xhr` property. Specifying a
+`beforeRequest` function on that will allow you to intercept the options
+for *all* requests in every player on a page.
+
+Example
+```javascript
+videojs.Hls.xhr.beforeRequest = function(options) {
+  /*
+   * Modifications to requests that will affect every player.
+   */
+
+  return options;
+};
+```
+
+For information on the type of options that you can modify see the
+documentation at [https://github.com/Raynos/xhr](https://github.com/Raynos/xhr).
+
 
 ### Events
 Standard HTML video events are handled by video.js automatically and

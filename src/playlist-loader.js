@@ -6,7 +6,6 @@
  *
  */
 import resolveUrl from './resolve-url';
-import XhrModule from './xhr';
 import {mergeOptions} from 'video.js';
 import Stream from './stream';
 import m3u8 from './m3u8';
@@ -86,7 +85,7 @@ const updateSegments = function(original, update, offset) {
 };
 
 export default class PlaylistLoader extends Stream {
-  constructor(srcUrl, withCredentials) {
+  constructor(srcUrl, hls, withCredentials) {
     super();
     let loader = this;
     let dispose;
@@ -94,6 +93,8 @@ export default class PlaylistLoader extends Stream {
     let request;
     let playlistRequestError;
     let haveMetadata;
+
+    this.hls_ = hls;
 
     // a flag that disables "expired time"-tracking this setting has
     // no effect when not playing a live stream
@@ -261,7 +262,7 @@ export default class PlaylistLoader extends Stream {
       }
 
       // request the new playlist
-      request = XhrModule({
+      request = this.hls_.xhr({
         uri: resolveUrl(loader.master.uri, playlist.uri),
         withCredentials
       }, function(error, request) {
@@ -298,7 +299,7 @@ export default class PlaylistLoader extends Stream {
       }
 
       loader.state = 'HAVE_CURRENT_METADATA';
-      request = XhrModule({
+      request = this.hls_.xhr({
         uri: resolveUrl(loader.master.uri, loader.media().uri),
         withCredentials
       }, function(error, request) {
@@ -310,7 +311,7 @@ export default class PlaylistLoader extends Stream {
     });
 
     // request the specified URL
-    request = XhrModule({
+    request = this.hls_.xhr({
       uri: srcUrl,
       withCredentials
     }, function(error, req) {
