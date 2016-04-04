@@ -6,7 +6,7 @@ import {
   createPlayer,
   standardXHRResponse,
   openMediaSource
-} from './plugin-helpers.js';
+} from './test-helpers.js';
 import MasterPlaylistController from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs

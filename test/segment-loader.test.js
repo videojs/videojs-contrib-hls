@@ -1,7 +1,7 @@
 import QUnit from 'qunit';
 import {GOAL_BUFFER_LENGTH, default as SegmentLoader} from '../src/segment-loader';
 import videojs from 'video.js';
-import { useFakeEnvironment, useFakeMediaSource } from './plugin-helpers.js';
+import { useFakeEnvironment, useFakeMediaSource } from './test-helpers.js';
 
 const playlistWithDuration = function(time, conf) {
   let result = {

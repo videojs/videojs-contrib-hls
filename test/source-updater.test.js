@@ -1,7 +1,7 @@
 import SourceUpdater from '../src/source-updater';
 import QUnit from 'qunit';
 import videojs from 'video.js';
-import { useFakeMediaSource } from './plugin-helpers';
+import { useFakeMediaSource } from './test-helpers';
 
 QUnit.module('Source Updater', {
   beforeEach() {

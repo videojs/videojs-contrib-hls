@@ -11,7 +11,7 @@ import {
   openMediaSource,
   standardXHRResponse,
   absoluteUrl
-} from './plugin-helpers.js';
+} from './test-helpers.js';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
 import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
