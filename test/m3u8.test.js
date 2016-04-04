@@ -608,6 +608,35 @@ QUnit.test('parses lightly-broken #EXT-X-KEY tags', function() {
                     'trims and removes quotes around the URI');
 });
 
+QUnit.test('parses prefixed with 0x or 0X #EXT-X-KEY:IV tags', function() {
+  let manifest;
+  let element;
+
+  this.parseStream.on('data', function(elem) {
+    element = elem;
+  });
+
+  manifest = '#EXT-X-KEY:IV=0x1234567890abcdef1234567890abcdef\n';
+  this.lineStream.push(manifest);
+  QUnit.ok(element.attributes.IV, 'detected an IV attribute');
+  QUnit.deepEqual(element.attributes.IV, new Uint32Array([
+    0x12345678,
+    0x90abcdef,
+    0x12345678,
+    0x90abcdef
+  ]), 'parsed an IV value with 0x');
+
+  manifest = '#EXT-X-KEY:IV=0X1234567890abcdef1234567890abcdef\n';
+  this.lineStream.push(manifest);
+  QUnit.ok(element.attributes.IV, 'detected an IV attribute');
+  QUnit.deepEqual(element.attributes.IV, new Uint32Array([
+    0x12345678,
+    0x90abcdef,
+    0x12345678,
+    0x90abcdef
+  ]), 'parsed an IV value with 0X');
+});
+
 QUnit.test('ignores empty lines', function() {
   let manifest = '\n';
   let event = false;
