@@ -1610,7 +1610,7 @@ videojs.HlsSourceHandler = HlsSourceHandler;
 videojs.Hls = Hls;
 videojs.m3u8 = m3u8;
 
-export default {
+module.exports = {
   Hls,
   HlsHandler,
   HlsSourceHandler
