@@ -106,8 +106,7 @@ QUnit.test('creates combined and audio only SegmentLoaders', function() {
               'created alternate audio track segment loader');
 });
 
-// TODO add back in once logic is returned in segment-loader
-QUnit.skip('if buffered, will request second segment byte range', function() {
+QUnit.test('if buffered, will request second segment byte range', function() {
   this.requests.length = 0;
   this.player.src({
     src: 'manifest/playlist.m3u8',

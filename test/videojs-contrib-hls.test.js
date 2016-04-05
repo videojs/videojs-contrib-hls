@@ -1652,6 +1652,147 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   QUnit.equal(at[2].kind, 'alternative', `track 3 - kind = alternative if DEFAULT is NO`);
 });
 
+QUnit.test('cleans up the buffer when loading live segments', function() {
+  let removes = [];
+  let seekable = videojs.createTimeRanges([[60, 120]]);
+
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  this.player.tech_.hls.masterPlaylistController_.seekable = function() {
+    return seekable;
+  };
+
+  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
+    return new (videojs.extend(videojs.EventTarget, {
+      constructor() {},
+      abort() {},
+      buffered: videojs.createTimeRange(),
+      appendBuffer() {},
+      remove(start, end) {
+        removes.push([start, end]);
+      }
+    }))();
+  };
+  this.player.tech_.hls.bandwidth = 20e10;
+  this.player.tech_.triggerReady();
+  standardXHRResponse(this.requests[0]);
+
+  this.player.tech_.hls.playlists.trigger('loadedmetadata');
+  this.player.tech_.trigger('canplay');
+  this.player.tech_.paused = function() {
+    return false;
+  };
+  this.player.tech_.readyState = function() {
+    return 1;
+  };
+  this.player.tech_.trigger('play');
+
+  this.clock.tick(1);
+  // this.requests[1] is an aborted XHR
+  // since we are in a live stream that request is aborted by
+  // the seek-to-live behavior
+  standardXHRResponse(this.requests[2]);
+
+  QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8',
+                    'master playlist requested');
+  QUnit.equal(removes.length, 1, 'remove called');
+  QUnit.deepEqual(removes[0], [0, seekable.start(0)],
+                  'remove called with the right range');
+});
+
+QUnit.test('cleans up the buffer based on currentTime when loading a live segment ' +
+           'if seekable start is after currentTime', function() {
+  let removes = [];
+  let seekable = videojs.createTimeRanges([[0, 80]]);
+
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.hls.masterPlaylistController_.seekable = function() {
+    return seekable;
+  };
+
+  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
+    return new (videojs.extend(videojs.EventTarget, {
+      constructor() {},
+      abort() {},
+      buffered: videojs.createTimeRange(),
+      appendBuffer() {},
+      remove(start, end) {
+        removes.push([start, end]);
+      }
+    }))();
+  };
+  this.player.tech_.hls.bandwidth = 20e10;
+  this.player.tech_.triggerReady();
+  standardXHRResponse(this.requests[0]);
+  this.player.tech_.hls.playlists.trigger('loadedmetadata');
+  this.player.tech_.trigger('canplay');
+
+  this.player.tech_.paused = function() {
+    return false;
+  };
+
+  this.player.tech_.readyState = function() {
+    return 1;
+  };
+
+  this.player.tech_.trigger('play');
+  this.clock.tick(1);
+  // Change seekable so that it starts *after* the currentTime which was set
+  // based on the previous seekable range (the end of 80)
+  seekable = videojs.createTimeRanges([[100, 120]]);
+  // this.requests[1] is an aborted XHR
+  // since we are in a live stream that request is aborted by
+  // the seek-to-live behavior
+  standardXHRResponse(this.requests[2]);
+
+  QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
+  QUnit.equal(removes.length, 1, 'remove called');
+  QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
+});
+
+QUnit.test('cleans up the buffer when loading VOD segments', function() {
+  let removes = [];
+
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
+    return new (videojs.extend(videojs.EventTarget, {
+      constructor() {},
+      abort() {},
+      buffered: videojs.createTimeRange(),
+      appendBuffer() {},
+      remove(start, end) {
+        removes.push([start, end]);
+      }
+    }))();
+  };
+  this.player.width(640);
+  this.player.height(360);
+  this.player.tech_.hls.bandwidth = 20e10;
+  standardXHRResponse(this.requests[0]);
+  this.player.currentTime(120);
+  standardXHRResponse(this.requests[1]);
+  standardXHRResponse(this.requests[2]);
+
+  QUnit.strictEqual(this.requests[0].url, 'manifest/master.m3u8',
+                    'master playlist requested');
+  QUnit.strictEqual(this.requests[1].url, absoluteUrl('manifest/media3.m3u8'),
+                    'media playlist requested');
+  QUnit.equal(removes.length, 1, 'remove called');
+  QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
+});
+
 QUnit.module('HLS Integration', {
   beforeEach() {
     this.env = useFakeEnvironment();

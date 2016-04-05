@@ -278,7 +278,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // little after 0-time so add a fudge factor to try and fix those cases
     // or we end up fetching the same first segment over and over
     if (currentBuffered.length === 0 && currentTime === 0) {
-      currentBuffered = findRange(buffered, currentTime + TIME_FUDGE_FACTOR);
+      currentBuffered = Ranges.findRange(buffered, currentTime + Ranges.TIME_FUDGE_FACTOR);
     }
 
     let bufferedTime;
@@ -676,12 +676,12 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     timelineUpdate = Ranges.findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
-                                                   this.sourceUpdater_.buffered());
+                                                          this.sourceUpdater_.buffered());
 
     // Update segment meta-data (duration and end-point) based on timeline
-    updateSegmentMetadata(playlist,
-                          currentMediaIndex,
-                          timelineUpdate);
+    let timelineUpdated = updateSegmentMetadata(playlist,
+                                                currentMediaIndex,
+                                                timelineUpdate);
 
     // the last segment append must have been entirely in the
     // already buffered time ranges. adjust the timeCorrection
