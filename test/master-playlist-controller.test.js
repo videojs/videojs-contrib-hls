@@ -6,7 +6,7 @@ import {
   createPlayer,
   standardXHRResponse,
   openMediaSource
-} from './plugin-helpers.js';
+} from './test-helpers.js';
 import MasterPlaylistController from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
@@ -36,6 +36,7 @@ QUnit.module('MasterPlaylistController', {
     this.env.restore();
     this.mse.restore();
     videojs.Hls.supportsNativeHls = this.origSupportsNativeHls;
+    this.player.dispose();
   }
 });
 
@@ -61,6 +62,8 @@ QUnit.test('obeys preload option', function() {
   // playlist
   standardXHRResponse(this.requests.shift());
 
+  openMediaSource(this.player, this.clock);
+
   QUnit.equal(this.requests.length, 0, 'no segment requests when preload is none');
 
   this.player.src({
@@ -74,6 +77,8 @@ QUnit.test('obeys preload option', function() {
   standardXHRResponse(this.requests.shift());
   // playlist
   standardXHRResponse(this.requests.shift());
+
+  openMediaSource(this.player, this.clock);
 
   QUnit.equal(this.requests.length, 1, 'segment request when preload is auto');
 });
@@ -101,7 +106,8 @@ QUnit.test('creates combined and audio only SegmentLoaders', function() {
               'created alternate audio track segment loader');
 });
 
-QUnit.test('if buffered, will request second segment byte range', function() {
+// TODO add back in once logic is returned in segment-loader
+QUnit.skip('if buffered, will request second segment byte range', function() {
   this.requests.length = 0;
   this.player.src({
     src: 'manifest/playlist.m3u8',
@@ -112,12 +118,15 @@ QUnit.test('if buffered, will request second segment byte range', function() {
   this.player.tech_.triggerReady();
   this.clock.tick(1);
   this.player.tech_.trigger('play');
+
   openMediaSource(this.player, this.clock);
+  // playlist
+  standardXHRResponse(this.requests[0]);
+
   this.masterPlaylistController.mainSegmentLoader_.sourceUpdater_.buffered = () => {
     return videojs.createTimeRanges([[0, 20]]);
   };
-  // playlist
-  standardXHRResponse(this.requests[0]);
+
   // segment
   standardXHRResponse(this.requests[1]);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');

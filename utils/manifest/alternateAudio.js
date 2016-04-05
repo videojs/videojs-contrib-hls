@@ -40,6 +40,7 @@
       CODECS: "avc1.42e00a,mp4a.40.2",
       AUDIO: 'audio'
     },
+    timeline: 0,
     uri: "lo/prog_index.m3u8"
   }, {
     attributes: {
@@ -48,6 +49,7 @@
       CODECS: "avc1.42e01e,mp4a.40.2",
       AUDIO: 'audio'
     },
+    timeline: 0,
     uri: "hi/prog_index.m3u8"
   }]
 }

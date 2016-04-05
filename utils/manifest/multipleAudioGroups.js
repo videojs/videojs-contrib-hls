@@ -55,6 +55,7 @@
       CODECS: "mp4a.40.5",
       AUDIO: "audio-lo",
     },
+    timeline: 0,
     uri: "lo/prog_index.m3u8"
   }, {
     attributes: {
@@ -63,6 +64,7 @@
       CODECS: "avc1.42e01e,mp4a.40.2",
       AUDIO: "audio-lo"
     },
+    timeline: 0,
     uri: "hi/prog_index.m3u8"
   }, {
     attributes: {
@@ -71,6 +73,7 @@
       CODECS: "mp4a.40.2, avc1.64001e",
       AUDIO: "audio-hi"
     },
+    timeline: 0,
     uri: "lo/prog_index.m3u8"
   }, {
     attributes: {
@@ -79,6 +82,7 @@
       CODECS: "avc1.42e01e,mp4a.40.2",
       AUDIO: "audio-hi"
     },
+    timeline: 0,
     uri: "hi/prog_index.m3u8"
   }]
 }

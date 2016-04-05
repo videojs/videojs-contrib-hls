@@ -40,6 +40,13 @@ var DEFAULTS = {
     noParse: [
       'test/data/**',
     ]
+  },
+
+  customLaunchers: {
+    travisChrome: {
+      base: 'Chrome',
+      flags: ['--no-sandbox']
+    }
   }
 };
 

@@ -2,7 +2,6 @@
 
 import document from 'global/document';
 import videojs from 'video.js';
-import sinon from 'sinon';
 import QUnit from 'qunit';
 import testDataManifests from './test-manifests.js';
 import {
@@ -12,7 +11,7 @@ import {
   openMediaSource,
   standardXHRResponse,
   absoluteUrl
-} from './plugin-helpers.js';
+} from './test-helpers.js';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
 import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
@@ -30,58 +29,13 @@ const merge = function(target, source) {
   }
 };
 
-// a no-op MediaSource implementation to allow synchronous testing
-class MockMediaSource extends videojs.EventTarget {
-  static open() {}
-
-  constructor() {
-    super();
-
-    this.duration = NaN;
-    this.seekable = videojs.createTimeRange();
-    this.sourceBuffers = [];
-    this.mediaSource_ = {
-      // Mock a fake sourceBuffer array because of an IE11 work-around
-      // in `filterBufferedRanges`
-      sourceBuffers: ['fake']
-    };
-  }
-  addSeekableRange_(start, end) {
-    this.seekable = videojs.createTimeRange(start, end);
-  }
-  addSourceBuffer() {
-    let sourceBuffers = this.sourceBuffers;
-
-    return new (videojs.extend(videojs.EventTarget, {
-      constructor() {
-        sourceBuffers.push(this);
-      },
-      abort() {},
-      buffered: videojs.createTimeRange(),
-      appendBuffer() {},
-      remove() {}
-    }))();
-  }
-  // endOfStream triggers an exception if flash isn't available
-  endOfStream(error) {
-    this.error_ = error;
-  }
-}
-const URL = {
-  createObjectURL() {
-    return 'blob:mock-vjs-object-url';
-  }
-};
-
 QUnit.module('HLS', {
   beforeEach() {
+    this.env = useFakeEnvironment();
+    this.requests = this.env.requests;
+    this.mse = useFakeMediaSource();
+    this.clock = this.env.clock;
     this.old = {};
-
-    // Mock Media Sources
-    this.old.MediaSource = videojs.MediaSource;
-    videojs.MediaSource = MockMediaSource;
-    this.old.URL = videojs.URL;
-    videojs.URL = URL;
 
     // mock out Flash features for phantomjs
     this.old.Flash = videojs.mergeOptions({}, Flash);
@@ -123,13 +77,6 @@ QUnit.module('HLS', {
       return true;
     };
 
-    // Fake sourcebuffer
-    this.old.SourceBuffer = window.videojs.SourceBuffer;
-    window.videojs.SourceBuffer = function() {
-      this.appendBuffer = function() {};
-      this.abort = function() {};
-    };
-
     // store functionality that some tests need to mock
     this.old.GlobalOptions = videojs.mergeOptions(videojs.options);
 
@@ -140,28 +87,13 @@ QUnit.module('HLS', {
     this.old.Decrypt = videojs.Hls.Decrypter;
     videojs.Hls.Decrypter = function() {};
 
-    // fake XHRs
-    this.old.XHR = videojs.xhr.XMLHttpRequest;
-    this.sinonXHR = sinon.useFakeXMLHttpRequest();
-    this.requests = [];
-    this.sinonXHR.onCreate = (xhr) => {
-      // force the XHR2 timeout polyfill
-      xhr.timeout = null;
-      this.requests.push(xhr);
-    };
-    videojs.xhr.XMLHttpRequest = this.sinonXHR;
-
-    // Mock the environment's timers because certain things - particularly
-    // player readiness - are asynchronous in video.js 5.
-    this.clock = sinon.useFakeTimers();
-
     // setup a player
     this.player = createPlayer();
   },
 
   afterEach() {
-    videojs.MediaSource = this.old.MediaSource;
-    videojs.URL = this.old.URL;
+    this.env.restore();
+    this.mse.restore();
 
     merge(videojs.options, this.old.GlobalOptions);
     Flash.isSupported = this.old.FlashSupported;
@@ -169,13 +101,8 @@ QUnit.module('HLS', {
 
     videojs.Hls.supportsNativeHls = this.old.NativeHlsSupport;
     videojs.Hls.Decrypter = this.old.Decrypt;
-    videojs.SourceBuffer = this.old.SourceBuffer;
 
     this.player.dispose();
-
-    this.sinonXHR.restore();
-    videojs.xhr.XMLHttpRequest = this.old.XHR;
-    this.clock.restore();
   }
 });
 
@@ -281,10 +208,7 @@ QUnit.test('duration is set when the source opens after the playlist is loaded',
               'set the duration');
 });
 
-/* eslint-disable */
-// TODO - segment loader extraction changes responsibility for codec passing
-/* eslint-enable */
-QUnit.skip('codecs are passed to the source buffer', function() {
+QUnit.test('codecs are passed to the source buffer', function() {
   let codecs = [];
 
   this.player.src({
@@ -424,15 +348,13 @@ QUnit.test('starts downloading a segment on loadedmetadata', function() {
                     'the first segment is requested');
 });
 
-/* eslint-disable */
-// TODO - segment loader extraction changes ownership for source buffer
-// /* eslint-enable */
-QUnit.skip('re-initializes the handler for each source', function() {
+QUnit.test('re-initializes the handler for each source', function() {
   let firstPlaylists;
   let secondPlaylists;
   let firstMSE;
   let secondMSE;
   let aborts = 0;
+  let masterPlaylistController;
 
   this.player.src({
     src: 'manifest/master.m3u8',
@@ -443,7 +365,8 @@ QUnit.skip('re-initializes the handler for each source', function() {
   firstMSE = this.player.tech_.hls.mediaSource;
   standardXHRResponse(this.requests.shift());
   standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.sourceBuffer.abort = function() {
+  masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  masterPlaylistController.mainSegmentLoader_.sourceUpdater_.sourceBuffer_.abort = () => {
     aborts++;
   };
 
@@ -474,45 +397,6 @@ QUnit.test('triggers an error when a master playlist request errors', function()
   QUnit.equal(this.player.tech_.hls.mediaSource.error_,
               'network',
               'a network error is triggered');
-});
-
-/* eslint-disable */
-// TODO - segment loader extraction changes ownership for source buffer
-/* eslint-enable */
-QUnit.skip('re-initializes the handler for each source', function() {
-  let firstPlaylists;
-  let secondPlaylists;
-  let firstMSE;
-  let secondMSE;
-  let aborts = 0;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  firstPlaylists = this.player.tech_.hls.playlists;
-  firstMSE = this.player.tech_.hls.mediaSource;
-  standardXHRResponse(this.requests.shift());
-  standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.sourceBuffer.abort = function() {
-    aborts++;
-  };
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  secondPlaylists = this.player.tech_.hls.playlists;
-  secondMSE = this.player.tech_.hls.mediaSource;
-
-  QUnit.equal(1, aborts, 'aborted the old source buffer');
-  QUnit.ok(this.requests[0].aborted, 'aborted the old segment request');
-  QUnit.notStrictEqual(firstPlaylists,
-                       secondPlaylists,
-                       'the playlist object is not reused');
-  QUnit.notStrictEqual(firstMSE, secondMSE, 'the media source object is not reused');
 });
 
 QUnit.test('downloads media playlists after loading the master', function() {
@@ -1294,42 +1178,6 @@ QUnit.test('does not break if the playlist has no segments', function() {
   );
 });
 
-QUnit.skip('aborts segment processing on seek', function() {
-  let currentTime = 0;
-
-  this.player.src({
-    src: 'discontinuity.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.currentTime = function() {
-    return currentTime;
-  };
-  this.player.tech_.buffered = function() {
-    return videojs.createTimeRange();
-  };
-  // media
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-KEY:METHOD=AES-128,URI="keys/key.php"\n' +
-                                '#EXTINF:10,0\n' +
-                                '1.ts\n' +
-                                '#EXT-X-DISCONTINUITY\n' +
-                                '#EXTINF:10,0\n' +
-                                '2.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-  // 1.ts
-  standardXHRResponse(this.requests.shift());
-  // key.php
-  standardXHRResponse(this.requests.shift());
-  QUnit.ok(this.player.tech_.hls.pendingSegment_, 'decrypting the segment');
-
-  // seek back to the beginning
-  this.player.currentTime(0);
-  this.clock.tick(1);
-  QUnit.ok(!this.player.tech_.hls.pendingSegment_, 'aborted processing');
-});
-
 QUnit.test('can seek before the source buffer opens', function() {
   this.player.src({
     src: 'media.m3u8',
@@ -1462,7 +1310,7 @@ QUnit.test('fires loadstart manually if Flash is used', function() {
     setTimeout: window.setTimeout,
     audioTracks() {
       return {
-        on: () => {}
+        addEventListener: () => {}
       };
     }
   }))();
@@ -1807,10 +1655,10 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
 QUnit.module('HLS Integration', {
   beforeEach() {
     this.env = useFakeEnvironment();
-    this.clock = this.env.clock;
     this.requests = this.env.requests;
     this.mse = useFakeMediaSource();
     this.tech = new (videojs.getTech('Html5'))({});
+    this.clock = this.env.clock;
   },
   afterEach() {
     this.env.restore();
@@ -1879,14 +1727,17 @@ QUnit.test('waits to download new segments until the media playlist is stable', 
   }, this.tech);
 
   hls.mediaSource.trigger('sourceopen');
-  sourceBuffer = hls.mediaSource.sourceBuffers[0];
 
   // make sure we stay on the lowest variant
   hls.bandwidth = 1;
   // master
   standardXHRResponse(this.requests.shift());
+
   // media1
   standardXHRResponse(this.requests.shift());
+
+  // source buffer created after media source is open and first media playlist is selected
+  sourceBuffer = hls.mediaSource.sourceBuffers[0];
 
   // segment 0
   standardXHRResponse(this.requests.shift());

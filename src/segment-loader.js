@@ -149,6 +149,9 @@ export default class SegmentLoader extends videojs.EventTarget {
   dispose() {
     this.state = 'DISPOSED';
     this.abort_();
+    if (this.sourceUpdater_) {
+      this.sourceUpdater_.dispose();
+    }
   }
 
   abort() {
@@ -667,7 +670,6 @@ export default class SegmentLoader extends videojs.EventTarget {
                                                    this.sourceUpdater_.buffered());
 
     // Update segment meta-data (duration and end-point) based on timeline
-    // let timelineUpdated =
     updateSegmentMetadata(playlist,
                           currentMediaIndex,
                           timelineUpdate);

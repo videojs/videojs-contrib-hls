@@ -57,6 +57,7 @@
       AUDIO: "aac",
       VIDEO: "200kbs"
     },
+    timeline: 0,
     uri: "Angle1/200kbs/prog_index.m3u"
   }, {
     attributes: {
@@ -66,6 +67,7 @@
       AUDIO: "aac",
       VIDEO: "500kbs"
     },
+    timeline: 0,
     uri: "Angle1/500kbs/prog_index.m3u8"
   }]
 }

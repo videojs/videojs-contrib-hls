@@ -262,9 +262,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       if (!updatedPlaylist) {
         // select the initial variant
-        let media = this.hlsHandler.selectPlaylist();
+        this.initialMedia_ = this.hlsHandler.selectPlaylist();
 
-        this.masterPlaylistLoader_.media(media);
+        this.masterPlaylistLoader_.media(this.initialMedia_);
+        this.trigger('selectedinitialmedia');
         return;
       }
 
@@ -336,8 +337,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    // we have been called but there is no audio track data
-    // so we only have the main one (that we know about)
+    // We have been called but there is no audio track data so we only have the main one
+    // (that we know about). An example of this is when the source URL was a playlist
+    // manifest, not a master.
     if (!media.attributes || !media.attributes.AUDIO ||
         !master.mediaGroups || !master.mediaGroups.AUDIO) {
       return;
@@ -678,15 +680,22 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
   dispose() {
     this.masterPlaylistLoader_.dispose();
-
     for (let loader in this.audioPlaylistLoaders_) {
       if (this.audioPlaylistLoaders_.hasOwnProperty(loader)) {
         this.audioPlaylistLoaders_[loader].dispose();
       }
     }
-
     this.mainSegmentLoader_.dispose();
     this.audioSegmentLoader_.dispose();
+  }
+
+  master() {
+    return this.masterPlaylistLoader_.master;
+  }
+
+  media() {
+    // playlist loader will not return media if it has not been fully loaded
+    return this.masterPlaylistLoader_.media() || this.initialMedia_;
   }
 
   setupSourceBuffer_() {

@@ -30,7 +30,6 @@ class MockSourceBuffer extends videojs.EventTarget {
           duration
         });
         this.duration_ = duration;
-        this.updating = true;
       }
     });
   }
@@ -52,7 +51,6 @@ class MockSourceBuffer extends videojs.EventTarget {
     this.updates_.push({
       remove: [start, end]
     });
-    this.updating = true;
   }
 }
 
@@ -66,9 +64,12 @@ class MockMediaSource extends videojs.EventTarget {
 
     this.sourceBuffers = [];
     this.duration = NaN;
+    this.seekable = videojs.createTimeRange();
   }
 
-  addSeekableRange_() {}
+  addSeekableRange_(start, end) {
+    this.seekable = videojs.createTimeRange(start, end);
+  }
 
   addSourceBuffer(mime) {
     let sourceBuffer = new MockSourceBuffer();
@@ -78,8 +79,9 @@ class MockMediaSource extends videojs.EventTarget {
     return sourceBuffer;
   }
 
-  endOfStream() {
+  endOfStream(error) {
     this.readyState = 'closed';
+    this.error_ = error;
   }
 }
 

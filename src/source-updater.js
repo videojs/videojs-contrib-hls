@@ -41,6 +41,7 @@ export default class SourceUpdater {
     this.callbacks_ = [];
     this.pendingCallback_ = null;
     this.timestampOffset_ = 0;
+    this.mediaSource = mediaSource;
 
     if (mediaSource.readyState === 'closed') {
       mediaSource.addEventListener('sourceopen', createSourceBuffer);
@@ -54,7 +55,7 @@ export default class SourceUpdater {
    * @see http://w3c.github.io/media-source/#widl-SourceBuffer-abort-void
    */
   abort(done) {
-    this.queueCallback_(function abort() {
+    this.queueCallback_(() => {
       this.sourceBuffer_.abort();
     }, done);
   }
@@ -65,7 +66,7 @@ export default class SourceUpdater {
    *      #widl-SourceBuffer-appendBuffer-void-ArrayBuffer-data
    */
   appendBuffer(bytes, done) {
-    this.queueCallback_(function appendBuffer() {
+    this.queueCallback_(() => {
       this.sourceBuffer_.appendBuffer(bytes);
     }, done);
   }
@@ -85,13 +86,11 @@ export default class SourceUpdater {
    * Queue an update to set the duration.
    * @see http://www.w3.org/TR/media-source/#widl-MediaSource-duration
    */
-  /* eslint-disable no-shadow */
   duration(duration) {
-    this.queueCallback_(function duration() {
+    this.queueCallback_(() => {
       this.sourceBuffer_.duration = duration;
     });
   }
-  /* eslint-enable no-shadow */
 
   /**
    * Queue an update to remove a time range from the buffer.
@@ -99,23 +98,18 @@ export default class SourceUpdater {
    *      #widl-SourceBuffer-remove-void-double-start-unrestricted-double-end
    */
   remove(start, end) {
-    this.queueCallback_(function remove() {
+    this.queueCallback_(() => {
       this.sourceBuffer_.remove(start, end);
     });
   }
 
-  /**
-   * Queue an update to remove a time range from the buffer.
-   * @see http://www.w3.org/TR/media-source/
-   *      #widl-SourceBuffer-remove-void-double-start-unrestricted-double-end
-   */
   updating() {
-    return this.sourceBuffer_.updating;
+    return !this.sourceBuffer_ || this.sourceBuffer_.updating;
   }
 
   timestampOffset(offset) {
     if (typeof offset !== 'undefined') {
-      this.queueCallback_(function timestampOffset() {
+      this.queueCallback_(() => {
         this.sourceBuffer_.timestampOffset = offset;
       });
       this.timestampOffset_ = offset;
@@ -137,6 +131,12 @@ export default class SourceUpdater {
       callbacks = this.callbacks_.shift();
       this.pendingCallback_ = callbacks[1];
       callbacks[0]();
+    }
+  }
+
+  dispose() {
+    if (this.sourceBuffer_ && this.mediaSource.readyState === 'open') {
+      this.sourceBuffer_.abort();
     }
   }
 }

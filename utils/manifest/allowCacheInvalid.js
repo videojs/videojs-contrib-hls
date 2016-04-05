@@ -9,6 +9,7 @@
         "offset": 0
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     }
   ],

@@ -1,7 +1,7 @@
 import Playlist from '../src/playlist';
 import PlaylistLoader from '../src/playlist-loader';
 import QUnit from 'qunit';
-import { useFakeEnvironment } from './plugin-helpers';
+import { useFakeEnvironment } from './test-helpers';
 QUnit.module('Playlist Duration');
 
 QUnit.test('total duration for live playlists is Infinity', function() {
