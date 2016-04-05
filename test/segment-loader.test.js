@@ -284,9 +284,7 @@ QUnit.test('only appends one segment at a time', function() {
   QUnit.equal(this.requests.length, 0, 'only made one request');
 });
 
-/* eslint-disable no-warning-comments */
 // TODO add back in once logic is returned in segment-loader
-/* eslint-enable no-warning-comments */
 QUnit.skip('adjusts the playlist offset if no buffering progress is made', function() {
   let sourceBuffer;
   let playlist;

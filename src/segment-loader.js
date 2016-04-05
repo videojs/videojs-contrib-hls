@@ -238,9 +238,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   mimeType(mimeType) {
-    /* eslint-disable */
     // TODO Allow source buffers to be re-created with different mime-types
-    /* eslint-enable */
     if (!this.sourceUpdater_) {
       this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, mimeType);
       this.clearBuffer();

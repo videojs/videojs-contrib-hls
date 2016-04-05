@@ -238,10 +238,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       if (master.mediaGroups && master.mediaGroups.AUDIO) {
         for (let groupKey in master.mediaGroups.AUDIO) {
           for (let labelKey in master.mediaGroups.AUDIO[groupKey]) {
-            /* eslint-disable no-warning-comments */
             // TODO: use one playlist loader for alternate audio and
             // update the src when it is being used
-            /* eslint-enable no-warning-comments */
             let audio = master.mediaGroups.AUDIO[groupKey][labelKey];
 
             if (!audio.resolvedUri) {
