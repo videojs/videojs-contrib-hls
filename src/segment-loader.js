@@ -140,6 +140,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.checkBufferTimeout_ = null;
     this.error_ = void 0;
     this.expired_ = 0;
+    this.timeCorrection_ = 0;
     this.currentTimeline_ = -1;
     this.xhr_ = null;
     this.pendingSegment_ = null;
@@ -272,6 +273,14 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   checkBuffer_(buffered, playlist, currentTime) {
     let currentBuffered = Ranges.findRange(buffered, currentTime);
+
+    // There are times when MSE reports the first segment as starting a
+    // little after 0-time so add a fudge factor to try and fix those cases
+    // or we end up fetching the same first segment over and over
+    if (currentBuffered.length === 0 && currentTime === 0) {
+      currentBuffered = Ranges.findRange(buffered, currentTime + Ranges.TIME_FUDGE_FACTOR);
+    }
+
     let bufferedTime;
     let currentBufferedEnd;
     let timestampOffset = this.sourceUpdater_.timestampOffset();
@@ -284,7 +293,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (currentBuffered.length === 0) {
       // find the segment containing currentTime
-      mediaIndex = getMediaIndexForTime(playlist, currentTime, this.expired_);
+      mediaIndex = getMediaIndexForTime(playlist, currentTime, this.expired_ + this.timeCorrection_);
     } else {
       // find the segment adjacent to the end of the current
       // buffered region
@@ -295,7 +304,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       if (bufferedTime >= GOAL_BUFFER_LENGTH) {
         return null;
       }
-      mediaIndex = getMediaIndexForTime(playlist, currentBufferedEnd, this.expired_);
+      mediaIndex = getMediaIndexForTime(playlist, currentBufferedEnd, this.expired_ + this.timeCorrection_);
     }
 
     if (mediaIndex < 0 || mediaIndex === playlist.segments.length) {
@@ -667,20 +676,22 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     timelineUpdate = Ranges.findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
-                                                   this.sourceUpdater_.buffered());
+                                                          this.sourceUpdater_.buffered());
 
     // Update segment meta-data (duration and end-point) based on timeline
-    updateSegmentMetadata(playlist,
-                          currentMediaIndex,
-                          timelineUpdate);
+    let timelineUpdated = updateSegmentMetadata(playlist,
+                                                currentMediaIndex,
+                                                timelineUpdate);
 
     // the last segment append must have been entirely in the
-    // already buffered time ranges. adjust the timestamp offset to
-    // fetch forward until we find a segment that adds to the
-    // buffered time ranges and improves subsequent media index
-    // calculations.
-//    if (!timelineUpdated) {
-//      this.expired_ -= segment.duration;
-//    }
+    // already buffered time ranges. adjust the timeCorrection
+    // offset to fetch forward until we find a segment that adds
+    // to the buffered time ranges and improves subsequent media
+    // index calculations.
+    if (!timelineUpdated) {
+      this.timeCorrection_ -= segment.duration;
+    } else {
+      this.timeCorrection_ = 0;
+    }
   }
 }

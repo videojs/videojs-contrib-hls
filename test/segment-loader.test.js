@@ -280,8 +280,7 @@ QUnit.test('only appends one segment at a time', function() {
   QUnit.equal(this.requests.length, 0, 'only made one request');
 });
 
-// TODO add back in once logic is returned in segment-loader
-QUnit.skip('adjusts the playlist offset if no buffering progress is made', function() {
+QUnit.test('adjusts the playlist offset if no buffering progress is made', function() {
   let sourceBuffer;
   let playlist;
 
@@ -304,18 +303,18 @@ QUnit.skip('adjusts the playlist offset if no buffering progress is made', funct
     playlist.endList = false;
     loader.playlist(playlist);
   });
-  sourceBuffer.buffered = videojs.createTimeRanges([[0, 10]]);
+  sourceBuffer.buffered = videojs.createTimeRanges([[0, 5]]);
   sourceBuffer.trigger('updateend');
 
   // the next segment doesn't increase the buffer at all
-  QUnit.equal(this.requests[0].url, '1.ts', 'requested the equivalent segment');
+  QUnit.equal(this.requests[0].url, '0.ts', 'requested the same segment');
   this.clock.tick(1);
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
   sourceBuffer.trigger('updateend');
 
   // so the loader should try the next segment
-  QUnit.equal(this.requests[0].url, '2.ts', 'moved ahead a segment');
+  QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 });
 
 QUnit.test('cancels outstanding requests on abort', function() {
@@ -766,144 +765,6 @@ QUnit.test('key request timeouts reset bandwidth', function() {
   QUnit.equal(loader.bandwidth, 1, 'reset bandwidth');
   QUnit.ok(isNaN(loader.roundTrip), 'reset round trip time');
 });
-
-// --------------------
-/* eslint-disable */
-
-QUnit.skip('cleans up the buffer when loading live segments', function() {
-  let removes = [];
-  let seekable = videojs.createTimeRanges([[60, 120]]);
-
-  this.player.src({
-    src: 'liveStart30sBefore.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  Helper.openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.seekable = function() {
-    return seekable;
-  };
-
-  Helper.openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
-    return new (videojs.extend(videojs.EventTarget, {
-      constructor() {},
-      abort() {},
-      buffered: videojs.createTimeRange(),
-      appendBuffer() {},
-      remove(start, end) {
-        removes.push([start, end]);
-      }
-    }))();
-  };
-  this.player.tech_.hls.bandwidth = 20e10;
-  this.player.tech_.triggerReady();
-  Helper.standardXHRResponse(this.requests[0]);
-
-  this.player.tech_.hls.playlists.trigger('loadedmetadata');
-  this.player.tech_.trigger('canplay');
-  this.player.tech_.paused = function() {
-    return false;
-  };
-  this.player.tech_.readyState = function() {
-    return 1;
-  };
-  this.player.tech_.trigger('play');
-
-  this.clock.tick(1);
-  Helper.standardXHRResponse(this.requests[1]);
-
-  QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8',
-                    'master playlist requested');
-  QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, seekable.start(0)],
-                  'remove called with the right range');
-});
-
-QUnit.skip('cleans up the buffer based on currentTime when loading a live segment ' +
-           'if seekable start is after currentTime', function() {
-  let removes = [];
-  let seekable = videojs.createTimeRanges([[0, 80]]);
-
-  this.player.src({
-    src: 'liveStart30sBefore.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.seekable = function() {
-    return seekable;
-  };
-
-  openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
-    return new (videojs.extend(videojs.EventTarget, {
-      constructor() {},
-      abort() {},
-      buffered: videojs.createTimeRange(),
-      appendBuffer() {},
-      remove(start, end) {
-        removes.push([start, end]);
-      }
-    }))();
-  };
-  this.player.tech_.hls.segments.bandwidth = 20e10;
-  this.player.tech_.triggerReady();
-  standardXHRResponse(this.requests[0]);
-  this.player.tech_.hls.playlists.trigger('loadedmetadata');
-  this.player.tech_.trigger('canplay');
-
-  this.player.tech_.paused = function() {
-    return false;
-  };
-
-  this.player.tech_.readyState = function() {
-    return 1;
-  };
-
-  this.player.tech_.trigger('play');
-  this.clock.tick(1);
-  // Change seekable so that it starts *after* the currentTime which was set
-  // based on the previous seekable range (the end of 80)
-  seekable = videojs.createTimeRanges([[100, 120]]);
-  standardXHRResponse(this.requests[1]);
-
-  QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
-  QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
-});
-
-QUnit.skip('cleans up the buffer when loading VOD segments', function() {
-  let removes = [];
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  Helper.openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
-    return new (videojs.extend(videojs.EventTarget, {
-      constructor() {},
-      abort() {},
-      buffered: videojs.createTimeRange(),
-      appendBuffer() {},
-      remove(start, end) {
-        removes.push([start, end]);
-      }
-    }))();
-  };
-  this.player.tech_.hls.bandwidth = 20e10;
-  Helper.standardXHRResponse(this.requests[0]);
-  this.player.currentTime(120);
-  Helper.standardXHRResponse(this.requests[1]);
-  Helper.standardXHRResponse(this.requests[2]);
-
-  QUnit.strictEqual(this.requests[0].url, 'manifest/master.m3u8',
-                    'master playlist requested');
-  QUnit.strictEqual(this.requests[1].url, Helper.absoluteUrl('manifest/media3.m3u8'),
-                    'media playlist requested');
-  QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
-});
-/* eslint-enable */
 
 QUnit.module('Segment Loading Calculation', {
   beforeEach() {
