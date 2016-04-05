@@ -54,6 +54,7 @@ QUnit.module('Segment Loader', {
 
     currentTime = 0;
     mediaSource = new videojs.MediaSource();
+    mediaSource.trigger('sourceopen');
     loader = new SegmentLoader({
       currentTime() {
         return currentTime;
@@ -138,7 +139,6 @@ QUnit.test('calling load should unpause', function() {
 
   loader.playlist(playlistWithDuration(20));
   loader.pause();
-  mediaSource.trigger('sourceopen');
 
   loader.mimeType(this.mimeType);
   sourceBuffer = mediaSource.sourceBuffers[0];
@@ -170,7 +170,6 @@ QUnit.test('regularly checks the buffer while unpaused', function() {
   loader.playlist(playlistWithDuration(90));
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
   sourceBuffer = mediaSource.sourceBuffers[0];
 
   // fill the buffer
@@ -195,7 +194,6 @@ QUnit.test('does not check the buffer while paused', function() {
   loader.playlist(playlistWithDuration(90));
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
   sourceBuffer = mediaSource.sourceBuffers[0];
 
   loader.pause();
@@ -245,7 +243,6 @@ QUnit.test('appending a segment triggers progress', function() {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
 
   // some time passes and a response is received
   this.requests[0].response = new Uint8Array(10).buffer;
@@ -269,7 +266,6 @@ QUnit.test('only appends one segment at a time', function() {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
 
   // some time passes and a segment is received
   this.clock.tick(100);
@@ -294,7 +290,6 @@ QUnit.skip('adjusts the playlist offset if no buffering progress is made', funct
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
   sourceBuffer = mediaSource.sourceBuffers[0];
 
   // buffer some content and switch playlists on progress
@@ -357,7 +352,6 @@ QUnit.test('sets the timestampOffset on timeline change', function() {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
 
   // segment 0
   this.requests[0].response = new Uint8Array(10).buffer;
@@ -377,7 +371,6 @@ QUnit.test('tracks segment end times as they are buffered', function() {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
@@ -431,7 +424,6 @@ QUnit.test('fires ended at the end of a playlist', function() {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
   loader.mediaSource_ = {
     readyState: 'open',
     sourceBuffers: mediaSource.sourceBuffers,
@@ -456,7 +448,6 @@ QUnit.test('live playlists do not trigger ended', function() {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
   loader.mediaSource_ = {
     readyState: 'open',
     sourceBuffers: mediaSource.sourceBuffers,
@@ -551,7 +542,6 @@ QUnit.test('dispose cleans up outstanding work', function() {
   loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
 
   loader.dispose();
   QUnit.ok(this.requests[0].aborted, 'aborted segment request');
@@ -602,7 +592,6 @@ QUnit.test('dispose cleans up key requests for encrypted segments', function() {
   loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
-  mediaSource.trigger('sourceopen');
 
   loader.dispose();
   QUnit.equal(this.requests.length, 2, 'requested a segment and key');

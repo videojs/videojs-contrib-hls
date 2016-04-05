@@ -104,7 +104,7 @@ export default class SourceUpdater {
   }
 
   updating() {
-    return this.sourceBuffer_ && this.sourceBuffer_.updating;
+    return !this.sourceBuffer_ || this.sourceBuffer_.updating;
   }
 
   timestampOffset(offset) {
