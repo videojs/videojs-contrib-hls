@@ -21,9 +21,9 @@ export const GOAL_BUFFER_LENGTH = 30;
  * Updates segment with information about its end-point in time and, optionally,
  * the segment duration if we have enough information to determine a segment duration
  * accurately.
- * @param playlist {object} a media playlist object
- * @param segmentIndex {number} the index of segment we last appended
- * @param segmentEnd {number} the known of the segment referenced by segmentIndex
+ * @param {object} playlist - a media playlist object
+ * @param {number} segmentIndex - the index of segment we last appended
+ * @param {number} segmentEnd - the known of the segment referenced by segmentIndex
  */
 const updateSegmentMetadata = function(playlist, segmentIndex, segmentEnd) {
   if (!playlist) {
@@ -53,12 +53,12 @@ const updateSegmentMetadata = function(playlist, segmentIndex, segmentEnd) {
  * Determines if we should call endOfStream on the media source based
  * on the state of the buffer or if appened segment was the final
  * segment in the playlist.
- * @param playlist {object} a media playlist object
- * @param mediaSource {object} the MediaSource object
- * @param segmentIndex {number} the index of segment we last appended
- * @param currentBuffered {object} the buffered region that
+ * @param {object} playlist - a media playlist object
+ * @param {object} mediaSource - the MediaSource object
+ * @param {number} segmentIndex - the index of segment we last appended
+ * @param {object} currentBuffered - the buffered region that
  * currentTime resides in
- * @return {boolean} whether the calling function should call
+ * @returns {boolean} whether the calling function should call
  * endOfStream on the MediaSource
  */
 const detectEndOfStream = function(playlist, mediaSource, segmentIndex, currentBuffered) {
@@ -266,16 +266,19 @@ export default class SegmentLoader extends videojs.EventTarget {
   /**
    * Return the amount of a segment specified by the mediaIndex overlaps
    * the current buffered content.
-   * @param playlist {object} the playlist object to fetch segments from
-   * @param mediaIndex {number} the index of the segment in the playlist
-   * @param buffered {TimeRanges} the state of the buffer
-   * @return {number} the percentage of the segment's time range that is
+   * @param {object} playlist - the playlist object to fetch segments from
+   * @param {number} mediaIndex - the index of the segment in the playlist
+   * @param {TimeRanges} buffered - the state of the buffer
+   * @returns {number} the percentage of the segment's time range that is
    * already in `buffered`
    */
-  getSegmentBufferedPercent_(playlist, mediaIndex, buffered) {
+  getSegmentBufferedPercent_(playlist, mediaIndex, currentTime, buffered) {
     let segment = playlist.segments[mediaIndex];
-    let startOfSegment = duration(playlist, playlist.mediaSequence + mediaIndex);
-    let segmentRange = videojs.createTimeRanges([[startOfSegment, startOfSegment + segment.duration]]);
+    let startOfSegment = duration(playlist, playlist.mediaSequence + mediaIndex) + this.expired_;
+    let segmentRange = videojs.createTimeRanges([[
+      Math.max(currentTime, startOfSegment),
+      startOfSegment + segment.duration
+    ]]);
 
     return Ranges.calculateBufferedPercent(segmentRange, buffered);
   }
@@ -283,10 +286,10 @@ export default class SegmentLoader extends videojs.EventTarget {
   /**
    * Determines what segment request should be made, given current
    * playback state.
-   * @param buffered {TimeRanges} the state of the buffer
-   * @param playlist {object} the playlist object to fetch segments from
-   * @param currentTime {number} the playback position in seconds
-   * @return {object} a segment info object that describes the
+   * @param {TimeRanges} buffered - the state of the buffer
+   * @param {object} playlist - the playlist object to fetch segments from
+   * @param {number} currentTime - the playback position in seconds
+   * @returns {object} a segment info object that describes the
    * request that should be made or null if no request is necessary
    */
   checkBuffer_(buffered, playlist, currentTime) {
@@ -333,13 +336,13 @@ export default class SegmentLoader extends videojs.EventTarget {
     // the percentage of the chosen segment that is buffered. If more than 90%
     // of the segment is buffered then fetching it will likely not help in any
     // way
-    let percentBuffered = this.getSegmentBufferedPercent_(playlist, mediaIndex, buffered);
+    let percentBuffered = this.getSegmentBufferedPercent_(playlist, mediaIndex, currentTime, buffered);
 
     if (percentBuffered >= 90) {
       // Retry the buffered calculation with the next segment if there is another
       // segment after the currently selected segment
       if (mediaIndex + 1 < playlist.segments.length) {
-        percentBuffered = this.getSegmentBufferedPercent_(playlist, mediaIndex + 1, buffered);
+        percentBuffered = this.getSegmentBufferedPercent_(playlist, mediaIndex + 1, currentTime, buffered);
       }
 
       // If both checks failed return and don't load anything
@@ -404,9 +407,10 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // see if we need to begin loading immediately
     let request = this.checkBuffer_(this.sourceUpdater_.buffered(),
-                                this.playlist_,
-                                this.currentTime_(),
-                                this.timestampOffset_);
+                                    this.playlist_,
+                                    this.currentTime_(),
+                                    this.timestampOffset_);
+
     if (request) {
       this.loadSegment_(request);
     }

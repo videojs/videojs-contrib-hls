@@ -29,9 +29,9 @@ const filterRanges = function(timeRanges, predicate) {
 /**
  * Attempts to find the buffered TimeRange that contains the specified
  * time.
- * @param buffered {TimeRanges} the TimeRanges object to query
- * @param time {number} the time to filter on.
- * @return a new TimeRanges object.
+ * @param {TimeRanges} buffered - the TimeRanges object to query
+ * @param {number} time  - the time to filter on.
+ * @returns {TimeRanges} a new TimeRanges object
  */
 const findRange = function(buffered, time) {
   return filterRanges(buffered, function(start, end) {
@@ -43,9 +43,9 @@ const findRange = function(buffered, time) {
 /**
  * Returns the TimeRanges that begin at or later than the specified
  * time.
- * @param timeRanges {TimeRanges} the TimeRanges object to query
- * @param time {number} the time to filter on.
- * @return a new TimeRanges object.
+ * @param {TimeRanges} timeRanges - the TimeRanges object to query
+ * @param {number} time - the time to filter on.
+ * @returns {TimeRanges} a new TimeRanges object.
  */
 const findNextRange = function(timeRanges, time) {
   return filterRanges(timeRanges, function(start) {
@@ -57,10 +57,10 @@ const findNextRange = function(timeRanges, time) {
  * Search for a likely end time for the segment that was just appened
  * based on the state of the `buffered` property before and after the
  * append. If we fin only one such uncommon end-point return it.
- * @param original {TimeRanges} the buffered time ranges before the update
- * @param update {TimeRanges} the buffered time ranges after the update
- * @return the end time added between `original` and `update`, or
- * null if one cannot be unambiguously determined.
+ * @param {TimeRanges} original - the buffered time ranges before the update
+ * @param {TimeRanges} update - the buffered time ranges after the update
+ * @returns {Number|null} the end time added between `original` and `update`,
+ * or null if one cannot be unambiguously determined.
  */
 const findSoleUncommonTimeRangesEnd = function(original, update) {
   let i;
@@ -115,84 +115,82 @@ const findSoleUncommonTimeRangesEnd = function(original, update) {
 
 /**
  * Calculate the intersection of two TimeRanges
- * @param bufferA {TimeRanges}
- * @param bufferB {TimeRanges}
- * @return {TimeRanges} The interesection of `bufferA` with `bufferB`
+ * @param {TimeRanges} bufferA
+ * @param {TimeRanges} bufferB
+ * @returns {TimeRanges} The interesection of `bufferA` with `bufferB`
  */
 const bufferIntersection = function(bufferA, bufferB) {
-    let start = null;
-    let end = null;
-    let arity = 0;
-    let extents = [];
-    let ranges = [];
+  let start = null;
+  let end = null;
+  let arity = 0;
+  let extents = [];
+  let ranges = [];
 
-    if (!bufferA || !bufferA.length || !bufferB || !bufferB.length) {
-      return videojs.createTimeRange();
-    }
+  if (!bufferA || !bufferA.length || !bufferB || !bufferB.length) {
+    return videojs.createTimeRange();
+  }
 
-    // Handle the case where we have both buffers and create an
-    // intersection of the two
-    let count = bufferA.length;
+  // Handle the case where we have both buffers and create an
+  // intersection of the two
+  let count = bufferA.length;
 
-    // A) Gather up all start and end times
-    while (count--) {
-      extents.push({time: bufferA.start(count), type: 'start'});
-      extents.push({time: bufferA.end(count), type: 'end'});
-    }
-    count = bufferB.length;
-    while (count--) {
-      extents.push({time: bufferB.start(count), type: 'start'});
-      extents.push({time: bufferB.end(count), type: 'end'});
-    }
-    // B) Sort them by time
-    extents.sort(function(a, b) {
-      return a.time - b.time;
-    });
+  // A) Gather up all start and end times
+  while (count--) {
+    extents.push({time: bufferA.start(count), type: 'start'});
+    extents.push({time: bufferA.end(count), type: 'end'});
+  }
+  count = bufferB.length;
+  while (count--) {
+    extents.push({time: bufferB.start(count), type: 'start'});
+    extents.push({time: bufferB.end(count), type: 'end'});
+  }
+  // B) Sort them by time
+  extents.sort(function(a, b) {
+    return a.time - b.time;
+  });
 
-    // C) Go along one by one incrementing arity for start and decrementing
-    //    arity for ends
-    for (count = 0; count < extents.length; count++) {
-      if (extents[count].type === 'start') {
-        arity++;
+  // C) Go along one by one incrementing arity for start and decrementing
+  //    arity for ends
+  for (count = 0; count < extents.length; count++) {
+    if (extents[count].type === 'start') {
+      arity++;
 
-        // D) If arity is ever incremented to 2 we are entering an
-        //    overlapping range
-        if (arity === 2) {
-          start = extents[count].time;
-        }
-      } else if (extents[count].type === 'end') {
-        arity--;
-
-        // E) If arity is ever decremented to 1 we leaving an
-        //    overlapping range
-        if (arity === 1) {
-          end = extents[count].time;
-        }
+      // D) If arity is ever incremented to 2 we are entering an
+      //    overlapping range
+      if (arity === 2) {
+        start = extents[count].time;
       }
+    } else if (extents[count].type === 'end') {
+      arity--;
 
-      // F) Record overlapping ranges
-      if (start !== null && end !== null) {
-        ranges.push([start, end]);
-        start = null;
-        end = null;
+      // E) If arity is ever decremented to 1 we leaving an
+      //    overlapping range
+      if (arity === 1) {
+        end = extents[count].time;
       }
     }
 
-    return videojs.createTimeRanges(ranges);
+    // F) Record overlapping ranges
+    if (start !== null && end !== null) {
+      ranges.push([start, end]);
+      start = null;
+      end = null;
+    }
+  }
+
+  return videojs.createTimeRanges(ranges);
 };
 
 /**
  * Calculates the percentage of `segmentRange` that overlaps the
  * `buffered` time ranges.
- * @param segmentRange {TimeRanges} the time range that the segment covers
- * @param buffered {TimeRanges} the currently buffered time ranges
- * @return {Number} percent of the segment currently buffered
+ * @param {TimeRanges} segmentRange - the time range that the segment covers
+ * @param {TimeRanges} buffered - the currently buffered time ranges
+ * @returns {Number} percent of the segment currently buffered
  */
 const calculateBufferedPercent = function(segmentRange, buffered) {
   let segmentDuration = segmentRange.end(0) - segmentRange.start(0);
-
   let intersection = bufferIntersection(segmentRange, buffered);
-
   let overlapDuration = 0;
   let count = intersection.length;
 
