@@ -177,10 +177,10 @@ export default class HlsHandler extends Component {
         }));
         /* eslint-enable dot-notation */
       }
-      this.masterPlaylistController_.useAudio();
     });
 
     this.masterPlaylistController_.on('loadedmetadata', () => {
+      this.masterPlaylistController_.useAudio();
       this.tech_.trigger('loadedmetadata');
     });
 
