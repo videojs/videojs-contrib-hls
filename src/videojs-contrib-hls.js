@@ -134,27 +134,73 @@ export default class HlsHandler extends Component {
       this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
     });
 
-    this.masterPlaylistController_.on('selectedinitialmedia', () => {
+    this.masterPlaylistController_.on('audioinfochanged', (e) => {
+      if (!videojs.browser.IS_FIREFOX) {
+        return;
+      }
       let audioTrackList = this.tech_.audioTracks();
-      let media = this.masterPlaylistController_.media();
-      let master = this.masterPlaylistController_.master();
-      let mediaGroups = master.mediaGroups;
-      let attributes = {
-        audio: {main: {default: true}}
-      };
+      let error = 'had different audio properties (channels, sample rate, etc.) ' +
+                  'or changed in some other way.  This behavior is currently ' +
+                  'unsupported in Firefox due to an issue: \n\n' +
+                  'https://bugzilla.mozilla.org/show_bug.cgi?id=1247138\n\n';
 
-      if (!media.attributes) {
-        // source URL was playlist manifest, not master
-        // no audio tracks to add
+      let attributes = this.masterPlaylistController_.getPlaylistAttributes_();
+      let mainLabel;
+
+      for (let label in attributes.audio) {
+        let hlstrack = attributes.audio[label];
+
+        /* eslint-disable dot-notation */
+        // dot notation used on the key default to support ie8
+        if (hlstrack['default']) {
+          mainLabel = label;
+          break;
+        }
+        /* eslint-enable dot-notation */
+      }
+
+      let trackToRemove;
+      let mainTrack;
+
+      for (let i = 0; i < audioTrackList.length; i++) {
+        let track = audioTrackList[i];
+
+        if (track.enabled) {
+          trackToRemove = track;
+        } else if (track.label === mainLabel) {
+          mainTrack = track;
+        }
+      }
+
+      // they did not switch audiotracks
+      // blacklist the current playlist
+      if (trackToRemove.label === mainLabel) {
+        error = 'The rendition that we tried to switch to ' + error +
+                'Unfortunately that means we will have to blacklist ' +
+                'the current playlist and switch to another. Sorry!';
+        this.masterPlaylistController_.blacklistCurrentPlaylist(error);
         return;
       }
 
-      // only do alternative audio tracks in html5 mode, and if we have them
-      if (this.mode_ === 'html5' &&
-          media.attributes &&
-          media.attributes.AUDIO &&
-         mediaGroups.AUDIO[media.attributes.AUDIO]) {
-        attributes.audio = mediaGroups.AUDIO[media.attributes.AUDIO];
+      error = 'The audio track \'' + trackToRemove.label + '\' that we tried to ' +
+              'switch to ' + error + 'Unfortunately this means we will have to ' +
+              'return you to the main track \'' + mainTrack.label + '\'. Sorry!';
+      videojs.log.warn(error);
+
+      mainTrack.enabled = true;
+      audioTrackList.removeTrack(trackToRemove);
+      // set the audioInfo_ on the media source to the info pre-change
+      // this stops us from triggering audioinfochanged again
+      this.masterPlaylistController_.mediaSource.audioInfo_ = e.old;
+      this.masterPlaylistController_.useAudio();
+    });
+
+    this.masterPlaylistController_.on('selectedinitialmedia', () => {
+      let audioTrackList = this.tech_.audioTracks();
+      let attributes = this.masterPlaylistController_.getPlaylistAttributes_();
+
+      if (!attributes) {
+        return;
       }
 
       // clear current audioTracks
