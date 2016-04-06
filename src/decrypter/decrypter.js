@@ -20,7 +20,6 @@ const ntoh = function(word) {
     (word >>> 24);
 };
 
-/* eslint-disable max-len */
 /**
  * Decrypt bytes using AES-128 with CBC and PKCS#7 padding.
  * @param encrypted {Uint8Array} the encrypted bytes
@@ -33,7 +32,6 @@ const ntoh = function(word) {
  * @see http://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#Cipher_Block_Chaining_.28CBC.29
  * @see https://tools.ietf.org/html/rfc2315
  */
-/* eslint-enable max-len */
 export const decrypt = function(encrypted, key, initVector) {
   // word-level access to the encrypted bytes
   let encrypted32 = new Int32Array(encrypted.buffer,
