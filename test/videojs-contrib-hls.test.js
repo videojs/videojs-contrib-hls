@@ -1610,14 +1610,14 @@ QUnit.test('adds 1 default  audio track if we have not parsed any, and the playl
     type: 'application/vnd.apple.mpegurl'
   });
 
-  QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
+  QUnit.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
 
   openMediaSource(this.player, this.clock);
 
   // master
   standardXHRResponse(this.requests.shift());
 
-  QUnit.equal(this.player.audioTracks().length, 1, `one audio track after load`);
+  QUnit.equal(this.player.audioTracks().length, 1, 'one audio track after load');
 });
 
 QUnit.test('adds audio tracks if we have parsed some from a playlist', function() {
@@ -1626,7 +1626,7 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
     type: 'application/vnd.apple.mpegurl'
   });
 
-  QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
+  QUnit.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
 
   openMediaSource(this.player, this.clock);
 
@@ -1634,22 +1634,22 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   standardXHRResponse(this.requests.shift());
   let at = this.player.audioTracks();
 
-  QUnit.equal(at.length, 3, `three audio tracks after load`);
+  QUnit.equal(at.length, 3, 'three audio tracks after load');
 
-  QUnit.equal(at[0].label, 'English', `track 1 - label = NAME`);
-  QUnit.equal(at[0].enabled, true, `track 1 - enabled = DEFAULT`);
-  QUnit.equal(at[0].language, 'eng', `track 1 - language = LANG`);
-  QUnit.equal(at[0].kind, 'main', `track 1 - kind = main if DEFAULT is YES`);
+  QUnit.equal(at[0].label, 'English', 'track 1 - label = NAME');
+  QUnit.equal(at[0].enabled, true, 'track 1 - enabled = DEFAULT');
+  QUnit.equal(at[0].language, 'eng', 'track 1 - language = LANG');
+  QUnit.equal(at[0].kind, 'main', 'track 1 - kind = main if DEFAULT is YES');
 
-  QUnit.equal(at[1].label, 'Français', `track 2 - label = NAME`);
-  QUnit.equal(at[1].enabled, false, `track 2 - enabled = DEFAULT`);
-  QUnit.equal(at[1].language, 'fre', `track 2 - language = LANG`);
-  QUnit.equal(at[1].kind, 'alternative', `track 2 - kind = alternative if DEFAULT is NO`);
+  QUnit.equal(at[1].label, 'Français', 'track 2 - label = NAME');
+  QUnit.equal(at[1].enabled, false, 'track 2 - enabled = DEFAULT');
+  QUnit.equal(at[1].language, 'fre', 'track 2 - language = LANG');
+  QUnit.equal(at[1].kind, 'alternative', 'track 2 - kind = alternative if DEFAULT is NO');
 
-  QUnit.equal(at[2].label, 'Espanol', `track 3 - label = NAME`);
-  QUnit.equal(at[2].enabled, false, `track 3 - enabled = DEFAULT`);
-  QUnit.equal(at[2].language, 'sp', `track 3 - language = LANG`);
-  QUnit.equal(at[2].kind, 'alternative', `track 3 - kind = alternative if DEFAULT is NO`);
+  QUnit.equal(at[2].label, 'Espanol', 'track 3 - label = NAME');
+  QUnit.equal(at[2].enabled, false, 'track 3 - enabled = DEFAULT');
+  QUnit.equal(at[2].language, 'sp', 'track 3 - language = LANG');
+  QUnit.equal(at[2].kind, 'alternative', 'track 3 - kind = alternative if DEFAULT is NO');
 });
 
 QUnit.test('cleans up the buffer when loading live segments', function() {
@@ -1791,6 +1791,81 @@ QUnit.test('cleans up the buffer when loading VOD segments', function() {
                     'media playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
   QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
+});
+
+QUnit.test('when mediaGroup changes enabled track should not change', function() {
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
+  openMediaSource(this.player, this.clock);
+
+  // master
+  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests.shift());
+  let hls = this.player.tech_.hls;
+  let mpc = hls.masterPlaylistController_;
+  let at = this.player.audioTracks();
+
+  QUnit.equal(at.length, 3, 'three audio tracks after load');
+  let trackOne = at[0];
+  let trackTwo = at[1];
+  let trackThree = at[2];
+
+  QUnit.equal(trackOne.enabled, true, 'track on enabled after load');
+
+  let oldMediaGroup = mpc.media().attributes.AUDIO;
+
+  // force mpc to select a new media group
+  mpc.hlsHandler.selectPlaylist = () => {
+    let select = null;
+
+    mpc.master().playlists.forEach((playlist) => {
+      if (select) {
+        return;
+      }
+      if (playlist.attributes.AUDIO !== oldMediaGroup) {
+        select = playlist;
+      }
+    });
+    return select;
+  };
+
+  // select a new mediaGroup
+  mpc.blacklistCurrentPlaylist_({});
+  while (this.requests.length > 0) {
+    standardXHRResponse(this.requests.shift());
+  }
+  QUnit.notEqual(oldMediaGroup, mpc.media().attributes.AUDIO, 'selected a new playlist');
+
+  QUnit.equal(at.length, 3, 'three audio tracks after mediaGroup Change');
+  QUnit.equal(at[0], trackOne, 'track one did not change');
+  QUnit.equal(at[1], trackTwo, 'track two did not change');
+  QUnit.equal(at[2], trackThree, 'track three did not change');
+
+  trackTwo.enabled = true;
+  QUnit.equal(trackOne.enabled, false, 'track 1 - now disabled');
+  QUnit.equal(trackTwo.enabled, true, 'track 2 - now enabled');
+  QUnit.equal(trackThree.enabled, false, 'track 3 - disabled');
+
+  oldMediaGroup = mpc.media().attributes.AUDIO;
+  // select a new mediaGroup
+  mpc.blacklistCurrentPlaylist_({});
+  while (this.requests.length > 0) {
+    standardXHRResponse(this.requests.shift());
+  }
+  QUnit.notEqual(oldMediaGroup, mpc.media().attributes.AUDIO, 'selected a new playlist');
+
+  QUnit.equal(at.length, 3, 'three audio tracks after mediaGroup Change');
+  QUnit.equal(at[0], trackOne, 'track one did not change');
+  QUnit.equal(at[1], trackTwo, 'track two did not change');
+  QUnit.equal(at[2], trackThree, 'track three did not change');
+
+  QUnit.equal(trackOne.enabled, false, 'track 1 - still disabled');
+  QUnit.equal(trackTwo.enabled, true, 'track 2 - still enabled');
+  QUnit.equal(trackThree.enabled, false, 'track 3 - disabled');
 });
 
 QUnit.module('HLS Integration', {

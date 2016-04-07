@@ -317,7 +317,8 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
   QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 });
 
-QUnit.test('never attempt to load a segment that is greater than 90% buffered', function() {
+QUnit.test('never attempt to load a segment that ' +
+           'is greater than 90% buffered', function() {
   let sourceBuffer;
   let playlist;
 

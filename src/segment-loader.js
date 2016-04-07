@@ -274,7 +274,9 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   getSegmentBufferedPercent_(playlist, mediaIndex, currentTime, buffered) {
     let segment = playlist.segments[mediaIndex];
-    let startOfSegment = duration(playlist, playlist.mediaSequence + mediaIndex) + this.expired_;
+    let startOfSegment = duration(playlist,
+                                  playlist.mediaSequence + mediaIndex) +
+                         this.expired_;
     let segmentRange = videojs.createTimeRanges([[
       Math.max(currentTime, startOfSegment),
       startOfSegment + segment.duration
@@ -299,7 +301,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     // little after 0-time so add a fudge factor to try and fix those cases
     // or we end up fetching the same first segment over and over
     if (currentBuffered.length === 0 && currentTime === 0) {
-      currentBuffered = Ranges.findRange(buffered, currentTime + Ranges.TIME_FUDGE_FACTOR);
+      currentBuffered = Ranges.findRange(buffered,
+                                         currentTime + Ranges.TIME_FUDGE_FACTOR);
     }
 
     let bufferedTime;
@@ -314,7 +317,9 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (currentBuffered.length === 0) {
       // find the segment containing currentTime
-      mediaIndex = getMediaIndexForTime(playlist, currentTime, this.expired_ + this.timeCorrection_);
+      mediaIndex = getMediaIndexForTime(playlist,
+                                        currentTime,
+                                        this.expired_ + this.timeCorrection_);
     } else {
       // find the segment adjacent to the end of the current
       // buffered region
@@ -325,7 +330,9 @@ export default class SegmentLoader extends videojs.EventTarget {
       if (bufferedTime >= GOAL_BUFFER_LENGTH) {
         return null;
       }
-      mediaIndex = getMediaIndexForTime(playlist, currentBufferedEnd, this.expired_ + this.timeCorrection_);
+      mediaIndex = getMediaIndexForTime(playlist,
+                                        currentBufferedEnd,
+                                        this.expired_ + this.timeCorrection_);
     }
 
     if (mediaIndex < 0 || mediaIndex === playlist.segments.length) {
@@ -336,13 +343,19 @@ export default class SegmentLoader extends videojs.EventTarget {
     // the percentage of the chosen segment that is buffered. If more than 90%
     // of the segment is buffered then fetching it will likely not help in any
     // way
-    let percentBuffered = this.getSegmentBufferedPercent_(playlist, mediaIndex, currentTime, buffered);
+    let percentBuffered = this.getSegmentBufferedPercent_(playlist,
+                                                          mediaIndex,
+                                                          currentTime,
+                                                          buffered);
 
     if (percentBuffered >= 90) {
       // Retry the buffered calculation with the next segment if there is another
       // segment after the currently selected segment
       if (mediaIndex + 1 < playlist.segments.length) {
-        percentBuffered = this.getSegmentBufferedPercent_(playlist, mediaIndex + 1, currentTime, buffered);
+        percentBuffered = this.getSegmentBufferedPercent_(playlist,
+                                                          mediaIndex + 1,
+                                                          currentTime,
+                                                          buffered);
       }
 
       // If both checks failed return and don't load anything

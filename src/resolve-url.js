@@ -1,5 +1,4 @@
 import document from 'global/document';
-/* eslint-disable max-len */
 /**
  * Constructs a new URI by interpreting a path relative to another
  * URI.
@@ -9,7 +8,6 @@ import document from 'global/document';
  * with `path`
  * @see http://stackoverflow.com/questions/470832/getting-an-absolute-url-from-a-relative-one-ie6-issue
  */
-/* eslint-enable max-len */
 const resolveUrl = function(basePath, path) {
   // use the base element to get the browser to handle URI resolution
   let oldBase = document.querySelector('base');

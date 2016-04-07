@@ -112,12 +112,21 @@ let fakeEnvironment = {
     this.clock.restore();
     videojs.xhr.XMLHttpRequest = window.XMLHttpRequest;
     this.xhr.restore();
+    ['warn', 'error'].forEach((level) => {
+      if (videojs.log && videojs.log[level] && videojs.log[level].restore) {
+        videojs.log[level].restore();
+      }
+    });
+
   }
 };
 
 export const useFakeEnvironment = function() {
   fakeEnvironment.clock = sinon.useFakeTimers();
-
+  ['warn', 'error'].forEach((level) => {
+    sinon.stub(videojs.log, level);
+  });
+  fakeEnvironment.log = videojs.log;
   fakeEnvironment.xhr = sinon.useFakeXMLHttpRequest();
   fakeEnvironment.requests.length = 0;
   fakeEnvironment.xhr.onCreate = function(xhr) {
