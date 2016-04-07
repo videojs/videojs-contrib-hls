@@ -106,6 +106,23 @@ QUnit.module('HLS', {
   }
 });
 
+QUnit.test('deprication warning is show when using player.hls', function() {
+  let oldWarn = videojs.log.warn;
+  let warning = '';
+
+  this.player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  videojs.log.warn = (text) => warning = text;
+  let hls = this.player.hls;
+
+  QUnit.equal(warning, 'player.hls is deprecated. Use player.tech.hls instead.', 'warning would have been shown');
+  QUnit.ok(hls, 'an instance of hls is returned by player.hls');
+  videojs.log.warn = oldWarn;
+});
+
 QUnit.test('starts playing if autoplay is specified', function() {
   this.player.autoplay(true);
   this.player.src({
@@ -238,9 +255,9 @@ QUnit.test('including HLS as a tech does not error', function() {
   });
 
   QUnit.ok(player, 'created the player');
+  QUnit.equal(this.env.log.warn.calls, 2, 'logged two warnings for deprications');
 });
 
-// Warns: 'player.hls is deprecated. Use player.tech.hls instead.'
 QUnit.test('creates a PlaylistLoader on init', function() {
   this.player.src({
     src: 'manifest/playlist.m3u8',
@@ -869,6 +886,7 @@ QUnit.test('segment 404 should trigger blacklisting of media', function() {
   // segment
   this.requests[2].respond(400);
   QUnit.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
+  QUnit.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
 });
 
 QUnit.test('playlist 404 should blacklist media', function() {
@@ -901,6 +919,8 @@ QUnit.test('playlist 404 should blacklist media', function() {
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
   QUnit.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
+  QUnit.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function() {
@@ -941,6 +961,8 @@ QUnit.test('fire loadedmetadata once we successfully load a playlist', function(
   this.requests.shift().respond(404);
   QUnit.equal(count, 0,
     'loadedMedia not triggered after playlist 404');
+  QUnit.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+
   // media
   standardXHRResponse(this.requests.shift());
   QUnit.equal(count, 1,
@@ -1126,6 +1148,8 @@ QUnit.test('if withCredentials global option is used, withCredentials is set on 
   QUnit.ok(this.requests[0].withCredentials,
            'with credentials should be set to true if that option is passed in');
   videojs.options.hls = hlsOptions;
+  // TODO: prevent log warnings here somehow?
+  QUnit.equal(this.env.log.warn.calls, 2, 'logged two warning for not registeing HLS as a component');
 });
 
 QUnit.test('if withCredentials src option is used, withCredentials is set on the XHR object', function() {
@@ -1343,7 +1367,9 @@ QUnit.test('has no effect if native HLS is available', function() {
   player.dispose();
 });
 
-QUnit.test('is not supported on browsers without typed arrays', function() {
+// TODO: this test seems to be very old do we still need it?
+// it does not appear to test anything at all...
+QUnit.skip('is not supported on browsers without typed arrays', function() {
   let oldArray = window.Uint8Array;
 
   window.Uint8Array = null;
@@ -1814,23 +1840,13 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
   let trackTwo = at[1];
   let trackThree = at[2];
 
-  QUnit.equal(trackOne.enabled, true, 'track on enabled after load');
+  QUnit.equal(trackOne.enabled, true, 'track one enabled after load');
 
   let oldMediaGroup = mpc.media().attributes.AUDIO;
 
   // force mpc to select a new media group
   mpc.hlsHandler.selectPlaylist = () => {
-    let select = null;
-
-    mpc.master().playlists.forEach((playlist) => {
-      if (select) {
-        return;
-      }
-      if (playlist.attributes.AUDIO !== oldMediaGroup) {
-        select = playlist;
-      }
-    });
-    return select;
+    return mpc.master().playlists.find(playlist => playlist.attributes.AUDIO !== oldMediaGroup);
   };
 
   // select a new mediaGroup
@@ -1839,6 +1855,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
     standardXHRResponse(this.requests.shift());
   }
   QUnit.notEqual(oldMediaGroup, mpc.media().attributes.AUDIO, 'selected a new playlist');
+  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 
   QUnit.equal(at.length, 3, 'three audio tracks after mediaGroup Change');
   QUnit.equal(at[0], trackOne, 'track one did not change');
@@ -1857,6 +1874,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
     standardXHRResponse(this.requests.shift());
   }
   QUnit.notEqual(oldMediaGroup, mpc.media().attributes.AUDIO, 'selected a new playlist');
+  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 
   QUnit.equal(at.length, 3, 'three audio tracks after mediaGroup Change');
   QUnit.equal(at[0], trackOne, 'track one did not change');
@@ -2046,6 +2064,7 @@ QUnit.test('blacklists playlist if key requests fail', function() {
   this.requests.shift().respond(404);
   QUnit.ok(hls.playlists.media().excludeUntil > 0,
            'playlist blacklisted');
+  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 });
 
 QUnit.test('treats invalid keys as a key request failure and blacklists playlist', function() {
@@ -2080,5 +2099,6 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
   // blacklist this playlist
   QUnit.ok(hls.playlists.media().excludeUntil > 0,
            'blacklisted playlist');
+  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 });
 
