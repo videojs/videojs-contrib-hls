@@ -714,7 +714,7 @@ test('starts downloading a segment on loadedmetadata', function() {
               'the first segment is requested');
 });
 
-test('always returns an empty buffered region when there are no SourceBuffers', function() {
+test('return an empty buffered region when there are no SourceBuffers but a real MediaSource exists', function() {
   player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -740,12 +740,12 @@ test('always returns an empty buffered region when there are no SourceBuffers', 
         0,
         'empty TimeRanges returned');
 
-  // Simulate the condition with no media source
-  player.hls.mediaSource.mediaSource_ = undefined;
+  // Simulate the condition with no media source (ie. Flash)
+  delete player.hls.mediaSource.mediaSource_;
 
-  equal(player.tech_.hls.findBufferedRange_().length,
-        0,
-        'empty TimeRanges returned');
+  equal(player.tech_.hls.findBufferedRange_().end(0),
+              10,
+              'real TimeRanges returned');
 });
 
 test('finds the correct buffered region based on currentTime', function() {
