@@ -80,15 +80,13 @@
   },
   "files": [
     "CONTRIBUTING.md",
-    "dist-test/",
     "dist/",
     "docs/",
     "es5/",
     "index.html",
     "scripts/",
     "src/",
-    "test/",
-    "utils/"
+    "test/"
   ],
   "dependencies": {
     "pkcs7": "^0.2.2",
