@@ -65,7 +65,7 @@
       AUDIO: "audio-lo"
     },
     timeline: 0,
-    uri: "hi/prog_index.m3u8"
+    uri: "lo2/prog_index.m3u8"
   }, {
     attributes: {
       "PROGRAM-ID": 1,
@@ -74,7 +74,7 @@
       AUDIO: "audio-hi"
     },
     timeline: 0,
-    uri: "lo/prog_index.m3u8"
+    uri: "hi/prog_index.m3u8"
   }, {
     attributes: {
       "PROGRAM-ID": 1,
@@ -83,6 +83,6 @@
       AUDIO: "audio-hi"
     },
     timeline: 0,
-    uri: "hi/prog_index.m3u8"
+    uri: "hi2/prog_index.m3u8"
   }]
 }

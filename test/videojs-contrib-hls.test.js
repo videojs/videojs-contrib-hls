@@ -106,6 +106,23 @@ QUnit.module('HLS', {
   }
 });
 
+QUnit.test('deprication warning is show when using player.hls', function() {
+  let oldWarn = videojs.log.warn;
+  let warning = '';
+
+  this.player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  videojs.log.warn = (text) => warning = text;
+  let hls = this.player.hls;
+
+  QUnit.equal(warning, 'player.hls is deprecated. Use player.tech.hls instead.', 'warning would have been shown');
+  QUnit.ok(hls, 'an instance of hls is returned by player.hls');
+  videojs.log.warn = oldWarn;
+});
+
 QUnit.test('starts playing if autoplay is specified', function() {
   this.player.autoplay(true);
   this.player.src({
@@ -238,9 +255,9 @@ QUnit.test('including HLS as a tech does not error', function() {
   });
 
   QUnit.ok(player, 'created the player');
+  QUnit.equal(this.env.log.warn.calls, 2, 'logged two warnings for deprications');
 });
 
-// Warns: 'player.hls is deprecated. Use player.tech.hls instead.'
 QUnit.test('creates a PlaylistLoader on init', function() {
   this.player.src({
     src: 'manifest/playlist.m3u8',
@@ -869,6 +886,7 @@ QUnit.test('segment 404 should trigger blacklisting of media', function() {
   // segment
   this.requests[2].respond(400);
   QUnit.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
+  QUnit.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
 });
 
 QUnit.test('playlist 404 should blacklist media', function() {
@@ -901,6 +919,8 @@ QUnit.test('playlist 404 should blacklist media', function() {
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
   QUnit.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
+  QUnit.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function() {
@@ -941,6 +961,8 @@ QUnit.test('fire loadedmetadata once we successfully load a playlist', function(
   this.requests.shift().respond(404);
   QUnit.equal(count, 0,
     'loadedMedia not triggered after playlist 404');
+  QUnit.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+
   // media
   standardXHRResponse(this.requests.shift());
   QUnit.equal(count, 1,
@@ -1126,6 +1148,8 @@ QUnit.test('if withCredentials global option is used, withCredentials is set on 
   QUnit.ok(this.requests[0].withCredentials,
            'with credentials should be set to true if that option is passed in');
   videojs.options.hls = hlsOptions;
+  // TODO: prevent log warnings here somehow?
+  QUnit.equal(this.env.log.warn.calls, 2, 'logged two warning for not registeing HLS as a component');
 });
 
 QUnit.test('if withCredentials src option is used, withCredentials is set on the XHR object', function() {
@@ -1343,7 +1367,9 @@ QUnit.test('has no effect if native HLS is available', function() {
   player.dispose();
 });
 
-QUnit.test('is not supported on browsers without typed arrays', function() {
+// TODO: this test seems to be very old do we still need it?
+// it does not appear to test anything at all...
+QUnit.skip('is not supported on browsers without typed arrays', function() {
   let oldArray = window.Uint8Array;
 
   window.Uint8Array = null;
@@ -1610,14 +1636,14 @@ QUnit.test('adds 1 default  audio track if we have not parsed any, and the playl
     type: 'application/vnd.apple.mpegurl'
   });
 
-  QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
+  QUnit.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
 
   openMediaSource(this.player, this.clock);
 
   // master
   standardXHRResponse(this.requests.shift());
 
-  QUnit.equal(this.player.audioTracks().length, 1, `one audio track after load`);
+  QUnit.equal(this.player.audioTracks().length, 1, 'one audio track after load');
 });
 
 QUnit.test('adds audio tracks if we have parsed some from a playlist', function() {
@@ -1626,7 +1652,7 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
     type: 'application/vnd.apple.mpegurl'
   });
 
-  QUnit.equal(this.player.audioTracks().length, 0, `zero audio tracks at load time`);
+  QUnit.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
 
   openMediaSource(this.player, this.clock);
 
@@ -1634,22 +1660,22 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   standardXHRResponse(this.requests.shift());
   let at = this.player.audioTracks();
 
-  QUnit.equal(at.length, 3, `three audio tracks after load`);
+  QUnit.equal(at.length, 3, 'three audio tracks after load');
 
-  QUnit.equal(at[0].label, 'English', `track 1 - label = NAME`);
-  QUnit.equal(at[0].enabled, true, `track 1 - enabled = DEFAULT`);
-  QUnit.equal(at[0].language, 'eng', `track 1 - language = LANG`);
-  QUnit.equal(at[0].kind, 'main', `track 1 - kind = main if DEFAULT is YES`);
+  QUnit.equal(at[0].label, 'English', 'track 1 - label = NAME');
+  QUnit.equal(at[0].enabled, true, 'track 1 - enabled = DEFAULT');
+  QUnit.equal(at[0].language, 'eng', 'track 1 - language = LANG');
+  QUnit.equal(at[0].kind, 'main', 'track 1 - kind = main if DEFAULT is YES');
 
-  QUnit.equal(at[1].label, 'Français', `track 2 - label = NAME`);
-  QUnit.equal(at[1].enabled, false, `track 2 - enabled = DEFAULT`);
-  QUnit.equal(at[1].language, 'fre', `track 2 - language = LANG`);
-  QUnit.equal(at[1].kind, 'alternative', `track 2 - kind = alternative if DEFAULT is NO`);
+  QUnit.equal(at[1].label, 'Français', 'track 2 - label = NAME');
+  QUnit.equal(at[1].enabled, false, 'track 2 - enabled = DEFAULT');
+  QUnit.equal(at[1].language, 'fre', 'track 2 - language = LANG');
+  QUnit.equal(at[1].kind, 'alternative', 'track 2 - kind = alternative if DEFAULT is NO');
 
-  QUnit.equal(at[2].label, 'Espanol', `track 3 - label = NAME`);
-  QUnit.equal(at[2].enabled, false, `track 3 - enabled = DEFAULT`);
-  QUnit.equal(at[2].language, 'sp', `track 3 - language = LANG`);
-  QUnit.equal(at[2].kind, 'alternative', `track 3 - kind = alternative if DEFAULT is NO`);
+  QUnit.equal(at[2].label, 'Espanol', 'track 3 - label = NAME');
+  QUnit.equal(at[2].enabled, false, 'track 3 - enabled = DEFAULT');
+  QUnit.equal(at[2].language, 'sp', 'track 3 - language = LANG');
+  QUnit.equal(at[2].kind, 'alternative', 'track 3 - kind = alternative if DEFAULT is NO');
 });
 
 QUnit.test('cleans up the buffer when loading live segments', function() {
@@ -1791,6 +1817,73 @@ QUnit.test('cleans up the buffer when loading VOD segments', function() {
                     'media playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
   QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
+});
+
+QUnit.test('when mediaGroup changes enabled track should not change', function() {
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
+  openMediaSource(this.player, this.clock);
+
+  // master
+  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests.shift());
+  let hls = this.player.tech_.hls;
+  let mpc = hls.masterPlaylistController_;
+  let at = this.player.audioTracks();
+
+  QUnit.equal(at.length, 3, 'three audio tracks after load');
+  let trackOne = at[0];
+  let trackTwo = at[1];
+  let trackThree = at[2];
+
+  QUnit.equal(trackOne.enabled, true, 'track one enabled after load');
+
+  let oldMediaGroup = mpc.media().attributes.AUDIO;
+
+  // force mpc to select a new media group
+  mpc.hlsHandler.selectPlaylist = () => {
+    return mpc.master().playlists.find(playlist => playlist.attributes.AUDIO !== oldMediaGroup);
+  };
+
+  // select a new mediaGroup
+  mpc.blacklistCurrentPlaylist_({});
+  while (this.requests.length > 0) {
+    standardXHRResponse(this.requests.shift());
+  }
+  QUnit.notEqual(oldMediaGroup, mpc.media().attributes.AUDIO, 'selected a new playlist');
+  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
+
+  QUnit.equal(at.length, 3, 'three audio tracks after mediaGroup Change');
+  QUnit.equal(at[0], trackOne, 'track one did not change');
+  QUnit.equal(at[1], trackTwo, 'track two did not change');
+  QUnit.equal(at[2], trackThree, 'track three did not change');
+
+  trackTwo.enabled = true;
+  QUnit.equal(trackOne.enabled, false, 'track 1 - now disabled');
+  QUnit.equal(trackTwo.enabled, true, 'track 2 - now enabled');
+  QUnit.equal(trackThree.enabled, false, 'track 3 - disabled');
+
+  oldMediaGroup = mpc.media().attributes.AUDIO;
+  // select a new mediaGroup
+  mpc.blacklistCurrentPlaylist_({});
+  while (this.requests.length > 0) {
+    standardXHRResponse(this.requests.shift());
+  }
+  QUnit.notEqual(oldMediaGroup, mpc.media().attributes.AUDIO, 'selected a new playlist');
+  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
+
+  QUnit.equal(at.length, 3, 'three audio tracks after mediaGroup Change');
+  QUnit.equal(at[0], trackOne, 'track one did not change');
+  QUnit.equal(at[1], trackTwo, 'track two did not change');
+  QUnit.equal(at[2], trackThree, 'track three did not change');
+
+  QUnit.equal(trackOne.enabled, false, 'track 1 - still disabled');
+  QUnit.equal(trackTwo.enabled, true, 'track 2 - still enabled');
+  QUnit.equal(trackThree.enabled, false, 'track 3 - disabled');
 });
 
 QUnit.module('HLS Integration', {
@@ -1971,6 +2064,7 @@ QUnit.test('blacklists playlist if key requests fail', function() {
   this.requests.shift().respond(404);
   QUnit.ok(hls.playlists.media().excludeUntil > 0,
            'playlist blacklisted');
+  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 });
 
 QUnit.test('treats invalid keys as a key request failure and blacklists playlist', function() {
@@ -2005,5 +2099,6 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
   // blacklist this playlist
   QUnit.ok(hls.playlists.media().excludeUntil > 0,
            'blacklisted playlist');
+  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 });
 

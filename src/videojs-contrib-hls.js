@@ -70,7 +70,7 @@ export default class HlsHandler extends Component {
     // backwards-compatibility
     if (tech.options_ && tech.options_.playerId) {
       _player = videojs(tech.options_.playerId);
-      if (!_player.hls) {
+      if (!_player.hasOwnProperty('hls')) {
         Object.defineProperty(_player, 'hls', {
           get: () => {
             videojs.log.warn('player.hls is deprecated. Use player.tech.hls instead.');

@@ -1,6 +1,7 @@
 import document from 'global/document';
 import sinon from 'sinon';
 import videojs from 'video.js';
+import QUnit from 'qunit';
 /* eslint-disable no-unused-vars */
 // needed so MediaSource can be registered with videojs
 import MediaSource from 'videojs-contrib-media-sources';
@@ -112,12 +113,32 @@ let fakeEnvironment = {
     this.clock.restore();
     videojs.xhr.XMLHttpRequest = window.XMLHttpRequest;
     this.xhr.restore();
+    ['warn', 'error'].forEach((level) => {
+      if (this.log && this.log[level] && this.log[level].restore) {
+        QUnit.equal(this.log[level].callCount, 0, `no unexpected logs on ${level}`);
+        this.log[level].restore();
+      }
+    });
   }
 };
 
 export const useFakeEnvironment = function() {
-  fakeEnvironment.clock = sinon.useFakeTimers();
+  fakeEnvironment.log = {};
+  ['warn', 'error'].forEach((level) => {
+    // you can use .log[level].args to get args
+    sinon.stub(videojs.log, level);
+    fakeEnvironment.log[level] = videojs.log[level];
+    Object.defineProperty(videojs.log[level], 'calls', {
+      get() {
+        // reset callCount to 0 so they don't have to
+        let callCount = this.callCount;
 
+        this.callCount = 0;
+        return callCount;
+      }
+    });
+  });
+  fakeEnvironment.clock = sinon.useFakeTimers();
   fakeEnvironment.xhr = sinon.useFakeXMLHttpRequest();
   fakeEnvironment.requests.length = 0;
   fakeEnvironment.xhr.onCreate = function(xhr) {
