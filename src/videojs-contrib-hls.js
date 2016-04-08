@@ -23,6 +23,12 @@ const Hls = {
   xhr
 };
 
+// TODO: replace with video.js implementation when it gets pulled in
+// videojs.browser.IS_IE11 or
+// videojs.browser.IS_IE && videojs.browser.IE_VERSION === 11
+const USER_AGENT = window.navigator.userAgent;
+export const IS_IE11 = (/Trident\/7.0/i).test(USER_AGENT) && (/rv:11.0/).test(USER_AGENT);
+
 // the desired length of video to maintain in the buffer, in seconds
 Hls.GOAL_BUFFER_LENGTH = 30;
 
@@ -150,10 +156,12 @@ export default class HlsHandler extends Component {
       }
 
       // only do alternative audio tracks in html5 mode, and if we have them
+      // and don't do them on IE11 for now
       if (this.mode_ === 'html5' &&
           media.attributes &&
           media.attributes.AUDIO &&
-         mediaGroups.AUDIO[media.attributes.AUDIO]) {
+          mediaGroups.AUDIO[media.attributes.AUDIO] &&
+          !IS_IE11) {
         attributes.audio = mediaGroups.AUDIO[media.attributes.AUDIO];
       }
 
