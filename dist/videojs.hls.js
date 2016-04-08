@@ -1,4 +1,4 @@
-/*! videojs-contrib-hls - v1.3.7 - 2016-04-06
+/*! videojs-contrib-hls - v1.3.7 - 2016-04-08
 * Copyright (c) 2016 Brightcove; Licensed  */
 /*! videojs-contrib-media-sources - v2.4.4 - 2016-01-22
 * Copyright (c) 2016 Brightcove; Licensed  */
@@ -4937,7 +4937,12 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   if (mediaIndex === undefined) {
     if (currentBuffered && currentBuffered.length) {
       currentBufferedEnd = currentBuffered.end(0);
-      mediaIndex = this.playlists.getMediaIndexForTime_(currentBufferedEnd);
+      // currentBufferedEnd is rounded up to handle the following case:
+      // suppose we've loaded the first segment, which has a duration of 10s
+      // if currentBufferedEnd is 10s, or slightly more, we correctly realize that we should load
+      // the second segment next
+      // but if it is slightly less than 10s, we try to reload the first segment
+      mediaIndex = this.playlists.getMediaIndexForTime_(Math.ceil(currentBufferedEnd));
       bufferedTime = Math.max(0, currentBufferedEnd - currentTime);
 
       // if there is plenty of content in the buffer and we're not
@@ -5013,17 +5018,15 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
     segmentInfo.timestampOffset = segmentTimestampOffset;
   }
 
-  // whenever the playlist changes, the original logic was to reload the current segment.
-  // we changed it to only reload the current segment if the quality (HD/SD)
-  // changed. This prevents multiple requests for e.g.
-  // (1080x3000, 3Mb/s, segment#1) and (720x2400, 2.4Mb/s, segment#1), both of which are HD.
+  // whenever the playlist changes, the original logic was to reload the current segment,
+  // which does not do anything since the current segment is already buffered.
+  // we changed it to load the following segment. this prevents multiple requests for e.g.
+  // (1080x3000, 3Mb/s, segment#1) and (720x2400, 2.4Mb/s, segment#1).
   if (prevSegmentInfo) {
     prevSegment = prevSegmentInfo.playlist.segments[prevSegmentInfo.mediaIndex];
     if (
       // same segment number
       prevSegmentInfo.mediaIndex === segmentInfo.mediaIndex &&
-      // and same playlist quality
-      this.getQuality(prevSegmentInfo.playlist) === this.getQuality(segmentInfo.playlist) &&
       // it is assumed that segment sizes are consistent across playlists. but as a sanity check:
       // make sure the playlists have the same number of segments
       prevSegmentInfo.playlist.length === segmentInfo.playlist.length &&
@@ -5032,9 +5035,9 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
       // and pray that we don't have something like:
       // [ 1   | 2 | 3 ]
       // [ 1 | 2 |   3 ]
-      // where segment 2 meets all our conditions, but should be reloaded.
+      // where segment 2 meets all our conditions, but should be reloaded
     ) {
-      // do not reload the current segment. instead load the next segment.
+      // load the next segment, not the current segment
       return this.fillBuffer(segmentInfo.mediaIndex + 1);
     }
   }
