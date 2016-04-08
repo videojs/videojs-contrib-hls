@@ -441,6 +441,10 @@ export default class HlsHandler extends Component {
       this.blacklistCurrentPlaylist_(this.playlists.error);
     });
 
+    this.playlists.on('mediasourcechange', function (newUrl) {
+      this.source_.src = newUrl;
+    });
+
     this.playlists.on('loadedplaylist', () => {
       let updatedPlaylist = this.playlists.media();
       let seekable;
