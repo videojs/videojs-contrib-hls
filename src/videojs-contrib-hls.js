@@ -446,6 +446,10 @@ export default class HlsHandler extends Component {
       let updatedPlaylist = this.playlists.media();
       let seekable;
 
+      //follow redirect uri
+      if (this.source_.src != this.playlists.master.uri) {
+        this.source_.src = this.playlists.master.uri;
+      }
       if (!updatedPlaylist) {
         // select the initial variant
         this.playlists.media(this.selectPlaylist());
