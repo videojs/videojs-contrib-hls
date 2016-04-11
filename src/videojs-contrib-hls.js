@@ -20,6 +20,7 @@ const Hls = {
   AsyncStream,
   decrypt,
   utils,
+  options: {},
   xhr
 };
 
@@ -79,14 +80,21 @@ export default class HlsHandler extends Component {
         });
       }
     }
+
+    // TODO: when source handler options are possible (pull request is accepted
+    // into video.js) then we can add other options entries. Right now only
+    // mode/source will ever be passed as we pass them in
+    // HlsSourceHandler.handleSource()
+    // @link https://github.com/videojs/video.js/pull/3245
     this.tech_ = tech;
     this.source_ = options.source;
-    this.mode_ = options.mode;
+    this.mode_ = Hls.options.mode || options.mode;
+    this.withCredentials_ = Hls.options.withCredentials || false;
 
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
     // 0.5 Mbps
-    this.bandwidth = options.bandwidth || 4194304;
+    this.bandwidth = Hls.options.bandwidth || 4194304;
     this.bytesReceived = 0;
 
     this.on(this.tech_, 'seeking', function() {
@@ -111,16 +119,13 @@ export default class HlsHandler extends Component {
       return;
     }
 
-    this.options_ = {};
     if (typeof this.source_.withCredentials !== 'undefined') {
-      this.options_.withCredentials = this.source_.withCredentials;
-    } else if (videojs.options.hls) {
-      this.options_.withCredentials = videojs.options.hls.withCredentials;
+      this.withCredentials_ = this.source_.withCredentials;
     }
 
     this.masterPlaylistController_ = new MasterPlaylistController({
       url: this.source_.src,
-      withCredentials: this.options_.withCredentials,
+      withCredentials: this.withCredentials_,
       currentTimeFunc: this.tech_.currentTime.bind(this.tech_),
       mediaSourceMode: this.mode_,
       hlsHandler: this,

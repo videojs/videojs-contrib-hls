@@ -1133,10 +1133,10 @@ QUnit.test('reloads out-of-date live playlists when switching variants', functio
 });
 
 QUnit.test('if withCredentials global option is used, withCredentials is set on the XHR object', function() {
-  let hlsOptions = videojs.options.hls;
+  let hlsOptions = videojs.Hls.options;
 
   this.player.dispose();
-  videojs.options.hls = {
+  videojs.Hls.options = {
     withCredentials: true
   };
   this.player = createPlayer();
@@ -1147,9 +1147,7 @@ QUnit.test('if withCredentials global option is used, withCredentials is set on 
   openMediaSource(this.player, this.clock);
   QUnit.ok(this.requests[0].withCredentials,
            'with credentials should be set to true if that option is passed in');
-  videojs.options.hls = hlsOptions;
-  // TODO: prevent log warnings here somehow?
-  QUnit.equal(this.env.log.warn.calls, 2, 'logged two warning for not registeing HLS as a component');
+  videojs.Hls.options = hlsOptions;
 });
 
 QUnit.test('if withCredentials src option is used, withCredentials is set on the XHR object', function() {
@@ -1177,6 +1175,23 @@ QUnit.test('src level credentials supersede the global options', function() {
   QUnit.ok(this.requests[0].withCredentials,
            'with credentials should be set to true if that option is passed in');
 
+});
+
+QUnit.test('if mode global option is used, mode is set to global option', function() {
+  let hlsOptions = videojs.Hls.options;
+
+  this.player.dispose();
+  videojs.Hls.options = {
+    mode: 'flash'
+  };
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  QUnit.equal(this.player.tech_.hls.mode_, 'flash', 'mode set to flash');
+  videojs.Hls.options = hlsOptions;
 });
 
 QUnit.test('does not break if the playlist has no segments', function() {
