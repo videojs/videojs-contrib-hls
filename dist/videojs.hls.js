@@ -1,4 +1,4 @@
-/*! videojs-contrib-hls - v1.3.7 - 2016-04-04
+/*! videojs-contrib-hls - v1.3.7 - 2016-04-08
 * Copyright (c) 2016 Brightcove; Licensed  */
 /*! videojs-contrib-media-sources - v2.4.4 - 2016-01-22
 * Copyright (c) 2016 Brightcove; Licensed  */
@@ -4031,6 +4031,9 @@ videojs.HlsHandler = videojs.extend(Component, {
     // the segment info object for a segment that is in the process of
     // being downloaded or processed
     this.pendingSegment_ = null;
+    // the segment info object for the last segment that was successfully processed
+    // pendingSegment_ becomes processedSegment_
+    this.processedSegment_ = null;
 
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
@@ -4124,6 +4127,47 @@ if (window.Uint8Array) {
 // the desired length of video to maintain in the buffer, in seconds
 videojs.Hls.GOAL_BUFFER_LENGTH = 120;
 
+videojs.HlsHandler.prototype.applySafeAppendBuffer = function(mediaSource) {
+  // wraps native SourceBuffer.appendBuffer method with try/catch so we can handle
+  // QuotaExceededError. this lets us trim the buffer only when necessary, which allows us to
+  // have a larger buffer. the previous logic limited the buffer to 1 minute's worth
+  // of content in order to to never trigger QuotaExceededError.
+  var
+    self = this,
+    nativeMediaSource = mediaSource.mediaSource_,
+    _originalAddSourceBuffer;
+  if (!nativeMediaSource) {
+    // QuotaExceededError only happens for the native HtmlMediaSource.
+    return;
+  }
+  _originalAddSourceBuffer = nativeMediaSource.addSourceBuffer;
+  nativeMediaSource.addSourceBuffer = function(type) {
+    var
+      nativeSourceBuffer = _originalAddSourceBuffer.call(nativeMediaSource, type),
+      _originalAppendBuffer = nativeSourceBuffer.appendBuffer;
+    nativeSourceBuffer.appendBuffer = function(buffer) {
+      try {
+        if (!nativeSourceBuffer.updating) {
+          _originalAppendBuffer.call(nativeSourceBuffer, buffer);
+        }
+      } catch (err) {
+        if (err.name === 'QuotaExceededError') {
+          // if self.sourceBuffer is a VirtualSourceBuffer (see videojs-contrib-media-sources lib),
+          // it has a bufferUpdating_ attribute. we have to turn it off in order for
+          // trimSourceBuffer logic to run
+          self.sourceBuffer.bufferUpdating_ = false;
+          self.trimSourceBuffer();
+          // process the pending segment
+          self.updateEndHandler_();
+        } else {
+          throw err;
+        }
+      }
+    }
+    return nativeSourceBuffer;
+  };
+};
+
 videojs.HlsHandler.prototype.src = function(src) {
   var oldMediaPlaylist;
 
@@ -4133,6 +4177,7 @@ videojs.HlsHandler.prototype.src = function(src) {
   }
 
   this.mediaSource = new videojs.MediaSource({ mode: this.mode_ });
+  this.applySafeAppendBuffer(this.mediaSource);
 
   // load the MediaSource into the player
   this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen.bind(this));
@@ -4598,6 +4643,16 @@ videojs.HlsHandler.prototype.dispose = function() {
   Component.prototype.dispose.call(this);
 };
 
+videojs.HlsHandler.prototype.getQuality = function(playlist) {
+  if (!playlist.attributes) {
+    return '';
+  }
+  if (playlist.attributes.BANDWIDTH >= 1200000) {
+    return 'HD';
+  }
+  return 'SD';
+};
+
 /**
  * Chooses the appropriate media playlist based on the current
  * bandwidth estimate and the player size.
@@ -4632,19 +4687,19 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
   // Sometimes we select playlist before player is ready, in which case player_ is undefined.
   // This is OK, since playlist is updated every time a new segment is fetched.
   // Bandwidth = 1 indicates that the request for the segment timed out, in which case we should force SD.
-  if(this.mediaSource.player_ && this.mediaSource.player_.currentRes === 'HD' && this.bandwidth > 1) {
+  if (this.mediaSource.player_ && this.mediaSource.player_.currentRes === 'HD' && this.bandwidth > 1) {
     var sortedHDPlaylists = sortedPlaylists.filter(function(variant) {
-      return variant.attributes && variant.attributes.BANDWIDTH >= 1200000;
-    });
-    if(sortedHDPlaylists.length === 0) {
+      return this.getQuality(variant) === 'HD';
+    }.bind(this));
+    if (sortedHDPlaylists.length === 0) {
       sortedHDPlaylists.push(sortedPlaylists[sortedPlaylists.length - 1]);
     }
     sortedPlaylists = sortedHDPlaylists;
-  } else if(this.mediaSource.player_ && this.mediaSource.player_.currentRes === 'SD') {
+  } else if (this.mediaSource.player_ && this.mediaSource.player_.currentRes === 'SD') {
     var sortedSDPlaylists = sortedPlaylists.filter(function(variant) {
-      return variant.attributes && variant.attributes.BANDWIDTH < 1200000;
-    });
-    if(sortedSDPlaylists.length === 0) {
+      return this.getQuality(variant) === 'SD';
+    }.bind(this));
+    if (sortedSDPlaylists.length === 0) {
       sortedSDPlaylists.push(sortedPlaylists[0]);
     }
     sortedPlaylists = sortedSDPlaylists;
@@ -4841,7 +4896,9 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
     outsideBufferedRanges = !(currentBuffered && currentBuffered.length),
     currentBufferedEnd = 0,
     bufferedTime = 0,
+    prevSegment,
     segment,
+    prevSegmentInfo = this.processedSegment_,
     segmentInfo,
     segmentTimestampOffset;
 
@@ -4880,7 +4937,12 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
   if (mediaIndex === undefined) {
     if (currentBuffered && currentBuffered.length) {
       currentBufferedEnd = currentBuffered.end(0);
-      mediaIndex = this.playlists.getMediaIndexForTime_(currentBufferedEnd);
+      // currentBufferedEnd is rounded up to handle the following case:
+      // suppose we've loaded the first segment, which has a duration of 10s
+      // if currentBufferedEnd is 10s, or slightly more, we correctly realize that we should load
+      // the second segment next
+      // but if it is slightly less than 10s, we try to reload the first segment
+      mediaIndex = this.playlists.getMediaIndexForTime_(Math.ceil(currentBufferedEnd));
       bufferedTime = Math.max(0, currentBufferedEnd - currentTime);
 
       // if there is plenty of content in the buffer and we're not
@@ -4954,6 +5016,30 @@ videojs.HlsHandler.prototype.fillBuffer = function(mediaIndex) {
     // If we are trying to play at a position that is not zero but we aren't
     // currently seeking according to the video element
     segmentInfo.timestampOffset = segmentTimestampOffset;
+  }
+
+  // whenever the playlist changes, the original logic was to reload the current segment,
+  // which does not do anything since the current segment is already buffered.
+  // we changed it to load the following segment. this prevents multiple requests for e.g.
+  // (1080x3000, 3Mb/s, segment#1) and (720x2400, 2.4Mb/s, segment#1).
+  if (prevSegmentInfo) {
+    prevSegment = prevSegmentInfo.playlist.segments[prevSegmentInfo.mediaIndex];
+    if (
+      // same segment number
+      prevSegmentInfo.mediaIndex === segmentInfo.mediaIndex &&
+      // it is assumed that segment sizes are consistent across playlists. but as a sanity check:
+      // make sure the playlists have the same number of segments
+      prevSegmentInfo.playlist.length === segmentInfo.playlist.length &&
+      // and the segments have the same duration
+      prevSegment.duration === segment.duration
+      // and pray that we don't have something like:
+      // [ 1   | 2 | 3 ]
+      // [ 1 | 2 |   3 ]
+      // where segment 2 meets all our conditions, but should be reloaded
+    ) {
+      // load the next segment, not the current segment
+      return this.fillBuffer(segmentInfo.mediaIndex + 1);
+    }
   }
 
   this.loadSegment(segmentInfo);
@@ -5049,10 +5135,10 @@ videojs.HlsHandler.prototype.blacklistCurrentPlaylist_ = function(error) {
   }
 };
 
-videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
+videojs.HlsHandler.prototype.trimSourceBuffer = function() {
+  // returns true if we were able to remove some buffer, else false
   var
-    self = this,
-    segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex],
+    bufferedStart = 0,
     removeToTime = 0,
     seekable = this.seekable();
 
@@ -5065,13 +5151,24 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     if (seekable.length && seekable.start(0) > 0) {
       removeToTime = seekable.start(0);
     } else {
+      if (this.sourceBuffer.buffered.length) {
+        bufferedStart = this.sourceBuffer.buffered.start(0);
+      }
       removeToTime = this.tech_.currentTime() - 60;
     }
 
-    if (removeToTime > 0) {
+    if (removeToTime > bufferedStart) {
       this.sourceBuffer.remove(0, removeToTime);
+      return true;
     }
   }
+  return false;
+};
+
+videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
+  var
+    self = this,
+    segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
   // if the segment is encrypted, request the key
   if (segment.key) {
@@ -5089,6 +5186,10 @@ videojs.HlsHandler.prototype.loadSegment = function(segmentInfo) {
     timeout: (segment.duration * 10) * 1000,
     headers: this.segmentXhrHeaders_(segment)
   }, function(error, request) {
+    // Reset the processedSegment_. If nothing bad happens (see all the early exits below),
+    // we'll eventually make it to updateEndHandler_, where processedSegment_ gets set.
+    self.processedSegment_ = null;
+
     // This is a timeout of a previously aborted segment request
     // so simply ignore it
     if (!self.segmentXhr_ || request !== self.segmentXhr_) {
@@ -5244,6 +5345,7 @@ videojs.HlsHandler.prototype.updateEndHandler_ = function () {
   }
 
   this.pendingSegment_ = null;
+  this.processedSegment_ = segmentInfo;
 
   playlist = this.playlists.media();
   segments = playlist.segments;
