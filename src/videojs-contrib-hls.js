@@ -144,7 +144,7 @@ export default class HlsHandler extends Component {
                   'unsupported in Firefox due to an issue: \n\n' +
                   'https://bugzilla.mozilla.org/show_bug.cgi?id=1247138\n\n';
 
-      let attributes = this.masterPlaylistController_.getPlaylistAttributes_();
+      let attributes = this.masterPlaylistController_.getPlaylistAttributes();
       let mainLabel;
 
       for (let label in attributes.audio) {
@@ -161,6 +161,7 @@ export default class HlsHandler extends Component {
 
       let trackToRemove;
       let mainTrack;
+      let change;
 
       for (let i = 0; i < audioTrackList.length; i++) {
         let track = audioTrackList[i];
@@ -175,29 +176,31 @@ export default class HlsHandler extends Component {
       // they did not switch audiotracks
       // blacklist the current playlist
       if (trackToRemove.label === mainLabel) {
-        error = 'The rendition that we tried to switch to ' + error +
+        error = `The rendition that we tried to switch to ${error}` +
                 'Unfortunately that means we will have to blacklist ' +
                 'the current playlist and switch to another. Sorry!';
-        this.masterPlaylistController_.blacklistCurrentPlaylist(error);
-        return;
+        change = () => this.masterPlaylistController_.blacklistCurrentPlaylist();
+      } else {
+        error = `The audio track '${trackToRemove.label}' that we tried to ` +
+                `switch to ${error} Unfortunately this means we will have to ` +
+                `return you to the main track '${mainTrack.label}'. Sorry!`;
+        change = () => {
+          mainTrack.enabled = true;
+          audioTrackList.removeTrack(trackToRemove);
+        };
       }
 
-      error = 'The audio track \'' + trackToRemove.label + '\' that we tried to ' +
-              'switch to ' + error + 'Unfortunately this means we will have to ' +
-              'return you to the main track \'' + mainTrack.label + '\'. Sorry!';
       videojs.log.warn(error);
+      // revert the audio info change on MSE
+      e.revert();
+      change();
 
-      mainTrack.enabled = true;
-      audioTrackList.removeTrack(trackToRemove);
-      // set the audioInfo_ on the media source to the info pre-change
-      // this stops us from triggering audioinfochanged again
-      this.masterPlaylistController_.mediaSource.audioInfo_ = e.old;
       this.masterPlaylistController_.useAudio();
     });
 
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
       let audioTrackList = this.tech_.audioTracks();
-      let attributes = this.masterPlaylistController_.getPlaylistAttributes_();
+      let attributes = this.masterPlaylistController_.getPlaylistAttributes();
 
       if (!attributes) {
         return;

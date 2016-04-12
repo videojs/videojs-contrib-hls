@@ -284,7 +284,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.masterPlaylistLoader_.on('error', () => {
-      this.blacklistCurrentPlaylist_(this.masterPlaylistLoader_.error);
+      this.blacklistCurrentPlaylist(this.masterPlaylistLoader_.error);
     });
 
     this.masterPlaylistLoader_.on('mediachanging', () => {
@@ -310,7 +310,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.mainSegmentLoader_.on('error', () => {
-      this.blacklistCurrentPlaylist_(this.mainSegmentLoader_.error());
+      this.blacklistCurrentPlaylist(this.mainSegmentLoader_.error());
     });
 
     this.audioSegmentLoader_.on('error', () => {
@@ -331,7 +331,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
-  getPlaylistAttributes_() {
+  getPlaylistAttributes() {
     let media = this.media();
     let master = this.master();
     let mediaGroups = master.mediaGroups;
@@ -532,7 +532,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    * making it unavailable for selection by the rendition selection algorithm
    * and then forces a new playlist (rendition) selection.
    */
-  blacklistCurrentPlaylist_(error) {
+  blacklistCurrentPlaylist(error) {
     let currentPlaylist;
     let nextPlaylist;
 
