@@ -532,7 +532,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    * making it unavailable for selection by the rendition selection algorithm
    * and then forces a new playlist (rendition) selection.
    */
-  blacklistCurrentPlaylist(error) {
+  blacklistCurrentPlaylist(error = {}) {
     let currentPlaylist;
     let nextPlaylist;
 

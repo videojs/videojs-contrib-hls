@@ -1707,7 +1707,7 @@ QUnit.test('user changes audio track, revert to main and remove if audioinfochan
   at[1].enabled = true;
   mpc.trigger({
     type: 'audioinfochanged',
-    revert: () => revertCalls++,
+    revert: () => revertCalls++
   });
 
   QUnit.equal(at.length, 2, 'two audio tracks after audioinfochanged');
@@ -1746,7 +1746,7 @@ QUnit.test('audioinfochange triggered on Firefox with one audio track, blacklist
   mpc.useAudio = () => useAudioCalls++;
   mpc.trigger({
     type: 'audioinfochanged',
-    revert: () => revertCalls++,
+    revert: () => revertCalls++
   });
 
   QUnit.equal(at.length, 1, 'one audio track after audioinfochanged');
@@ -1774,7 +1774,6 @@ QUnit.test('audioinfochange triggered on firefox with three audio track, default
   QUnit.equal(at.length, 3, 'one audio track after load');
   QUnit.equal(at[0].enabled, true, 'main audio track enabled after load');
 
-
   let hls = this.player.tech_.hls;
   let mpc = hls.masterPlaylistController_;
   let blacklistCalls = 0;
@@ -1785,7 +1784,7 @@ QUnit.test('audioinfochange triggered on firefox with three audio track, default
   mpc.useAudio = () => useAudioCalls++;
   mpc.trigger({
     type: 'audioinfochanged',
-    revert: () => revertCalls++,
+    revert: () => revertCalls++
   });
 
   QUnit.equal(at[0].enabled, true, 'main audio track still enabled');
@@ -1969,7 +1968,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
   };
 
   // select a new mediaGroup
-  mpc.blacklistCurrentPlaylist({});
+  mpc.blacklistCurrentPlaylist();
   while (this.requests.length > 0) {
     standardXHRResponse(this.requests.shift());
   }
@@ -1988,7 +1987,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
 
   oldMediaGroup = mpc.media().attributes.AUDIO;
   // select a new mediaGroup
-  mpc.blacklistCurrentPlaylist({});
+  mpc.blacklistCurrentPlaylist();
   while (this.requests.length > 0) {
     standardXHRResponse(this.requests.shift());
   }
