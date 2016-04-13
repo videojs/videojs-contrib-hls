@@ -53,6 +53,35 @@
     strictEqual(loader.state, 'HAVE_NOTHING', 'no metadata has loaded yet');
   });
 
+  test('Blacklists unchanging playlist', function() {
+    var loader = new videojs.Hls.PlaylistLoader('master.m3u8'),
+      mediaPlaylist =
+        '#EXTM3U\n' +
+        '#EXTINF:10,\n' +
+        '0.ts\n',
+      errorCount = 0;
+
+    loader.on('error', function() {
+      errorCount++;
+    });
+
+    requests.pop().respond(200, null,
+                            '#EXTM3U\n' +
+                            '#EXT-X-STREAM-INF:\n' +
+                            'media.m3u8\n');
+
+    equal(loader.retryUpdate_, false, 'update logic correct');
+    requests.pop().respond(200, null, mediaPlaylist);
+    clock.tick(10 * 1000); // 10s, one target duration
+    requests.pop().respond(200, null, mediaPlaylist);
+    equal(loader.retryUpdate_, true, 'update logic correct');
+    clock.tick(6 * 1000); // 6s, > 1/2 target duration
+    requests.pop().respond(200, null, mediaPlaylist);
+    equal(loader.retryUpdate_, false, 'update logic correct');
+    clock.tick(1000);
+    equal(errorCount, 1, 'emmited error');
+  });
+
   test('starts with no expired time', function() {
     var loader = new videojs.Hls.PlaylistLoader('media.m3u8');
     requests.pop().respond(200, null,
