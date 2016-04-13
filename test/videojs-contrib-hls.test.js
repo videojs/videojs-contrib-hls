@@ -1133,10 +1133,10 @@ QUnit.test('reloads out-of-date live playlists when switching variants', functio
 });
 
 QUnit.test('if withCredentials global option is used, withCredentials is set on the XHR object', function() {
-  let hlsOptions = videojs.Hls.options;
+  let hlsOptions = videojs.options.hls;
 
   this.player.dispose();
-  videojs.Hls.options = {
+  videojs.options.hls = {
     withCredentials: true
   };
   this.player = createPlayer();
@@ -1147,7 +1147,7 @@ QUnit.test('if withCredentials global option is used, withCredentials is set on 
   openMediaSource(this.player, this.clock);
   QUnit.ok(this.requests[0].withCredentials,
            'with credentials should be set to true if that option is passed in');
-  videojs.Hls.options = hlsOptions;
+  videojs.options.hls = hlsOptions;
 });
 
 QUnit.test('if withCredentials src option is used, withCredentials is set on the XHR object', function() {
@@ -1178,10 +1178,10 @@ QUnit.test('src level credentials supersede the global options', function() {
 });
 
 QUnit.test('if mode global option is used, mode is set to global option', function() {
-  let hlsOptions = videojs.Hls.options;
+  let hlsOptions = videojs.options.hls;
 
   this.player.dispose();
-  videojs.Hls.options = {
+  videojs.options.hls = {
     mode: 'flash'
   };
   this.player = createPlayer();
@@ -1190,8 +1190,20 @@ QUnit.test('if mode global option is used, mode is set to global option', functi
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
-  QUnit.equal(this.player.tech_.hls.mode_, 'flash', 'mode set to flash');
-  videojs.Hls.options = hlsOptions;
+  QUnit.equal(this.player.tech_.hls.options_.mode, 'flash', 'mode set to flash');
+  videojs.options.hls = hlsOptions;
+});
+
+QUnit.test('if source option used, mode is set to the source option', function() {
+  this.player.dispose();
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl',
+    mode: 'flash'
+  });
+  openMediaSource(this.player, this.clock);
+  QUnit.equal(this.player.tech_.hls.options_.mode, 'flash', 'mode set to flash');
 });
 
 QUnit.test('does not break if the playlist has no segments', function() {
