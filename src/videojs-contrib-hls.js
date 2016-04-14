@@ -79,14 +79,20 @@ export default class HlsHandler extends Component {
         });
       }
     }
+
+    // TODO: when source handler options are possible (pull request is accepted
+    // into video.js) then we can add other options entries. Right now only
+    // mode/source will ever be passed as we pass them in
+    // HlsSourceHandler.handleSource()
+    // @link https://github.com/videojs/video.js/pull/3245
+    this.options_ = videojs.mergeOptions(options, videojs.options.hls || {});
     this.tech_ = tech;
     this.source_ = options.source;
-    this.mode_ = options.mode;
 
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
     // 0.5 Mbps
-    this.bandwidth = options.bandwidth || 4194304;
+    this.bandwidth = this.options_.bandwidth || 4194304;
     this.bytesReceived = 0;
 
     this.on(this.tech_, 'seeking', function() {
@@ -111,18 +117,16 @@ export default class HlsHandler extends Component {
       return;
     }
 
-    this.options_ = {};
-    if (typeof this.source_.withCredentials !== 'undefined') {
-      this.options_.withCredentials = this.source_.withCredentials;
-    } else if (videojs.options.hls) {
-      this.options_.withCredentials = videojs.options.hls.withCredentials;
-    }
-
+    ['withCredentials', 'mode', 'bandwidth'].forEach((option) => {
+      if (typeof this.source_[option] !== 'undefined') {
+        this.options_[option] = this.source_[option];
+      }
+    });
     this.masterPlaylistController_ = new MasterPlaylistController({
       url: this.source_.src,
       withCredentials: this.options_.withCredentials,
       currentTimeFunc: this.tech_.currentTime.bind(this.tech_),
-      mediaSourceMode: this.mode_,
+      mediaSourceMode: this.options_.mode,
       hlsHandler: this,
       externHls: Hls
     });
@@ -150,7 +154,7 @@ export default class HlsHandler extends Component {
       }
 
       // only do alternative audio tracks in html5 mode, and if we have them
-      if (this.mode_ === 'html5' &&
+      if (this.options_.mode === 'html5' &&
           media.attributes &&
           media.attributes.AUDIO &&
          mediaGroups.AUDIO[media.attributes.AUDIO]) {
@@ -367,6 +371,8 @@ videojs.HlsHandler = HlsHandler;
 videojs.HlsSourceHandler = HlsSourceHandler;
 videojs.Hls = Hls;
 videojs.m3u8 = m3u8;
+videojs.registerComponent('Hls', Hls);
+videojs.options.hls = videojs.options.hls || {};
 
 export default {
   Hls,
