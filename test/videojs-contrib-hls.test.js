@@ -1164,7 +1164,13 @@ QUnit.test('if withCredentials src option is used, withCredentials is set on the
 });
 
 QUnit.test('src level credentials supersede the global options', function() {
+  let hlsOptions = videojs.options.hls;
+
   this.player.dispose();
+  videojs.options.hls = {
+    withCredentials: false
+  };
+
   this.player = createPlayer();
   this.player.src({
     src: 'http://example.com/media.m3u8',
@@ -1174,7 +1180,7 @@ QUnit.test('src level credentials supersede the global options', function() {
   openMediaSource(this.player, this.clock);
   QUnit.ok(this.requests[0].withCredentials,
            'with credentials should be set to true if that option is passed in');
-
+  videojs.options.hls = hlsOptions;
 });
 
 QUnit.test('if mode global option is used, mode is set to global option', function() {
@@ -1204,6 +1210,24 @@ QUnit.test('if source option used, mode is set to the source option', function()
   });
   openMediaSource(this.player, this.clock);
   QUnit.equal(this.player.tech_.hls.options_.mode, 'flash', 'mode set to flash');
+});
+
+QUnit.test('modesource option supercedes global option', function() {
+  let hlsOptions = videojs.options.hls;
+
+  this.player.dispose();
+  videojs.options.hls = {
+    mode: 'flash'
+  };
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl',
+    mode: 'auto'
+  });
+  openMediaSource(this.player, this.clock);
+  QUnit.equal(this.player.tech_.hls.options_.mode, 'auto', 'mode set to auto');
+  videojs.options.hls = hlsOptions;
 });
 
 QUnit.test('does not break if the playlist has no segments', function() {
