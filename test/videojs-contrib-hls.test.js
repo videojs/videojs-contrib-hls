@@ -1630,7 +1630,7 @@ QUnit.test('resolves relative key URLs against the playlist', function() {
               'resolves the key URL');
 });
 
-QUnit.test('adds 1 default  audio track if we have not parsed any, and the playlist is loaded', function() {
+QUnit.test('adds 1 default audio track if we have not parsed any, and the playlist is loaded', function() {
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1676,6 +1676,124 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   QUnit.equal(at[2].enabled, false, 'track 3 - enabled = DEFAULT');
   QUnit.equal(at[2].language, 'sp', 'track 3 - language = LANG');
   QUnit.equal(at[2].kind, 'alternative', 'track 3 - kind = alternative if DEFAULT is NO');
+});
+
+QUnit.test('user changes audio track, revert to main and remove if audioinfochanged on Firefox', function() {
+  let oldIsFirefox = videojs.browser.IS_FIREFOX;
+  let at = this.player.audioTracks();
+
+  videojs.browser.IS_FIREFOX = true;
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(at.length, 0, 'zero audio tracks at load time');
+  openMediaSource(this.player, this.clock);
+  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests.shift());
+  QUnit.equal(at.length, 3, 'three audio tracks after load');
+
+  // simulate audio track change
+  let oldLabel = at[1].label;
+  let hls = this.player.tech_.hls;
+  let mpc = hls.masterPlaylistController_;
+  let revertCalls = 0;
+  let useAudioCalls = 0;
+  let blacklistCalls = 0;
+
+  mpc.blacklistCurrentPlaylist = () => blacklistCalls++;
+  mpc.useAudio = () => useAudioCalls++;
+  at[1].enabled = true;
+  mpc.trigger({
+    type: 'audioinfochanged',
+    revert: () => revertCalls++
+  });
+
+  QUnit.equal(at.length, 2, 'two audio tracks after audioinfochanged');
+  QUnit.notEqual(at[1].label, oldLabel, 'audio track at index 1 is not the same');
+  QUnit.equal(at[0].enabled, true, 'main track at index 0 is enabled again');
+  QUnit.equal(revertCalls, 1, 'revert was called once');
+  QUnit.equal(useAudioCalls, 3, 'useAudio was called three times, once for change, once for this, and once too early');
+  QUnit.equal(blacklistCalls, 0, 'blacklist was not called');
+  QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
+  videojs.browser.IS_FIREFOX = oldIsFirefox;
+});
+
+QUnit.test('audioinfochange triggered on Firefox with one audio track, blacklist', function() {
+  let oldIsFirefox = videojs.browser.IS_FIREFOX;
+  let at = this.player.audioTracks();
+
+  videojs.browser.IS_FIREFOX = true;
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(at.length, 0, 'zero audio tracks at load time');
+  openMediaSource(this.player, this.clock);
+  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests.shift());
+  QUnit.equal(at.length, 1, 'one audio track after load');
+
+  let hls = this.player.tech_.hls;
+  let mpc = hls.masterPlaylistController_;
+  let blacklistCalls = 0;
+  let revertCalls = 0;
+  let useAudioCalls = 0;
+
+  mpc.blacklistCurrentPlaylist = () => blacklistCalls++;
+  mpc.useAudio = () => useAudioCalls++;
+  mpc.trigger({
+    type: 'audioinfochanged',
+    revert: () => revertCalls++
+  });
+
+  QUnit.equal(at.length, 1, 'one audio track after audioinfochanged');
+  QUnit.equal(blacklistCalls, 1, 'blacklistCurrentPlaylist called once');
+  QUnit.equal(useAudioCalls, 1, 'useAudio called once');
+  QUnit.equal(revertCalls, 1, 'revert called once');
+  QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
+  videojs.browser.IS_FIREFOX = oldIsFirefox;
+});
+
+QUnit.test('audioinfochange triggered on firefox with three audio track, default enabled, blacklist', function() {
+  let oldIsFirefox = videojs.browser.IS_FIREFOX;
+  let at = this.player.audioTracks();
+
+  videojs.browser.IS_FIREFOX = true;
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(at.length, 0, 'zero audio tracks at load time');
+  openMediaSource(this.player, this.clock);
+  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests.shift());
+  QUnit.equal(at.length, 3, 'one audio track after load');
+  QUnit.equal(at[0].enabled, true, 'main audio track enabled after load');
+
+  let hls = this.player.tech_.hls;
+  let mpc = hls.masterPlaylistController_;
+  let blacklistCalls = 0;
+  let revertCalls = 0;
+  let useAudioCalls = 0;
+
+  mpc.blacklistCurrentPlaylist = () => blacklistCalls++;
+  mpc.useAudio = () => useAudioCalls++;
+  mpc.trigger({
+    type: 'audioinfochanged',
+    revert: () => revertCalls++
+  });
+
+  QUnit.equal(at[0].enabled, true, 'main audio track still enabled');
+  QUnit.equal(at.length, 3, 'three audio track after audioinfochanged');
+  QUnit.equal(blacklistCalls, 1, 'blacklistCurrentPlaylist called once');
+  QUnit.equal(useAudioCalls, 1, 'useAudio called once');
+  QUnit.equal(revertCalls, 1, 'revert called once');
+  QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
+  videojs.browser.IS_FIREFOX = oldIsFirefox;
 });
 
 QUnit.test('cleans up the buffer when loading live segments', function() {
@@ -1850,7 +1968,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
   };
 
   // select a new mediaGroup
-  mpc.blacklistCurrentPlaylist_({});
+  mpc.blacklistCurrentPlaylist();
   while (this.requests.length > 0) {
     standardXHRResponse(this.requests.shift());
   }
@@ -1869,7 +1987,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
 
   oldMediaGroup = mpc.media().attributes.AUDIO;
   // select a new mediaGroup
-  mpc.blacklistCurrentPlaylist_({});
+  mpc.blacklistCurrentPlaylist();
   while (this.requests.length > 0) {
     standardXHRResponse(this.requests.shift());
   }

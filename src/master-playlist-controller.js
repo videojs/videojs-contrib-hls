@@ -189,6 +189,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.mediaSource = new videojs.MediaSource({ mode: this.mediaSourceMode });
     // load the media source into the player
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
+    this.mediaSource.addEventListener('audioinfochanged', (e) => {
+      this.trigger(e);
+    });
 
     this.hlsHandler = hlsHandler;
     this.hlsHandler.mediaSource = this.mediaSource;
@@ -281,7 +284,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.masterPlaylistLoader_.on('error', () => {
-      this.blacklistCurrentPlaylist_(this.masterPlaylistLoader_.error);
+      this.blacklistCurrentPlaylist(this.masterPlaylistLoader_.error);
     });
 
     this.masterPlaylistLoader_.on('mediachanging', () => {
@@ -307,7 +310,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.mainSegmentLoader_.on('error', () => {
-      this.blacklistCurrentPlaylist_(this.mainSegmentLoader_.error());
+      this.blacklistCurrentPlaylist(this.mainSegmentLoader_.error());
     });
 
     this.audioSegmentLoader_.on('error', () => {
@@ -326,6 +329,30 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     if (this.audioPlaylistLoader_) {
       this.audioSegmentLoader_.load();
     }
+  }
+
+  getPlaylistAttributes() {
+    let media = this.media();
+    let master = this.master();
+    let mediaGroups = master.mediaGroups;
+    let attributes = {
+      audio: {main: {default: true}}
+    };
+
+    if (!media.attributes) {
+      // source URL was playlist manifest, not master
+      // no audio tracks to add
+      return;
+    }
+
+    // only do alternative audio tracks in html5 mode, and if we have them
+    if (this.mediaSourceMode === 'html5' &&
+        media.attributes &&
+        media.attributes.AUDIO &&
+        mediaGroups.AUDIO[media.attributes.AUDIO]) {
+      attributes.audio = mediaGroups.AUDIO[media.attributes.AUDIO];
+    }
+    return attributes;
   }
 
   useAudio() {
@@ -505,7 +532,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    * making it unavailable for selection by the rendition selection algorithm
    * and then forces a new playlist (rendition) selection.
    */
-  blacklistCurrentPlaylist_(error) {
+  blacklistCurrentPlaylist(error = {}) {
     let currentPlaylist;
     let nextPlaylist;
 
