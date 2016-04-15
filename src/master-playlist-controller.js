@@ -2,6 +2,7 @@ import PlaylistLoader from './playlist-loader';
 import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
+import HlsAudioTrack from './hls-audio-track';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -45,6 +46,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.tech_ = tech;
 
     this.mediaSource = new videojs.MediaSource({ mode });
+    this.mediaSource.on('audioinfo', (e) => this.trigger(e));
     // load the media source into the player
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
 
@@ -78,7 +80,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.masterPlaylistLoader_.media();
-      let master = this.masterPlaylistLoader_.master;
 
       // if this isn't a live video and preload permits, start
       // downloading segments
@@ -88,23 +89,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.playlist(media);
         this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
         this.mainSegmentLoader_.load();
-      }
-
-      this.audioPlaylistLoaders_ = {};
-      if (master.mediaGroups && master.mediaGroups.AUDIO) {
-        for (let groupKey in master.mediaGroups.AUDIO) {
-          for (let labelKey in master.mediaGroups.AUDIO[groupKey]) {
-            // TODO: use one playlist loader for alternate audio and
-            // update the src when it is being used
-            let audio = master.mediaGroups.AUDIO[groupKey][labelKey];
-
-            if (!audio.resolvedUri) {
-              continue;
-            }
-            this.audioPlaylistLoaders_[audio.resolvedUri] = new PlaylistLoader(
-              audio.resolvedUri, this.withCredentials);
-          }
-        }
       }
 
       this.setupSourceBuffer_();
@@ -119,8 +103,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       if (!updatedPlaylist) {
         // select the initial variant
         this.initialMedia_ = this.selectPlaylist();
-
         this.masterPlaylistLoader_.media(this.initialMedia_);
+        this.fillAudioTracks_();
+
         this.trigger('selectedinitialmedia');
         return;
       }
@@ -137,7 +122,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.masterPlaylistLoader_.on('error', () => {
-      this.blacklistCurrentPlaylist_(this.masterPlaylistLoader_.error);
+      this.blacklistCurrentPlaylist(this.masterPlaylistLoader_.error);
     });
 
     this.masterPlaylistLoader_.on('mediachanging', () => {
@@ -162,7 +147,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.mainSegmentLoader_.on('error', () => {
-      this.blacklistCurrentPlaylist_(this.mainSegmentLoader_.error());
+      this.blacklistCurrentPlaylist(this.mainSegmentLoader_.error());
     });
 
     this.audioSegmentLoader_.on('error', () => {
@@ -176,6 +161,49 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.load();
   }
 
+  fillAudioTracks_() {
+    let master = this.master();
+    let mediaGroups = master.mediaGroups || {};
+
+    // force a default if we have none or we are not
+    // in html5 mode (the only mode to support more than one
+    // audio track)
+    if (!mediaGroups ||
+        !mediaGroups.AUDIO ||
+        Object.keys(mediaGroups.AUDIO).length === 0 ||
+        this.mediaSourceMode !== 'html5') {
+      // "main" audio group, track name "default"
+      mediaGroups = videojs.mergeOptions(mediaGroups, {AUDIO: {
+        main: {default: {default: true}}}
+      });
+    }
+
+    let tracks = {};
+
+    for (let mediaGroup in mediaGroups.AUDIO) {
+      for (let label in mediaGroups.AUDIO[mediaGroup]) {
+        let properties = mediaGroups.AUDIO[mediaGroup][label];
+
+        // if the track already exists add a new "location"
+        // since tracks in different mediaGroups are actually the same
+        // track with different locations
+        if (tracks[label]) {
+          tracks[label].addLoader(mediaGroup, properties.resolvedUri);
+          continue;
+        }
+
+        let track = new HlsAudioTrack(videojs.mergeOptions(properties, {
+          withCredentials: this.withCredential,
+          mediaGroup,
+          label
+        }));
+
+        tracks[label] = track;
+        this.audioTracks().push(track);
+      }
+    }
+  }
+
   load() {
     this.mainSegmentLoader_.load();
     if (this.audioPlaylistLoader_) {
@@ -183,30 +211,29 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
-  useAudio() {
+  activeAudioGroup() {
     let media = this.masterPlaylistLoader_.media();
-    let master = this.masterPlaylistLoader_.master;
+    let mediaGroup = 'main';
 
-    if (!media || !master) {
-      videojs.log.warn('useAudio() was called before playlist was loaded');
-      return;
+    if (media && media.attributes && media.attributes.AUDIO) {
+      mediaGroup = media.attributes.AUDIO;
     }
 
-    // We have been called but there is no audio track data so we only have the main one
-    // (that we know about). An example of this is when the source URL was a playlist
-    // manifest, not a master.
-    if (!media.attributes || !media.attributes.AUDIO ||
-        !master.mediaGroups || !master.mediaGroups.AUDIO) {
-      return;
-    }
-    let mediaGroupName = media.attributes.AUDIO;
+    return mediaGroup;
+  }
 
-    if (!master.mediaGroups.AUDIO[mediaGroupName]) {
-      videojs.log.warn('useAudio() was called with a mediaGroup ' + mediaGroupName +
-                       ' that does not exist in the master');
+  audioTracks() {
+    this.audioTracks_ = this.audioTracks_ || [];
+    return this.audioTracks_;
+  }
+
+  useAudio() {
+    let track = this.audioTracks().find((t) => t.enabled === true);
+
+    // called to early or no track is enabled
+    if (!track) {
       return;
     }
-    let audioEntries = master.mediaGroups.AUDIO[mediaGroupName];
 
     // Pause any alternative audio
     if (this.audioPlaylistLoader_) {
@@ -215,32 +242,16 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.audioSegmentLoader_.pause();
     }
 
-    let label = null;
+    // is the enabled track part of the main combined stream
+    // if it has a loader its not
+    let loader = track.getLoader(this.activeAudioGroup());
 
-    // if no label was passed in we are switching to the currently enabled audio
-    for (let i = 0; i < this.tech_.audioTracks().length; i++) {
-      if (this.tech_.audioTracks()[i].enabled) {
-        label = this.tech_.audioTracks()[i].label;
-        break;
-      }
-    }
-
-    // all audio tracks are disabled somehow, safari keeps playing
-    // so should we
-    if (!label) {
-      return;
-    }
-
-    let audioEntry = audioEntries[label];
-
-    // the label we are trying to use does not have a resolvedUri
-    // this means that it is in a combined stream in the main track
-    if (!audioEntry || !audioEntry.resolvedUri) {
+    if (!loader) {
       this.mainSegmentLoader_.clearBuffer();
       return;
     }
 
-    this.audioPlaylistLoader_ = this.audioPlaylistLoaders_[audioEntry.resolvedUri];
+    this.audioPlaylistLoader_ = loader;
 
     if (this.audioPlaylistLoader_.started) {
       this.audioPlaylistLoader_.load();
@@ -398,7 +409,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    * making it unavailable for selection by the rendition selection algorithm
    * and then forces a new playlist (rendition) selection.
    */
-  blacklistCurrentPlaylist_(error) {
+  blacklistCurrentPlaylist(error = {}) {
     let currentPlaylist;
     let nextPlaylist;
 
@@ -573,11 +584,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
   dispose() {
     this.masterPlaylistLoader_.dispose();
-    for (let loader in this.audioPlaylistLoaders_) {
-      if (this.audioPlaylistLoaders_.hasOwnProperty(loader)) {
-        this.audioPlaylistLoaders_[loader].dispose();
-      }
-    }
+    this.audioTracks().length = 0;
     this.mainSegmentLoader_.dispose();
     this.audioSegmentLoader_.dispose();
   }

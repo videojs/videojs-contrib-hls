@@ -11,8 +11,31 @@ import {Decrypter, AsyncStream, decrypt} from './decrypter';
 import utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from './m3u8';
-import {default as videojs, AudioTrack} from 'video.js';
+import videojs from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
+
+/**
+ * determine if an object a is differnt from
+ * and object b. both only having one dimensional
+ * properties
+ */
+const objectChanged = function(a, b) {
+  if (typeof a !== typeof b) {
+    return true;
+  }
+  // if we have a different number of elements
+  // something has changed
+  if (Object.keys(a).length !== Object.keys(b).length) {
+    return true;
+  }
+
+  for (let prop in a) {
+    if (!b[prop] || a[prop] !== b[prop]) {
+      return true;
+    }
+  }
+  return false;
+};
 
 const Hls = {
   PlaylistLoader,
@@ -322,49 +345,54 @@ export default class HlsHandler extends Component {
       this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
     });
 
-    this.masterPlaylistController_.on('selectedinitialmedia', () => {
-      let audioTrackList = this.tech_.audioTracks();
-      let media = this.masterPlaylistController_.media();
-      let master = this.masterPlaylistController_.master();
-      let mediaGroups = master.mediaGroups;
-      let attributes = {
-        audio: {main: {default: true}}
-      };
-
-      if (!media.attributes) {
-        // source URL was playlist manifest, not master
-        // no audio tracks to add
+    this.masterPlaylistController_.on('audioinfo', (e) => {
+      if (!videojs.browser.IS_FIREFOX ||
+          !this.audioInfo_ ||
+          !objectChanged(this.audioInfo_, e.info)) {
+        this.audioInfo_ = e.info;
         return;
       }
 
-      // only do alternative audio tracks in html5 mode, and if we have them
-      if (this.options_.mode === 'html5' &&
-          media.attributes &&
-          media.attributes.AUDIO &&
-         mediaGroups.AUDIO[media.attributes.AUDIO]) {
-        attributes.audio = mediaGroups.AUDIO[media.attributes.AUDIO];
+      let error = 'had different audio properties (channels, sample rate, etc.) ' +
+                  'or changed in some other way.  This behavior is currently ' +
+                  'unsupported in Firefox due to an issue: \n\n' +
+                  'https://bugzilla.mozilla.org/show_bug.cgi?id=1247138\n\n';
+
+      let audioTracks = this.audioTracks();
+      let enabledTrack = audioTracks.find((t) => t.enabled === true);
+      let defaultTrack = audioTracks.find((t) => t.default === true);
+      let revert;
+
+      // they did not switch audiotracks
+      // blacklist the current playlist
+      if (!enabledTrack.getLoader(this.activeAudioGroup())) {
+        error = `The rendition that we tried to switch to ${error}` +
+                'Unfortunately that means we will have to blacklist ' +
+                'the current playlist and switch to another. Sorry!';
+        revert = () => this.masterPlaylistController_.blacklistCurrentPlaylist();
+      } else {
+        error = `The audio track '${enabledTrack.label}' that we tried to ` +
+                `switch to ${error} Unfortunately this means we will have to ` +
+                `return you to the main track '${defaultTrack.label}'. Sorry!`;
+        revert = () => {
+          defaultTrack.enabled = true;
+          this.tech_.audioTracks().removeTrack(enabledTrack);
+        };
       }
+
+      // revert the audio info change on MSE
+      revert();
+      videojs.log.warn(error);
+      this.masterPlaylistController_.useAudio();
+    });
+    this.masterPlaylistController_.on('selectedinitialmedia', () => {
+      let audioTracks = this.audioTracks();
 
       // clear current audioTracks
-      while (audioTrackList.length > 0) {
-        let track = audioTrackList[(audioTrackList.length - 1)];
-
-        audioTrackList.removeTrack(track);
-      }
-
-      for (let label in attributes.audio) {
-        let hlstrack = attributes.audio[label];
-
-        // disable eslint here so ie8 works
-        /* eslint-disable dot-notation */
-        audioTrackList.addTrack(new AudioTrack({
-          kind: hlstrack['default'] ? 'main' : 'alternative',
-          language: hlstrack.language || '',
-          enabled: hlstrack['default'] || false,
-          label
-        }));
-        /* eslint-enable dot-notation */
-      }
+      this.tech_.clearTracks('audio');
+      audioTracks.forEach((track) => {
+        this.tech_.audioTracks().addTrack(track);
+      });
     });
 
     this.on(this.masterPlaylistController_, 'loadedmetadata', function() {
@@ -387,6 +415,14 @@ export default class HlsHandler extends Component {
 
     this.tech_.src(videojs.URL.createObjectURL(
       this.masterPlaylistController_.mediaSource));
+  }
+
+  audioTracks() {
+    return this.masterPlaylistController_.audioTracks();
+  }
+
+  activeAudioGroup() {
+    return this.masterPlaylistController_.activeAudioGroup();
   }
 
   /**

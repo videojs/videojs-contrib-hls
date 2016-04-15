@@ -9,6 +9,8 @@ Play back HLS with video.js, even where it's not natively supported.
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Getting Started](#getting-started)
+- [Known Issues](#known-issues)
+  - [IE11](#ie11)
 - [Documentation](#documentation)
   - [Options](#options)
     - [withCredentials](#withcredentials)
