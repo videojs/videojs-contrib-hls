@@ -447,6 +447,21 @@ export default class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Re-tune playback quality level for the current player
+   * conditions. This method may perform destructive actions, like
+   * removing already buffered content, to readjust the currently
+   * active playlist quickly.
+   */
+  fastQualityChange_() {
+    let media = this.hlsHandler.selectPlaylist();
+
+    if (media !== this.masterPlaylistLoader_.media()) {
+      this.masterPlaylistLoader_.media(media);
+      this.mainSegmentLoader_.sourceUpdater_.remove(this.currentTimeFunc() + 5, Infinity);
+    }
+  }
+
+  /**
    * Seek to the latest media position if this is a live video and the
    * player and video are loaded and initialized.
    */
