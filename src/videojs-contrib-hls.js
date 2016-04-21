@@ -397,8 +397,6 @@ export default class HlsHandler extends Component {
     this.on(this.tech_, 'play', this.play);
   }
   src(src) {
-    let oldMediaPlaylist;
-
     // do nothing if the src is falsey
     if (!src) {
       return;
@@ -415,6 +413,20 @@ export default class HlsHandler extends Component {
     } else if (videojs.options.hls) {
       this.options_.withCredentials = videojs.options.hls.withCredentials;
     }
+    if(this.loadingState_ != 'none'){
+      this.loadPlaylist();
+    }
+
+    // do nothing if the tech has been disposed already
+    // this can occur if someone sets the src in player.ready(), for instance
+    if (!this.tech_.el()) {
+      return;
+    }
+    this.tech_.src(videojs.URL.createObjectURL(this.mediaSource));
+  }
+
+  loadPlaylist() {
+    let oldMediaPlaylist;
     this.playlists = new Hls.PlaylistLoader(this.source_.src,
                                             this.tech_.hls,
                                             this.options_.withCredentials);
@@ -446,6 +458,10 @@ export default class HlsHandler extends Component {
       let updatedPlaylist = this.playlists.media();
       let seekable;
 
+      //follow redirect uri
+      if (this.source_.src != this.playlists.master.uri) {
+        this.source_.src = this.playlists.master.uri;
+      }
       if (!updatedPlaylist) {
         // select the initial variant
         this.playlists.media(this.selectPlaylist());
@@ -470,14 +486,6 @@ export default class HlsHandler extends Component {
         bubbles: true
       });
     });
-
-    // do nothing if the tech has been disposed already
-    // this can occur if someone sets the src in player.ready(), for instance
-    if (!this.tech_.el()) {
-      return;
-    }
-
-    this.tech_.src(videojs.URL.createObjectURL(this.mediaSource));
   }
   handleSourceOpen() {
     // Only attempt to create the source buffer if none already exist.
@@ -588,6 +596,9 @@ export default class HlsHandler extends Component {
    */
   setupFirstPlay() {
     let seekable;
+    if (!this.playlists) {
+      this.loadPlaylist();
+    }
     let media = this.playlists.media();
 
     // check that everything is ready to begin buffering
