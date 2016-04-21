@@ -232,6 +232,9 @@ export default class HlsHandler extends Component {
     // HlsSourceHandler.handleSource()
     // @link https://github.com/videojs/video.js/pull/3245
     this.options_ = videojs.mergeOptions(options, videojs.options.hls || {});
+    // we cannot override the mode at this state, we have to use what was passed
+    // to us
+    this.options_.mode = options.mode;
     this.tech_ = tech;
     this.source_ = options.source;
 
@@ -279,7 +282,7 @@ export default class HlsHandler extends Component {
       return;
     }
 
-    ['withCredentials', 'mode', 'bandwidth'].forEach((option) => {
+    ['withCredentials', 'bandwidth'].forEach((option) => {
       if (typeof this.source_[option] !== 'undefined') {
         this.options_[option] = this.source_[option];
       }
@@ -436,6 +439,12 @@ export default class HlsHandler extends Component {
 const HlsSourceHandler = function(mode) {
   return {
     canHandleSource(srcObj) {
+      // this will video.js to to not use this tech/mode if its
+      // not the one we have been overriden to use. It does this by saying that
+      // the tech you don't want to use can't handle this source
+      if (typeof videojs.options.hls.mode === 'string' && mode !== videojs.options.hls.mode) {
+        return false;
+      }
       return HlsSourceHandler.canPlayType(srcObj.type);
     },
     handleSource(source, tech) {
