@@ -106,6 +106,52 @@ QUnit.test('creates combined and audio only SegmentLoaders', function() {
               'created alternate audio track segment loader');
 });
 
+QUnit.test('clears some of the buffer for a fast quality change', function() {
+  let removes = [];
+
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
+
+  segmentLoader.sourceUpdater_.remove = function(start, end) {
+    removes.push({ start, end });
+  };
+  this.masterPlaylistController.hlsHandler.selectPlaylist = () => {
+    return this.masterPlaylistController.master().playlists[0];
+  };
+  this.masterPlaylistController.currentTimeFunc = () => 7;
+
+  this.masterPlaylistController.fastQualityChange_();
+
+  QUnit.equal(removes.length, 1, 'removed buffered content');
+  QUnit.equal(removes[0].start, 7 + 5, 'removed from a bit after current time');
+  QUnit.equal(removes[0].end, Infinity, 'removed to the end');
+});
+
+QUnit.test('does not clear the buffer when no fast quality change occurs', function() {
+  let removes = [];
+
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
+
+  segmentLoader.sourceUpdater_.remove = function(start, end) {
+    removes.push({ start, end });
+  };
+
+  this.masterPlaylistController.fastQualityChange_();
+
+  QUnit.equal(removes.length, 0, 'did not remove content');
+});
+
 QUnit.test('if buffered, will request second segment byte range', function() {
   this.requests.length = 0;
   this.player.src({
@@ -378,10 +424,8 @@ QUnit.test('updates the duration after switching playlists', function() {
     selectedPlaylist = true;
 
     // this duration should be overwritten by the playlist change
-    this.masterPlaylistController.mediaSource = {
-      duration: 0,
-      readyState: 'open'
-    };
+    this.masterPlaylistController.mediaSource.duration = 0;
+    this.masterPlaylistController.mediaSource.readyState = 'open';
 
     return this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1];
   };

@@ -2,6 +2,7 @@
 
 import document from 'global/document';
 import videojs from 'video.js';
+import Events from 'video.js';
 import QUnit from 'qunit';
 import testDataManifests from './test-manifests.js';
 import {
@@ -1368,27 +1369,7 @@ QUnit.test('the source handler supports HLS mime types', function() {
 });
 
 QUnit.test('fires loadstart manually if Flash is used', function() {
-  let tech = new (videojs.extend(videojs.EventTarget, {
-    buffered() {
-      return videojs.createTimeRange();
-    },
-    currentTime() {
-      return 0;
-    },
-    el() {
-      return {};
-    },
-    preload() {
-      return 'auto';
-    },
-    src() {},
-    setTimeout: window.setTimeout,
-    audioTracks() {
-      return {
-        addEventListener: () => {}
-      };
-    }
-  }))();
+  let tech = new (videojs.getTech('Flash'))({});
   let loadstarts = 0;
 
   tech.on('loadstart', function() {
@@ -1972,6 +1953,37 @@ QUnit.test('aborts all in-flight work when disposed', function() {
   });
 });
 
+QUnit.test('detects fullscreen and triggers a quality change', function() {
+  let qualityChanges = 0;
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+  let fullscreenElementName = [
+    'fullscreenElement', 'webkitFullscreenElement',
+    'mozFullScreenElement', 'msFullscreenElement'
+  ].find((name) => {
+    return !document.hasOwnProperty(name);
+  });
+
+  hls.masterPlaylistController_.fastQualityChange_ = function() {
+    qualityChanges++;
+  };
+
+  // take advantage of capability detection to mock fullscreen activation
+  document[fullscreenElementName] = this.tech.el();
+  Events.trigger(document, 'fullscreenchange');
+
+  QUnit.equal(qualityChanges, 1, 'made a fast quality change');
+
+  // don't do a fast quality change when returning from fullscreen;
+  // allow the video element to rescale the already buffered video
+  document[fullscreenElementName] = null;
+  Events.trigger(document, 'fullscreenchange');
+
+  QUnit.equal(qualityChanges, 1, 'did not make another quality change');
+});
+
 QUnit.test('downloads additional playlists if required', function() {
   let originalPlaylist;
   let hls = HlsSourceHandler('html5').handleSource({
@@ -2152,4 +2164,3 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
            'blacklisted playlist');
   QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 });
-

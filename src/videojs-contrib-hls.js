@@ -3,6 +3,7 @@
  * The main file for the HLS project.
  * License: https://github.com/videojs/videojs-contrib-hls/blob/master/LICENSE
  */
+import document from 'global/document';
 import PlaylistLoader from './playlist-loader';
 import Playlist from './playlist';
 import xhr from './xhr';
@@ -94,6 +95,22 @@ export default class HlsHandler extends Component {
     // 0.5 Mbps
     this.bandwidth = this.options_.bandwidth || 4194304;
     this.bytesReceived = 0;
+
+    // listen for fullscreenchange events for this player so that we
+    // can adjust our quality selection quickly
+    this.on(document, [
+      'fullscreenchange', 'webkitfullscreenchange',
+      'mozfullscreenchange', 'MSFullscreenChange'
+    ], (event) => {
+      let fullscreenElement = document.fullscreenElement ||
+          document.webkitFullscreenElement ||
+          document.mozFullScreenElement ||
+          document.msFullscreenElement;
+
+      if (fullscreenElement && fullscreenElement.contains(this.tech_.el())) {
+        this.masterPlaylistController_.fastQualityChange_();
+      }
+    });
 
     this.on(this.tech_, 'seeking', function() {
       this.setCurrentTime(this.tech_.currentTime());
