@@ -338,7 +338,13 @@ export default class PlaylistLoader extends Stream {
 
       loader.state = 'HAVE_MASTER';
 
-      parser.manifest.uri = srcUrl;
+      // if the responseURL doesn't match the url requested initially, we're assuming an api call
+      if (req.responseURL != srcUrl) {
+        parser.manifest.uri = req.responseURL;
+        loader.trigger('mediasourcechange', req.responseURL);
+      } else {
+        parser.manifest.uri = srcUrl;
+      }
 
       // loaded a master playlist
       if (parser.manifest.playlists) {
