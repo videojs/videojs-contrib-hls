@@ -1864,54 +1864,55 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
   standardXHRResponse(this.requests.shift());
   standardXHRResponse(this.requests.shift());
   let hls = this.player.tech_.hls;
-  let mpc = hls.masterPlaylistController_;
-  let at = this.player.audioTracks();
+  let audioTracks = this.player.audioTracks();
 
-  QUnit.equal(at.length, 3, 'three audio tracks after load');
-  let trackOne = at[0];
-  let trackTwo = at[1];
-  let trackThree = at[2];
+  QUnit.equal(audioTracks.length, 3, 'three audio tracks after load');
+  let trackOne = audioTracks[0];
+  let trackTwo = audioTracks[1];
+  let trackThree = audioTracks[2];
 
   QUnit.equal(trackOne.enabled, true, 'track one enabled after load');
 
-  let oldMediaGroup = mpc.media().attributes.AUDIO;
+  let oldMediaGroup = hls.playlists.media().attributes.AUDIO;
 
-  // force mpc to select a new media group
-  mpc.hlsHandler.selectPlaylist = () => {
-    return mpc.master().playlists.find(playlist => playlist.attributes.AUDIO !== oldMediaGroup);
+  // force a new media group to be selected
+  hls.selectPlaylist = () => {
+    return hls.playlists.master.playlists.find(playlist => {
+      return playlist.attributes.AUDIO !== oldMediaGroup;
+    });
   };
 
   // select a new mediaGroup
-  mpc.blacklistCurrentPlaylist_({});
+  hls.masterPlaylistController_.blacklistCurrentPlaylist_({});
   while (this.requests.length > 0) {
     standardXHRResponse(this.requests.shift());
   }
-  QUnit.notEqual(oldMediaGroup, mpc.media().attributes.AUDIO, 'selected a new playlist');
+  QUnit.notEqual(oldMediaGroup, hls.playlists.media().attributes.AUDIO, 'selected a new playlist');
   QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 
-  QUnit.equal(at.length, 3, 'three audio tracks after mediaGroup Change');
-  QUnit.equal(at[0], trackOne, 'track one did not change');
-  QUnit.equal(at[1], trackTwo, 'track two did not change');
-  QUnit.equal(at[2], trackThree, 'track three did not change');
+  QUnit.equal(audioTracks.length, 3, 'three audio tracks after mediaGroup Change');
+  QUnit.equal(audioTracks[0], trackOne, 'track one did not change');
+  QUnit.equal(audioTracks[1], trackTwo, 'track two did not change');
+  QUnit.equal(audioTracks[2], trackThree, 'track three did not change');
 
   trackTwo.enabled = true;
   QUnit.equal(trackOne.enabled, false, 'track 1 - now disabled');
   QUnit.equal(trackTwo.enabled, true, 'track 2 - now enabled');
   QUnit.equal(trackThree.enabled, false, 'track 3 - disabled');
 
-  oldMediaGroup = mpc.media().attributes.AUDIO;
+  oldMediaGroup = hls.playlists.media().attributes.AUDIO;
   // select a new mediaGroup
-  mpc.blacklistCurrentPlaylist_({});
+  hls.masterPlaylistController_.blacklistCurrentPlaylist_({});
   while (this.requests.length > 0) {
     standardXHRResponse(this.requests.shift());
   }
-  QUnit.notEqual(oldMediaGroup, mpc.media().attributes.AUDIO, 'selected a new playlist');
+  QUnit.notEqual(oldMediaGroup, hls.playlists.media().attributes.AUDIO, 'selected a new playlist');
   QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 
-  QUnit.equal(at.length, 3, 'three audio tracks after mediaGroup Change');
-  QUnit.equal(at[0], trackOne, 'track one did not change');
-  QUnit.equal(at[1], trackTwo, 'track two did not change');
-  QUnit.equal(at[2], trackThree, 'track three did not change');
+  QUnit.equal(audioTracks.length, 3, 'three audio tracks after mediaGroup Change');
+  QUnit.equal(audioTracks[0], trackOne, 'track one did not change');
+  QUnit.equal(audioTracks[1], trackTwo, 'track two did not change');
+  QUnit.equal(audioTracks[2], trackThree, 'track three did not change');
 
   QUnit.equal(trackOne.enabled, false, 'track 1 - still disabled');
   QUnit.equal(trackTwo.enabled, true, 'track 2 - still enabled');
