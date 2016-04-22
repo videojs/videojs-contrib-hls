@@ -358,9 +358,19 @@ export default class HlsHandler extends Component {
                   'unsupported in Firefox due to an issue: \n\n' +
                   'https://bugzilla.mozilla.org/show_bug.cgi?id=1247138\n\n';
 
-      let audioTracks = this.audioTracks();
-      let enabledTrack = audioTracks.find((t) => t.enabled === true);
-      let defaultTrack = audioTracks.find((t) => t.default === true);
+      let enabledTrack;
+      let defaultTrack;
+
+      this.audioTracks().forEach((t) => {
+        if (!defaultTrack && t.default) {
+          defaultTrack = t;
+        }
+
+        if (!enabledTrack && t.enabled) {
+          enabledTrack = t;
+        }
+      });
+
       let revert;
 
       // they did not switch audiotracks

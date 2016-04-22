@@ -75,4 +75,14 @@ export default class HlsAudioTrack extends AudioTrack {
   removeLoader(mediaGroup) {
     delete this.mediaGroups[mediaGroup];
   }
+
+  /**
+   * Dispose of this audio track and
+   * the playlist loader that it holds inside
+   */
+  dispose() {
+    if (this.loader) {
+      this.loader.dispose();
+    }
+  }
 }

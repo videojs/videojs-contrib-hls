@@ -228,7 +228,13 @@ export default class MasterPlaylistController extends videojs.EventTarget {
   }
 
   useAudio() {
-    let track = this.audioTracks().find((t) => t.enabled === true);
+    let track;
+
+    this.audioTracks().forEach((t) => {
+      if (!track && t.enabled) {
+        track = t;
+      }
+    });
 
     // called to early or no track is enabled
     if (!track) {
@@ -584,6 +590,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
   dispose() {
     this.masterPlaylistLoader_.dispose();
+    this.audioTracks().forEach((track) => {
+      track.dispose();
+    });
     this.audioTracks().length = 0;
     this.mainSegmentLoader_.dispose();
     this.audioSegmentLoader_.dispose();

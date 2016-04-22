@@ -1734,7 +1734,14 @@ QUnit.test('audioinfo changes with three tracks, enabled track is blacklisted an
   QUnit.equal(at.length, 3, 'three audio track after load');
   QUnit.ok(!hls.audioInfo_, 'no audio info on hls');
 
-  let defaultTrack = mpc.audioTracks().find((t) => t.default === true);
+  let defaultTrack;
+
+  mpc.audioTracks().forEach((t) => {
+    if (!defaultTrack && t.default) {
+      defaultTrack = t;
+    }
+  });
+
   let blacklistPlaylistCalls = 0;
   let info = {foo: 'bar'};
 
@@ -1814,7 +1821,14 @@ QUnit.test('audioinfo changes with three tracks, default is enabled, blacklisted
 
   // force audio group with combined audio to enabled
   mpc.activeAudioGroup = () => 'audio-lo';
-  let defaultTrack = mpc.audioTracks().find((t) => t.default === true);
+  let defaultTrack;
+
+  mpc.audioTracks().forEach((t) => {
+    if (!defaultTrack && t.default) {
+      defaultTrack = t;
+    }
+  });
+
   let blacklistPlaylistCalls = 0;
 
   // noop as there is no real playlist
@@ -1999,11 +2013,16 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
 
   let oldMediaGroup = hls.playlists.media().attributes.AUDIO;
 
-  // force a new media group to be selected
+  // force mpc to select a playlist from a new media group
   hls.selectPlaylist = () => {
-    return hls.playlists.master.playlists.find(playlist => {
-      return playlist.attributes.AUDIO !== oldMediaGroup;
+    let playlist;
+
+    mpc.master().playlists.forEach((p) => {
+      if (!playlist && p.attributes.AUDIO !== oldMediaGroup) {
+        playlist = p;
+      }
     });
+    return playlist;
   };
 
   // select a new mediaGroup
@@ -2084,11 +2103,14 @@ QUnit.test('detects fullscreen and triggers a quality change', function() {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   }, this.tech);
-  let fullscreenElementName = [
-    'fullscreenElement', 'webkitFullscreenElement',
-    'mozFullScreenElement', 'msFullscreenElement'
-  ].find((name) => {
-    return !document.hasOwnProperty(name);
+  let fullscreenElementName;
+
+  ['fullscreenElement', 'webkitFullscreenElement',
+   'mozFullScreenElement', 'msFullscreenElement'
+  ].forEach((name) => {
+    if (!fullscreenElementName && !document.hasOwnProperty(name)) {
+      fullscreenElementName = name;
+    }
   });
 
   hls.masterPlaylistController_.fastQualityChange_ = function() {
