@@ -439,9 +439,8 @@ export default class HlsHandler extends Component {
 const HlsSourceHandler = function(mode) {
   return {
     canHandleSource(srcObj) {
-      // this will video.js to to not use this tech/mode if its
-      // not the one we have been overriden to use. It does this by saying that
-      // the tech you don't want to use can't handle this source
+      // this forces video.js to skip this tech/mode if its not the one we have been
+      // overriden to use, by returing that we cannot handle the source.
       if (typeof videojs.options.hls.mode === 'string' && mode !== videojs.options.hls.mode) {
         return false;
       }
