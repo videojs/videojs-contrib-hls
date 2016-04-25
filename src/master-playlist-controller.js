@@ -44,6 +44,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.withCredentials = withCredentials;
     this.tech_ = tech;
+    this.mode_ = mode;
 
     this.mediaSource = new videojs.MediaSource({ mode });
     this.mediaSource.on('audioinfo', (e) => this.trigger(e));
@@ -171,7 +172,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     if (!mediaGroups ||
         !mediaGroups.AUDIO ||
         Object.keys(mediaGroups.AUDIO).length === 0 ||
-        this.mediaSourceMode !== 'html5') {
+        this.mode_ !== 'html5') {
       // "main" audio group, track name "default"
       mediaGroups = videojs.mergeOptions(mediaGroups, {AUDIO: {
         main: {default: {default: true}}}
@@ -186,7 +187,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
         // if the track already exists add a new "location"
         // since tracks in different mediaGroups are actually the same
-        // track with different locations
+        // track with different locations to download them from
         if (tracks[label]) {
           tracks[label].addLoader(mediaGroup, properties.resolvedUri);
           continue;
@@ -236,7 +237,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       }
     });
 
-    // called to early or no track is enabled
+    // called too early or no track is enabled
     if (!track) {
       return;
     }
@@ -248,8 +249,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.audioSegmentLoader_.pause();
     }
 
-    // is the enabled track part of the main combined stream
-    // if it has a loader its not
+    // If the audio track for the active audio group has
+    // a playlist loader than it is an alterative audio track
+    // otherwise it is a part of the mainSegmenLoader
     let loader = track.getLoader(this.activeAudioGroup());
 
     if (!loader) {
@@ -257,6 +259,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
+    // TODO: it may be better to create the playlist loader here
+    // when we can change an audioPlaylistLoaders src
     this.audioPlaylistLoader_ = loader;
 
     if (this.audioPlaylistLoader_.started) {

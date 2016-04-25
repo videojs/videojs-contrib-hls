@@ -361,7 +361,7 @@ export default class HlsHandler extends Component {
       let enabledTrack;
       let defaultTrack;
 
-      this.audioTracks().forEach((t) => {
+      this.audioTracks_().forEach((t) => {
         if (!defaultTrack && t.default) {
           defaultTrack = t;
         }
@@ -371,36 +371,28 @@ export default class HlsHandler extends Component {
         }
       });
 
-      let revert;
-
       // they did not switch audiotracks
       // blacklist the current playlist
-      if (!enabledTrack.getLoader(this.activeAudioGroup())) {
+      if (!enabledTrack.getLoader(this.activeAudioGroup_())) {
         error = `The rendition that we tried to switch to ${error}` +
                 'Unfortunately that means we will have to blacklist ' +
                 'the current playlist and switch to another. Sorry!';
-        revert = () => this.masterPlaylistController_.blacklistCurrentPlaylist();
+        this.masterPlaylistController_.blacklistCurrentPlaylist();
       } else {
         error = `The audio track '${enabledTrack.label}' that we tried to ` +
                 `switch to ${error} Unfortunately this means we will have to ` +
                 `return you to the main track '${defaultTrack.label}'. Sorry!`;
-        revert = () => {
-          defaultTrack.enabled = true;
-          this.tech_.audioTracks().removeTrack(enabledTrack);
-        };
+        defaultTrack.enabled = true;
+        this.tech_.audioTracks().removeTrack(enabledTrack);
       }
 
-      // revert the audio info change on MSE
-      revert();
       videojs.log.warn(error);
       this.masterPlaylistController_.useAudio();
     });
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
-      let audioTracks = this.audioTracks();
-
       // clear current audioTracks
       this.tech_.clearTracks('audio');
-      audioTracks.forEach((track) => {
+      this.audioTracks_().forEach((track) => {
         this.tech_.audioTracks().addTrack(track);
       });
     });
@@ -427,11 +419,11 @@ export default class HlsHandler extends Component {
       this.masterPlaylistController_.mediaSource));
   }
 
-  audioTracks() {
+  audioTracks_() {
     return this.masterPlaylistController_.audioTracks();
   }
 
-  activeAudioGroup() {
+  activeAudioGroup_() {
     return this.masterPlaylistController_.activeAudioGroup();
   }
 

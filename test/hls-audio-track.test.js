@@ -32,7 +32,7 @@ QUnit.test('verify that props are readonly and can be set', function() {
   }
 });
 
-QUnit.test('can start with a playlist loader', function() {
+QUnit.test('can start with a mediaGroup that has a uri', function() {
   let props = {
     default: true,
     language: 'en',
@@ -45,10 +45,36 @@ QUnit.test('can start with a playlist loader', function() {
     enabled: true,
     kind: 'main'
   };
-
   let track = new HlsAudioTrack(props);
 
-  QUnit.ok(track.getLoader('foo'), 'loader was created for mediaGroup foo');
+  QUnit.equal(track.mediaGroups_.length, 1, 'loader was created');
+  let loader = track.getLoader('foo');
+
+  QUnit.ok(loader, 'can getLoader on foo');
+
+  track.dispose();
+  QUnit.equal(track.mediaGroups_.length, 0, 'loader disposed');
+});
+
+QUnit.test('can start with a mediaGroup that has no uri', function() {
+  let props = {
+    default: true,
+    language: 'en',
+    label: 'English',
+    autoselect: true,
+    mediaGroup: 'foo',
+    withCredentials: true,
+    // below props won't be used, its used for checking
+    enabled: true,
+    kind: 'main'
+  };
+  let track = new HlsAudioTrack(props);
+
+  QUnit.equal(track.mediaGroups_.length, 1, 'mediaGroupLoader was created for foo');
+  QUnit.ok(!track.getLoader('foo'), 'can getLoader on foo, but it is undefined');
+
+  track.dispose();
+  QUnit.equal(track.mediaGroups_.length, 0, 'loaders disposed');
 });
 
 QUnit.module('HlsAudioTrack - Loader', {
@@ -63,29 +89,30 @@ QUnit.module('HlsAudioTrack - Loader', {
     });
   },
   afterEach() {
-    this.track = null;
+    this.track.dispose();
+    QUnit.equal(this.track.mediaGroups_.length, 0, 'zero loaders after dispose');
   }
 });
 
 QUnit.test('can add a playlist loader', function() {
-  QUnit.equal(Object.keys(this.track.mediaGroups).length, 1, '1 loader to start');
+  QUnit.equal(this.track.mediaGroups_.length, 1, '1 loader to start');
 
   this.track.addLoader('foo', 'someurl');
   this.track.addLoader('bar', 'someurl');
   this.track.addLoader('baz', 'someurl');
 
-  QUnit.equal(Object.keys(this.track.mediaGroups).length, 4, 'now has four loaders');
+  QUnit.equal(this.track.mediaGroups_.length, 4, 'now has four loaders');
 });
 
 QUnit.test('can remove playlist loader', function() {
-  QUnit.equal(Object.keys(this.track.mediaGroups).length, 1, 'one loaders to start');
+  QUnit.equal(this.track.mediaGroups_.length, 1, 'one loaders to start');
 
   this.track.addLoader('foo', 'someurl');
   this.track.addLoader('baz', 'someurl');
 
-  QUnit.equal(Object.keys(this.track.mediaGroups).length, 3, 'now has three loaders');
+  QUnit.equal(this.track.mediaGroups_.length, 3, 'now has three loaders');
 
   this.track.removeLoader('baz');
-  QUnit.equal(Object.keys(this.track.mediaGroups).length, 2, 'now has two loaders');
+  QUnit.equal(this.track.mediaGroups_.length, 2, 'now has two loaders');
 
 });

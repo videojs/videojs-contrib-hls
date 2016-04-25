@@ -25,46 +25,60 @@ export default class HlsAudioTrack extends AudioTrack {
       withCredentials: options.withCredentials || false
     };
 
-    /* eslint-disable no-loop-func */
-    for (let key in trackProps) {
-      Object.defineProperty(this, key, {
-        get: () => trackProps[key],
-        set: () => {}
-      });
-    }
-    /* eslint-enable no-loop-func */
+    // set noop
+    let set = () => {};
 
-    this.mediaGroups = {};
+    Object.defineProperties(this, {
+      autoselect: {
+        get: () => trackProps.autoselect,
+        set
+      },
+      default: {
+        get: () => trackProps.default,
+        set
+      },
+      withCredentials: {
+        get: () => trackProps.withCredentials,
+        set
+      }
+    });
+    this.mediaGroups_ = [];
     this.addLoader(options.mediaGroup, options.resolvedUri);
   }
 
   /**
-   * get a playlistloader from this track given a mediaGroup
+   * get a PlaylistLoader from this track given a mediaGroup name
    *
    * @param {String} mediaGroup the mediaGroup to get the loader for
    * @return {PlaylistLoader|Null} the PlaylistLoader or null
    */
   getLoader(mediaGroup) {
-    if (!this.mediaGroups[mediaGroup]) {
-      return;
-    }
+    for (let i = 0; i < this.mediaGroups_.length; i++) {
+      let mgl = this.mediaGroups_[i];
 
-    return this.mediaGroups[mediaGroup];
+      if (mgl.mediaGroup === mediaGroup) {
+        return mgl.loader;
+      }
+    }
   }
 
   /**
-   * add a playlistLoader given a mediaGroup, and a uri. for a combined track
+   * add a PlaylistLoader given a mediaGroup, and a uri. for a combined track
    * we store null for the playlistloader
    *
    * @param {String} mediaGroup the mediaGroup to get the loader for
    * @param {String} uri the uri to get the audio track/mediaGroup from
    */
   addLoader(mediaGroup, uri = null) {
-    this.mediaGroups[mediaGroup] = null;
+    let loader = null;
 
     if (uri) {
-      this.mediaGroups[mediaGroup] = new PlaylistLoader(uri, this.withCredentials);
+      // TODO: this should probably happen upstream in Master Playlist
+      // Controller when we can switch PlaylistLoader sources
+      // then we can just store the uri here instead
+      loader = new PlaylistLoader(uri, this.withCredentials);
     }
+    this.mediaGroups_.push({mediaGroup, loader});
   }
 
   /**
@@ -73,7 +87,17 @@ export default class HlsAudioTrack extends AudioTrack {
    * @param {String} mediaGroup the mediaGroup to remove
    */
   removeLoader(mediaGroup) {
-    delete this.mediaGroups[mediaGroup];
+    for (let i = 0; i < this.mediaGroups_.length; i++) {
+      let mgl = this.mediaGroups_[i];
+
+      if (mgl.mediaGroup === mediaGroup) {
+        if (mgl.loader) {
+          mgl.loader.dispose();
+        }
+        this.mediaGroups_.splice(i, 1);
+        return;
+      }
+    }
   }
 
   /**
@@ -81,8 +105,10 @@ export default class HlsAudioTrack extends AudioTrack {
    * the playlist loader that it holds inside
    */
   dispose() {
-    if (this.loader) {
-      this.loader.dispose();
+    let i = this.mediaGroups_.length;
+
+    while (i--) {
+      this.removeLoader(this.mediaGroups_[i].mediaGroup);
     }
   }
 }

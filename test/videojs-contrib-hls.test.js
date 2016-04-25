@@ -1663,7 +1663,7 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   // master
   standardXHRResponse(this.requests.shift());
   let hls = this.player.tech_.hls;
-  let hlsAudioTracks = hls.audioTracks();
+  let hlsAudioTracks = hls.audioTracks_();
   let vjsAudioTracks = this.player.audioTracks();
 
   QUnit.equal(hlsAudioTracks.length, 3, '3 active hls tracks');
@@ -2017,7 +2017,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
   hls.selectPlaylist = () => {
     let playlist;
 
-    mpc.master().playlists.forEach((p) => {
+    hls.playlists.master.playlists.forEach((p) => {
       if (!playlist && p.attributes.AUDIO !== oldMediaGroup) {
         playlist = p;
       }
