@@ -27,6 +27,151 @@ const Hls = {
 // the desired length of video to maintain in the buffer, in seconds
 Hls.GOAL_BUFFER_LENGTH = 30;
 
+// A fudge factor to apply to advertised playlist bitrates to account for
+// temporary flucations in client bandwidth
+const BANDWIDTH_VARIANCE = 1.2;
+
+/**
+ * Returns the CSS value for the specified property on an element
+ * using `getComputedStyle`. Firefox has a long-standing issue where
+ * getComputedStyle() may return null when running in an iframe with
+ * `display: none`.
+ * @see https://bugzilla.mozilla.org/show_bug.cgi?id=548397
+ */
+const safeGetComputedStyle = function(el, property) {
+  let result;
+
+  if (!el) {
+    return '';
+  }
+
+  result = getComputedStyle(el);
+  if (!result) {
+    return '';
+  }
+
+  return result[property];
+};
+
+/**
+ * Chooses the appropriate media playlist based on the current
+ * bandwidth estimate and the player size.
+ * @return the highest bitrate playlist less than the currently detected
+ * bandwidth, accounting for some amount of bandwidth variance
+ */
+Hls.STANDARD_PLAYLIST_SELECTOR = function() {
+  let effectiveBitrate;
+  let sortedPlaylists = this.playlists.master.playlists.slice();
+  let bandwidthPlaylists = [];
+  let now = +new Date();
+  let i;
+  let variant;
+  let bandwidthBestVariant;
+  let resolutionPlusOne;
+  let resolutionPlusOneAttribute;
+  let resolutionBestVariant;
+  let width;
+  let height;
+
+  sortedPlaylists.sort(Hls.comparePlaylistBandwidth);
+
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  sortedPlaylists = sortedPlaylists.filter((localVariant) => {
+    if (typeof localVariant.excludeUntil !== 'undefined') {
+      return now >= localVariant.excludeUntil;
+    }
+    return true;
+  });
+
+  // filter out any variant that has greater effective bitrate
+  // than the current estimated bandwidth
+  i = sortedPlaylists.length;
+  while (i--) {
+    variant = sortedPlaylists[i];
+
+    // ignore playlists without bandwidth information
+    if (!variant.attributes || !variant.attributes.BANDWIDTH) {
+      continue;
+    }
+
+    effectiveBitrate = variant.attributes.BANDWIDTH * BANDWIDTH_VARIANCE;
+
+    if (effectiveBitrate < this.bandwidth) {
+      bandwidthPlaylists.push(variant);
+
+      // since the playlists are sorted in ascending order by
+      // bandwidth, the first viable variant is the best
+      if (!bandwidthBestVariant) {
+        bandwidthBestVariant = variant;
+      }
+    }
+  }
+
+  i = bandwidthPlaylists.length;
+
+  // sort variants by resolution
+  bandwidthPlaylists.sort(Hls.comparePlaylistResolution);
+
+  // forget our old variant from above,
+  // or we might choose that in high-bandwidth scenarios
+  // (this could be the lowest bitrate rendition as  we go through all of them above)
+  variant = null;
+
+  width = parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10);
+  height = parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10);
+
+  // iterate through the bandwidth-filtered playlists and find
+  // best rendition by player dimension
+  while (i--) {
+    variant = bandwidthPlaylists[i];
+
+    // ignore playlists without resolution information
+    if (!variant.attributes ||
+        !variant.attributes.RESOLUTION ||
+        !variant.attributes.RESOLUTION.width ||
+        !variant.attributes.RESOLUTION.height) {
+      continue;
+    }
+
+    // since the playlists are sorted, the first variant that has
+    // dimensions less than or equal to the player size is the best
+    let variantResolution = variant.attributes.RESOLUTION;
+
+    if (variantResolution.width === width &&
+        variantResolution.height === height) {
+      // if we have the exact resolution as the player use it
+      resolutionPlusOne = null;
+      resolutionBestVariant = variant;
+      break;
+    } else if (variantResolution.width < width &&
+               variantResolution.height < height) {
+      // if both dimensions are less than the player use the
+      // previous (next-largest) variant
+      break;
+    } else if (!resolutionPlusOne ||
+               (variantResolution.width < resolutionPlusOneAttribute.width &&
+                variantResolution.height < resolutionPlusOneAttribute.height)) {
+      // If we still haven't found a good match keep a
+      // reference to the previous variant for the next loop
+      // iteration
+
+      // By only saving variants if they are smaller than the
+      // previously saved variant, we ensure that we also pick
+      // the highest bandwidth variant that is just-larger-than
+      // the video player
+      resolutionPlusOne = variant;
+      resolutionPlusOneAttribute = resolutionPlusOne.attributes.RESOLUTION;
+    }
+  }
+
+  // fallback chain of variants
+  return resolutionPlusOne ||
+    resolutionBestVariant ||
+    bandwidthBestVariant ||
+    sortedPlaylists[0];
+};
+
 // HLS is a source handler, not a tech. Make sure attempts to use it
 // as one do not cause exceptions.
 Hls.canPlaySource = function() {
@@ -139,13 +284,40 @@ export default class HlsHandler extends Component {
         this.options_[option] = this.source_[option];
       }
     });
-    this.masterPlaylistController_ = new MasterPlaylistController({
-      url: this.source_.src,
-      withCredentials: this.options_.withCredentials,
-      currentTimeFunc: this.tech_.currentTime.bind(this.tech_),
-      mediaSourceMode: this.options_.mode,
-      hlsHandler: this,
-      externHls: Hls
+    this.options_.url = this.source_.src;
+    this.options_.tech = this.tech_;
+    this.options_.externHls = Hls;
+    this.options_.bandwidth = this.bandwidth;
+    this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
+    // `this` in selectPlaylist should be the HlsHandler for backwards
+    // compatibility with < v2
+    this.masterPlaylistController_.selectPlaylist =
+      Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
+
+    // re-expose some internal objects for backwards compatibility with < v2
+    this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;
+    this.mediaSource = this.masterPlaylistController_.mediaSource;
+
+    // Proxy assignment of some properties to the master playlist
+    // controller. Using a custom property for backwards compatibility
+    // with < v2
+    Object.defineProperties(this, {
+      selectPlaylist: {
+        get() {
+          return this.masterPlaylistController_.selectPlaylist;
+        },
+        set(selectPlaylist) {
+          this.masterPlaylistController_.selectPlaylist = selectPlaylist.bind(this);
+        }
+      },
+      bandwidth: {
+        get() {
+          return this.masterPlaylistController_.mainSegmentLoader_.bandwidth;
+        },
+        set(bandwidth) {
+          this.masterPlaylistController_.mainSegmentLoader_.bandwidth = bandwidth;
+        }
+      }
     });
 
     this.tech_.one('canplay',
@@ -200,9 +372,16 @@ export default class HlsHandler extends Component {
       }
     });
 
-    this.masterPlaylistController_.on('loadedmetadata', () => {
+    this.on(this.masterPlaylistController_, 'loadedmetadata', function() {
       this.masterPlaylistController_.useAudio();
       this.tech_.trigger('loadedmetadata');
+    });
+
+    // the bandwidth of the primary segment loader is our best
+    // estimate of overall bandwidth
+    this.on(this.masterPlaylistController_, 'progress', function() {
+      this.bandwidth = this.masterPlaylistController_.mainSegmentLoader_.bandwidth;
+      this.tech_.trigger('progress');
     });
 
     // do nothing if the tech has been disposed already
@@ -219,23 +398,7 @@ export default class HlsHandler extends Component {
    * Begin playing the video.
    */
   play() {
-    if (this.tech_.ended()) {
-      this.tech_.setCurrentTime(0);
-    }
-
-    this.masterPlaylistController_.load();
-
-    if (this.tech_.played().length === 0) {
-      return this.masterPlaylistController_.setupFirstPlay();
-    }
-
-    // if the viewer has paused and we fell out of the live window,
-    // seek forward to the earliest available position
-    if (this.duration() === Infinity) {
-      if (this.tech_.currentTime() < this.seekable().start(0)) {
-        this.tech_.setCurrentTime(this.seekable().start(0));
-      }
-    }
+    this.masterPlaylistController_.play();
   }
 
   setCurrentTime(currentTime) {

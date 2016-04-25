@@ -44,7 +44,7 @@ QUnit.test('throws error when given an empty URL', function() {
   let options = {
     url: 'test',
     currentTimeFunc: () => {},
-    hlsHandler: this.masterPlaylistController.hlsHandler
+    tech: new (videojs.getTech('Html5'))({})
   };
 
   QUnit.ok(new MasterPlaylistController(options), 'can create with options');
@@ -87,7 +87,7 @@ QUnit.test('tech fires loadedmetadata when playlist loader loads first playlist'
 function() {
   let firedLoadedMetadata = false;
 
-  this.masterPlaylistController.hlsHandler.tech_.on('loadedmetadata', () => {
+  this.masterPlaylistController.tech_.on('loadedmetadata', () => {
     firedLoadedMetadata = true;
   });
 
@@ -120,7 +120,7 @@ QUnit.test('clears some of the buffer for a fast quality change', function() {
   segmentLoader.sourceUpdater_.remove = function(start, end) {
     removes.push({ start, end });
   };
-  this.masterPlaylistController.hlsHandler.selectPlaylist = () => {
+  this.masterPlaylistController.selectPlaylist = () => {
     return this.masterPlaylistController.master().playlists[0];
   };
   this.masterPlaylistController.currentTimeFunc = () => 7;
@@ -364,7 +364,7 @@ QUnit.test('updates the combined segment loader on media changes', function() {
 
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
-  this.masterPlaylistController.hlsHandler.bandwidth = 1;
+  this.masterPlaylistController.mainSegmentLoader_.bandwidth = 1;
 
   // master
   standardXHRResponse(this.requests.shift());
@@ -388,7 +388,7 @@ QUnit.test('updates the combined segment loader on media changes', function() {
 QUnit.test('selects a playlist after main/combined segment downloads', function() {
   let calls = 0;
 
-  this.masterPlaylistController.hlsHandler.selectPlaylist = () => {
+  this.masterPlaylistController.selectPlaylist = () => {
     calls++;
     return this.masterPlaylistController.masterPlaylistLoader_.master.playlists[0];
   };
@@ -413,14 +413,14 @@ QUnit.test('updates the duration after switching playlists', function() {
 
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
-  this.masterPlaylistController.hlsHandler.bandwidth = 1e20;
+  this.masterPlaylistController.bandwidth = 1e20;
 
   // master
   standardXHRResponse(this.requests[0]);
   // media
   standardXHRResponse(this.requests[1]);
 
-  this.masterPlaylistController.hlsHandler.selectPlaylist = () => {
+  this.masterPlaylistController.selectPlaylist = () => {
     selectedPlaylist = true;
 
     // this duration should be overwritten by the playlist change
