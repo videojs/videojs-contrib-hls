@@ -208,14 +208,14 @@ Hls.isSupported = function() {
 const Component = videojs.getComponent('Component');
 
 export default class HlsHandler extends Component {
-  constructor(tech, options) {
+  constructor(source, tech, options) {
     super(tech);
-    let _player;
 
     // tech.player() is deprecated but setup a reference to HLS for
     // backwards-compatibility
     if (tech.options_ && tech.options_.playerId) {
-      _player = videojs(tech.options_.playerId);
+      let _player = videojs(tech.options_.playerId);
+
       if (!_player.hasOwnProperty('hls')) {
         Object.defineProperty(_player, 'hls', {
           get: () => {
@@ -226,17 +226,9 @@ export default class HlsHandler extends Component {
       }
     }
 
-    // TODO: when source handler options are possible (pull request is accepted
-    // into video.js) then we can add other options entries. Right now only
-    // mode/source will ever be passed as we pass them in
-    // HlsSourceHandler.handleSource()
-    // @link https://github.com/videojs/video.js/pull/3245
-    this.options_ = videojs.mergeOptions(options, videojs.options.hls || {});
-    // we cannot override the mode at this state, we have to use what was passed
-    // to us
-    this.options_.mode = options.mode;
+    this.options_ = videojs.mergeOptions(videojs.options.hls || {}, options.hls);
     this.tech_ = tech;
-    this.source_ = options.source;
+    this.source_ = source;
 
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
@@ -441,12 +433,14 @@ const HlsSourceHandler = function(mode) {
     canHandleSource(srcObj) {
       // this forces video.js to skip this tech/mode if its not the one we have been
       // overriden to use, by returing that we cannot handle the source.
-      if (typeof videojs.options.hls.mode === 'string' && mode !== videojs.options.hls.mode) {
+      if (videojs.options.hls &&
+          videojs.options.hls.mode &&
+          videojs.options.hls.mode !== mode) {
         return false;
       }
       return HlsSourceHandler.canPlayType(srcObj.type);
     },
-    handleSource(source, tech) {
+    handleSource(source, tech, options) {
       if (mode === 'flash') {
         // We need to trigger this asynchronously to give others the chance
         // to bind to the event when a source is set at player creation
@@ -454,10 +448,9 @@ const HlsSourceHandler = function(mode) {
           tech.trigger('loadstart');
         }, 1);
       }
-      tech.hls = new HlsHandler(tech, {
-        source,
-        mode
-      });
+      let settings = videojs.mergeOptions(options, {hls: {mode}});
+
+      tech.hls = new HlsHandler(source, tech, settings);
       tech.hls.src(source.src);
       return tech.hls;
     },
