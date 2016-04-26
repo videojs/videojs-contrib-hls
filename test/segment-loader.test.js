@@ -61,6 +61,7 @@ QUnit.module('Segment Loader', {
       },
       seekable: () => this.seekable,
       seeking: () => false,
+      hasPlayed: () => true,
       mediaSource
     });
   },
@@ -845,13 +846,15 @@ QUnit.module('Segment Loading Calculation', {
   beforeEach() {
     this.env = useFakeEnvironment();
     this.mse = useFakeMediaSource();
+    this.hasPlayed = true;
 
     currentTime = 0;
     loader = new SegmentLoader({
       currentTime() {
         return currentTime;
       },
-      mediaSource: new videojs.MediaSource()
+      mediaSource: new videojs.MediaSource(),
+      hasPlayed: () => this.hasPlayed
     });
   },
   afterEach() {
@@ -869,6 +872,18 @@ QUnit.test('requests the first segment with an empty buffer', function() {
 
   QUnit.ok(segmentInfo, 'generated a request');
   QUnit.equal(segmentInfo.uri, '0.ts', 'requested the first segment');
+});
+
+QUnit.test('no request if video not played and 1 segment is buffered', function() {
+  this.hasPlayed = false;
+  loader.mimeType(this.mimeType);
+
+  let segmentInfo = loader.checkBuffer_(videojs.createTimeRanges([[0, 1]]),
+                                        playlistWithDuration(20),
+                                        0);
+
+  QUnit.ok(!segmentInfo, 'no request generated');
+
 });
 
 QUnit.test('does not download the next segment if the buffer is full', function() {

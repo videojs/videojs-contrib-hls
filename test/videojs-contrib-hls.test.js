@@ -952,7 +952,7 @@ QUnit.test('fire loadedmetadata once we successfully load a playlist', function(
   });
   openMediaSource(this.player, this.clock);
   this.player.tech_.hls.bandwidth = 20000;
-  this.player.on('loadedmetadata', function() {
+  this.player.tech_.hls.masterPlaylistController_.on('loadedmetadata', function() {
     count += 1;
   });
   // master

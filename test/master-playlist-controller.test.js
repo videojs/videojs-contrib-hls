@@ -55,7 +55,7 @@ QUnit.test('throws error when given an empty URL', function() {
   }, /A non-empty playlist URL is required/, 'requires a non empty url');
 });
 
-QUnit.test('obeys preload option', function() {
+QUnit.test('obeys none preload option', function() {
   this.player.preload('none');
   // master
   standardXHRResponse(this.requests.shift());
@@ -64,14 +64,10 @@ QUnit.test('obeys preload option', function() {
 
   openMediaSource(this.player, this.clock);
 
-  QUnit.equal(this.requests.length, 0, 'no segment requests when preload is none');
+  QUnit.equal(this.requests.length, 0, 'no segment requests');
+});
 
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
+QUnit.test('obeys auto preload option', function() {
   this.player.preload('auto');
   // master
   standardXHRResponse(this.requests.shift());
@@ -80,14 +76,26 @@ QUnit.test('obeys preload option', function() {
 
   openMediaSource(this.player, this.clock);
 
-  QUnit.equal(this.requests.length, 1, 'segment request when preload is auto');
+  QUnit.equal(this.requests.length, 1, '1 segment request');
+});
+
+QUnit.test('obeys metadata preload option', function() {
+  this.player.preload('metadata');
+  // master
+  standardXHRResponse(this.requests.shift());
+  // playlist
+  standardXHRResponse(this.requests.shift());
+
+  openMediaSource(this.player, this.clock);
+
+  QUnit.equal(this.requests.length, 1, '1 segment request');
 });
 
 QUnit.test('tech fires loadedmetadata when playlist loader loads first playlist',
 function() {
   let firedLoadedMetadata = false;
 
-  this.masterPlaylistController.tech_.on('loadedmetadata', () => {
+  this.masterPlaylistController.on('loadedmetadata', () => {
     firedLoadedMetadata = true;
   });
 
@@ -160,9 +168,11 @@ QUnit.test('if buffered, will request second segment byte range', function() {
   });
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
+  // mock that the user has played the video before
   this.player.tech_.triggerReady();
   this.clock.tick(1);
   this.player.tech_.trigger('play');
+  this.player.tech_.played = () => videojs.createTimeRanges([[0, 20]]);
 
   openMediaSource(this.player, this.clock);
   // playlist

@@ -130,11 +130,12 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // public properties
     this.state = 'INIT';
-    this.bandwidth = NaN;
+    this.bandwidth = settings.bandwidth;
     this.roundTrip = NaN;
     this.bytesReceived = 0;
 
     // private properties
+    this.hasPlayed_ = settings.hasPlayed;
     this.currentTime_ = settings.currentTime;
     this.seekable_ = settings.seekable;
     this.seeking_ = settings.seeking;
@@ -371,8 +372,15 @@ export default class SegmentLoader extends videojs.EventTarget {
       currentBufferedEnd = currentBuffered.end(0);
       bufferedTime = Math.max(0, currentBufferedEnd - currentTime);
 
-      // if there is plenty of content buffered, relax for awhile
-      if (bufferedTime >= GOAL_BUFFER_LENGTH) {
+      // if the video has not yet played only, and we already have
+      // one segment downloaded do nothing
+      if (!this.hasPlayed_() && bufferedTime >= 1) {
+        return null;
+      }
+
+      // if there is plenty of content buffered, and the video has
+      // been played before relax for awhile
+      if (this.hasPlayed_() && bufferedTime >= GOAL_BUFFER_LENGTH) {
         return null;
       }
       mediaIndex = getMediaIndexForTime(playlist,
