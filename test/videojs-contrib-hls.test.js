@@ -1663,7 +1663,7 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   // master
   standardXHRResponse(this.requests.shift());
   let hls = this.player.tech_.hls;
-  let hlsAudioTracks = hls.audioTracks_();
+  let hlsAudioTracks = hls.masterPlaylistController_.audioTracks_;
   let vjsAudioTracks = this.player.audioTracks();
 
   QUnit.equal(hlsAudioTracks.length, 3, '3 active hls tracks');
@@ -1736,7 +1736,7 @@ QUnit.test('audioinfo changes with three tracks, enabled track is blacklisted an
 
   let defaultTrack;
 
-  hls.audioTracks_().forEach((t) => {
+  mpc.audioTracks_.forEach((t) => {
     if (!defaultTrack && t.default) {
       defaultTrack = t;
     }
@@ -1824,7 +1824,7 @@ QUnit.test('audioinfo changes with three tracks, default is enabled, blacklisted
   mpc.activeAudioGroup = () => 'audio-lo';
   let defaultTrack;
 
-  hls.audioTracks_().forEach((t) => {
+  mpc.audioTracks_.forEach((t) => {
     if (!defaultTrack && t.default) {
       defaultTrack = t;
     }

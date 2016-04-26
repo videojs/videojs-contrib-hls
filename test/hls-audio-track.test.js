@@ -20,16 +20,6 @@ QUnit.test('verify that props are readonly and can be set', function() {
   for (let k in props) {
     QUnit.equal(track[k], props[k], `${k} should be stored in track`);
   }
-
-  for (let k in props) {
-    let v = false;
-
-    if (typeof props[k] !== 'boolean') {
-      v = 'alternative';
-    }
-    track[k] = v;
-    QUnit.notEqual(track[k], v, `${k} should be changed to ${v}`);
-  }
 });
 
 QUnit.test('can start with a mediaGroup that has a uri', function() {

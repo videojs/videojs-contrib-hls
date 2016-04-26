@@ -361,7 +361,7 @@ export default class HlsHandler extends Component {
       let enabledTrack;
       let defaultTrack;
 
-      this.audioTracks_().forEach((t) => {
+      this.masterPlaylistController_.audioTracks_.forEach((t) => {
         if (!defaultTrack && t.default) {
           defaultTrack = t;
         }
@@ -392,7 +392,7 @@ export default class HlsHandler extends Component {
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
       // clear current audioTracks
       this.tech_.clearTracks('audio');
-      this.audioTracks_().forEach((track) => {
+      this.masterPlaylistController_.audioTracks_.forEach((track) => {
         this.tech_.audioTracks().addTrack(track);
       });
     });
@@ -417,10 +417,6 @@ export default class HlsHandler extends Component {
 
     this.tech_.src(videojs.URL.createObjectURL(
       this.masterPlaylistController_.mediaSource));
-  }
-
-  audioTracks_() {
-    return this.masterPlaylistController_.audioTracks_;
   }
 
   activeAudioGroup_() {

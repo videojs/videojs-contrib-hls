@@ -19,29 +19,9 @@ export default class HlsAudioTrack extends AudioTrack {
       label: options.label
     });
 
-    let trackProps = {
-      autoselect: options.autoselect || false,
-      default: options.default || false,
-      withCredentials: options.withCredentials || false
-    };
-
-    // set noop
-    let set = () => {};
-
-    Object.defineProperties(this, {
-      autoselect: {
-        get: () => trackProps.autoselect,
-        set
-      },
-      default: {
-        get: () => trackProps.default,
-        set
-      },
-      withCredentials: {
-        get: () => trackProps.withCredentials,
-        set
-      }
-    });
+    this.autoselect = options.autoselect || false;
+    this.default = options.default || false;
+    this.withCredentials = options.withCredentials || false;
     this.mediaGroups_ = [];
     this.addLoader(options.mediaGroup, options.resolvedUri);
   }
