@@ -45,6 +45,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.withCredentials = withCredentials;
     this.tech_ = tech;
     this.mode_ = mode;
+    this.audioTracks_ = [];
 
     this.mediaSource = new videojs.MediaSource({ mode });
     this.mediaSource.on('audioinfo', (e) => this.trigger(e));
@@ -200,7 +201,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         }));
 
         tracks[label] = track;
-        this.audioTracks().push(track);
+        this.audioTracks_.push(track);
       }
     }
   }
@@ -223,15 +224,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     return mediaGroup;
   }
 
-  audioTracks() {
-    this.audioTracks_ = this.audioTracks_ || [];
-    return this.audioTracks_;
-  }
-
   useAudio() {
     let track;
 
-    this.audioTracks().forEach((t) => {
+    this.audioTracks_.forEach((t) => {
       if (!track && t.enabled) {
         track = t;
       }
@@ -594,10 +590,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
   dispose() {
     this.masterPlaylistLoader_.dispose();
-    this.audioTracks().forEach((track) => {
+    this.audioTracks_.forEach((track) => {
       track.dispose();
     });
-    this.audioTracks().length = 0;
+    this.audioTracks_.length = 0;
     this.mainSegmentLoader_.dispose();
     this.audioSegmentLoader_.dispose();
   }

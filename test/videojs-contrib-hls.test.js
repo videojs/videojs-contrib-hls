@@ -1736,7 +1736,7 @@ QUnit.test('audioinfo changes with three tracks, enabled track is blacklisted an
 
   let defaultTrack;
 
-  mpc.audioTracks().forEach((t) => {
+  hls.audioTracks_().forEach((t) => {
     if (!defaultTrack && t.default) {
       defaultTrack = t;
     }
@@ -1817,13 +1817,14 @@ QUnit.test('audioinfo changes with three tracks, default is enabled, blacklisted
   standardXHRResponse(this.requests.shift());
   QUnit.equal(at.length, 3, 'three audio track after load');
 
-  let mpc = this.player.tech_.hls.masterPlaylistController_;
+  let hls = this.player.tech_.hls;
+  let mpc = hls.masterPlaylistController_;
 
   // force audio group with combined audio to enabled
   mpc.activeAudioGroup = () => 'audio-lo';
   let defaultTrack;
 
-  mpc.audioTracks().forEach((t) => {
+  hls.audioTracks_().forEach((t) => {
     if (!defaultTrack && t.default) {
       defaultTrack = t;
     }

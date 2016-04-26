@@ -420,7 +420,7 @@ export default class HlsHandler extends Component {
   }
 
   audioTracks_() {
-    return this.masterPlaylistController_.audioTracks();
+    return this.masterPlaylistController_.audioTracks_;
   }
 
   activeAudioGroup_() {
