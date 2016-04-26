@@ -157,7 +157,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       // figure out what stream the next segment should be downloaded from
       // with the updated bandwidth information
       this.masterPlaylistLoader_.media(this.selectPlaylist());
-      this.updateDuration();
 
       this.trigger('progress');
     });
