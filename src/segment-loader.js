@@ -15,7 +15,7 @@ import {Decrypter} from './decrypter';
 const CHECK_BUFFER_DELAY = 500;
 
 // the desired length of video to maintain in the buffer, in seconds
-export const GOAL_BUFFER_LENGTH = 30;
+let GOAL_BUFFER_LENGTH = 30;
 
 /**
  * Updates segment with information about its end-point in time and, optionally,
@@ -153,6 +153,14 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.sourceUpdater_) {
       this.sourceUpdater_.dispose();
     }
+  }
+
+  static get GOAL_BUFFER_LENGTH() {
+    return GOAL_BUFFER_LENGTH;
+  }
+
+  static set GOAL_BUFFER_LENGTH(v) {
+    GOAL_BUFFER_LENGTH = v;
   }
 
   abort() {
