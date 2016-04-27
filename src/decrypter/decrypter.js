@@ -1,5 +1,5 @@
-/*
- * decrypter.js
+/**
+ * @file decrypter/decrypter.js
  *
  * An asynchronous implementation of AES-128 CBC decryption with
  * PKCS#7 padding.
@@ -22,9 +22,10 @@ const ntoh = function(word) {
 
 /**
  * Decrypt bytes using AES-128 with CBC and PKCS#7 padding.
- * @param encrypted {Uint8Array} the encrypted bytes
- * @param key {Uint32Array} the bytes of the decryption key
- * @param initVector {Uint32Array} the initialization vector (IV) to
+ *
+ * @param {Uint8Array} encrypted the encrypted bytes
+ * @param {Uint32Array} key the bytes of the decryption key
+ * @param {Uint32Array} initVector the initialization vector (IV) to
  * use for the first round of CBC.
  * @return {Uint8Array} the decrypted bytes
  *
@@ -104,6 +105,12 @@ export const decrypt = function(encrypted, key, initVector) {
  * The `Decrypter` class that manages decryption of AES
  * data through `AsyncStream` objects and the `decrypt`
  * function
+ *
+ * @param {Uint8Array} encrypted the encrypted bytes
+ * @param {Uint32Array} key the bytes of the decryption key
+ * @param {Uint32Array} initVector the initialization vector (IV) to
+ * @param {Function} done the function to run when done
+ * @class Decrypter
  */
 export class Decrypter {
   constructor(encrypted, key, initVector, done) {
@@ -135,6 +142,20 @@ export class Decrypter {
       done(null, unpad(decrypted));
     });
   }
+
+  /**
+   * a getter for step the maximum number of bytes to process at one time
+   *
+   * @return {Number} the value of step 32000
+   */
+  static get STEP() {
+    // 4 * 8000;
+    return 32000;
+  }
+
+  /**
+   * @private
+   */
   decryptChunk_(encrypted, key, initVector, decrypted) {
     return function() {
       let bytes = decrypt(encrypted, key, initVector);
@@ -143,10 +164,6 @@ export class Decrypter {
     };
   }
 }
-
-// the maximum number of bytes to process at one time
-// 4 * 8000;
-Decrypter.STEP = 32000;
 
 export default {
   Decrypter,

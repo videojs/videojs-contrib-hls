@@ -1,3 +1,6 @@
+/**
+ * @file m3u8/parser.js
+ */
 import Stream from '../stream' ;
 import LineStream from './line-stream';
 import ParseStream from './parse-stream';
@@ -20,6 +23,9 @@ import {mergeOptions} from 'video.js';
  * underlying input is somewhat nonsensical. It emits `info` and `warning`
  * events during the parse if it encounters input that seems invalid or
  * requires some property of the manifest object to be defaulted.
+ *
+ * @class Parser
+ * @extends Stream
  */
 export default class Parser extends Stream {
   constructor() {
@@ -284,7 +290,8 @@ export default class Parser extends Stream {
 
   /**
    * Parse the input string and update the manifest object.
-   * @param chunk {string} a potentially incomplete portion of the manifest
+   *
+   * @param {String} chunk a potentially incomplete portion of the manifest
    */
   push(chunk) {
     this.lineStream.push(chunk);

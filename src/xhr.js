@@ -1,5 +1,13 @@
 /**
+ * @file xhr.js
+ */
+
+/**
  * A wrapper for videojs.xhr that tracks bandwidth.
+ *
+ * @param {Object} options options for the XHR
+ * @param {Function} callback the callback to call when done
+ * @return {Request} the xhr request that is going to be made
  */
 import {xhr as videojsXHR, mergeOptions} from 'video.js';
 const xhr = function(options, callback) {

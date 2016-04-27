@@ -1,5 +1,10 @@
 /**
+ * @file stream.js
+ */
+/**
  * A lightweight readable stream implemention that handles event dispatching.
+ *
+ * @class Stream
  */
 export default class Stream {
   constructor() {
@@ -8,8 +13,9 @@ export default class Stream {
 
   /**
    * Add a listener for a specified event type.
-   * @param type {string} the event name
-   * @param listener {function} the callback to be invoked when an event of
+   *
+   * @param {String} type the event name
+   * @param {Function} listener the callback to be invoked when an event of
    * the specified type occurs
    */
   on(type, listener) {
@@ -21,9 +27,11 @@ export default class Stream {
 
   /**
    * Remove a listener for a specified event type.
-   * @param type {string} the event name
-   * @param listener {function} a function previously registered for this
+   *
+   * @param {String} type the event name
+   * @param {Function} listener  a function previously registered for this
    * type of event through `on`
+   * @return {Boolean} if we could turn it off or not
    */
   off(type, listener) {
     let index;
@@ -39,7 +47,8 @@ export default class Stream {
   /**
    * Trigger an event of the specified type on this stream. Any additional
    * arguments to this function are passed as parameters to event listeners.
-   * @param type {string} the event name
+   *
+   * @param {String} type the event name
    */
   trigger(type) {
     let callbacks;
@@ -79,7 +88,8 @@ export default class Stream {
    * Forwards all `data` events on this stream to the destination stream. The
    * destination stream should provide a method `push` to receive the data
    * events as they arrive.
-   * @param destination {stream} the stream that will receive all `data` events
+   *
+   * @param {Stream} destination the stream that will receive all `data` events
    * @see http://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
    */
   pipe(destination) {
