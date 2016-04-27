@@ -13,6 +13,7 @@ import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from './m3u8';
 import videojs from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
+import SegmentLoader from './segment-loader';
 
 /**
  * determine if an object a is differnt from
@@ -48,7 +49,10 @@ const Hls = {
 };
 
 // the desired length of video to maintain in the buffer, in seconds
-Hls.GOAL_BUFFER_LENGTH = 30;
+Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
+  get: () => SegmentLoader.GOAL_BUFFER_LENGTH,
+  set: (v) => SegmentLoader.GOAL_BUFFER_LENGTH = v
+});
 
 // A fudge factor to apply to advertised playlist bitrates to account for
 // temporary flucations in client bandwidth
