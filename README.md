@@ -120,11 +120,22 @@ initialization. You can pass in options just like you would for other
 parts of video.js:
 
 ```javascript
-videojs(video, {
+// html5 for html hls
+videojs(video, {html5: {
   hls: {
     withCredentials: true
   }
-});
+}});
+
+// or
+
+// flash for flash hls
+videojs(video, {flash: {
+  hls: {
+    withCredentials: true
+  }
+}});
+
 ```
 
 #### withCredentials
