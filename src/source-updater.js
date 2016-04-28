@@ -1,19 +1,18 @@
 /**
- * source-updater
- *
+ * @file source-updater.js
+ */
+import videojs from 'video.js';
+
+/**
  * A queue of callbacks to be serialized and applied when a
  * MediaSource and its associated SourceBuffers are not in the
  * updating state. It is used by the segment loader to update the
  * underlying SourceBuffers when new data is loaded, for instance.
  *
- */
-import videojs from 'video.js';
-
-/**
- * Construct a new SourceUpdater using the specified MediaSource.
- * @param mediaSource {MediaSource} the MediaSource to create the
+ * @class SourceUpdater
+ * @param {MediaSource} mediaSource the MediaSource to create the
  * SourceBuffer from
- * @param mimeType {string} the desired MIME type of the underlying
+ * @param {String} mimeType the desired MIME type of the underlying
  * SourceBuffer
  */
 export default class SourceUpdater {
@@ -52,6 +51,8 @@ export default class SourceUpdater {
 
   /**
    * Aborts the current segment and resets the segment parser.
+   *
+   * @param {Function} done function to call when done
    * @see http://w3c.github.io/media-source/#widl-SourceBuffer-abort-void
    */
   abort(done) {
@@ -62,8 +63,10 @@ export default class SourceUpdater {
 
   /**
    * Queue an update to append an ArrayBuffer.
-   * @see http://www.w3.org/TR/media-source/
-   *      #widl-SourceBuffer-appendBuffer-void-ArrayBuffer-data
+   *
+   * @param {ArrayBuffer} bytes
+   * @param {Function} done the function to call when done
+   * @see http://www.w3.org/TR/media-source/#widl-SourceBuffer-appendBuffer-void-ArrayBuffer-data
    */
   appendBuffer(bytes, done) {
     this.queueCallback_(() => {
@@ -73,6 +76,7 @@ export default class SourceUpdater {
 
   /**
    * Indicates what TimeRanges are buffered in the managed SourceBuffer.
+   *
    * @see http://www.w3.org/TR/media-source/#widl-SourceBuffer-buffered
    */
   buffered() {
@@ -84,6 +88,8 @@ export default class SourceUpdater {
 
   /**
    * Queue an update to set the duration.
+   *
+   * @param {Double} duration what to set the duration to
    * @see http://www.w3.org/TR/media-source/#widl-MediaSource-duration
    */
   duration(duration) {
@@ -94,8 +100,10 @@ export default class SourceUpdater {
 
   /**
    * Queue an update to remove a time range from the buffer.
-   * @see http://www.w3.org/TR/media-source/
-   *      #widl-SourceBuffer-remove-void-double-start-unrestricted-double-end
+   *
+   * @param {Number} start where to start the removal
+   * @param {Number} end where to end the removal
+   * @see http://www.w3.org/TR/media-source/#widl-SourceBuffer-remove-void-double-start-unrestricted-double-end
    */
   remove(start, end) {
     this.queueCallback_(() => {
@@ -103,10 +111,20 @@ export default class SourceUpdater {
     });
   }
 
+  /**
+   * wether the underlying sourceBuffer is updating or not
+   *
+   * @return {Boolean} the updating status of the SourceBuffer
+   */
   updating() {
     return !this.sourceBuffer_ || this.sourceBuffer_.updating;
   }
 
+  /**
+   * Set/get the timestampoffset on the SourceBuffer
+   *
+   * @return {Number} the timestamp offset
+   */
   timestampOffset(offset) {
     if (typeof offset !== 'undefined') {
       this.queueCallback_(() => {
@@ -117,11 +135,17 @@ export default class SourceUpdater {
     return this.timestampOffset_;
   }
 
+  /**
+   * que a callback to run
+   */
   queueCallback_(callback, done) {
     this.callbacks_.push([callback.bind(this), done]);
     this.runCallback_();
   }
 
+  /**
+   * run a queued callback
+   */
   runCallback_() {
     let callbacks;
 
@@ -134,6 +158,9 @@ export default class SourceUpdater {
     }
   }
 
+  /**
+   * dispose of the source updater and the underlying sourceBuffer
+   */
   dispose() {
     if (this.sourceBuffer_ && this.mediaSource.readyState === 'open') {
       this.sourceBuffer_.abort();

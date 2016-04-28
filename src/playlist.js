@@ -1,4 +1,6 @@
 /**
+ * @file playlist.js
+ *
  * Playlist related utilities.
  */
 import {createTimeRange} from 'video.js';
@@ -12,6 +14,14 @@ let Playlist = {
    */
   UNSAFE_LIVE_SEGMENTS: 3
 };
+
+/**
+ * walk backward until we find a duration we can use
+ * or return a failure
+ *
+ * @param {Playlist} playlist the playlist to walk through
+ * @param {Number} endSequence the mediaSequence to stop walking on
+ */
 
 const backwardDuration = function(playlist, endSequence) {
   let result = 0;
@@ -48,6 +58,13 @@ const backwardDuration = function(playlist, endSequence) {
   return { result, precise: false };
 };
 
+/**
+ * walk forward until we find a duration we can use
+ * or return a failure
+ *
+ * @param {Playlist} playlist the playlist to walk through
+ * @param {Number} endSequence the mediaSequence to stop walking on
+ */
 const forwardDuration = function(playlist, endSequence) {
   let result = 0;
   let segment;
@@ -83,10 +100,10 @@ const forwardDuration = function(playlist, endSequence) {
   * playlist. The duration of a subinterval of the available segments
   * may be calculated by specifying an end index.
   *
-  * @param playlist {object} a media playlist object
-  * @param endSequence {number} (optional) an exclusive upper boundary
-  * for the playlist.  Defaults to playlist length.
-  * @return {number} the duration between the first available segment
+  * @param {Object} playlist a media playlist object
+  * @param {Number=} endSequence an exclusive upper boundary
+  * for the playlist. Defaults to playlist length.
+  * @return {Number} the duration between the first available segment
   * and end index.
   */
 const intervalDuration = function(playlist, endSequence) {
@@ -128,14 +145,15 @@ const intervalDuration = function(playlist, endSequence) {
   * are specified, the duration will be for the subset of the media
   * timeline between those two indices. The total duration for live
   * playlists is always Infinity.
-  * @param playlist {object} a media playlist object
-  * @param endSequence {number} (optional) an exclusive upper
-  * boundary for the playlist.  Defaults to the playlist media
+  *
+  * @param {Object} playlist a media playlist object
+  * @param {Number=} endSequence an exclusive upper
+  * boundary for the playlist. Defaults to the playlist media
   * sequence number plus its length.
-  * @param includeTrailingTime {boolean} (optional) if false, the
+  * @param {Boolean=} includeTrailingTime if false, the
   * interval between the final segment and the subsequent segment
   * will not be included in the result
-  * @return {number} the duration between the start index and end
+  * @return {Number} the duration between the start index and end
   * index.
   */
 export const duration = function(playlist, endSequence, includeTrailingTime) {
@@ -174,7 +192,8 @@ export const duration = function(playlist, endSequence, includeTrailingTime) {
   * seekable implementation for live streams would need to offset
   * these values by the duration of content that has expired from the
   * stream.
-  * @param playlist {object} a media playlist object
+  *
+  * @param {Object} playlist a media playlist object
   * @return {TimeRanges} the periods of time that are valid targets
   * for seeking
   */
@@ -206,13 +225,13 @@ export const seekable = function(playlist) {
  * Determine the index of the segment that contains a specified
  * playback position in a media playlist.
  *
- * @param playlist {object} the media playlist to query
- * @param time {number} The number of seconds since the earliest
+ * @param {Object} playlist the media playlist to query
+ * @param {Number} time The number of seconds since the earliest
  * possible position to determine the containing segment for
- * @param expired (optional) {number} the duration of content, in
+ * @param {Number=} expired the duration of content, in
  * seconds, that has been removed from this playlist because it
  * expired
- * @return {number} The number of the media segment that contains
+ * @return {Number} The number of the media segment that contains
  * that time position.
  */
 export const getMediaIndexForTime_ = function(playlist, time, expired) {

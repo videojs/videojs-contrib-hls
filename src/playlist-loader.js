@@ -1,5 +1,5 @@
 /**
- * playlist-loader
+ * @file playlist-loader.js
  *
  * A state machine that manages the loading, caching, and updating of
  * M3U8 playlists.
@@ -15,9 +15,10 @@ import m3u8 from './m3u8';
   * Returns a new array of segments that is the result of merging
   * properties from an older list of segments onto an updated
   * list. No properties on the updated playlist will be overridden.
-  * @param original {array} the outdated list of segments
-  * @param update {array} the updated list of segments
-  * @param offset {number} (optional) the index of the first update
+  *
+  * @param {Array} original the outdated list of segments
+  * @param {Array} update the updated list of segments
+  * @param {Number=} offset the index of the first update
   * segment in the original segment list. For non-live playlists,
   * this should always be zero and does not need to be
   * specified. For live playlists, it should be the difference
@@ -44,9 +45,10 @@ const updateSegments = function(original, update, offset) {
   * updated media playlist into the original version. If the
   * updated media playlist does not match any of the playlist
   * entries in the original master playlist, null is returned.
-  * @param master {object} a parsed master M3U8 object
-  * @param media {object} a parsed media M3U8 object
-  * @return {object} a new object that represents the original
+  *
+  * @param {Object} master a parsed master M3U8 object
+  * @param {Object} media a parsed media M3U8 object
+  * @return {Object} a new object that represents the original
   * master playlist with the updated media playlist merged in, or
   * null if the merge produced no change.
   */
@@ -102,6 +104,15 @@ const updateMaster = function(master, media) {
   return changed ? result : null;
 };
 
+/**
+ * Load a playlist from a remote loacation
+ *
+ * @class PlaylistLoader
+ * @extends Stream
+ * @param {String} srcUrl the url to start with
+ * @param {Boolean} withCredentials the withCredentials xhr option
+ * @constructor
+ */
 const PlaylistLoader = function(srcUrl, withCredentials) {
   /* eslint-disable consistent-this */
   let loader = this;
@@ -196,7 +207,7 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
   // capture the prototype dispose function
   dispose = this.dispose;
 
-  /**
+   /**
     * Abort any outstanding work and clean up.
     */
   loader.dispose = function() {
@@ -215,15 +226,17 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     }
   };
 
-  /**
+   /**
     * When called without any arguments, returns the currently
     * active media playlist. When called with a single argument,
     * triggers the playlist loader to asynchronously switch to the
     * specified media playlist. Calling this method while the
     * loader is in the HAVE_NOTHING causes an error to be emitted
     * but otherwise has no effect.
-    * @param playlist (optional) {object} the parsed media playlist
+    *
+    * @param {Object=} playlis tthe parsed media playlist
     * object to switch to
+    * @return {Playlist} the current loaded media
     */
   loader.media = function(playlist) {
     let startingState = loader.state;
@@ -316,6 +329,9 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     });
   };
 
+  /**
+   * set the bandwidth on an xhr to the bandwidth on the playlist
+   */
   loader.setBandwidth = function(xhr) {
     loader.bandwidth = xhr.bandwidth;
   };
@@ -350,11 +366,17 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     });
   });
 
+  /**
+   * pause loading of the playlist
+   */
   loader.pause = () => {
     loader.stopRequest();
     window.clearTimeout(mediaUpdateTimeout);
   };
 
+  /**
+   * start loading of the playlist
+   */
   loader.load = () => {
     if (loader.started) {
       if (!loader.media().endList) {
@@ -367,6 +389,9 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
     }
   };
 
+  /**
+   * start loading of the playlist
+   */
   loader.start = () => {
     loader.started = true;
 
@@ -456,10 +481,11 @@ const PlaylistLoader = function(srcUrl, withCredentials) {
 
 PlaylistLoader.prototype = new Stream();
 
-/**
+ /**
   * Update the PlaylistLoader state to reflect the changes in an
   * update to the current media playlist.
-  * @param update {object} the updated media playlist object
+  *
+  * @param {Object} update the updated media playlist object
   */
 PlaylistLoader.prototype.updateMediaPlaylist_ = function(update) {
   let outdated;

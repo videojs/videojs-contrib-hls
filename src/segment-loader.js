@@ -1,8 +1,5 @@
 /**
- * segment-loader
- *
- * An object that manages segment loading and appending.
- *
+ * @file segment-loader.js
  */
 import Ranges from './ranges';
 import {getMediaIndexForTime_ as getMediaIndexForTime, duration} from './playlist';
@@ -21,9 +18,10 @@ export const GOAL_BUFFER_LENGTH = 30;
  * Updates segment with information about its end-point in time and, optionally,
  * the segment duration if we have enough information to determine a segment duration
  * accurately.
- * @param {object} playlist - a media playlist object
- * @param {number} segmentIndex - the index of segment we last appended
- * @param {number} segmentEnd - the known of the segment referenced by segmentIndex
+ *
+ * @param {Object} playlist a media playlist object
+ * @param {Number} segmentIndex the index of segment we last appended
+ * @param {Number} segmentEnd the known of the segment referenced by segmentIndex
  */
 const updateSegmentMetadata = function(playlist, segmentIndex, segmentEnd) {
   if (!playlist) {
@@ -53,13 +51,12 @@ const updateSegmentMetadata = function(playlist, segmentIndex, segmentEnd) {
  * Determines if we should call endOfStream on the media source based
  * on the state of the buffer or if appened segment was the final
  * segment in the playlist.
- * @param {object} playlist - a media playlist object
- * @param {object} mediaSource - the MediaSource object
- * @param {number} segmentIndex - the index of segment we last appended
- * @param {object} currentBuffered - the buffered region that
- * currentTime resides in
- * @returns {boolean} whether the calling function should call
- * endOfStream on the MediaSource
+ *
+ * @param {Object} playlist a media playlist object
+ * @param {Object} mediaSource the MediaSource object
+ * @param {Number} segmentIndex the index of segment we last appended
+ * @param {Object} currentBuffered buffered region that currentTime resides in
+ * @returns {Boolean} do we need to call endOfStream on the MediaSource
  */
 const detectEndOfStream = function(playlist, mediaSource, segmentIndex, currentBuffered) {
   if (!playlist) {
@@ -107,6 +104,13 @@ const segmentXhrHeaders = function(segment) {
   return headers;
 };
 
+/**
+ * An object that manages segment loading and appending.
+ *
+ * @class SegmentLoader
+ * @param {Object} options required and optional options
+ * @extends videojs.EventTarget
+ */
 export default class SegmentLoader extends videojs.EventTarget {
   constructor(options) {
     super();
@@ -147,6 +151,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.sourceUpdater_ = null;
   }
 
+  /**
+   * dispose of the SegmentLoader and reset to the default state
+   */
   dispose() {
     this.state = 'DISPOSED';
     this.abort_();
@@ -155,6 +162,10 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
   }
 
+  /**
+   * abort anything that is currently doing on with the SegmentLoader
+   * and reset to a default state
+   */
   abort() {
     if (this.state !== 'WAITING') {
       return;
@@ -170,6 +181,12 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
   }
 
+  /**
+   * set an error on the segment loader and null out any pending segements
+   *
+   * @param {Error} error the error to set on the SegmentLoader
+   * @return {Error} the error that was set or that is currently set
+   */
   error(error) {
     if (typeof error !== 'undefined') {
       this.error_ = error;
@@ -179,6 +196,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     return this.error_;
   }
 
+  /**
+   * load a playlist and start to fill the buffer
+   */
   load() {
     this.monitorBuffer_();
 
@@ -200,6 +220,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.fillBuffer_();
   }
 
+  /**
+   * set a playlist on the segment loader
+   *
+   * @param {PlaylistLoader} media the playlist to set on the segment loader
+   */
   playlist(media) {
     this.playlist_ = media;
     // if we were unpaused but waiting for a playlist, start
@@ -212,6 +237,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       return this.fillBuffer_();
     }
   }
+
   /**
    * Prevent the loader from fetching additional segments. If there
    * is a segment request outstanding, it will finish processing
@@ -225,6 +251,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.checkBufferTimeout_ = null;
     }
   }
+
   /**
    * Returns whether the segment loader is fetching additional
    * segments when given the opportunity. This property can be
@@ -234,10 +261,21 @@ export default class SegmentLoader extends videojs.EventTarget {
     return this.checkBufferTimeout_ === null;
   }
 
+  /**
+   * setter for expired time on the SegmentLoader
+   *
+   * @param {Number} expired the exired time to set
+   */
   expired(expired) {
     this.expired_ = expired;
   }
 
+  /**
+   * create/set the following mimetype on the SourceBuffer through a
+   * SourceUpdater
+   *
+   * @param {String} mimeType the mime type string to use
+   */
   mimeType(mimeType) {
     // TODO Allow source buffers to be re-created with different mime-types
     if (!this.sourceUpdater_) {
@@ -255,6 +293,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
   }
 
+  /**
+   * asynchronously/recursively monitor the buffer
+   *
+   * @private
+   */
   monitorBuffer_() {
     if (this.state === 'READY') {
       this.fillBuffer_();
@@ -266,10 +309,11 @@ export default class SegmentLoader extends videojs.EventTarget {
   /**
    * Return the amount of a segment specified by the mediaIndex overlaps
    * the current buffered content.
-   * @param {object} playlist - the playlist object to fetch segments from
-   * @param {number} mediaIndex - the index of the segment in the playlist
-   * @param {TimeRanges} buffered - the state of the buffer
-   * @returns {number} the percentage of the segment's time range that is
+   *
+   * @param {Object} playlist the playlist object to fetch segments from
+   * @param {Number} mediaIndex the index of the segment in the playlist
+   * @param {TimeRanges} buffered the state of the buffer
+   * @returns {Number} percentage of the segment's time range that is
    * already in `buffered`
    */
   getSegmentBufferedPercent_(playlist, mediaIndex, currentTime, buffered) {
@@ -288,10 +332,11 @@ export default class SegmentLoader extends videojs.EventTarget {
   /**
    * Determines what segment request should be made, given current
    * playback state.
+   *
    * @param {TimeRanges} buffered - the state of the buffer
-   * @param {object} playlist - the playlist object to fetch segments from
-   * @param {number} currentTime - the playback position in seconds
-   * @returns {object} a segment info object that describes the
+   * @param {Object} playlist - the playlist object to fetch segments from
+   * @param {Number} currentTime - the playback position in seconds
+   * @returns {Object} a segment info object that describes the
    * request that should be made or null if no request is necessary
    */
   checkBuffer_(buffered, playlist, currentTime) {
@@ -404,6 +449,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     };
   }
 
+  /**
+   * abort all pending xhr requests and null any pending segements
+   *
+   * @private
+   */
   abort_() {
     if (this.xhr_) {
       this.xhr_.abort();
@@ -413,6 +463,12 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.pendingSegment_ = null;
   }
 
+  /**
+   * fill the buffer with segements unless the
+   * sourceBuffers are currently updating
+   *
+   * @private
+   */
   fillBuffer_() {
     if (this.sourceUpdater_.updating()) {
       return;
@@ -429,6 +485,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
   }
 
+  /**
+   * load a specific segment from a request into the buffer
+   *
+   * @private
+   */
   loadSegment_(segmentInfo) {
     let segment;
     let requestTimeout;
@@ -503,7 +564,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.state = 'WAITING';
   }
 
-  // triggered when a segment response is received
+  /**
+   * triggered when a segment response is received
+   *
+   * @private
+   */
   handleResponse_(error, request) {
     let segmentInfo;
     let segment;
@@ -607,6 +672,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
   }
 
+  /**
+   * clear anything that is currently in the buffer and throw it away
+   */
   clearBuffer() {
     if (this.sourceUpdater_ &&
         this.sourceUpdater_.buffered().length) {
@@ -614,6 +682,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
   }
 
+  /**
+   * Decrypt the segment that is being loaded if necessary
+   *
+   * @private
+   */
   processResponse_() {
     let segmentInfo;
     let segment;
@@ -641,6 +714,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
   }
 
+  /**
+   * append a decrypted segement to the SourceBuffer through a SourceUpdater
+   *
+   * @private
+   */
   handleSegment_() {
     let segmentInfo;
 
@@ -657,6 +735,13 @@ export default class SegmentLoader extends videojs.EventTarget {
                                      this.handleUpdateEnd_.bind(this));
   }
 
+  /**
+   * callback to run when appendBuffer is finished. detects if we are
+   * in a good state to do things with the data we got, or if we need
+   * to wait for more
+   *
+   * @private
+   */
   handleUpdateEnd_() {
     let segmentInfo = this.pendingSegment_;
     let currentTime = this.currentTime_();
@@ -715,8 +800,13 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
   }
 
-  // annotate the segment with any start and end time information
-  // added by the media processing
+  /**
+   * annotate the segment with any start and end time information
+   * added by the media processing
+   *
+   * @private
+   * @param {Object} segmentInfo annotate a segment with time info
+   */
   updateTimeline_(segmentInfo) {
     let segment;
     let timelineUpdate;

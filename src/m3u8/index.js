@@ -1,4 +1,6 @@
 /**
+ * @file m3u8/index.js
+ *
  * Utilities for parsing M3U8 files. If the entire manifest is available,
  * `Parser` will create an object representation with enough detail for managing
  * playback. `ParseStream` and `LineStream` are lower-level parsing primitives

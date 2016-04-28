@@ -1,3 +1,6 @@
+/**
+ * @file master-playlist-controller.js
+ */
 import PlaylistLoader from './playlist-loader';
 import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
@@ -29,6 +32,15 @@ const parseCodecs = function(codecs) {
   return result;
 };
 
+/**
+ * the master playlist controller controller all interactons
+ * between playlists and segmentloaders. At this time this mainly
+ * involves a master playlist and a series of audio playlists
+ * if they are available
+ *
+ * @class MasterPlaylistController
+ * @extends videojs.EventTarget
+ */
 export default class MasterPlaylistController extends videojs.EventTarget {
   constructor({
     url,
@@ -163,6 +175,12 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.load();
   }
 
+  /**
+   * fill our internal list of HlsAudioTracks with data from
+   * the master playlist or use a default
+   *
+   * @private
+   */
   fillAudioTracks_() {
     let master = this.master();
     let mediaGroups = master.mediaGroups || {};
@@ -206,6 +224,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
+  /**
+   * Call load on our SegmentLoaders
+   */
   load() {
     this.mainSegmentLoader_.load();
     if (this.audioPlaylistLoader_) {
@@ -213,6 +234,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
+  /**
+   * Get the current active Media Group for Audio
+   * given the selected playlist and its attributes
+   */
   activeAudioGroup() {
     let media = this.masterPlaylistLoader_.media();
     let mediaGroup = 'main';
@@ -224,6 +249,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     return mediaGroup;
   }
 
+  /**
+   * Use any audio track that we have, and start to load it
+   */
   useAudio() {
     let track;
 
@@ -323,6 +351,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    * conditions. This method may perform destructive actions, like
    * removing already buffered content, to readjust the currently
    * active playlist quickly.
+   *
+   * @private
    */
   fastQualityChange_() {
     let media = this.selectPlaylist();
@@ -394,6 +424,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
+  /**
+   * handle the sourceopen event on the MediaSource
+   *
+   * @private
+   */
   handleSourceOpen_() {
     // Only attempt to create the source buffer if none already exist.
     // handleSourceOpen is also called when we are "re-opening" a source buffer
@@ -410,10 +445,13 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.trigger('sourceopen');
   }
 
-  /*
+  /**
    * Blacklists a playlist when an error occurs for a set amount of time
    * making it unavailable for selection by the rendition selection algorithm
    * and then forces a new playlist (rendition) selection.
+   *
+   * @param {Object=} error an optional error that may include the playlist
+   * to blacklist
    */
   blacklistCurrentPlaylist(error = {}) {
     let currentPlaylist;
@@ -451,6 +489,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     return this.mediaSource.endOfStream('network');
   }
 
+  /**
+   * Pause all segment loaders
+   */
   pauseLoading() {
     this.mainSegmentLoader_.pause();
     if (this.audioPlaylistLoader_) {
@@ -458,6 +499,12 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
+  /**
+   * set the current time on all segment loaders
+   *
+   * @param {TimeRange} currentTime the current time to set
+   * @return {TimeRange} the current time
+   */
   setCurrentTime(currentTime) {
     let buffered = Ranges.findRange(this.tech_.buffered(), currentTime);
 
@@ -493,6 +540,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
+  /**
+   * get the current duration
+   *
+   * @return {TimeRange} the duration
+   */
   duration() {
     if (!this.masterPlaylistLoader_) {
       return 0;
@@ -505,6 +557,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     return Hls.Playlist.duration(this.masterPlaylistLoader_.media());
   }
 
+  /**
+   * check the seekable range
+   *
+   * @return {TimeRange} the seekable range
+   */
   seekable() {
     let media;
     let mainSeekable;
@@ -588,6 +645,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
+  /**
+   * dispose of the MasterPlaylistController and everything
+   * that it controls
+   */
   dispose() {
     this.masterPlaylistLoader_.dispose();
     this.audioTracks_.forEach((track) => {
@@ -598,15 +659,30 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.audioSegmentLoader_.dispose();
   }
 
+  /**
+   * return the master playlist object if we have one
+   *
+   * @return {Object} the master playlist object that we parsed
+   */
   master() {
     return this.masterPlaylistLoader_.master;
   }
 
+  /**
+   * return the currently selected playlist
+   *
+   * @return {Object} the currently selected playlist object that we parsed
+   */
   media() {
     // playlist loader will not return media if it has not been fully loaded
     return this.masterPlaylistLoader_.media() || this.initialMedia_;
   }
 
+  /**
+   * setup our internal source buffers on our segment Loaders
+   *
+   * @private
+   */
   setupSourceBuffer_() {
     let media = this.masterPlaylistLoader_.media();
 
@@ -623,6 +699,14 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.excludeIncompatibleVariants_(media);
   }
 
+  /**
+   * add a time type to a segmentLoader
+   *
+   * @param {SegmentLoader} segmentLoader the segmentloader to work on
+   * @param {String} codecs to use by default
+   * @param {Object} the parsed media object
+   * @private
+   */
   addMimeType_(segmentLoader, defaultCodecs, media) {
     let mimeType = 'video/mp2t';
 
@@ -643,11 +727,12 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    * stall waiting for video data if you switched from a variant with
    * video and audio to an audio-only one.
    *
-   * @param media {object} a media playlist compatible with the current
+   * @param {Object} media a media playlist compatible with the current
    * set of SourceBuffers. Variants in the current master playlist that
    * do not appear to have compatible codec or stream configurations
    * will be excluded from the default playlist selection algorithm
    * indefinitely.
+   * @private
    */
   excludeIncompatibleVariants_(media) {
     let master = this.masterPlaylistLoader_.master;

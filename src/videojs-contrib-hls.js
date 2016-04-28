@@ -1,5 +1,6 @@
 /**
- * videojs-hls
+ * @file videojs-contrib-hls.js
+ *
  * The main file for the HLS project.
  * License: https://github.com/videojs/videojs-contrib-hls/blob/master/LICENSE
  */
@@ -18,6 +19,10 @@ import MasterPlaylistController from './master-playlist-controller';
  * determine if an object a is differnt from
  * and object b. both only having one dimensional
  * properties
+ *
+ * @param {Object} a object one
+ * @param {Object} b object two
+ * @return {Boolean} if the object has changed or not
  */
 const objectChanged = function(a, b) {
   if (typeof a !== typeof b) {
@@ -59,7 +64,10 @@ const BANDWIDTH_VARIANCE = 1.2;
  * using `getComputedStyle`. Firefox has a long-standing issue where
  * getComputedStyle() may return null when running in an iframe with
  * `display: none`.
+ *
  * @see https://bugzilla.mozilla.org/show_bug.cgi?id=548397
+ * @param {HTMLElement} el the htmlelement to work on
+ * @param {string} the proprety to get the style for
  */
 const safeGetComputedStyle = function(el, property) {
   let result;
@@ -79,7 +87,8 @@ const safeGetComputedStyle = function(el, property) {
 /**
  * Chooses the appropriate media playlist based on the current
  * bandwidth estimate and the player size.
- * @return the highest bitrate playlist less than the currently detected
+ *
+ * @return {Playlist} the highest bitrate playlist less than the currently detected
  * bandwidth, accounting for some amount of bandwidth variance
  */
 Hls.STANDARD_PLAYLIST_SELECTOR = function() {
@@ -221,8 +230,10 @@ Hls.supportsNativeHls = (function() {
     (/probably|maybe/).test(vndMpeg);
 }());
 
-// HLS is a source handler, not a tech. Make sure attempts to use it
-// as one do not cause exceptions.
+/**
+ * HLS is a source handler, not a tech. Make sure attempts to use it
+ * as one do not cause exceptions.
+ */
 Hls.isSupported = function() {
   return videojs.log.warn('HLS is no longer a tech. Please remove it from ' +
                           'your player\'s techOrder.');
@@ -230,6 +241,16 @@ Hls.isSupported = function() {
 
 const Component = videojs.getComponent('Component');
 
+/**
+ * The Hls Handler object, where we orchestrate all of the parts
+ * of HLS to interact with video.js
+ *
+ * @class HlsHandler
+ * @extends videojs.Component
+ * @param {Object} source the soruce object
+ * @param {Tech} tech the parent tech object
+ * @param {Object} options optional and required options
+ */
 export default class HlsHandler extends Component {
   constructor(source, tech, options) {
     super(tech);
@@ -291,6 +312,11 @@ export default class HlsHandler extends Component {
     this.on(this.tech_, 'play', this.play);
   }
 
+  /**
+   * called when player.src gets called, handle a new source
+   *
+   * @param {Object} src the source object to handle
+   */
   src(src) {
     // do nothing if the src is falsey
     if (!src) {
@@ -419,6 +445,11 @@ export default class HlsHandler extends Component {
       this.masterPlaylistController_.mediaSource));
   }
 
+  /**
+   * a helper for grabbing the active audio group from MasterPlaylistController
+   *
+   * @private
+   */
   activeAudioGroup_() {
     return this.masterPlaylistController_.activeAudioGroup();
   }
@@ -430,14 +461,23 @@ export default class HlsHandler extends Component {
     this.masterPlaylistController_.play();
   }
 
+  /**
+   * a wrapper around the function in MasterPlaylistController
+   */
   setCurrentTime(currentTime) {
     this.masterPlaylistController_.setCurrentTime(currentTime);
   }
 
+  /**
+   * a wrapper around the function in MasterPlaylistController
+   */
   duration() {
     return this.masterPlaylistController_.duration();
   }
 
+  /**
+   * a wrapper around the function in MasterPlaylistController
+   */
   seekable() {
     return this.masterPlaylistController_.seekable();
   }
@@ -496,9 +536,10 @@ const HlsSourceHandler = function(mode) {
 
 /**
  * A comparator function to sort two playlist object by bandwidth.
- * @param left {object} a media playlist object
- * @param right {object} a media playlist object
- * @return {number} Greater than zero if the bandwidth attribute of
+ *
+ * @param {Object} left a media playlist object
+ * @param {Object} right a media playlist object
+ * @return {Number} Greater than zero if the bandwidth attribute of
  * left is greater than the corresponding attribute of right. Less
  * than zero if the bandwidth of right is greater than left and
  * exactly zero if the two are equal.
@@ -521,9 +562,9 @@ Hls.comparePlaylistBandwidth = function(left, right) {
 
 /**
  * A comparator function to sort two playlist object by resolution (width).
- * @param left {object} a media playlist object
- * @param right {object} a media playlist object
- * @return {number} Greater than zero if the resolution.width attribute of
+ * @param {Object} left a media playlist object
+ * @param {Object} right a media playlist object
+ * @return {Number} Greater than zero if the resolution.width attribute of
  * left is greater than the corresponding attribute of right. Less
  * than zero if the resolution.width of right is greater than left and
  * exactly zero if the two are equal.

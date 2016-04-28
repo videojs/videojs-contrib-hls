@@ -1,3 +1,6 @@
+/**
+ * @file hls-audio-track.js
+ */
 import {AudioTrack} from 'video.js';
 import PlaylistLoader from './playlist-loader';
 
