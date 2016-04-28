@@ -1145,39 +1145,6 @@ QUnit.test('if withCredentials global option is used, withCredentials is set on 
   videojs.options.hls = hlsOptions;
 });
 
-QUnit.test('if withCredentials src option is used, withCredentials is set on the XHR object', function() {
-  this.player.dispose();
-  this.player = createPlayer();
-  this.player.src({
-    src: 'http://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl',
-    withCredentials: true
-  });
-  openMediaSource(this.player, this.clock);
-  QUnit.ok(this.requests[0].withCredentials,
-           'with credentials should be set to true if that option is passed in');
-});
-
-QUnit.test('src level credentials supersede the global options', function() {
-  let hlsOptions = videojs.options.hls;
-
-  this.player.dispose();
-  videojs.options.hls = {
-    withCredentials: false
-  };
-
-  this.player = createPlayer();
-  this.player.src({
-    src: 'http://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl',
-    withCredentials: true
-  });
-  openMediaSource(this.player, this.clock);
-  QUnit.ok(this.requests[0].withCredentials,
-           'with credentials should be set to true if that option is passed in');
-  videojs.options.hls = hlsOptions;
-});
-
 QUnit.test('if mode global option is used, mode is set to global option', function() {
   let hlsOptions = videojs.options.hls;
 
