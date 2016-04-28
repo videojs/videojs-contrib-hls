@@ -11,9 +11,6 @@ import {Decrypter} from './decrypter';
 // in ms
 const CHECK_BUFFER_DELAY = 500;
 
-// the desired length of video to maintain in the buffer, in seconds
-export const GOAL_BUFFER_LENGTH = 30;
-
 /**
  * Updates segment with information about its end-point in time and, optionally,
  * the segment duration if we have enough information to determine a segment duration
@@ -79,8 +76,9 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex, currentB
     (appendedLastSegment || bufferedToEnd);
 };
 
-/*  Turns segment byterange into a string suitable for use in
- *  HTTP Range requests
+/**
+ * Turns segment byterange into a string suitable for use in
+ * HTTP Range requests
  */
 const byterangeStr = function(byterange) {
   let byterangeStart;
@@ -93,7 +91,8 @@ const byterangeStr = function(byterange) {
   return 'bytes=' + byterangeStart + '-' + byterangeEnd;
 };
 
-/*  Defines headers for use in the xhr request for a particular segment.
+/**
+ * Defines headers for use in the xhr request for a particular segment.
  */
 const segmentXhrHeaders = function(segment) {
   let headers = {};
@@ -142,6 +141,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.setCurrentTime_ = settings.setCurrentTime;
     this.mediaSource_ = settings.mediaSource;
     this.withCredentials_ = settings.withCredentials;
+
+    // we use options here because we don't want the global override if there is one
+    this.GOAL_BUFFER_LENGTH_ = options.GOAL_BUFFER_LENGTH || 30;
     this.checkBufferTimeout_ = null;
     this.error_ = void 0;
     this.expired_ = 0;
@@ -380,7 +382,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       // if there is plenty of content buffered, and the video has
       // been played before relax for awhile
-      if (this.hasPlayed_() && bufferedTime >= GOAL_BUFFER_LENGTH) {
+      if (this.hasPlayed_() && bufferedTime >= this.GOAL_BUFFER_LENGTH_) {
         return null;
       }
       mediaIndex = getMediaIndexForTime(playlist,

@@ -48,7 +48,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     mode,
     tech,
     bandwidth,
-    externHls
+    externHls,
+    GOAL_BUFFER_LENGTH
   }) {
     super();
 
@@ -72,7 +73,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       seeking: () => this.tech_.seeking(),
       setCurrentTime: (a) => this.setCurrentTime(a),
       hasPlayed: () => this.tech_.played().length !== 0,
-      bandwidth
+      bandwidth,
+      GOAL_BUFFER_LENGTH
     };
 
     // combined audio/video or just video when alternate audio track is selected

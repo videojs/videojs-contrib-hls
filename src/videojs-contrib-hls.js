@@ -52,8 +52,23 @@ const Hls = {
   xhr
 };
 
-// the desired length of video to maintain in the buffer, in seconds
-Hls.GOAL_BUFFER_LENGTH = 30;
+let GOAL_BUFFER_LENGTH = 30;
+
+Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
+  get() {
+    videojs.log.warn('Hls.GOAL_BUFFER_LENGTH is deprecated and should not be used');
+    return GOAL_BUFFER_LENGTH;
+  },
+  set(v) {
+    videojs.log.warn('Hls.GOAL_BUFFER_LENGTH is deprecated and should not be used');
+    if (typeof v !== 'number' && v > 0) {
+      videojs.log.warn('value passed to Hls.GOAL_BUFFER_LENGTH ' +
+                       'must be a number and greater than 0');
+      return;
+    }
+    GOAL_BUFFER_LENGTH = v;
+  }
+});
 
 // A fudge factor to apply to advertised playlist bitrates to account for
 // temporary flucations in client bandwidth
@@ -270,14 +285,13 @@ export default class HlsHandler extends Component {
       }
     }
 
-    this.options_ = videojs.mergeOptions(videojs.options.hls || {}, options.hls);
     this.tech_ = tech;
     this.source_ = source;
 
-    // start playlist selection at a reasonable bandwidth for
-    // broadband internet
-    // 0.5 Mbps
-    this.bandwidth = this.options_.bandwidth || 4194304;
+    // handle global & Source Handler level options
+    this.options_ = videojs.mergeOptions(videojs.options.hls || {}, options.hls);
+    this.setOptions_();
+
     this.bytesReceived = 0;
 
     // listen for fullscreenchange events for this player so that we
@@ -312,6 +326,27 @@ export default class HlsHandler extends Component {
     this.on(this.tech_, 'play', this.play);
   }
 
+  setOptions_() {
+    // defaults
+    this.options_.withCredentials = this.options_.withCredentials || false;
+
+    // use deprecated override
+    this.GOAL_BUFFER_LENGTH_ = GOAL_BUFFER_LENGTH || 30;
+
+    // start playlist selection at a reasonable bandwidth for
+    // broadband internet
+    // 0.5 Mbps
+    this.options_.bandwidth = this.options_.bandwidth || 4194304;
+
+    // grab options passed to player.src
+    ['withCredentials', 'bandwidth'].forEach((option) => {
+      if (typeof this.source_[option] !== 'undefined') {
+        this.options_[option] = this.source_[option];
+      }
+    });
+
+    this.bandwidth = this.options_.bandwidth;
+  }
   /**
    * called when player.src gets called, handle a new source
    *
@@ -322,17 +357,14 @@ export default class HlsHandler extends Component {
     if (!src) {
       return;
     }
-
-    ['withCredentials', 'bandwidth'].forEach((option) => {
-      if (typeof this.source_[option] !== 'undefined') {
-        this.options_[option] = this.source_[option];
-      }
-    });
+    this.setOptions_();
+    // add master playlist controller options
     this.options_.url = this.source_.src;
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
-    this.options_.bandwidth = this.bandwidth;
+    this.options_.GOAL_BUFFER_LENGTH = this.GOAL_BUFFER_LENGTH_;
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
+
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
     this.masterPlaylistController_.selectPlaylist =

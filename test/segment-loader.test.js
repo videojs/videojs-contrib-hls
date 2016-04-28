@@ -1,7 +1,7 @@
 import QUnit from 'qunit';
-import {GOAL_BUFFER_LENGTH, default as SegmentLoader} from '../src/segment-loader';
+import SegmentLoader from '../src/segment-loader';
 import videojs from 'video.js';
-import { useFakeEnvironment, useFakeMediaSource } from './test-helpers.js';
+import {useFakeEnvironment, useFakeMediaSource} from './test-helpers.js';
 
 const playlistWithDuration = function(time, conf) {
   let result = {
@@ -178,13 +178,13 @@ QUnit.test('regularly checks the buffer while unpaused', function() {
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
   sourceBuffer.buffered = videojs.createTimeRanges([[
-    0, GOAL_BUFFER_LENGTH
+    0, loader.GOAL_BUFFER_LENGTH_
   ]]);
   sourceBuffer.trigger('updateend');
   QUnit.equal(this.requests.length, 0, 'no outstanding requests');
 
   // play some video to drain the buffer
-  currentTime = GOAL_BUFFER_LENGTH;
+  currentTime = loader.GOAL_BUFFER_LENGTH_;
   this.clock.tick(10 * 1000);
   QUnit.equal(this.requests.length, 1, 'requested another segment');
 });
@@ -893,7 +893,7 @@ QUnit.test('does not download the next segment if the buffer is full', function(
   loader.mimeType(this.mimeType);
 
   buffered = videojs.createTimeRanges([
-    [0, 15 + GOAL_BUFFER_LENGTH]
+    [0, 15 + loader.GOAL_BUFFER_LENGTH_]
   ]);
   segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(30), 15);
 
@@ -988,7 +988,7 @@ QUnit.test('adjusts calculations based on expired time', function() {
 
   segmentInfo = loader.checkBuffer_(buffered,
                                     playlist,
-                                    40 - GOAL_BUFFER_LENGTH);
+                                    40 - loader.GOAL_BUFFER_LENGTH_);
 
   QUnit.ok(segmentInfo, 'fetched a segment');
   QUnit.equal(segmentInfo.uri, '2.ts', 'accounted for expired time');
