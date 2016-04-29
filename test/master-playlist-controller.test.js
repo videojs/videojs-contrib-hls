@@ -91,29 +91,6 @@ QUnit.test('obeys metadata preload option', function() {
   QUnit.equal(this.requests.length, 1, '1 segment request');
 });
 
-QUnit.test('tech fires loadedmetadata when playlist loader loads first playlist',
-function() {
-  let firedLoadedMetadata = false;
-
-  this.masterPlaylistController.on('loadedmetadata', () => {
-    firedLoadedMetadata = true;
-  });
-
-  // master
-  standardXHRResponse(this.requests.shift());
-  QUnit.ok(!firedLoadedMetadata, 'did not fire loadedmetadata');
-  // playlist
-  standardXHRResponse(this.requests.shift());
-  QUnit.ok(firedLoadedMetadata, 'fired loadedmetadata');
-});
-
-QUnit.test('creates combined and audio only SegmentLoaders', function() {
-  QUnit.equal(this.masterPlaylistController.mainSegmentLoader_.state, 'INIT',
-              'created combined segment loader');
-  QUnit.equal(this.masterPlaylistController.audioSegmentLoader_.state, 'INIT',
-              'created alternate audio track segment loader');
-});
-
 QUnit.test('clears some of the buffer for a fast quality change', function() {
   let removes = [];
 

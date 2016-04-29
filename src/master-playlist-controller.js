@@ -100,7 +100,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.setupSourceBuffer_();
       this.setupFirstPlay();
       this.useAudio();
-      this.trigger('loadedmetadata');
     });
 
     this.masterPlaylistLoader_.on('loadedplaylist', () => {
