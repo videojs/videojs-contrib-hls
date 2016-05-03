@@ -216,18 +216,31 @@ Hls.canPlaySource = function() {
  */
 Hls.supportsNativeHls = (function() {
   let video = document.createElement('video');
-  let xMpegUrl;
-  let vndMpeg;
 
   // native HLS is definitely not supported if HTML5 video isn't
   if (!videojs.getComponent('Html5').isSupported()) {
     return false;
   }
 
-  xMpegUrl = video.canPlayType('application/x-mpegURL');
-  vndMpeg = video.canPlayType('application/vnd.apple.mpegURL');
-  return (/probably|maybe/).test(xMpegUrl) ||
-    (/probably|maybe/).test(vndMpeg);
+  // HLS manifests can go by many mime-types
+  let canPlay = [
+    // Apple santioned
+    video.canPlayType('application/vnd.apple.mpegURL'),
+    // Apple sanctioned for backwards compatibility
+    video.canPlayType('audio/mpegURL'),
+    // Very common
+    video.canPlayType('audio/x-mpegURL'),
+    // Very common
+    video.canPlayType('application/x-mpegURL'),
+    // Included for completeness
+    video.canPlayType('video/x-mpegURL'),
+    video.canPlayType('video/mpegURL'),
+    video.canPlayType('application/mpegURL')
+  ];
+
+  return canPlay.some(function(canItPlay) {
+    return (/maybe|probably/i).test(canItPlay);
+  });
 }());
 
 /**
@@ -505,7 +518,7 @@ const HlsSourceHandler = function(mode) {
       if (videojs.options.hls &&
           videojs.options.hls.mode &&
           videojs.options.hls.mode !== mode) {
-        return false;
+        return '';
       }
       return HlsSourceHandler.canPlayType(srcObj.type);
     },
@@ -533,7 +546,10 @@ const HlsSourceHandler = function(mode) {
       return tech.hls;
     },
     canPlayType(type) {
-      return HlsSourceHandler.canPlayType(type);
+      if (HlsSourceHandler.canPlayType(type)) {
+        return 'maybe';
+      }
+      return '';
     }
   };
 };
@@ -604,11 +620,11 @@ Hls.comparePlaylistResolution = function(left, right) {
 };
 
 HlsSourceHandler.canPlayType = function(type) {
-  let mpegurlRE = /^application\/(?:x-|vnd\.apple\.)mpegurl/i;
+  let mpegurlRE = /^(audio|video|application)\/(x-|vnd\.apple\.)?mpegurl/i;
 
   // favor native HLS support if it's available
   if (Hls.supportsNativeHls) {
-    return false;
+    return '';
   }
   return mpegurlRE.test(type);
 };
