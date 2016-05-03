@@ -64,27 +64,21 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     // load the media source into the player
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
 
-    // combined audio/video or just video when alternate audio track is selected
-    this.mainSegmentLoader_ = new SegmentLoader({
+    let segmentLoaderOptions = {
       mediaSource: this.mediaSource,
       currentTime: this.tech_.currentTime.bind(this.tech_),
       withCredentials: this.withCredentials,
       seekable: () => this.seekable(),
       seeking: () => this.tech_.seeking(),
-      setCurrentTime: (a) => this.setCurrentTime(a)
-    });
-    // pass along the starting bandwidth estimate
-    this.mainSegmentLoader_.bandwidth = bandwidth;
+      setCurrentTime: (a) => this.setCurrentTime(a),
+      hasPlayed: () => this.tech_.played().length !== 0,
+      bandwidth
+    };
 
+    // combined audio/video or just video when alternate audio track is selected
+    this.mainSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
     // alternate audio track
-    this.audioSegmentLoader_ = new SegmentLoader({
-      mediaSource: this.mediaSource,
-      currentTime: this.tech_.currentTime.bind(this.tech_),
-      withCredentials: this.withCredentials,
-      seekable: () => this.seekable(),
-      seeking: () => this.tech_.seeking(),
-      setCurrentTime: (a) => this.setCurrentTime(a)
-    });
+    this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
 
     if (!url) {
       throw new Error('A non-empty playlist URL is required');
@@ -97,9 +91,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       // if this isn't a live video and preload permits, start
       // downloading segments
-      if (media.endList &&
-          this.tech_.preload() !== 'metadata' &&
-          this.tech_.preload() !== 'none') {
+      if (media.endList && this.tech_.preload() !== 'none') {
         this.mainSegmentLoader_.playlist(media);
         this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
         this.mainSegmentLoader_.load();
@@ -107,7 +99,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       this.setupSourceBuffer_();
       this.setupFirstPlay();
-      this.trigger('loadedmetadata');
+      this.useAudio();
     });
 
     this.masterPlaylistLoader_.on('loadedplaylist', () => {
@@ -305,9 +297,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       // if the video is already playing, or if this isn't a live video and preload
       // permits, start downloading segments
       if (!this.tech_.paused() ||
-            (media.endList &&
-            this.tech_.preload() !== 'metadata' &&
-            this.tech_.preload() !== 'none')) {
+          (media.endList && this.tech_.preload() !== 'none')) {
         this.audioSegmentLoader_.load();
       }
 

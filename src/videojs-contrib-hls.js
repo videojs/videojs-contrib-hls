@@ -423,11 +423,6 @@ export default class HlsHandler extends Component {
       });
     });
 
-    this.on(this.masterPlaylistController_, 'loadedmetadata', function() {
-      this.masterPlaylistController_.useAudio();
-      this.tech_.trigger('loadedmetadata');
-    });
-
     // the bandwidth of the primary segment loader is our best
     // estimate of overall bandwidth
     this.on(this.masterPlaylistController_, 'progress', function() {

@@ -951,8 +951,10 @@ QUnit.test('fire loadedmetadata once we successfully load a playlist', function(
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.bandwidth = 20000;
-  this.player.on('loadedmetadata', function() {
+  let hls = this.player.tech_.hls;
+
+  hls.bandwidth = 20000;
+  hls.masterPlaylistController_.masterPlaylistLoader_.on('loadedmetadata', function() {
     count += 1;
   });
   // master
