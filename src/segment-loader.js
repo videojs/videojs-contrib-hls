@@ -7,12 +7,10 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import xhr from './xhr';
 import {Decrypter} from './decrypter';
+import Config from './config';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
-
-// the desired length of video to maintain in the buffer, in seconds
-export const GOAL_BUFFER_LENGTH = 30;
 
 /**
  * Updates segment with information about its end-point in time and, optionally,
@@ -79,8 +77,9 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex, currentB
     (appendedLastSegment || bufferedToEnd);
 };
 
-/*  Turns segment byterange into a string suitable for use in
- *  HTTP Range requests
+/**
+ * Turns segment byterange into a string suitable for use in
+ * HTTP Range requests
  */
 const byterangeStr = function(byterange) {
   let byterangeStart;
@@ -93,7 +92,8 @@ const byterangeStr = function(byterange) {
   return 'bytes=' + byterangeStart + '-' + byterangeEnd;
 };
 
-/*  Defines headers for use in the xhr request for a particular segment.
+/**
+ * Defines headers for use in the xhr request for a particular segment.
  */
 const segmentXhrHeaders = function(segment) {
   let headers = {};
@@ -380,7 +380,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       // if there is plenty of content buffered, and the video has
       // been played before relax for awhile
-      if (this.hasPlayed_() && bufferedTime >= GOAL_BUFFER_LENGTH) {
+      if (this.hasPlayed_() && bufferedTime >= Config.GOAL_BUFFER_LENGTH) {
         return null;
       }
       mediaIndex = getMediaIndexForTime(playlist,
