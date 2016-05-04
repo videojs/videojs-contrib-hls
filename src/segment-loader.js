@@ -7,6 +7,7 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import xhr from './xhr';
 import {Decrypter} from './decrypter';
+import Config from './config';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -141,9 +142,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.setCurrentTime_ = settings.setCurrentTime;
     this.mediaSource_ = settings.mediaSource;
     this.withCredentials_ = settings.withCredentials;
-
-    // we use options here because we don't want the global override if there is one
-    this.GOAL_BUFFER_LENGTH_ = options.GOAL_BUFFER_LENGTH || 30;
     this.checkBufferTimeout_ = null;
     this.error_ = void 0;
     this.expired_ = 0;
@@ -382,7 +380,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       // if there is plenty of content buffered, and the video has
       // been played before relax for awhile
-      if (this.hasPlayed_() && bufferedTime >= this.GOAL_BUFFER_LENGTH_) {
+      if (this.hasPlayed_() && bufferedTime >= Config.GOAL_BUFFER_LENGTH) {
         return null;
       }
       mediaIndex = getMediaIndexForTime(playlist,

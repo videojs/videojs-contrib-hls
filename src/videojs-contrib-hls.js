@@ -14,6 +14,7 @@ import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from './m3u8';
 import videojs from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
+import Config from './config';
 
 /**
  * determine if an object a is differnt from
@@ -52,12 +53,10 @@ const Hls = {
   xhr
 };
 
-let GOAL_BUFFER_LENGTH = 30;
-
 Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
   get() {
     videojs.log.warn('Hls.GOAL_BUFFER_LENGTH is deprecated and should not be used');
-    return GOAL_BUFFER_LENGTH;
+    return Config.GOAL_BUFFER_LENGTH;
   },
   set(v) {
     videojs.log.warn('Hls.GOAL_BUFFER_LENGTH is deprecated and should not be used');
@@ -66,7 +65,7 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
                        'must be a number and greater than 0');
       return;
     }
-    GOAL_BUFFER_LENGTH = v;
+    Config.GOAL_BUFFER_LENGTH = v;
   }
 });
 
@@ -330,9 +329,6 @@ export default class HlsHandler extends Component {
     // defaults
     this.options_.withCredentials = this.options_.withCredentials || false;
 
-    // use deprecated override
-    this.GOAL_BUFFER_LENGTH_ = GOAL_BUFFER_LENGTH || 30;
-
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
     // 0.5 Mbps
@@ -362,7 +358,6 @@ export default class HlsHandler extends Component {
     this.options_.url = this.source_.src;
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
-    this.options_.GOAL_BUFFER_LENGTH = this.GOAL_BUFFER_LENGTH_;
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
 
     // `this` in selectPlaylist should be the HlsHandler for backwards

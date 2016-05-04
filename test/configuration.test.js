@@ -11,6 +11,7 @@ import videojs from 'video.js';
 // we need this so that it can register hls with videojs
 import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
+import Config from '../src/config';
 
 // list of posible options
 // name - the proprety name
@@ -36,15 +37,14 @@ QUnit.module('Configuration - Deprication', {
     this.mse = useFakeMediaSource();
     this.clock = this.env.clock;
     this.old = {};
-
+    this.old.GOAL_BUFFER_LENGTH = Config.GOAL_BUFFER_LENGTH;
     // force the HLS tech to run
     this.old.NativeHlsSupport = videojs.Hls.supportsNativeHls;
     videojs.Hls.supportsNativeHls = false;
   },
 
   afterEach() {
-    Hls.GOAL_BUFFER_LENGTH = 30;
-    QUnit.equal(this.env.log.warn.calls, 1, 'logged a warning');
+    Config.GOAL_BUFFER_LENGTH = this.old.GOAL_BUFFER_LENGTH;
 
     this.env.restore();
     this.mse.restore();
@@ -53,7 +53,9 @@ QUnit.module('Configuration - Deprication', {
 });
 
 QUnit.test('GOAL_BUFFER_LENGTH get warning', function() {
-  QUnit.equal(Hls.GOAL_BUFFER_LENGTH, 30, 'Hls.GOAL_BUFFER_LENGTH returns the default');
+  QUnit.equal(Hls.GOAL_BUFFER_LENGTH,
+              Config.GOAL_BUFFER_LENGTH,
+              'Hls.GOAL_BUFFER_LENGTH returns the default');
   QUnit.equal(this.env.log.warn.calls, 1, 'logged a warning');
 });
 
@@ -61,47 +63,7 @@ QUnit.test('GOAL_BUFFER_LENGTH set warning', function() {
   Hls.GOAL_BUFFER_LENGTH = 10;
   QUnit.equal(this.env.log.warn.calls, 1, 'logged a warning');
 
-  QUnit.equal(Hls.GOAL_BUFFER_LENGTH, 10, 'returns what we set it to');
-  QUnit.equal(this.env.log.warn.calls, 1, 'logged a warning');
-
-});
-
-QUnit.test('GOAL_BUFFER_LENGTH deprecated value is used', function() {
-  let player = createPlayer();
-
-  // change before src
-  Hls.GOAL_BUFFER_LENGTH = 10;
-  QUnit.equal(this.env.log.warn.calls, 1, 'logged a warning');
-
-  player.src({
-    src: 'http://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  QUnit.equal(player.tech_.hls.GOAL_BUFFER_LENGTH_, 10, 'returns what we set it to');
-  player.dispose();
-
-  player = createPlayer();
-
-  // change before source
-  Hls.GOAL_BUFFER_LENGTH = 50;
-  QUnit.equal(this.env.log.warn.calls, 1, 'logged a warning');
-  player.src({
-    src: 'http://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  QUnit.equal(player.tech_.hls.GOAL_BUFFER_LENGTH_, 50, 'returns what we set it to');
-
-  // change before src without dispose
-  Hls.GOAL_BUFFER_LENGTH = 20;
-  QUnit.equal(this.env.log.warn.calls, 1, 'logged a warning');
-  player.src({
-    src: 'http://example.com/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  QUnit.equal(player.tech_.hls.GOAL_BUFFER_LENGTH_, 20, 'returns what we set it to');
-
-  player.dispose();
+  QUnit.equal(Config.GOAL_BUFFER_LENGTH, 10, 'returns what we set it to');
 });
 
 QUnit.module('Configuration - Options', {
