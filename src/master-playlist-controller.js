@@ -360,23 +360,24 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    * Begin playback.
    */
   play() {
+    if (this.setupFirstPlay()) {
+      return;
+    }
+
     if (this.tech_.ended()) {
       this.tech_.setCurrentTime(0);
     }
 
     this.load();
 
-    if (this.tech_.played().length === 0) {
-      return this.setupFirstPlay();
-    }
-
     // if the viewer has paused and we fell out of the live window,
     // seek forward to the earliest available position
     if (this.tech_.duration() === Infinity) {
       if (this.tech_.currentTime() < this.tech_.seekable().start(0)) {
-        this.tech_.setCurrentTime(this.tech_.seekable().start(0));
+        return this.tech_.setCurrentTime(this.tech_.seekable().start(0));
       }
     }
+
   }
 
   /**
@@ -388,28 +389,32 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     let media = this.masterPlaylistLoader_.media();
 
     // check that everything is ready to begin buffering
-
     // 1) the active media playlist is available
     if (media &&
-
         // 2) the video is a live stream
         !media.endList &&
 
-        // 3) the player has not played before and is not paused
-        this.tech_.played().length === 0 &&
-        !this.tech_.paused()) {
+        // 3) the player is not paused
+        !this.tech_.paused() &&
+
+        // 4) the player has not started playing
+        !this.hasPlayed_) {
 
       this.load();
 
       // trigger the playlist loader to start "expired time"-tracking
       this.masterPlaylistLoader_.trigger('firstplay');
+      this.hasPlayed_ = true;
 
       // seek to the latest media position for live videos
       seekable = this.seekable();
       if (seekable.length) {
         this.tech_.setCurrentTime(seekable.end(0));
       }
+
+      return true;
     }
+    return false;
   }
 
   /**
