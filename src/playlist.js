@@ -203,6 +203,10 @@ export const seekable = function(playlist, expired) {
   let end;
   let endSequence;
 
+  if (typeof expired !== 'number') {
+    expired = 0;
+  }
+
   // without segments, there are no seekable ranges
   if (!playlist || !playlist.segments) {
     return createTimeRange();
