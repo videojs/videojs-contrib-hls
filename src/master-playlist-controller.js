@@ -563,18 +563,20 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       return videojs.createTimeRanges();
     }
 
-    mainSeekable = Hls.Playlist.seekable(media);
+    mainSeekable = Hls.Playlist.seekable(media,
+                                         this.masterPlaylistLoader_.expired_);
     if (mainSeekable.length === 0) {
       return mainSeekable;
     }
 
     if (this.audioPlaylistLoader_) {
-      audioSeekable = Hls.Playlist.seekable(this.audioPlaylistLoader_.media());
+      audioSeekable = Hls.Playlist.seekable(this.audioPlaylistLoader_.media(),
+                                            this.audioPlaylistLoader_.expired_);
       if (audioSeekable.length === 0) {
         return audioSeekable;
       }
     }
-
+/*
     // if the seekable start is zero, it may be because the player has
     // been paused for a long time and stopped buffering. in that case,
     // fall back to the playlist loader's running estimate of expired
@@ -594,6 +596,12 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       audioSeekable = videojs.createTimeRanges([[this.audioPlaylistLoader_.expired_,
                                                  this.audioPlaylistLoader_.expired_ +
                                                   audioSeekable.end(0)]]);
+    }
+*/
+    if (!audioSeekable) {
+      // seekable has been calculated based on buffering video data so it
+      // can be returned directly
+      return mainSeekable;
     }
 
     return videojs.createTimeRanges([[

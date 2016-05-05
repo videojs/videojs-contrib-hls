@@ -320,8 +320,8 @@ export default class SegmentLoader extends videojs.EventTarget {
   getSegmentBufferedPercent_(playlist, mediaIndex, currentTime, buffered) {
     let segment = playlist.segments[mediaIndex];
     let startOfSegment = duration(playlist,
-                                  playlist.mediaSequence + mediaIndex) +
-                         this.expired_;
+                                  playlist.mediaSequence + mediaIndex,
+                                  this.expired_);
     let segmentRange = videojs.createTimeRanges([[
       Math.max(currentTime, startOfSegment),
       startOfSegment + segment.duration
@@ -421,7 +421,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     segment = playlist.segments[mediaIndex];
-    let startOfSegment = duration(playlist, playlist.mediaSequence + mediaIndex);
+    let startOfSegment = duration(playlist,
+                                  playlist.mediaSequence + mediaIndex,
+                                  this.expired_);
 
     // We will need to change timestampOffset of the sourceBuffer if either of
     // the following conditions are true:
