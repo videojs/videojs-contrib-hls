@@ -401,18 +401,13 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       this.load();
 
-      // 4) the video element or flash player is in a readyState of
-      // at least HAVE_FUTURE_DATA
-      if (this.tech_.readyState() >= 1) {
+      // trigger the playlist loader to start "expired time"-tracking
+      this.masterPlaylistLoader_.trigger('firstplay');
 
-        // trigger the playlist loader to start "expired time"-tracking
-        this.masterPlaylistLoader_.trigger('firstplay');
-
-        // seek to the latest media position for live videos
-        seekable = this.seekable();
-        if (seekable.length) {
-          this.tech_.setCurrentTime(seekable.end(0));
-        }
+      // seek to the latest media position for live videos
+      seekable = this.seekable();
+      if (seekable.length) {
+        this.tech_.setCurrentTime(seekable.end(0));
       }
     }
   }
