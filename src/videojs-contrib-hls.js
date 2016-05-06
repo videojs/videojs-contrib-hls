@@ -225,21 +225,21 @@ Hls.supportsNativeHls = (function() {
   // HLS manifests can go by many mime-types
   let canPlay = [
     // Apple santioned
-    video.canPlayType('application/vnd.apple.mpegURL'),
+    'application/vnd.apple.mpegurl',
     // Apple sanctioned for backwards compatibility
-    video.canPlayType('audio/mpegURL'),
+    'audio/mpegurl',
     // Very common
-    video.canPlayType('audio/x-mpegURL'),
+    'audio/x-mpegurl',
     // Very common
-    video.canPlayType('application/x-mpegURL'),
+    'application/x-mpegurl',
     // Included for completeness
-    video.canPlayType('video/x-mpegURL'),
-    video.canPlayType('video/mpegURL'),
-    video.canPlayType('application/mpegURL')
+    'video/x-mpegurl',
+    'video/mpegurl',
+    'application/mpegurl'
   ];
 
   return canPlay.some(function(canItPlay) {
-    return (/maybe|probably/i).test(canItPlay);
+    return (/maybe|probably/i).test(video.canPlayType(canItPlay));
   });
 }());
 
@@ -518,7 +518,7 @@ const HlsSourceHandler = function(mode) {
       if (videojs.options.hls &&
           videojs.options.hls.mode &&
           videojs.options.hls.mode !== mode) {
-        return '';
+        return false;
       }
       return HlsSourceHandler.canPlayType(srcObj.type);
     },
@@ -624,7 +624,7 @@ HlsSourceHandler.canPlayType = function(type) {
 
   // favor native HLS support if it's available
   if (Hls.supportsNativeHls) {
-    return '';
+    return false;
   }
   return mpegurlRE.test(type);
 };
