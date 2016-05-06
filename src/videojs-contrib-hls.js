@@ -15,6 +15,7 @@ import m3u8 from './m3u8';
 import videojs from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
+import Stats from './stats';
 
 /**
  * determine if an object a is differnt from
@@ -302,11 +303,18 @@ class HlsHandler extends Component {
     this.tech_ = tech;
     this.source_ = source;
 
+<<<<<<< d15c2a244617c1debfb3bf9a6907a2adb92e2728
     // handle global & Source Handler level options
     this.options_ = videojs.mergeOptions(videojs.options.hls || {}, options.hls);
     this.setOptions_();
 
     this.bytesReceived = 0;
+=======
+    // start playlist selection at a reasonable bandwidth for
+    // broadband internet
+    // 0.5 Mbps
+    this.bandwidth = this.options_.bandwidth || 4194304;
+>>>>>>> Added bandwidth stats to HLS
 
     // listen for fullscreenchange events for this player so that we
     // can adjust our quality selection quickly
@@ -398,10 +406,12 @@ class HlsHandler extends Component {
       },
       bandwidth: {
         get() {
-          return this.masterPlaylistController_.mainSegmentLoader_.bandwidth;
+          Stats.bandwidth = this.masterPlaylistController_.mainSegmentLoader_.bandwidth;
+          return Stats.bandwidth;
         },
         set(bandwidth) {
           this.masterPlaylistController_.mainSegmentLoader_.bandwidth = bandwidth;
+          Stats.bandwidth = bandwidth;
         }
       }
     });
@@ -482,6 +492,10 @@ class HlsHandler extends Component {
       this.masterPlaylistController_.mediaSource));
   }
 
+  get stats() {
+    return Stats;
+  }
+
   /**
    * a helper for grabbing the active audio group from MasterPlaylistController
    *
@@ -527,6 +541,11 @@ class HlsHandler extends Component {
       this.masterPlaylistController_.dispose();
     }
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
+
+    // reset stats on dispose
+    for (let k in Stats) {
+      Stats[k] = 0;
+    }
 
     super.dispose();
   }

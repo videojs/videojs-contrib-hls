@@ -7,6 +7,7 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import {Decrypter} from './decrypter';
 import Config from './config';
+import Stats from './stats';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -636,6 +637,13 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.roundTrip = request.roundTripTime;
       this.bandwidth = request.bandwidth;
       this.bytesReceived += request.bytesReceived || 0;
+      Stats.numberOfBytesTransferred += request.bytesReceived || 0;
+
+      // if we get this far there are no errors,
+      // increment the stat for media requests
+      Stats.numberOfMediaRequests++;
+
+      Stats.transferDuration += request.roundTripTime || 0;
 
       if (segment.key) {
         segmentInfo.encryptedBytes = new Uint8Array(request.response);

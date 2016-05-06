@@ -2,6 +2,7 @@ import document from 'global/document';
 import sinon from 'sinon';
 import videojs from 'video.js';
 import QUnit from 'qunit';
+import Stats from '../src/stats';
 /* eslint-disable no-unused-vars */
 // needed so MediaSource can be registered with videojs
 import MediaSource from 'videojs-contrib-media-sources';
@@ -120,6 +121,10 @@ let fakeEnvironment = {
         this.log[level].restore();
       }
     });
+
+    Object.keys(Stats).forEach((s) => {
+      QUnit.equal(this.stats[s], 0, `No unexpected stats ${s}`);
+    });
   }
 };
 
@@ -136,6 +141,20 @@ export const useFakeEnvironment = function() {
 
         this.callCount = 0;
         return callCount;
+      }
+    });
+  });
+  fakeEnvironment.stats = {};
+  Object.keys(Stats).forEach((s) => {
+    Object.defineProperty(fakeEnvironment.stats, s, {
+      get() {
+        let v = Stats[s];
+
+        Stats[s] = 0;
+        return v;
+      },
+      set(v) {
+        Stats[s] = v;
       }
     });
   });
