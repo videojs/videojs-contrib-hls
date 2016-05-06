@@ -581,28 +581,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         return audioSeekable;
       }
     }
-/*
-    // if the seekable start is zero, it may be because the player has
-    // been paused for a long time and stopped buffering. in that case,
-    // fall back to the playlist loader's running estimate of expired
-    // time
-    if (mainSeekable.start(0) === 0) {
-      mainSeekable = videojs.createTimeRanges([[this.masterPlaylistLoader_.expired_,
-                                                this.masterPlaylistLoader_.expired_ +
-                                                  mainSeekable.end(0)]]);
-    }
-    if (!audioSeekable) {
-      // seekable has been calculated based on buffering video data so it
-      // can be returned directly
-      return mainSeekable;
-    }
 
-    if (audioSeekable.start(0) === 0) {
-      audioSeekable = videojs.createTimeRanges([[this.audioPlaylistLoader_.expired_,
-                                                 this.audioPlaylistLoader_.expired_ +
-                                                  audioSeekable.end(0)]]);
-    }
-*/
     if (!audioSeekable) {
       // seekable has been calculated based on buffering video data so it
       // can be returned directly
