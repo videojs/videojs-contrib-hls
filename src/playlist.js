@@ -100,12 +100,12 @@ const forwardDuration = function(playlist, endSequence) {
   * playlist. The duration of a subinterval of the available segments
   * may be calculated by specifying an end index.
   *
-  * @param playlist {object} a media playlist object
-  * @param endSequence {number} (optional) an exclusive upper boundary
+  * @param {Object} playlist a media playlist object
+  * @param {Number=} endSequence an exclusive upper boundary
   * for the playlist.  Defaults to playlist length.
-  * @param expired {number} (optional) the amount of time that has
-  * dropped off the front of the playlist in a live scenario
-  * @return {number} the duration between the first available segment
+  * @param {Number} expired the amount of time that has dropped
+  * off the front of the playlist in a live scenario
+  * @return {Number} the duration between the first available segment
   * and end index.
   */
 const intervalDuration = function(playlist, endSequence, expired) {
@@ -152,9 +152,9 @@ const intervalDuration = function(playlist, endSequence, expired) {
   * @param {Number=} endSequence an exclusive upper
   * boundary for the playlist. Defaults to the playlist media
   * sequence number plus its length.
-  * @param expired {number} (optional) the amount of time that has
+  * @param {Number=} expired the amount of time that has
   * dropped off the front of the playlist in a live scenario
-  * @return {number} the duration between the start index and end
+  * @return {Number} the duration between the start index and end
   * index.
   */
 export const duration = function(playlist, endSequence, expired) {
@@ -195,6 +195,8 @@ export const duration = function(playlist, endSequence, expired) {
   * stream.
   *
   * @param {Object} playlist a media playlist object
+  * @param {Number=} expired the amount of time that has
+  * dropped off the front of the playlist in a live scenario
   * @return {TimeRanges} the periods of time that are valid targets
   * for seeking
   */
