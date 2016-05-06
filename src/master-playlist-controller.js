@@ -360,23 +360,24 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    * Begin playback.
    */
   play() {
+    if (this.setupFirstPlay()) {
+      return;
+    }
+
     if (this.tech_.ended()) {
       this.tech_.setCurrentTime(0);
     }
 
     this.load();
 
-    if (this.tech_.played().length === 0) {
-      return this.setupFirstPlay();
-    }
-
     // if the viewer has paused and we fell out of the live window,
     // seek forward to the earliest available position
     if (this.tech_.duration() === Infinity) {
       if (this.tech_.currentTime() < this.tech_.seekable().start(0)) {
-        this.tech_.setCurrentTime(this.tech_.seekable().start(0));
+        return this.tech_.setCurrentTime(this.tech_.seekable().start(0));
       }
     }
+
   }
 
   /**
@@ -388,33 +389,32 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     let media = this.masterPlaylistLoader_.media();
 
     // check that everything is ready to begin buffering
-
     // 1) the active media playlist is available
     if (media &&
-
         // 2) the video is a live stream
         !media.endList &&
 
-        // 3) the player has not played before and is not paused
-        this.tech_.played().length === 0 &&
-        !this.tech_.paused()) {
+        // 3) the player is not paused
+        !this.tech_.paused() &&
+
+        // 4) the player has not started playing
+        !this.hasPlayed_) {
 
       this.load();
 
-      // 4) the video element or flash player is in a readyState of
-      // at least HAVE_FUTURE_DATA
-      if (this.tech_.readyState() >= 1) {
+      // trigger the playlist loader to start "expired time"-tracking
+      this.masterPlaylistLoader_.trigger('firstplay');
+      this.hasPlayed_ = true;
 
-        // trigger the playlist loader to start "expired time"-tracking
-        this.masterPlaylistLoader_.trigger('firstplay');
-
-        // seek to the latest media position for live videos
-        seekable = this.seekable();
-        if (seekable.length) {
-          this.tech_.setCurrentTime(seekable.end(0));
-        }
+      // seek to the latest media position for live videos
+      seekable = this.seekable();
+      if (seekable.length) {
+        this.tech_.setCurrentTime(seekable.end(0));
       }
+
+      return true;
     }
+    return false;
   }
 
   /**
@@ -568,37 +568,24 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       return videojs.createTimeRanges();
     }
 
-    mainSeekable = Hls.Playlist.seekable(media);
+    mainSeekable = Hls.Playlist.seekable(media,
+                                         this.masterPlaylistLoader_.expired_);
     if (mainSeekable.length === 0) {
       return mainSeekable;
     }
 
     if (this.audioPlaylistLoader_) {
-      audioSeekable = Hls.Playlist.seekable(this.audioPlaylistLoader_.media());
+      audioSeekable = Hls.Playlist.seekable(this.audioPlaylistLoader_.media(),
+                                            this.audioPlaylistLoader_.expired_);
       if (audioSeekable.length === 0) {
         return audioSeekable;
       }
     }
 
-    // if the seekable start is zero, it may be because the player has
-    // been paused for a long time and stopped buffering. in that case,
-    // fall back to the playlist loader's running estimate of expired
-    // time
-    if (mainSeekable.start(0) === 0) {
-      mainSeekable = videojs.createTimeRanges([[this.masterPlaylistLoader_.expired_,
-                                                this.masterPlaylistLoader_.expired_ +
-                                                  mainSeekable.end(0)]]);
-    }
     if (!audioSeekable) {
       // seekable has been calculated based on buffering video data so it
       // can be returned directly
       return mainSeekable;
-    }
-
-    if (audioSeekable.start(0) === 0) {
-      audioSeekable = videojs.createTimeRanges([[this.audioPlaylistLoader_.expired_,
-                                                 this.audioPlaylistLoader_.expired_ +
-                                                  audioSeekable.end(0)]]);
     }
 
     return videojs.createTimeRanges([[

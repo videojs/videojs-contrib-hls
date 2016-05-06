@@ -102,11 +102,13 @@ const forwardDuration = function(playlist, endSequence) {
   *
   * @param {Object} playlist a media playlist object
   * @param {Number=} endSequence an exclusive upper boundary
-  * for the playlist. Defaults to playlist length.
+  * for the playlist.  Defaults to playlist length.
+  * @param {Number} expired the amount of time that has dropped
+  * off the front of the playlist in a live scenario
   * @return {Number} the duration between the first available segment
   * and end index.
   */
-const intervalDuration = function(playlist, endSequence) {
+const intervalDuration = function(playlist, endSequence, expired) {
   let backward;
   let forward;
 
@@ -137,7 +139,7 @@ const intervalDuration = function(playlist, endSequence) {
   }
 
   // return the less-precise, playlist-based duration estimate
-  return backward.result;
+  return backward.result + expired;
 };
 
 /**
@@ -150,19 +152,18 @@ const intervalDuration = function(playlist, endSequence) {
   * @param {Number=} endSequence an exclusive upper
   * boundary for the playlist. Defaults to the playlist media
   * sequence number plus its length.
-  * @param {Boolean=} includeTrailingTime if false, the
-  * interval between the final segment and the subsequent segment
-  * will not be included in the result
+  * @param {Number=} expired the amount of time that has
+  * dropped off the front of the playlist in a live scenario
   * @return {Number} the duration between the start index and end
   * index.
   */
-export const duration = function(playlist, endSequence, includeTrailingTime) {
+export const duration = function(playlist, endSequence, expired) {
   if (!playlist) {
     return 0;
   }
 
-  if (typeof includeTrailingTime === 'undefined') {
-    includeTrailingTime = true;
+  if (typeof expired !== 'number') {
+    expired = 0;
   }
 
   // if a slice of the total duration is not requested, use
@@ -182,7 +183,7 @@ export const duration = function(playlist, endSequence, includeTrailingTime) {
   // calculate the total duration based on the segment durations
   return intervalDuration(playlist,
                           endSequence,
-                          includeTrailingTime);
+                          expired);
 };
 
 /**
@@ -194,13 +195,19 @@ export const duration = function(playlist, endSequence, includeTrailingTime) {
   * stream.
   *
   * @param {Object} playlist a media playlist object
+  * @param {Number=} expired the amount of time that has
+  * dropped off the front of the playlist in a live scenario
   * @return {TimeRanges} the periods of time that are valid targets
   * for seeking
   */
-export const seekable = function(playlist) {
+export const seekable = function(playlist, expired) {
   let start;
   let end;
   let endSequence;
+
+  if (typeof expired !== 'number') {
+    expired = 0;
+  }
 
   // without segments, there are no seekable ranges
   if (!playlist || !playlist.segments) {
@@ -214,10 +221,11 @@ export const seekable = function(playlist) {
   // live playlists should not expose three segment durations worth
   // of content from the end of the playlist
   // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
-  start = intervalDuration(playlist, playlist.mediaSequence);
+  start = intervalDuration(playlist, playlist.mediaSequence, expired);
   endSequence = Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS);
   end = intervalDuration(playlist,
-                         playlist.mediaSequence + endSequence);
+                         playlist.mediaSequence + endSequence,
+                         expired);
   return createTimeRange(start, end);
 };
 

@@ -178,9 +178,6 @@ QUnit.test('autoplay seeks to the live point after playlist load', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
-  this.player.tech_.readyState = function() {
-    return 1;
-  };
   this.player.tech_.trigger('play');
   standardXHRResponse(this.requests.shift());
   this.clock.tick(1);
@@ -203,9 +200,6 @@ QUnit.test('autoplay seeks to the live point after media source open', function(
   this.clock.tick(1);
   standardXHRResponse(this.requests.shift());
   openMediaSource(this.player, this.clock);
-  this.player.tech_.readyState = function() {
-    return 1;
-  };
   this.player.tech_.trigger('play');
   this.clock.tick(1);
 
@@ -1010,9 +1004,6 @@ QUnit.test('live playlist starts with correct currentTime value', function() {
 
   this.player.tech_.paused = function() {
     return false;
-  };
-  this.player.tech_.readyState = function() {
-    return 1;
   };
   this.player.tech_.trigger('play');
   this.clock.tick(1);
@@ -1885,9 +1876,6 @@ QUnit.test('cleans up the buffer when loading live segments', function() {
   this.player.tech_.paused = function() {
     return false;
   };
-  this.player.tech_.readyState = function() {
-    return 1;
-  };
   this.player.tech_.trigger('play');
 
   this.clock.tick(1);
@@ -1936,10 +1924,6 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
 
   this.player.tech_.paused = function() {
     return false;
-  };
-
-  this.player.tech_.readyState = function() {
-    return 1;
   };
 
   this.player.tech_.trigger('play');
@@ -2299,9 +2283,6 @@ QUnit.test('live playlist starts three target durations before live', function()
 
   this.tech.paused = function() {
     return false;
-  };
-  this.tech.readyState = function() {
-    return 1;
   };
   this.tech.trigger('play');
   this.clock.tick(1);
