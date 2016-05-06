@@ -17,7 +17,7 @@ glob('test/**/*.test.js', function(err, files) {
   };
 
   b.on('log', function(msg) {
-    process.stdout.write(msg + '\n');
+    process.stdout.write(msg + ' dist-test/videojs-contrib-hls.js\n');
   });
 
   b.on('update', bundle);

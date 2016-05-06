@@ -10,13 +10,10 @@ var DEFAULTS = {
     'node_modules/sinon/pkg/sinon-ie.js',
     'node_modules/video.js/dist/video.js',
     'node_modules/video.js/dist/video-js.css',
-
     'test/**/*.test.js'
   ],
 
-  exclude: [
-    'test/data/**'
-  ],
+  exclude: [],
 
   plugins: [
     'karma-browserify',
@@ -43,6 +40,13 @@ var DEFAULTS = {
     noParse: [
       'test/data/**',
     ]
+  },
+
+  customLaunchers: {
+    travisChrome: {
+      base: 'Chrome',
+      flags: ['--no-sandbox']
+    }
   }
 };
 
