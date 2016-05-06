@@ -5,6 +5,7 @@
   "segments": [
     {
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -13,6 +14,7 @@
         "offset": 522828
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -21,6 +23,7 @@
         "offset": 0
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video2.ts"
     },
     {
@@ -29,6 +32,7 @@
         "offset": 1823412
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -37,6 +41,7 @@
         "offset": 2299992
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -45,6 +50,7 @@
         "offset": 2835604
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -53,6 +59,7 @@
         "offset": 3042780
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -61,6 +68,7 @@
         "offset": 3498680
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -69,6 +77,7 @@
         "offset": 4155928
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -77,6 +86,7 @@
         "offset": 4727636
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -85,6 +95,7 @@
         "offset": 5212676
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -93,6 +104,7 @@
         "offset": 5921812
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -101,6 +113,7 @@
         "offset": 6651816
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -109,6 +122,7 @@
         "offset": 7108092
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -117,6 +131,7 @@
         "offset": 7576776
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -125,6 +140,7 @@
         "offset": 8021772
       },
       "duration": 10,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     },
     {
@@ -133,6 +149,7 @@
         "offset": 8353216
       },
       "duration": 1.4167,
+      "timeline": 0,
       "uri": "hls_450k_video.ts"
     }
   ],

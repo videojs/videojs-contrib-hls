@@ -1,5 +1,5 @@
-/*
- * index.js
+/**
+ * @file decrypter/index.js
  *
  * Index module to easily import the primary components of AES-128
  * decryption. Like this:

@@ -1,8 +1,14 @@
+/**
+ * @file decrypter/async-stream.js
+ */
 import Stream from '../stream';
 
 /**
  * A wrapper around the Stream class to use setTiemout
  * and run stream "jobs" Asynchronously
+ *
+ * @class AsyncStream
+ * @extends Stream
  */
 export default class AsyncStream extends Stream {
   constructor() {
@@ -11,6 +17,12 @@ export default class AsyncStream extends Stream {
     this.delay = 1;
     this.timeout_ = null;
   }
+
+  /**
+   * process an async job
+   *
+   * @private
+   */
   processJob_() {
     this.jobs.shift()();
     if (this.jobs.length) {
@@ -20,6 +32,12 @@ export default class AsyncStream extends Stream {
       this.timeout_ = null;
     }
   }
+
+  /**
+   * push a job into the stream
+   *
+   * @param {Function} job the job to push into the stream
+   */
   push(job) {
     this.jobs.push(job);
     if (!this.timeout_) {

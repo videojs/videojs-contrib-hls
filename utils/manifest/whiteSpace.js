@@ -5,18 +5,22 @@
   "segments": [
     {
       "duration": 10,
+      "timeline": 0,
       "uri": "http://example.com/00001.ts"
     },
     {
       "duration": 10,
+      "timeline": 0,
       "uri": "https://example.com/00002.ts"
     },
     {
       "duration": 10,
+      "timeline": 0,
       "uri": "//example.com/00003.ts"
     },
     {
       "duration": 10,
+      "timeline": 0,
       "uri": "http://example.com/00004.ts"
     }
   ],
