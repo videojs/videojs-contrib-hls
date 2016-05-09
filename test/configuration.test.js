@@ -66,6 +66,18 @@ QUnit.test('GOAL_BUFFER_LENGTH set warning', function() {
   QUnit.equal(Config.GOAL_BUFFER_LENGTH, 10, 'returns what we set it to');
 });
 
+QUnit.test('GOAL_BUFFER_LENGTH set warning and invalid', function() {
+  Hls.GOAL_BUFFER_LENGTH = 'nope';
+  QUnit.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  QUnit.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
+
+  Hls.GOAL_BUFFER_LENGTH = 0;
+  QUnit.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  QUnit.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
+});
+
 QUnit.module('Configuration - Options', {
   beforeEach() {
     this.env = useFakeEnvironment();

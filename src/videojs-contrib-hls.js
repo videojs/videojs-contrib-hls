@@ -60,7 +60,7 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
   },
   set(v) {
     videojs.log.warn('Hls.GOAL_BUFFER_LENGTH is deprecated and should not be used');
-    if (typeof v !== 'number' && v > 0) {
+    if (typeof v !== 'number' || v <= 0) {
       videojs.log.warn('value passed to Hls.GOAL_BUFFER_LENGTH ' +
                        'must be a number and greater than 0');
       return;
