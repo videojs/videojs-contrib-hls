@@ -42,7 +42,7 @@
     "watch:docs": "nodemon --watch src/ --exec npm run docs",
     "watch:js": "npm-run-all -p watch:js:babel watch:js:browserify",
     "watch:js:babel": "npm run build:js:babel -- --watch",
-    "watch:js:browserify": "watchify . -v -o dist/videojs-contrib-hls.js",
+    "watch:js:browserify": "watchify . -v -t browserify-shim -o dist/videojs-contrib-hls.js",
     "watch:test": "npm-run-all -p watch:test:*",
     "watch:test:js": "node scripts/watch-test.js",
     "watch:test:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.watch();\"",
