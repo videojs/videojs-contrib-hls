@@ -344,7 +344,7 @@ class HlsHandler extends Component {
 
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
-    // 0.5 Mbps
+    // 0.5 MB/s
     this.options_.bandwidth = this.options_.bandwidth || 4194304;
 
     // grab options passed to player.src
