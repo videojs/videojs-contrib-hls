@@ -1,4 +1,3 @@
-import videojs from 'video.js';
 import Ranges from './ranges';
 
 let seeking = false;
@@ -8,24 +7,27 @@ let playerState;
 let lastRecordedTime;
 let adaptiveSeeking;
 let player;
+let tech;
 
-const gapSkipper = function(playerId, tech) {
-  if (playerId) {
-    player = videojs(playerId);
+function gapSkipper(options) {
+    player = this;
+    tech = options.tech;
 
     // Allows us to mimic a waiting event in chrome
     player.on('timeupdate', function() {
+      console.log('timeupdate!');
       if (player.paused()) {
+        console.log('player paused');
         return;
       }
       let currentTime = player.currentTime();
-
       if (consecutiveUpdates === 5 && currentTime === lastRecordedTime) {
         // trigger waiting
         if (playerState !== 'waiting') {
           consecutiveUpdates = 0;
           playerState = 'waiting';
           tech.trigger('adaptive-seeking');
+          console.log('triggered adaptive');
         }
       } else if (currentTime === lastRecordedTime) {
         consecutiveUpdates++;
@@ -56,7 +58,6 @@ const gapSkipper = function(playerId, tech) {
         clearTimeout(timer);
       }
     });
-  }
 };
 
 adaptiveSeeking = function() {

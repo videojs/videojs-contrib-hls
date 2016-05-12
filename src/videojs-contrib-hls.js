@@ -289,7 +289,8 @@ class HlsHandler extends Component {
     // backwards-compatibility
     if (tech.options_ && tech.options_.playerId) {
       let _player = videojs(tech.options_.playerId);
-
+      videojs.plugin('gapSkipper', gapSkipper);
+      _player.gapSkipper({tech:tech});
       if (!_player.hasOwnProperty('hls')) {
         Object.defineProperty(_player, 'hls', {
           get: () => {
@@ -303,6 +304,7 @@ class HlsHandler extends Component {
     this.tech_ = tech;
     this.source_ = source;
     this.stats = {};
+    // register gapSKipper plugin
     gapSkipper(tech.options_.playerId, tech);
 
     // handle global & Source Handler level options
