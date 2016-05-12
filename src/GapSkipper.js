@@ -8,56 +8,55 @@ let lastRecordedTime;
 let adaptiveSeeking;
 let player;
 let tech;
+let gapSkipper;
 
-function gapSkipper(options) {
-    player = this;
-    tech = options.tech;
+gapSkipper = function(options) {
+  player = this;
+  tech = options.tech;
 
-    // Allows us to mimic a waiting event in chrome
-    player.on('timeupdate', function() {
-      console.log('timeupdate!');
-      if (player.paused()) {
-        console.log('player paused');
-        return;
-      }
-      let currentTime = player.currentTime();
-      if (consecutiveUpdates === 5 && currentTime === lastRecordedTime) {
-        // trigger waiting
-        if (playerState !== 'waiting') {
-          consecutiveUpdates = 0;
-          playerState = 'waiting';
-          tech.trigger('adaptive-seeking');
-          console.log('triggered adaptive');
-        }
-      } else if (currentTime === lastRecordedTime) {
-        consecutiveUpdates++;
-      } else {
+  // Allows us to mimic a waiting event in chrome
+  player.on('timeupdate', function() {
+    if (player.paused()) {
+      return;
+    }
+    let currentTime = player.currentTime();
+
+    if (consecutiveUpdates === 5 && currentTime === lastRecordedTime) {
+      // trigger waiting
+      if (playerState !== 'waiting') {
         consecutiveUpdates = 0;
-        lastRecordedTime = currentTime;
+        playerState = 'waiting';
+        tech.trigger('adaptive-seeking');
       }
-    });
+    } else if (currentTime === lastRecordedTime) {
+      consecutiveUpdates++;
+    } else {
+      consecutiveUpdates = 0;
+      lastRecordedTime = currentTime;
+    }
+  });
 
-    // Don't listen for waiting while seeking
-    player.on('seeking', function() {
-      seeking = true;
-    });
+  // Don't listen for waiting while seeking
+  player.on('seeking', function() {
+    seeking = true;
+  });
 
-    // Listen for waiting when finished seeking
-    player.on('seeked', function() {
-      seeking = false;
-    });
+  // Listen for waiting when finished seeking
+  player.on('seeked', function() {
+    seeking = false;
+  });
 
-    tech.on('playing', function() {
-      tech.on('waiting', adaptiveSeeking);
-    });
+  tech.on('playing', function() {
+    tech.on('waiting', adaptiveSeeking);
+  });
 
-    tech.on('adaptive-seeking', adaptiveSeeking);
+  tech.on('adaptive-seeking', adaptiveSeeking);
 
-    tech.on('error', function() {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    });
+  tech.on('error', function() {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  });
 };
 
 adaptiveSeeking = function() {
