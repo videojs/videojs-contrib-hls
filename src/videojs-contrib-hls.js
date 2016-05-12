@@ -289,8 +289,9 @@ class HlsHandler extends Component {
     // backwards-compatibility
     if (tech.options_ && tech.options_.playerId) {
       let _player = videojs(tech.options_.playerId);
+
       videojs.plugin('gapSkipper', gapSkipper);
-      _player.gapSkipper({tech:tech});
+      _player.gapSkipper({tech});
       if (!_player.hasOwnProperty('hls')) {
         Object.defineProperty(_player, 'hls', {
           get: () => {
