@@ -15,7 +15,7 @@ import m3u8 from './m3u8';
 import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
 import gapSkipper from './GapSkipper';
-
+import videojs from 'video.js';
 /**
  * determine if an object a is differnt from
  * and object b. both only having one dimensional
