@@ -1,25 +1,27 @@
 import videojs from 'video.js';
 import Ranges from './ranges';
 
-var seeking = false;
-var consecutiveUpdates = 0;
-var timer = null;
-var playerState;
-var lastRecordedTime;
+let seeking = false;
+let consecutiveUpdates = 0;
+let timer = null;
+let playerState;
+let lastRecordedTime;
+let adaptiveSeeking;
+let player;
 
 const gapSkipper = function(playerId, tech) {
   if (playerId) {
-    var player = videojs(playerId);
+    player = videojs(playerId);
 
     // Allows us to mimic a waiting event in chrome
     player.on('timeupdate', function() {
       if (player.paused()) {
         return;
       }
-      var currentTime = player.currentTime();
+      let currentTime = player.currentTime();
 
       if (consecutiveUpdates === 5 && currentTime === lastRecordedTime) {
-        //trigger waiting
+        // trigger waiting
         if (playerState !== 'waiting') {
           consecutiveUpdates = 0;
           playerState = 'waiting';
@@ -33,12 +35,12 @@ const gapSkipper = function(playerId, tech) {
       }
     });
 
-    //Don't listen for waiting while seeking
+    // Don't listen for waiting while seeking
     player.on('seeking', function() {
-      seeking = true
+      seeking = true;
     });
 
-    //Listen for waiting when finished seeking
+    // Listen for waiting when finished seeking
     player.on('seeked', function() {
       seeking = false;
     });
@@ -53,27 +55,31 @@ const gapSkipper = function(playerId, tech) {
       if (timer) {
         clearTimeout(timer);
       }
-    })
+    });
   }
-}
+};
 
-  const adaptiveSeeking = function() {
-    if (!seeking) {
-      var buffered = player.buffered();
-        var currentTime = player.currentTime();
-        if (buffered.length > 0) {
-          var nextRange = Ranges.findNextRange(buffered, currentTime);
-          if (nextRange.length > 0) {
-            var difference = nextRange.start(0) - currentTime;
-            timer = setTimeout(function() {
-              if (player.currentTime() === currentTime) {
-                //only seek if we still have not played
-                player.currentTime(nextRange.start(0));
-                playerState = 'playing';
-              }
-            }, difference * 1000);
+adaptiveSeeking = function() {
+  if (!seeking) {
+    let buffered = player.buffered();
+    let currentTime = player.currentTime();
+
+    if (buffered.length > 0) {
+      let nextRange = Ranges.findNextRange(buffered, currentTime);
+
+      if (nextRange.length > 0) {
+        let difference = nextRange.start(0) - currentTime;
+
+        timer = setTimeout(function() {
+          if (player.currentTime() === currentTime) {
+            // only seek if we still have not played
+            player.currentTime(nextRange.start(0));
+            playerState = 'playing';
           }
-        }
+        }, difference * 1000);
+      }
     }
-}
+  }
+};
+
 export default gapSkipper;

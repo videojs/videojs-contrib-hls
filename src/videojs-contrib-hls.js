@@ -16,7 +16,7 @@ import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
 import gapSkipper from './GapSkipper';
-
+import videojs from 'video.js';
 /**
  * determine if an object a is differnt from
  * and object b. both only having one dimensional
