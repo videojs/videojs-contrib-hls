@@ -290,7 +290,6 @@ class HlsHandler extends Component {
     if (tech.options_ && tech.options_.playerId) {
       let _player = videojs(tech.options_.playerId);
 
-      videojs.plugin('gapSkipper', gapSkipper);
       _player.gapSkipper({tech});
       if (!_player.hasOwnProperty('hls')) {
         Object.defineProperty(_player, 'hls', {
@@ -680,6 +679,7 @@ videojs.HlsSourceHandler = HlsSourceHandler;
 videojs.Hls = Hls;
 videojs.m3u8 = m3u8;
 videojs.registerComponent('Hls', Hls);
+videojs.plugin('gapSkipper', gapSkipper);
 
 videojs.options.hls = videojs.options.hls || {};
 
