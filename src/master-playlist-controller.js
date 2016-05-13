@@ -86,6 +86,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       throw new Error('A non-empty playlist URL is required');
     }
 
+    this.mainSegmentLoader_.on('stat', (e) => this.trigger(e));
+    this.audioSegmentLoader_.on('stat', (e) => this.trigger(e));
+
     this.masterPlaylistLoader_ = new PlaylistLoader(url, this.hls_, this.withCredentials);
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {

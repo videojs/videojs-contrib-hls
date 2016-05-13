@@ -14,8 +14,6 @@ import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from './m3u8';
 import videojs from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
-import Config from './config';
-import Stats from './stats';
 
 /**
  * determine if an object a is differnt from
@@ -302,6 +300,7 @@ class HlsHandler extends Component {
 
     this.tech_ = tech;
     this.source_ = source;
+    this.stats = {};
 
 <<<<<<< d15c2a244617c1debfb3bf9a6907a2adb92e2728
     // handle global & Source Handler level options
@@ -376,13 +375,32 @@ class HlsHandler extends Component {
     if (!src) {
       return;
     }
+<<<<<<< 90472cc759d75587cb3c4114f3783aa63b62d6ac
     this.setOptions_();
     // add master playlist controller options
+=======
+
+    ['withCredentials', 'bandwidth'].forEach((option) => {
+      if (typeof this.source_[option] !== 'undefined') {
+        this.options_[option] = this.source_[option];
+      }
+    });
+    this.resetStats_();
+>>>>>>> use events rather than a global
     this.options_.url = this.source_.src;
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
 
+<<<<<<< 90472cc759d75587cb3c4114f3783aa63b62d6ac
+=======
+    this.masterPlaylistController_.on('stat', (e) => {
+      if (!this.stats[e.data.name]) {
+        this.stats[e.data.name] = 0;
+      }
+      this.stats[e.data.name] += e.data.amount;
+    });
+>>>>>>> use events rather than a global
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
     this.masterPlaylistController_.selectPlaylist =
@@ -406,14 +424,16 @@ class HlsHandler extends Component {
       },
       bandwidth: {
         get() {
-          Stats.bandwidth = this.masterPlaylistController_.mainSegmentLoader_.bandwidth;
-          return Stats.bandwidth;
+          return this.masterPlaylistController_.mainSegmentLoader_.bandwidth;
         },
         set(bandwidth) {
           this.masterPlaylistController_.mainSegmentLoader_.bandwidth = bandwidth;
-          Stats.bandwidth = bandwidth;
         }
       }
+    });
+
+    Object.defineProperty(this.stats, 'bandwidth', {
+      get: () => this.bandwidth || 0
     });
 
     this.tech_.one('canplay',
@@ -492,10 +512,6 @@ class HlsHandler extends Component {
       this.masterPlaylistController_.mediaSource));
   }
 
-  get stats() {
-    return Stats;
-  }
-
   /**
    * a helper for grabbing the active audio group from MasterPlaylistController
    *
@@ -533,6 +549,13 @@ class HlsHandler extends Component {
     return this.masterPlaylistController_.seekable();
   }
 
+  resetStats_() {
+    // reset stats on dispose
+    for (let k in this.stats) {
+      this.stats[k] = 0;
+    }
+  }
+
   /**
   * Abort all outstanding work and cleanup.
   */
@@ -541,12 +564,7 @@ class HlsHandler extends Component {
       this.masterPlaylistController_.dispose();
     }
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
-
-    // reset stats on dispose
-    for (let k in Stats) {
-      Stats[k] = 0;
-    }
-
+    this.resetStats_();
     super.dispose();
   }
 }

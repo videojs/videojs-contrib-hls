@@ -71,10 +71,18 @@ QUnit.module('Segment Loader', {
       hasPlayed: () => true,
       mediaSource
     });
+    this.env.stats = {};
+    loader.on('stat', (e) => {
+      if (!this.env.stats[e.data.name]) {
+        this.env.stats[e.data.name] = 0;
+      }
+      this.env.stats[e.data.name] += e.data.amount;
+    });
   },
   afterEach() {
     this.env.restore();
     this.mse.restore();
+    this.env.stats = {};
   }
 });
 
