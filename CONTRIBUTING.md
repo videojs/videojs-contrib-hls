@@ -1,31 +1,31 @@
-# Contributing
+# CONTRIBUTING
 
-## Important notes
-Please don't edit files in the `dist` subdirectory as they are generated via Grunt. You'll find source code in the `src` subdirectory!
+We welcome contributions from everyone!
 
-### Code style
-Regarding code style like indentation and whitespace, **follow the conventions you see used in the source already.**
+## Getting Started
 
-### PhantomJS
-While Grunt can run the included unit tests via [PhantomJS](http://phantomjs.org/), this shouldn't be considered a substitute for the real thing. Please be sure to test the `test/*.html` unit test file(s) in _actual_ browsers.
+Make sure you have NodeJS 0.10 or higher and npm installed.
 
-## Modifying the code
-First, ensure that you have the latest [Node.js](http://nodejs.org/) and [npm](http://npmjs.org/) installed.
+1. Fork this repository and clone your fork
+1. Install dependencies: `npm install`
+1. Run a development server: `npm start`
 
-Test that Grunt's CLI is installed by running `grunt --version`.  If the command isn't found, run `npm install -g grunt-cli`.  For more information about installing Grunt, see the [getting started guide](http://gruntjs.com/getting-started).
+### Making Changes
 
-1. Fork and clone the repo.
-1. Run `npm install` to install all dependencies (including Grunt).
-1. Run `grunt` to grunt this project.
+Refer to the [video.js plugin standards][standards] for more detail on best practices and tooling for video.js plugin authorship.
 
-Assuming that you don't see any red, you're ready to go. Just be sure to run `grunt` after making any changes, to ensure that nothing is broken.
+When you've made your changes, push your commit(s) to your fork and issue a pull request against the original repository.
 
-## Submitting pull requests
+### Running Tests
 
-1. Create a new branch, please don't work in your `master` branch directly.
-1. Add failing tests for the change you want to make. Run `grunt` to see the tests fail.
-1. Fix stuff.
-1. Run `grunt` to see if the tests pass. Repeat steps 2-4 until done.
-1. Open `test/*.html` unit test file(s) in actual browser to ensure tests pass everywhere.
-1. Update the documentation to reflect any changes.
-1. Push to your fork and submit a pull request.
+Testing is a crucial part of any software project. For all but the most trivial changes (typos, etc) test cases are expected. Tests are run in actual browsers using [Karma][karma].
+
+- In all available and supported browsers: `npm test`
+- In a specific browser: `npm run test:chrome`, `npm run test:firefox`, etc.
+- While development server is running (`npm start`), navigate to [`http://localhost:9999/test/`][local]
+
+
+[karma]: http://karma-runner.github.io/
+[local]: http://localhost:9999/test/
+[standards]: https://github.com/videojs/generator-videojs-plugin/docs/standards.md
+
