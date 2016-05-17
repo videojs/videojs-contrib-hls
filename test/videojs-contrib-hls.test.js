@@ -1643,6 +1643,34 @@ QUnit.test('adds 1 default audio track if we have not parsed any, and the playli
   QUnit.ok(this.player.audioTracks()[0] instanceof HlsAudioTrack, 'audio track is an hls audio track');
 });
 
+QUnit.test('adds 1 default audio track if in flash mode', function() {
+  let hlsOptions = videojs.options.hls;
+
+  this.player.dispose();
+  videojs.options.hls = {
+    mode: 'flash'
+  };
+
+  this.player = createPlayer();
+
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
+
+  openMediaSource(this.player, this.clock);
+
+  // master
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(this.player.audioTracks().length, 1, 'one audio track after load');
+  QUnit.ok(this.player.audioTracks()[0] instanceof HlsAudioTrack, 'audio track is an hls audio track');
+
+  videojs.options.hls = hlsOptions;
+});
+
 QUnit.test('adds audio tracks if we have parsed some from a playlist', function() {
   this.player.src({
     src: 'manifest/multipleAudioGroups.m3u8',
