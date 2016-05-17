@@ -303,6 +303,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.state === 'READY') {
       this.fillBuffer_();
     }
+
+    if (this.checkBufferTimeout_) {
+      window.clearTimeout(this.checkBufferTimeout_);
+    }
+
     this.checkBufferTimeout_ = window.setTimeout(this.monitorBuffer_.bind(this),
                                                  CHECK_BUFFER_DELAY);
   }
