@@ -6,6 +6,7 @@
   "segments": [
     {
       "duration": 2.833,
+      "timeline": 0,
       "key": {
         "method": "AES-128",
         "uri": "https://priv.example.com/key.php?r=52"
@@ -14,6 +15,7 @@
     },
     {
       "duration": 15,
+      "timeline": 0,
       "key": {
         "method": "AES-128",
         "uri": "https://priv.example.com/key.php?r=52"
@@ -22,6 +24,7 @@
     },
     {
       "duration": 13.333,
+      "timeline": 0,
       "key": {
         "method": "AES-128",
         "uri": "https://priv.example.com/key.php?r=52"
@@ -30,6 +33,7 @@
     },
     {
       "duration": 15,
+      "timeline": 0,
       "key": {
         "method": "AES-128",
         "uri": "https://priv.example.com/key.php?r=53"
@@ -38,6 +42,7 @@
     },
     {
       "duration": 14,
+      "timeline": 0,
       "key": {
         "method": "AES-128",
         "uri": "https://priv.example.com/key.php?r=54",
@@ -47,6 +52,7 @@
     },
     {
       "duration": 15,
+      "timeline": 0,
       "uri": "http://media.example.com/fileSequence53-B.ts"
     }
   ],

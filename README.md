@@ -9,6 +9,8 @@ Play back HLS with video.js, even where it's not natively supported.
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Getting Started](#getting-started)
+- [Known Issues](#known-issues)
+  - [IE11](#ie11)
 - [Documentation](#documentation)
   - [Options](#options)
     - [withCredentials](#withcredentials)
@@ -19,6 +21,7 @@ Play back HLS with video.js, even where it's not natively supported.
     - [hls.bandwidth](#hlsbandwidth)
     - [hls.bytesReceived](#hlsbytesreceived)
     - [hls.selectPlaylist](#hlsselectplaylist)
+    - [hls.xhr](#hlsxhr)
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
     - [loadedplaylist](#loadedplaylist)
@@ -43,7 +46,7 @@ and include it in your page along with video.js:
      type="application/x-mpegURL">
 </video>
 <script src="video.js"></script>
-<script src="videojs-hls.min.js"></script>
+<script src="videojs-contrib-hls.min.js"></script>
 <script>
 var player = videojs('example-video');
 player.play();
@@ -51,6 +54,16 @@ player.play();
 ```
 
 Check out our [live example](http://videojs.github.io/videojs-contrib-hls/) if you're having trouble.
+
+## Known Issues
+Issues that are currenty know about with workarounds. If you want to
+help find a solution that would be appreciated!
+
+### IE11
+In some IE11 setups there are issues working with it's native HTML
+SourceBuffers functionality. This leads to various issues, such as
+videos stopping playback with media decode errors. The known workaround
+for this issues is to force the player to use flash when running on IE11.
 
 ## Documentation
 [HTTP Live Streaming](https://developer.apple.com/streaming/) (HLS) has
@@ -88,8 +101,7 @@ are some highlights:
 - mid-segment quality switching
 - AES-128 segment encryption
 - CEA-608 captions are automatically translated into standard HTML5
-  [caption text
-  tracks](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track)
+  [caption text tracks][0]
 - Timed ID3 Metadata is automatically translated into HTML5 metedata
   text tracks
 - Highly customizable adaptive bitrate selection
@@ -97,6 +109,10 @@ are some highlights:
 - Cross-domain credentials support with CORS
 - Tight integration with video.js and a philosophy of exposing as much
   as possible with standard HTML APIs
+- Stream with multiple audio tracks and switching to those audio tracks
+  (see the docs folder) for info
+
+[0]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track
 
 ### Options
 
@@ -105,11 +121,22 @@ initialization. You can pass in options just like you would for other
 parts of video.js:
 
 ```javascript
-videojs(video, {
+// html5 for html hls
+videojs(video, {html5: {
   hls: {
     withCredentials: true
   }
-});
+}});
+
+// or
+
+// flash for flash hls
+videojs(video, {flash: {
+  hls: {
+    withCredentials: true
+  }
+}});
+
 ```
 
 #### withCredentials
@@ -194,6 +221,44 @@ segment is downloaded. You can override this function to provide your
 adaptive streaming logic. You must, however, be sure to return a valid
 media playlist object that is present in `player.hls.master`.
 
+#### hls.xhr
+Type: `function`
+
+The xhr function that is used by HLS internally is exposed on the per-
+player `hls` object. While it is possible, we do not recommend replacing
+the function with your own implementation. Instead, the `xhr` provides
+the ability to specify a `beforeRequest` function that will be called
+with an object containing the options that will be used to create the
+xhr request.
+
+Example:
+```javascript
+player.hls.xhr.beforeRequest = function(options) {
+  options.uri = options.uri.replace('example.com', 'foo.com');
+
+  return options;
+};
+```
+
+The global `videojs.Hls` also exposes an `xhr` property. Specifying a
+`beforeRequest` function on that will allow you to intercept the options
+for *all* requests in every player on a page.
+
+Example
+```javascript
+videojs.Hls.xhr.beforeRequest = function(options) {
+  /*
+   * Modifications to requests that will affect every player.
+   */
+
+  return options;
+};
+```
+
+For information on the type of options that you can modify see the
+documentation at [https://github.com/Raynos/xhr](https://github.com/Raynos/xhr).
+
+
 ### Events
 Standard HTML video events are handled by video.js automatically and
 are triggered on the player object. In addition, there are a couple
@@ -250,26 +315,8 @@ and most CDNs should have no trouble turning CORS on for your account.
 
 ### Testing
 
-For testing, you can either run `npm test` or use `grunt` directly.
-If you use `npm test`, it will only run the karma and end-to-end tests using chrome.
-You can specify which browsers you want the tests to run via grunt's `test` task.
-You can use either grunt-style arguments or comma separated arguments:
-```
-grunt test:chrome:firefox	# grunt-style
-grunt test:chrome,firefox	# comma-separated
-```
-Possible options are:
-* `chromecanary`
-* `phantomjs`
-* `opera`
-* `chrome`<sup>1</sup>
-* `safari`<sup>1, 2</sup>
-* `firefox`<sup>1</sup>
-* `ie`<sup>1</sup>
-
-
-_<sup>1</sup>supported end-to-end browsers_<br />
-_<sup>2</sup>requires the [SafariDriver extension]( https://code.google.com/p/selenium/wiki/SafariDriver) to be installed_
+For testing, you run `npm run test`. This will run tests using any of the
+browsers that karma-detect-browsers detects on your machine.
 
 ## Release History
 Check out the [changelog](CHANGELOG.md) for a summary of each release.

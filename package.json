@@ -1,6 +1,6 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "2.0.1",
+  "version": "2.2.0",
   "description": "Play back HLS with video.js, even where it's not natively supported",
   "main": "es5/videojs-contrib-hls.js",
   "engines": {
@@ -16,7 +16,7 @@
     "build:js": "npm-run-all build:js:babel build:js:browserify build:js:bannerize build:js:uglify",
     "build:js:babel": "babel src -d es5",
     "build:js:bannerize": "bannerize dist/videojs-contrib-hls.js --banner=scripts/banner.ejs",
-    "build:js:browserify": "browserify . -s videojs-contrib-hls -o dist/videojs-contrib-hls.js",
+    "build:js:browserify": "browserify . -s videojs-contrib-hls -t browserify-shim -o dist/videojs-contrib-hls.js",
     "build:js:uglify": "uglifyjs dist/videojs-contrib-hls.js --comments --mangle --compress -o dist/videojs-contrib-hls.min.js",
     "build:test": "npm-run-all build:test:manifest build:test:js",
     "build:test:js": "node scripts/build-test.js",
@@ -28,8 +28,7 @@
     "docs:api": "jsdoc src -r -d docs/api",
     "docs:toc": "doctoc README.md",
     "lint": "vjsstandard",
-    "prestart": "npm-run-all docs build",
-    "start": "npm-run-all -p start:* watch:*",
+    "start": "npm-run-all -p watch start:*",
     "start:serve": "babel-node scripts/server.js",
     "pretest": "npm-run-all lint build",
     "test": "karma start test/karma/detected.js",
@@ -40,7 +39,10 @@
     "preversion": "npm test",
     "version": "npm run build",
     "watch": "npm-run-all -p watch:*",
-    "watch:js": "watchify src/videojs-contrib-hls.js -t babelify -v -o dist/videojs-contrib-hls.js",
+    "watch:docs": "nodemon --watch src/ --exec npm run docs",
+    "watch:js": "npm-run-all -p watch:js:babel watch:js:browserify",
+    "watch:js:babel": "npm run build:js:babel -- --watch",
+    "watch:js:browserify": "watchify . -v -t browserify-shim -o dist/videojs-contrib-hls.js",
     "watch:test": "npm-run-all -p watch:test:*",
     "watch:test:js": "node scripts/watch-test.js",
     "watch:test:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.watch();\"",
@@ -52,11 +54,6 @@
   ],
   "author": "Brightcove, Inc",
   "license": "Apache-2.0",
-  "browserify": {
-    "transform": [
-      "browserify-shim"
-    ]
-  },
   "browserify-shim": {
     "qunit": "global:QUnit",
     "sinon": "global:sinon",
@@ -78,21 +75,19 @@
   },
   "files": [
     "CONTRIBUTING.md",
-    "dist-test/",
     "dist/",
     "docs/",
     "es5/",
     "index.html",
     "scripts/",
     "src/",
-    "test/",
-    "utils/"
+    "test/"
   ],
   "dependencies": {
     "pkcs7": "^0.2.2",
-    "video.js": "^5.2.1",
-    "videojs-contrib-media-sources": "^3.0.0",
-    "videojs-swf": "^5.0.0"
+    "video.js": "^5.10.1",
+    "videojs-contrib-media-sources": "^3.1.0",
+    "videojs-swf": "^5.0.2"
   },
   "devDependencies": {
     "babel": "^5.8.0",
@@ -116,6 +111,7 @@
     "karma-safari-launcher": "^0.1.0",
     "lodash-compat": "^3.10.0",
     "minimist": "^1.2.0",
+    "nodemon": "^1.9.1",
     "npm-run-all": "^1.2.0",
     "portscanner": "^1.0.0",
     "qunitjs": "^1.18.0",

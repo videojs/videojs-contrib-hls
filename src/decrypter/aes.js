@@ -1,5 +1,5 @@
-/*
- * aes.js
+/**
+ * @file decrypter/aes.js
  *
  * This file contains an adaptation of the AES decryption algorithm
  * from the Standford Javascript Cryptography Library. That work is
@@ -96,7 +96,7 @@ let aesTables = null;
  * Schedule out an AES key for both encryption and decryption. This
  * is a low-level class. Use a cipher mode to do bulk encryption.
  *
- * @constructor
+ * @class AES
  * @param key {Array} The key as an array of 4, 6 or 8 words.
  */
 export default class AES {
@@ -184,13 +184,14 @@ export default class AES {
 
   /**
    * Decrypt 16 bytes, specified as four 32-bit words.
-   * @param encrypted0 {number} the first word to decrypt
-   * @param encrypted1 {number} the second word to decrypt
-   * @param encrypted2 {number} the third word to decrypt
-   * @param encrypted3 {number} the fourth word to decrypt
-   * @param out {Int32Array} the array to write the decrypted words
+   *
+   * @param {Number} encrypted0 the first word to decrypt
+   * @param {Number} encrypted1 the second word to decrypt
+   * @param {Number} encrypted2 the third word to decrypt
+   * @param {Number} encrypted3 the fourth word to decrypt
+   * @param {Int32Array} out the array to write the decrypted words
    * into
-   * @param offset {number} the offset into the output array to start
+   * @param {Number} offset the offset into the output array to start
    * writing results
    * @return {Array} The plaintext.
    */

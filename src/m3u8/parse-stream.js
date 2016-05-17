@@ -1,10 +1,15 @@
+/**
+ * @file m3u8/parse-stream.js
+ */
 import Stream from '../stream';
 
-// "forgiving" attribute list psuedo-grammar:
-// attributes -> keyvalue (',' keyvalue)*
-// keyvalue   -> key '=' value
-// key        -> [^=]*
-// value      -> '"' [^"]* '"' | [^,]*
+/**
+ * "forgiving" attribute list psuedo-grammar:
+ * attributes -> keyvalue (',' keyvalue)*
+ * keyvalue   -> key '=' value
+ * key        -> [^=]*
+ * value      -> '"' [^"]* '"' | [^,]*
+ */
 const attributeSeparator = function() {
   let key = '[^=]*';
   let value = '"[^"]*"|[^,]*';
@@ -13,6 +18,11 @@ const attributeSeparator = function() {
   return new RegExp('(?:^|,)(' + keyvalue + ')');
 };
 
+/**
+ * Parse attributes from a line given the seperator
+ *
+ * @param {String} attributes the attibute line to parse
+ */
 const parseAttributes = function(attributes) {
   // split the string using attributes as the separator
   let attrs = attributes.split(attributeSeparator());
@@ -57,6 +67,9 @@ const parseAttributes = function(attributes) {
  * `#EXT-X-MEDIA-SEQUENCE` becomes `media-sequence` when parsed. Unrecognized
  * tags are given the tag type `unknown` and a single additional property
  * `data` with the remainder of the input.
+ *
+ * @class ParseStream
+ * @extends Stream
  */
 export default class ParseStream extends Stream {
   constructor() {
@@ -65,7 +78,8 @@ export default class ParseStream extends Stream {
 
   /**
    * Parses an additional line of input.
-   * @param line {string} a single line of an M3U8 file to parse
+   *
+   * @param {String} line a single line of an M3U8 file to parse
    */
   push(line) {
     let match;
@@ -254,6 +268,18 @@ export default class ParseStream extends Stream {
       this.trigger('data', event);
       return;
     }
+    match = (/^#EXT-X-MEDIA:?(.*)$/).exec(line);
+    if (match) {
+      event = {
+        type: 'tag',
+        tagType: 'media'
+      };
+      if (match[1]) {
+        event.attributes = parseAttributes(match[1]);
+      }
+      this.trigger('data', event);
+      return;
+    }
     match = (/^#EXT-X-ENDLIST/).exec(line);
     if (match) {
       this.trigger('data', {
@@ -280,7 +306,7 @@ export default class ParseStream extends Stream {
         event.attributes = parseAttributes(match[1]);
         // parse the IV string into a Uint32Array
         if (event.attributes.IV) {
-          if (event.attributes.IV.substring(0, 2) === '0x') {
+          if (event.attributes.IV.substring(0, 2).toLowerCase() === '0x') {
             event.attributes.IV = event.attributes.IV.substring(2);
           }
 
