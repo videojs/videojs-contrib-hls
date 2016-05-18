@@ -81,7 +81,9 @@
     "index.html",
     "scripts/",
     "src/",
-    "test/"
+    "test/",
+    "utils",
+    "example"
   ],
   "dependencies": {
     "pkcs7": "^0.2.2",
