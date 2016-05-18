@@ -1,7 +1,7 @@
 /**
  * @file videojs-contrib-hls.js
  *
- * edited
+ * edited test
  *
  * The main file for the HLS project.
  * License: https://github.com/videojs/videojs-contrib-hls/blob/master/LICENSE
