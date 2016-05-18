@@ -2253,8 +2253,6 @@ QUnit.test('Allows overriding the global beforeRequest function', function() {
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, 'one segment request');
 });
 
-
-
 QUnit.module('HLS Integration', {
   beforeEach() {
     this.env = useFakeEnvironment();

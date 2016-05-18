@@ -2,16 +2,13 @@
 
 import document from 'global/document';
 import videojs from 'video.js';
-import Events from 'video.js';
 import QUnit from 'qunit';
-import testDataManifests from './test-manifests.js';
 import {
   useFakeEnvironment,
   useFakeMediaSource,
   createPlayer,
   openMediaSource,
-  standardXHRResponse,
-  absoluteUrl
+  standardXHRResponse
 } from './test-helpers.js';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
@@ -108,11 +105,9 @@ QUnit.module('HLS', {
   }
 });
 QUnit.test('Adaptive seeking skips over gap in firefox with waiting event', function() {
-  let currentTime = 0;
-
   this.player.autoplay(true);
   this.player.buffered = function() {
-    return videojs.createTimeRanges([[0,10],[20,30]]);
+    return videojs.createTimeRanges([[0, 10], [20, 30]]);
   };
   this.player.src({
     src: 'master.m3u8',
@@ -123,7 +118,7 @@ QUnit.test('Adaptive seeking skips over gap in firefox with waiting event', func
   standardXHRResponse(this.requests.shift());
   openMediaSource(this.player, this.clock);
   this.player.tech_.trigger('play');
-  this.player.tech_.trigger('playing')
+  this.player.tech_.trigger('playing');
   this.clock.tick(1);
   this.player.currentTime(10);
   this.player.trigger('waiting');
@@ -132,12 +127,11 @@ QUnit.test('Adaptive seeking skips over gap in firefox with waiting event', func
 });
 
 QUnit.test('Adaptive seeking skips over gap in chrome without waiting event', function() {
-  let currentTime = 0;
   let tempBuffered = this.player.buffered;
 
   this.player.autoplay(true);
   this.player.buffered = function() {
-    return videojs.createTimeRanges([[0,10],[20,30]]);
+    return videojs.createTimeRanges([[0, 10], [20, 30]]);
   };
   this.player.src({
     src: 'master.m3u8',
@@ -161,5 +155,3 @@ QUnit.test('Adaptive seeking skips over gap in chrome without waiting event', fu
   this.player.buffered = tempBuffered;
   this.player.currentTime(0);
 });
-
-
