@@ -2116,8 +2116,6 @@ QUnit.test('Allows overriding the global beforeRequest function', function() {
   delete videojs.Hls.xhr.beforeRequest;
 });
 
-
-
 QUnit.module('HLS Integration', {
   beforeEach() {
     this.env = useFakeEnvironment();
