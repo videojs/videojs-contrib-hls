@@ -43,7 +43,6 @@ QUnit.module('MasterPlaylistController', {
 QUnit.test('throws error when given an empty URL', function() {
   let options = {
     url: 'test',
-    currentTimeFunc: () => {},
     tech: this.player.tech_
   };
 
@@ -108,7 +107,7 @@ QUnit.test('clears some of the buffer for a fast quality change', function() {
   this.masterPlaylistController.selectPlaylist = () => {
     return this.masterPlaylistController.master().playlists[0];
   };
-  this.masterPlaylistController.currentTimeFunc = () => 7;
+  this.masterPlaylistController.tech_.currentTime = () => 7;
 
   this.masterPlaylistController.fastQualityChange_();
 
