@@ -82,8 +82,8 @@
     "scripts/",
     "src/",
     "test/",
-    "utils",
-    "example"
+    "utils/",
+    "examples/"
   ],
   "dependencies": {
     "pkcs7": "^0.2.2",
