@@ -823,7 +823,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   updateTimeline_(segmentInfo) {
     let segment;
-    let updateTime;
+    let segmentEnd;
     let timelineUpdated;
     let segmentLength = this.playlist_.targetDuration;
     let playlist = segmentInfo.playlist;
@@ -836,11 +836,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (segment &&
         segmentInfo &&
         segmentInfo.playlist.uri === this.playlist_.uri) {
-      updateTime = Ranges.findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
+      segmentEnd = Ranges.findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
                                                         this.sourceUpdater_.buffered());
       timelineUpdated = updateSegmentMetadata(playlist,
                                               currentMediaIndex,
-                                              updateTime);
+                                              segmentEnd);
       segmentLength = segment.duration;
     }
 
@@ -850,16 +850,16 @@ export default class SegmentLoader extends videojs.EventTarget {
     // to the buffered time ranges and improves subsequent media
     // index calculations.
     if (!timelineUpdated) {
-      this.timeCorrection_ += segmentLength;
-
       // appends haven't produced any new information for at least 5
       // consecutive segments loads it is time to signal an error
       // and stop
       if (this.timeCorrection_ > this.playlist_.targetDuration * 5) {
         this.timeCorrection_ = 0;
         this.pause();
-        this.trigger('error');
+        return this.trigger('error');
       }
+
+      this.timeCorrection_ += segmentLength;
     } else {
       this.timeCorrection_ = 0;
     }
