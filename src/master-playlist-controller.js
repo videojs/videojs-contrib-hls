@@ -187,9 +187,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         Object.keys(mediaGroups.AUDIO).length === 0 ||
         this.mode_ !== 'html5') {
       // "main" audio group, track name "default"
-      mediaGroups = videojs.mergeOptions(mediaGroups, {AUDIO: {
-        main: {default: {default: true}}}
-      });
+      mediaGroups.AUDIO = {main: {default: {default: true }}};
     }
 
     let tracks = {};
