@@ -150,6 +150,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.pendingSegment_ = null;
     this.sourceUpdater_ = null;
     this.hls_ = settings.hls;
+    this.repeats_ = 0;
   }
 
   /**
@@ -610,6 +611,25 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // trigger an event for other errors
     if (!request.aborted && error) {
+      let ct = this.currentTime_();
+      let cr = Ranges.findRange(this.sourceUpdater_.buffered(),ct);
+      if(cr.end(0)-ct<0.1){
+          this.repeats_++;
+          if(this.repeats_ < 50){
+            var self = this;
+            setTimeout(function () {
+              self.fillBuffer_();
+            },250);
+            return this.trigger('waiting');
+          }
+      }else{
+        var self = this;
+        setTimeout(function () {
+          self.fillBuffer_();
+        },500);
+        return;
+      }
+      this.repeats_ = 0;
       // abort will clear xhr_
       keyXhrRequest = this.xhr_.keyXhr;
       this.abort_();
@@ -625,7 +645,8 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.pause();
       return this.trigger('error');
     }
-
+    this.repeats_ = 0;
+    this.trigger('playing');
     // stop processing if the request was aborted
     if (!request.response) {
       this.abort_();
