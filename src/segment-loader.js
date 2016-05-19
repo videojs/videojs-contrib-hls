@@ -303,6 +303,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.state === 'READY') {
       this.fillBuffer_();
     }
+
+    if (this.checkBufferTimeout_) {
+      window.clearTimeout(this.checkBufferTimeout_);
+    }
+
     this.checkBufferTimeout_ = window.setTimeout(this.monitorBuffer_.bind(this),
                                                  CHECK_BUFFER_DELAY);
   }
@@ -364,8 +369,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (currentBuffered.length === 0) {
       // find the segment containing currentTime
       mediaIndex = getMediaIndexForTime(playlist,
-                                        currentTime,
-                                        this.expired_ + this.timeCorrection_);
+                                        currentTime + this.timeCorrection_,
+                                        this.expired_);
     } else {
       // find the segment adjacent to the end of the current
       // buffered region
@@ -384,8 +389,8 @@ export default class SegmentLoader extends videojs.EventTarget {
         return null;
       }
       mediaIndex = getMediaIndexForTime(playlist,
-                                        currentBufferedEnd,
-                                        this.expired_ + this.timeCorrection_);
+                                        currentBufferedEnd + this.timeCorrection_,
+                                        this.expired_);
     }
 
     if (mediaIndex < 0 || mediaIndex === playlist.segments.length) {
@@ -757,12 +762,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     let currentTime = this.currentTime_();
 
     this.pendingSegment_ = null;
-    // add segment timeline information if we're still using the
-    // same playlist
-    if (segmentInfo && segmentInfo.playlist.uri === this.playlist_.uri) {
-      this.updateTimeline_(segmentInfo);
-      this.trigger('progress');
-    }
+
+    // add segment metadata if it we have gained information during the
+    // last append
+    this.updateTimeline_(segmentInfo);
+    this.trigger('progress');
 
     let currentMediaIndex = segmentInfo.mediaIndex;
 
@@ -819,24 +823,26 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   updateTimeline_(segmentInfo) {
     let segment;
-    let timelineUpdate;
+    let segmentEnd;
+    let timelineUpdated;
+    let segmentLength = this.playlist_.targetDuration;
     let playlist = segmentInfo.playlist;
     let currentMediaIndex = segmentInfo.mediaIndex;
 
     currentMediaIndex += playlist.mediaSequence - this.playlist_.mediaSequence;
     segment = playlist.segments[currentMediaIndex];
 
-    if (!segment) {
-      return;
-    }
-
-    timelineUpdate = Ranges.findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
-                                                          this.sourceUpdater_.buffered());
-
     // Update segment meta-data (duration and end-point) based on timeline
-    let timelineUpdated = updateSegmentMetadata(playlist,
-                                                currentMediaIndex,
-                                                timelineUpdate);
+    if (segment &&
+        segmentInfo &&
+        segmentInfo.playlist.uri === this.playlist_.uri) {
+      segmentEnd = Ranges.findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
+                                                        this.sourceUpdater_.buffered());
+      timelineUpdated = updateSegmentMetadata(playlist,
+                                              currentMediaIndex,
+                                              segmentEnd);
+      segmentLength = segment.duration;
+    }
 
     // the last segment append must have been entirely in the
     // already buffered time ranges. adjust the timeCorrection
@@ -844,7 +850,16 @@ export default class SegmentLoader extends videojs.EventTarget {
     // to the buffered time ranges and improves subsequent media
     // index calculations.
     if (!timelineUpdated) {
-      this.timeCorrection_ -= segment.duration;
+      // appends haven't produced any new information for at least 5
+      // consecutive segments loads it is time to signal an error
+      // and stop
+      if (this.timeCorrection_ > this.playlist_.targetDuration * 5) {
+        this.timeCorrection_ = 0;
+        this.pause();
+        return this.trigger('error');
+      }
+
+      this.timeCorrection_ += segmentLength;
     } else {
       this.timeCorrection_ = 0;
     }
