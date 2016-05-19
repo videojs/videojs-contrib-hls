@@ -379,6 +379,19 @@ export default class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * QA for playback
+   */
+  timeupdate() {
+    let ct = this.tech_.currentTime();
+    let current_tr = Ranges.findRange(this.tech_.buffered(),ct);
+    let next_tr = Ranges.findNextRange(this.tech_.buffered(),ct);
+    let buffer_length = current_tr.end(0)-ct;
+    if(buffer_length<0.1 && next_tr.start(0)-ct<1){
+      this.tech_.setCurrentTime(next_tr.start(0));
+    }
+  }
+
+  /**
    * Seek to the latest media position if this is a live video and the
    * player and video are loaded and initialized.
    */

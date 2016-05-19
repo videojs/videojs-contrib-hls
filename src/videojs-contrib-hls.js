@@ -325,6 +325,7 @@ class HlsHandler extends Component {
     };
 
     this.on(this.tech_, 'play', this.play);
+    this.on(this.tech_, 'timeupdate', this.timeupdate);
   }
 
   /**
@@ -469,6 +470,13 @@ class HlsHandler extends Component {
    */
   play() {
     this.masterPlaylistController_.play();
+  }
+
+  /**
+   * watch playback for QA
+   */
+  timeupdate() {
+    this.masterPlaylistController_.timeupdate();
   }
 
   /**
