@@ -1,6 +1,8 @@
 /**
  * @file videojs-contrib-hls.js
  *
+ * edited test
+ *
  * The main file for the HLS project.
  * License: https://github.com/videojs/videojs-contrib-hls/blob/master/LICENSE
  */
@@ -323,6 +325,7 @@ class HlsHandler extends Component {
     };
 
     this.on(this.tech_, 'play', this.play);
+    this.on(this.tech_, 'timeupdate', this.timeupdate);
   }
 
   /**
@@ -467,6 +470,13 @@ class HlsHandler extends Component {
    */
   play() {
     this.masterPlaylistController_.play();
+  }
+
+  /**
+   * watch playback for QA
+   */
+  timeupdate() {
+    this.masterPlaylistController_.timeupdate();
   }
 
   /**

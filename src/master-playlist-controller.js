@@ -150,8 +150,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       // figure out what stream the next segment should be downloaded from
       // with the updated bandwidth information
       this.masterPlaylistLoader_.media(this.selectPlaylist());
-
       this.trigger('progress');
+    });
+
+    this.mainSegmentLoader_.on('waiting', () => {
+      this.tech_.trigger('waiting');
     });
 
     this.mainSegmentLoader_.on('error', () => {
@@ -376,6 +379,23 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       }
     }
 
+  }
+
+  /**
+   * QA for playback
+   */
+  timeupdate() {
+    let ct = this.tech_.currentTime();
+    if(this.tech_.buffered().length && ct > 0){
+      let current_tr = Ranges.findRange(this.tech_.buffered(),ct);
+      let next_tr = Ranges.findNextRange(this.tech_.buffered(),ct);
+      if(current_tr.length>0 && next_tr.length>0){
+        let buffer_length = current_tr.end(0)-ct;
+        if(buffer_length<0.1 && next_tr.start(0)-ct<1){
+          this.tech_.setCurrentTime(next_tr.start(0));
+        }
+      }
+    }
   }
 
   /**
