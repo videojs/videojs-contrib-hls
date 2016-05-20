@@ -386,12 +386,14 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    */
   timeupdate() {
     let ct = this.tech_.currentTime();
-    if(this.tech_.buffered().length>0){
+    if(this.tech_.buffered().length && ct > 0){
       let current_tr = Ranges.findRange(this.tech_.buffered(),ct);
       let next_tr = Ranges.findNextRange(this.tech_.buffered(),ct);
-      let buffer_length = current_tr.end(0)-ct;
-      if(buffer_length<0.1 && next_tr.start(0)-ct<1){
-        this.tech_.setCurrentTime(next_tr.start(0));
+      if(current_tr.length>0 && next_tr.length>0){
+        let buffer_length = current_tr.end(0)-ct;
+        if(buffer_length<0.1 && next_tr.start(0)-ct<1){
+          this.tech_.setCurrentTime(next_tr.start(0));
+        }
       }
     }
   }
