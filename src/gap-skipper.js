@@ -5,58 +5,60 @@ let gapSkipper;
 let seekingObject;
 
 gapSkipper = function(options) {
-  seekingObject = { player: this,
-                    tech: options.tech,
-                    seeking: false,
-                    consecutiveUpdates: 0,
-                    timer: null,
-                    playerState: null,
-                    lastRecordedTime: null,
-                    adaptiveSeeking: null };
+  this.ready(() => {
+    seekingObject = { player: this,
+                      tech: this.tech_,
+                      seeking: false,
+                      consecutiveUpdates: 0,
+                      timer: null,
+                      playerState: null,
+                      lastRecordedTime: null,
+                      adaptiveSeeking: null };
 
-  // Allows us to mimic a waiting event in chrome
-  seekingObject.player.on('timeupdate', function() {
-    if (seekingObject.player.paused()) {
-      return;
-    }
-    let currentTime = seekingObject.player.currentTime();
-
-    if (seekingObject.consecutiveUpdates === 5 &&
-        currentTime === seekingObject.lastRecordedTime) {
-      // trigger waiting
-      if (seekingObject.playerState !== 'waiting') {
-        seekingObject.consecutiveUpdates = 0;
-        seekingObject.playerState = 'waiting';
-        seekingObject.tech.trigger('adaptive-seeking');
+    // Allows us to mimic a waiting event in chrome
+    seekingObject.player.on('timeupdate', function() {
+      if (seekingObject.player.paused()) {
+        return;
       }
-    } else if (currentTime === seekingObject.lastRecordedTime) {
-      seekingObject.consecutiveUpdates++;
-    } else {
-      seekingObject.consecutiveUpdates = 0;
-      seekingObject.lastRecordedTime = currentTime;
-    }
-  });
+      let currentTime = seekingObject.player.currentTime();
 
-  // Don't listen for waiting while seeking
-  seekingObject.player.on('seeking', function() {
-    seekingObject.seeking = true;
-  });
+      if (seekingObject.consecutiveUpdates === 5 &&
+          currentTime === seekingObject.lastRecordedTime) {
+        // trigger waiting
+        if (seekingObject.playerState !== 'waiting') {
+          seekingObject.consecutiveUpdates = 0;
+          seekingObject.playerState = 'waiting';
+          seekingObject.tech.trigger('adaptive-seeking');
+        }
+      } else if (currentTime === seekingObject.lastRecordedTime) {
+        seekingObject.consecutiveUpdates++;
+      } else {
+        seekingObject.consecutiveUpdates = 0;
+        seekingObject.lastRecordedTime = currentTime;
+      }
+    });
 
-  // Listen for waiting when finished seeking
-  seekingObject.player.on('seeked', function() {
-    seekingObject.seeking = false;
-  });
+    // Don't listen for waiting while seeking
+    seekingObject.player.on('seeking', function() {
+      seekingObject.seeking = true;
+    });
 
-  seekingObject.tech.on('playing', function() {
-    seekingObject.tech.on('waiting', adaptiveSeeking);
-  });
+    // Listen for waiting when finished seeking
+    seekingObject.player.on('seeked', function() {
+      seekingObject.seeking = false;
+    });
 
-  seekingObject.tech.on('adaptive-seeking', adaptiveSeeking);
+    seekingObject.player.on('playing', function() {
+      seekingObject.player.on('waiting', adaptiveSeeking);
+    });
 
-  seekingObject.tech.on('error', function() {
-    if (seekingObject.timer) {
-      clearTimeout(seekingObject.timer);
-    }
+    seekingObject.tech.on('adaptive-seeking', adaptiveSeeking);
+
+    seekingObject.player.on('error', function() {
+      if (seekingObject.timer) {
+        clearTimeout(seekingObject.timer);
+      }
+    });
   });
 };
 
