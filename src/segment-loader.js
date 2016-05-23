@@ -407,22 +407,16 @@ export default class SegmentLoader extends videojs.EventTarget {
                                                           buffered);
 
     if (percentBuffered >= 90) {
-      // Retry the buffered calculation with the next segment if there is another
-      // segment after the currently selected segment
-      if (mediaIndex + 1 < playlist.segments.length) {
-        percentBuffered = this.getSegmentBufferedPercent_(playlist,
-                                                          mediaIndex + 1,
-                                                          currentTime,
-                                                          buffered);
+      // Increment the timeCorrection_ variable to push the fetcher forward
+      // in time and hopefully skip any gaps or flaws in our understanding
+      // of the media
+      this.incrementTimeCorrection_(playlist.targetDuration);
+
+      if (!this.paused()) {
+        this.fillBuffer_();
       }
 
-      // If both checks failed return and don't load anything
-      if (percentBuffered >= 90) {
-        return;
-      }
-
-      // Otherwise, continue with the next segment
-      mediaIndex += 1;
+      return;
     }
 
     segment = playlist.segments[mediaIndex];
@@ -850,18 +844,33 @@ export default class SegmentLoader extends videojs.EventTarget {
     // to the buffered time ranges and improves subsequent media
     // index calculations.
     if (!timelineUpdated) {
-      // appends haven't produced any new information for at least 5
-      // consecutive segments loads it is time to signal an error
-      // and stop
-      if (this.timeCorrection_ > this.playlist_.targetDuration * 5) {
-        this.timeCorrection_ = 0;
-        this.pause();
-        return this.trigger('error');
-      }
-
-      this.timeCorrection_ += segmentLength;
+      this.incrementTimeCorrection_(segmentLength);
     } else {
       this.timeCorrection_ = 0;
     }
+  }
+
+  /**
+   * add a number of seconds to the currentTime when determining which
+   * segment to fetch in order to force the fetcher to advance in cases
+   * where it may get stuck on the same segment due to buffer gaps or
+   * missing segment annotation after a rendition switch (especially
+   * during a live stream)
+   *
+   * @private
+   * @param {Number} secondsToIncrement number of seconds to add to the
+   * timeCorrection_ variable
+   */
+  incrementTimeCorrection_(secondsToIncrement) {
+    // If we have already incremented timeCorrection_ beyond the limit,
+    // then stop trying to find a segment, pause fetching, and emit an
+    // error event
+    if (this.timeCorrection_ >= this.playlist_.targetDuration * 5) {
+      this.timeCorrection_ = 0;
+      this.pause();
+      return this.trigger('error');
+    }
+
+    this.timeCorrection_ += secondsToIncrement;
   }
 }
