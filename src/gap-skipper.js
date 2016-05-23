@@ -19,9 +19,10 @@ gapSkipper = function(options) {
     if (seekingObject.player.paused()) {
       return;
     }
-    let currentTime = player.currentTime();
+    let currentTime = seekingObject.player.currentTime();
 
-    if (seekingObject.consecutiveUpdates === 5 && currentTime === seekingObject.lastRecordedTime) {
+    if (seekingObject.consecutiveUpdates === 5 &&
+        currentTime === seekingObject.lastRecordedTime) {
       // trigger waiting
       if (seekingObject.playerState !== 'waiting') {
         seekingObject.consecutiveUpdates = 0;
