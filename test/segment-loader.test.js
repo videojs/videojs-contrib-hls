@@ -6,6 +6,7 @@ import { useFakeEnvironment, useFakeMediaSource } from './test-helpers.js';
 
 const playlistWithDuration = function(time, conf) {
   let result = {
+    targetDuration: 10,
     mediaSequence: conf && conf.mediaSequence ? conf.mediaSequence : 0,
     discontinuityStarts: [],
     segments: [],
@@ -350,14 +351,7 @@ QUnit.test('never attempt to load a segment that ' +
   sourceBuffer.buffered = videojs.createTimeRanges([[0, 9.2]]);
   sourceBuffer.trigger('updateend');
 
-  // the next segment doesn't increase the buffer at all
-  QUnit.equal(this.requests[0].url, '1.ts', 'requested the next segment');
-  this.clock.tick(1);
-  this.requests[0].response = new Uint8Array(10).buffer;
-  this.requests.shift().respond(200, null, '');
-  sourceBuffer.trigger('updateend');
-
-  // so the loader should try the next segment
+  // the loader should move on to the next segment
   QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 });
 
@@ -396,6 +390,79 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
 
   // so the loader should try the next segment
   QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
+});
+
+QUnit.test('adjusts the playlist offset even when segment.end is set if no' +
+           ' buffering progress is made', function() {
+  let sourceBuffer;
+  let playlist;
+
+  playlist = playlistWithDuration(40);
+  playlist.endList = false;
+  loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
+  loader.load();
+  sourceBuffer = mediaSource.sourceBuffers[0];
+
+  // buffer some content and switch playlists on progress
+  this.clock.tick(1);
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  sourceBuffer.buffered = videojs.createTimeRanges([[0, 5]]);
+  loader.one('progress', function f() {
+    QUnit.equal(playlist.segments[0].end, 5, 'segment.end was set based on the buffer');
+    playlist.segments[0].end = 10;
+  });
+
+  sourceBuffer.trigger('updateend');
+
+  // the next segment doesn't increase the buffer at all
+  QUnit.equal(this.requests[0].url, '0.ts', 'requested the same segment');
+  this.clock.tick(1);
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  sourceBuffer.trigger('updateend');
+
+  // so the loader should try the next segment
+  QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
+});
+
+QUnit.test('adjusts the playlist offset if no buffering progress is made after' +
+           ' five consecutive attempts', function() {
+  let sourceBuffer;
+  let playlist;
+  let errors = 0;
+
+  loader.on('error', () => {
+    errors++;
+  });
+
+  playlist = playlistWithDuration(120);
+  playlist.endList = false;
+  loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
+  loader.load();
+  sourceBuffer = mediaSource.sourceBuffers[0];
+
+  // buffer some content
+  this.clock.tick(1);
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  sourceBuffer.buffered = videojs.createTimeRanges([[0, 10]]);
+  sourceBuffer.trigger('updateend');
+
+  for (let i = 1; i <= 6; i++) {
+    // the next segment doesn't increase the buffer at all
+    QUnit.equal(this.requests[0].url, (i + '.ts'), 'requested the next segment');
+    this.clock.tick(1);
+    this.requests[0].response = new Uint8Array(10).buffer;
+    this.requests.shift().respond(200, null, '');
+    sourceBuffer.trigger('updateend');
+  }
+
+  // so the loader should try the next segment
+  QUnit.equal(errors, 1, 'emitted error');
+  QUnit.ok(loader.paused(), 'loader is paused');
 });
 
 QUnit.test('cancels outstanding requests on abort', function() {
@@ -855,6 +922,7 @@ QUnit.module('Segment Loading Calculation', {
     this.env = useFakeEnvironment();
     this.mse = useFakeMediaSource();
     this.hasPlayed = true;
+    this.clock = this.env.clock;
 
     currentTime = 0;
     loader = new SegmentLoader({
@@ -911,11 +979,17 @@ QUnit.test('does not download the next segment if the buffer is full', function(
 QUnit.test('downloads the next segment if the buffer is getting low', function() {
   let buffered;
   let segmentInfo;
+  let playlist = playlistWithDuration(30);
 
   loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
 
   buffered = videojs.createTimeRanges([[0, 19.999]]);
-  segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(30), 15);
+  segmentInfo = loader.checkBuffer_(buffered, playlist, 15);
+
+  QUnit.equal(segmentInfo, undefined, 'returned undefined');
+
+  segmentInfo = loader.checkBuffer_(buffered, playlist, 15);
 
   QUnit.ok(segmentInfo, 'made a request');
   QUnit.equal(segmentInfo.uri, '2.ts', 'requested the third segment');
@@ -1000,4 +1074,22 @@ QUnit.test('adjusts calculations based on expired time', function() {
 
   QUnit.ok(segmentInfo, 'fetched a segment');
   QUnit.equal(segmentInfo.uri, '2.ts', 'accounted for expired time');
+});
+
+QUnit.test('doesn\'t allow more than one monitor buffer timer to be set', function() {
+  let timeoutCount = this.clock.methods.length;
+
+  loader.mimeType(this.mimeType);
+  loader.monitorBuffer_();
+
+  QUnit.equal(this.clock.methods.length, timeoutCount, 'timeout count remains the same');
+
+  loader.monitorBuffer_();
+
+  QUnit.equal(this.clock.methods.length, timeoutCount, 'timeout count remains the same');
+
+  loader.monitorBuffer_();
+  loader.monitorBuffer_();
+
+  QUnit.equal(this.clock.methods.length, timeoutCount, 'timeout count remains the same');
 });
