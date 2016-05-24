@@ -10,7 +10,7 @@ glob('test/**/*.test.js', function(err, files) {
     plugin: [watchify]
   })
   .transform('babelify')
-  .transform('browserify-shim');
+  .transform('browserify-shim', {global: true});
 
   var bundle = function() {
     b.bundle().pipe(fs.createWriteStream('dist-test/videojs-contrib-hls.js'));
