@@ -984,11 +984,8 @@ QUnit.test('downloads the next segment if the buffer is getting low', function()
   loader.mimeType(this.mimeType);
   loader.playlist(playlist);
 
+  playlist.segments[1].end = 19.999;
   buffered = videojs.createTimeRanges([[0, 19.999]]);
-  segmentInfo = loader.checkBuffer_(buffered, playlist, 15);
-
-  QUnit.equal(segmentInfo, undefined, 'returned undefined');
-
   segmentInfo = loader.checkBuffer_(buffered, playlist, 15);
 
   QUnit.ok(segmentInfo, 'made a request');
