@@ -172,6 +172,20 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.load();
   }
 
+
+  getMediaRequests_() {
+    return this.audioSegmentLoader_.mediaRequests + this.mainSegmentLoader_.mediaRequests;
+  }
+
+  getMediaTransferDuration_() {
+    return this.audioSegmentLoader_.mediaTransferDuration + this.mainSegmentLoader_.mediaTransferDuration;
+
+  }
+
+  getMediaBytesTransferred_() {
+    return this.audioSegmentLoader_.mediaBytesTransferred + this.mainSegmentLoader_.mediaBytesTransferred;
+  }
+
   /**
    * fill our internal list of HlsAudioTracks with data from
    * the master playlist or use a default

@@ -139,6 +139,25 @@ QUnit.test('starts playing if autoplay is specified', function() {
   QUnit.ok(!this.player.paused(), 'not paused');
 });
 
+QUnit.test('stats are reset on each new source', function() {
+  this.player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // make sure play() is called *after* the media source opens
+  openMediaSource(this.player, this.clock);
+  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, 'stat is set');
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 0, 'stat is reset');
+});
+
 QUnit.test('XHR requests first byte range on play', function() {
   this.player.src({
     src: 'manifest/playlist.m3u8',
@@ -361,8 +380,8 @@ QUnit.test('starts downloading a segment on loadedmetadata', function() {
                     'the first segment is requested');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('re-initializes the handler for each source', function() {
@@ -439,8 +458,8 @@ QUnit.test('downloads media playlists after loading the master', function() {
                     'first segment requested');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('upshifts if the initial bandwidth hint is high', function() {
@@ -472,8 +491,8 @@ QUnit.test('upshifts if the initial bandwidth hint is high', function() {
   );
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('downshifts if the initial bandwidth hint is low', function() {
@@ -499,8 +518,8 @@ QUnit.test('downshifts if the initial bandwidth hint is low', function() {
                     'first segment requested');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('buffer checks are noops until a media playlist is ready', function() {
@@ -1471,8 +1490,8 @@ QUnit.test('calling play() at the end of a video replays', function() {
   QUnit.equal(seekTime, 0, 'seeked to the beginning');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('keys are resolved relative to the master playlist', function() {
@@ -1554,8 +1573,8 @@ QUnit.test('seeking should abort an outstanding key request and create a new one
               'urls should match');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('switching playlists with an outstanding key request aborts request and ' +
@@ -1599,8 +1618,8 @@ QUnit.test('switching playlists with an outstanding key request aborts request a
               'http://media.example.com/fileSequence52-A.ts',
               'requested the segment');
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('does not download segments if preload option set to none', function() {
@@ -1979,8 +1998,8 @@ QUnit.test('cleans up the buffer when loading live segments', function() {
                   'remove called with the right range');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('cleans up the buffer based on currentTime when loading a live segment ' +
@@ -2033,8 +2052,8 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
   QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('cleans up the buffer when loading VOD segments', function() {
@@ -2072,8 +2091,8 @@ QUnit.test('cleans up the buffer when loading VOD segments', function() {
   QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('when mediaGroup changes enabled track should not change', function() {
@@ -2230,8 +2249,8 @@ QUnit.test('Allows overriding the global beforeRequest function', function() {
   delete videojs.Hls.xhr.beforeRequest;
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred, 16, 'seen above');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, 'one segment request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, 'seen above');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, 'one segment request');
 });
 
 QUnit.module('HLS Integration', {
@@ -2260,9 +2279,6 @@ QUnit.test('aborts all in-flight work when disposed', function() {
   // media
   standardXHRResponse(this.requests.shift());
 
-  hls.stats.numberOfBytesTransferred = 5;
-  QUnit.notEqual(hls.stats.numberOfBytesTransferred, 0, 'stat is set');
-
   hls.dispose();
   QUnit.ok(this.requests[0].aborted, 'aborted the old segment request');
   hls.mediaSource.sourceBuffers.forEach(sourceBuffer => {
@@ -2270,8 +2286,26 @@ QUnit.test('aborts all in-flight work when disposed', function() {
 
     QUnit.ok(lastUpdate.abort, 'aborted the source buffer');
   });
+});
 
-  QUnit.equal(hls.stats.numberOfBytesTransferred, 0, 'stat is reset');
+QUnit.test('stats are reset on dispose', function() {
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(hls.stats.mediaBytesTransferred, 16, 'stat is set');
+  hls.dispose();
+  QUnit.equal(hls.stats.mediaBytesTransferred, 0, 'stat is reset');
 });
 
 QUnit.test('detects fullscreen and triggers a quality change', function() {
@@ -2341,8 +2375,8 @@ QUnit.test('downloads additional playlists if required', function() {
 
   // verify stats
   QUnit.equal(hls.stats.bandwidth, 3000000, 'default');
-  QUnit.equal(hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('waits to download new segments until the media playlist is stable', function() {
@@ -2382,8 +2416,8 @@ QUnit.test('waits to download new segments until the media playlist is stable', 
 
   // verify stats
   QUnit.equal(hls.stats.bandwidth, Infinity, 'default');
-  QUnit.equal(hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('live playlist starts three target durations before live', function() {
@@ -2497,6 +2531,6 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
   QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 
   // verify stats
-  QUnit.equal(hls.stats.numberOfBytesTransferred, 16, '16 bytes');
-  QUnit.equal(hls.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });

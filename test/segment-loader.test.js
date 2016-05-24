@@ -71,18 +71,10 @@ QUnit.module('Segment Loader', {
       hasPlayed: () => true,
       mediaSource
     });
-    this.env.stats = {};
-    loader.on('stat', (e) => {
-      if (!this.env.stats[e.data.name]) {
-        this.env.stats[e.data.name] = 0;
-      }
-      this.env.stats[e.data.name] += e.data.amount;
-    });
   },
   afterEach() {
     this.env.restore();
     this.mse.restore();
-    this.env.stats = {};
   }
 });
 
@@ -150,9 +142,9 @@ QUnit.test('calling load is idempotent', function() {
   QUnit.equal(this.requests.length, 0, 'load has no effect');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.transferDuration, 100, '100 ms (clock above)');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 100, '100 ms (clock above)');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('calling load should unpause', function() {
@@ -185,9 +177,9 @@ QUnit.test('calling load should unpause', function() {
   QUnit.equal(loader.paused(), false, 'unpaused');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.transferDuration, 1, '1 ms (clock above)');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 1, '1 ms (clock above)');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('regularly checks the buffer while unpaused', function() {
@@ -214,9 +206,9 @@ QUnit.test('regularly checks the buffer while unpaused', function() {
   QUnit.equal(this.requests.length, 1, 'requested another segment');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.transferDuration, 1, '1 ms (clock above)');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 1, '1 ms (clock above)');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('does not check the buffer while paused', function() {
@@ -237,9 +229,9 @@ QUnit.test('does not check the buffer while paused', function() {
   QUnit.equal(this.requests.length, 0, 'did not make a request');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.transferDuration, 1, '1 ms (clock above)');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 1, '1 ms (clock above)');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('calculates bandwidth after downloading a segment', function() {
@@ -254,13 +246,12 @@ QUnit.test('calculates bandwidth after downloading a segment', function() {
 
   QUnit.equal(loader.bandwidth, (10 / 100) * 8 * 1000, 'calculated bandwidth');
   QUnit.equal(loader.roundTrip, 100, 'saves request round trip time');
-  QUnit.equal(loader.bytesReceived, 10, 'saves bytes received');
 
   // TODO: Bandwidth Stat will be stale??
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.transferDuration, 100, '100 ms (clock above)');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 100, '100 ms (clock above)');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('segment request timeouts reset bandwidth', function() {
@@ -294,8 +285,8 @@ QUnit.test('appending a segment triggers progress', function() {
   QUnit.equal(progresses, 1, 'fired progress');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('only requests one segment at a time', function() {
@@ -326,9 +317,9 @@ QUnit.test('only appends one segment at a time', function() {
   QUnit.equal(this.requests.length, 0, 'only made one request');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.transferDuration, 100, '100 ms (clock above)');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 100, '100 ms (clock above)');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('adjusts the playlist offset if no buffering progress is made', function() {
@@ -368,9 +359,9 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
   QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 20, '20 bytes');
-  QUnit.equal(this.env.stats.transferDuration, 2, '2 ms (clocks above)');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 2, '2 requests');
+  QUnit.equal(loader.mediaBytesTransferred, 20, '20 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 2, '2 ms (clocks above)');
+  QUnit.equal(loader.mediaRequests, 2, '2 requests');
 });
 
 QUnit.test('never attempt to load a segment that ' +
@@ -404,9 +395,9 @@ QUnit.test('never attempt to load a segment that ' +
   QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 20, '20 bytes');
-  QUnit.equal(this.env.stats.transferDuration, 2, '2 ms (clocks above)');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 2, '2 requests');
+  QUnit.equal(loader.mediaBytesTransferred, 20, '20 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 2, '2 ms (clocks above)');
+  QUnit.equal(loader.mediaRequests, 2, '2 requests');
 });
 
 QUnit.test('adjusts the playlist offset if no buffering progress is made', function() {
@@ -446,9 +437,9 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
   QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 20, '20 bytes');
-  QUnit.equal(this.env.stats.transferDuration, 2, '2 ms (clocks above)');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 2, '2 requests');
+  QUnit.equal(loader.mediaBytesTransferred, 20, '20 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 2, '2 ms (clocks above)');
+  QUnit.equal(loader.mediaRequests, 2, '2 requests');
 });
 
 QUnit.test('adjusts the playlist offset even when segment.end is set if no' +
@@ -550,8 +541,8 @@ QUnit.test('abort does not cancel segment processing in progress', function() {
   QUnit.equal(loader.state, 'APPENDING', 'still appending');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('sets the timestampOffset on timeline change', function() {
@@ -575,8 +566,8 @@ QUnit.test('sets the timestampOffset on timeline change', function() {
   QUnit.equal(mediaSource.sourceBuffers[0].timestampOffset, 10, 'set timestampOffset');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 20, '20 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 2, '2 requests');
+  QUnit.equal(loader.mediaBytesTransferred, 20, '20 bytes');
+  QUnit.equal(loader.mediaRequests, 2, '2 requests');
 });
 
 QUnit.test('tracks segment end times as they are buffered', function() {
@@ -596,8 +587,8 @@ QUnit.test('tracks segment end times as they are buffered', function() {
   QUnit.equal(playlist.segments[0].end, 9.5, 'updated duration');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('segment 404s should trigger an error', function() {
@@ -657,8 +648,8 @@ QUnit.test('fires ended at the end of a playlist', function() {
   QUnit.equal(endOfStreams, 1, 'triggered ended');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('live playlists do not trigger ended', function() {
@@ -685,8 +676,8 @@ QUnit.test('live playlists do not trigger ended', function() {
   QUnit.equal(endOfStreams, 0, 'did not trigger ended');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('respects the global withCredentials option', function() {
@@ -898,8 +889,8 @@ QUnit.test('the key is saved to the segment in the correct format', function() {
                   'passed the specified segment key');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request was completed');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request was completed');
 });
 
 QUnit.test('supplies media sequence of current segment as the IV by default, if no IV ' +
@@ -932,8 +923,8 @@ function() {
                   'the IV for the segment is the media sequence');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('segment with key has decrypted bytes appended during processing', function() {
@@ -964,8 +955,8 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   QUnit.ok(loader.pendingSegment_.bytes, 'decrypted bytes in segment');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 8, '8 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 8, '8 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('calling load with an encrypted segment waits for both key and segment ' +
@@ -993,8 +984,8 @@ QUnit.test('calling load with an encrypted segment waits for both key and segmen
   QUnit.equal(loader.state, 'DECRYPTING', 'moves to decrypting state');
 
   // verify stats
-  QUnit.equal(this.env.stats.numberOfBytesTransferred, 10, '10 bytes');
-  QUnit.equal(this.env.stats.numberOfMediaRequests, 1, '1 request');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('key request timeouts reset bandwidth', function() {

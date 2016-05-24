@@ -180,8 +180,8 @@ QUnit.test('if buffered, will request second segment byte range', function() {
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 segment request');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred,
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
               16,
               '16 bytes downloaded');
 });
@@ -266,8 +266,8 @@ function() {
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 segment request');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred,
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
               16,
               '16 bytes downloaded');
 });
@@ -413,9 +413,9 @@ QUnit.test('updates the combined segment loader on media changes', function() {
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 segment request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
   QUnit.equal(
-    this.player.tech_.hls.stats.numberOfBytesTransferred,
+    this.player.tech_.hls.stats.mediaBytesTransferred,
     16,
     '16 bytes downloaded');
 });
@@ -478,8 +478,8 @@ QUnit.test('updates the duration after switching playlists', function() {
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfMediaRequests, 1, '1 segment request');
-  QUnit.equal(this.player.tech_.hls.stats.numberOfBytesTransferred,
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
               16,
               '16 bytes downloaded');
 });

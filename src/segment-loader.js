@@ -130,7 +130,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
     this.roundTrip = NaN;
-    this.bytesReceived = 0;
+    this.mediaBytesTransferred = 0;
+    this.mediaRequests = 0;
+    this.mediaTransferDuration = 0;
 
     // private properties
     this.hasPlayed_ = settings.hasPlayed;
@@ -160,6 +162,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.sourceUpdater_) {
       this.sourceUpdater_.dispose();
     }
+    this.mediaBytesTransferred = 0;
+    this.mediaRequests = 0;
+    this.mediaTransferDuration = 0;
   }
 
   /**
@@ -634,32 +639,13 @@ export default class SegmentLoader extends videojs.EventTarget {
       // calculate the download bandwidth based on segment request
       this.roundTrip = request.roundTripTime;
       this.bandwidth = request.bandwidth;
-      this.bytesReceived += request.bytesReceived || 0;
-      this.trigger({
-        type: 'stat',
-        data: {
-          name: 'numberOfBytesTransferred',
-          amount: request.bytesReceived || 0
-        }
-      });
+      this.mediaBytesTransferred += request.bytesReceived || 0;
+      this.mediaRequests += 1;
+      this.mediaTransferDuration += request.roundTripTime || 0;
 
       // if we get this far there are no errors,
       // increment the stat for media requests
-      this.trigger({
-        type: 'stat',
-        data: {
-          name: 'numberOfMediaRequests',
-          amount: 1
-        }
-      });
-
-      this.trigger({
-        type: 'stat',
-        data: {
-          name: 'transferDuration',
-          amount: request.roundTripTime || 0
-        }
-      });
+      this.trigger('mediarequestcomplete');
 
       if (segment.key) {
         segmentInfo.encryptedBytes = new Uint8Array(request.response);
