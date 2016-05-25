@@ -759,6 +759,9 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   handleUpdateEnd_() {
+    if (this.state === 'DISPOSED' || this.pendingSegment_ === null) {
+      return false
+    }
     let segmentInfo = this.pendingSegment_;
     let currentTime = this.currentTime_();
 
