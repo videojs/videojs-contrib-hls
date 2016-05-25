@@ -188,17 +188,16 @@ const bufferIntersection = function(bufferA, bufferB) {
  * @param {TimeRanges} buffered - the currently buffered time ranges
  * @returns {Number} percent of the segment currently buffered
  */
-const calculateBufferedPercent = function(segmentRange, buffered) {
+const calculateBufferedPercent = function(segmentRange, referenceRange, buffered) {
+  let referenceDuration = referenceRange.end(0) - referenceRange.start(0);
   let segmentDuration = segmentRange.end(0) - segmentRange.start(0);
   let intersection = bufferIntersection(segmentRange, buffered);
-  let overlapDuration = 0;
   let count = intersection.length;
 
   while (count--) {
-    overlapDuration += intersection.end(count) - intersection.start(count);
+    segmentDuration -= intersection.end(count) - intersection.start(count);
   }
-
-  return (overlapDuration / segmentDuration) * 100;
+  return (referenceDuration - segmentDuration) / referenceDuration * 100;
 };
 
 export default {

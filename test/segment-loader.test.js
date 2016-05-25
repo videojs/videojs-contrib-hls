@@ -428,8 +428,8 @@ QUnit.test('adjusts the playlist offset even when segment.end is set if no' +
   QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 });
 
-QUnit.test('adjusts the playlist offset if no buffering progress is made after' +
-           ' five consecutive attempts', function() {
+QUnit.test('adjusts the playlist offset if no buffering progress is made after ' +
+           'several consecutive attempts', function() {
   let sourceBuffer;
   let playlist;
   let errors = 0;
@@ -452,7 +452,7 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made after' 
   sourceBuffer.buffered = videojs.createTimeRanges([[0, 10]]);
   sourceBuffer.trigger('updateend');
 
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 5; i++) {
     // the next segment doesn't increase the buffer at all
     QUnit.equal(this.requests[0].url, (i + '.ts'), 'requested the next segment');
     this.clock.tick(1);
@@ -460,10 +460,8 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made after' 
     this.requests.shift().respond(200, null, '');
     sourceBuffer.trigger('updateend');
   }
-
-  // so the loader should try the next segment
-  QUnit.equal(errors, 1, 'emitted error');
-  QUnit.ok(loader.paused(), 'loader is paused');
+  this.clock.tick(1);
+  QUnit.equal(this.requests.length, 0, 'no more requests are made');
 });
 
 QUnit.test('cancels outstanding requests on abort', function() {
@@ -1102,4 +1100,150 @@ QUnit.test('doesn\'t allow more than one monitor buffer timer to be set', functi
   loader.monitorBuffer_();
 
   QUnit.equal(this.clock.methods.length, timeoutCount, 'timeout count remains the same');
+});
+
+QUnit.module('Segment Percent Buffered Calculations', {
+  beforeEach() {
+    this.env = useFakeEnvironment();
+    this.mse = useFakeMediaSource();
+    this.hasPlayed = true;
+    this.clock = this.env.clock;
+
+    currentTime = 0;
+    loader = new SegmentLoader({
+      currentTime() {
+        return currentTime;
+      },
+      mediaSource: new videojs.MediaSource(),
+      hasPlayed: () => this.hasPlayed
+    });
+  },
+  afterEach() {
+    this.env.restore();
+    this.mse.restore();
+  }
+});
+
+QUnit.test('calculates the percent buffered for segments', function() {
+  let playlist = playlistWithDuration(30);
+
+  loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
+
+  let buffered = videojs.createTimeRanges([[15, 19]]);
+  let percentBuffered = loader.getSegmentBufferedPercent_(playlist, 1, 0, buffered);
+
+  QUnit.equal(percentBuffered, 40, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments taking into account ' +
+           'currentTime', function() {
+  let playlist = playlistWithDuration(30);
+
+  loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
+
+  let buffered = videojs.createTimeRanges([[15, 19]]);
+  let percentBuffered = loader.getSegmentBufferedPercent_(playlist, 1, 15, buffered);
+
+  QUnit.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments with multiple buffered ' +
+           'regions', function() {
+  let playlist = playlistWithDuration(30);
+
+  loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
+
+  let buffered = videojs.createTimeRanges([[0, 11], [12, 19]]);
+  let percentBuffered = loader.getSegmentBufferedPercent_(playlist, 1, 0, buffered);
+
+  QUnit.equal(percentBuffered, 80, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments with multiple buffered ' +
+           'regions taking into account currentTime', function() {
+  let playlist = playlistWithDuration(30);
+
+  loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
+
+  let buffered = videojs.createTimeRanges([[0, 11], [12, 19]]);
+  let percentBuffered = loader.getSegmentBufferedPercent_(playlist, 1, 12, buffered);
+
+  QUnit.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments based on segment.end', function() {
+  let playlist = playlistWithDuration(30);
+
+  loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
+
+  playlist.segments[1].end = 19;
+
+  let buffered = videojs.createTimeRanges([[0, 19]]);
+  let percentBuffered = loader.getSegmentBufferedPercent_(playlist, 1, 0, buffered);
+
+  QUnit.equal(percentBuffered, 100, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments based on segment.end taking ' +
+           'into account currentTime', function() {
+  let playlist = playlistWithDuration(30);
+
+  loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
+
+  playlist.segments[1].end = 19;
+
+  let buffered = videojs.createTimeRanges([[11, 20]]);
+  let percentBuffered = loader.getSegmentBufferedPercent_(playlist, 1, 11, buffered);
+
+  QUnit.equal(percentBuffered, 100, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments based on segment.end with ' +
+           'multiple buffered regions', function() {
+  let playlist = playlistWithDuration(30);
+
+  loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
+
+  playlist.segments[1].end = 19;
+
+  let buffered = videojs.createTimeRanges([[0, 10], [12, 20]]);
+  let percentBuffered = loader.getSegmentBufferedPercent_(playlist, 1, 0, buffered);
+
+  QUnit.equal(percentBuffered, 80, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments based on segment.end with ' +
+           'multiple buffered regions taking into account currentTime', function() {
+  let playlist = playlistWithDuration(30);
+
+  loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
+
+  playlist.segments[1].end = 19;
+
+  let buffered = videojs.createTimeRanges([[0, 10], [12, 20]]);
+  let percentBuffered = loader.getSegmentBufferedPercent_(playlist, 1, 12, buffered);
+
+  QUnit.equal(percentBuffered, 100, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered as 0 for zero-length segments', function() {
+  let playlist = playlistWithDuration(30);
+
+  loader.mimeType(this.mimeType);
+  loader.playlist(playlist);
+
+  playlist.segments[1].duration = 0;
+
+  let buffered = videojs.createTimeRanges([[0, 19]]);
+  let percentBuffered = loader.getSegmentBufferedPercent_(playlist, 1, 0, buffered);
+
+  QUnit.equal(percentBuffered, 0, 'calculated the buffered amount correctly');
 });
