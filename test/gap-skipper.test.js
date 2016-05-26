@@ -1,5 +1,3 @@
-/* eslint-disable max-len */
-
 import document from 'global/document';
 import videojs from 'video.js';
 import QUnit from 'qunit';
