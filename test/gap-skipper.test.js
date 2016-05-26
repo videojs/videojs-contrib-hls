@@ -45,7 +45,8 @@ QUnit.test('Adaptive seeking skips over gap in firefox with waiting event', func
   this.player.currentTime(10);
   this.player.trigger('waiting');
   this.clock.tick(12000);
-  QUnit.equal(Math.round(this.player.currentTime()), 20, 'Player seeked over gap after timer');
+  QUnit.equal(Math.round(this.player.currentTime()),
+    20, 'Player seeked over gap after timer');
 });
 
 QUnit.test('Adaptive seeking skips over gap in chrome without waiting event', function() {
@@ -73,7 +74,8 @@ QUnit.test('Adaptive seeking skips over gap in chrome without waiting event', fu
   this.clock.tick(2000);
   QUnit.equal(this.player.currentTime(), 10, 'Player doesnt seek over gap pre-timer');
   this.clock.tick(10000);
-  QUnit.equal(Math.round(this.player.currentTime()), 20, 'Player seeked over gap after timer');
+  QUnit.equal(Math.round(this.player.currentTime()),
+    20, 'Player seeked over gap after timer');
   this.player.buffered = tempBuffered;
   this.player.currentTime(0);
 });
