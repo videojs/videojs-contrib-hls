@@ -11,10 +11,6 @@ import Config from './config';
 // in ms
 const CHECK_BUFFER_DELAY = 500;
 
-const clamp = function(num, [start, end]) {
-  return Math.min(Math.max(start, num), end);
-};
-
 /**
  * Updates segment with information about its end-point in time and, optionally,
  * the segment duration if we have enough information to determine a segment duration
@@ -317,59 +313,6 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
-   * Return the amount of a segment specified by the mediaIndex overlaps
-   * the current buffered content.
-   *
-   * @param {Object} playlist the playlist object to fetch segments from
-   * @param {Number} mediaIndex the index of the segment in the playlist
-   * @param {TimeRanges} buffered the state of the buffer
-   * @returns {Number} percentage of the segment's time range that is
-   * already in `buffered`
-   */
-  getSegmentBufferedPercent_(playlist, mediaIndex, currentTime, buffered) {
-    let segment = playlist.segments[mediaIndex];
-    let startOfSegment = duration(playlist,
-                                  playlist.mediaSequence + mediaIndex,
-                                  this.expired_);
-    let endOfSegment = startOfSegment + segment.duration;
-
-    // The entire time range of the segment
-    let originalSegmentRange = videojs.createTimeRanges([[
-      startOfSegment,
-      endOfSegment
-    ]]);
-
-    // The adjusted segment time range that is setup such that it starts
-    // no earlier than currentTime
-    // Flash has no notion of a back-buffer so adjustedSegmentRange adjusts
-    // for that and the function will still return 100% if a only half of a
-    // segment is actually in the buffer as long as the currentTime is also
-    // half-way through the segment
-    let adjustedSegmentRange = videojs.createTimeRanges([[
-      clamp(startOfSegment, [currentTime, endOfSegment]),
-      endOfSegment
-    ]]);
-
-    // This condition happens when the currentTime is beyond the segment's
-    // end time
-    if (adjustedSegmentRange.start(0) === adjustedSegmentRange.end(0)) {
-      return 0;
-    }
-
-    let percent = Ranges.calculateBufferedPercent(adjustedSegmentRange,
-                                                  originalSegmentRange,
-                                                  buffered);
-
-    // If the segment is reported as having a zero duration, return 0%
-    // since it is likely that we will need to fetch the segment
-    if (isNaN(percent) || percent === Infinity || percent === -Infinity) {
-      return 0;
-    }
-
-    return percent;
-  }
-
-  /**
    * Determines what segment request should be made, given current
    * playback state.
    *
@@ -428,11 +371,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     if (mediaIndex < 0 || mediaIndex === playlist.segments.length) {
-      return null;
-    }
-
-    if (mediaIndex === playlist.segments.length - 1 &&
-        this.mediaSource_.readyState === 'ended') {
       return null;
     }
 
@@ -512,12 +450,23 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
+    if (request.mediaIndex === this.playlist_.segments.length - 1 &&
+        this.mediaSource_.readyState === 'ended' &&
+        !this.seeking_()) {
+      return;
+    }
+
+    let segment = this.playlist_.segments[request.mediaIndex];
+    let startOfSegment = duration(this.playlist_,
+                                  this.playlist_.mediaSequence + request.mediaIndex,
+                                  this.expired_);
+
     // Sanity check the segment-index determining logic by calcuating the
     // percentage of the chosen segment that is buffered. If more than 90%
     // of the segment is buffered then fetching it will likely not help in
     // any way
-    let percentBuffered = this.getSegmentBufferedPercent_(this.playlist_,
-                                                          request.mediaIndex,
+    let percentBuffered = Ranges.getSegmentBufferedPercent(startOfSegment,
+                                                          segment.duration,
                                                           this.currentTime_(),
                                                           this.sourceUpdater_.buffered());
 
@@ -908,6 +857,8 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    * @param {Number} secondsToIncrement number of seconds to add to the
    * timeCorrection_ variable
+   * @param {Number} maxSegmentsToWalk maximum number of times we allow this
+   * function to walk forward
    */
   incrementTimeCorrection_(secondsToIncrement, maxSegmentsToWalk) {
     // If we have already incremented timeCorrection_ beyond the limit,

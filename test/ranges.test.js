@@ -91,3 +91,78 @@ QUnit.test('detects time range end-point changed by updates', function() {
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 11]]), null);
   QUnit.strictEqual(edge, null, 'treat null update buffer as an empty TimeRanges object');
 });
+
+QUnit.module('Segment Percent Buffered Calculations');
+
+QUnit.test('calculates the percent buffered for segments', function() {
+  let segmentStart = 10;
+  let segmentDuration = 10;
+  let currentTime = 0;
+  let buffered = videojs.createTimeRanges([[15, 19]]);
+  let percentBuffered = Ranges.getSegmentBufferedPercent(
+    segmentStart,
+    segmentDuration,
+    currentTime,
+    buffered);
+
+  QUnit.equal(percentBuffered, 40, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments taking into account ' +
+           'currentTime', function() {
+  let segmentStart = 10;
+  let segmentDuration = 10;
+  let currentTime = 15;
+  let buffered = videojs.createTimeRanges([[15, 19]]);
+  let percentBuffered = Ranges.getSegmentBufferedPercent(
+    segmentStart,
+    segmentDuration,
+    currentTime,
+    buffered);
+
+  QUnit.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments with multiple buffered ' +
+           'regions', function() {
+  let segmentStart = 10;
+  let segmentDuration = 10;
+  let currentTime = 0;
+  let buffered = videojs.createTimeRanges([[0, 11], [12, 19]]);
+  let percentBuffered = Ranges.getSegmentBufferedPercent(
+    segmentStart,
+    segmentDuration,
+    currentTime,
+    buffered);
+
+  QUnit.equal(percentBuffered, 80, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments with multiple buffered ' +
+           'regions taking into account currentTime', function() {
+  let segmentStart = 10;
+  let segmentDuration = 10;
+  let currentTime = 12;
+  let buffered = videojs.createTimeRanges([[0, 11], [12, 19]]);
+  let percentBuffered = Ranges.getSegmentBufferedPercent(
+    segmentStart,
+    segmentDuration,
+    currentTime,
+    buffered);
+
+  QUnit.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered as 0 for zero-length segments', function() {
+  let segmentStart = 10;
+  let segmentDuration = 0;
+  let currentTime = 0;
+  let buffered = videojs.createTimeRanges([[0, 19]]);
+  let percentBuffered = Ranges.getSegmentBufferedPercent(
+    segmentStart,
+    segmentDuration,
+    currentTime,
+    buffered);
+
+  QUnit.equal(percentBuffered, 0, 'calculated the buffered amount correctly');
+});

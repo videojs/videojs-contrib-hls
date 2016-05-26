@@ -292,3 +292,38 @@ export const absoluteUrl = function(relativeUrl) {
         .join('/')
     );
 };
+
+export const playlistWithDuration = function(time, conf) {
+  let result = {
+    targetDuration: 10,
+    mediaSequence: conf && conf.mediaSequence ? conf.mediaSequence : 0,
+    discontinuityStarts: [],
+    segments: [],
+    endList: true
+  };
+  let count = Math.floor(time / 10);
+  let remainder = time % 10;
+  let i;
+  let isEncrypted = conf && conf.isEncrypted;
+
+  for (i = 0; i < count; i++) {
+    result.segments.push({
+      uri: i + '.ts',
+      resolvedUri: i + '.ts',
+      duration: 10
+    });
+    if (isEncrypted) {
+      result.segments[i].key = {
+        uri: i + '-key.php',
+        resolvedUri: i + '-key.php'
+      };
+    }
+  }
+  if (remainder) {
+    result.segments.push({
+      uri: i + '.ts',
+      duration: remainder
+    });
+  }
+  return result;
+};

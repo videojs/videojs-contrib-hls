@@ -10,6 +10,16 @@ import videojs from 'video.js';
 // Fudge factor to account for TimeRanges rounding
 const TIME_FUDGE_FACTOR = 1 / 30;
 
+/**
+ * Clamps a value to within a range
+ * @param {Number} num - the value to clamp
+ * @param {Number} start - the start of the range to clamp within, inclusive
+ * @param {Number} end - the end of the range to clamp within, inclusive
+ * @return {Number}
+ */
+const clamp = function(num, [start, end]) {
+  return Math.min(Math.max(start, num), end);
+};
 const filterRanges = function(timeRanges, predicate) {
   let results = [];
   let i;
@@ -184,7 +194,10 @@ const bufferIntersection = function(bufferA, bufferB) {
 /**
  * Calculates the percentage of `segmentRange` that overlaps the
  * `buffered` time ranges.
- * @param {TimeRanges} segmentRange - the time range that the segment covers
+ * @param {TimeRanges} segmentRange - the time range that the segment
+ * covers adjusted according to currentTime
+ * @param {TimeRanges} referenceRange - the original time range that the
+ * segment covers
  * @param {TimeRanges} buffered - the currently buffered time ranges
  * @returns {Number} percent of the segment currently buffered
  */
@@ -200,10 +213,62 @@ const calculateBufferedPercent = function(segmentRange, referenceRange, buffered
   return (referenceDuration - segmentDuration) / referenceDuration * 100;
 };
 
+/**
+ * Return the amount of a segment specified by the mediaIndex overlaps
+ * the current buffered content.
+ *
+ * @param {Number} startOfSegment - the time where the segment begins
+ * @param {Number} segmentDuration - the duration of the segment in seconds
+ * @param {TimeRanges} buffered - the state of the buffer
+ * @returns {Number} percentage of the segment's time range that is
+ * already in `buffered`
+ */
+const getSegmentBufferedPercent = function(startOfSegment,
+                                           segmentDuration,
+                                           currentTime,
+                                           buffered) {
+  let endOfSegment = startOfSegment + segmentDuration;
+
+  // The entire time range of the segment
+  let originalSegmentRange = videojs.createTimeRanges([[
+    startOfSegment,
+    endOfSegment
+  ]]);
+
+  // The adjusted segment time range that is setup such that it starts
+  // no earlier than currentTime
+  // Flash has no notion of a back-buffer so adjustedSegmentRange adjusts
+  // for that and the function will still return 100% if a only half of a
+  // segment is actually in the buffer as long as the currentTime is also
+  // half-way through the segment
+  let adjustedSegmentRange = videojs.createTimeRanges([[
+    clamp(startOfSegment, [currentTime, endOfSegment]),
+    endOfSegment
+  ]]);
+
+  // This condition happens when the currentTime is beyond the segment's
+  // end time
+  if (adjustedSegmentRange.start(0) === adjustedSegmentRange.end(0)) {
+    return 0;
+  }
+
+  let percent = calculateBufferedPercent(adjustedSegmentRange,
+                                         originalSegmentRange,
+                                         buffered);
+
+  // If the segment is reported as having a zero duration, return 0%
+  // since it is likely that we will need to fetch the segment
+  if (isNaN(percent) || percent === Infinity || percent === -Infinity) {
+    return 0;
+  }
+
+  return percent;
+};
+
 export default {
   findRange,
   findNextRange,
   findSoleUncommonTimeRangesEnd,
-  calculateBufferedPercent,
+  getSegmentBufferedPercent,
   TIME_FUDGE_FACTOR
 };
