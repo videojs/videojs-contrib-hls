@@ -474,7 +474,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       // Increment the timeCorrection_ variable to push the fetcher forward
       // in time and hopefully skip any gaps or flaws in our understanding
       // of the media
-      let correctionApplied = this.incrementTimeCorrection_(this.playlist_.targetDuration, 1);
+      let correctionApplied = this.incrementTimeCorrection_(this.playlist_.targetDuration / 2, 1);
 
       if (correctionApplied && !this.paused()) {
         this.fillBuffer_();
