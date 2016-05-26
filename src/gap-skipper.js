@@ -24,7 +24,7 @@ const gapSkipper = function() {
             seekingObject.timer = setTimeout(function() {
               if (seekingObject.player.currentTime() === currentTime) {
                 // only seek if we still have not played
-                seekingObject.player.currentTime(nextRange.start(0));
+                seekingObject.player.currentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
                 seekingObject.playerState = 'playing';
               }
             }, difference * 1000);
