@@ -1,4 +1,3 @@
-import document from 'global/document';
 import videojs from 'video.js';
 import QUnit from 'qunit';
 import {
@@ -72,7 +71,7 @@ QUnit.test('Adaptive seeking skips over gap in chrome without waiting event', fu
     this.player.trigger('timeupdate');
   }
   this.clock.tick(2000);
-  QUnit.equal(this.player.currentTime(), 10, 'Player does not seek over gap before timer');
+  QUnit.equal(this.player.currentTime(), 10, 'Player doesnt seek over gap pre-timer');
   this.clock.tick(10000);
   QUnit.equal(this.player.currentTime(), 20, 'Player seeked over gap after timer');
   this.player.buffered = tempBuffered;
