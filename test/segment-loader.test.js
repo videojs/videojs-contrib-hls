@@ -395,9 +395,9 @@ QUnit.test('never attempt to load a segment that ' +
   QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 
   // verify stats
-  QUnit.equal(loader.mediaBytesTransferred, 20, '20 bytes');
-  QUnit.equal(loader.mediaTransferDuration, 2, '2 ms (clocks above)');
-  QUnit.equal(loader.mediaRequests, 2, '2 requests');
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaTransferDuration, 1, '1 ms (clocks above)');
+  QUnit.equal(loader.mediaRequests, 1, '1 requests');
 });
 
 QUnit.test('adjusts the playlist offset if no buffering progress is made', function() {

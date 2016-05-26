@@ -14,6 +14,7 @@ import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from './m3u8';
 import videojs from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
+import Config from './config';
 
 /**
  * determine if an object a is differnt from
@@ -373,18 +374,11 @@ class HlsHandler extends Component {
     }
     this.setOptions_();
     // add master playlist controller options
-    this.resetStats_();
     this.options_.url = this.source_.src;
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
 
-    this.masterPlaylistController_.on('stat', (e) => {
-      if (!this.stats[e.data.name]) {
-        this.stats[e.data.name] = 0;
-      }
-      this.stats[e.data.name] += e.data.amount;
-    });
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
     this.masterPlaylistController_.selectPlaylist =
@@ -420,13 +414,13 @@ class HlsHandler extends Component {
       get: () => this.bandwidth || 0
     });
     Object.defineProperty(this.stats, 'mediaRequests', {
-      get: () => this.masterPlaylistController_.getMediaRequests_() || 0
+      get: () => this.masterPlaylistController_.mediaRequests_() || 0
     });
     Object.defineProperty(this.stats, 'mediaTransferDuration', {
-      get: () => this.masterPlaylistController_.getMediaTransferDuration_() || 0
+      get: () => this.masterPlaylistController_.mediaTransferDuration_() || 0
     });
     Object.defineProperty(this.stats, 'mediaBytesTransferred', {
-      get: () => this.masterPlaylistController_.getMediaBytesTransferred_() || 0
+      get: () => this.masterPlaylistController_.mediaBytesTransferred_() || 0
     });
 
     this.tech_.one('canplay',

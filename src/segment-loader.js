@@ -6,6 +6,7 @@ import {getMediaIndexForTime_ as getMediaIndexForTime, duration} from './playlis
 import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import {Decrypter} from './decrypter';
+import Config from './config';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -130,9 +131,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
     this.roundTrip = NaN;
-    this.mediaBytesTransferred = 0;
-    this.mediaRequests = 0;
-    this.mediaTransferDuration = 0;
+    this.resetStats_();
 
     // private properties
     this.hasPlayed_ = settings.hasPlayed;
@@ -154,6 +153,17 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
+   * reset all of our media stats
+   *
+   * @private
+   */
+  resetStats_() {
+    this.mediaBytesTransferred = 0;
+    this.mediaRequests = 0;
+    this.mediaTransferDuration = 0;
+  }
+
+  /**
    * dispose of the SegmentLoader and reset to the default state
    */
   dispose() {
@@ -162,9 +172,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.sourceUpdater_) {
       this.sourceUpdater_.dispose();
     }
-    this.mediaBytesTransferred = 0;
-    this.mediaRequests = 0;
-    this.mediaTransferDuration = 0;
+    this.resetStats_();
   }
 
   /**
@@ -642,10 +650,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.mediaBytesTransferred += request.bytesReceived || 0;
       this.mediaRequests += 1;
       this.mediaTransferDuration += request.roundTripTime || 0;
-
-      // if we get this far there are no errors,
-      // increment the stat for media requests
-      this.trigger('mediarequestcomplete');
 
       if (segment.key) {
         segmentInfo.encryptedBytes = new Uint8Array(request.response);

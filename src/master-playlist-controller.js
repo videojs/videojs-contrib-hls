@@ -86,9 +86,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       throw new Error('A non-empty playlist URL is required');
     }
 
-    this.mainSegmentLoader_.on('stat', (e) => this.trigger(e));
-    this.audioSegmentLoader_.on('stat', (e) => this.trigger(e));
-
     this.masterPlaylistLoader_ = new PlaylistLoader(url, this.hls_, this.withCredentials);
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
@@ -172,18 +169,38 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.load();
   }
 
-
-  getMediaRequests_() {
-    return this.audioSegmentLoader_.mediaRequests + this.mainSegmentLoader_.mediaRequests;
+  /**
+   * get the total number of media requests from the `audiosegmentloader_`
+   * and the `mainSegmentLoader_`
+   *
+   * @private
+   */
+  mediaRequests_() {
+    return this.audioSegmentLoader_.mediaRequests +
+           this.mainSegmentLoader_.mediaRequests;
   }
 
-  getMediaTransferDuration_() {
-    return this.audioSegmentLoader_.mediaTransferDuration + this.mainSegmentLoader_.mediaTransferDuration;
+  /**
+   * get the total time that media requests have spent trnasfering
+   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
+   *
+   * @private
+   */
+  mediaTransferDuration_() {
+    return this.audioSegmentLoader_.mediaTransferDuration +
+           this.mainSegmentLoader_.mediaTransferDuration;
 
   }
 
-  getMediaBytesTransferred_() {
-    return this.audioSegmentLoader_.mediaBytesTransferred + this.mainSegmentLoader_.mediaBytesTransferred;
+  /**
+   * get the total number of bytes transfered during media requests
+   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
+   *
+   * @private
+   */
+  mediaBytesTransferred_() {
+    return this.audioSegmentLoader_.mediaBytesTransferred +
+           this.mainSegmentLoader_.mediaBytesTransferred;
   }
 
   /**
@@ -367,7 +384,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     if (media !== this.masterPlaylistLoader_.media()) {
       this.masterPlaylistLoader_.media(media);
-      this.mainSegmentLoader_.sourceUpdater_.remove(this.tech_.currentTime() + 5, Infinity);
+      this.mainSegmentLoader_.sourceUpdater_.remove(this.tech_.currentTime() + 5,
+                                                    Infinity);
     }
   }
 
