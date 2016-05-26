@@ -98,7 +98,7 @@ QUnit.test('calculates the percent buffered for segments', function() {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 0;
-  let buffered = videojs.createTimeRanges([[15, 19]]);
+  let buffered = createTimeRanges([[15, 19]]);
   let percentBuffered = Ranges.getSegmentBufferedPercent(
     segmentStart,
     segmentDuration,
@@ -113,7 +113,7 @@ QUnit.test('calculates the percent buffered for segments taking into account ' +
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 15;
-  let buffered = videojs.createTimeRanges([[15, 19]]);
+  let buffered = createTimeRanges([[15, 19]]);
   let percentBuffered = Ranges.getSegmentBufferedPercent(
     segmentStart,
     segmentDuration,
@@ -128,7 +128,7 @@ QUnit.test('calculates the percent buffered for segments with multiple buffered 
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 0;
-  let buffered = videojs.createTimeRanges([[0, 11], [12, 19]]);
+  let buffered = createTimeRanges([[0, 11], [12, 19]]);
   let percentBuffered = Ranges.getSegmentBufferedPercent(
     segmentStart,
     segmentDuration,
@@ -143,7 +143,7 @@ QUnit.test('calculates the percent buffered for segments with multiple buffered 
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 12;
-  let buffered = videojs.createTimeRanges([[0, 11], [12, 19]]);
+  let buffered = createTimeRanges([[0, 11], [12, 19]]);
   let percentBuffered = Ranges.getSegmentBufferedPercent(
     segmentStart,
     segmentDuration,
@@ -157,7 +157,7 @@ QUnit.test('calculates the percent buffered as 0 for zero-length segments', func
   let segmentStart = 10;
   let segmentDuration = 0;
   let currentTime = 0;
-  let buffered = videojs.createTimeRanges([[0, 19]]);
+  let buffered = createTimeRanges([[0, 19]]);
   let percentBuffered = Ranges.getSegmentBufferedPercent(
     segmentStart,
     segmentDuration,
