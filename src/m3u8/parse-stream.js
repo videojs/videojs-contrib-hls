@@ -130,7 +130,7 @@ export default class ParseStream extends Stream {
         tagType: 'inf'
       };
       if (match[1]) {
-        event.duration = Math.max(0.01, parseFloat(match[1]));
+        event.duration = parseFloat(match[1]);
       }
       if (match[2]) {
         event.title = match[2];

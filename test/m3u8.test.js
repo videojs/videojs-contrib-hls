@@ -184,30 +184,6 @@ QUnit.test('parses #EXTINF tags with durations', function() {
   QUnit.strictEqual(element.duration, 21, 'the duration is parsed');
   QUnit.ok(!('title' in element), 'no title is parsed');
 });
-QUnit.test('parses #EXTINF tags with zero durations', function() {
-  let manifest = '#EXTINF:15\n';
-  let element;
-
-  this.parseStream.on('data', function(elem) {
-    element = elem;
-  });
-  this.lineStream.push(manifest);
-
-  QUnit.ok(element, 'an event was triggered');
-  QUnit.strictEqual(element.type, 'tag', 'the line type is tag');
-  QUnit.strictEqual(element.tagType, 'inf', 'the tag type is inf');
-  QUnit.strictEqual(element.duration, 15, 'the duration is parsed');
-  QUnit.ok(!('title' in element), 'no title is parsed');
-
-  manifest = '#EXTINF:0,\n';
-  this.lineStream.push(manifest);
-
-  QUnit.ok(element, 'an event was triggered');
-  QUnit.strictEqual(element.type, 'tag', 'the line type is tag');
-  QUnit.strictEqual(element.tagType, 'inf', 'the tag type is inf');
-  QUnit.strictEqual(element.duration, 0.01, 'zero duration is parsed');
-  QUnit.ok(!('title' in element), 'no title is parsed');
-});
 QUnit.test('parses #EXTINF tags with a duration and title', function() {
   let manifest = '#EXTINF:13,Does anyone really use the title attribute?\n';
   let element;
