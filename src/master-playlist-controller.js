@@ -72,7 +72,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       withCredentials: this.withCredentials,
       seekable: () => this.seekable(),
       seeking: () => this.tech_.seeking(),
-      setCurrentTime: (a) => this.setCurrentTime(a),
+      setCurrentTime: (a) => this.tech_.setCurrentTime(a),
       hasPlayed: () => this.tech_.played().length !== 0,
       bandwidth
     };

@@ -2,43 +2,8 @@ import QUnit from 'qunit';
 import SegmentLoader from '../src/segment-loader';
 import videojs from 'video.js';
 import xhrFactory from '../src/xhr';
-import {useFakeEnvironment, useFakeMediaSource} from './test-helpers.js';
 import Config from '../src/config';
-
-const playlistWithDuration = function(time, conf) {
-  let result = {
-    targetDuration: 10,
-    mediaSequence: conf && conf.mediaSequence ? conf.mediaSequence : 0,
-    discontinuityStarts: [],
-    segments: [],
-    endList: true
-  };
-  let count = Math.floor(time / 10);
-  let remainder = time % 10;
-  let i;
-  let isEncrypted = conf && conf.isEncrypted;
-
-  for (i = 0; i < count; i++) {
-    result.segments.push({
-      uri: i + '.ts',
-      resolvedUri: i + '.ts',
-      duration: 10
-    });
-    if (isEncrypted) {
-      result.segments[i].key = {
-        uri: i + '-key.php',
-        resolvedUri: i + '-key.php'
-      };
-    }
-  }
-  if (remainder) {
-    result.segments.push({
-      uri: i + '.ts',
-      duration: remainder
-    });
-  }
-  return result;
-};
+import { playlistWithDuration, useFakeEnvironment, useFakeMediaSource } from './test-helpers.js';
 
 let currentTime;
 let mediaSource;
@@ -428,8 +393,8 @@ QUnit.test('adjusts the playlist offset even when segment.end is set if no' +
   QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 });
 
-QUnit.test('adjusts the playlist offset if no buffering progress is made after' +
-           ' five consecutive attempts', function() {
+QUnit.test('adjusts the playlist offset if no buffering progress is made after ' +
+           'several consecutive attempts', function() {
   let sourceBuffer;
   let playlist;
   let errors = 0;
@@ -452,7 +417,7 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made after' 
   sourceBuffer.buffered = videojs.createTimeRanges([[0, 10]]);
   sourceBuffer.trigger('updateend');
 
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 5; i++) {
     // the next segment doesn't increase the buffer at all
     QUnit.equal(this.requests[0].url, (i + '.ts'), 'requested the next segment');
     this.clock.tick(1);
@@ -460,10 +425,8 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made after' 
     this.requests.shift().respond(200, null, '');
     sourceBuffer.trigger('updateend');
   }
-
-  // so the loader should try the next segment
-  QUnit.equal(errors, 1, 'emitted error');
-  QUnit.ok(loader.paused(), 'loader is paused');
+  this.clock.tick(1);
+  QUnit.equal(this.requests.length, 0, 'no more requests are made');
 });
 
 QUnit.test('cancels outstanding requests on abort', function() {

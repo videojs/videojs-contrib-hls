@@ -108,8 +108,15 @@ export default class Parser extends Stream {
                   message: 'defaulting discontinuity sequence to zero'
                 });
               }
-              if (entry.duration >= 0) {
+              if (entry.duration > 0) {
                 currentUri.duration = entry.duration;
+              }
+
+              if (entry.duration === 0) {
+                currentUri.duration = 0.01;
+                this.trigger('info', {
+                  message: 'updating zero segment duration to a small value'
+                });
               }
 
               this.manifest.segments = uris;
