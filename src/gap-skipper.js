@@ -1,10 +1,8 @@
 import Ranges from './ranges';
 
-let adaptiveSeeking;
-let gapSkipper;
 let seekingObject;
 
-gapSkipper = function(options) {
+const gapSkipper = function() {
   this.ready(() => {
     seekingObject = { player: this,
                       tech: this.tech_,
@@ -14,6 +12,29 @@ gapSkipper = function(options) {
                       playerState: null,
                       lastRecordedTime: null,
                       adaptiveSeeking: null };
+
+    seekingObject.skipTheGap = function() {
+      if (!seekingObject.seeking) {
+        let buffered = seekingObject.player.buffered();
+        let currentTime = seekingObject.player.currentTime();
+
+        if (buffered.length > 0) {
+          let nextRange = Ranges.findNextRange(buffered, currentTime);
+
+          if (nextRange.length > 0) {
+            let difference = nextRange.start(0) - currentTime;
+
+            seekingObject.timer = setTimeout(function() {
+              if (seekingObject.player.currentTime() === currentTime) {
+                // only seek if we still have not played
+                seekingObject.player.currentTime(nextRange.start(0));
+                seekingObject.playerState = 'playing';
+              }
+            }, difference * 1000);
+          }
+        }
+      }
+    };
 
     // Allows us to mimic a waiting event in chrome
     seekingObject.player.on('timeupdate', function() {
@@ -28,7 +49,7 @@ gapSkipper = function(options) {
         if (seekingObject.playerState !== 'waiting') {
           seekingObject.consecutiveUpdates = 0;
           seekingObject.playerState = 'waiting';
-          seekingObject.tech.trigger('adaptive-seeking');
+          seekingObject.skipTheGap();
         }
       } else if (currentTime === seekingObject.lastRecordedTime) {
         seekingObject.consecutiveUpdates++;
@@ -49,10 +70,8 @@ gapSkipper = function(options) {
     });
 
     seekingObject.player.on('playing', function() {
-      seekingObject.player.on('waiting', adaptiveSeeking);
+      seekingObject.player.on('waiting', seekingObject.skipTheGap);
     });
-
-    seekingObject.tech.on('adaptive-seeking', adaptiveSeeking);
 
     seekingObject.player.on('error', function() {
       if (seekingObject.timer) {
@@ -60,29 +79,6 @@ gapSkipper = function(options) {
       }
     });
   });
-};
-
-adaptiveSeeking = function() {
-  if (!seekingObject.seeking) {
-    let buffered = seekingObject.player.buffered();
-    let currentTime = seekingObject.player.currentTime();
-
-    if (buffered.length > 0) {
-      let nextRange = Ranges.findNextRange(buffered, currentTime);
-
-      if (nextRange.length > 0) {
-        let difference = nextRange.start(0) - currentTime;
-
-        seekingObject.timer = setTimeout(function() {
-          if (seekingObject.player.currentTime() === currentTime) {
-            // only seek if we still have not played
-            seekingObject.player.currentTime(nextRange.start(0));
-            seekingObject.playerState = 'playing';
-          }
-        }, difference * 1000);
-      }
-    }
-  }
 };
 
 export default gapSkipper;

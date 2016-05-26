@@ -291,7 +291,7 @@ class HlsHandler extends Component {
     if (tech.options_ && tech.options_.playerId) {
       let _player = videojs(tech.options_.playerId);
 
-      _player.gapSkipper({});
+      _player.gapSkipper();
       if (!_player.hasOwnProperty('hls')) {
         Object.defineProperty(_player, 'hls', {
           get: () => {
