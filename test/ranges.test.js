@@ -94,7 +94,7 @@ QUnit.test('detects time range end-point changed by updates', function() {
 
 QUnit.module('Segment Percent Buffered Calculations');
 
-QUnit.test('calculates the percent buffered for segments', function() {
+QUnit.test('calculates the percent buffered for segments in the simple case', function() {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 0;
@@ -108,8 +108,8 @@ QUnit.test('calculates the percent buffered for segments', function() {
   QUnit.equal(percentBuffered, 40, 'calculated the buffered amount correctly');
 });
 
-QUnit.test('calculates the percent buffered for segments taking into account ' +
-           'currentTime', function() {
+QUnit.test('consider the buffer before currentTime to be filled if the segement begins at ' +
+           'or before the currentTime', function() {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 15;
@@ -121,6 +121,21 @@ QUnit.test('calculates the percent buffered for segments taking into account ' +
     buffered);
 
   QUnit.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('does not consider the buffer before currentTime as filled if the segment ' +
+           'begins after the currentTime', function() {
+  let segmentStart = 10;
+  let segmentDuration = 10;
+  let currentTime = 18;
+  let buffered = createTimeRanges([[19, 30]]);
+  let percentBuffered = Ranges.getSegmentBufferedPercent(
+    segmentStart,
+    segmentDuration,
+    currentTime,
+    buffered);
+
+  QUnit.equal(percentBuffered, 10, 'calculated the buffered amount correctly');
 });
 
 QUnit.test('calculates the percent buffered for segments with multiple buffered ' +
@@ -165,4 +180,33 @@ QUnit.test('calculates the percent buffered as 0 for zero-length segments', func
     buffered);
 
   QUnit.equal(percentBuffered, 0, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered as 0 for segments that do not overlap ' +
+           'buffered regions taking into account currentTime', function() {
+  let segmentStart = 10;
+  let segmentDuration = 10;
+  let currentTime = 19;
+  let buffered = createTimeRanges([[20, 30]]);
+  let percentBuffered = Ranges.getSegmentBufferedPercent(
+    segmentStart,
+    segmentDuration,
+    currentTime,
+    buffered);
+
+  QUnit.equal(percentBuffered, 0, 'calculated the buffered amount correctly');
+});
+
+QUnit.test('calculates the percent buffered for segments that end before currentTime', function() {
+  let segmentStart = 10;
+  let segmentDuration = 10;
+  let currentTime = 19.6;
+  let buffered = createTimeRanges([[0, 19.5]]);
+  let percentBuffered = Ranges.getSegmentBufferedPercent(
+    segmentStart,
+    segmentDuration,
+    currentTime,
+    buffered);
+
+  QUnit.equal(percentBuffered, 95, 'calculated the buffered amount correctly');
 });
