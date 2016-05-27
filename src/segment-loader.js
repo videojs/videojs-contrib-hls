@@ -131,7 +131,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
     this.roundTrip = NaN;
-    this.bytesReceived = 0;
+    this.resetStats_();
 
     // private properties
     this.hasPlayed_ = settings.hasPlayed;
@@ -153,6 +153,17 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
+   * reset all of our media stats
+   *
+   * @private
+   */
+  resetStats_() {
+    this.mediaBytesTransferred = 0;
+    this.mediaRequests = 0;
+    this.mediaTransferDuration = 0;
+  }
+
+  /**
    * dispose of the SegmentLoader and reset to the default state
    */
   dispose() {
@@ -161,6 +172,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.sourceUpdater_) {
       this.sourceUpdater_.dispose();
     }
+    this.resetStats_();
   }
 
   /**
@@ -625,7 +637,9 @@ export default class SegmentLoader extends videojs.EventTarget {
       // calculate the download bandwidth based on segment request
       this.roundTrip = request.roundTripTime;
       this.bandwidth = request.bandwidth;
-      this.bytesReceived += request.bytesReceived || 0;
+      this.mediaBytesTransferred += request.bytesReceived || 0;
+      this.mediaRequests += 1;
+      this.mediaTransferDuration += request.roundTripTime || 0;
 
       if (segment.key) {
         segmentInfo.encryptedBytes = new Uint8Array(request.response);

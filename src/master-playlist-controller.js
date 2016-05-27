@@ -170,6 +170,40 @@ export default class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * get the total number of media requests from the `audiosegmentloader_`
+   * and the `mainSegmentLoader_`
+   *
+   * @private
+   */
+  mediaRequests_() {
+    return this.audioSegmentLoader_.mediaRequests +
+           this.mainSegmentLoader_.mediaRequests;
+  }
+
+  /**
+   * get the total time that media requests have spent trnasfering
+   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
+   *
+   * @private
+   */
+  mediaTransferDuration_() {
+    return this.audioSegmentLoader_.mediaTransferDuration +
+           this.mainSegmentLoader_.mediaTransferDuration;
+
+  }
+
+  /**
+   * get the total number of bytes transfered during media requests
+   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
+   *
+   * @private
+   */
+  mediaBytesTransferred_() {
+    return this.audioSegmentLoader_.mediaBytesTransferred +
+           this.mainSegmentLoader_.mediaBytesTransferred;
+  }
+
+  /**
    * fill our internal list of HlsAudioTracks with data from
    * the master playlist or use a default
    *
@@ -350,7 +384,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     if (media !== this.masterPlaylistLoader_.media()) {
       this.masterPlaylistLoader_.media(media);
-      this.mainSegmentLoader_.sourceUpdater_.remove(this.tech_.currentTime() + 5, Infinity);
+      this.mainSegmentLoader_.sourceUpdater_.remove(this.tech_.currentTime() + 5,
+                                                    Infinity);
     }
   }
 
