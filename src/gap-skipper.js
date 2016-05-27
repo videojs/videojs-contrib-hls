@@ -3,12 +3,12 @@ import Ranges from './ranges';
 const gapSkipper = function() {
   this.ready(() => {
     let seekingObject = { player: this,
-                      tech: this.tech_,
-                      seeking: false,
-                      consecutiveUpdates: 0,
-                      timer: null,
-                      playerState: null,
-                      lastRecordedTime: null };
+                          tech: this.tech_,
+                          seeking: false,
+                          consecutiveUpdates: 0,
+                          timer: null,
+                          playerState: null,
+                          lastRecordedTime: null };
 
     seekingObject.skipTheGap = function() {
       if (!seekingObject.seeking) {
