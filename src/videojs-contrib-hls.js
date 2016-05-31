@@ -307,11 +307,6 @@ class HlsHandler extends Component {
     this.options_ = videojs.mergeOptions(videojs.options.hls || {}, options.hls);
     this.setOptions_();
 
-    // start playlist selection at a reasonable bandwidth for
-    // broadband internet
-    // 0.5 Mbps
-    this.bandwidth = this.options_.bandwidth || 4194304;
-
     // listen for fullscreenchange events for this player so that we
     // can adjust our quality selection quickly
     this.on(document, [
