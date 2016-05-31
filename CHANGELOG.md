@@ -2,6 +2,14 @@ CHANGELOG
 =========
 
 --------------------
+## 3.0.4 (2016-5-31)
+* Added support for multiple alternate audio tracks
+* New class SegmentLoader contains all buffer maintenence and segment fetching logic
+* New class SourceUpdater tracks the state of asynchronous operations on a SourceBuffer and queues operations for future execution if the SoureBuffer is busy
+* New class MasterPlaylistController now encapsulates operations on the master playlist and coordinates media playlists and segment loaders
+* Bug fixes related to fetching and buffer maintenance
+
+--------------------
 
 ## 2.0.1 (2016-03-11)
 * First release of the ES6 version of the SourceHandler
