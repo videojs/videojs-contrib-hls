@@ -2,7 +2,7 @@ var fs = require('fs');
 var path = require('path');
 
 var basePath  = path.resolve(__dirname, '..');
-var testDataDir = path.join(basePath,'test');
+var testDataDir = path.join(basePath,'test', 'dist');
 var manifestDir = path.join(basePath, 'utils', 'manifest');
 var manifestFilepath = path.join(testDataDir, 'test-manifests.js');
 var expectedFilepath = path.join(testDataDir, 'test-expected.js');

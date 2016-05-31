@@ -1,11 +1,16 @@
-var browserify = require('browserify');
-var fs = require('fs');
-var glob = require('glob');
+import browserify from 'browserify';
+import fs from 'fs';
+import glob from 'glob';
 
-glob('test/**/*.test.js', function(err, files) {
+/* eslint no-console: 0 */
+
+glob('test/**/*.test.js', (err, files) => {
+  if (err) {
+    throw err;
+  }
   browserify(files)
     .transform('babelify')
     .transform('browserify-shim', {global: true})
     .bundle()
-    .pipe(fs.createWriteStream('dist-test/videojs-contrib-hls.js'));
+    .pipe(fs.createWriteStream('test/dist/bundle.js'));
 });
