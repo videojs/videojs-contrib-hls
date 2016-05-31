@@ -301,12 +301,16 @@ class HlsHandler extends Component {
 
     this.tech_ = tech;
     this.source_ = source;
+    this.stats = {};
 
     // handle global & Source Handler level options
     this.options_ = videojs.mergeOptions(videojs.options.hls || {}, options.hls);
     this.setOptions_();
 
-    this.bytesReceived = 0;
+    // start playlist selection at a reasonable bandwidth for
+    // broadband internet
+    // 0.5 Mbps
+    this.bandwidth = this.options_.bandwidth || 4194304;
 
     // listen for fullscreenchange events for this player so that we
     // can adjust our quality selection quickly
@@ -404,6 +408,19 @@ class HlsHandler extends Component {
           this.masterPlaylistController_.mainSegmentLoader_.bandwidth = bandwidth;
         }
       }
+    });
+
+    Object.defineProperty(this.stats, 'bandwidth', {
+      get: () => this.bandwidth || 0
+    });
+    Object.defineProperty(this.stats, 'mediaRequests', {
+      get: () => this.masterPlaylistController_.mediaRequests_() || 0
+    });
+    Object.defineProperty(this.stats, 'mediaTransferDuration', {
+      get: () => this.masterPlaylistController_.mediaTransferDuration_() || 0
+    });
+    Object.defineProperty(this.stats, 'mediaBytesTransferred', {
+      get: () => this.masterPlaylistController_.mediaBytesTransferred_() || 0
     });
 
     this.tech_.one('canplay',
@@ -527,7 +544,6 @@ class HlsHandler extends Component {
       this.masterPlaylistController_.dispose();
     }
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
-
     super.dispose();
   }
 }

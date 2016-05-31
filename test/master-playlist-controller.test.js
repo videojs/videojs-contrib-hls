@@ -64,6 +64,9 @@ QUnit.test('obeys none preload option', function() {
   openMediaSource(this.player, this.clock);
 
   QUnit.equal(this.requests.length, 0, 'no segment requests');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
 QUnit.test('obeys auto preload option', function() {
@@ -76,6 +79,9 @@ QUnit.test('obeys auto preload option', function() {
   openMediaSource(this.player, this.clock);
 
   QUnit.equal(this.requests.length, 1, '1 segment request');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
 QUnit.test('obeys metadata preload option', function() {
@@ -88,6 +94,9 @@ QUnit.test('obeys metadata preload option', function() {
   openMediaSource(this.player, this.clock);
 
   QUnit.equal(this.requests.length, 1, '1 segment request');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
 QUnit.test('clears some of the buffer for a fast quality change', function() {
@@ -114,6 +123,9 @@ QUnit.test('clears some of the buffer for a fast quality change', function() {
   QUnit.equal(removes.length, 1, 'removed buffered content');
   QUnit.equal(removes[0].start, 7 + 5, 'removed from a bit after current time');
   QUnit.equal(removes[0].end, Infinity, 'removed to the end');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
 QUnit.test('does not clear the buffer when no fast quality change occurs', function() {
@@ -134,6 +146,8 @@ QUnit.test('does not clear the buffer when no fast quality change occurs', funct
   this.masterPlaylistController.fastQualityChange_();
 
   QUnit.equal(removes.length, 0, 'did not remove content');
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
 QUnit.test('if buffered, will request second segment byte range', function() {
@@ -163,6 +177,13 @@ QUnit.test('if buffered, will request second segment byte range', function() {
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   this.clock.tick(10 * 1000);
   QUnit.equal(this.requests[2].headers.Range, 'bytes=1823412-2299991');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
+              16,
+              '16 bytes downloaded');
 });
 
 QUnit.test('re-initializes the combined playlist loader when switching sources',
@@ -218,6 +239,8 @@ QUnit.test('updates the combined segment loader on live playlist refreshes', fun
 
   this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
   QUnit.equal(updates.length, 1, 'updated the segment list');
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
 QUnit.test(
@@ -240,6 +263,13 @@ function() {
   standardXHRResponse(this.requests.shift());
   this.masterPlaylistController.mainSegmentLoader_.trigger('progress');
   QUnit.equal(progressCount, 1, 'fired a progress event');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
+              16,
+              '16 bytes downloaded');
 });
 
 QUnit.test('blacklists switching from video+audio playlists to audio only', function() {
@@ -264,6 +294,9 @@ QUnit.test('blacklists switching from video+audio playlists to audio only', func
               'selected video+audio');
   audioPlaylist = this.masterPlaylistController.masterPlaylistLoader_.master.playlists[0];
   QUnit.equal(audioPlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth we set above');
 });
 
 QUnit.test('blacklists switching from audio-only playlists to video+audio', function() {
@@ -290,6 +323,9 @@ QUnit.test('blacklists switching from audio-only playlists to video+audio', func
   QUnit.equal(videoAudioPlaylist.excludeUntil,
               Infinity,
               'excluded incompatible playlist');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
 
 QUnit.test('blacklists switching from video-only playlists to video+audio', function() {
@@ -317,6 +353,9 @@ QUnit.test('blacklists switching from video-only playlists to video+audio', func
   QUnit.equal(videoAudioPlaylist.excludeUntil,
               Infinity,
               'excluded incompatible playlist');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
 
 QUnit.test('blacklists switching between playlists with incompatible audio codecs',
@@ -343,6 +382,8 @@ function() {
   alternatePlaylist =
     this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1];
   QUnit.equal(alternatePlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
 
 QUnit.test('updates the combined segment loader on media changes', function() {
@@ -369,6 +410,14 @@ QUnit.test('updates the combined segment loader on media changes', function() {
   // media
   standardXHRResponse(this.requests.shift());
   QUnit.equal(updates.length, 1, 'updated the segment list');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
+  QUnit.equal(
+    this.player.tech_.hls.stats.mediaBytesTransferred,
+    16,
+    '16 bytes downloaded');
 });
 
 QUnit.test('selects a playlist after main/combined segment downloads', function() {
@@ -392,6 +441,8 @@ QUnit.test('selects a playlist after main/combined segment downloads', function(
   // and another
   this.masterPlaylistController.mainSegmentLoader_.trigger('progress');
   QUnit.strictEqual(calls, 3, 'selects after additional segments');
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
 QUnit.test('updates the duration after switching playlists', function() {
@@ -424,6 +475,13 @@ QUnit.test('updates the duration after switching playlists', function() {
   QUnit.ok(selectedPlaylist, 'selected playlist');
   QUnit.ok(this.masterPlaylistController.mediaSource.duration !== 0,
            'updates the duration');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
+              16,
+              '16 bytes downloaded');
 });
 
 QUnit.test('seekable uses the intersection of alternate audio and combined tracks',

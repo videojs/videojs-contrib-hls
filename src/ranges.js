@@ -198,27 +198,58 @@ const bufferIntersection = function(bufferA, bufferB) {
  * covers adjusted according to currentTime
  * @param {TimeRanges} referenceRange - the original time range that the
  * segment covers
+ * @param {Number} currentTime - time in seconds where the current playback
+ * is at
  * @param {TimeRanges} buffered - the currently buffered time ranges
  * @returns {Number} percent of the segment currently buffered
  */
-const calculateBufferedPercent = function(segmentRange, referenceRange, buffered) {
+const calculateBufferedPercent = function(adjustedRange,
+                                          referenceRange,
+                                          currentTime,
+                                          buffered) {
   let referenceDuration = referenceRange.end(0) - referenceRange.start(0);
-  let segmentDuration = segmentRange.end(0) - segmentRange.start(0);
-  let intersection = bufferIntersection(segmentRange, buffered);
-  let count = intersection.length;
+  let adjustedDuration = adjustedRange.end(0) - adjustedRange.start(0);
+  let bufferMissingFromAdjusted = referenceDuration - adjustedDuration;
+  let adjustedIntersection = bufferIntersection(adjustedRange, buffered);
+  let referenceIntersection = bufferIntersection(referenceRange, buffered);
+  let adjustedOverlap = 0;
+  let referenceOverlap = 0;
+
+  let count = adjustedIntersection.length;
 
   while (count--) {
-    segmentDuration -= intersection.end(count) - intersection.start(count);
+    adjustedOverlap += adjustedIntersection.end(count) -
+                       adjustedIntersection.start(count);
+
+    // If the current overlap segment starts at currentTime, then increase the
+    // overlap duration so that it actually starts at the beginning of referenceRange
+    // by including the difference between the two Range's durations
+    // This is a work around for the way Flash has no buffer before currentTime
+    if (adjustedIntersection.start(count) === currentTime) {
+      adjustedOverlap += bufferMissingFromAdjusted;
+    }
   }
-  return (referenceDuration - segmentDuration) / referenceDuration * 100;
+
+  count = referenceIntersection.length;
+
+  while (count--) {
+    referenceOverlap += referenceIntersection.end(count) -
+                        referenceIntersection.start(count);
+  }
+
+  // Use whichever value is larger for the percentage-buffered since that value
+  // is likely more accurate because the only way
+  return Math.max(adjustedOverlap, referenceOverlap) / referenceDuration * 100;
 };
 
 /**
- * Return the amount of a segment specified by the mediaIndex overlaps
- * the current buffered content.
+ * Return the amount of a range specified by the startOfSegment and segmentDuration
+ * overlaps the current buffered content.
  *
  * @param {Number} startOfSegment - the time where the segment begins
  * @param {Number} segmentDuration - the duration of the segment in seconds
+ * @param {Number} currentTime - time in seconds where the current playback
+ * is at
  * @param {TimeRanges} buffered - the state of the buffer
  * @returns {Number} percentage of the segment's time range that is
  * already in `buffered`
@@ -254,6 +285,7 @@ const getSegmentBufferedPercent = function(startOfSegment,
 
   let percent = calculateBufferedPercent(adjustedSegmentRange,
                                          originalSegmentRange,
+                                         currentTime,
                                          buffered);
 
   // If the segment is reported as having a zero duration, return 0%

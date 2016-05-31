@@ -139,6 +139,25 @@ QUnit.test('starts playing if autoplay is specified', function() {
   QUnit.ok(!this.player.paused(), 'not paused');
 });
 
+QUnit.test('stats are reset on each new source', function() {
+  this.player.src({
+    src: 'manifest/playlist.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // make sure play() is called *after* the media source opens
+  openMediaSource(this.player, this.clock);
+  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, 'stat is set');
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 0, 'stat is reset');
+});
+
 QUnit.test('XHR requests first byte range on play', function() {
   this.player.src({
     src: 'manifest/playlist.m3u8',
@@ -359,6 +378,10 @@ QUnit.test('starts downloading a segment on loadedmetadata', function() {
   QUnit.strictEqual(this.requests[1].url,
                     absoluteUrl('manifest/media-00001.ts'),
                     'the first segment is requested');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('re-initializes the handler for each source', function() {
@@ -433,6 +456,10 @@ QUnit.test('downloads media playlists after loading the master', function() {
   QUnit.strictEqual(this.requests[2].url,
                     absoluteUrl('manifest/media2-00001.ts'),
                     'first segment requested');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('upshifts if the initial bandwidth hint is high', function() {
@@ -462,6 +489,10 @@ QUnit.test('upshifts if the initial bandwidth hint is high', function() {
     absoluteUrl('manifest/media2-00001.ts'),
     'first segment requested'
   );
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('downshifts if the initial bandwidth hint is low', function() {
@@ -485,6 +516,10 @@ QUnit.test('downshifts if the initial bandwidth hint is low', function() {
   QUnit.strictEqual(this.requests[2].url,
                     absoluteUrl('manifest/media1-00001.ts'),
                     'first segment requested');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('buffer checks are noops until a media playlist is ready', function() {
@@ -499,6 +534,7 @@ QUnit.test('buffer checks are noops until a media playlist is ready', function()
   QUnit.strictEqual(this.requests[0].url,
                     'manifest/media.m3u8',
                     'media playlist requested');
+
 });
 
 QUnit.test('buffer checks are noops when only the master is ready', function() {
@@ -533,6 +569,9 @@ QUnit.test('buffer checks are noops when only the master is ready', function() {
   QUnit.strictEqual(this.requests[0].url,
                     absoluteUrl('manifest/media1.m3u8'),
                     'media playlist requested');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth set above');
 });
 
 QUnit.test('selects a playlist below the current bandwidth', function() {
@@ -556,6 +595,9 @@ QUnit.test('selects a playlist below the current bandwidth', function() {
   QUnit.strictEqual(playlist,
                     this.player.tech_.hls.playlists.master.playlists[1],
                     'the low bitrate stream is selected');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 10, 'bandwidth set above');
 });
 
 QUnit.test('allows initial bandwidth to be provided', function() {
@@ -574,6 +616,9 @@ QUnit.test('allows initial bandwidth to be provided', function() {
   QUnit.equal(this.player.tech_.hls.bandwidth,
               500,
               'prefers user-specified initial bandwidth');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 500, 'bandwidth set above');
 });
 
 QUnit.test('raises the minimum bitrate for a stream proportionially', function() {
@@ -598,6 +643,9 @@ QUnit.test('raises the minimum bitrate for a stream proportionially', function()
   QUnit.strictEqual(playlist,
                     this.player.tech_.hls.playlists.master.playlists[1],
                     'a lower bitrate stream is selected');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 11, 'bandwidth set above');
 });
 
 QUnit.test('uses the lowest bitrate if no other is suitable', function() {
@@ -619,6 +667,9 @@ QUnit.test('uses the lowest bitrate if no other is suitable', function() {
   QUnit.strictEqual(playlist,
                     this.player.tech_.hls.playlists.master.playlists[1],
                     'the lowest bitrate stream is selected');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth set above');
 });
 
 QUnit.test('selects the correct rendition by tech dimensions', function() {
@@ -683,6 +734,9 @@ QUnit.test('selects the correct rendition by tech dimensions', function() {
   QUnit.equal(playlist.attributes.BANDWIDTH,
               440000,
               'should have the expected bandwidth in case of multiple, if exact match');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 3000000, 'bandwidth set above');
 });
 
 QUnit.test('selects the highest bitrate playlist when the player dimensions are ' +
@@ -713,6 +767,9 @@ QUnit.test('selects the highest bitrate playlist when the player dimensions are 
   QUnit.equal(playlist.attributes.BANDWIDTH,
               1000,
               'selected the highest bandwidth variant');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');
 });
 
 QUnit.test('filters playlists that are currently excluded', function() {
@@ -748,6 +805,9 @@ QUnit.test('filters playlists that are currently excluded', function() {
   QUnit.equal(playlist,
               this.player.tech_.hls.playlists.master.playlists[0],
               'expired the exclusion');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');
 });
 
 QUnit.test('does not blacklist compatible H.264 codec strings', function() {
@@ -778,6 +838,9 @@ QUnit.test('does not blacklist compatible H.264 codec strings', function() {
   QUnit.strictEqual(typeof master.playlists[1].excludeUntil,
                     'undefined',
                     'did not blacklist');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth set above');
 });
 
 QUnit.test('does not blacklist compatible AAC codec strings', function() {
@@ -808,6 +871,9 @@ QUnit.test('does not blacklist compatible AAC codec strings', function() {
   QUnit.strictEqual(typeof master.playlists[1].excludeUntil,
                     'undefined',
                     'did not blacklist');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth set above');
 });
 
 QUnit.test('cancels outstanding XHRs when seeking', function() {
@@ -883,6 +949,9 @@ QUnit.test('segment 404 should trigger blacklisting of media', function() {
   this.requests[2].respond(400);
   QUnit.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
   QUnit.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 20000, 'bandwidth set above');
 });
 
 QUnit.test('playlist 404 should blacklist media', function() {
@@ -917,6 +986,8 @@ QUnit.test('playlist 404 should blacklist media', function() {
   QUnit.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
   QUnit.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
 
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function() {
@@ -965,6 +1036,9 @@ QUnit.test('fire loadedmetadata once we successfully load a playlist', function(
   standardXHRResponse(this.requests.shift());
   QUnit.equal(count, 1,
     'loadedMedia triggered after successful recovery from 404');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 20000, 'bandwidth set above');
 });
 
 QUnit.test('sets seekable and duration for live playlists', function() {
@@ -1221,6 +1295,9 @@ QUnit.test('resets the switching algorithm if a request times out', function() {
   QUnit.strictEqual(this.player.tech_.hls.playlists.media(),
                     this.player.tech_.hls.playlists.master.playlists[1],
                     'reset to the lowest bitrate playlist');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth is reset too');
 });
 
 QUnit.test('disposes the playlist loader', function() {
@@ -1411,6 +1488,10 @@ QUnit.test('calling play() at the end of a video replays', function() {
 
   this.player.tech_.trigger('play');
   QUnit.equal(seekTime, 0, 'seeked to the beginning');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('keys are resolved relative to the master playlist', function() {
@@ -1435,6 +1516,9 @@ QUnit.test('keys are resolved relative to the master playlist', function() {
   QUnit.equal(this.requests[0].url,
               absoluteUrl('video/playlist/keys/key.php'),
               'resolves multiple relative paths');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('keys are resolved relative to their containing playlist', function() {
@@ -1487,6 +1571,10 @@ QUnit.test('seeking should abort an outstanding key request and create a new one
               'https://example.com/' +
               this.player.tech_.hls.playlists.media().segments[1].key.uri,
               'urls should match');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('switching playlists with an outstanding key request aborts request and ' +
@@ -1529,6 +1617,9 @@ QUnit.test('switching playlists with an outstanding key request aborts request a
   QUnit.equal(this.requests[1].url,
               'http://media.example.com/fileSequence52-A.ts',
               'requested the segment');
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('does not download segments if preload option set to none', function() {
@@ -1549,6 +1640,9 @@ QUnit.test('does not download segments if preload option set to none', function(
     return !(/m3u8$/).test(request.uri);
   });
   QUnit.equal(this.requests.length, 0, 'did not download any segments');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 // workaround https://bugzilla.mozilla.org/show_bug.cgi?id=548397
@@ -1572,6 +1666,9 @@ QUnit.test('selectPlaylist does not fail if getComputedStyle returns null', func
   this.player.tech_.hls.selectPlaylist();
   QUnit.ok(true, 'should not throw');
   window.getComputedStyle = oldGetComputedStyle;
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('resolves relative key URLs against the playlist', function() {
@@ -1608,6 +1705,9 @@ QUnit.test('adds 1 default audio track if we have not parsed any, and the playli
 
   QUnit.equal(this.player.audioTracks().length, 1, 'one audio track after load');
   QUnit.ok(this.player.audioTracks()[0] instanceof HlsAudioTrack, 'audio track is an hls audio track');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('adds 1 default audio track if in flash mode', function() {
@@ -1673,6 +1773,9 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
 
   QUnit.equal(vjsAudioTracks[1].enabled, false, 'main track is disabled');
   QUnit.equal(hlsAudioTracks[1].enabled, false, 'main track is disabled');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('audio info from audioinfo event is stored on hls', function() {
@@ -1754,6 +1857,9 @@ QUnit.test('audioinfo changes with three tracks, enabled track is blacklisted an
   QUnit.equal(blacklistPlaylistCalls, 0, 'blacklist was not called on playlist');
   QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
   videojs.browser.IS_FIREFOX = oldIsFirefox;
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('audioinfo changes with one track, blacklist playlist', function() {
@@ -1787,6 +1893,9 @@ QUnit.test('audioinfo changes with one track, blacklist playlist', function() {
   QUnit.equal(blacklistPlaylistCalls, 1, 'blacklist was called on playlist');
   QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
   videojs.browser.IS_FIREFOX = oldIsFirefox;
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('audioinfo changes with three tracks, default is enabled, blacklisted playlist', function() {
@@ -1835,6 +1944,9 @@ QUnit.test('audioinfo changes with three tracks, default is enabled, blacklisted
   QUnit.equal(blacklistPlaylistCalls, 1, 'blacklist was called on playlist');
   QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
   videojs.browser.IS_FIREFOX = oldIsFirefox;
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('cleans up the buffer when loading live segments', function() {
@@ -1884,6 +1996,10 @@ QUnit.test('cleans up the buffer when loading live segments', function() {
   QUnit.equal(removes.length, 1, 'remove called');
   QUnit.deepEqual(removes[0], [0, seekable.start(0)],
                   'remove called with the right range');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('cleans up the buffer based on currentTime when loading a live segment ' +
@@ -1934,6 +2050,10 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
   QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
   QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('cleans up the buffer when loading VOD segments', function() {
@@ -1969,6 +2089,10 @@ QUnit.test('cleans up the buffer when loading VOD segments', function() {
                     'media playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
   QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('when mediaGroup changes enabled track should not change', function() {
@@ -2042,6 +2166,9 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
   QUnit.equal(trackOne.enabled, false, 'track 1 - still disabled');
   QUnit.equal(trackTwo.enabled, true, 'track 2 - still enabled');
   QUnit.equal(trackThree.enabled, false, 'track 3 - disabled');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('Allows specifying the beforeRequest function on the player', function() {
@@ -2062,6 +2189,9 @@ QUnit.test('Allows specifying the beforeRequest function on the player', functio
   standardXHRResponse(this.requests.shift());
 
   QUnit.ok(beforeRequestCalled, 'beforeRequest was called');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('Allows specifying the beforeRequest function globally', function() {
@@ -2082,6 +2212,9 @@ QUnit.test('Allows specifying the beforeRequest function globally', function() {
   QUnit.ok(beforeRequestCalled, 'beforeRequest was called');
 
   delete videojs.Hls.xhr.beforeRequest;
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('Allows overriding the global beforeRequest function', function() {
@@ -2114,6 +2247,10 @@ QUnit.test('Allows overriding the global beforeRequest function', function() {
                                             'for the master playlist');
 
   delete videojs.Hls.xhr.beforeRequest;
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, 'seen above');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, 'one segment request');
 });
 
 QUnit.module('HLS Integration', {
@@ -2149,6 +2286,26 @@ QUnit.test('aborts all in-flight work when disposed', function() {
 
     QUnit.ok(lastUpdate.abort, 'aborted the source buffer');
   });
+});
+
+QUnit.test('stats are reset on dispose', function() {
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(hls.stats.mediaBytesTransferred, 16, 'stat is set');
+  hls.dispose();
+  QUnit.equal(hls.stats.mediaBytesTransferred, 0, 'stat is reset');
 });
 
 QUnit.test('detects fullscreen and triggers a quality change', function() {
@@ -2215,6 +2372,11 @@ QUnit.test('downloads additional playlists if required', function() {
                  hls.playlists.media().resolvedUri,
                  'a new playlists was selected');
   QUnit.ok(hls.playlists.media().segments, 'segments are now available');
+
+  // verify stats
+  QUnit.equal(hls.stats.bandwidth, 3000000, 'default');
+  QUnit.equal(hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('waits to download new segments until the media playlist is stable', function() {
@@ -2251,6 +2413,11 @@ QUnit.test('waits to download new segments until the media playlist is stable', 
   standardXHRResponse(this.requests.shift());
   this.clock.tick(10 * 1000);
   QUnit.equal(this.requests.length, 1, 'resumes segment fetching');
+
+  // verify stats
+  QUnit.equal(hls.stats.bandwidth, Infinity, 'default');
+  QUnit.equal(hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('live playlist starts three target durations before live', function() {
@@ -2286,6 +2453,7 @@ QUnit.test('live playlist starts three target durations before live', function()
               'seeked to the seekable end');
 
   QUnit.equal(this.requests.length, 1, 'begins buffering');
+
 });
 
 QUnit.module('HLS - Encryption', {
@@ -2361,4 +2529,8 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
   QUnit.ok(hls.playlists.media().excludeUntil > 0,
            'blacklisted playlist');
   QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
+
+  // verify stats
+  QUnit.equal(hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
