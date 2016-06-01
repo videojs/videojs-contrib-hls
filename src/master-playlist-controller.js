@@ -118,6 +118,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         return;
       }
 
+      // TODO: Create a new event on the PlaylistLoader that signals
+      // that the segments have changed in some way and use that to
+      // update the SegmentLoader instead of doing it twice here and
+      // on `mediachange`
       this.mainSegmentLoader_.playlist(updatedPlaylist);
       this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
       this.updateDuration();
@@ -138,8 +142,18 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.masterPlaylistLoader_.on('mediachange', () => {
+      let media = this.masterPlaylistLoader_.media();
+
       this.mainSegmentLoader_.abort();
+
+      // TODO: Create a new event on the PlaylistLoader that signals
+      // that the segments have changed in some way and use that to
+      // update the SegmentLoader instead of doing it twice here and
+      // on `loadedplaylist`
+      this.mainSegmentLoader_.playlist(media);
+      this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
       this.mainSegmentLoader_.load();
+
       this.tech_.trigger({
         type: 'mediachange',
         bubbles: true

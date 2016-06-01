@@ -409,7 +409,7 @@ QUnit.test('updates the combined segment loader on media changes', function() {
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // media
   standardXHRResponse(this.requests.shift());
-  QUnit.equal(updates.length, 1, 'updated the segment list');
+  QUnit.ok(updates.length > 0, 'updated the segment list');
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
