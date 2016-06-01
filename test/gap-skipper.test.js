@@ -8,7 +8,7 @@ import {
   standardXHRResponse
 } from './test-helpers.js';
 
-QUnit.module('Adaptive Seeking', {
+QUnit.module('GapSkipper', {
   beforeEach() {
     this.env = useFakeEnvironment();
     this.requests = this.env.requests;
@@ -26,7 +26,7 @@ QUnit.module('Adaptive Seeking', {
     this.player.dispose();
   }
 });
-QUnit.test('Adaptive seeking skips over gap in firefox with waiting event', function() {
+QUnit.test('skips over gap in firefox with waiting event', function() {
   this.player.autoplay(true);
   this.player.buffered = function() {
     return videojs.createTimeRanges([[0, 10], [20, 30]]);
@@ -49,7 +49,7 @@ QUnit.test('Adaptive seeking skips over gap in firefox with waiting event', func
     20, 'Player seeked over gap after timer');
 });
 
-QUnit.test('Adaptive seeking skips over gap in chrome without waiting event', function() {
+QUnit.test('skips over gap in chrome without waiting event', function() {
   let tempBuffered = this.player.buffered;
 
   this.player.autoplay(true);
