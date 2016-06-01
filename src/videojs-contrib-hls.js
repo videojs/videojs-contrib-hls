@@ -15,7 +15,7 @@ import m3u8 from './m3u8';
 import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
-import gapSkipper from './gap-skipper';
+import GapSkipper from './gap-skipper';
 import videojs from 'video.js';
 /**
  * determine if an object a is differnt from
@@ -290,7 +290,6 @@ class HlsHandler extends Component {
     if (tech.options_ && tech.options_.playerId) {
       let _player = videojs(tech.options_.playerId);
 
-      _player.gapSkipper();
       if (!_player.hasOwnProperty('hls')) {
         Object.defineProperty(_player, 'hls', {
           get: () => {
@@ -377,6 +376,7 @@ class HlsHandler extends Component {
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
+    this.gapSkipper_ = new GapSkipper(this.options_);
 
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
@@ -695,7 +695,6 @@ videojs.HlsSourceHandler = HlsSourceHandler;
 videojs.Hls = Hls;
 videojs.m3u8 = m3u8;
 videojs.registerComponent('Hls', Hls);
-videojs.plugin('gapSkipper', gapSkipper);
 
 videojs.options.hls = videojs.options.hls || {};
 

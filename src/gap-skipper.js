@@ -1,81 +1,86 @@
 import Ranges from './ranges';
+import videojs from 'video.js';
 
-const gapSkipper = function() {
-  this.ready(() => {
-    let seekingObject = { player: this,
-                          tech: this.tech_,
-                          seeking: false,
-                          consecutiveUpdates: 0,
-                          timer: null,
-                          playerState: null,
-                          lastRecordedTime: null };
+export default class gapSkipper extends videojs.EventTarget {
+  constructor(options) {
+    super();
+    if (options.tech.options_.playerId) {
+      let self = this;
 
-    seekingObject.skipTheGap = function() {
-      if (!seekingObject.seeking) {
-        let buffered = seekingObject.player.buffered();
-        let currentTime = seekingObject.player.currentTime();
+      this.player = videojs(options.tech.options_.playerId);
+      this.tech_ = options.tech;
+      this.seeking = false;
+      this.consecutiveUpdates = 0;
+      this.timer = null;
+      this.playerState = null;
+      this.lastRecordedTime = null;
 
-        if (buffered.length > 0) {
-          let nextRange = Ranges.findNextRange(buffered, currentTime);
+      this.player.on('timeupdate', function() {
+        if (self.player.paused()) {
+          return;
+        }
+        let currentTime = self.player.currentTime();
 
-          if (nextRange.length > 0) {
-            let difference = nextRange.start(0) - currentTime;
-
-            seekingObject.timer = setTimeout(function() {
-              if (seekingObject.player.currentTime() === currentTime) {
-                // only seek if we still have not played
-                seekingObject.player.currentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
-                seekingObject.playerState = 'playing';
-              }
-            }, difference * 1000);
+        if (self.consecutiveUpdates === 5 &&
+            currentTime === self.lastRecordedTime) {
+          // trigger waiting
+          if (self.playerState !== 'waiting') {
+            self.consecutiveUpdates = 0;
+            self.playerState = 'waiting';
+            self.skipTheGap();
           }
+        } else if (currentTime === self.lastRecordedTime) {
+          self.consecutiveUpdates++;
+        } else {
+          self.consecutiveUpdates = 0;
+          self.lastRecordedTime = currentTime;
+        }
+      });
+
+      // Don't listen for waiting while seeking
+      this.player.on('seeking', function() {
+        self.seeking = true;
+      });
+
+      // Listen for waiting when finished seeking
+      this.player.on('seeked', function() {
+        self.seeking = false;
+      });
+
+      this.player.on('playing', function() {
+        self.player.on('waiting', self.skipTheGap);
+      });
+
+      this.player.on('error', function() {
+        if (self.timer) {
+          clearTimeout(self.timer);
+        }
+      });
+    }
+  }
+
+  skipTheGap() {
+    let self = this;
+
+    if (!this.seeking) {
+      let buffered = this.player.buffered();
+      let currentTime = this.player.currentTime();
+
+      if (buffered.length > 0) {
+        let nextRange = Ranges.findNextRange(buffered, currentTime);
+
+        if (nextRange.length > 0) {
+          let difference = nextRange.start(0) - currentTime;
+
+          this.timer = setTimeout(function() {
+            if (self.player.currentTime() === currentTime) {
+              // only seek if we still have not played
+              self.player.currentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
+              self.playerState = 'playing';
+            }
+          }, difference * 1000);
         }
       }
-    };
-
-    // Allows us to mimic a waiting event in chrome
-    seekingObject.player.on('timeupdate', function() {
-      if (seekingObject.player.paused()) {
-        return;
-      }
-      let currentTime = seekingObject.player.currentTime();
-
-      if (seekingObject.consecutiveUpdates === 5 &&
-          currentTime === seekingObject.lastRecordedTime) {
-        // trigger waiting
-        if (seekingObject.playerState !== 'waiting') {
-          seekingObject.consecutiveUpdates = 0;
-          seekingObject.playerState = 'waiting';
-          seekingObject.skipTheGap();
-        }
-      } else if (currentTime === seekingObject.lastRecordedTime) {
-        seekingObject.consecutiveUpdates++;
-      } else {
-        seekingObject.consecutiveUpdates = 0;
-        seekingObject.lastRecordedTime = currentTime;
-      }
-    });
-
-    // Don't listen for waiting while seeking
-    seekingObject.player.on('seeking', function() {
-      seekingObject.seeking = true;
-    });
-
-    // Listen for waiting when finished seeking
-    seekingObject.player.on('seeked', function() {
-      seekingObject.seeking = false;
-    });
-
-    seekingObject.player.on('playing', function() {
-      seekingObject.player.on('waiting', seekingObject.skipTheGap);
-    });
-
-    seekingObject.player.on('error', function() {
-      if (seekingObject.timer) {
-        clearTimeout(seekingObject.timer);
-      }
-    });
-  });
-};
-
-export default gapSkipper;
+    }
+  }
+}
