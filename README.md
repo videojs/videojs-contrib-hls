@@ -22,6 +22,7 @@ Play back HLS with video.js, even where it's not natively supported.
     - [hls.bytesReceived](#hlsbytesreceived)
     - [hls.selectPlaylist](#hlsselectplaylist)
     - [hls.xhr](#hlsxhr)
+    - [hls.representations](#hlsrepresentations)
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
     - [loadedplaylist](#loadedplaylist)
@@ -221,6 +222,34 @@ segment is downloaded. You can override this function to provide your
 adaptive streaming logic. You must, however, be sure to return a valid
 media playlist object that is present in `player.hls.master`.
 
+Overridding this function with your own is very powerful but is overkill
+for many purposes. Most of the time, you should use the much simpler
+function below to selectively enable or disable a playlist from the
+adaptive streaming logic.
+
+#### hls.representations
+Type: `function`
+
+To get all of the available representations, call the `representations()` method on `player.hls`. This will return a list of plain objects, each with `width`, `height`, `bandwidth`, and `id` properties, and an `enabled()` method.
+
+```javascript
+player.hls.representations();
+```
+
+To see whether the representation is enabled or disabled, call its `enabled()` method with no arguments. To set whether it is enabled/disabled, call its `enabled()` method and pass in a boolean value.
+
+Example, only enabling representations with a width greater than or equal to 720:
+
+```javascript
+player.hls.representations().forEach(function(rep) {
+  if (rep.width >= 720) {
+    rep.enabled(true);
+  } else {
+    rep.enabled(false);
+  }
+});
+```
+
 #### hls.xhr
 Type: `function`
 
@@ -257,7 +286,6 @@ videojs.Hls.xhr.beforeRequest = function(options) {
 
 For information on the type of options that you can modify see the
 documentation at [https://github.com/Raynos/xhr](https://github.com/Raynos/xhr).
-
 
 ### Events
 Standard HTML video events are handled by video.js automatically and
