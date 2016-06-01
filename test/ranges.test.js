@@ -108,8 +108,8 @@ QUnit.test('calculates the percent buffered for segments in the simple case', fu
   QUnit.equal(percentBuffered, 40, 'calculated the buffered amount correctly');
 });
 
-QUnit.test('consider the buffer before currentTime to be filled if the segement begins at ' +
-           'or before the currentTime', function() {
+QUnit.test('consider the buffer before currentTime to be filled if the ' +
+           'segement begins at or before the currentTime', function() {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 15;
@@ -197,7 +197,8 @@ QUnit.test('calculates the percent buffered as 0 for segments that do not overla
   QUnit.equal(percentBuffered, 0, 'calculated the buffered amount correctly');
 });
 
-QUnit.test('calculates the percent buffered for segments that end before currentTime', function() {
+QUnit.test('calculates the percent buffered for segments ' +
+           'that end before currentTime', function() {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 19.6;

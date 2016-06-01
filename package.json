@@ -69,8 +69,7 @@
       "scripts",
       "utils",
       "test/test-manifests.js",
-      "test/test-expected.js",
-      "src/playlist-loader.js"
+      "test/test-expected.js"
     ]
   },
   "files": [
