@@ -63,17 +63,15 @@ export default class gapSkipper {
     if (this.seeking) {
       return;
     }
+
     let buffered = this.player.buffered();
     let currentTime = this.player.currentTime();
-
-    if (buffered.length <= 0) {
-      return;
-    }
     let nextRange = Ranges.findNextRange(buffered, currentTime);
 
-    if (nextRange.length <= 0) {
+    if (nextRange.length === 0) {
       return;
     }
+
     let difference = nextRange.start(0) - currentTime;
 
     this.timer = setTimeout(() => {
