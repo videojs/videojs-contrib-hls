@@ -448,6 +448,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         for (let groupKey in loader.master.mediaGroups.AUDIO) {
           for (let labelKey in loader.master.mediaGroups.AUDIO[groupKey]) {
             let alternateAudio = loader.master.mediaGroups.AUDIO[groupKey][labelKey];
+
             if (alternateAudio.uri) {
               alternateAudio.resolvedUri =
                 resolveUrl(loader.master.uri, alternateAudio.uri);

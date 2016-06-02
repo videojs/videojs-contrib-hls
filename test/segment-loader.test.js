@@ -3,7 +3,11 @@ import SegmentLoader from '../src/segment-loader';
 import videojs from 'video.js';
 import xhrFactory from '../src/xhr';
 import Config from '../src/config';
-import { playlistWithDuration, useFakeEnvironment, useFakeMediaSource } from './test-helpers.js';
+import {
+  playlistWithDuration,
+  useFakeEnvironment,
+  useFakeMediaSource
+} from './test-helpers.js';
 
 let currentTime;
 let mediaSource;
