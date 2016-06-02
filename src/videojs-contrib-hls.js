@@ -12,10 +12,11 @@ import {Decrypter, AsyncStream, decrypt} from './decrypter';
 import utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from './m3u8';
+import videojs from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
 import GapSkipper from './gap-skipper';
-import videojs from 'video.js';
+
 /**
  * determine if an object a is differnt from
  * and object b. both only having one dimensional
@@ -678,7 +679,6 @@ videojs.HlsSourceHandler = HlsSourceHandler;
 videojs.Hls = Hls;
 videojs.m3u8 = m3u8;
 videojs.registerComponent('Hls', Hls);
-
 videojs.options.hls = videojs.options.hls || {};
 
 module.exports = {
