@@ -1,7 +1,23 @@
+/**
+ * @file gap-skipper.js
+ */
 import Ranges from './ranges';
 import videojs from 'video.js';
 
-export default class gapSkipper {
+/**
+ * the gap skipper object handles all scenarios
+ * where the player runs into the end of a buffered
+ * region and there is a buffered region ahead.
+ * It then handles the skipping behavior.
+ *
+ * @class GapSkipper
+ */
+export default class GapSkipper {
+
+  /**
+  * Represents a GapSKipper object.
+  * @constructor
+  */
   constructor(options) {
     if (!options.tech.options_.playerId) {
       return;
@@ -58,6 +74,11 @@ export default class gapSkipper {
     });
   }
 
+  /**
+  * Set a timer to skip the unbuffered region.
+  *
+  * @private
+  */
   skipTheGap() {
 
     if (this.seeking) {
