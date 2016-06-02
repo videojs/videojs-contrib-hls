@@ -2,7 +2,11 @@ CHANGELOG
 =========
 
 --------------------
-## 3.0.4 (2016-5-31)
+## 3.0.5 (2016-06-02)
+* Fixed a bug where the adaptive bitrate selection algorithm would not switch to media playlists that had already been fetched from the server previously
+
+--------------------
+## 3.0.4 (2016-05-31)
 * Added support for multiple alternate audio tracks
 * New class SegmentLoader contains all buffer maintenence and segment fetching logic
 * New class SourceUpdater tracks the state of asynchronous operations on a SourceBuffer and queues operations for future execution if the SoureBuffer is busy
