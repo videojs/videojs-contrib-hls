@@ -66,20 +66,22 @@ export default class gapSkipper {
     let buffered = this.player.buffered();
     let currentTime = this.player.currentTime();
 
-    if (buffered.length > 0) {
-      let nextRange = Ranges.findNextRange(buffered, currentTime);
-
-      if (nextRange.length > 0) {
-        let difference = nextRange.start(0) - currentTime;
-
-        this.timer = setTimeout(() => {
-          if (this.player.currentTime() === currentTime) {
-            // only seek if we still have not played
-            this.player.currentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
-            this.playerState = 'playing';
-          }
-        }, difference * 1000);
-      }
+    if (buffered.length <= 0) {
+      return;
     }
+    let nextRange = Ranges.findNextRange(buffered, currentTime);
+
+    if (nextRange.length <= 0) {
+      return;
+    }
+    let difference = nextRange.start(0) - currentTime;
+
+    this.timer = setTimeout(() => {
+      if (this.player.currentTime() === currentTime) {
+        // only seek if we still have not played
+        this.player.currentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
+        this.playerState = 'playing';
+      }
+    }, difference * 1000);
   }
 }
