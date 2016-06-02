@@ -17,6 +17,7 @@ export default class GapSkipper {
   /**
   * Represents a GapSKipper object.
   * @constructor
+  * @param {object} the options object that includes the tech
   */
   constructor(options) {
     if (!options.tech.options_.playerId) {
@@ -43,7 +44,7 @@ export default class GapSkipper {
         if (this.playerState !== 'waiting') {
           this.consecutiveUpdates = 0;
           this.playerState = 'waiting';
-          this.skipTheGap();
+          this.skipTheGap_();
         }
       } else if (currentTime === this.lastRecordedTime) {
         this.consecutiveUpdates++;
@@ -64,7 +65,7 @@ export default class GapSkipper {
     });
 
     this.player.on('playing', () => {
-      this.player.on('waiting', this.skipTheGap);
+      this.player.on('waiting', this.skipTheGap_);
     });
 
     this.player.on('error', () => {
@@ -79,7 +80,7 @@ export default class GapSkipper {
   *
   * @private
   */
-  skipTheGap() {
+  skipTheGap_() {
 
     if (this.seeking) {
       return;
