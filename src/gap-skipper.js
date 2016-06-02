@@ -17,7 +17,7 @@ export default class GapSkipper {
   /**
   * Represents a GapSKipper object.
   * @constructor
-  * @param {object} the options object that includes the tech
+  * @param {object} options an object that includes the tech and settings
   */
   constructor(options) {
     if (!options.tech.options_.playerId) {
