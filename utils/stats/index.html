@@ -302,18 +302,15 @@
             var milliseconds = d.getMilliseconds();
             var time = hours + ':' + minutes + ':' + seconds + ':' + milliseconds;
             var logText = time + "----" + eventName;
-            console.log(logText);
             theLog.appendChild(document.createTextNode(logText));
             theLog.appendChild(document.createElement("br"));
           });
 
         };
-        trackEventCount('play', '.play-count');
-        trackEventCount('playing', '.playing-count');
-        trackEventCount('seeking', '.seeking-count');
-        trackEventCount('seeked', '.seeked-count');
-        trackEventCount('paused', '.paused-count');
-        trackEventCount('waiting', '.waiting-count');
+        var eventsToTrack = ['play', 'playing', 'seeking', 'seeked', 'paused', 'waiting'];
+        eventsToTrack.map((event) => {
+          trackEventCount(event, '.' + event + '-count')
+        });
 
         videojs.Hls.displayStats(document.querySelector('.switching-stats'), player);
         videojs.Hls.displayCues(document.querySelector('.segment-timeline'), player);
