@@ -120,8 +120,8 @@
         <dd class="seeking-count">0</dd>
         <dt>Seeked:</dt>
         <dd class="seeked-count">0</dd>
-        <dt>Paused:</dt>
-        <dd class="paused-count">0</dd>
+        <dt>Pause:</dt>
+        <dd class="pause-count">0</dd>
         <dt>Waiting:</dt>
         <dd class="waiting-count">0</dd>
       </dl>
@@ -307,7 +307,7 @@
           });
 
         };
-        var eventsToTrack = ['play', 'playing', 'seeking', 'seeked', 'paused', 'waiting'];
+        var eventsToTrack = ['play', 'playing', 'seeking', 'seeked', 'pause', 'waiting'];
         eventsToTrack.map((event) => {
           trackEventCount(event, '.' + event + '-count')
         });
