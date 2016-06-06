@@ -89,6 +89,11 @@
   <br>
 
   <section class="stats">
+    <div class="player-log" style="width:400px; height: 600px; overflow-y: scroll;">
+      <h2>Player Log</h2>
+      <p id="the-log">
+
+    </div>
     <div class="player-stats">
       <h2>Player Stats</h2>
       <dl>
@@ -115,6 +120,10 @@
         <dd class="seeking-count">0</dd>
         <dt>Seeked:</dt>
         <dd class="seeked-count">0</dd>
+        <dt>Paused:</dt>
+        <dd class="paused-count">0</dd>
+        <dt>Waiting:</dt>
+        <dd class="waiting-count">0</dd>
       </dl>
     </div>
     <h3 class="bitrate-switching">Bitrate Switching</h3>
@@ -282,14 +291,33 @@
             count++;
             element.innerHTML = count;
           });
+
+          var theLog = document.getElementById("the-log");
+
+          player.on(eventName, function() {
+            var d = new Date();
+            var hours = d.getHours();
+            var minutes = d.getMinutes();
+            var seconds = d.getSeconds();
+            var milliseconds = d.getMilliseconds();
+            var time = hours + ':' + minutes + ':' + seconds + ':' + milliseconds;
+            var logText = time + "----" + eventName;
+            console.log(logText);
+            theLog.appendChild(document.createTextNode(logText));
+            theLog.appendChild(document.createElement("br"));
+          });
+
         };
         trackEventCount('play', '.play-count');
         trackEventCount('playing', '.playing-count');
         trackEventCount('seeking', '.seeking-count');
         trackEventCount('seeked', '.seeked-count');
+        trackEventCount('paused', '.paused-count');
+        trackEventCount('waiting', '.waiting-count');
 
         videojs.Hls.displayStats(document.querySelector('.switching-stats'), player);
         videojs.Hls.displayCues(document.querySelector('.segment-timeline'), player);
+
       });
     }
 
