@@ -1,0 +1,49 @@
+.tech-switch {
+  padding: 8px 0 0;
+  display: block;
+}
+
+.player-stats, .event-counts {
+  box-sizing: border-box;
+  padding: 8px;
+  float: left;
+  width: 50%;
+}
+
+h3.bitrate-switching {
+  clear: both;
+}
+
+.axis text,
+.cue text {
+  font: 12px sans-serif;
+}
+
+.axis line,
+.axis path {
+  fill: none;
+  stroke: #111;
+}
+
+.bitrates {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 3px;
+}
+
+.cue {
+  width: 20px;
+  height: 20px;
+}
+.cue text {
+  display: none;
+}
+.cue:hover text {
+  display: block;
+}
+
+.intersect {
+  fill: none;
+  stroke: #111;
+  stroke-dasharray: 2,2;
+}
