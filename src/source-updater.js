@@ -22,7 +22,7 @@ export default class SourceUpdater {
 
       // run completion handlers and process callbacks as updateend
       // events fire
-      this.sourceBuffer_.addEventListener('updateend', () => {
+      this.onUpdateendCallback_ = () => {
         let pendingCallback = this.pendingCallback_;
 
         this.pendingCallback_ = null;
@@ -30,9 +30,11 @@ export default class SourceUpdater {
         if (pendingCallback) {
           pendingCallback();
         }
-      });
-      this.sourceBuffer_.addEventListener('updateend',
-                                          this.runCallback_.bind(this));
+
+        this.runCallback_();
+      };
+
+      this.sourceBuffer_.addEventListener('updateend', this.onUpdateendCallback_);
 
       this.runCallback_();
     };
@@ -162,6 +164,7 @@ export default class SourceUpdater {
    * dispose of the source updater and the underlying sourceBuffer
    */
   dispose() {
+    this.sourceBuffer_.removeEventListener('updateend', this.onUpdateendCallback_);
     if (this.sourceBuffer_ && this.mediaSource.readyState === 'open') {
       this.sourceBuffer_.abort();
     }
