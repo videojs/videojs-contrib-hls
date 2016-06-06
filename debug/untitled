@@ -12,7 +12,7 @@
 
     <!-- Bootstrap core CSS. This is just to make the demo look
     nice. It's not required for videojs-contrib-hls to work. -->
-    <link href="../node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
 
       <link href="https://npmcdn.com/video.js@^5.0.0/dist/video-js.css" rel="stylesheet">
 
@@ -22,6 +22,8 @@
   <!-- HLS plugin -->
   <script src="https://npmcdn.com/videojs-contrib-hls@^3.0.0/dist/videojs-contrib-hls.min.js"></script>
 
+  <!-- Track Selector plugin -->
+  <script src="audio-track-selector.js"></script>
 
   <!-- player stats visualization -->
   <link href="stats.css" rel="stylesheet">
@@ -48,7 +50,7 @@
       .navbar-toggle .icon-bar {
         background-color: #868688;
       }
-      .starter-template, .stats {
+      .starter-template {
         padding: 40px 15px;
         text-align: center;
       }
@@ -94,6 +96,15 @@
           Use this page to debug VideoJS HLS issues
         </p>
 
+        <!--
+          -- Your video element. Just like regular HTML5 video.
+          -->
+  <!--       <video id=example-video width=960 height=400 class="video-js vjs-default-skin" controls>
+          <source
+             src="//s3.amazonaws.com/_bc_dml/example-content/tears-of-steel/playlist.m3u8"
+             type="application/x-mpegURL">
+        </video> -->
+
       </section>
 
     </div><!-- /.container -->
@@ -102,10 +113,17 @@
     <!-- Bootstrap stuff. These three scripts aren't necessary for you
          to use videojs-contrib-hls -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-    <script src="../node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
-    <script src="../js/ie10-viewport-bug-workaround.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="js/ie10-viewport-bug-workaround.js"></script>
+      <div class="info">
+    <p>The video below is an <a href="https://developer.apple.com/library/ios/documentation/networkinginternet/conceptual/streamingmediaguide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008332-CH1-SW1">HTTP Live Stream</a>. On desktop browsers other than Safari, the HLS plugin will polyfill support for the format on top of the video.js Flash tech.</p>
+    <p>Due to security restrictions in Flash, you will have to load this page over HTTP(S) to see the example in action.</p>
+  </div>
 
- <form id="load-url" class="stats">
+  <div id="fixture">
+  </div>
+
+  <form id="load-url">
     <label>
       URL to Load:
       <input id="url-to-load" type="url" value="https://s3.amazonaws.com/_bc_dml/example-content/bipbop-advanced/bipbop_16x9_variant.m3u8">
@@ -143,15 +161,10 @@
     <br>
     <button type="submit">Load</button>
   </form>
-  <div id="fixture">
-  </div>
-
-
+  <br>
 
   <section class="stats">
-
-  <br>
-    <div class="player-log" style=" height: 600px; overflow-y: scroll;padding: 40px 15px;text-align: center;">
+    <div class="player-log" style="width:400px; height: 600px; overflow-y: scroll;">
       <h2>Player Log</h2>
       <p id="the-log">
       </p>
@@ -224,8 +237,8 @@
       video.id = 'videojs-contrib-hls-player';
       video.className = 'video-js vjs-default-skin';
       video.setAttribute('controls', true);
-      video.setAttribute('height', 540);
-      video.setAttribute('width', 960);
+      video.setAttribute('height', 300);
+      video.setAttribute('width', 600);
       document.querySelector('#fixture').appendChild(video);
       var techRadios = document.getElementsByName('technology-mode');
       var techMode = getCheckedValue('technology-mode') || 'auto';
@@ -390,5 +403,29 @@
     }(window, window.videojs));
   </script>
 
+
+    <!--------------------------------------------------------------------------
+      --                      videojs-contrib-hls setup                       --
+      ------------------------------------------------------------------------!>
+
+    <!--
+      -- Make sure to include the video.js CSS. This could go in
+      -- the <head>, too.
+      -->
+    <link href="//vjs.zencdn.net/5.4/video-js.css" rel="stylesheet">
+
+    <!--
+      -- Include video.js and videojs-contrib-hls in your page
+      -->
+
+    <script src="//vjs.zencdn.net/5.4/video.js"></script>
+    <script src="node_modules/videojs-contrib-hls/dist/videojs.hls.min.js"></script>
+
+    <!--
+      -- Now, initialize your player. That's it!
+      -->
+    <script>
+      var player = videojs('example-video');
+    </script>
   </body>
 </html>
