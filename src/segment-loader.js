@@ -850,13 +850,18 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // Update segment meta-data (duration and end-point) based on timeline
     if (segment &&
-        segmentInfo &&
-        segmentInfo.playlist.uri === this.playlist_.uri) {
+        segmentInfo) {
       segmentEnd = Ranges.findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
                                                         this.sourceUpdater_.buffered());
       timelineUpdated = updateSegmentMetadata(playlist,
                                               currentMediaIndex,
                                               segmentEnd);
+    }
+
+    // We always consider the timeline updated if the previous fetch resulting in
+    // the closing of a "gap" in the buffer in order to reset the timeCorrection_
+    if (segmentInfo.buffered.length > this.sourceUpdater_.buffered().length) {
+      timelineUpdated = true;
     }
 
     return timelineUpdated;
