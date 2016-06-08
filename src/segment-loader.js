@@ -798,14 +798,11 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (this.seeking_() &&
         currentBuffered.length === 0) {
-      if (seekable.length &&
-          currentTime < seekable.start(0)) {
-
-        if (next.length) {
-          videojs.log('tried seeking to', currentTime,
-                      'but that was too early, retrying at', next.start(0));
-          this.setCurrentTime_(next.start(0) + Ranges.TIME_FUDGE_FACTOR);
-        }
+      if (next.length &&
+          next.start(0) - currentTime < segmentInfo.duration) {
+        videojs.log('tried seeking to', currentTime,
+                    'but that was too early, retrying at', next.start(0));
+        this.setCurrentTime_(next.start(0) + Ranges.TIME_FUDGE_FACTOR);
       }
     }
 
