@@ -9,6 +9,7 @@ import resolveUrl from './resolve-url';
 import {mergeOptions} from 'video.js';
 import Stream from './stream';
 import m3u8 from 'm3u8-parser';
+import Playlist from './playlist';
 
 /**
   * Returns a new array of segments that is the result of merging
@@ -513,43 +514,10 @@ PlaylistLoader.prototype.updateMediaPlaylist_ = function(update) {
     return;
   }
 
-  // try using precise timing from first segment of the updated
-  // playlist
-  if (update.segments.length) {
-    if (typeof update.segments[0].start !== 'undefined') {
-      this.expired_ = update.segments[0].start;
-      return;
-    } else if (typeof update.segments[0].end !== 'undefined') {
-      this.expired_ = update.segments[0].end - update.segments[0].duration;
-      return;
-    }
-  }
-
   // calculate expired by walking the outdated playlist
-  i = update.mediaSequence - outdated.mediaSequence - 1;
+  i = update.mediaSequence - outdated.mediaSequence;
 
-  for (; i >= 0; i--) {
-    segment = outdated.segments[i];
-
-    if (!segment) {
-      // we missed information on this segment completely between
-      // playlist updates so we'll have to take an educated guess
-      // once we begin buffering again, any error we introduce can
-      // be corrected
-      this.expired_ += outdated.targetDuration || 10;
-      continue;
-    }
-
-    if (typeof segment.end !== 'undefined') {
-      this.expired_ = segment.end;
-      return;
-    }
-    if (typeof segment.start !== 'undefined') {
-      this.expired_ = segment.start + segment.duration;
-      return;
-    }
-    this.expired_ += segment.duration;
-  }
+  this.expired_ = Playlist.duration(outdated, outdated.mediaSequence + i);
 };
 
 export default PlaylistLoader;
