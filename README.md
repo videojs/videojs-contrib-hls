@@ -56,7 +56,7 @@ npm install --save videojs-contrib-hls
 ### CDN
 Select a version of HLS from the [CDN](https://cdnjs.com/libraries/videojs-contrib-hls)
 
-### Local
+### Releases
 Download a release of [videojs-contrib-hls](https://github.com/videojs/videojs-contrib-hls/release)
 
 ### Manual Build
@@ -66,7 +66,7 @@ Download a copy of this git repository and then follow the steps in [Building](#
 See [CONTRIBUTING.md](/CONTRIBUTING.md)
 
 ## Getting Started
-Include videojs-contrib-hls in your page along with video.js:
+Get a copy of [videojs-contrib-hls](#installation) and include it in your page along with video.js:
 
 ```html
 <video id=example-video width=600 height=300 class="video-js vjs-default-skin" controls>
@@ -148,7 +148,8 @@ are some highlights:
 
 ##### Initialization
 You may pass in an options object to the hls source handler at player
-initialization options just like you would for other
+initialization. You can pass in options just like you would for other
+parts of video.js:
 
 ```javascript
 // html5 for html hls
@@ -195,7 +196,7 @@ player.src({
 #### List
 ##### withCredentials
 * Type: `boolean`
-* Can be used as a source option
+* can be used as a source option
 * can be used as an initialization option
 
 When the `withCredentials` property is set to `true`, all XHR requests for
@@ -322,7 +323,7 @@ playback:
 
 #### loadedmetadata
 
-Fired after the first segment is download for a playlist. This will not happen
+Fired after the first segment is downloaded for a playlist. This will not happen
 until playback if video.js's `metadata` setting is `none`
 
 #### loadedplaylist
