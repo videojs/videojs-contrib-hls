@@ -21,8 +21,8 @@ Play back HLS with video.js, even where it's not natively supported.
     - [hls.bandwidth](#hlsbandwidth)
     - [hls.bytesReceived](#hlsbytesreceived)
     - [hls.selectPlaylist](#hlsselectplaylist)
-    - [hls.xhr](#hlsxhr)
     - [hls.representations](#hlsrepresentations)
+    - [hls.xhr](#hlsxhr)
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
     - [loadedplaylist](#loadedplaylist)
@@ -236,7 +236,7 @@ To get all of the available representations, call the `representations()` method
 player.hls.representations();
 ```
 
-To see whether the representation is enabled or disabled, call its `enabled()` method with no arguments. To set whether it is enabled/disabled, call its `enabled()` method and pass in a boolean value.
+To see whether the representation is enabled or disabled, call its `enabled()` method with no arguments. To set whether it is enabled/disabled, call its `enabled()` method and pass in a boolean value. Calling `<representation>.enabled(true)` will allow the adaptive bitrate algorithm to select the representation while calling `<representation>.enabled(false)` will disallow any selection of that representation.
 
 Example, only enabling representations with a width greater than or equal to 720:
 
