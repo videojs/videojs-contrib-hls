@@ -8,12 +8,22 @@ Play back HLS with video.js, even where it's not natively supported.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [Installation](#installation)
+  - [NPM](#npm)
+  - [CDN](#cdn)
+  - [Local](#local)
+  - [Manual Build](#manual-build)
+- [Contributing](#contributing)
 - [Getting Started](#getting-started)
 - [Known Issues](#known-issues)
   - [IE11](#ie11)
 - [Documentation](#documentation)
   - [Options](#options)
-    - [withCredentials](#withcredentials)
+    - [How to use](#how-to-use)
+      - [Initialization](#initialization)
+      - [Source](#source)
+    - [List](#list)
+      - [withCredentials](#withcredentials)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -30,14 +40,33 @@ Play back HLS with video.js, even where it's not natively supported.
 - [Hosting Considerations](#hosting-considerations)
   - [Testing](#testing)
 - [Release History](#release-history)
+- [Building](#building)
+- [Development Commands](#development-commands)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+## Installation
+### NPM
+To install `videojs-contrib-hls` with npm run
+
+```bash
+npm install --save videojs-contrib-hls
+```
+
+### CDN
+Select a version of HLS from the [CDN](https://cdnjs.com/libraries/videojs-contrib-hls)
+
+### Releases
+Download a release of [videojs-contrib-hls](https://github.com/videojs/videojs-contrib-hls/release)
+
+### Manual Build
+Download a copy of this git repository and then follow the steps in [Building](#building)
+
+## Contributing
+See [CONTRIBUTING.md](/CONTRIBUTING.md)
 
 ## Getting Started
-Download
-[videojs-contrib-hls](https://github.com/videojs/videojs-contrib-hls/releases)
-and include it in your page along with video.js:
+Get a copy of [videojs-contrib-hls](#installation) and include it in your page along with video.js:
 
 ```html
 <video id=example-video width=600 height=300 class="video-js vjs-default-skin" controls>
@@ -53,7 +82,7 @@ player.play();
 </script>
 ```
 
-Check out our [live example](http://videojs.github.io/videojs-contrib-hls/) if you're having trouble.
+Check out our [live example](http://jsbin.com/liwecukasi/edit?html,output) if you're having trouble.
 
 ## Known Issues
 Issues that are currenty know about with workarounds. If you want to
@@ -115,7 +144,9 @@ are some highlights:
 [0]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track
 
 ### Options
+#### How to use
 
+##### Initialization
 You may pass in an options object to the hls source handler at player
 initialization. You can pass in options just like you would for other
 parts of video.js:
@@ -137,10 +168,36 @@ videojs(video, {flash: {
   }
 }});
 
+// or
+
+var options = {hls: {
+  withCredentials: true;
+}};
+
+videojs(video, {flash: options, html5: options});
+
 ```
 
-#### withCredentials
-Type: `boolean`
+##### Source
+Some options, such as `withCredentials` can be passed in to hls during
+`player.src`
+
+```javascript
+
+var player = videojs('some-video-id');
+
+player.src({
+  src: "http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8",
+  type: 'application/x-mpegURL',
+  withCredentials: true
+});
+```
+
+#### List
+##### withCredentials
+* Type: `boolean`
+* can be used as a source option
+* can be used as an initialization option
 
 When the `withCredentials` property is set to `true`, all XHR requests for
 manifests and segments would have `withCredentials` set to `true` as well. This
@@ -156,7 +213,7 @@ for more info.
 Runtime properties are attached to the tech object when HLS is in
 use. You can get a reference to the HLS source handler like this:
 
-```js
+```javascript
 var hls = player.tech({ IWillNotUseThisInPlugins: true }).hls;
 ```
 
@@ -258,7 +315,6 @@ videojs.Hls.xhr.beforeRequest = function(options) {
 For information on the type of options that you can modify see the
 documentation at [https://github.com/Raynos/xhr](https://github.com/Raynos/xhr).
 
-
 ### Events
 Standard HTML video events are handled by video.js automatically and
 are triggered on the player object. In addition, there are a couple
@@ -267,7 +323,8 @@ playback:
 
 #### loadedmetadata
 
-Fired after the first media playlist is downloaded for a stream.
+Fired after the first segment is downloaded for a playlist. This will not happen
+until playback if video.js's `metadata` setting is `none`
 
 #### loadedplaylist
 
@@ -296,7 +353,7 @@ frames are mapped to cue points and their values set as the cue
 text. Cues are created for all other frame types and the data is
 attached to the generated cue:
 
-```js
+```javascript
 cue.value.data
 ```
 
@@ -320,3 +377,27 @@ browsers that karma-detect-browsers detects on your machine.
 
 ## Release History
 Check out the [changelog](CHANGELOG.md) for a summary of each release.
+
+## Building
+To build a copy of videojs-contrib-hls run the following commands
+
+```bash
+git clone https://github.com/videojs/videojs-contrib-hls
+cd videojs-contrib-hls
+npm i
+npm run build
+```
+
+videojs-contrib-hls will have created all of the files for using it in a dist folder
+
+## Development
+
+### Tools
+* Download stream locally with the [HLS Fetcher](https://github.com/imbcmdth/hls-fetcher)
+* Simulate errors with [Murphy](https://github.com/mrocajr/murphy)
+
+### Commands
+All commands for development are listed in the `package.json` file and are run using
+```bash
+npm run <command>
+```
