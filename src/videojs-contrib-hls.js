@@ -304,8 +304,6 @@ class HlsHandler extends Component {
     this.tech_ = tech;
     this.source_ = source;
     this.stats = {};
-    // register gapSKipper plugin
-    gapSkipper(tech.options_.playerId, tech);
 
     // handle global & Source Handler level options
     this.options_ = videojs.mergeOptions(videojs.options.hls || {}, options.hls);

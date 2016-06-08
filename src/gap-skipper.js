@@ -26,53 +26,104 @@ export default class GapSkipper {
 
     this.player = videojs(options.tech.options_.playerId);
     this.tech_ = options.tech;
-    this.seeking = false;
     this.consecutiveUpdates = 0;
     this.timer = null;
-    this.playerState = null;
     this.lastRecordedTime = null;
 
-    this.player.on('timeupdate', () => {
-      if (this.player.paused()) {
-        return;
-      }
-      let currentTime = this.player.currentTime();
+    if (options.debug) {
+      this.logger_ = videojs.log.bind(videojs, '<gap-skipper>');
+    }
 
-      if (this.consecutiveUpdates === 5 &&
-          currentTime === this.lastRecordedTime) {
-        // trigger waiting
-        if (this.playerState !== 'waiting') {
-          this.consecutiveUpdates = 0;
-          this.playerState = 'waiting';
-          this.skipTheGap_();
+    this.player.one('canplaythrough', () => {
+      this.player.on('waiting', () => {
+        this.setTimer_();
+      });
+
+      // The purpose of this function is to emulate the "waiting" event on
+      // browsers that do not emit it when they are stalled waiting for
+      // more data
+      this.player.on('timeupdate', () => {
+        if (this.player.paused()) {
+          return;
         }
-      } else if (currentTime === this.lastRecordedTime) {
-        this.consecutiveUpdates++;
-      } else {
-        this.consecutiveUpdates = 0;
-        this.lastRecordedTime = currentTime;
-      }
-    });
 
-    // Don't listen for waiting while seeking
-    this.player.on('seeking', () => {
-      this.seeking = true;
-    });
+        let currentTime = this.player.currentTime();
 
-    // Listen for waiting when finished seeking
-    this.player.on('seeked', () => {
-      this.seeking = false;
-    });
+        if (this.consecutiveUpdates === 5 &&
+            currentTime === this.lastRecordedTime) {
 
-    this.player.on('playing', () => {
-      this.player.on('waiting', this.skipTheGap_);
-    });
+          // trigger waiting
+          this.player.trigger('waiting');
+          this.consecutiveUpdates++;
+        } else if (currentTime === this.lastRecordedTime) {
+          this.consecutiveUpdates++;
+        } else {
+          this.consecutiveUpdates = 0;
+          this.lastRecordedTime = currentTime;
+        }
+      });
 
-    this.player.on('error', () => {
-      if (this.timer) {
-        clearTimeout(this.timer);
-      }
+      // Set of conditions that reset the gap-skipper logic
+      [
+        'seeking',
+        'seeked',
+        'pause',
+        'playing',
+        'error'
+      ].forEach((event) => {
+        this.player.on(event, () => {
+          this.cancelTimer_();
+        });
+      });
     });
+  }
+
+  /**
+  * Cancels any pending timers and resets the 'timeupdate' mechanism
+  * designed to detect that we are stalled
+  *
+  * @private
+  */
+  cancelTimer_() {
+    this.consecutiveUpdates = 0;
+
+    if (this.timer) {
+      clearTimeout(this.timer);
+    }
+
+    this.timer = null;
+  }
+
+  /**
+  * Timer callback. If playback still has not proceeded, then we seek
+  * to the start of the next buffered region.
+  *
+  * @private
+  */
+  skipTheGap_(scheduledCurrentTime) {
+    let buffered = this.player.buffered();
+    let currentTime = this.player.currentTime();
+    let nextRange = Ranges.findNextRange(buffered, currentTime);
+
+    this.consecutiveUpdates = 0;
+    this.timer = null;
+
+    this.logger_('timer triggered');
+
+    if (nextRange.length === 0) {
+      return;
+    }
+
+    this.logger_('currentTime:', currentTime, 'scheduled currentTime:', scheduledCurrentTime, 'nextRange start:', nextRange.start(0));
+
+    if (currentTime !== scheduledCurrentTime) {
+      return;
+    }
+
+    this.logger_('seeking to', nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
+
+    // only seek if we still have not played
+    this.player.currentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
   }
 
   /**
@@ -80,11 +131,8 @@ export default class GapSkipper {
   *
   * @private
   */
-  skipTheGap_() {
-
-    if (this.seeking) {
-      return;
-    }
+  setTimer_() {
+    this.logger_('triggered. currentTime:', this.player.currentTime());
 
     let buffered = this.player.buffered();
     let currentTime = this.player.currentTime();
@@ -94,14 +142,22 @@ export default class GapSkipper {
       return;
     }
 
+    this.logger_('nextRange start:', nextRange.start(0));
+
+    if (this.timer !== null) {
+      return;
+    }
+
     let difference = nextRange.start(0) - currentTime;
 
-    this.timer = setTimeout(() => {
-      if (this.player.currentTime() === currentTime) {
-        // only seek if we still have not played
-        this.player.currentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
-        this.playerState = 'playing';
-      }
-    }, difference * 1000);
+    this.logger_('setting timer for', difference, 'seconds');
+    this.timer = setTimeout(this.skipTheGap_.bind(this), difference * 1000, currentTime);
   }
+
+  /**
+  * A logger_ noop that is set to console.log if debugging is enabled globally.
+  *
+  * @private
+  */
+  logger_() {}
 }
