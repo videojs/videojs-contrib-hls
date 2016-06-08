@@ -544,6 +544,7 @@ class HlsHandler extends Component {
     if (this.masterPlaylistController_) {
       this.masterPlaylistController_.dispose();
     }
+    this.gapSkipper_.dispose();
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
     super.dispose();
   }
