@@ -8,7 +8,7 @@
 import resolveUrl from './resolve-url';
 import {mergeOptions} from 'video.js';
 import Stream from './stream';
-import m3u8 from './m3u8';
+import m3u8 from 'm3u8-parser';
 
 /**
   * Returns a new array of segments that is the result of merging

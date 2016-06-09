@@ -11,7 +11,7 @@ import xhrFactory from './xhr';
 import {Decrypter, AsyncStream, decrypt} from './decrypter';
 import utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
-import m3u8 from './m3u8';
+import m3u8 from 'm3u8-parser';
 import videojs from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
