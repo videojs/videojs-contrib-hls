@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 --------------------
+## 3.1.0 (2016-06-09)
+* Added manual rendition selection API via the `representations()` function on each instance of the HlsHandler class
+* Pulled out and moved m3u8 parsing functionality into it's own project at https://github.com/videojs/m3u8-parser
+
+--------------------
 ## 3.0.5 (2016-06-02)
 * Fixed a bug where the adaptive bitrate selection algorithm would not switch to media playlists that had already been fetched from the server previously
 
