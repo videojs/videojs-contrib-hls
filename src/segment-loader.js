@@ -545,7 +545,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     requestTimeout = (segment.duration * 1.5) * 1000;
 
     // don't timeout if we are on the last un-blacklisted playlist
-    if (dontTimeout) {
+    if (this.dontTimeout) {
       requestTimeout = 0;
     }
 
