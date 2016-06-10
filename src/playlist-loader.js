@@ -155,6 +155,19 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     loader.trigger('error');
   };
 
+  // returns the number of enabled playlists on the master playlist object
+  enabledPlaylists = function() {
+    let playlists = loader.master.playlists;
+    let count = 0;
+    let i;
+    for (i = 0; i < playlists.length; i++) {
+      if (playlists[i].excludeUntil <= Date.now()) {
+        count += 1;
+      }
+    }
+    return count;
+  };
+
   // update the playlist loader's state in response to a new or
   // updated playlist.
   haveMetadata = function(xhr, url) {

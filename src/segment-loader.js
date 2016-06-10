@@ -504,6 +504,11 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * @private
    */
+
+  dontTimeout() {
+    this.dontTimeout = true;
+  }
+
   loadSegment_(segmentInfo) {
     let segment;
     let requestTimeout;
@@ -538,6 +543,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     // some time to switch renditions in the event of a catastrophic
     // decrease in network performance or a server issue.
     requestTimeout = (segment.duration * 1.5) * 1000;
+
+    // don't timeout if we are on the last un-blacklisted playlist
+    if (dontTimeout) {
+      requestTimeout = 0;
+    }
 
     if (segment.key) {
       keyXhr = this.hls_.xhr({

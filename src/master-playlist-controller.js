@@ -513,6 +513,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
 
+    // if only 1 more available playlist, call dontTimeout
+    if (this.masterPlaylistLoader_.enabledPlaylists() <=1) {
+      this.mainSegmentLoader_.dontTimeout();
+    }
+
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
 
