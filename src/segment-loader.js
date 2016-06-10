@@ -505,7 +505,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
 
-  dontTimeout() {
+  disableTimeout() {
     this.dontTimeout = true;
   }
 

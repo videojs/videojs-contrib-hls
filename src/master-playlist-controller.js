@@ -515,7 +515,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     // if only 1 more available playlist, call dontTimeout
     if (this.masterPlaylistLoader_.enabledPlaylists() <= 1) {
-      this.mainSegmentLoader_.dontTimeout();
+      this.mainSegmentLoader_.disableTimeout();
     }
 
     // Select a new playlist
