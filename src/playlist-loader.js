@@ -235,6 +235,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   };
 
   loader.onLowestRendition = function() {
+    if (!loader.media()) {
+      return false;
+    }
     return loader.master.playlists.filter((element, index, array) => {
       return element.attributes.BANDWIDTH <= loader.media().attributes.BANDWIDTH ? true : false;
     }).length > 1 ? false : true;
