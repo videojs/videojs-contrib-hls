@@ -234,6 +234,12 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     }).length;
   };
 
+  loader.onLowestRendition = function() {
+    return loader.masters.playlists.filter((element, index, array) => {
+      return element.attributes.BANDWIDTH <= loader.media().attributes.BANDWIDTH ? true : false;
+    }).length > 1 ? false : true;
+  };
+
    /**
     * When called without any arguments, returns the currently
     * active media playlist. When called with a single argument,
