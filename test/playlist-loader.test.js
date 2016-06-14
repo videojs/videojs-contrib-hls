@@ -138,6 +138,30 @@ QUnit.test('playlist loader returns the correct amount of enabled playlists', fu
   QUnit.equal(loader.enabledPlaylists(), 1, 'Returned one less playlist after simulated blacklisting');
 });
 
+QUnit.test('playlist loader detects if we are on lowest rendition', function() {
+  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
+
+  loader.load();
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXT-X-STREAM-INF:\n' +
+                                'video1/media.m3u8\n' +
+                                '#EXT-X-STREAM-INF:\n' +
+                                'video2/media.m3u8\n');
+  loader.media = function() {
+    return {attributes: {BANDWIDTH: 10}};
+  }
+
+  loader.master.playlists = [{attributes: {BANDWIDTH: 10}}, {attributes: {BANDWIDTH: 20}}]
+  QUnit.ok(loader.onLowestRendition(),  'Detected on lowest rendition');
+
+  loader.media = function() {
+    return {attributes: {BANDWIDTH: 20}};
+  }
+
+  QUnit.ok(!loader.onLowestRendition(),  'Detected not on lowest rendition');
+});
+
 QUnit.test('recognizes absolute URIs and requests them unmodified', function() {
   let loader = new PlaylistLoader('manifest/media.m3u8', this.fakeHls);
 
