@@ -229,13 +229,13 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
     // returns the number of enabled playlists on the master playlist object
   loader.enabledPlaylists = function() {
-    return loader.masters.playlists.filter((element, index, array) => {
-      return element.excludeUntil <= Date.now() ? true : false;
+    return loader.master.playlists.filter((element, index, array) => {
+      return element.excludeUntil <= Date.now() || !element.excludeUntil ? true : false;
     }).length;
   };
 
   loader.onLowestRendition = function() {
-    return loader.masters.playlists.filter((element, index, array) => {
+    return loader.master.playlists.filter((element, index, array) => {
       return element.attributes.BANDWIDTH <= loader.media().attributes.BANDWIDTH ? true : false;
     }).length > 1 ? false : true;
   };
