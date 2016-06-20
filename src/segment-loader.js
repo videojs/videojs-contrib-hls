@@ -105,6 +105,21 @@ const segmentXhrHeaders = function(segment) {
 };
 
 /**
+ * Returns a unique string identifier for a media initialization
+ * segment.
+ */
+const initSegmentId = function(initSegment) {
+  let byterange = initSegment.byterange || {
+    length: Infinity,
+    offset: 0
+  };
+
+  return [
+    byterange.length, byterange.offset, initSegment.resolvedUri
+  ].join(',');
+};
+
+/**
  * An object that manages segment loading and appending.
  *
  * @class SegmentLoader
@@ -134,13 +149,17 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.roundTrip = NaN;
     this.resetStats_();
 
-    // private properties
+    // private settings
     this.hasPlayed_ = settings.hasPlayed;
     this.currentTime_ = settings.currentTime;
     this.seekable_ = settings.seekable;
     this.seeking_ = settings.seeking;
     this.setCurrentTime_ = settings.setCurrentTime;
     this.mediaSource_ = settings.mediaSource;
+
+    this.hls_ = settings.hls;
+
+    // private instance variables
     this.checkBufferTimeout_ = null;
     this.error_ = void 0;
     this.expired_ = 0;
@@ -149,8 +168,10 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.xhr_ = null;
     this.pendingSegment_ = null;
     this.sourceUpdater_ = null;
-    this.hls_ = settings.hls;
     this.xhrOptions_ = null;
+
+    this.activeInitSegmentId_ = null;
+    this.initSegments_ = {};
   }
 
   /**
@@ -310,7 +331,8 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
-   * asynchronously/recursively monitor the buffer
+   * As long as the SegmentLoader is in the READY state, periodically
+   * invoke fillBuffer_().
    *
    * @private
    */
@@ -456,24 +478,24 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     // see if we need to begin loading immediately
-    let request = this.checkBuffer_(this.sourceUpdater_.buffered(),
-                                    this.playlist_,
-                                    this.currentTime_(),
-                                    this.timestampOffset_);
+    let segmentInfo = this.checkBuffer_(this.sourceUpdater_.buffered(),
+                                        this.playlist_,
+                                        this.currentTime_(),
+                                        this.timestampOffset_);
 
-    if (!request) {
+    if (!segmentInfo) {
       return;
     }
 
-    if (request.mediaIndex === this.playlist_.segments.length - 1 &&
+    if (segmentInfo.mediaIndex === this.playlist_.segments.length - 1 &&
         this.mediaSource_.readyState === 'ended' &&
         !this.seeking_()) {
       return;
     }
 
-    let segment = this.playlist_.segments[request.mediaIndex];
+    let segment = this.playlist_.segments[segmentInfo.mediaIndex];
     let startOfSegment = duration(this.playlist_,
-                                  this.playlist_.mediaSequence + request.mediaIndex,
+                                  this.playlist_.mediaSequence + segmentInfo.mediaIndex,
                                   this.expired_);
 
     // Sanity check the segment-index determining logic by calcuating the
@@ -499,7 +521,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    this.loadSegment_(request);
+    this.loadSegment_(segmentInfo);
   }
 
   /**
@@ -565,6 +587,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   loadSegment_(segmentInfo) {
     let segment;
     let keyXhr;
+    let initSegmentXhr;
     let segmentXhr;
     let removeToTime = 0;
 
@@ -576,6 +599,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
+    // optionally, request the decryption key
     if (segment.key) {
       let keyRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
         uri: segment.key.resolvedUri,
@@ -585,6 +609,18 @@ export default class SegmentLoader extends videojs.EventTarget {
       keyXhr = this.hls_.xhr(keyRequestOptions, this.handleResponse_.bind(this));
     }
 
+    // optionally, request the associated media init segment
+    if (segment.map &&
+        !this.initSegments_[initSegmentId(segment.map)]) {
+      let initSegmentOptions = videojs.mergeOptions(this.xhrOptions_, {
+        uri: segment.map.resolvedUri,
+        responseType: 'arraybuffer',
+        headers: segmentXhrHeaders(segment.map)
+      });
+
+      initSegmentXhr = this.hls_.xhr(initSegmentOptions,
+                                     this.handleResponse_.bind(this));
+    }
     this.pendingSegment_ = segmentInfo;
 
     let segmentRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
@@ -597,6 +633,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.xhr_ = {
       keyXhr,
+      initSegmentXhr,
       segmentXhr,
       abort() {
         if (this.segmentXhr) {
@@ -630,7 +667,9 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // timeout of previously aborted request
     if (!this.xhr_ ||
-        (request !== this.xhr_.segmentXhr && request !== this.xhr_.keyXhr)) {
+        (request !== this.xhr_.segmentXhr &&
+         request !== this.xhr_.keyXhr &&
+         request !== this.xhr_.initSegmentXhr)) {
       return;
     }
 
@@ -721,7 +760,14 @@ export default class SegmentLoader extends videojs.EventTarget {
       ]);
     }
 
-    if (!this.xhr_.segmentXhr && !this.xhr_.keyXhr) {
+    if (request === this.xhr_.initSegmentXhr) {
+      // the init segment request is no longer outstanding
+      this.xhr_.initSegmentXhr = null;
+      segment.map.bytes = new Uint8Array(request.response);
+      this.initSegments_[initSegmentId(segment.map)] = segment.map;
+    }
+
+    if (!this.xhr_.segmentXhr && !this.xhr_.keyXhr && !this.initSegmentXhr) {
       this.xhr_ = null;
       this.processResponse_();
     }
@@ -776,14 +822,31 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   handleSegment_() {
     let segmentInfo;
+    let segment;
 
     this.state = 'APPENDING';
     segmentInfo = this.pendingSegment_;
     segmentInfo.buffered = this.sourceUpdater_.buffered();
+    segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
     this.currentTimeline_ = segmentInfo.timeline;
 
     if (segmentInfo.timestampOffset !== this.sourceUpdater_.timestampOffset()) {
       this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
+    }
+
+    // if the media initialization segment is changing, append it
+    // before the content segment
+    if (segment.map) {
+      let initId = initSegmentId(segment.map);
+
+      if (!this.activeInitSegmentId_ ||
+          this.activeInitSegmentId_ !== initId) {
+        let initSegment = this.initSegments_[initId];
+
+        this.sourceUpdater_.appendBuffer(initSegment.bytes, () => {
+          this.activeInitSegmentid_ = initId;
+        });
+      }
     }
 
     this.sourceUpdater_.appendBuffer(segmentInfo.bytes,
