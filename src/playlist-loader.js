@@ -239,7 +239,11 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       return false;
     }
     return loader.master.playlists.filter((element, index, array) => {
-      return element.attributes.BANDWIDTH <= loader.media().attributes.BANDWIDTH ? true : false;
+      let item = element.attributes.BANDWIDTH;
+      let currentPlaylist = loader.media().attributes.BANDWIDTH;
+
+      return item <= currentPlaylist ? true : false;
+
     }).length > 1 ? false : true;
   };
 

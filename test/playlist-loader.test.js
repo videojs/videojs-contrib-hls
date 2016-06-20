@@ -135,7 +135,7 @@ QUnit.test('playlist loader returns the correct amount of enabled playlists', fu
   QUnit.equal(loader.enabledPlaylists(), 2, 'Returned initial amount of playlists');
   loader.master.playlists[0].excludeUntil = Date.now() + 100000;
   this.clock.tick(1000);
-  QUnit.equal(loader.enabledPlaylists(), 1, 'Returned one less playlist after simulated blacklisting');
+  QUnit.equal(loader.enabledPlaylists(), 1, 'Returned one less playlist');
 });
 
 QUnit.test('playlist loader detects if we are on lowest rendition', function() {
@@ -150,16 +150,17 @@ QUnit.test('playlist loader detects if we are on lowest rendition', function() {
                                 'video2/media.m3u8\n');
   loader.media = function() {
     return {attributes: {BANDWIDTH: 10}};
-  }
+  };
 
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}}, {attributes: {BANDWIDTH: 20}}]
-  QUnit.ok(loader.onLowestRendition(),  'Detected on lowest rendition');
+  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
+                              {attributes: {BANDWIDTH: 20}}];
+  QUnit.ok(loader.onLowestRendition(), 'Detected on lowest rendition');
 
   loader.media = function() {
     return {attributes: {BANDWIDTH: 20}};
-  }
+  };
 
-  QUnit.ok(!loader.onLowestRendition(),  'Detected not on lowest rendition');
+  QUnit.ok(!loader.onLowestRendition(), 'Detected not on lowest rendition');
 });
 
 QUnit.test('recognizes absolute URIs and requests them unmodified', function() {
