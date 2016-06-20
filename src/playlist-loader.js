@@ -96,6 +96,9 @@ const updateMaster = function(master, media) {
         if (segment.key && !segment.key.resolvedUri) {
           segment.key.resolvedUri = resolveUrl(playlist.resolvedUri, segment.key.uri);
         }
+        if (segment.map && !segment.map.resolvedUri) {
+          segment.map.resolvedUri = resolveUrl(playlist.resolvedUri, segment.map.uri);
+        }
       }
       changed = true;
     }
