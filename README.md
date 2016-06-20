@@ -11,7 +11,7 @@ Play back HLS with video.js, even where it's not natively supported.
 - [Installation](#installation)
   - [NPM](#npm)
   - [CDN](#cdn)
-  - [Local](#local)
+  - [Releases](#releases)
   - [Manual Build](#manual-build)
 - [Contributing](#contributing)
 - [Getting Started](#getting-started)
@@ -42,7 +42,9 @@ Play back HLS with video.js, even where it's not natively supported.
   - [Testing](#testing)
 - [Release History](#release-history)
 - [Building](#building)
-- [Development Commands](#development-commands)
+- [Development](#development)
+  - [Tools](#tools)
+  - [Commands](#commands)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 

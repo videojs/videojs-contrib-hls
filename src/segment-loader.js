@@ -5,7 +5,7 @@ import Ranges from './ranges';
 import {getMediaIndexForTime_ as getMediaIndexForTime, duration} from './playlist';
 import videojs from 'video.js';
 import SourceUpdater from './source-updater';
-import {Decrypter} from './decrypter';
+import {Decrypter} from 'aes-decrypter';
 import Config from './config';
 
 // in ms
