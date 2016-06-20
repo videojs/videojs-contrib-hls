@@ -517,7 +517,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     // ||
     if (this.masterPlaylistLoader_.enabledPlaylists() <= 1 ||
       this.masterPlaylistLoader_.onLowestRendition()) {
-      this.mainSegmentLoader_.disableTimeout();
+      currentPlaylist.dontTimeout = true;
     }
 
     // Select a new playlist

@@ -423,7 +423,9 @@ export default class SegmentLoader extends videojs.EventTarget {
       // The timeline that the segment is in
       timeline: segment.timeline,
       // The expected duration of the segment in seconds
-      duration: segment.duration
+      duration: segment.duration,
+      // Dont timeout lowest rendition/last available playlist
+      dontTimeout: playlist.dontTimeout
     };
   }
 
@@ -505,10 +507,6 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
 
-  disableTimeout() {
-    this.dontTimeout = true;
-  }
-
   loadSegment_(segmentInfo) {
     let segment;
     let requestTimeout;
@@ -542,12 +540,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Set xhr timeout to 150% of the segment duration to allow us
     // some time to switch renditions in the event of a catastrophic
     // decrease in network performance or a server issue.
-    requestTimeout = (segment.duration * 1.5) * 1000;
 
     // don't timeout if we are on the last un-blacklisted playlist
-    if (this.dontTimeout) {
-      requestTimeout = 0;
-    }
+    segmentInfo.dontTimeout ? requestTimeout = 0 : requestTimeout = (segment.duration * 1.5) * 1000;
 
     if (segment.key) {
       keyXhr = this.hls_.xhr({
