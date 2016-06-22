@@ -490,15 +490,13 @@ PlaylistLoader.prototype = new Stream();
   *
   * @param {Object} update the updated media playlist object
   */
-PlaylistLoader.prototype.updateMediaPlaylist_ = function(update) {
-  let outdated;
-  let i;
-  let segment;
+PlaylistLoader.prototype.updateMediaPlaylist_ = function(updatedPlaylist) {
+  let outdatedPlaylist;
 
-  outdated = this.media_;
-  this.media_ = this.master.playlists[update.uri];
+  outdatedPlaylist = this.media_;
+  this.media_ = this.master.playlists[updatedPlaylist.uri];
 
-  if (!outdated) {
+  if (!outdatedPlaylist) {
     return;
   }
 
@@ -510,14 +508,18 @@ PlaylistLoader.prototype.updateMediaPlaylist_ = function(update) {
   // if the update was the result of a rendition switch do not
   // attempt to calculate expired_ since media-sequences need not
   // correlate between renditions/variants
-  if (update.uri !== outdated.uri) {
+  if (updatedPlaylist.uri !== outdatedPlaylist.uri) {
     return;
   }
 
   // calculate expired by walking the outdated playlist
-  i = update.mediaSequence - outdated.mediaSequence;
+  let mediaSequenceChange =
+    updatedPlaylist.mediaSequence - outdatedPlaylist.mediaSequence;
 
-  this.expired_ = Playlist.duration(outdated, outdated.mediaSequence + i);
+  this.expired_ =
+    Playlist.duration(outdatedPlaylist,
+                      updatedPlaylist.mediaSequence,
+                      this.expired_);
 };
 
 export default PlaylistLoader;
