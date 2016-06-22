@@ -5,8 +5,8 @@ import Ranges from './ranges';
 import {getMediaIndexForTime_ as getMediaIndexForTime, duration} from './playlist';
 import videojs from 'video.js';
 import SourceUpdater from './source-updater';
-import {Decrypter} from 'aes-decrypter';
 import mp4probe from 'mux.js/lib/mp4/probe';
+import {decrypt} from 'aes-decrypter';
 import Config from './config';
 import window from 'global/window';
 
@@ -705,7 +705,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     let segmentInfo;
     let segment;
     let keyXhrRequest;
-    let view;
 
     // timeout of previously aborted request
     if (!this.xhr_ ||
@@ -787,13 +786,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         return this.trigger('error');
       }
 
-      view = new DataView(request.response);
-      segment.key.bytes = new Uint32Array([
-        view.getUint32(0),
-        view.getUint32(4),
-        view.getUint32(8),
-        view.getUint32(12)
-      ]);
+      segment.key.bytes = new Uint8Array(request.response);
 
       // if the media sequence is greater than 2^32, the IV will be incorrect
       // assuming 10s segments, that would be about 1300 years
@@ -855,14 +848,14 @@ export default class SegmentLoader extends videojs.EventTarget {
       // this is an encrypted segment
       // incrementally decrypt the segment
       /* eslint-disable no-new, handle-callback-err */
-      new Decrypter(segmentInfo.encryptedBytes,
-                    segment.key.bytes,
-                    segment.key.iv,
-                    (function(err, bytes) {
-                      // err always null
-                      segmentInfo.bytes = bytes;
-                      this.handleSegment_();
-                    }).bind(this));
+      decrypt(segmentInfo.encryptedBytes,
+              segment.key.bytes,
+              segment.key.iv,
+              (function(err, bytes) {
+                // err always null
+                segmentInfo.bytes = bytes;
+                this.handleSegment_();
+              }).bind(this));
       /* eslint-enable */
     } else {
       this.handleSegment_();
