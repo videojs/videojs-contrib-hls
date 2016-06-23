@@ -577,7 +577,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       }, this.handleResponse_.bind(this));
     }
 
-
     this.xhr_ = {
       keyXhr,
       segmentXhr,
