@@ -425,9 +425,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       // The timeline that the segment is in
       timeline: segment.timeline,
       // The expected duration of the segment in seconds
-      duration: segment.duration,
-      // Dont timeout lowest rendition/last available playlist
-      dontTimeout: playlist.dontTimeout
+      duration: segment.duration
     };
   }
 
@@ -542,29 +540,22 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Set xhr timeout to 150% of the segment duration to allow us
     // some time to switch renditions in the event of a catastrophic
     // decrease in network performance or a server issue.
-
-    // don't timeout if we are on the last un-blacklisted playlist
-    if (segmentInfo.dontTimeout) {
-      requestTimeout = 0;
-    } else {
-      requestTimeout = (segment.duration * 1.5) * 1000;
-    }
+    requestTimeout = (segment.duration * 1.5) * 1000;
 
     if (segment.key) {
       keyXhr = this.hls_.xhr({
         uri: segment.key.resolvedUri,
         responseType: 'arraybuffer',
-        withCredentials: this.withCredentials_,
-        timeout: requestTimeout
+        withCredentials: this.xhrRequest.withCredentials || this.withCredentials_,
+        timeout: requestTimeout * this.xhrRequest.requestTimeout;
       }, this.handleResponse_.bind(this));
     }
     this.pendingSegment_ = segmentInfo;
-
     segmentXhr = this.hls_.xhr({
       uri: segmentInfo.uri,
       responseType: 'arraybuffer',
       withCredentials: this.xhrRequest.withCredentials || this.withCredentials_,
-      timeout: requestTimeout * this.requestTimeout,
+      timeout: requestTimeout * this.xhrRequest.requestTimeout,
       headers: segmentXhrHeaders(segment)
     }, this.handleResponse_.bind(this));
 
