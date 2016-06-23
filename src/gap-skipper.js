@@ -34,9 +34,15 @@ export default class GapSkipper {
     }
     this.logger_('<initialize>');
 
+    let waitingHandler = () => {
+      if (!this.tech_.seeking()) {
+        this.setTimer_();
+      }
+    };
+
     // The purpose of this function is to emulate the "waiting" event on
-    // browsers that does not emit it when they are stalled waiting for
-    // more data
+    // browsers that do not emit it when they are waiting for more
+    // data to continue playback
     let timeupdateHandler = () => {
       if (this.player_.paused() || this.player_.seeking()) {
         return;
@@ -46,21 +52,13 @@ export default class GapSkipper {
 
       if (this.consecutiveUpdates === 5 &&
           currentTime === this.lastRecordedTime) {
-
-        // trigger waiting
-        this.player_.trigger('waiting');
         this.consecutiveUpdates++;
+        waitingHandler();
       } else if (currentTime === this.lastRecordedTime) {
         this.consecutiveUpdates++;
       } else {
         this.consecutiveUpdates = 0;
         this.lastRecordedTime = currentTime;
-      }
-    };
-
-    let waitingHandler = () => {
-      if (!this.player_.seeking()) {
-        this.setTimer_();
       }
     };
 
