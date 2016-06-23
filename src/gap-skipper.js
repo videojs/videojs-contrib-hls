@@ -29,9 +29,9 @@ export default class GapSkipper {
     this.timer_ = null;
 
     if (options.debug) {
-      this.logger_ = videojs.log.bind(videojs, '<gap-skipper>');
+      this.logger_ = videojs.log.bind(videojs, 'gap-skipper ->');
     }
-    this.logger_('<initialize>');
+    this.logger_('initialize');
 
     let waitingHandler = () => {
       if (!this.tech_.seeking()) {
@@ -95,7 +95,7 @@ export default class GapSkipper {
     this.consecutiveUpdates = 0;
 
     if (this.timer_) {
-      this.logger_('<cancelTimer_> clearing timer');
+      this.logger_('cancelTimer_');
       clearTimeout(this.timer_);
     }
 
@@ -121,7 +121,7 @@ export default class GapSkipper {
       return;
     }
 
-    this.logger_('<skipTheGap_>',
+    this.logger_('skipTheGap_:',
                  'currentTime:', currentTime,
                  'scheduled currentTime:', scheduledCurrentTime,
                  'nextRange start:', nextRange.start(0));
@@ -147,7 +147,7 @@ export default class GapSkipper {
 
     let difference = nextRange.start(0) - currentTime;
 
-    this.logger_('<setTimer_>',
+    this.logger_('setTimer_:',
                  'stopped at:', currentTime,
                  'setting timer for:', difference,
                  'seeking to:', nextRange.start(0));
