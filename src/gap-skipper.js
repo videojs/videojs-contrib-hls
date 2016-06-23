@@ -23,7 +23,6 @@ export default class GapSkipper {
       return;
     }
 
-    this.player_ = videojs(options.tech.options_.playerId);
     this.tech_ = options.tech;
     this.consecutiveUpdates = 0;
     this.lastRecordedTime = null;
@@ -44,11 +43,11 @@ export default class GapSkipper {
     // browsers that do not emit it when they are waiting for more
     // data to continue playback
     let timeupdateHandler = () => {
-      if (this.player_.paused() || this.player_.seeking()) {
+      if (this.tech_.paused() || this.tech_.seeking()) {
         return;
       }
 
-      let currentTime = this.player_.currentTime();
+      let currentTime = this.tech_.currentTime();
 
       if (this.consecutiveUpdates === 5 &&
           currentTime === this.lastRecordedTime) {
@@ -73,15 +72,15 @@ export default class GapSkipper {
 
     let cancelTimerHandler = this.cancelTimer_.bind(this);
 
-    this.player_.on('waiting', waitingHandler);
-    this.player_.on('timeupdate', timeupdateHandler);
-    this.player_.on(timerCancelEvents, cancelTimerHandler);
+    this.tech_.on('waiting', waitingHandler);
+    this.tech_.on('timeupdate', timeupdateHandler);
+    this.tech_.on(timerCancelEvents, cancelTimerHandler);
 
     this.dispose = () => {
-      this.logger_('<dispose>');
-      this.player_.off('waiting', waitingHandler);
-      this.player_.off('timeupdate', timeupdateHandler);
-      this.player_.off(timerCancelEvents, cancelTimerHandler);
+      this.logger_('dispose');
+      this.tech_.off('waiting', waitingHandler);
+      this.tech_.off('timeupdate', timeupdateHandler);
+      this.tech_.off(timerCancelEvents, cancelTimerHandler);
       this.cancelTimer_();
     };
   }
@@ -110,8 +109,8 @@ export default class GapSkipper {
    * @private
    */
   skipTheGap_(scheduledCurrentTime) {
-    let buffered = this.player_.buffered();
-    let currentTime = this.player_.currentTime();
+    let buffered = this.tech_.buffered();
+    let currentTime = this.tech_.currentTime();
     let nextRange = Ranges.findNextRange(buffered, currentTime);
 
     this.consecutiveUpdates = 0;
@@ -128,7 +127,7 @@ export default class GapSkipper {
                  'nextRange start:', nextRange.start(0));
 
     // only seek if we still have not played
-    this.player_.currentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
+    this.tech_.setCurrentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
   }
 
   /**
@@ -137,8 +136,8 @@ export default class GapSkipper {
    * @private
    */
   setTimer_() {
-    let buffered = this.player_.buffered();
-    let currentTime = this.player_.currentTime();
+    let buffered = this.tech_.buffered();
+    let currentTime = this.tech_.currentTime();
     let nextRange = Ranges.findNextRange(buffered, currentTime);
 
     if (nextRange.length === 0 ||
