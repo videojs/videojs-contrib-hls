@@ -738,8 +738,25 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.currentTimeline_ = segmentInfo.timeline;
 
     if (segmentInfo.timestampOffset !== this.sourceUpdater_.timestampOffset()) {
-      this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
+      this.discontinuityTimestampOffset = segmentInfo.timestampOffset;
+      this.trigger('discontinuity');
+      // wait to be told to continue
+      return;
     }
+
+    this.appendSegment_();
+  }
+
+  appendWithTimestampOffset(timestampOffset) {
+    let segmentInfo = this.pendingSegment_;
+
+    segmentInfo.timestampOffset = timestampOffset;
+    this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
+    this.appendSegment_();
+  }
+
+  appendSegment_() {
+    let segmentInfo = this.pendingSegment_;
 
     this.sourceUpdater_.appendBuffer(segmentInfo.bytes,
                                      this.handleUpdateEnd_.bind(this));

@@ -526,3 +526,51 @@ function() {
 
   Playlist.seekable = origSeekable;
 });
+
+QUnit.test(
+'uses greatest timestamp offset when segment loaders encounter discontinuities',
+function() {
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  let mainAppendTimestampOffset;
+  let mainSegmentLoader = this.masterPlaylistController.mainSegmentLoader_;
+
+  mainSegmentLoader.appendWithTimestampOffset = (timestampOffset) => {
+    mainAppendTimestampOffset = timestampOffset;
+  };
+
+  mainSegmentLoader.discontinuityTimestampOffset = 10;
+  mainSegmentLoader.trigger('discontinuity');
+
+  QUnit.equal(mainAppendTimestampOffset, 10,
+              'called main segment loader\'s appendTimestampOffset with 10');
+
+  QUnit.ok(!this.masterPlaylistController.discontinuityCount, 'no discontinuity count');
+
+  // truthy audioPlaylistLoader_ denotes use of alternate audio
+  this.masterPlaylistController.audioPlaylistLoader_ = {};
+
+  let audioSegmentLoader = this.masterPlaylistController.audioSegmentLoader_;
+  let audioAppendTimestampOffset;
+
+  audioSegmentLoader.appendWithTimestampOffset = (timestampOffset) => {
+    audioAppendTimestampOffset = timestampOffset;
+  };
+  audioSegmentLoader.discontinuityTimestampOffset = 11;
+
+  audioSegmentLoader.trigger('discontinuity');
+  QUnit.equal(this.masterPlaylistController.discontinuityCount, 1,
+              'discontinuity count is 1');
+
+  mainSegmentLoader.trigger('discontinuity');
+
+  QUnit.equal(mainAppendTimestampOffset, 11,
+              'called main segment loader\'s appendTimestampOffset with 11');
+  QUnit.equal(audioAppendTimestampOffset, 11,
+              'called audio segment loader\'s appendTimestampOffset with 11');
+});
