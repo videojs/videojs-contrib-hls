@@ -535,29 +535,48 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (removeToTime > 0) {
       this.sourceUpdater_.remove(0, removeToTime);
     }
-
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
     // Set xhr timeout to 150% of the segment duration to allow us
     // some time to switch renditions in the event of a catastrophic
     // decrease in network performance or a server issue.
     requestTimeout = (segment.duration * 1.5) * 1000;
-
-    if (segment.key) {
-      keyXhr = this.hls_.xhr({
-        uri: segment.key.resolvedUri,
+    if (this.xhrRequest) {
+      // we have set our request object by calling playing
+      if (segment.key) {
+        keyXhr = this.hls_.xhr({
+          uri: segment.key.resolvedUri,
+          responseType: 'arraybuffer',
+          withCredentials: this.xhrRequest.withCredentials || this.withCredentials_,
+          timeout: requestTimeout * this.xhrRequest.requestTimeout
+        }, this.handleResponse_.bind(this));
+      }
+      this.pendingSegment_ = segmentInfo;
+      segmentXhr = this.hls_.xhr({
+        uri: segmentInfo.uri,
         responseType: 'arraybuffer',
         withCredentials: this.xhrRequest.withCredentials || this.withCredentials_,
-        timeout: requestTimeout * this.xhrRequest.requestTimeout;
+        timeout: requestTimeout * this.xhrRequest.requestTimeout,
+        headers: segmentXhrHeaders(segment)
+      }, this.handleResponse_.bind(this));
+    } else {
+      if (segment.key) {
+        keyXhr = this.hls_.xhr({
+          uri: segment.key.resolvedUri,
+          responseType: 'arraybuffer',
+          withCredentials: this.withCredentials_,
+          timeout: requestTimeout
+        }, this.handleResponse_.bind(this));
+      }
+      this.pendingSegment_ = segmentInfo;
+      segmentXhr = this.hls_.xhr({
+        uri: segmentInfo.uri,
+        responseType: 'arraybuffer',
+        withCredentials: this.withCredentials_,
+        timeout: requestTimeout,
+        headers: segmentXhrHeaders(segment)
       }, this.handleResponse_.bind(this));
     }
-    this.pendingSegment_ = segmentInfo;
-    segmentXhr = this.hls_.xhr({
-      uri: segmentInfo.uri,
-      responseType: 'arraybuffer',
-      withCredentials: this.xhrRequest.withCredentials || this.withCredentials_,
-      timeout: requestTimeout * this.xhrRequest.requestTimeout,
-      headers: segmentXhrHeaders(segment)
-    }, this.handleResponse_.bind(this));
+
 
     this.xhr_ = {
       keyXhr,
