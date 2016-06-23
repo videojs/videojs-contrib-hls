@@ -32,7 +32,7 @@ QUnit.test('skips over gap in firefox with waiting event', function() {
   this.player.autoplay(true);
 
   // create a buffer with a gap between 10 & 20 seconds
-  this.player.buffered = function() {
+  this.player.tech_.buffered = function() {
     return videojs.createTimeRanges([[0, 10], [20, 30]]);
   };
 
@@ -53,7 +53,7 @@ QUnit.test('skips over gap in firefox with waiting event', function() {
 
   // seek to 10 seconds and wait 12 seconds
   this.player.currentTime(10);
-  this.player.trigger('waiting');
+  this.player.tech_.trigger('waiting');
   this.clock.tick(12000);
 
   // check that player jumped the gap
@@ -67,7 +67,7 @@ QUnit.test('skips over gap in chrome without waiting event', function() {
   this.player.autoplay(true);
 
   // create a buffer with a gap between 10 & 20 seconds
-  this.player.buffered = function() {
+  this.player.tech_.buffered = function() {
     return videojs.createTimeRanges([[0, 10], [20, 30]]);
   };
 
@@ -89,7 +89,7 @@ QUnit.test('skips over gap in chrome without waiting event', function() {
   // seek to 10 seconds & simulate chrome waiting event
   this.player.currentTime(10);
   for (let i = 0; i < 10; i++) {
-    this.player.trigger('timeupdate');
+    this.player.tech_.trigger('timeupdate');
   }
   this.clock.tick(2000);
 
