@@ -4,11 +4,26 @@
 import Ranges from './ranges';
 import videojs from 'video.js';
 
+// Set of events that reset the gap-skipper logic and clear the timeout
+const timerCancelEvents = [
+  'seeking',
+  'seeked',
+  'pause',
+  'playing',
+  'error'
+];
+
 /**
- * the gap skipper object handles all scenarios
+ * The gap skipper object handles all scenarios
  * where the player runs into the end of a buffered
  * region and there is a buffered region ahead.
- * It then handles the skipping behavior.
+ *
+ * It then handles the skipping behavior by setting a
+ * timer to the size (in time) of the gap. This gives
+ * the hls segment fetcher time to close the gap and
+ * resume playing before the timer is triggered and
+ * the gap skipper simply seeks over the gap as a
+ * last resort to resume playback.
  *
  * @class GapSkipper
  */
@@ -19,10 +34,6 @@ export default class GapSkipper {
    * @param {object} options an object that includes the tech and settings
    */
   constructor(options) {
-    if (!options.tech.options_.playerId) {
-      return;
-    }
-
     this.tech_ = options.tech;
     this.consecutiveUpdates = 0;
     this.lastRecordedTime = null;
@@ -33,49 +44,15 @@ export default class GapSkipper {
     }
     this.logger_('initialize');
 
-    let waitingHandler = () => {
-      if (!this.tech_.seeking()) {
-        this.setTimer_();
-      }
-    };
-
-    // The purpose of this function is to emulate the "waiting" event on
-    // browsers that do not emit it when they are waiting for more
-    // data to continue playback
-    let timeupdateHandler = () => {
-      if (this.tech_.paused() || this.tech_.seeking()) {
-        return;
-      }
-
-      let currentTime = this.tech_.currentTime();
-
-      if (this.consecutiveUpdates === 5 &&
-          currentTime === this.lastRecordedTime) {
-        this.consecutiveUpdates++;
-        waitingHandler();
-      } else if (currentTime === this.lastRecordedTime) {
-        this.consecutiveUpdates++;
-      } else {
-        this.consecutiveUpdates = 0;
-        this.lastRecordedTime = currentTime;
-      }
-    };
-
-    // Set of events that reset the gap-skipper logic and clear the timeout
-    let timerCancelEvents = [
-      'seeking',
-      'seeked',
-      'pause',
-      'playing',
-      'error'
-    ];
-
-    let cancelTimerHandler = this.cancelTimer_.bind(this);
+    let waitingHandler = ()=> this.waiting_();
+    let timeupdateHandler = ()=> this.timeupdate_();
+    let cancelTimerHandler = ()=> this.cancelTimer_();
 
     this.tech_.on('waiting', waitingHandler);
     this.tech_.on('timeupdate', timeupdateHandler);
     this.tech_.on(timerCancelEvents, cancelTimerHandler);
 
+    // Define the dispose function to clean up our events
     this.dispose = () => {
       this.logger_('dispose');
       this.tech_.off('waiting', waitingHandler);
@@ -86,11 +63,48 @@ export default class GapSkipper {
   }
 
   /**
-  * Cancels any pending timers and resets the 'timeupdate' mechanism
-  * designed to detect that we are stalled
-  *
-  * @private
-  */
+   * Handler for `waiting` events from the player
+   *
+   * @private
+   */
+  waiting_() {
+    if (!this.tech_.seeking()) {
+      this.setTimer_();
+    }
+  }
+
+  /**
+   * The purpose of this function is to emulate the "waiting" event on
+   * browsers that do not emit it when they are waiting for more
+   * data to continue playback
+   *
+   * @private
+   */
+  timeupdate_() {
+    if (this.tech_.paused() || this.tech_.seeking()) {
+      return;
+    }
+
+    let currentTime = this.tech_.currentTime();
+
+    if (this.consecutiveUpdates === 5 &&
+        currentTime === this.lastRecordedTime) {
+      this.consecutiveUpdates++;
+      this.waiting_();
+    } else if (currentTime === this.lastRecordedTime) {
+      this.consecutiveUpdates++;
+    } else {
+      this.consecutiveUpdates = 0;
+      this.lastRecordedTime = currentTime;
+    }
+  }
+
+  /**
+   * Cancels any pending timers and resets the 'timeupdate' mechanism
+   * designed to detect that we are stalled
+   *
+   * @private
+   */
   cancelTimer_() {
     this.consecutiveUpdates = 0;
 
@@ -164,13 +178,4 @@ export default class GapSkipper {
    * @private
    */
   logger_() {}
-
-  /**
-   * A noop to ensure there is always have a dispose function even if there
-   * was no playerId in the global options and therefore the gapSkipper was
-   * never properly initialized
-   *
-   * @private
-   */
-  dispose() {}
 }

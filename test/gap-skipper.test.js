@@ -97,7 +97,7 @@ QUnit.test('skips over gap in chrome without waiting event', function() {
   QUnit.equal(this.player.currentTime(), 10, 'Player doesnt seek over gap pre-timer');
   this.clock.tick(10000);
 
-  // check that pkayer jumped the gap
+  // check that player jumped the gap
   QUnit.equal(Math.round(this.player.currentTime()),
     20, 'Player seeked over gap after timer');
 
