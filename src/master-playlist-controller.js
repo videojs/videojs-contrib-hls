@@ -60,8 +60,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.mode_ = mode;
     this.audioTracks_ = [];
     this.xhrRequest = {
-      withCredentials: null,
-      requestTimeout: 1
+      withCredentials: this.withCredentials,
+      requestTimeout: null
     };
 
     this.mediaSource = new videojs.MediaSource({ mode });
@@ -94,6 +94,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.masterPlaylistLoader_.media();
+      let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
+
+      this.xhrRequest.requestTimeout = requestTimeout;
 
       // if this isn't a live video and preload permits, start
       // downloading segments

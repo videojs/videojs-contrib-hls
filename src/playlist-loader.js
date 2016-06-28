@@ -177,6 +177,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     // merge this playlist into the master
     update = updateMaster(loader.master, parser.manifest);
     refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
+    loader.targetDuration = parser.manifest.targetDuration;
     if (update) {
       loader.master = update;
       loader.updateMediaPlaylist_(parser.manifest);
