@@ -16,6 +16,7 @@ import videojs from 'video.js';
 import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
+import GapSkipper from './gap-skipper';
 
 /**
  * determine if an object a is differnt from
@@ -374,6 +375,7 @@ class HlsHandler extends Component {
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
+    this.gapSkipper_ = new GapSkipper(this.options_);
 
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
@@ -542,6 +544,7 @@ class HlsHandler extends Component {
     if (this.masterPlaylistController_) {
       this.masterPlaylistController_.dispose();
     }
+    this.gapSkipper_.dispose();
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
     super.dispose();
   }
