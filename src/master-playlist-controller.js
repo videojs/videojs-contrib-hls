@@ -145,11 +145,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       let media = this.masterPlaylistLoader_.media();
 
       this.mainSegmentLoader_.abort();
-
       // TODO: Create a new event on the PlaylistLoader that signals
       // that the segments have changed in some way and use that to
       // update the SegmentLoader instead of doing it twice here and
       // on `loadedplaylist`
+      this.mainSegmentLoader_.load();
       this.mainSegmentLoader_.playlist(media);
       this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
       this.mainSegmentLoader_.load();
