@@ -150,6 +150,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.pendingSegment_ = null;
     this.sourceUpdater_ = null;
     this.hls_ = settings.hls;
+    this.xhrRequest = null;
   }
 
   /**
@@ -238,10 +239,13 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * @param {PlaylistLoader} media the playlist to set on the segment loader
    */
-  playlist(media) {
+  playlist(media, options) {
     this.playlist_ = media;
     // if we were unpaused but waiting for a playlist, start
     // buffering now
+
+    this.xhrRequest = options;
+
     if (this.sourceUpdater_ &&
         media &&
         this.state === 'INIT' &&
@@ -543,16 +547,16 @@ export default class SegmentLoader extends videojs.EventTarget {
       keyXhr = this.hls_.xhr({
         uri: segment.key.resolvedUri,
         responseType: 'arraybuffer',
-        withCredentials: this.withCredentials_,
-        timeout: requestTimeout
+        withCredentials: this.xhrRequest.withCredentials,
+        timeout: this.xhrRequest.requestTimeout
       }, this.handleResponse_.bind(this));
     }
     this.pendingSegment_ = segmentInfo;
     segmentXhr = this.hls_.xhr({
       uri: segmentInfo.uri,
       responseType: 'arraybuffer',
-      withCredentials: this.withCredentials_,
-      timeout: requestTimeout,
+      withCredentials: this.xhrRequest.withCredentials,
+      timeout: this.xhrRequest.requestTimeout,
       headers: segmentXhrHeaders(segment)
     }, this.handleResponse_.bind(this));
 
