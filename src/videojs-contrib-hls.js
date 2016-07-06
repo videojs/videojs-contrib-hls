@@ -409,19 +409,19 @@ class HlsHandler extends Component {
     });
 
     Object.defineProperties(this.stats, {
-      'bandwidth': {
+      bandwidth: {
         get: () => this.bandwidth || 0,
         enumerable: true
       },
-      'mediaRequests': {
+      mediaRequests: {
         get: () => this.masterPlaylistController_.mediaRequests_() || 0,
         enumerable: true
       },
-      'mediaTransferDuration': {
+      mediaTransferDuration: {
         get: () => this.masterPlaylistController_.mediaTransferDuration_() || 0,
         enumerable: true
       },
-      'mediaBytesTransferred': {
+      mediaBytesTransferred: {
         get: () => this.masterPlaylistController_.mediaBytesTransferred_() || 0,
         enumerable: true
       }
