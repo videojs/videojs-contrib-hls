@@ -647,76 +647,83 @@ QUnit.test('live playlists do not trigger ended', function() {
   QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
-QUnit.test('respects the global withCredentials option', function() {
-  let hlsOptions = videojs.options.hls;
+/**
+ * Segment loader no longer handles withCredentials, but instead
+ * receives this information from the MasterPlaylistController.
+ * TODO: Remove these tests from the file (kept for now until I know
+ *       there is not another reason segment loader needs this option).
+*/
+// QUnit.test('respects the global withCredentials option', function() {
+//   let hlsOptions = videojs.options.hls;
 
-  videojs.options.hls = {
-    withCredentials: true
-  };
-  loader = new SegmentLoader({
-    hls: this.fakeHls,
-    currentTime() {
-      return currentTime;
-    },
-    seekable: () => this.seekable,
-    mediaSource
-  });
-  loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
-  loader.mimeType(this.mimeType);
-  loader.load();
+//   videojs.options.hls = {
+//     withCredentials: true
+//   };
+//   loader = new SegmentLoader({
+//     hls: this.fakeHls,
+//     currentTime() {
+//       return currentTime;
+//     },
+//     seekable: () => this.seekable,
+//     mediaSource
+//   });
+//   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+//   loader.mimeType(this.mimeType);
+//   loader.load();
 
-  QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
-  QUnit.ok(this.requests[0].withCredentials, 'key request used withCredentials');
-  QUnit.equal(this.requests[1].url, '0.ts', 'requested the first segment');
-  QUnit.ok(this.requests[1].withCredentials, 'segment request used withCredentials');
-  videojs.options.hls = hlsOptions;
-});
+//   QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
+//   QUnit.ok(this.requests[0].withCredentials, 'key request used withCredentials');
+//   QUnit.equal(this.requests[1].url, '0.ts', 'requested the first segment');
+//   QUnit.ok(this.requests[1].withCredentials, 'segment request used withCredentials');
+//   videojs.options.hls = hlsOptions;
+// });
 
-QUnit.test('respects the withCredentials option', function() {
-  loader = new SegmentLoader({
-    hls: this.fakeHls,
-    currentTime() {
-      return currentTime;
-    },
-    seekable: () => this.seekable,
-    mediaSource,
-    withCredentials: true
-  });
-  loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
-  loader.mimeType(this.mimeType);
-  loader.load();
+// QUnit.test('respects the withCredentials option', function() {
+//   loader = new SegmentLoader({
+//     hls: this.fakeHls,
+//     currentTime() {
+//       return currentTime;
+//     },
+//     seekable: () => this.seekable,
+//     mediaSource,
+//     withCredentials: true
+//   });
+//   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+//   loader.mimeType(this.mimeType);
+//   loader.load();
 
-  QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
-  QUnit.ok(this.requests[0].withCredentials, 'key request used withCredentials');
-  QUnit.equal(this.requests[1].url, '0.ts', 'requested the first segment');
-  QUnit.ok(this.requests[1].withCredentials, 'segment request used withCredentials');
-});
+//   QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
+//   QUnit.ok(this.requests[0].withCredentials, 'key request used withCredentials');
+//   QUnit.equal(this.requests[1].url, '0.ts', 'requested the first segment');
+//   QUnit.ok(this.requests[1].withCredentials, 'segment request used withCredentials');
+// });
 
-QUnit.test('the withCredentials option overrides the global', function() {
-  let hlsOptions = videojs.options.hls;
+// QUnit.test('the withCredentials option overrides the global', function() {
+//   let hlsOptions = videojs.options.hls;
 
-  videojs.options.hls = {
-    withCredentials: true
-  };
-  loader = new SegmentLoader({
-    hls: this.fakeHls,
-    currentTime() {
-      return currentTime;
-    },
-    mediaSource,
-    seekable: () => this.seekable,
-    withCredentials: false
-  });
-  loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
-  loader.mimeType(this.mimeType);
-  loader.load();
+//   videojs.options.hls = {
+//     withCredentials: true
+//   };
+//   loader = new SegmentLoader({
+//     hls: this.fakeHls,
+//     currentTime() {
+//       return currentTime;
+//     },
+//     mediaSource,
+//     seekable: () => this.seekable,
+//     withCredentials: false
+//   });
+//   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
+//   loader.mimeType(this.mimeType);
+//   loader.load();
 
-  QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
-  QUnit.ok(!this.requests[0].withCredentials, 'overrode key request withCredentials');
-  QUnit.equal(this.requests[1].url, '0.ts', 'requested the first segment');
-  QUnit.ok(!this.requests[1].withCredentials, 'overrode segment request withCredentials');
-  videojs.options.hls = hlsOptions;
-});
+//   QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
+//   QUnit.ok(!this.requests[0].withCredentials, 'overrode key request withCredentials');
+//   QUnit.equal(this.requests[1].url, '0.ts', 'requested the first segment');
+//   QUnit.ok(!this.requests[1].withCredentials,
+//     'overrode segment request withCredentials');
+//   videojs.options.hls = hlsOptions;
+// });
 
 QUnit.test('remains ready if there are no segments', function() {
   loader.playlist(playlistWithDuration(0));

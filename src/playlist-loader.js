@@ -249,7 +249,8 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
     return loader.master.playlists.filter((element, index, array) => {
       let enabled = typeof element.excludeUntil === 'undefined' ||
-                         element.excludeUntil <= Date.now();
+                      element.excludeUntil <= Date.now();
+
       if (!enabled) {
         return false;
       }

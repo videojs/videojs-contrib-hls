@@ -140,7 +140,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.seeking_ = settings.seeking;
     this.setCurrentTime_ = settings.setCurrentTime;
     this.mediaSource_ = settings.mediaSource;
-    //this.withCredentials_ = settings.withCredentials;
     this.checkBufferTimeout_ = null;
     this.error_ = void 0;
     this.expired_ = 0;
@@ -150,7 +149,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.pendingSegment_ = null;
     this.sourceUpdater_ = null;
     this.hls_ = settings.hls;
-    this.xhrRequest = null;
+    this.xhrOptions_ = null;
   }
 
   /**
@@ -239,13 +238,12 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * @param {PlaylistLoader} media the playlist to set on the segment loader
    */
-  playlist(media, options) {
+  playlist(media, options = {}) {
     this.playlist_ = media;
+    this.xhrOptions_ = options;
+
     // if we were unpaused but waiting for a playlist, start
     // buffering now
-
-    this.xhrRequest = options;
-
     if (this.sourceUpdater_ &&
         media &&
         this.state === 'INIT' &&
@@ -510,7 +508,6 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   loadSegment_(segmentInfo) {
     let segment;
-    let requestTimeout;
     let keyXhr;
     let segmentXhr;
     let seekable = this.seekable_();
@@ -540,21 +537,23 @@ export default class SegmentLoader extends videojs.EventTarget {
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
     if (segment.key) {
-      keyXhr = this.hls_.xhr({
+      let keyRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
         uri: segment.key.resolvedUri,
-        responseType: 'arraybuffer',
-        withCredentials: this.xhrRequest.withCredentials,
-        timeout: this.xhrRequest.requestTimeout
-      }, this.handleResponse_.bind(this));
+        responseType: 'arraybuffer'
+      });
+
+      keyXhr = this.hls_.xhr(keyRequestOptions, this.handleResponse_.bind(this));
     }
+
     this.pendingSegment_ = segmentInfo;
-    segmentXhr = this.hls_.xhr({
+
+    let segmentRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
       uri: segmentInfo.uri,
       responseType: 'arraybuffer',
-      withCredentials: this.xhrRequest.withCredentials,
-      timeout: this.xhrRequest.requestTimeout,
       headers: segmentXhrHeaders(segment)
-    }, this.handleResponse_.bind(this));
+    });
+
+    segmentXhr = this.hls_.xhr(segmentRequestOptions, this.handleResponse_.bind(this));
 
     this.xhr_ = {
       keyXhr,

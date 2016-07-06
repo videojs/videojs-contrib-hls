@@ -484,6 +484,27 @@ QUnit.test('updates the duration after switching playlists', function() {
               '16 bytes downloaded');
 });
 
+QUnit.test('removes request timeout when segment timesout on lowest rendition',
+function() {
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  this.masterPlaylistController.masterPlaylistLoader_.onLowestEnabledRendition = () => {
+    return true;
+  };
+
+  // segment 0
+  standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.masterPlaylistLoader_.trigger('mediachange');
+
+  QUnit.equal(this.masterPlaylistController.requestOptions_.timeout, 0,
+              'request timeout 0');
+});
+
 QUnit.test('seekable uses the intersection of alternate audio and combined tracks',
 function() {
   let origSeekable = Playlist.seekable;
