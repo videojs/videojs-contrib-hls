@@ -228,7 +228,11 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     }
   };
 
-  // returns the number of enabled playlists on the master playlist object
+  /** 
+   * Returns the number of enabled playlists on the master playlist object
+   *
+   * @return {Number} number of eneabled playlists
+   */
   loader.enabledPlaylists = function() {
     return loader.master.playlists.filter((element, index, array) => {
       return element.excludeUntil <= Date.now() || !element.excludeUntil ? true : false;
