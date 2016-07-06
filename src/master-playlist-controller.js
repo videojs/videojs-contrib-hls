@@ -95,6 +95,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.masterPlaylistLoader_.media();
       let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
+
       this.xhrRequest.requestTimeout = requestTimeout;
 
       // if this isn't a live video and preload permits, start
@@ -149,8 +150,17 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('mediachange', () => {
       let media = this.masterPlaylistLoader_.media();
+      let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
 
       this.mainSegmentLoader_.abort();
+
+      // If we don't have any more available playlists, we don't want to
+      // timeout the request.
+      if (this.masterPlaylistLoader_.onLowestEnabledRendition()) {
+        this.xhrRequest.requestTimeout = 0;
+      } else {
+        this.xhrRequest.requestTimeout = requestTimeout;
+      }
 
       // TODO: Create a new event on the PlaylistLoader that signals
       // that the segments have changed in some way and use that to
@@ -167,13 +177,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.mainSegmentLoader_.on('progress', () => {
-      // If we don't have any more available playlists, we don't want to
-      // timeout the request.
-      if (this.masterPlaylistLoader_.onLowestEnabledRendition()) {
-        this.xhrRequest.requestTimeout = 0;
-        console.log("REMOVE TIMEOUT");
-      }
-
       // figure out what stream the next segment should be downloaded from
       // with the updated bandwidth information
       this.masterPlaylistLoader_.media(this.selectPlaylist());

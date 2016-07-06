@@ -140,7 +140,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.seeking_ = settings.seeking;
     this.setCurrentTime_ = settings.setCurrentTime;
     this.mediaSource_ = settings.mediaSource;
-    this.withCredentials_ = settings.withCredentials;
+    //this.withCredentials_ = settings.withCredentials;
     this.checkBufferTimeout_ = null;
     this.error_ = void 0;
     this.expired_ = 0;
@@ -538,10 +538,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
-    // Set xhr timeout to 150% of the segment duration to allow us
-    // some time to switch renditions in the event of a catastrophic
-    // decrease in network performance or a server issue.
-    requestTimeout = (segment.duration * 1.5) * 1000;
 
     if (segment.key) {
       keyXhr = this.hls_.xhr({

@@ -235,6 +235,11 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     }).length;
   };
 
+  /**
+   * Returns whether the current playlist is the lowest rendition
+   *
+   * @return {Boolean} true if on lowest rendition
+   */
   loader.onLowestEnabledRendition = function() {
     if (!loader.media()) {
       return false;
