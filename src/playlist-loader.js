@@ -228,7 +228,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     }
   };
 
-  /** 
+  /**
    * Returns the number of enabled playlists on the master playlist object
    *
    * @return {Number} number of eneabled playlists
