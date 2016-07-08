@@ -1994,7 +1994,9 @@ QUnit.test('cleans up the buffer when loading live segments', function() {
   QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8',
                     'master playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, seekable.start(0)],
+  // segment-loader removes up to the segment prior to seekable.start
+  // to avoid crossing segment-boundaries
+  QUnit.deepEqual(removes[0], [0, seekable.start(0) - 10],
                   'remove called with the right range');
 
   // verify stats
@@ -2049,7 +2051,7 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
 
   QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
+  QUnit.deepEqual(removes[0], [0, 80 - 70], 'remove called with the right range');
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');

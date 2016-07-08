@@ -529,6 +529,28 @@ export default class SegmentLoader extends videojs.EventTarget {
       removeToTime = currentTime - 60;
     }
 
+    // If we are going to remove time from the front of the buffer, make
+    // sure we aren't discarding a partial segment to avoid throwing
+    // PLAYER_ERR_TIMEOUT while trying to read a partially discarded segment
+    for (let i = 0; i <= segmentInfo.playlist.segments.length; i++) {
+      // Loop through the segments and calculate the duration to compare
+      // against the removeToTime
+      let removeDuration = duration(segmentInfo.playlist,
+                                    segmentInfo.playlist.mediaSequence + i,
+                                    this.expired_);
+
+      // If we are close to next segment begining, remove to end of previous
+      // segment instead
+      let previousDuration = duration(segmentInfo.playlist,
+                                    segmentInfo.playlist.mediaSequence + (i - 1),
+                                    this.expired_);
+
+      if (removeDuration >= removeToTime) {
+        removeToTime = previousDuration;
+        break;
+      }
+    }
+
     if (removeToTime > 0) {
       this.sourceUpdater_.remove(0, removeToTime);
     }
