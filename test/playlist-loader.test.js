@@ -494,6 +494,7 @@ function() {
   loader.trigger('firstplay');
   this.requests.pop().respond(200, null,
                               '#EXTM3U\n' +
+                              '#EXT-X-TARGETDURATION:10\n' +
                               '#EXT-X-MEDIA-SEQUENCE:0\n' +
                               '#EXTINF:4,\n' +
                               '0.ts\n' +
@@ -503,6 +504,7 @@ function() {
   this.clock.tick(10 * 1000);
   this.requests.pop().respond(200, null,
                               '#EXTM3U\n' +
+                              '#EXT-X-TARGETDURATION:10\n' +
                               '#EXT-X-MEDIA-SEQUENCE:4\n' +
                               '#EXTINF:6,\n' +
                               '4.ts\n' +

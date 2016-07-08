@@ -468,34 +468,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    let segment = this.playlist_.segments[request.mediaIndex];
-    let startOfSegment = duration(this.playlist_,
-                                  this.playlist_.mediaSequence + request.mediaIndex,
-                                  this.expired_);
-
-    // Sanity check the segment-index determining logic by calcuating the
-    // percentage of the chosen segment that is buffered. If more than 90%
-    // of the segment is buffered then fetching it will likely not help in
-    // any way
-    let percentBuffered = Ranges.getSegmentBufferedPercent(startOfSegment,
-                                                          segment.duration,
-                                                          this.currentTime_(),
-                                                          this.sourceUpdater_.buffered());
-
-    if (percentBuffered >= 90) {
-      // Increment the timeCorrection_ variable to push the fetcher forward
-      // in time and hopefully skip any gaps or flaws in our understanding
-      // of the media
-      let correctionApplied =
-        this.incrementTimeCorrection_(this.playlist_.targetDuration / 2, 1);
-
-      if (correctionApplied && !this.paused()) {
-        this.fillBuffer_();
-      }
-
-      return;
-    }
-
     this.loadSegment_(request);
   }
 

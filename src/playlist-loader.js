@@ -512,13 +512,21 @@ PlaylistLoader.prototype.updateMediaPlaylist_ = function(updatedPlaylist) {
     return;
   }
 
+  let maxMediaSequence =
+    outdatedPlaylist.mediaSequence + outdatedPlaylist.segments.length;
+
   // calculate expired by walking the outdated playlist
-  let mediaSequenceChange =
-    updatedPlaylist.mediaSequence - outdatedPlaylist.mediaSequence;
+  let mediaSequenceUnaccounted =
+    updatedPlaylist.mediaSequence -
+    maxMediaSequence;
+
+  for (let i = 0; i < mediaSequenceUnaccounted; i++) {
+    this.expired_ += outdatedPlaylist.targetDuration;
+  }
 
   this.expired_ =
     Playlist.duration(outdatedPlaylist,
-                      updatedPlaylist.mediaSequence,
+                      Math.min(maxMediaSequence, updatedPlaylist.mediaSequence),
                       this.expired_);
 };
 
