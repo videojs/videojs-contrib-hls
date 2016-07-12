@@ -93,9 +93,15 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.masterPlaylistLoader_.media();
-      let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
+      // let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
 
-      this.requestOptions_.timeout = requestTimeout;
+      // this.masterPlaylistLoader_.onLowestEnabledRendition_();
+      // if (this.masterPlaylistLoader_.onLowestEnabledRendition_()) {
+      //   this.requestOptions_.timeout = 0;
+      // } else {
+      //   this.requestOptions_.timeout = requestTimeout;
+      // }
+      this.requestOptions_.timeout = 0;
 
       // if this isn't a live video and preload permits, start
       // downloading segments
@@ -155,7 +161,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       // If we don't have any more available playlists, we don't want to
       // timeout the request.
-      if (this.masterPlaylistLoader_.onLowestEnabledRendition()) {
+      if (this.masterPlaylistLoader_.onLowestEnabledRendition_()) {
         this.requestOptions_.timeout = 0;
       } else {
         this.requestOptions_.timeout = requestTimeout;

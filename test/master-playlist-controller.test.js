@@ -488,18 +488,30 @@ QUnit.test('removes request timeout when segment timesout on lowest rendition',
 function() {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
+  let loader = this.masterPlaylistController.mainSegmentLoader_;
+
+  loader.bandwidth = 1;
+
   // master
-  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests[0]);
   // media
-  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests[1]);
 
-  this.masterPlaylistController.masterPlaylistLoader_.onLowestEnabledRendition = () => {
-    return true;
-  };
+  QUnit.equal(this.masterPlaylistController.requestOptions_.timeout,
+              this.masterPlaylistController.masterPlaylistLoader_.targetDuration * 1.5 *
+              1000,
+              'default request timeout');
 
+  QUnit.ok(this.masterPlaylistController
+            .masterPlaylistLoader_
+            .onLowestEnabledRendition_(), 'Not lowest rendition');
+
+  // Downloading segment should cause media change and timeout removal
   // segment 0
-  standardXHRResponse(this.requests.shift());
-  this.masterPlaylistController.masterPlaylistLoader_.trigger('mediachange');
+  standardXHRResponse(this.requests[2]);
+
+  QUnit.ok(this.masterPlaylistController
+            .masterPlaylistLoader_.onLowestEnabledRendition_(), 'On lowest rendition');
 
   QUnit.equal(this.masterPlaylistController.requestOptions_.timeout, 0,
               'request timeout 0');

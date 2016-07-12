@@ -233,9 +233,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    *
    * @return {Number} number of eneabled playlists
    */
-  loader.enabledPlaylists = function() {
+  loader.enabledPlaylists_ = function() {
     return loader.master.playlists.filter((element, index, array) => {
-      return element.excludeUntil <= Date.now() || !element.excludeUntil ? true : false;
+      return !element.excludeUntil || element.excludeUntil <= Date.now();
     }).length;
   };
 
@@ -244,14 +244,14 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    *
    * @return {Boolean} true if on lowest rendition
    */
-  loader.onLowestEnabledRendition = function() {
+  loader.onLowestEnabledRendition_ = function() {
     if (!loader.media()) {
       return false;
     }
 
     let currentPlaylist = loader.media().attributes.BANDWIDTH;
 
-    return loader.master.playlists.filter((element, index, array) => {
+    return !(loader.master.playlists.filter((element, index, array) => {
       let enabled = typeof element.excludeUntil === 'undefined' ||
                       element.excludeUntil <= Date.now();
 
@@ -261,9 +261,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
       let item = element.attributes.BANDWIDTH;
 
-      return item <= currentPlaylist ? true : false;
+      return item <= currentPlaylist;
 
-    }).length > 1 ? false : true;
+    }).length > 1);
   };
 
    /**
