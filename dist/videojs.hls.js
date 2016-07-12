@@ -1,4 +1,4 @@
-/*! videojs-contrib-hls - v1.3.7 - 2016-04-08
+/*! videojs-contrib-hls - v1.3.7 - 2016-07-12
 * Copyright (c) 2016 Brightcove; Licensed  */
 /*! videojs-contrib-media-sources - v2.4.4 - 2016-01-22
 * Copyright (c) 2016 Brightcove; Licensed  */
@@ -3989,7 +3989,7 @@ addTextTrackData = function (sourceHandler, captionArray, metadataArray) {
 var
   // A fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
-  bandwidthVariance = 1.2,
+  bandwidthVariance = 1.4,
   blacklistDuration = 5 * 60, // 300 ms to blacklist
   TIME_FUDGE_FACTOR = 1 / 30, // Fudge factor to account for TimeRanges rounding
   Component = videojs.getComponent('Component'),
@@ -4647,7 +4647,7 @@ videojs.HlsHandler.prototype.getQuality = function(playlist) {
   if (!playlist.attributes) {
     return '';
   }
-  if (playlist.attributes.BANDWIDTH >= 1200000) {
+  if (playlist.attributes.BANDWIDTH >= 300000) {
     return 'HD';
   }
   return 'SD';
