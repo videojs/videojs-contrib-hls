@@ -334,7 +334,7 @@ class HlsHandler extends Component {
     });
 
     this.audioTrackChange_ = () => {
-      this.masterPlaylistController_.useAudio();
+      this.masterPlaylistController_.setupAudio();
     };
 
     this.on(this.tech_, 'play', this.play);
@@ -468,13 +468,14 @@ class HlsHandler extends Component {
       }
 
       videojs.log.warn(error);
-      this.masterPlaylistController_.useAudio();
+      this.masterPlaylistController_.setupAudio();
     });
+
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
       // clear current audioTracks
       this.tech_.clearTracks('audio');
-      this.masterPlaylistController_.audioTracks_.forEach((track) => {
-        this.tech_.audioTracks().addTrack(track);
+      this.masterPlaylistController_.activeAudioGroup().forEach((audioTrack) => {
+        this.tech_.audioTracks().addTrack(audioTrack);
       });
 
       // Add the manual rendition mix-in to HlsHandler

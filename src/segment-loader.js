@@ -804,7 +804,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         let initSegment = this.initSegments_[initId];
 
         this.sourceUpdater_.appendBuffer(initSegment.bytes, () => {
-          this.activeInitSegmentid_ = initId;
+          this.activeInitSegmentId_ = initId;
         });
       }
     }
