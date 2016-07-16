@@ -865,6 +865,12 @@ var filterBufferedRanges = function(predicate) {
     }
 
     if (buffered && buffered.length) {
+      // As the above comment says, I need currentTime >= start of the buffered range.
+      // I had an issue where the buffered range was {0: [0.25, 5]}. If I never start the video,
+      // the current time is 0, the start of the range is 0.25, and the player fetches chunk 0,
+      // chunk 1, chunk 0, ... forever, killing the CPU. Theory: the player is trying to buffer
+      // the time from 0 to 0.25, hence it keeps going back to chunk 0.
+      time = Math.max(time, buffered.start(0));
       // Search for a range containing the play-head
       for (i = 0; i < buffered.length; i++) {
         if (predicate(buffered.start(i), buffered.end(i), time)) {
