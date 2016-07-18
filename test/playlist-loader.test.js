@@ -154,13 +154,13 @@ QUnit.test('playlist loader detects if we are on lowest rendition', function() {
 
   loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
                               {attributes: {BANDWIDTH: 20}}];
-  QUnit.ok(loader.onLowestEnabledRendition_(), 'Detected on lowest rendition');
+  QUnit.ok(loader.isLowestEnabledRendition_(), 'Detected on lowest rendition');
 
   loader.media = function() {
     return {attributes: {BANDWIDTH: 20}};
   };
 
-  QUnit.ok(!loader.onLowestEnabledRendition_(), 'Detected not on lowest rendition');
+  QUnit.ok(!loader.isLowestEnabledRendition_(), 'Detected not on lowest rendition');
 });
 
 QUnit.test('recognizes absolute URIs and requests them unmodified', function() {

@@ -244,7 +244,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    *
    * @return {Boolean} true if on lowest rendition
    */
-  loader.onLowestEnabledRendition_ = function() {
+  loader.isLowestEnabledRendition_ = function() {
     if (!loader.media()) {
       return false;
     }

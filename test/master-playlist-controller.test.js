@@ -500,7 +500,7 @@ function() {
 
   QUnit.ok(!this.masterPlaylistController
             .masterPlaylistLoader_
-            .onLowestEnabledRendition_(), 'Not lowest rendition');
+            .isLowestEnabledRendition_(), 'Not lowest rendition');
 
   // Cause segment to timeout to force player into lowest rendition
   this.requests[2].timedout = true;
@@ -512,7 +512,7 @@ function() {
   standardXHRResponse(this.requests[3]);
 
   QUnit.ok(this.masterPlaylistController
-            .masterPlaylistLoader_.onLowestEnabledRendition_(), 'On lowest rendition');
+            .masterPlaylistLoader_.isLowestEnabledRendition_(), 'On lowest rendition');
 
   QUnit.equal(this.masterPlaylistController.requestOptions_.timeout, 0,
               'request timeout 0');

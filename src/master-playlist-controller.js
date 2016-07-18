@@ -155,7 +155,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       // If we don't have any more available playlists, we don't want to
       // timeout the request.
-      if (this.masterPlaylistLoader_.onLowestEnabledRendition_()) {
+      if (this.masterPlaylistLoader_.isLowestEnabledRendition_()) {
         this.requestOptions_.timeout = 0;
       } else {
         this.requestOptions_.timeout = requestTimeout;
