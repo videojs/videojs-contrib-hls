@@ -488,8 +488,6 @@ QUnit.test('removes request timeout when segment timesout on lowest rendition',
 function() {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
-  let loader = this.masterPlaylistController.mainSegmentLoader_;
-
   // master
   standardXHRResponse(this.requests[0]);
   // media
