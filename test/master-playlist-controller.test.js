@@ -490,8 +490,6 @@ function() {
 
   let loader = this.masterPlaylistController.mainSegmentLoader_;
 
-  loader.bandwidth = 1;
-
   // master
   standardXHRResponse(this.requests[0]);
   // media
@@ -502,13 +500,18 @@ function() {
               1000,
               'default request timeout');
 
-  QUnit.ok(this.masterPlaylistController
+  QUnit.ok(!this.masterPlaylistController
             .masterPlaylistLoader_
             .onLowestEnabledRendition_(), 'Not lowest rendition');
+
+  // Cause segment to timeout to force player into lowest rendition
+  this.requests[2].timedout = true;
 
   // Downloading segment should cause media change and timeout removal
   // segment 0
   standardXHRResponse(this.requests[2]);
+  // Download new segment after media change
+  standardXHRResponse(this.requests[3]);
 
   QUnit.ok(this.masterPlaylistController
             .masterPlaylistLoader_.onLowestEnabledRendition_(), 'On lowest rendition');
