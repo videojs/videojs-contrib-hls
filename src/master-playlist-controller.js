@@ -94,6 +94,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.masterPlaylistLoader_.media();
       let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
+
       this.requestOptions_.timeout = requestTimeout;
 
       // if this isn't a live video and preload permits, start
