@@ -48,7 +48,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     mode,
     tech,
     bandwidth,
-    externHls
+    externHls,
+    useTagCues
   }) {
     super();
 
@@ -58,6 +59,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.tech_ = tech;
     this.hls_ = tech.hls;
     this.mode_ = mode;
+    this.useTagCues_ = useTagCues;
     this.audioTracks_ = [];
     this.requestOptions_ = {
       withCredentials: this.withCredentials,
@@ -123,6 +125,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         this.trigger('selectedinitialmedia');
         return;
       }
+
+      this.updateTagCues_(updatedPlaylist);
 
       // TODO: Create a new event on the PlaylistLoader that signals
       // that the segments have changed in some way and use that to
@@ -818,5 +822,41 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         variant.excludeUntil = Infinity;
       }
     });
+  }
+
+  updateTagCues_(media) {
+    if (!this.useTagCues_ || !media.segments) {
+      return;
+    }
+
+    if (this.tagsTrack_) {
+      this.tech_.textTracks().removeTrack_(this.tagsTrack_);
+    }
+
+    this.tagsTrack_ = new videojs.TextTrack({
+      tech: this.tech_,
+      kind: 'data',
+      mode: 'hidden'
+    });
+
+    let startTime;
+    let endTime = 0;
+
+    for (let i = 0; i < media.segments.length; i++) {
+      let segment = media.segments[i];
+
+      startTime = endTime;
+      endTime = startTime + segment.duration;
+
+      if (segment.tags) {
+        this.tagsTrack_.addCue({
+          startTime,
+          endTime,
+          tags: segment.tags
+        });
+      }
+    }
+
+    this.tech_.textTracks().addTrack_(this.tagsTrack_);
   }
 }

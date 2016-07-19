@@ -617,3 +617,122 @@ function() {
 
   Playlist.seekable = origSeekable;
 });
+
+QUnit.test('calls to update tag cues on new media', function() {
+  let callCount = 0;
+
+  this.masterPlaylistController.updateTagCues_ = (media) => callCount++;
+
+  // master
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(callCount, 0, 'no call to update tag cues on master');
+
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(callCount, 1, 'calls to update tag cues on first media');
+
+  this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
+
+  QUnit.equal(callCount, 2, 'calls to update tag cues on subsequent media');
+});
+
+QUnit.test('calls to update tag cues on media when no master', function() {
+  this.requests.length = 0;
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  let callCount = 0;
+
+  this.masterPlaylistController.updateTagCues_ = (media) => callCount++;
+
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(callCount, 1, 'calls to update tag cues on first media');
+
+  this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
+
+  QUnit.equal(callCount, 2, 'calls to update tag cues on subsequent media');
+});
+
+QUnit.test('respects useTagCues option', function() {
+  this.masterPlaylistController.updateTagCues_({
+    segments: [{
+      duration: 10,
+      tags: ['test']
+    }]
+  });
+
+  QUnit.ok(!this.masterPlaylistController.tagsTrack_,
+           'does nothing if useTagCues is not specified');
+
+  this.masterPlaylistController.useTagCues_ = true;
+
+  this.masterPlaylistController.updateTagCues_({
+    segments: [{
+      duration: 10,
+      tags: ['test']
+    }]
+  });
+
+  QUnit.ok(this.masterPlaylistController.tagsTrack_,
+           'sets tagsTrack if useTagCues is specified');
+});
+
+QUnit.test('update tag cues', function() {
+  this.masterPlaylistController.useTagCues_ = true;
+
+  let addTrackCalls = [];
+  let removeTrackCalls = [];
+
+  this.player.tech_.textTracks().addTrack_ = (track) => addTrackCalls.push(track);
+  this.player.tech_.textTracks().removeTrack_ = (track) => removeTrackCalls.push(track);
+
+  this.masterPlaylistController.updateTagCues_({});
+
+  QUnit.equal(addTrackCalls.length, 0, 'does nothing if no segments in playlist');
+
+  this.masterPlaylistController.updateTagCues_({
+    segments: [{
+      duration: 9.1,
+      tags: [
+        '#EXTM3U',
+        '#EXT-X-TARGETDURATION:9'
+      ]
+    }, {
+      duration: 8.4,
+      tags: [
+        '#EXT-X-CUE-OUT=test'
+      ]
+    }]
+  });
+
+  QUnit.equal(removeTrackCalls.length, 0, 'does not remove track if no track to remove');
+  QUnit.equal(addTrackCalls.length, 1, 'adds a track');
+
+  let addedTrack = addTrackCalls[0];
+
+  QUnit.equal(addedTrack.cues_[0].startTime, 0, 'cue starts at 0');
+  QUnit.equal(addedTrack.cues_[0].endTime, 9.1, 'cue ends at start time plus duration');
+  QUnit.deepEqual(addedTrack.cues_[0].tags, [
+    '#EXTM3U',
+    '#EXT-X-TARGETDURATION:9'
+  ], 'first cue tags match first segment\'s tags');
+  QUnit.equal(addedTrack.cues_[1].startTime, 9.1, 'cue starts at 9.1');
+  QUnit.equal(addedTrack.cues_[1].endTime, 17.5, 'cue ends at start time plus duration');
+  QUnit.deepEqual(addedTrack.cues_[1].tags, [
+    '#EXT-X-CUE-OUT=test'
+  ], 'second cue tags match second segment\'s tags');
+
+  this.masterPlaylistController.updateTagCues_({
+    segments: []
+  });
+
+  QUnit.equal(removeTrackCalls.length, 1, 'calls to remove track when old track exists');
+  QUnit.equal(removeTrackCalls[0], addedTrack, 'calls to remove proper track');
+});
