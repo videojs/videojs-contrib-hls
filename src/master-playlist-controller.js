@@ -168,9 +168,13 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.trigger('progress');
     });
 
+    this.mainSegmentLoader_.on('discontinuity', this.handleDiscontinuity_.bind(this));
+
     this.mainSegmentLoader_.on('error', () => {
       this.blacklistCurrentPlaylist(this.mainSegmentLoader_.error());
     });
+
+    this.audioSegmentLoader_.on('discontinuity', this.handleDiscontinuity_.bind(this));
 
     this.audioSegmentLoader_.on('error', () => {
       videojs.log.warn('Problem encountered with the current alternate audio track' +
@@ -341,6 +345,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       /* eslint-enable no-shadow */
 
       this.audioSegmentLoader_.playlist(media);
+      this.audioSegmentLoader_.expired(this.audioPlaylistLoader_.expired_);
       this.addMimeType_(this.audioSegmentLoader_, 'mp4a.40.2', media);
 
       // if the video is already playing, or if this isn't a live video and preload
@@ -371,6 +376,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       }
 
       this.audioSegmentLoader_.playlist(updatedPlaylist);
+      this.audioSegmentLoader_.expired(this.audioPlaylistLoader_.expired_);
     });
 
     this.audioPlaylistLoader_.on('error', () => {
@@ -383,6 +389,34 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.audioSegmentLoader_.clearBuffer();
     this.audioPlaylistLoader_.start();
+  }
+
+  handleDiscontinuity_() {
+    let mainTimestampOffset = this.mainSegmentLoader_.discontinuityTimestampOffset;
+
+    if (!this.audioPlaylistLoader_) {
+      // tell main segment loader to continue with its timestamp offset
+      this.mainSegmentLoader_.appendWithTimestampOffset(mainTimestampOffset);
+      return;
+    }
+
+    if (!this.discontinuityCount) {
+      // one of the segment loaders encountered a discontinuity
+      this.discontinuityCount = 1;
+      // wait for the second discontinuity
+      return;
+    }
+
+    let audioTimestampOffset = this.audioSegmentLoader_.discontinuityTimestampOffset;
+
+    let greatestTimestampOffset = mainTimestampOffset > audioTimestampOffset ?
+      mainTimestampOffset : audioTimestampOffset;
+
+    this.mainSegmentLoader_.appendWithTimestampOffset(greatestTimestampOffset);
+    this.audioSegmentLoader_.appendWithTimestampOffset(greatestTimestampOffset);
+
+    // reset
+    this.discontinuityCount = 0;
   }
 
   /**

@@ -514,6 +514,11 @@ QUnit.test('abort does not cancel segment processing in progress', function() {
 
 QUnit.test('sets the timestampOffset on timeline change', function() {
   let playlist = playlistWithDuration(40);
+  let discontinuityCount = 0;
+
+  loader.on('discontinuity', () => {
+    discontinuityCount++;
+  });
 
   playlist.discontinuityStarts = [1];
   playlist.segments[1].timeline = 1;
@@ -527,9 +532,21 @@ QUnit.test('sets the timestampOffset on timeline change', function() {
   mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
   mediaSource.sourceBuffers[0].trigger('updateend');
 
+  QUnit.ok(!discontinuityCount, 'did not trigger a discontinuity');
+
   // segment 1, discontinuity
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
+
+  QUnit.equal(discontinuityCount, 1, 'triggered a discontinuity');
+  QUnit.equal(loader.discontinuityTimestampOffset, 10,
+              'set discontinuityTimestampOffset');
+
+  // timestamp offset not set until an outside listener calls appendWithTimestampOffset
+  QUnit.ok(!mediaSource.sourceBuffers[0].timestampOffset, 'did not set timestampOffset');
+
+  loader.appendWithTimestampOffset(loader.discontinuityTimestampOffset);
+
   QUnit.equal(mediaSource.sourceBuffers[0].timestampOffset, 10, 'set timestampOffset');
 
   // verify stats
