@@ -85,6 +85,19 @@ export default class HlsAudioTrack extends AudioTrack {
   }
 
   /**
+   * pause all media loaders
+   */
+  pause() {
+    for (let i = 0; i < this.mediaGroups_.length; i++) {
+      let mgl = this.mediaGroups_[i];
+
+      if (mgl.loader) {
+        mgl.loader.pause();
+      }
+    }
+  }
+
+  /**
    * Dispose of this audio track and
    * the playlist loader that it holds inside
    */

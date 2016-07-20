@@ -545,9 +545,16 @@ export default class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
-   * Pause all segment loaders
+   * Pause all playlist and segment loaders
    */
   pauseLoading() {
+    // pause loading playlists
+    this.masterPlaylistLoader_.pause();
+    this.audioTracks_.forEach((track) => {
+      track.pause();
+    });
+
+    // pause segment loaders
     this.mainSegmentLoader_.pause();
     if (this.audioPlaylistLoader_) {
       this.audioSegmentLoader_.pause();
