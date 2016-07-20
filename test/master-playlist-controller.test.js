@@ -618,27 +618,27 @@ function() {
   Playlist.seekable = origSeekable;
 });
 
-QUnit.test('calls to update tag cues on new media', function() {
+QUnit.test('calls to update cues on new media', function() {
   let callCount = 0;
 
-  this.masterPlaylistController.updateTagCues_ = (media) => callCount++;
+  this.masterPlaylistController.updateCues_ = (media) => callCount++;
 
   // master
   standardXHRResponse(this.requests.shift());
 
-  QUnit.equal(callCount, 0, 'no call to update tag cues on master');
+  QUnit.equal(callCount, 0, 'no call to update cues on master');
 
   // media
   standardXHRResponse(this.requests.shift());
 
-  QUnit.equal(callCount, 1, 'calls to update tag cues on first media');
+  QUnit.equal(callCount, 1, 'calls to update cues on first media');
 
   this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
 
-  QUnit.equal(callCount, 2, 'calls to update tag cues on subsequent media');
+  QUnit.equal(callCount, 2, 'calls to update cues on subsequent media');
 });
 
-QUnit.test('calls to update tag cues on media when no master', function() {
+QUnit.test('calls to update cues on media when no master', function() {
   this.requests.length = 0;
   this.player.src({
     src: 'manifest/media.m3u8',
@@ -648,38 +648,38 @@ QUnit.test('calls to update tag cues on media when no master', function() {
 
   let callCount = 0;
 
-  this.masterPlaylistController.updateTagCues_ = (media) => callCount++;
+  this.masterPlaylistController.updateCues_ = (media) => callCount++;
 
   // media
   standardXHRResponse(this.requests.shift());
 
-  QUnit.equal(callCount, 1, 'calls to update tag cues on first media');
+  QUnit.equal(callCount, 1, 'calls to update cues on first media');
 
   this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
 
-  QUnit.equal(callCount, 2, 'calls to update tag cues on subsequent media');
+  QUnit.equal(callCount, 2, 'calls to update cues on subsequent media');
 });
 
-QUnit.test('respects useTagCues option', function() {
-  this.masterPlaylistController.updateTagCues_({
+QUnit.test('respects useCueTags option', function() {
+  this.masterPlaylistController.updateCues_({
     segments: [{
       duration: 10,
       tags: ['test']
     }]
   });
 
-  QUnit.ok(!this.masterPlaylistController.tagsTrack_,
-           'does not create tagsTrack_ if useTagCues is falsy');
+  QUnit.ok(!this.masterPlaylistController.cueTagsTrack_,
+           'does not create cueTagsTrack_ if useCueTags is falsy');
   QUnit.equal(this.player.textTracks().length,
               0,
-              'does not create a text track if useTagCues is falsy');
+              'does not create a text track if useCueTags is falsy');
 
   this.player.dispose();
 
   let origHlsOptions = videojs.options.hls;
 
   videojs.options.hls = {
-    useTagCues: true
+    useCueTags: true
   };
 
   this.player = createPlayer();
@@ -689,21 +689,29 @@ QUnit.test('respects useTagCues option', function() {
   });
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
-  QUnit.ok(this.masterPlaylistController.tagsTrack_,
-           'creates tagsTrack_ if useTagCues is truthy');
-  QUnit.equal(this.player.textTracks()[0], this.masterPlaylistController.tagsTrack_,
-           'adds tagsTrack as a text track if useTagCues is truthy');
+  QUnit.ok(this.masterPlaylistController.cueTagsTrack_,
+           'creates cueTagsTrack_ if useCueTags is truthy');
+  QUnit.equal(this.player.textTracks()[0], this.masterPlaylistController.cueTagsTrack_,
+           'adds cueTagsTrack as a text track if useCueTags is truthy');
 
-  this.masterPlaylistController.updateTagCues_({
+  this.masterPlaylistController.updateCues_({
     segments: [{
       duration: 10,
-      tags: ['test']
+      cueOut: 'test'
     }]
   });
 
-  QUnit.deepEqual(this.masterPlaylistController.tagsTrack_.cues[0],
-                  { startTime: 0, endTime: 10, tags: ['test'] },
-                  'adds cue to tagsTrack_ if useTagCues is truthy');
+  let cue = this.masterPlaylistController.cueTagsTrack_.cues[0];
+
+  QUnit.equal(cue.startTime,
+              0,
+              'adds cue with correct start time if useCueTags is truthy');
+  QUnit.equal(cue.endTime,
+              10,
+              'adds cue with correct end time if useCueTags is truthy');
+  QUnit.equal(cue.text,
+              JSON.stringify({ cueOut: 'test' }),
+              'adds cue with correct text if useCueTags is truthy');
 
   videojs.options.hls = origHlsOptions;
 });
@@ -712,7 +720,7 @@ QUnit.test('update tag cues', function() {
   let origHlsOptions = videojs.options.hls;
 
   videojs.options.hls = {
-    useTagCues: true
+    useCueTags: true
   };
 
   this.player = createPlayer();
@@ -722,70 +730,68 @@ QUnit.test('update tag cues', function() {
   });
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
-  let testCue = {
-    test: 'cue'
-  };
-  let tagsTrack = {
-    removeCue: (cue) => {
-      tagsTrack.cues.splice(tagsTrack.cues.indexOf(cue), 1);
-    },
-    addCue: (cue) => {
-      tagsTrack.cues.push(cue);
-    },
-    cues: [testCue]
-  };
+  let cueTagsTrack = this.masterPlaylistController.cueTagsTrack_;
+  let testCue = new VTTCue(0, 10, 'test');
 
-  this.masterPlaylistController.tagsTrack_ = tagsTrack;
+  cueTagsTrack.addCue(testCue);
 
-  this.masterPlaylistController.updateTagCues_({});
+  this.masterPlaylistController.updateCues_({});
 
-  QUnit.equal(tagsTrack.cues.length,
+  QUnit.equal(cueTagsTrack.cues.length,
               1,
               'does not change cues if media does not have segment property');
-  QUnit.equal(tagsTrack.cues[0],
+  QUnit.equal(cueTagsTrack.cues[0],
               testCue,
               'does not change cues if media does not have segment property');
 
-  this.masterPlaylistController.updateTagCues_({
+  this.masterPlaylistController.updateCues_({
     segments: []
   });
 
-  QUnit.equal(tagsTrack.cues.length, 0, 'removes cues even if no segments in playlist');
+  QUnit.equal(cueTagsTrack.cues.length,
+              0,
+              'removes cues even if no segments in playlist');
 
-  this.masterPlaylistController.updateTagCues_({
+  this.masterPlaylistController.updateCues_({
     segments: [{
-      duration: 9.1,
-      tags: [
-        '#EXTM3U',
-        '#EXT-X-TARGETDURATION:9'
-      ]
+      duration: 5.1,
+      cueOut: '11.5'
     }, {
-      duration: 8.4,
-      tags: [
-        '#EXT-X-CUE-OUT=test'
-      ]
+      duration: 6.4,
+      cueOutCont: '5.1/11.5'
+    }, {
+      duration: 6,
+      cueIn: ''
     }]
   });
 
-  QUnit.equal(tagsTrack.cues.length, 2, 'adds a cue for each segment');
+  QUnit.equal(cueTagsTrack.cues.length, 3, 'adds a cue for each segment');
 
-  QUnit.equal(tagsTrack.cues[0].startTime, 0, 'cue starts at 0');
-  QUnit.equal(tagsTrack.cues[0].endTime, 9.1, 'cue ends at start time plus duration');
-  QUnit.deepEqual(tagsTrack.cues[0].tags, [
-    '#EXTM3U',
-    '#EXT-X-TARGETDURATION:9'
-  ], 'first cue tags match first segment\'s tags');
-  QUnit.equal(tagsTrack.cues[1].startTime, 9.1, 'cue starts at 9.1');
-  QUnit.equal(tagsTrack.cues[1].endTime, 17.5, 'cue ends at start time plus duration');
-  QUnit.deepEqual(tagsTrack.cues[1].tags, [
-    '#EXT-X-CUE-OUT=test'
-  ], 'second cue tags match second segment\'s tags');
+  QUnit.equal(cueTagsTrack.cues[0].startTime, 0, 'cue starts at 0');
+  QUnit.equal(cueTagsTrack.cues[0].endTime, 5.1, 'cue ends at start time plus duration');
+  QUnit.equal(JSON.parse(cueTagsTrack.cues[0].text).cueOut, '11.5', 'cueOut matches');
+  QUnit.ok(!('cueOutCont' in JSON.parse(cueTagsTrack.cues[0].text)),
+           'cueOutCont not in cue');
+  QUnit.ok(!('cueIn' in JSON.parse(cueTagsTrack.cues[0].text)), 'cueIn not in cue');
+  QUnit.equal(cueTagsTrack.cues[1].startTime, 5.1, 'cue starts at 5.1');
+  QUnit.equal(cueTagsTrack.cues[1].endTime, 11.5, 'cue ends at start time plus duration');
+  QUnit.equal(JSON.parse(cueTagsTrack.cues[1].text).cueOutCont,
+              '5.1/11.5',
+              'cueOutCont matches');
+  QUnit.ok(!('cueOut' in JSON.parse(cueTagsTrack.cues[1].text)), 'cueOut not in cue');
+  QUnit.ok(!('cueIn' in JSON.parse(cueTagsTrack.cues[1].text)), 'cueIn not in cue');
+  QUnit.equal(cueTagsTrack.cues[2].startTime, 11.5, 'cue starts at 11.5');
+  QUnit.equal(cueTagsTrack.cues[2].endTime, 17.5, 'cue ends at start time plus duration');
+  QUnit.equal(JSON.parse(cueTagsTrack.cues[2].text).cueIn, '', 'cueIn matches');
+  QUnit.ok(!('cueOut' in JSON.parse(cueTagsTrack.cues[2].text)), 'cueOut not in cue');
+  QUnit.ok(!('cueOutCont' in JSON.parse(cueTagsTrack.cues[2].text)),
+           'cueOutCont not in cue');
 
-  this.masterPlaylistController.updateTagCues_({
+  this.masterPlaylistController.updateCues_({
     segments: []
   });
 
-  QUnit.equal(tagsTrack.cues.length, 0, 'removes old cues on update');
+  QUnit.equal(cueTagsTrack.cues.length, 0, 'removes old cues on update');
 
   videojs.options.hls = origHlsOptions;
 });

@@ -2275,19 +2275,19 @@ QUnit.test('Allows overriding the global beforeRequest function', function() {
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, 'one segment request');
 });
 
-QUnit.test('passes useTagCues hls option to master playlist controller', function() {
+QUnit.test('passes useCueTags hls option to master playlist controller', function() {
   this.player.src({
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
 
-  QUnit.ok(!this.player.tech_.hls.masterPlaylistController_.useTagCues_,
-           'useTagCues is falsy by default');
+  QUnit.ok(!this.player.tech_.hls.masterPlaylistController_.useCueTags_,
+           'useCueTags is falsy by default');
 
   let origHlsOptions = videojs.options.hls;
 
   videojs.options.hls = {
-    useTagCues: true
+    useCueTags: true
   };
 
   this.player.dispose();
@@ -2297,8 +2297,8 @@ QUnit.test('passes useTagCues hls option to master playlist controller', functio
     type: 'application/vnd.apple.mpegurl'
   });
 
-  QUnit.ok(this.player.tech_.hls.masterPlaylistController_.useTagCues_,
-           'useTagCues passed to master playlist controller');
+  QUnit.ok(this.player.tech_.hls.masterPlaylistController_.useCueTags_,
+           'useCueTags passed to master playlist controller');
 
   videojs.options.hls = origHlsOptions;
 });

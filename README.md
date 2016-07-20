@@ -24,7 +24,7 @@ Play back HLS with video.js, even where it's not natively supported.
       - [Source](#source)
     - [List](#list)
       - [withCredentials](#withcredentials)
-      - [useTagCues](#usetagcues)
+      - [useCueTags](#usecuetags)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -213,14 +213,16 @@ is set to `true`.
 See html5rocks's [article](http://www.html5rocks.com/en/tutorials/cors/)
 for more info.
 
-##### useTagCues
+##### useCueTags
 * Type: `boolean`
 * can be used as an initialization option
 
-When the `useTagCues` property is set to `true,` a text track is created with
+When the `useCueTags` property is set to `true,` a text track is created with
 the id 'hls-segment-metadata' and kind 'metadata'. The track is then added to
-`player.textTracks()`. Whenever a segment is playing, its associated tags will
-be listed as a tags property under its active cue. Changes in active cue may be
+`player.textTracks()`. Whenever a segment associated with a cue tag is playing,
+the cue tags will be listed as a properties inside of a stringified JSON object
+under its active cue's `text` property. The properties that are currently
+supported are cueOut, cueOutCont, and cueIn. Changes in active cue may be
 tracked by following the Video.js cue points API for text tracks. For example:
 
 ```javascript
@@ -239,13 +241,17 @@ tagsTrack.oncuechange = function() {
   var
     activeCues = tagsTrack.activeCues,
     i,
-    activeCue;
+    activeCue,
+    cueData;
 
   for (i = 0; i < activeCues.length; i++) {
       activeCue = activeCues[i];
+      cueData = JSON.parse(activeCue.text);
+
       console.log('Cue runs from ' + activeCue.startTime +
                   ' to ' + activeCue.endTime +
-                  '\n' + activeCue.tags.join('\n'));
+                  ' with cue tag contents ' +
+                  (cueData.cueOut || cueData.cueOutCont || cueData.cueIn));
   }
 }
 ```

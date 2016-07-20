@@ -49,7 +49,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     tech,
     bandwidth,
     externHls,
-    useTagCues
+    useCueTags
   }) {
     super();
 
@@ -59,16 +59,16 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.tech_ = tech;
     this.hls_ = tech.hls;
     this.mode_ = mode;
-    this.useTagCues_ = useTagCues;
-    if (this.useTagCues_) {
-      this.tagsTrack_ = new videojs.TextTrack({
+    this.useCueTags_ = useCueTags;
+    if (this.useCueTags_) {
+      this.cueTagsTrack_ = new videojs.TextTrack({
         id: 'hls-segment-metadata',
         tech: this.tech_,
         kind: 'metadata',
         mode: 'hidden',
         inBandMetadataTrackDispatchType: ''
       });
-      this.tech_.textTracks().addTrack_(this.tagsTrack_);
+      this.tech_.textTracks().addTrack_(this.cueTagsTrack_);
     }
 
     this.audioTracks_ = [];
@@ -137,7 +137,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         return;
       }
 
-      this.updateTagCues_(updatedPlaylist);
+      this.updateCues_(updatedPlaylist);
 
       // TODO: Create a new event on the PlaylistLoader that signals
       // that the segments have changed in some way and use that to
@@ -835,13 +835,13 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
   }
 
-  updateTagCues_(media) {
-    if (!this.useTagCues_ || !media.segments) {
+  updateCues_(media) {
+    if (!this.useCueTags_ || !media.segments) {
       return;
     }
 
-    while (this.tagsTrack_.cues.length) {
-      this.tagsTrack_.removeCue(this.tagsTrack_.cues[0]);
+    while (this.cueTagsTrack_.cues.length) {
+      this.cueTagsTrack_.removeCue(this.cueTagsTrack_.cues[0]);
     }
 
     let startTime;
@@ -853,12 +853,22 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       startTime = endTime;
       endTime = startTime + segment.duration;
 
-      if (segment.tags) {
-        this.tagsTrack_.addCue({
-          startTime,
-          endTime,
-          tags: segment.tags
-        });
+      let cueJson = {};
+
+      if ('cueOut' in segment || 'cueOutCont' in segment || 'cueIn' in segment) {
+        if ('cueOut' in segment) {
+          cueJson.cueOut = segment.cueOut;
+        }
+        if ('cueOutCont' in segment) {
+          cueJson.cueOutCont = segment.cueOutCont;
+        }
+        if ('cueIn' in segment) {
+          cueJson.cueIn = segment.cueIn;
+        }
+
+        this.cueTagsTrack_.addCue(new VTTCue(startTime,
+                                             endTime,
+                                             JSON.stringify(cueJson)));
       }
     }
   }
