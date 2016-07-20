@@ -163,29 +163,18 @@ export default class GapSkipper {
     // Chrome's video froze at 10 seconds, where the video buffer encountered the gap,
     // however, the audio continued playing until it reached ~3 seconds past the gap
     // (13 seconds), at which point it stops as well. Since current time is past the
-    // gap, findNextRange will return no ranges. To check for this issue, we see if
-    // we can get a next range from 4 seconds back (4 seconds to account for variance).
-    let nextRangeFromPossibleGap = Ranges.findNextRange(buffered, currentTime - 4);
-
-    if (nextRangeFromPossibleGap.length === 0) {
-      // There was no gap, and no available next buffer to jump to.
-      return null;
-    }
-
-    // Now that we've verified there is a gap, we need to check to see if our current
-    // time reflects audio overplay from the gap. We do this by seeing if the gap is
-    // small enough, and that it is somewhere within the 3 second range (3 seconds +/-
-    // 1 second).
-
+    // gap, findNextRange will return no ranges.
+    //
+    // To check for this issue, we see if there is a small gap that is somewhere within
+    // a 3 second range (3 seconds +/- 1 second) back from our current time.
     let gaps = Ranges.findGaps(buffered);
 
     for (let i = 0; i < gaps.length; i++) {
       let start = gaps.start(i);
       let end = gaps.end(i);
 
-      if (
-        // gap is small
-        end - start < 1 &&
+      // gap is small
+      if (end - start < 1 &&
         // gap is 3 seconds back +/- 1 second
         currentTime - start < 4 && currentTime - end > 2) {
         return {
@@ -223,6 +212,10 @@ export default class GapSkipper {
                      'from: ', gap.start,
                      'to: ', gap.end,
                      'seeking to current time: ', currentTime);
+        // Even though the video underflowed and was stuck in a gap, the audio overplayed
+        // the gap, leading currentTime into a buffered range. Seeking to currentTime
+        // allows the video to catch up to the audio position without losing any audio
+        // (only suffering ~3 seconds of frozen video and a pause in audio playback).
         this.tech_.setCurrentTime(currentTime);
       }
       return;

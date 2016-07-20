@@ -278,5 +278,5 @@ QUnit.test('finds gaps within ranges', function() {
            'finds a single gap');
   QUnit.ok(rangesEqual(Ranges.findGaps(createTimeRanges([[0, 10], [11, 20], [22, 30]])),
            createTimeRanges([[10, 11], [20, 22]])),
-           'finds multiple gap');
+           'finds multiple gaps');
 });

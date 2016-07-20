@@ -65,7 +65,7 @@ const findNextRange = function(timeRanges, time) {
 /**
  * Returns gaps within a list of TimeRanges
  * @param {TimeRanges} buffered - the TimeRanges object
- * @return {TimeRanges} a TimeRanges object with gaps
+ * @return {TimeRanges} a TimeRanges object of gaps
  */
 const findGaps = function(buffered) {
   if (buffered.length < 2) {
