@@ -121,6 +121,48 @@ QUnit.test('resolves relative media playlist URIs', function() {
               'resolved media URI');
 });
 
+QUnit.test('playlist loader returns the correct amount of enabled playlists', function() {
+  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
+
+  loader.load();
+
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXT-X-STREAM-INF:\n' +
+                                'video1/media.m3u8\n' +
+                                '#EXT-X-STREAM-INF:\n' +
+                                'video2/media.m3u8\n');
+  QUnit.equal(loader.enabledPlaylists_(), 2, 'Returned initial amount of playlists');
+  loader.master.playlists[0].excludeUntil = Date.now() + 100000;
+  this.clock.tick(1000);
+  QUnit.equal(loader.enabledPlaylists_(), 1, 'Returned one less playlist');
+});
+
+QUnit.test('playlist loader detects if we are on lowest rendition', function() {
+  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
+
+  loader.load();
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXT-X-STREAM-INF:\n' +
+                                'video1/media.m3u8\n' +
+                                '#EXT-X-STREAM-INF:\n' +
+                                'video2/media.m3u8\n');
+  loader.media = function() {
+    return {attributes: {BANDWIDTH: 10}};
+  };
+
+  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
+                              {attributes: {BANDWIDTH: 20}}];
+  QUnit.ok(loader.isLowestEnabledRendition_(), 'Detected on lowest rendition');
+
+  loader.media = function() {
+    return {attributes: {BANDWIDTH: 20}};
+  };
+
+  QUnit.ok(!loader.isLowestEnabledRendition_(), 'Detected not on lowest rendition');
+});
+
 QUnit.test('recognizes absolute URIs and requests them unmodified', function() {
   let loader = new PlaylistLoader('manifest/media.m3u8', this.fakeHls);
 

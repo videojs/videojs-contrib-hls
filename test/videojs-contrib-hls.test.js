@@ -1219,6 +1219,25 @@ QUnit.test('if withCredentials global option is used, withCredentials is set on 
   videojs.options.hls = hlsOptions;
 });
 
+QUnit.test('the withCredentials option overrides the global default', function() {
+  let hlsOptions = videojs.options.hls;
+
+  this.player.dispose();
+  videojs.options.hls = {
+    withCredentials: true
+  };
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl',
+    withCredentials: false
+  });
+  openMediaSource(this.player, this.clock);
+  QUnit.ok(!this.requests[0].withCredentials,
+           'with credentials should be set to false if if overrode global option');
+  videojs.options.hls = hlsOptions;
+});
+
 QUnit.test('if mode global option is used, mode is set to global option', function() {
   let hlsOptions = videojs.options.hls;
 

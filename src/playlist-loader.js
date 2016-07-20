@@ -177,6 +177,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     // merge this playlist into the master
     update = updateMaster(loader.master, parser.manifest);
     refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
+    loader.targetDuration = parser.manifest.targetDuration;
     if (update) {
       loader.master = update;
       loader.updateMediaPlaylist_(parser.manifest);
@@ -225,6 +226,44 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       oldRequest.onreadystatechange = null;
       oldRequest.abort();
     }
+  };
+
+  /**
+   * Returns the number of enabled playlists on the master playlist object
+   *
+   * @return {Number} number of eneabled playlists
+   */
+  loader.enabledPlaylists_ = function() {
+    return loader.master.playlists.filter((element, index, array) => {
+      return !element.excludeUntil || element.excludeUntil <= Date.now();
+    }).length;
+  };
+
+  /**
+   * Returns whether the current playlist is the lowest rendition
+   *
+   * @return {Boolean} true if on lowest rendition
+   */
+  loader.isLowestEnabledRendition_ = function() {
+    if (!loader.media()) {
+      return false;
+    }
+
+    let currentPlaylist = loader.media().attributes.BANDWIDTH;
+
+    return !(loader.master.playlists.filter((element, index, array) => {
+      let enabled = typeof element.excludeUntil === 'undefined' ||
+                      element.excludeUntil <= Date.now();
+
+      if (!enabled) {
+        return false;
+      }
+
+      let item = element.attributes.BANDWIDTH;
+
+      return item <= currentPlaylist;
+
+    }).length > 1);
   };
 
    /**

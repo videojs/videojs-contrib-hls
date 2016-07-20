@@ -484,6 +484,40 @@ QUnit.test('updates the duration after switching playlists', function() {
               '16 bytes downloaded');
 });
 
+QUnit.test('removes request timeout when segment timesout on lowest rendition',
+function() {
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  // master
+  standardXHRResponse(this.requests[0]);
+  // media
+  standardXHRResponse(this.requests[1]);
+
+  QUnit.equal(this.masterPlaylistController.requestOptions_.timeout,
+              this.masterPlaylistController.masterPlaylistLoader_.targetDuration * 1.5 *
+              1000,
+              'default request timeout');
+
+  QUnit.ok(!this.masterPlaylistController
+            .masterPlaylistLoader_
+            .isLowestEnabledRendition_(), 'Not lowest rendition');
+
+  // Cause segment to timeout to force player into lowest rendition
+  this.requests[2].timedout = true;
+
+  // Downloading segment should cause media change and timeout removal
+  // segment 0
+  standardXHRResponse(this.requests[2]);
+  // Download new segment after media change
+  standardXHRResponse(this.requests[3]);
+
+  QUnit.ok(this.masterPlaylistController
+            .masterPlaylistLoader_.isLowestEnabledRendition_(), 'On lowest rendition');
+
+  QUnit.equal(this.masterPlaylistController.requestOptions_.timeout, 0,
+              'request timeout 0');
+});
+
 QUnit.test('seekable uses the intersection of alternate audio and combined tracks',
 function() {
   let origSeekable = Playlist.seekable;
