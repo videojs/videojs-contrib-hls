@@ -653,10 +653,6 @@ QUnit.test('preserves segment metadata across playlist refreshes', function() {
                               '#EXTINF:10,\n' +
                               '2.ts\n');
 
-  // tag information will be different across refreshes
-  delete segment.tags;
-  delete loader.media().segments[0].tags;
-
   QUnit.deepEqual(loader.media().segments[0], segment, 'preserved segment attributes');
 });
 

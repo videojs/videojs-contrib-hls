@@ -218,7 +218,7 @@ for more info.
 * can be used as an initialization option
 
 When the `useCueTags` property is set to `true,` a text track is created with
-the id 'hls-segment-metadata' and kind 'metadata'. The track is then added to
+label 'hls-segment-metadata' and kind 'metadata'. The track is then added to
 `player.textTracks()`. Whenever a segment associated with a cue tag is playing,
 the cue tags will be listed as a properties inside of a stringified JSON object
 under its active cue's `text` property. The properties that are currently
@@ -228,18 +228,18 @@ tracked by following the Video.js cue points API for text tracks. For example:
 ```javascript
 var
   textTracks = player.textTracks(),
-  tagsTrack,
+  cuesTrack,
   i;
 
 for (i = 0; i < textTracks.length; i++) {
-  if (textTracks[i].id === 'hls-segment-metadata') {
-    tagsTrack = textTracks[i];
+  if (textTracks[i].label === 'hls-segment-metadata') {
+    cuesTrack = textTracks[i];
   }
 }
 
-tagsTrack.oncuechange = function() {
+cuesTrack.oncuechange = function() {
   var
-    activeCues = tagsTrack.activeCues,
+    activeCues = cuesTrack.activeCues,
     i,
     activeCue,
     cueData;

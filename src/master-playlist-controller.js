@@ -61,13 +61,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.mode_ = mode;
     this.useCueTags_ = useCueTags;
     if (this.useCueTags_) {
-      this.cueTagsTrack_ = new videojs.TextTrack({
-        id: 'hls-segment-metadata',
-        tech: this.tech_,
-        kind: 'metadata',
-        mode: 'hidden',
-        inBandMetadataTrackDispatchType: ''
-      });
+      this.cueTagsTrack_ = this.tech_.addTextTrack('metadata', 'hls-segment-metadata');
+      this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
       this.tech_.textTracks().addTrack_(this.cueTagsTrack_);
     }
 
