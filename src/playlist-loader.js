@@ -177,6 +177,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     // merge this playlist into the master
     update = updateMaster(loader.master, parser.manifest);
     refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
+    loader.targetDuration = parser.manifest.targetDuration;
     if (update) {
       loader.master = update;
       loader.updateMediaPlaylist_(parser.manifest);
@@ -225,6 +226,26 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       oldRequest.onreadystatechange = null;
       oldRequest.abort();
     }
+  };
+
+    // returns the number of enabled playlists on the master playlist object
+  loader.enabledPlaylists = function() {
+    return loader.master.playlists.filter((element, index, array) => {
+      return element.excludeUntil <= Date.now() || !element.excludeUntil ? true : false;
+    }).length;
+  };
+
+  loader.onLowestRendition = function() {
+    if (!loader.media()) {
+      return false;
+    }
+    return loader.master.playlists.filter((element, index, array) => {
+      let item = element.attributes.BANDWIDTH;
+      let currentPlaylist = loader.media().attributes.BANDWIDTH;
+
+      return item <= currentPlaylist ? true : false;
+
+    }).length > 1 ? false : true;
   };
 
    /**

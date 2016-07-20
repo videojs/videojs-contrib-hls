@@ -59,6 +59,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.hls_ = tech.hls;
     this.mode_ = mode;
     this.audioTracks_ = [];
+    this.xhrRequest = {
+      withCredentials: this.withCredentials,
+      requestTimeout: null
+    };
 
     this.mediaSource = new videojs.MediaSource({ mode });
     this.mediaSource.on('audioinfo', (e) => this.trigger(e));
@@ -90,11 +94,14 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('loadedmetadata', () => {
       let media = this.masterPlaylistLoader_.media();
+      let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
+
+      this.xhrRequest.requestTimeout = requestTimeout;
 
       // if this isn't a live video and preload permits, start
       // downloading segments
       if (media.endList && this.tech_.preload() !== 'none') {
-        this.mainSegmentLoader_.playlist(media);
+        this.mainSegmentLoader_.playlist(media, this.xhrRequest);
         this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
         this.mainSegmentLoader_.load();
       }
@@ -122,7 +129,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       // that the segments have changed in some way and use that to
       // update the SegmentLoader instead of doing it twice here and
       // on `mediachange`
-      this.mainSegmentLoader_.playlist(updatedPlaylist);
+      this.mainSegmentLoader_.playlist(updatedPlaylist, this.xhrRequest);
       this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
       this.updateDuration();
 
@@ -150,7 +157,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       // that the segments have changed in some way and use that to
       // update the SegmentLoader instead of doing it twice here and
       // on `loadedplaylist`
-      this.mainSegmentLoader_.playlist(media);
+      this.mainSegmentLoader_.playlist(media, this.xhrRequest);
       this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
       this.mainSegmentLoader_.load();
 
@@ -340,7 +347,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       let media = this.audioPlaylistLoader_.media();
       /* eslint-enable no-shadow */
 
-      this.audioSegmentLoader_.playlist(media);
+      this.audioSegmentLoader_.playlist(media, this.xhrRequest);
       this.addMimeType_(this.audioSegmentLoader_, 'mp4a.40.2', media);
 
       // if the video is already playing, or if this isn't a live video and preload
@@ -370,7 +377,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         return;
       }
 
-      this.audioSegmentLoader_.playlist(updatedPlaylist);
+      this.audioSegmentLoader_.playlist(updatedPlaylist, this.xhrRequest);
     });
 
     this.audioPlaylistLoader_.on('error', () => {
@@ -512,6 +519,12 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
+
+    // if only 1 more available playlist
+    if (this.masterPlaylistLoader_.enabledPlaylists() <= 1 ||
+      this.masterPlaylistLoader_.onLowestRendition()) {
+      this.xhrRequest.requestTimeout = 0;
+    }
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
