@@ -7,6 +7,7 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import {Decrypter} from 'aes-decrypter';
 import Config from './config';
+import window from 'global/window';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;

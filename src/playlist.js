@@ -4,6 +4,7 @@
  * Playlist related utilities.
  */
 import {createTimeRange} from 'video.js';
+import window from 'global/window';
 
 let Playlist = {
   /**
