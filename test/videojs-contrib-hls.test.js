@@ -2284,7 +2284,11 @@ QUnit.test('passes useTagCues hls option to master playlist controller', functio
   QUnit.ok(!this.player.tech_.hls.masterPlaylistController_.useTagCues_,
            'useTagCues is falsy by default');
 
-  videojs.options.hls.useTagCues = true;
+  let origHlsOptions = videojs.options.hls;
+
+  videojs.options.hls = {
+    useTagCues: true
+  };
 
   this.player.dispose();
   this.player = createPlayer();
@@ -2295,6 +2299,8 @@ QUnit.test('passes useTagCues hls option to master playlist controller', functio
 
   QUnit.ok(this.player.tech_.hls.masterPlaylistController_.useTagCues_,
            'useTagCues passed to master playlist controller');
+
+  videojs.options.hls = origHlsOptions;
 });
 
 QUnit.module('HLS Integration', {

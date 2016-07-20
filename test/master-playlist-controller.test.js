@@ -669,9 +669,30 @@ QUnit.test('respects useTagCues option', function() {
   });
 
   QUnit.ok(!this.masterPlaylistController.tagsTrack_,
-           'does nothing if useTagCues is not specified');
+           'does not create tagsTrack_ if useTagCues is falsy');
+  QUnit.equal(this.player.textTracks().length,
+              0,
+              'does not create a text track if useTagCues is falsy');
 
-  this.masterPlaylistController.useTagCues_ = true;
+  this.player.dispose();
+
+  let origHlsOptions = videojs.options.hls;
+
+  videojs.options.hls = {
+    useTagCues: true
+  };
+
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  QUnit.ok(this.masterPlaylistController.tagsTrack_,
+           'creates tagsTrack_ if useTagCues is truthy');
+  QUnit.equal(this.player.textTracks()[0], this.masterPlaylistController.tagsTrack_,
+           'adds tagsTrack as a text track if useTagCues is truthy');
 
   this.masterPlaylistController.updateTagCues_({
     segments: [{
@@ -680,22 +701,56 @@ QUnit.test('respects useTagCues option', function() {
     }]
   });
 
-  QUnit.ok(this.masterPlaylistController.tagsTrack_,
-           'sets tagsTrack if useTagCues is specified');
+  QUnit.deepEqual(this.masterPlaylistController.tagsTrack_.cues[0],
+                  { startTime: 0, endTime: 10, tags: ['test'] },
+                  'adds cue to tagsTrack_ if useTagCues is truthy');
+
+  videojs.options.hls = origHlsOptions;
 });
 
 QUnit.test('update tag cues', function() {
-  this.masterPlaylistController.useTagCues_ = true;
+  let origHlsOptions = videojs.options.hls;
 
-  let addTrackCalls = [];
-  let removeTrackCalls = [];
+  videojs.options.hls = {
+    useTagCues: true
+  };
 
-  this.player.tech_.textTracks().addTrack_ = (track) => addTrackCalls.push(track);
-  this.player.tech_.textTracks().removeTrack_ = (track) => removeTrackCalls.push(track);
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  let testCue = {
+    test: 'cue'
+  };
+  let tagsTrack = {
+    removeCue: (cue) => {
+      tagsTrack.cues.splice(tagsTrack.cues.indexOf(cue), 1);
+    },
+    addCue: (cue) => {
+      tagsTrack.cues.push(cue);
+    },
+    cues: [testCue]
+  };
+
+  this.masterPlaylistController.tagsTrack_ = tagsTrack;
 
   this.masterPlaylistController.updateTagCues_({});
 
-  QUnit.equal(addTrackCalls.length, 0, 'does nothing if no segments in playlist');
+  QUnit.equal(tagsTrack.cues.length,
+              1,
+              'does not change cues if media does not have segment property');
+  QUnit.equal(tagsTrack.cues[0],
+              testCue,
+              'does not change cues if media does not have segment property');
+
+  this.masterPlaylistController.updateTagCues_({
+    segments: []
+  });
+
+  QUnit.equal(tagsTrack.cues.length, 0, 'removes cues even if no segments in playlist');
 
   this.masterPlaylistController.updateTagCues_({
     segments: [{
@@ -712,20 +767,17 @@ QUnit.test('update tag cues', function() {
     }]
   });
 
-  QUnit.equal(removeTrackCalls.length, 0, 'does not remove track if no track to remove');
-  QUnit.equal(addTrackCalls.length, 1, 'adds a track');
+  QUnit.equal(tagsTrack.cues.length, 2, 'adds a cue for each segment');
 
-  let addedTrack = addTrackCalls[0];
-
-  QUnit.equal(addedTrack.cues_[0].startTime, 0, 'cue starts at 0');
-  QUnit.equal(addedTrack.cues_[0].endTime, 9.1, 'cue ends at start time plus duration');
-  QUnit.deepEqual(addedTrack.cues_[0].tags, [
+  QUnit.equal(tagsTrack.cues[0].startTime, 0, 'cue starts at 0');
+  QUnit.equal(tagsTrack.cues[0].endTime, 9.1, 'cue ends at start time plus duration');
+  QUnit.deepEqual(tagsTrack.cues[0].tags, [
     '#EXTM3U',
     '#EXT-X-TARGETDURATION:9'
   ], 'first cue tags match first segment\'s tags');
-  QUnit.equal(addedTrack.cues_[1].startTime, 9.1, 'cue starts at 9.1');
-  QUnit.equal(addedTrack.cues_[1].endTime, 17.5, 'cue ends at start time plus duration');
-  QUnit.deepEqual(addedTrack.cues_[1].tags, [
+  QUnit.equal(tagsTrack.cues[1].startTime, 9.1, 'cue starts at 9.1');
+  QUnit.equal(tagsTrack.cues[1].endTime, 17.5, 'cue ends at start time plus duration');
+  QUnit.deepEqual(tagsTrack.cues[1].tags, [
     '#EXT-X-CUE-OUT=test'
   ], 'second cue tags match second segment\'s tags');
 
@@ -733,6 +785,7 @@ QUnit.test('update tag cues', function() {
     segments: []
   });
 
-  QUnit.equal(removeTrackCalls.length, 1, 'calls to remove track when old track exists');
-  QUnit.equal(removeTrackCalls[0], addedTrack, 'calls to remove proper track');
+  QUnit.equal(tagsTrack.cues.length, 0, 'removes old cues on update');
+
+  videojs.options.hls = origHlsOptions;
 });

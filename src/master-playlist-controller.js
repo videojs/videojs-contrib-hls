@@ -60,6 +60,17 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.hls_ = tech.hls;
     this.mode_ = mode;
     this.useTagCues_ = useTagCues;
+    if (this.useTagCues_) {
+      this.tagsTrack_ = new videojs.TextTrack({
+        id: 'hls-segment-metadata',
+        tech: this.tech_,
+        kind: 'metadata',
+        mode: 'hidden',
+        inBandMetadataTrackDispatchType: ''
+      });
+      this.tech_.textTracks().addTrack_(this.tagsTrack_);
+    }
+
     this.audioTracks_ = [];
     this.requestOptions_ = {
       withCredentials: this.withCredentials,
@@ -829,15 +840,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    if (this.tagsTrack_) {
-      this.tech_.textTracks().removeTrack_(this.tagsTrack_);
+    while (this.tagsTrack_.cues.length) {
+      this.tagsTrack_.removeCue(this.tagsTrack_.cues[0]);
     }
-
-    this.tagsTrack_ = new videojs.TextTrack({
-      tech: this.tech_,
-      kind: 'data',
-      mode: 'hidden'
-    });
 
     let startTime;
     let endTime = 0;
@@ -856,7 +861,5 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         });
       }
     }
-
-    this.tech_.textTracks().addTrack_(this.tagsTrack_);
   }
 }
