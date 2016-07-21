@@ -17,6 +17,7 @@ import {
 // we need this so that it can register hls with videojs
 import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
 import HlsAudioTrack from '../src/hls-audio-track';
+import window from 'global/window';
 /* eslint-enable no-unused-vars */
 
 const Flash = videojs.getComponent('Flash');
@@ -117,7 +118,9 @@ QUnit.test('deprication warning is show when using player.hls', function() {
     type: 'application/vnd.apple.mpegurl'
   });
 
-  videojs.log.warn = (text) => warning = text;
+  videojs.log.warn = (text) => {
+    warning = text;
+  };
   let hls = this.player.hls;
 
   QUnit.equal(warning, 'player.hls is deprecated. Use player.tech.hls instead.', 'warning would have been shown');
