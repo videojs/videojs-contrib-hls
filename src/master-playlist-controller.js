@@ -848,9 +848,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       startTime = endTime;
       endTime = startTime + segment.duration;
 
-      let cueJson = {};
-
       if ('cueOut' in segment || 'cueOutCont' in segment || 'cueIn' in segment) {
+        let cueJson = {};
+
         if ('cueOut' in segment) {
           cueJson.cueOut = segment.cueOut;
         }
