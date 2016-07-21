@@ -8,6 +8,7 @@ import MediaSource from 'videojs-contrib-media-sources';
 /* eslint-enable */
 import testDataManifests from './test-manifests.js';
 import xhrFactory from '../src/xhr';
+import window from 'global/window';
 
 // a SourceBuffer that tracks updates but otherwise is a noop
 class MockSourceBuffer extends videojs.EventTarget {

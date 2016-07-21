@@ -2,6 +2,7 @@ import QUnit from 'qunit';
 import PlaylistLoader from '../src/playlist-loader';
 import xhrFactory from '../src/xhr';
 import { useFakeEnvironment } from './test-helpers';
+import window from 'global/window';
 
 // Attempts to produce an absolute URL to a given relative path
 // based on window.location.href

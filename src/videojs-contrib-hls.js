@@ -17,6 +17,7 @@ import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
 import GapSkipper from './gap-skipper';
+import window from 'global/window';
 
 /**
  * determine if an object a is differnt from
@@ -94,7 +95,7 @@ const safeGetComputedStyle = function(el, property) {
     return '';
   }
 
-  result = getComputedStyle(el);
+  result = window.getComputedStyle(el);
   if (!result) {
     return '';
   }
