@@ -409,17 +409,23 @@ class HlsHandler extends Component {
       }
     });
 
-    Object.defineProperty(this.stats, 'bandwidth', {
-      get: () => this.bandwidth || 0
-    });
-    Object.defineProperty(this.stats, 'mediaRequests', {
-      get: () => this.masterPlaylistController_.mediaRequests_() || 0
-    });
-    Object.defineProperty(this.stats, 'mediaTransferDuration', {
-      get: () => this.masterPlaylistController_.mediaTransferDuration_() || 0
-    });
-    Object.defineProperty(this.stats, 'mediaBytesTransferred', {
-      get: () => this.masterPlaylistController_.mediaBytesTransferred_() || 0
+    Object.defineProperties(this.stats, {
+      bandwidth: {
+        get: () => this.bandwidth || 0,
+        enumerable: true
+      },
+      mediaRequests: {
+        get: () => this.masterPlaylistController_.mediaRequests_() || 0,
+        enumerable: true
+      },
+      mediaTransferDuration: {
+        get: () => this.masterPlaylistController_.mediaTransferDuration_() || 0,
+        enumerable: true
+      },
+      mediaBytesTransferred: {
+        get: () => this.masterPlaylistController_.mediaBytesTransferred_() || 0,
+        enumerable: true
+      }
     });
 
     this.tech_.one('canplay',
