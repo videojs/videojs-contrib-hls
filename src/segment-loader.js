@@ -765,7 +765,8 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // add segment metadata if it we have gained information during the
     // last append
-    let timelineUpdated = this.updateTimeline_(segmentInfo);
+    let resetTimeCorrection = this.updateTimeline_(segmentInfo);
+    let correctionSeconds = segmentInfo.duration;
 
     this.trigger('progress');
 
@@ -788,29 +789,45 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.mediaSource_.endOfStream();
     }
 
-    // when seeking to the beginning of the seekable range, it's
-    // possible that imprecise timing information may cause the seek to
-    // end up earlier than the start of the range
-    // in that case, seek again
-    let seekable = this.seekable_();
     let next = Ranges.findNextRange(this.sourceUpdater_.buffered(), currentTime);
-
-    if (this.seeking_() &&
-        currentBuffered.length === 0) {
-      if (seekable.length &&
-          currentTime < seekable.start(0)) {
-
-        if (next.length) {
-          videojs.log('tried seeking to', currentTime,
-                      'but that was too early, retrying at', next.start(0));
-          this.setCurrentTime_(next.start(0) + Ranges.TIME_FUDGE_FACTOR);
-        }
-      }
-    }
+    let seekable = this.seekable_();
 
     this.state = 'READY';
 
-    if (timelineUpdated) {
+    // When seeking, it's possible that imprecise timing information
+    // may cause the seek to end up just before the start of the segment
+    // selected by the fetch algorithm.
+    // There are two situations where this can happen:
+    //   1) During a seek to the start of the live-window
+    //   2) During a general seek
+    if (this.seeking_() &&
+        currentBuffered.length === 0 &&
+        next.length) {
+
+      // Here the seek landed just before the seekable start time. So
+      // seek again because it is impossible for the fetch algorithm
+      // to get an earlier segment
+      if (seekable.length &&
+          next.start(0) - seekable.start(0) < segmentInfo.duration) {
+        videojs.log('tried seeking to', currentTime,
+                    'but that was too early, retrying at', next.start(0));
+        this.timeCorrection_ = 0;
+        this.setCurrentTime_(next.start(0) + Ranges.TIME_FUDGE_FACTOR);
+        return;
+      }
+
+      // Here the seek ended just before a segment that we previously fetched.
+      // There is a chance that we can't "find" the correct segment with only
+      // a little information in the segment list so try to use the
+      // timeCorrection_ variable to force the fetcher to fetch earlier than
+      // it normally try.
+      if (next.start(0) - currentTime < segmentInfo.duration) {
+        correctionSeconds = -segmentInfo.duration / 2;
+        resetTimeCorrection = false;
+      }
+    }
+
+    if (resetTimeCorrection) {
       this.timeCorrection_ = 0;
       if (!this.paused()) {
         this.fillBuffer_();
@@ -823,7 +840,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // offset to fetch forward until we find a segment that adds
     // to the buffered time ranges and improves subsequent media
     // index calculations.
-    let correctionApplied = this.incrementTimeCorrection_(segmentInfo.duration, 4);
+    let correctionApplied = this.incrementTimeCorrection_(correctionSeconds, 4);
 
     if (correctionApplied && !this.paused()) {
       this.fillBuffer_();
@@ -838,24 +855,22 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @param {Object} segmentInfo annotate a segment with time info
    */
   updateTimeline_(segmentInfo) {
-    let segment;
-    let segmentEnd;
     let timelineUpdated = false;
-    let playlist = segmentInfo.playlist;
-    let currentMediaIndex = segmentInfo.mediaIndex;
-
-    currentMediaIndex += playlist.mediaSequence - this.playlist_.mediaSequence;
-    segment = playlist.segments[currentMediaIndex];
 
     // Update segment meta-data (duration and end-point) based on timeline
-    if (segment &&
-        segmentInfo &&
-        segmentInfo.playlist.uri === this.playlist_.uri) {
-      segmentEnd = Ranges.findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
-                                                        this.sourceUpdater_.buffered());
-      timelineUpdated = updateSegmentMetadata(playlist,
-                                              currentMediaIndex,
+    if (segmentInfo) {
+      let segmentEnd = Ranges.findSoleUncommonTimeRangesEnd(segmentInfo.buffered,
+                                                            this.sourceUpdater_.buffered());
+
+      timelineUpdated = updateSegmentMetadata(segmentInfo.playlist,
+                                              segmentInfo.mediaIndex,
                                               segmentEnd);
+    }
+
+    // We always consider the timeline updated if the previous fetch resulting in
+    // the closing of a "gap" in the buffer in order to reset the timeCorrection_
+    if (segmentInfo.buffered.length > this.sourceUpdater_.buffered().length) {
+      timelineUpdated = true;
     }
 
     return timelineUpdated;
@@ -877,7 +892,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   incrementTimeCorrection_(secondsToIncrement, maxSegmentsToWalk) {
     // If we have already incremented timeCorrection_ beyond the limit,
     // stop searching for a segment and reset timeCorrection_
-    if (this.timeCorrection_ >= this.playlist_.targetDuration * maxSegmentsToWalk) {
+    if (Math.abs(this.timeCorrection_) >= this.playlist_.targetDuration * maxSegmentsToWalk) {
       this.timeCorrection_ = 0;
       return false;
     }
