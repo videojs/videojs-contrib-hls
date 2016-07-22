@@ -468,11 +468,6 @@ function() {
   media = loader.media();
 
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 0),
-    -1,
-    'the lowest returned value is  negative one'
-  );
-  QUnit.equal(
     Playlist.getMediaIndexForTime_(media, 45),
     -1,
     'expired content returns negative one'
@@ -481,6 +476,11 @@ function() {
     Playlist.getMediaIndexForTime_(media, 75),
     -1,
     'expired content returns  negative one'
+  );
+  QUnit.equal(
+    Playlist.getMediaIndexForTime_(media, 0),
+    0,
+    'time of 0 with no expired time returns first segment'
   );
   QUnit.equal(
     Playlist.getMediaIndexForTime_(media, 50 + 100),
@@ -626,5 +626,18 @@ QUnit.test('accounts for expired time when calculating media index', function() 
     Playlist.getMediaIndexForTime_(media, 50 + 100 + 6, expired),
     1,
     'calculates within the second segment'
+  );
+});
+
+QUnit.test('returns index 0 when time is 0 and expired is falsy', function() {
+  QUnit.equal(
+    Playlist.getMediaIndexForTime_({segments: []}, 0, 0),
+    0,
+    'returns 0 when time is 0 and expired is 0'
+  );
+  QUnit.equal(
+    Playlist.getMediaIndexForTime_({segments: []}, 0),
+    0,
+    'returns 0 when time is 0 and expired is undefined'
   );
 });

@@ -382,23 +382,6 @@ export default class SegmentLoader extends videojs.EventTarget {
                                         this.expired_);
     }
 
-    // A possible reason for us getting a negative media index is that we've recorded
-    // actual segment timing information and it differs enough from the manifest's timing
-    // information that we can't properly place the first segment. In the event that we're
-    // at time 0 and the video isn't live, we can safely assume that we should get the
-    // first segment.
-    if (mediaIndex < 0 && currentTime === 0 && this.mediaSource_.duration !== Infinity) {
-      // To protect against creating an infinite loop of first segment requests due to
-      // timing information for the first segment being off, we ensure that we only ever
-      // adjust to the first segment once in a row.
-      if (!this.adjustedToZero_) {
-        this.adjustedToZero_ = true;
-        mediaIndex = 0;
-      }
-    } else {
-      this.adjustedToZero_ = false;
-    }
-
     if (mediaIndex < 0 || mediaIndex === playlist.segments.length) {
       return null;
     }
