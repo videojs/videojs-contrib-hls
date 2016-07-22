@@ -1155,3 +1155,40 @@ QUnit.test('doesn\'t allow more than one monitor buffer timer to be set', functi
 
   QUnit.equal(this.clock.methods.length, timeoutCount, 'timeout count remains the same');
 });
+
+QUnit.test('adjusts media index to start if VOD and current time is 0', function() {
+  loader.mimeType(this.mimeType);
+
+  let playlist = playlistWithDuration(20);
+
+  playlist.segments[0].duration = 9.8;
+  playlist.segments[1].end = 19.9;
+
+  QUnit.ok(!loader.adjustedToZero_, 'no state for adjustments');
+
+  let segmentInfo = loader.checkBuffer_(videojs.createTimeRanges(),
+                                        playlist,
+                                        0);
+
+  QUnit.ok(segmentInfo, 'fetched a segment');
+  QUnit.equal(segmentInfo.uri, '0.ts', 'got the first segment');
+  QUnit.ok(loader.adjustedToZero_, 'added state to prevent repeated adjustments');
+
+  segmentInfo = loader.checkBuffer_(videojs.createTimeRanges(), playlist, 0);
+
+  QUnit.equal(segmentInfo, null, 'does not adjust two times in a row');
+  QUnit.ok(loader.adjustedToZero_, 'retains state to prevent repeated adjustments');
+
+  segmentInfo = loader.checkBuffer_(videojs.createTimeRanges(), playlist, 0);
+
+  QUnit.equal(segmentInfo, null, 'does not adjust after mulitple calls');
+  QUnit.ok(loader.adjustedToZero_, 'retains state after multiple calls');
+
+  let buffered = videojs.createTimeRanges([[0, playlist.segments[0].duration + 0.1]]);
+
+  segmentInfo = loader.checkBuffer_(buffered, playlist, 0);
+
+  QUnit.ok(segmentInfo, 'fetched a segment');
+  QUnit.equal(segmentInfo.uri, '1.ts', 'got the second segment');
+  QUnit.ok(!loader.adjustedToZero_, 'resets state for adjustments');
+});
