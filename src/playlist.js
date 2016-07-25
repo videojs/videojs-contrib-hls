@@ -264,6 +264,10 @@ export const getMediaIndexForTime_ = function(playlist, time, expired) {
     return 0;
   }
 
+  if (time === 0 && !expired) {
+    return 0;
+  }
+
   expired = expired || 0;
 
   // find segments with known timing information that bound the
