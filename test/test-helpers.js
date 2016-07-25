@@ -6,7 +6,7 @@ import QUnit from 'qunit';
 // needed so MediaSource can be registered with videojs
 import MediaSource from 'videojs-contrib-media-sources';
 /* eslint-enable */
-import testDataManifests from './test-manifests.js';
+import testDataManifests from './dist/test-manifests.js';
 import xhrFactory from '../src/xhr';
 import window from 'global/window';
 

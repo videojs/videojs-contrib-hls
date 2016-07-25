@@ -4,7 +4,7 @@ import document from 'global/document';
 import videojs from 'video.js';
 import Events from 'video.js';
 import QUnit from 'qunit';
-import testDataManifests from './test-manifests.js';
+import testDataManifests from './dist/test-manifests.js';
 import {
   useFakeEnvironment,
   useFakeMediaSource,

@@ -1,0 +1,13 @@
+{
+  "name": "videojs-contrib-hls",
+  "author": "Brightcove, Inc",
+  "license": "Apache-2.0",
+  "main": [
+    "dist/videojs-contrib-hls.min.js"
+  ],
+  "keywords": [
+    "videojs",
+    "videojs-plugin"
+  ]
+}
+
