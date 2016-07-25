@@ -226,34 +226,29 @@ supported are cueOut, cueOutCont, and cueIn. Changes in active cue may be
 tracked by following the Video.js cue points API for text tracks. For example:
 
 ```javascript
-var
-  textTracks = player.textTracks(),
-  cuesTrack,
-  i;
+let textTracks = player.textTracks();
+let cuesTrack;
 
-for (i = 0; i < textTracks.length; i++) {
+for (let i = 0; i < textTracks.length; i++) {
   if (textTracks[i].label === 'hls-segment-metadata') {
     cuesTrack = textTracks[i];
   }
 }
 
-cuesTrack.oncuechange = function() {
-  var
-    activeCues = cuesTrack.activeCues,
-    i,
-    activeCue,
-    cueData;
+cuesTrack.addEventListener('cuechange', function() {
+  let activeCues = cuesTrack.activeCues;
+  let activeCue;
 
-  for (i = 0; i < activeCues.length; i++) {
-      activeCue = activeCues[i];
-      cueData = JSON.parse(activeCue.text);
+  for (let i = 0; i < activeCues.length; i++) {
+    let activeCue = activeCues[i];
+    let cueData = JSON.parse(activeCue.text);
 
-      console.log('Cue runs from ' + activeCue.startTime +
-                  ' to ' + activeCue.endTime +
-                  ' with cue tag contents ' +
-                  (cueData.cueOut || cueData.cueOutCont || cueData.cueIn));
+    console.log('Cue runs from ' + activeCue.startTime +
+                ' to ' + activeCue.endTime +
+                ' with cue tag contents ' +
+                (cueData.cueOut || cueData.cueOutCont || cueData.cueIn));
   }
-}
+});
 ```
 
 ### Runtime Properties

@@ -839,14 +839,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.cueTagsTrack_.removeCue(this.cueTagsTrack_.cues[0]);
     }
 
-    let startTime;
-    let endTime = 0;
+    let mediaTime = 0;
 
     for (let i = 0; i < media.segments.length; i++) {
       let segment = media.segments[i];
-
-      startTime = endTime;
-      endTime = startTime + segment.duration;
 
       if ('cueOut' in segment || 'cueOutCont' in segment || 'cueIn' in segment) {
         let cueJson = {};
@@ -861,10 +857,16 @@ export default class MasterPlaylistController extends videojs.EventTarget {
           cueJson.cueIn = segment.cueIn;
         }
 
-        this.cueTagsTrack_.addCue(new VTTCue(startTime,
-                                             endTime,
+        // Use a short duration for the cue point, as it should trigger for a segment
+        // transition (in this case, defined as the beginning of the segment that the tag
+        // precedes), but keep it for a minimum of 0.5 seconds to remain usable (won't
+        // lose it as an active cue by the time a user retrieves the active cues).
+        this.cueTagsTrack_.addCue(new VTTCue(mediaTime,
+                                             mediaTime + 0.5,
                                              JSON.stringify(cueJson)));
       }
+
+      mediaTime += segment.duration;
     }
   }
 }

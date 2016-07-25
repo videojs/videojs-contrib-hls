@@ -710,7 +710,7 @@ QUnit.test('respects useCueTags option', function() {
               0,
               'adds cue with correct start time if useCueTags is truthy');
   QUnit.equal(cue.endTime,
-              10,
+              0.5,
               'adds cue with correct end time if useCueTags is truthy');
   QUnit.equal(cue.text,
               JSON.stringify({ cueOut: 'test' }),
@@ -771,20 +771,20 @@ QUnit.test('update tag cues', function() {
   QUnit.equal(cueTagsTrack.cues.length, 3, 'adds a cue for each segment');
 
   QUnit.equal(cueTagsTrack.cues[0].startTime, 0, 'cue starts at 0');
-  QUnit.equal(cueTagsTrack.cues[0].endTime, 5.1, 'cue ends at start time plus duration');
+  QUnit.equal(cueTagsTrack.cues[0].endTime, 0.5, 'cue ends at start time plus duration');
   QUnit.equal(JSON.parse(cueTagsTrack.cues[0].text).cueOut, '11.5', 'cueOut matches');
   QUnit.ok(!('cueOutCont' in JSON.parse(cueTagsTrack.cues[0].text)),
            'cueOutCont not in cue');
   QUnit.ok(!('cueIn' in JSON.parse(cueTagsTrack.cues[0].text)), 'cueIn not in cue');
   QUnit.equal(cueTagsTrack.cues[1].startTime, 5.1, 'cue starts at 5.1');
-  QUnit.equal(cueTagsTrack.cues[1].endTime, 11.5, 'cue ends at start time plus duration');
+  QUnit.equal(cueTagsTrack.cues[1].endTime, 5.6, 'cue ends at start time plus duration');
   QUnit.equal(JSON.parse(cueTagsTrack.cues[1].text).cueOutCont,
               '5.1/11.5',
               'cueOutCont matches');
   QUnit.ok(!('cueOut' in JSON.parse(cueTagsTrack.cues[1].text)), 'cueOut not in cue');
   QUnit.ok(!('cueIn' in JSON.parse(cueTagsTrack.cues[1].text)), 'cueIn not in cue');
   QUnit.equal(cueTagsTrack.cues[2].startTime, 11.5, 'cue starts at 11.5');
-  QUnit.equal(cueTagsTrack.cues[2].endTime, 17.5, 'cue ends at start time plus duration');
+  QUnit.equal(cueTagsTrack.cues[2].endTime, 12, 'cue ends at start time plus duration');
   QUnit.equal(JSON.parse(cueTagsTrack.cues[2].text).cueIn, '', 'cueIn matches');
   QUnit.ok(!('cueOut' in JSON.parse(cueTagsTrack.cues[2].text)), 'cueOut not in cue');
   QUnit.ok(!('cueOutCont' in JSON.parse(cueTagsTrack.cues[2].text)),
