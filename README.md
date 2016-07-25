@@ -237,7 +237,6 @@ for (let i = 0; i < textTracks.length; i++) {
 
 cuesTrack.addEventListener('cuechange', function() {
   let activeCues = cuesTrack.activeCues;
-  let activeCue;
 
   for (let i = 0; i < activeCues.length; i++) {
     let activeCue = activeCues[i];
