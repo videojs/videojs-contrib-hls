@@ -2478,6 +2478,50 @@ QUnit.test('live playlist starts three target durations before live', function()
 
 });
 
+QUnit.test('uses user defined selectPlaylist from HlsHandler if specified', function() {
+  let origStandardPlaylistSelector = Hls.STANDARD_PLAYLIST_SELECTOR;
+  let defaultSelectPlaylistCount = 0;
+
+  Hls.STANDARD_PLAYLIST_SELECTOR = () => defaultSelectPlaylistCount++;
+
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.masterPlaylistController_.selectPlaylist();
+  QUnit.equal(defaultSelectPlaylistCount, 1, 'uses default playlist selector');
+
+  defaultSelectPlaylistCount = 0;
+
+  let newSelectPlaylistCount = 0;
+  let newSelectPlaylist = () => newSelectPlaylistCount++;
+
+  HlsHandler.prototype.selectPlaylist = newSelectPlaylist;
+
+  hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.masterPlaylistController_.selectPlaylist();
+  QUnit.equal(defaultSelectPlaylistCount, 0, 'standard playlist selector not run');
+  QUnit.equal(newSelectPlaylistCount, 1, 'uses overridden playlist selector');
+
+  newSelectPlaylistCount = 0;
+
+  let setSelectPlaylistCount = 0;
+
+  hls.selectPlaylist = () => setSelectPlaylistCount++;
+
+  hls.masterPlaylistController_.selectPlaylist();
+  QUnit.equal(defaultSelectPlaylistCount, 0, 'standard playlist selector not run');
+  QUnit.equal(newSelectPlaylistCount, 0, 'overridden playlist selector not run');
+  QUnit.equal(setSelectPlaylistCount, 1, 'uses set playlist selector');
+
+  Hls.STANDARD_PLAYLIST_SELECTOR = origStandardPlaylistSelector;
+});
+
 QUnit.module('HLS - Encryption', {
   beforeEach() {
     this.env = useFakeEnvironment();
