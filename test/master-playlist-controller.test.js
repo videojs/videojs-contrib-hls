@@ -13,6 +13,7 @@ import MasterPlaylistController from '../src/master-playlist-controller';
 import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
+import window from 'global/window';
 
 QUnit.module('MasterPlaylistController', {
   beforeEach() {
@@ -734,7 +735,7 @@ QUnit.test('update tag cues', function() {
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   let cueTagsTrack = this.masterPlaylistController.cueTagsTrack_;
-  let testCue = new VTTCue(0, 10, 'test');
+  let testCue = new window.VTTCue(0, 10, 'test');
 
   cueTagsTrack.addCue(testCue);
 

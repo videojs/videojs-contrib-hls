@@ -6,6 +6,7 @@ import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
 import HlsAudioTrack from './hls-audio-track';
+import window from 'global/window';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -861,9 +862,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         // transition (in this case, defined as the beginning of the segment that the tag
         // precedes), but keep it for a minimum of 0.5 seconds to remain usable (won't
         // lose it as an active cue by the time a user retrieves the active cues).
-        this.cueTagsTrack_.addCue(new VTTCue(mediaTime,
-                                             mediaTime + 0.5,
-                                             JSON.stringify(cueJson)));
+        this.cueTagsTrack_.addCue(new window.VTTCue(mediaTime,
+                                                    mediaTime + 0.5,
+                                                    JSON.stringify(cueJson)));
       }
 
       mediaTime += segment.duration;
