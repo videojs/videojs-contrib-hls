@@ -17,6 +17,7 @@ import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
 import GapSkipper from './gap-skipper';
+import window from 'global/window';
 
 /**
  * determine if an object a is differnt from
@@ -94,7 +95,7 @@ const safeGetComputedStyle = function(el, property) {
     return '';
   }
 
-  result = getComputedStyle(el);
+  result = window.getComputedStyle(el);
   if (!result) {
     return '';
   }
@@ -380,7 +381,8 @@ class HlsHandler extends Component {
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
     this.masterPlaylistController_.selectPlaylist =
-      Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
+      this.selectPlaylist ?
+        this.selectPlaylist.bind(this) : Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
 
     // re-expose some internal objects for backwards compatibility with < v2
     this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;
@@ -408,17 +410,23 @@ class HlsHandler extends Component {
       }
     });
 
-    Object.defineProperty(this.stats, 'bandwidth', {
-      get: () => this.bandwidth || 0
-    });
-    Object.defineProperty(this.stats, 'mediaRequests', {
-      get: () => this.masterPlaylistController_.mediaRequests_() || 0
-    });
-    Object.defineProperty(this.stats, 'mediaTransferDuration', {
-      get: () => this.masterPlaylistController_.mediaTransferDuration_() || 0
-    });
-    Object.defineProperty(this.stats, 'mediaBytesTransferred', {
-      get: () => this.masterPlaylistController_.mediaBytesTransferred_() || 0
+    Object.defineProperties(this.stats, {
+      bandwidth: {
+        get: () => this.bandwidth || 0,
+        enumerable: true
+      },
+      mediaRequests: {
+        get: () => this.masterPlaylistController_.mediaRequests_() || 0,
+        enumerable: true
+      },
+      mediaTransferDuration: {
+        get: () => this.masterPlaylistController_.mediaTransferDuration_() || 0,
+        enumerable: true
+      },
+      mediaBytesTransferred: {
+        get: () => this.masterPlaylistController_.mediaBytesTransferred_() || 0,
+        enumerable: true
+      }
     });
 
     this.tech_.one('canplay',

@@ -2,6 +2,16 @@ CHANGELOG
 =========
 
 --------------------
+## 3.3.0 (2016-07-25)
+* No longer timeout segment requests if there is only one playlist left or if we are on the lowest rendition available
+* Fixed a bug where sometimes the first segment was not fetched when it should have been
+
+--------------------
+## 3.2.0 (2016-07-15)
+* Added an algorithm to seek over gaps in the video element's buffer when they are created because of missing video or audio frames
+* Moved the AES decryption logic to it's [own project](https://github.com/videojs/aes-decrypter)
+
+--------------------
 ## 3.1.0 (2016-06-09)
 * Added manual rendition selection API via the `representations()` function on each instance of the HlsHandler class
 * Pulled out and moved m3u8 parsing functionality into it's own project at https://github.com/videojs/m3u8-parser

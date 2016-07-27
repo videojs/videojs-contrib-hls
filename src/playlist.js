@@ -4,6 +4,7 @@
  * Playlist related utilities.
  */
 import {createTimeRange} from 'video.js';
+import window from 'global/window';
 
 let Playlist = {
   /**
@@ -260,6 +261,10 @@ export const getMediaIndexForTime_ = function(playlist, time, expired) {
   // when the requested position is earlier than the current set of
   // segments, return the earliest segment index
   if (time < 0) {
+    return 0;
+  }
+
+  if (time === 0 && !expired) {
     return 0;
   }
 

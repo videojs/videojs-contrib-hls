@@ -8,6 +8,7 @@ import MediaSource from 'videojs-contrib-media-sources';
 /* eslint-enable */
 import testDataManifests from './test-manifests.js';
 import xhrFactory from '../src/xhr';
+import window from 'global/window';
 
 // a SourceBuffer that tracks updates but otherwise is a noop
 class MockSourceBuffer extends videojs.EventTarget {
@@ -116,7 +117,9 @@ let fakeEnvironment = {
     this.xhr.restore();
     ['warn', 'error'].forEach((level) => {
       if (this.log && this.log[level] && this.log[level].restore) {
-        QUnit.equal(this.log[level].callCount, 0, `no unexpected logs on ${level}`);
+        if (QUnit) {
+          QUnit.equal(this.log[level].callCount, 0, `no unexpected logs on ${level}`);
+        }
         this.log[level].restore();
       }
     });
@@ -255,7 +258,7 @@ export const openMediaSource = function(player, clock) {
   });
 };
 
-export const standardXHRResponse = function(request) {
+export const standardXHRResponse = function(request, data) {
   if (!request.url) {
     return;
   }
@@ -276,9 +279,12 @@ export const standardXHRResponse = function(request) {
     contentType = 'video/MP2T';
   }
 
+  if (!data) {
+    data = testDataManifests[manifestName];
+  }
+
   request.response = new Uint8Array(16).buffer;
-  request.respond(200, { 'Content-Type': contentType },
-                  testDataManifests[manifestName]);
+  request.respond(200, {'Content-Type': contentType}, data);
 };
 
 // return an absolute version of a page-relative URL

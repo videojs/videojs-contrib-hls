@@ -17,6 +17,7 @@ import {
 // we need this so that it can register hls with videojs
 import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
 import HlsAudioTrack from '../src/hls-audio-track';
+import window from 'global/window';
 /* eslint-enable no-unused-vars */
 
 const Flash = videojs.getComponent('Flash');
@@ -117,7 +118,9 @@ QUnit.test('deprication warning is show when using player.hls', function() {
     type: 'application/vnd.apple.mpegurl'
   });
 
-  videojs.log.warn = (text) => warning = text;
+  videojs.log.warn = (text) => {
+    warning = text;
+  };
   let hls = this.player.hls;
 
   QUnit.equal(warning, 'player.hls is deprecated. Use player.tech.hls instead.', 'warning would have been shown');
@@ -1216,6 +1219,25 @@ QUnit.test('if withCredentials global option is used, withCredentials is set on 
   openMediaSource(this.player, this.clock);
   QUnit.ok(this.requests[0].withCredentials,
            'with credentials should be set to true if that option is passed in');
+  videojs.options.hls = hlsOptions;
+});
+
+QUnit.test('the withCredentials option overrides the global default', function() {
+  let hlsOptions = videojs.options.hls;
+
+  this.player.dispose();
+  videojs.options.hls = {
+    withCredentials: true
+  };
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl',
+    withCredentials: false
+  });
+  openMediaSource(this.player, this.clock);
+  QUnit.ok(!this.requests[0].withCredentials,
+           'with credentials should be set to false if if overrode global option');
   videojs.options.hls = hlsOptions;
 });
 
@@ -2456,6 +2478,50 @@ QUnit.test('live playlist starts three target durations before live', function()
 
   QUnit.equal(this.requests.length, 1, 'begins buffering');
 
+});
+
+QUnit.test('uses user defined selectPlaylist from HlsHandler if specified', function() {
+  let origStandardPlaylistSelector = Hls.STANDARD_PLAYLIST_SELECTOR;
+  let defaultSelectPlaylistCount = 0;
+
+  Hls.STANDARD_PLAYLIST_SELECTOR = () => defaultSelectPlaylistCount++;
+
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.masterPlaylistController_.selectPlaylist();
+  QUnit.equal(defaultSelectPlaylistCount, 1, 'uses default playlist selector');
+
+  defaultSelectPlaylistCount = 0;
+
+  let newSelectPlaylistCount = 0;
+  let newSelectPlaylist = () => newSelectPlaylistCount++;
+
+  HlsHandler.prototype.selectPlaylist = newSelectPlaylist;
+
+  hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.masterPlaylistController_.selectPlaylist();
+  QUnit.equal(defaultSelectPlaylistCount, 0, 'standard playlist selector not run');
+  QUnit.equal(newSelectPlaylistCount, 1, 'uses overridden playlist selector');
+
+  newSelectPlaylistCount = 0;
+
+  let setSelectPlaylistCount = 0;
+
+  hls.selectPlaylist = () => setSelectPlaylistCount++;
+
+  hls.masterPlaylistController_.selectPlaylist();
+  QUnit.equal(defaultSelectPlaylistCount, 0, 'standard playlist selector not run');
+  QUnit.equal(newSelectPlaylistCount, 0, 'overridden playlist selector not run');
+  QUnit.equal(setSelectPlaylistCount, 1, 'uses set playlist selector');
+
+  Hls.STANDARD_PLAYLIST_SELECTOR = origStandardPlaylistSelector;
 });
 
 QUnit.module('HLS - Encryption', {

@@ -1,6 +1,6 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "3.1.0",
+  "version": "3.3.0",
   "description": "Play back HLS with video.js, even where it's not natively supported",
   "main": "es5/videojs-contrib-hls.js",
   "engines": {
@@ -40,9 +40,10 @@
     "version": "npm run build",
     "watch": "npm-run-all -p watch:*",
     "watch:docs": "nodemon --watch src/ --exec npm run docs",
-    "watch:js": "npm-run-all -p watch:js:babel watch:js:browserify",
+    "watch:js": "npm-run-all -p watch:js:babel watch:js:browserify watch:js:switcher",
     "watch:js:babel": "npm run build:js:babel -- --watch",
     "watch:js:browserify": "watchify . -v -g browserify-shim -o dist/videojs-contrib-hls.js",
+    "watch:js:switcher": "watchify utils/switcher/switcher.js -v -t babelify -g browserify-shim -o dist/switcher.js",
     "watch:test": "npm-run-all -p watch:test:*",
     "watch:test:js": "node scripts/watch-test.js",
     "watch:test:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.watch();\"",
@@ -87,7 +88,8 @@
     "aes-decrypter": "^1.0.3",
     "video.js": "^5.10.1",
     "videojs-contrib-media-sources": "^3.1.0",
-    "videojs-swf": "^5.0.2"
+    "videojs-swf": "^5.0.2",
+    "global": "^4.3.0"
   },
   "devDependencies": {
     "babel": "^5.8.0",
@@ -97,9 +99,9 @@
     "browserify-shim": "^3.0.0",
     "connect": "^3.4.0",
     "cowsay": "^1.1.0",
+    "d3": "3.4.8",
     "doctoc": "^0.15.0",
     "glob": "^6.0.3",
-    "global": "^4.3.0",
     "jsdoc": "^3.4.0",
     "karma": "^0.13.0",
     "karma-browserify": "^4.4.0",
@@ -119,7 +121,7 @@
     "shelljs": "^0.5.3",
     "sinon": "1.10.2",
     "uglify-js": "^2.5.0",
-    "videojs-standard": "^4.0.0",
+    "videojs-standard": "4.0.2",
     "watchify": "^3.6.0"
   }
 }
