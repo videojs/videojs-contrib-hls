@@ -564,14 +564,11 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   loadSegment_(segmentInfo) {
     let segment;
-    let requestTimeout;
     let keyXhr;
     let segmentXhr;
-    let seekable = this.seekable_();
-    let currentTime = this.currentTime_();
     let removeToTime = 0;
 
-    removeToTime = trimBuffer_(segmentInfo);
+    removeToTime = this.trimBuffer_(segmentInfo);
 
     if (removeToTime > 0) {
       this.sourceUpdater_.remove(0, removeToTime);
