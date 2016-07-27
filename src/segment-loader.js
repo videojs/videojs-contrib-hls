@@ -500,15 +500,16 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
-   * load a specific segment from a request into the buffer
+   * trim the back buffer so we only remove content
+   * on segment boundaries
    *
    * @private
+   *
+   * @param {Object} segmentInfo - the current segment
+   * @returns {Number} removeToTime - the end point in time, in seconds
+   * that the the buffer should be trimmed.
    */
-  loadSegment_(segmentInfo) {
-    let segment;
-    let requestTimeout;
-    let keyXhr;
-    let segmentXhr;
+  trimBuffer_(segmentInfo) {
     let seekable = this.seekable_();
     let currentTime = this.currentTime_();
     let removeToTime = 0;
@@ -550,6 +551,24 @@ export default class SegmentLoader extends videojs.EventTarget {
         break;
       }
     }
+    return removeToTime;
+  }
+
+  /**
+   * load a specific segment from a request into the buffer
+   *
+   * @private
+   */
+  loadSegment_(segmentInfo) {
+    let segment;
+    let requestTimeout;
+    let keyXhr;
+    let segmentXhr;
+    let seekable = this.seekable_();
+    let currentTime = this.currentTime_();
+    let removeToTime = 0;
+
+    removeToTime = trimBuffer_(segmentInfo);
 
     if (removeToTime > 0) {
       this.sourceUpdater_.remove(0, removeToTime);
