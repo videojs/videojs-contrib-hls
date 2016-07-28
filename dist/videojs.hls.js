@@ -1,4 +1,4 @@
-/*! videojs-contrib-hls - v1.3.7 - 2016-07-15
+/*! videojs-contrib-hls - v1.3.7 - 2016-07-27
 * Copyright (c) 2016 Brightcove; Licensed  */
 /*! videojs-contrib-media-sources - v2.4.4 - 2016-01-22
 * Copyright (c) 2016 Brightcove; Licensed  */
@@ -4134,21 +4134,19 @@ videojs.HlsHandler.prototype.applySafeAppendBuffer = function(mediaSource) {
   // of content in order to to never trigger QuotaExceededError.
   var
     self = this,
-    nativeMediaSource = mediaSource.mediaSource_,
-    _originalAddSourceBuffer;
+    nativeMediaSource = mediaSource.mediaSource_;
   if (!nativeMediaSource) {
     // QuotaExceededError only happens for the native HtmlMediaSource.
     return;
   }
-  _originalAddSourceBuffer = nativeMediaSource.addSourceBuffer;
+  nativeMediaSource._originalAddSourceBuffer = nativeMediaSource.addSourceBuffer;
   nativeMediaSource.addSourceBuffer = function(type) {
-    var
-      nativeSourceBuffer = _originalAddSourceBuffer.call(nativeMediaSource, type),
-      _originalAppendBuffer = nativeSourceBuffer.appendBuffer;
+    var nativeSourceBuffer = nativeMediaSource._originalAddSourceBuffer.call(nativeMediaSource, type);
+    nativeSourceBuffer._originalAppendBuffer = nativeSourceBuffer.appendBuffer;
     nativeSourceBuffer.appendBuffer = function(buffer) {
       try {
-        if (!nativeSourceBuffer.updating) {
-          _originalAppendBuffer.call(nativeSourceBuffer, buffer);
+        if (!nativeSourceBuffer.updating && self.mediaSource.readyState !== 'closed') {
+          nativeSourceBuffer._originalAppendBuffer.call(nativeSourceBuffer, buffer);
         }
       } catch (err) {
         if (err.name === 'QuotaExceededError') {
@@ -4641,6 +4639,7 @@ videojs.HlsHandler.prototype.dispose = function() {
 
   this.resetSrc_();
   Component.prototype.dispose.call(this);
+  this.tech_ = null;
 };
 
 videojs.HlsHandler.prototype.getQuality = function(playlist) {
