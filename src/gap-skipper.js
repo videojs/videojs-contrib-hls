@@ -144,6 +144,49 @@ export default class GapSkipper {
     this.tech_.setCurrentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
   }
 
+  gapFromVideoUnderflow_(buffered, currentTime) {
+    // At least in Chrome, if there is a gap in the video buffer, the audio will continue
+    // playing for ~3 seconds after the video gap starts. This is done to account for
+    // video buffer underflow/underrun (note that this is not done when there is audio
+    // buffer underflow/underrun -- in that case the video will stop as soon as it
+    // encounters the gap, as audio stalls are more noticeable/jarring to a user than
+    // video stalls). The player's time will reflect the playthrough of audio, so the
+    // time will appear as if we are in a buffered region, even if we are stuck in a
+    // "gap."
+    //
+    // Example:
+    // video buffer:   0 => 10.1, 10.2 => 20
+    // audio buffer:   0 => 20
+    // overall buffer: 0 => 10.1, 10.2 => 20
+    // current time: 13
+    //
+    // Chrome's video froze at 10 seconds, where the video buffer encountered the gap,
+    // however, the audio continued playing until it reached ~3 seconds past the gap
+    // (13 seconds), at which point it stops as well. Since current time is past the
+    // gap, findNextRange will return no ranges.
+    //
+    // To check for this issue, we see if there is a small gap that is somewhere within
+    // a 3 second range (3 seconds +/- 1 second) back from our current time.
+    let gaps = Ranges.findGaps(buffered);
+
+    for (let i = 0; i < gaps.length; i++) {
+      let start = gaps.start(i);
+      let end = gaps.end(i);
+
+      // gap is small
+      if (end - start < 1 &&
+        // gap is 3 seconds back +/- 1 second
+        currentTime - start < 4 && currentTime - end > 2) {
+        return {
+          start,
+          end
+        };
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Set a timer to skip the unbuffered region.
    *
@@ -154,8 +197,27 @@ export default class GapSkipper {
     let currentTime = this.tech_.currentTime();
     let nextRange = Ranges.findNextRange(buffered, currentTime);
 
-    if (nextRange.length === 0 ||
-        this.timer_ !== null) {
+    if (this.timer_ !== null) {
+      return;
+    }
+
+    if (nextRange.length === 0) {
+      // Even if there is no available next range, there is still a possibility we are
+      // stuck in a gap due to video underflow.
+      let gap = this.gapFromVideoUnderflow_(buffered, currentTime);
+
+      if (gap) {
+        this.logger_('setTimer_:',
+                     'Encountered a gap in video',
+                     'from: ', gap.start,
+                     'to: ', gap.end,
+                     'seeking to current time: ', currentTime);
+        // Even though the video underflowed and was stuck in a gap, the audio overplayed
+        // the gap, leading currentTime into a buffered range. Seeking to currentTime
+        // allows the video to catch up to the audio position without losing any audio
+        // (only suffering ~3 seconds of frozen video and a pause in audio playback).
+        this.tech_.setCurrentTime(currentTime);
+      }
       return;
     }
 

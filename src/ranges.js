@@ -51,8 +51,7 @@ const findRange = function(buffered, time) {
 };
 
 /**
- * Returns the TimeRanges that begin at or later than the specified
- * time.
+ * Returns the TimeRanges that begin later than the specified time.
  * @param {TimeRanges} timeRanges - the TimeRanges object to query
  * @param {number} time - the time to filter on.
  * @returns {TimeRanges} a new TimeRanges object.
@@ -61,6 +60,28 @@ const findNextRange = function(timeRanges, time) {
   return filterRanges(timeRanges, function(start) {
     return start - TIME_FUDGE_FACTOR >= time;
   });
+};
+
+/**
+ * Returns gaps within a list of TimeRanges
+ * @param {TimeRanges} buffered - the TimeRanges object
+ * @return {TimeRanges} a TimeRanges object of gaps
+ */
+const findGaps = function(buffered) {
+  if (buffered.length < 2) {
+    return videojs.createTimeRanges();
+  }
+
+  let ranges = [];
+
+  for (let i = 1; i < buffered.length; i++) {
+    let start = buffered.end(i - 1);
+    let end = buffered.start(i);
+
+    ranges.push([start, end]);
+  }
+
+  return videojs.createTimeRanges(ranges);
 };
 
 /**
@@ -300,6 +321,7 @@ const getSegmentBufferedPercent = function(startOfSegment,
 export default {
   findRange,
   findNextRange,
+  findGaps,
   findSoleUncommonTimeRangesEnd,
   getSegmentBufferedPercent,
   TIME_FUDGE_FACTOR
