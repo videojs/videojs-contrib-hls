@@ -13,6 +13,7 @@ import MasterPlaylistController from '../src/master-playlist-controller';
 import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
+import window from 'global/window';
 
 QUnit.module('MasterPlaylistController', {
   beforeEach() {
@@ -616,4 +617,185 @@ function() {
                         'audio later start, audio earlier end');
 
   Playlist.seekable = origSeekable;
+});
+
+QUnit.test('calls to update cues on new media', function() {
+  let callCount = 0;
+
+  this.masterPlaylistController.updateCues_ = (media) => callCount++;
+
+  // master
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(callCount, 0, 'no call to update cues on master');
+
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(callCount, 1, 'calls to update cues on first media');
+
+  this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
+
+  QUnit.equal(callCount, 2, 'calls to update cues on subsequent media');
+});
+
+QUnit.test('calls to update cues on media when no master', function() {
+  this.requests.length = 0;
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  let callCount = 0;
+
+  this.masterPlaylistController.updateCues_ = (media) => callCount++;
+
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.equal(callCount, 1, 'calls to update cues on first media');
+
+  this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
+
+  QUnit.equal(callCount, 2, 'calls to update cues on subsequent media');
+});
+
+QUnit.test('respects useCueTags option', function() {
+  this.masterPlaylistController.updateCues_({
+    segments: [{
+      duration: 10,
+      tags: ['test']
+    }]
+  });
+
+  QUnit.ok(!this.masterPlaylistController.cueTagsTrack_,
+           'does not create cueTagsTrack_ if useCueTags is falsy');
+  QUnit.equal(this.player.textTracks().length,
+              0,
+              'does not create a text track if useCueTags is falsy');
+
+  this.player.dispose();
+
+  let origHlsOptions = videojs.options.hls;
+
+  videojs.options.hls = {
+    useCueTags: true
+  };
+
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  QUnit.ok(this.masterPlaylistController.cueTagsTrack_,
+           'creates cueTagsTrack_ if useCueTags is truthy');
+  QUnit.equal(this.masterPlaylistController.cueTagsTrack_.label,
+              'hls-segment-metadata',
+              'cueTagsTrack_ has label of hls-segment-metadata');
+  QUnit.equal(this.player.textTracks()[0], this.masterPlaylistController.cueTagsTrack_,
+           'adds cueTagsTrack as a text track if useCueTags is truthy');
+
+  this.masterPlaylistController.updateCues_({
+    segments: [{
+      duration: 10,
+      cueOut: 'test'
+    }]
+  });
+
+  let cue = this.masterPlaylistController.cueTagsTrack_.cues[0];
+
+  QUnit.equal(cue.startTime,
+              0,
+              'adds cue with correct start time if useCueTags is truthy');
+  QUnit.equal(cue.endTime,
+              0.5,
+              'adds cue with correct end time if useCueTags is truthy');
+  QUnit.equal(cue.text,
+              JSON.stringify({ cueOut: 'test' }),
+              'adds cue with correct text if useCueTags is truthy');
+
+  videojs.options.hls = origHlsOptions;
+});
+
+QUnit.test('update tag cues', function() {
+  let origHlsOptions = videojs.options.hls;
+
+  videojs.options.hls = {
+    useCueTags: true
+  };
+
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  let cueTagsTrack = this.masterPlaylistController.cueTagsTrack_;
+  let testCue = new window.VTTCue(0, 10, 'test');
+
+  cueTagsTrack.addCue(testCue);
+
+  this.masterPlaylistController.updateCues_({});
+
+  QUnit.equal(cueTagsTrack.cues.length,
+              1,
+              'does not change cues if media does not have segment property');
+  QUnit.equal(cueTagsTrack.cues[0],
+              testCue,
+              'does not change cues if media does not have segment property');
+
+  this.masterPlaylistController.updateCues_({
+    segments: []
+  });
+
+  QUnit.equal(cueTagsTrack.cues.length,
+              0,
+              'removes cues even if no segments in playlist');
+
+  this.masterPlaylistController.updateCues_({
+    segments: [{
+      duration: 5.1,
+      cueOut: '11.5'
+    }, {
+      duration: 6.4,
+      cueOutCont: '5.1/11.5'
+    }, {
+      duration: 6,
+      cueIn: ''
+    }]
+  });
+
+  QUnit.equal(cueTagsTrack.cues.length, 3, 'adds a cue for each segment');
+
+  QUnit.equal(cueTagsTrack.cues[0].startTime, 0, 'cue starts at 0');
+  QUnit.equal(cueTagsTrack.cues[0].endTime, 0.5, 'cue ends at start time plus duration');
+  QUnit.equal(JSON.parse(cueTagsTrack.cues[0].text).cueOut, '11.5', 'cueOut matches');
+  QUnit.ok(!('cueOutCont' in JSON.parse(cueTagsTrack.cues[0].text)),
+           'cueOutCont not in cue');
+  QUnit.ok(!('cueIn' in JSON.parse(cueTagsTrack.cues[0].text)), 'cueIn not in cue');
+  QUnit.equal(cueTagsTrack.cues[1].startTime, 5.1, 'cue starts at 5.1');
+  QUnit.equal(cueTagsTrack.cues[1].endTime, 5.6, 'cue ends at start time plus duration');
+  QUnit.equal(JSON.parse(cueTagsTrack.cues[1].text).cueOutCont,
+              '5.1/11.5',
+              'cueOutCont matches');
+  QUnit.ok(!('cueOut' in JSON.parse(cueTagsTrack.cues[1].text)), 'cueOut not in cue');
+  QUnit.ok(!('cueIn' in JSON.parse(cueTagsTrack.cues[1].text)), 'cueIn not in cue');
+  QUnit.equal(cueTagsTrack.cues[2].startTime, 11.5, 'cue starts at 11.5');
+  QUnit.equal(cueTagsTrack.cues[2].endTime, 12, 'cue ends at start time plus duration');
+  QUnit.equal(JSON.parse(cueTagsTrack.cues[2].text).cueIn, '', 'cueIn matches');
+  QUnit.ok(!('cueOut' in JSON.parse(cueTagsTrack.cues[2].text)), 'cueOut not in cue');
+  QUnit.ok(!('cueOutCont' in JSON.parse(cueTagsTrack.cues[2].text)),
+           'cueOutCont not in cue');
+
+  this.masterPlaylistController.updateCues_({
+    segments: []
+  });
+
+  QUnit.equal(cueTagsTrack.cues.length, 0, 'removes old cues on update');
+
+  videojs.options.hls = origHlsOptions;
 });

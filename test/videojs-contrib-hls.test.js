@@ -2275,6 +2275,34 @@ QUnit.test('Allows overriding the global beforeRequest function', function() {
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, 'one segment request');
 });
 
+QUnit.test('passes useCueTags hls option to master playlist controller', function() {
+  this.player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.ok(!this.player.tech_.hls.masterPlaylistController_.useCueTags_,
+           'useCueTags is falsy by default');
+
+  let origHlsOptions = videojs.options.hls;
+
+  videojs.options.hls = {
+    useCueTags: true
+  };
+
+  this.player.dispose();
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  QUnit.ok(this.player.tech_.hls.masterPlaylistController_.useCueTags_,
+           'useCueTags passed to master playlist controller');
+
+  videojs.options.hls = origHlsOptions;
+});
+
 QUnit.module('HLS Integration', {
   beforeEach() {
     this.env = useFakeEnvironment();
