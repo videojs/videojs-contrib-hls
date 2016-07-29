@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 --------------------
+## 3.4.0 (2016-07-29)
+* Added support for #ext-x-cue-out, #ext-x-cue-in, and #ext-x-cue-out-cont via a special TextTrack
+* Added the ability to skip gaps caused by video underflow behavior in Chrome
+
+--------------------
 ## 3.3.0 (2016-07-25)
 * No longer timeout segment requests if there is only one playlist left or if we are on the lowest rendition available
 * Fixed a bug where sometimes the first segment was not fetched when it should have been
