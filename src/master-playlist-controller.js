@@ -840,32 +840,69 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.cueTagsTrack_.removeCue(this.cueTagsTrack_.cues[0]);
     }
 
+    let cueObj;
+
     let mediaTime = 0;
 
     for (let i = 0; i < media.segments.length; i++) {
       let segment = media.segments[i];
 
-      if ('cueOut' in segment || 'cueOutCont' in segment || 'cueIn' in segment) {
-        let cueJson = {};
-
-        if ('cueOut' in segment) {
-          cueJson.cueOut = segment.cueOut;
+      if ('cueOut' in segment) {
+        if (cueObj !== undefined) {
+          // Add unfinished cueObj to list of cues before starting new cue on cutOut
+          let cue = new window.VTTCue(cueObj.startTime,
+                                      cueObj.startTime + cueObj.duration,
+                                      JSON.stringify(cueObj.tagData));
+          this.cueTagsTrack_.addCue(cue);
         }
-        if ('cueOutCont' in segment) {
-          cueJson.cueOutCont = segment.cueOutCont;
+        cueObj = {};
+        cueObj.startTime = mediaTime;
+        cueObj.duration = segment.duration;
+        cueObj.tagData = [segment.cueOut];
+      } else if ('cueOutCont' in segment) {
+        // It is possible in a live stream that a CUE-OUT-CONT can occur without seeing
+        // a CUE-OUT
+        if (cueObj === undefined) {
+          cueObj = {};
+          cueObj.startTime = mediaTime;
+          cueObj.duration = 0;
+          cueObj.tagData = [];
         }
-        if ('cueIn' in segment) {
-          cueJson.cueIn = segment.cueIn;
+        cueObj.duration += segment.duration;
+        cueObj.tagData.push(segment.cueOutCont);
+      } else if ('cueIn' in segment) {
+        if (cueObj !== undefined) {
+          cueObj.tagData.push(segment.cueIn);
+          let cue = new window.VTTCue(cueObj.startTime,
+                                      cueObj.startTime + cueObj.duration,
+                                      JSON.stringify(cueObj.tagData));
+          this.cueTagsTrack_.addCue(cue);
         }
-
-        // Use a short duration for the cue point, as it should trigger for a segment
-        // transition (in this case, defined as the beginning of the segment that the tag
-        // precedes), but keep it for a minimum of 0.5 seconds to remain usable (won't
-        // lose it as an active cue by the time a user retrieves the active cues).
-        this.cueTagsTrack_.addCue(new window.VTTCue(mediaTime,
-                                                    mediaTime + 0.5,
-                                                    JSON.stringify(cueJson)));
+        cueObj = undefined;
       }
+      console.log(cueObj ? cueObj.duration:'');
+
+      // if ('cueOut' in segment || 'cueOutCont' in segment || 'cueIn' in segment) {
+      //   let cueJson = {};
+
+      //   if ('cueOut' in segment) {
+      //     cueJson.cueOut = segment.cueOut;
+      //   }
+      //   if ('cueOutCont' in segment) {
+      //     cueJson.cueOutCont = segment.cueOutCont;
+      //   }
+      //   if ('cueIn' in segment) {
+      //     cueJson.cueIn = segment.cueIn;
+      //   }
+
+      //   // Use a short duration for the cue point, as it should trigger for a segment
+      //   // transition (in this case, defined as the beginning of the segment that the tag
+      //   // precedes), but keep it for a minimum of 0.5 seconds to remain usable (won't
+      //   // lose it as an active cue by the time a user retrieves the active cues).
+      //   this.cueTagsTrack_.addCue(new window.VTTCue(mediaTime,
+      //                                               mediaTime + 0.5,
+      //                                               JSON.stringify(cueJson)));
+      // }
 
       mediaTime += segment.duration;
     }
