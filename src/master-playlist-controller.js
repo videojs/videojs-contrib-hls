@@ -133,7 +133,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         return;
       }
 
-      this.updateCues_(updatedPlaylist);
+      this.updateCues_(updatedPlaylist, this.masterPlaylistLoader_.expired_);
 
       // TODO: Create a new event on the PlaylistLoader that signals
       // that the segments have changed in some way and use that to
@@ -831,7 +831,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
   }
 
-  updateCues_(media) {
+  updateCues_(media, offset = 0) {
     if (!this.useCueTags_ || !media.segments) {
       return;
     }
@@ -840,7 +840,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.cueTagsTrack_.removeCue(this.cueTagsTrack_.cues[0]);
     }
 
-    let mediaTime = 0;
+    let mediaTime = offset;
 
     for (let i = 0; i < media.segments.length; i++) {
       let segment = media.segments[i];
