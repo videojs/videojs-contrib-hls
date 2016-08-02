@@ -37,17 +37,18 @@ const parseCodecs = function(codecs) {
 /**
  * Searches for an ad cue that overlaps with the given mediaTime
  */
-var findAdCue = function(track, mediaTime) {
+const findAdCue = function(track, mediaTime) {
   let cues = track.cues;
 
   for (let i = 0; i < cues.length; i++) {
     let cue = cues[i];
+
     if (mediaTime >= cue.adStartTime && mediaTime <= cue.adEndTime) {
       return cue;
     }
   }
   return undefined;
-}
+};
 
 /**
  * the master playlist controller controller all interactons
