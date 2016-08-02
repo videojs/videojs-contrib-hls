@@ -879,10 +879,15 @@ export default class MasterPlaylistController extends videojs.EventTarget {
           continue;
         }
 
+        // otherwise extend cue until a CUE-IN is found
         cue.endTime += segment.duration;
 
       } else { // cue === undefined
-        cue = findAdCue(track, mediaTime);
+        // Since the cues will span for at least the segment duration, adding a fudge factor of
+        // half segment duration will prevent duplicate cues from being created when timing
+        // info is not exact (e.g. cue start time initialized at 10.006677, but next call
+        // mediaTime is 10.003332 )
+        cue = findAdCue(track, mediaTime + (segment.duration/2));
         if (cue) {
           // there is a cue already created for this mediaTime
           // decrement i and not increase mediaTime to handle this segment again with this cue
@@ -893,7 +898,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         if ('cueOut' in segment) {
           cue = new window.VTTCue(mediaTime,
                                   mediaTime + segment.duration,
-                                  segment.cueOut);
+                                  '');
           cue.adStartTime = mediaTime;
           cue.adEndTime = mediaTime + parseFloat(segment.cueOut);
           track.addCue(cue);
@@ -906,7 +911,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
           cue = new window.VTTCue(mediaTime,
                                   mediaTime + segment.duration,
-                                  '' + adTotal);
+                                  '');
           cue.adStartTime = mediaTime - adOffset;
           cue.adEndTime = cue.adStartTime + adTotal;
           track.addCue(cue);
