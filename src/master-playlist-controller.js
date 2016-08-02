@@ -36,17 +36,18 @@ const parseCodecs = function(codecs) {
 /**
  * Searches for an ad cue that overlaps with the given mediaTime
  */
-var findAdCue = function(track, mediaTime) {
+const findAdCue = function(track, mediaTime) {
   let cues = track.cues;
 
   for (let i = 0; i < cues.length; i++) {
     let cue = cues[i];
+
     if (mediaTime >= cue.adStartTime && mediaTime <= cue.adEndTime) {
       return cue;
     }
   }
   return undefined;
-}
+};
 
 /**
  * the master playlist controller controller all interactons
@@ -863,8 +864,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         if ('cueIn' in segment) {
           // Found a CUE-IN so end the cue
           if (mediaTime !== cue.endTime) {
-            // If the end time does not match the current mediaTime, a CUE-IN may have been
-            // inserted earlier than expected, so the cue should be updated.
+            // If the end time does not match the current mediaTime, a CUE-IN may have
+            // been inserted earlier than expected, so the cue should be updated.
             cue.endTime = mediaTime;
             cue.adEndTime = mediaTime;
           }
@@ -882,15 +883,16 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         // otherwise extend cue until a CUE-IN is found
         cue.endTime += segment.duration;
 
-      } else { // cue === undefined
-        // Since the cues will span for at least the segment duration, adding a fudge factor of
-        // half segment duration will prevent duplicate cues from being created when timing
-        // info is not exact (e.g. cue start time initialized at 10.006677, but next call
-        // mediaTime is 10.003332 )
-        cue = findAdCue(track, mediaTime + (segment.duration/2));
+      } else {
+        // Since the cues will span for at least the segment duration, adding a fudge
+        // factor of half segment duration will prevent duplicate cues from being
+        // created when timing info is not exact (e.g. cue start time initialized
+        // at 10.006677, but next call mediaTime is 10.003332 )
+        cue = findAdCue(track, mediaTime + (segment.duration / 2));
         if (cue) {
           // there is a cue already created for this mediaTime
-          // decrement i and not increase mediaTime to handle this segment again with this cue
+          // decrement i and not increase mediaTime to handle this segment
+          // again with this cue
           i--;
           continue;
         }
@@ -906,8 +908,12 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
         if ('cueOutCont' in segment) {
           // Entered into the middle of an ad cue
-          let adOffset, adTotal;
-          [adOffset, adTotal] = segment.cueOutCont.split('/').map((value) => parseFloat(value));
+          let adOffset;
+          let adTotal;
+
+          [adOffset, adTotal] = segment.cueOutCont.split('/').map((value) => {
+            parseFloat(value);
+          });
 
           cue = new window.VTTCue(mediaTime,
                                   mediaTime + segment.duration,

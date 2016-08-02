@@ -841,6 +841,7 @@ QUnit.test('update incomplete cue in live playlist situation', function() {
   QUnit.equal(cueTagsTrack.cues.length, 1, 'adds a single cue for new ad');
 
   let testCue = cueTagsTrack.cues[0];
+
   QUnit.equal(testCue.startTime, 10, 'cue starts at 10');
   QUnit.equal(testCue.endTime, 30, 'cue ends at start time plus segment durations');
   QUnit.equal(testCue.adStartTime, 10, 'cue ad starts at 10');
@@ -925,6 +926,7 @@ QUnit.test('adjust cue end time in event of early CUE-IN', function() {
   QUnit.equal(cueTagsTrack.cues.length, 1, 'adds a single cue for new ad');
 
   let testCue = cueTagsTrack.cues[0];
+
   QUnit.equal(testCue.startTime, 10, 'cue starts at 10');
   QUnit.equal(testCue.endTime, 40, 'cue ends at start time plus segment durations');
   QUnit.equal(testCue.adStartTime, 10, 'cue ad starts at 10');
@@ -951,7 +953,8 @@ QUnit.test('adjust cue end time in event of early CUE-IN', function() {
   QUnit.equal(testCue.startTime, 10, 'cue still starts at 10');
   QUnit.equal(testCue.endTime, 30, 'cue end updated to 30');
   QUnit.equal(testCue.adStartTime, 10, 'cue ad still starts at 10');
-  QUnit.equal(testCue.adEndTime, 30, 'cue ad end updated to 30 to account for early cueIn');
+  QUnit.equal(testCue.adEndTime, 30,
+    'cue ad end updated to 30 to account for early cueIn');
 
   videojs.options.hls = origHlsOptions;
 });
