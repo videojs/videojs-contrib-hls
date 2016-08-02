@@ -34,6 +34,21 @@ const parseCodecs = function(codecs) {
 };
 
 /**
+ * Searches for an ad cue that overlaps with the given mediaTime
+ */
+var findAdCue = function(track, mediaTime) {
+  let cues = track.cues;
+
+  for (let i = 0; i < cues.length; i++) {
+    let cue = cues[i];
+    if (mediaTime >= cue.adStartTime && mediaTime <= cue.adEndTime) {
+      return cue;
+    }
+  }
+  return undefined;
+}
+
+/**
  * the master playlist controller controller all interactons
  * between playlists and segmentloaders. At this time this mainly
  * involves a master playlist and a series of audio playlists
@@ -133,7 +148,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         return;
       }
 
-      this.updateCues_(updatedPlaylist);
+      this.updateCues_(updatedPlaylist, this.masterPlaylistLoader_.expired_);
 
       // TODO: Create a new event on the PlaylistLoader that signals
       // that the segments have changed in some way and use that to
@@ -831,78 +846,72 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
   }
 
-  updateCues_(media) {
+  updateCues_(media, offset = 0) {
     if (!this.useCueTags_ || !media.segments) {
       return;
     }
 
-    while (this.cueTagsTrack_.cues.length) {
-      this.cueTagsTrack_.removeCue(this.cueTagsTrack_.cues[0]);
-    }
-
-    let cueObj;
-
-    let mediaTime = 0;
+    let mediaTime = offset;
+    let track = this.cueTagsTrack_;
+    let cue;
 
     for (let i = 0; i < media.segments.length; i++) {
       let segment = media.segments[i];
 
-      if ('cueOut' in segment) {
-        if (cueObj !== undefined) {
-          // Add unfinished cueObj to list of cues before starting new cue on cutOut
-          let cue = new window.VTTCue(cueObj.startTime,
-                                      cueObj.startTime + cueObj.duration,
-                                      JSON.stringify(cueObj.tagData));
-          this.cueTagsTrack_.addCue(cue);
+      if (cue !== undefined) {
+
+        if ('cueIn' in segment) {
+          // Found a CUE-IN so end the cue
+          if (mediaTime !== cue.endTime) {
+            // If the end time does not match the current mediaTime, a CUE-IN may have been
+            // inserted earlier than expected, so the cue should be updated.
+            cue.endTime = mediaTime;
+            cue.adEndTime = mediaTime;
+          }
+          mediaTime += segment.duration;
+          cue = undefined;
+          continue;
         }
-        cueObj = {};
-        cueObj.startTime = mediaTime;
-        cueObj.duration = segment.duration;
-        cueObj.tagData = [segment.cueOut];
-      } else if ('cueOutCont' in segment) {
-        // It is possible in a live stream that a CUE-OUT-CONT can occur without seeing
-        // a CUE-OUT
-        if (cueObj === undefined) {
-          cueObj = {};
-          cueObj.startTime = mediaTime;
-          cueObj.duration = 0;
-          cueObj.tagData = [];
+
+        if (mediaTime < cue.endTime) {
+          // Already processed this mediaTime for this cue
+          mediaTime += segment.duration;
+          continue;
         }
-        cueObj.duration += segment.duration;
-        cueObj.tagData.push(segment.cueOutCont);
-      } else if ('cueIn' in segment) {
-        if (cueObj !== undefined) {
-          cueObj.tagData.push(segment.cueIn);
-          let cue = new window.VTTCue(cueObj.startTime,
-                                      cueObj.startTime + cueObj.duration,
-                                      JSON.stringify(cueObj.tagData));
-          this.cueTagsTrack_.addCue(cue);
+
+        cue.endTime += segment.duration;
+
+      } else { // cue === undefined
+        cue = findAdCue(track, mediaTime);
+        if (cue) {
+          // there is a cue already created for this mediaTime
+          // decrement i and not increase mediaTime to handle this segment again with this cue
+          i--;
+          continue;
         }
-        cueObj = undefined;
+
+        if ('cueOut' in segment) {
+          cue = new window.VTTCue(mediaTime,
+                                  mediaTime + segment.duration,
+                                  segment.cueOut);
+          cue.adStartTime = mediaTime;
+          cue.adEndTime = mediaTime + parseFloat(segment.cueOut);
+          track.addCue(cue);
+        }
+
+        if ('cueOutCont' in segment) {
+          // Entered into the middle of an ad cue
+          let adOffset, adTotal;
+          [adOffset, adTotal] = segment.cueOutCont.split('/').map((value) => parseFloat(value));
+
+          cue = new window.VTTCue(mediaTime,
+                                  mediaTime + segment.duration,
+                                  '' + adTotal);
+          cue.adStartTime = mediaTime - adOffset;
+          cue.adEndTime = cue.adStartTime + adTotal;
+          track.addCue(cue);
+        }
       }
-      console.log(cueObj ? cueObj.duration:'');
-
-      // if ('cueOut' in segment || 'cueOutCont' in segment || 'cueIn' in segment) {
-      //   let cueJson = {};
-
-      //   if ('cueOut' in segment) {
-      //     cueJson.cueOut = segment.cueOut;
-      //   }
-      //   if ('cueOutCont' in segment) {
-      //     cueJson.cueOutCont = segment.cueOutCont;
-      //   }
-      //   if ('cueIn' in segment) {
-      //     cueJson.cueIn = segment.cueIn;
-      //   }
-
-      //   // Use a short duration for the cue point, as it should trigger for a segment
-      //   // transition (in this case, defined as the beginning of the segment that the tag
-      //   // precedes), but keep it for a minimum of 0.5 seconds to remain usable (won't
-      //   // lose it as an active cue by the time a user retrieves the active cues).
-      //   this.cueTagsTrack_.addCue(new window.VTTCue(mediaTime,
-      //                                               mediaTime + 0.5,
-      //                                               JSON.stringify(cueJson)));
-      // }
 
       mediaTime += segment.duration;
     }
