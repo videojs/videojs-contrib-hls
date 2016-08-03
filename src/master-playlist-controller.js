@@ -37,7 +37,7 @@ const parseCodecs = function(codecs) {
 /**
  * Searches for an ad cue that overlaps with the given mediaTime
  */
-const findAdCue = function(track, mediaTime) {
+export const findAdCue = function(track, mediaTime) {
   let cues = track.cues;
 
   for (let i = 0; i < cues.length; i++) {
@@ -47,7 +47,7 @@ const findAdCue = function(track, mediaTime) {
       return cue;
     }
   }
-  return undefined;
+  return null;
 };
 
 /**

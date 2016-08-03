@@ -7,7 +7,7 @@ import {
   standardXHRResponse,
   openMediaSource
 } from './test-helpers.js';
-import MasterPlaylistController from '../src/master-playlist-controller';
+import {default as MasterPlaylistController, findAdCue} from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
 import { Hls } from '../src/videojs-contrib-hls';
@@ -702,4 +702,34 @@ QUnit.test('respects useCueTags option', function() {
            'adds cueTagsTrack as a text track if useCueTags is truthy');
 
   videojs.options.hls = origHlsOptions;
+});
+
+QUnit.test('findAdCue returns correct cue', function() {
+  let track = {
+    cues: [
+      {
+        adStartTime: 0,
+        adEndTime: 30
+      },
+      {
+        adStartTime: 45,
+        adEndTime: 55
+      },
+      {
+        adStartTime: 100,
+        adEndTime: 120
+      }
+    ]
+  };
+
+  let cue;
+
+  cue = findAdCue(track, 15);
+  QUnit.equal(cue.adStartTime, 0, 'returned correct cue');
+
+  cue = findAdCue(track, 40);
+  QUnit.equal(cue, null, 'cue not found, returned null');
+
+  cue = findAdCue(track, 120);
+  QUnit.equal(cue.adStartTime, 100, 'returned correct cue');
 });
