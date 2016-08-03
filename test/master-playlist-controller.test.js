@@ -7,7 +7,7 @@ import {
   standardXHRResponse,
   openMediaSource
 } from './test-helpers.js';
-import MasterPlaylistController from '../src/master-playlist-controller';
+import {default as MasterPlaylistController, findAdCue} from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
 import { Hls } from '../src/videojs-contrib-hls';
@@ -804,8 +804,6 @@ QUnit.test('update tag cues', function() {
   QUnit.equal(testCue.adStartTime, -10, 'cue ad starts at -10');
   QUnit.equal(testCue.adEndTime, 20, 'cue ad ends at 20');
 
-  cueTagsTrack.removeCue(testCue);
-
   videojs.options.hls = origHlsOptions;
 });
 
@@ -957,4 +955,34 @@ QUnit.test('adjust cue end time in event of early CUE-IN', function() {
     'cue ad end updated to 30 to account for early cueIn');
 
   videojs.options.hls = origHlsOptions;
+});
+
+QUnit.test('findAdCue returns correct cue', function() {
+  let track = {
+    cues: [
+      {
+        adStartTime: 0,
+        adEndTime: 30
+      },
+      {
+        adStartTime: 45,
+        adEndTime: 55
+      },
+      {
+        adStartTime: 100,
+        adEndTime: 120
+      }
+    ]
+  };
+
+  let cue;
+
+  cue = findAdCue(track, 15);
+  QUnit.equal(cue.adStartTime, 0, 'returned correct cue');
+
+  cue = findAdCue(track, 40);
+  QUnit.equal(cue, null, 'cue not found, returned null');
+
+  cue = findAdCue(track, 120);
+  QUnit.equal(cue.adStartTime, 100, 'returned correct cue');
 });
