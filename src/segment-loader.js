@@ -503,14 +503,16 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
-   * load a specific segment from a request into the buffer
+   * trim the back buffer so we only remove content
+   * on segment boundaries
    *
    * @private
+   *
+   * @param {Object} segmentInfo - the current segment
+   * @returns {Number} removeToTime - the end point in time, in seconds
+   * that the the buffer should be trimmed.
    */
-  loadSegment_(segmentInfo) {
-    let segment;
-    let keyXhr;
-    let segmentXhr;
+  trimBuffer_(segmentInfo) {
     let seekable = this.seekable_();
     let currentTime = this.currentTime_();
     let removeToTime = 0;
@@ -530,6 +532,43 @@ export default class SegmentLoader extends videojs.EventTarget {
     } else {
       removeToTime = currentTime - 60;
     }
+
+    // If we are going to remove time from the front of the buffer, make
+    // sure we aren't discarding a partial segment to avoid throwing
+    // PLAYER_ERR_TIMEOUT while trying to read a partially discarded segment
+    for (let i = 0; i <= segmentInfo.playlist.segments.length; i++) {
+      // Loop through the segments and calculate the duration to compare
+      // against the removeToTime
+      let removeDuration = duration(segmentInfo.playlist,
+                                    segmentInfo.playlist.mediaSequence + i,
+                                    this.expired_);
+
+      // If we are close to next segment begining, remove to end of previous
+      // segment instead
+      let previousDuration = duration(segmentInfo.playlist,
+                                    segmentInfo.playlist.mediaSequence + (i - 1),
+                                    this.expired_);
+
+      if (removeDuration >= removeToTime) {
+        removeToTime = previousDuration;
+        break;
+      }
+    }
+    return removeToTime;
+  }
+
+  /**
+   * load a specific segment from a request into the buffer
+   *
+   * @private
+   */
+  loadSegment_(segmentInfo) {
+    let segment;
+    let keyXhr;
+    let segmentXhr;
+    let removeToTime = 0;
+
+    removeToTime = this.trimBuffer_(segmentInfo);
 
     if (removeToTime > 0) {
       this.sourceUpdater_.remove(0, removeToTime);
