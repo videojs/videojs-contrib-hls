@@ -13,7 +13,6 @@ import MasterPlaylistController from '../src/master-playlist-controller';
 import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
-import window from 'global/window';
 
 QUnit.module('MasterPlaylistController', {
   beforeEach() {

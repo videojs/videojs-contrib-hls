@@ -6,7 +6,6 @@ import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
 import HlsAudioTrack from './hls-audio-track';
-import window from 'global/window';
 import AdCueTags from './ad-cue-tags';
 
 // 5 minute blacklist

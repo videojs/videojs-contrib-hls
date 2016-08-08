@@ -1,4 +1,6 @@
-import AdCueTags from '../src/ad-cue-tags'
+import QUnit from 'qunit';
+import AdCueTags from '../src/ad-cue-tags';
+import window from 'global/window';
 
 QUnit.module('AdCueTags', {
   beforeEach() {
@@ -10,7 +12,7 @@ QUnit.module('AdCueTags', {
       clearTrack() {
         this.cues = [];
       }
-    }
+    };
   }
 });
 

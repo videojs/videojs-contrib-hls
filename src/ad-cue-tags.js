@@ -20,7 +20,8 @@ const findAdCue = function(track, mediaTime) {
 };
 
 const initAdCueTrack = function(controller) {
-      controller.cueTagsTrack_ = controller.tech_.addTextTrack('metadata', 'hls-segment-metadata');
+      controller.cueTagsTrack_ = controller.tech_.addTextTrack('metadata',
+        'hls-segment-metadata');
       controller.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
       controller.tech_.textTracks().addTrack_(controller.cueTagsTrack_);
 };
