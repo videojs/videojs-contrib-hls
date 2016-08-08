@@ -19,13 +19,6 @@ const findAdCue = function(track, mediaTime) {
   return null;
 };
 
-const initAdCueTrack = function(controller) {
-  controller.cueTagsTrack_ = controller.tech_.addTextTrack('metadata',
-    'hls-segment-metadata');
-  controller.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
-  controller.tech_.textTracks().addTrack_(controller.cueTagsTrack_);
-};
-
 const updateAdCues = function(media, track, offset = 0) {
   if (!media.segments) {
     return;
@@ -46,7 +39,6 @@ const updateAdCues = function(media, track, offset = 0) {
     }
 
     if (cue) {
-
       if ('cueIn' in segment) {
         // Found a CUE-IN so end the cue
         cue.endTime = mediaTime;
@@ -94,13 +86,11 @@ const updateAdCues = function(media, track, offset = 0) {
         track.addCue(cue);
       }
     }
-
     mediaTime += segment.duration;
   }
 };
 
 export default {
-  initAdCueTrack,
   updateAdCues,
   findAdCue
 };

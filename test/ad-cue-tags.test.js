@@ -258,9 +258,13 @@ QUnit.test('correctly handle multiple ad cues', function() {
 
   QUnit.equal(this.track.cues.length, 2, 'correctly created 2 cues for the ads');
   QUnit.equal(this.track.cues[0].startTime, 30, 'cue created at correct start time');
-  QUnit.equal(this.track.cues[0].endTime, 60, 'cue created at correct end time');
+  QUnit.equal(this.track.cues[0].endTime, 60, 'cue has correct end time');
+  QUnit.equal(this.track.cues[0].adStartTime, 30, 'cue has correct ad start time');
+  QUnit.equal(this.track.cues[0].adEndTime, 60, 'cue has correct ad end time');
   QUnit.equal(this.track.cues[1].startTime, 100, 'cue created at correct start time');
-  QUnit.equal(this.track.cues[1].endTime, 120, 'cue created at correct end time');
+  QUnit.equal(this.track.cues[1].endTime, 120, 'cue has correct end time');
+  QUnit.equal(this.track.cues[1].adStartTime, 100, 'cue has correct ad start time');
+  QUnit.equal(this.track.cues[1].adEndTime, 120, 'cue has correct ad end time');
 });
 
 QUnit.test('findAdCue returns correct cue', function() {
@@ -289,4 +293,7 @@ QUnit.test('findAdCue returns correct cue', function() {
 
   cue = AdCueTags.findAdCue(this.track, 120);
   QUnit.equal(cue.adStartTime, 100, 'returned correct cue');
+
+  cue = AdCueTags.findAdCue(this.track, 45);
+  QUnit.equal(cue.adStartTime, 45, 'returned correct cue');
 });
