@@ -7,7 +7,7 @@ import {
   standardXHRResponse,
   openMediaSource
 } from './test-helpers.js';
-import {default as MasterPlaylistController, findAdCue} from '../src/master-playlist-controller';
+import MasterPlaylistController from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
 import { Hls } from '../src/videojs-contrib-hls';
@@ -620,9 +620,22 @@ function() {
 });
 
 QUnit.test('calls to update cues on new media', function() {
+  let origHlsOptions = videojs.options.hls;
+
+  videojs.options.hls = {
+    useCueTags: true
+  };
+
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
   let callCount = 0;
 
-  this.masterPlaylistController.updateCues_ = (media) => callCount++;
+  this.masterPlaylistController.updateAdCues_ = (media) => callCount++;
 
   // master
   standardXHRResponse(this.requests.shift());
@@ -637,19 +650,24 @@ QUnit.test('calls to update cues on new media', function() {
   this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
 
   QUnit.equal(callCount, 2, 'calls to update cues on subsequent media');
+
+  videojs.options.hls = origHlsOptions;
 });
 
 QUnit.test('calls to update cues on media when no master', function() {
   this.requests.length = 0;
+
   this.player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  this.masterPlaylistController.useCueTags_ = true;
 
   let callCount = 0;
 
-  this.masterPlaylistController.updateCues_ = (media) => callCount++;
+  this.masterPlaylistController.updateAdCues_ = (media) => callCount++;
 
   // media
   standardXHRResponse(this.requests.shift());
@@ -662,21 +680,6 @@ QUnit.test('calls to update cues on media when no master', function() {
 });
 
 QUnit.test('respects useCueTags option', function() {
-  this.masterPlaylistController.updateCues_({
-    segments: [{
-      duration: 10,
-      tags: ['test']
-    }]
-  });
-
-  QUnit.ok(!this.masterPlaylistController.cueTagsTrack_,
-           'does not create cueTagsTrack_ if useCueTags is falsy');
-  QUnit.equal(this.player.textTracks().length,
-              0,
-              'does not create a text track if useCueTags is falsy');
-
-  this.player.dispose();
-
   let origHlsOptions = videojs.options.hls;
 
   videojs.options.hls = {
@@ -698,370 +701,5 @@ QUnit.test('respects useCueTags option', function() {
   QUnit.equal(this.player.textTracks()[0], this.masterPlaylistController.cueTagsTrack_,
            'adds cueTagsTrack as a text track if useCueTags is truthy');
 
-  this.masterPlaylistController.updateCues_({
-    segments: [{
-      duration: 10,
-      cueOut: '10'
-    }]
-  });
-
-  let cue = this.masterPlaylistController.cueTagsTrack_.cues[0];
-
-  QUnit.equal(cue.startTime,
-              0,
-              'adds cue with correct start time if useCueTags is truthy');
-  QUnit.equal(cue.endTime,
-              10,
-              'adds cue with correct end time if useCueTags is truthy');
-  QUnit.equal(cue.adStartTime,
-              0,
-              'adds cue with correct ad start time if useCueTags is truthy');
-  QUnit.equal(cue.adEndTime,
-              10,
-              'adds cue with correct ad end time if useCueTags is truthy');
-
   videojs.options.hls = origHlsOptions;
-});
-
-QUnit.test('update tag cues', function() {
-  let origHlsOptions = videojs.options.hls;
-
-  videojs.options.hls = {
-    useCueTags: true
-  };
-
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  let cueTagsTrack = this.masterPlaylistController.cueTagsTrack_;
-  let testCue = new window.VTTCue(0, 10, 'test');
-
-  cueTagsTrack.addCue(testCue);
-
-  this.masterPlaylistController.updateCues_({});
-
-  QUnit.equal(cueTagsTrack.cues.length,
-              1,
-              'does not change cues if media does not have segment property');
-  QUnit.equal(cueTagsTrack.cues[0],
-              testCue,
-              'does not change cues if media does not have segment property');
-
-  this.masterPlaylistController.updateCues_({
-    segments: []
-  });
-
-  QUnit.equal(cueTagsTrack.cues.length,
-              1,
-              'does not remove cues even if no segments in playlist');
-
-  cueTagsTrack.removeCue(testCue);
-
-  this.masterPlaylistController.updateCues_({
-    segments: [{
-      duration: 5.1,
-      cueOut: '11.5'
-    }, {
-      duration: 6.4,
-      cueOutCont: '5.1/11.5'
-    }, {
-      duration: 6,
-      cueIn: ''
-    }]
-  }, 10);
-
-  QUnit.equal(cueTagsTrack.cues.length, 1, 'adds a single cue for entire ad');
-
-  testCue = cueTagsTrack.cues[0];
-  QUnit.equal(testCue.startTime, 10, 'cue starts at 10');
-  QUnit.equal(testCue.endTime, 21.5, 'cue ends at start time plus duration');
-
-  cueTagsTrack.removeCue(testCue);
-
-  this.masterPlaylistController.updateCues_({
-    segments: [{
-      duration: 10,
-      cueOutCont: '10/30'
-    }, {
-      duration: 10,
-      cueOutCont: '20/30'
-    }, {
-      duration: 10,
-      cueIn: ''
-    }]
-  });
-
-  QUnit.equal(cueTagsTrack.cues.length, 1,
-    'adds a single cue for entire ad when entering mid cue-out-cont');
-
-  testCue = cueTagsTrack.cues[0];
-  QUnit.equal(testCue.startTime, 0, 'cue starts at 0');
-  QUnit.equal(testCue.endTime, 20, 'cue ends at start time plus duration');
-  QUnit.equal(testCue.adStartTime, -10, 'cue ad starts at -10');
-  QUnit.equal(testCue.adEndTime, 20, 'cue ad ends at 20');
-
-  videojs.options.hls = origHlsOptions;
-});
-
-QUnit.test('update incomplete cue in live playlist situation', function() {
-  let origHlsOptions = videojs.options.hls;
-
-  videojs.options.hls = {
-    useCueTags: true
-  };
-
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  let cueTagsTrack = this.masterPlaylistController.cueTagsTrack_;
-
-  this.masterPlaylistController.updateCues_({
-    segments: [
-      {
-        duration: 10,
-        cueOut: '30'
-      },
-      {
-        duration: 10,
-        cueOutCont: '10/30'
-      }
-    ]
-  }, 10);
-
-  QUnit.equal(cueTagsTrack.cues.length, 1, 'adds a single cue for new ad');
-
-  let testCue = cueTagsTrack.cues[0];
-
-  QUnit.equal(testCue.startTime, 10, 'cue starts at 10');
-  QUnit.equal(testCue.endTime, 30, 'cue ends at start time plus segment durations');
-  QUnit.equal(testCue.adStartTime, 10, 'cue ad starts at 10');
-  QUnit.equal(testCue.adEndTime, 40, 'cue ad ends at 40');
-
-  this.masterPlaylistController.updateCues_({
-    segments: [
-      {
-        duration: 10,
-        cueOutCont: '10/30'
-      },
-      {
-        duration: 10,
-        cueOutCont: '20/30'
-      }
-    ]
-  }, 20);
-
-  QUnit.equal(cueTagsTrack.cues.length, 1, 'did not remove cue or add a new one');
-
-  QUnit.equal(testCue.startTime, 10, 'cue still starts at 10');
-  QUnit.equal(testCue.endTime, 40, 'cue end updated to include next segment duration');
-  QUnit.equal(testCue.adStartTime, 10, 'cue ad still starts at 10');
-  QUnit.equal(testCue.adEndTime, 40, 'cue ad still ends at 40');
-
-  this.masterPlaylistController.updateCues_({
-    segments: [
-      {
-        duration: 10,
-        cueOutCont: '20/30'
-      },
-      {
-        duration: 10,
-        cueIn: ''
-      }
-    ]
-  }, 30);
-
-  QUnit.equal(cueTagsTrack.cues.length, 1, 'did not remove cue or add a new one');
-
-  QUnit.equal(testCue.startTime, 10, 'cue still starts at 10');
-  QUnit.equal(testCue.endTime, 40, 'cue end still 40');
-  QUnit.equal(testCue.adStartTime, 10, 'cue ad still starts at 10');
-  QUnit.equal(testCue.adEndTime, 40, 'cue ad still ends at 40');
-
-  videojs.options.hls = origHlsOptions;
-});
-
-QUnit.test('adjust cue end time in event of early CUE-IN', function() {
-  let origHlsOptions = videojs.options.hls;
-
-  videojs.options.hls = {
-    useCueTags: true
-  };
-
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  let cueTagsTrack = this.masterPlaylistController.cueTagsTrack_;
-
-  this.masterPlaylistController.updateCues_({
-    segments: [
-      {
-        duration: 10,
-        cueOut: '30'
-      },
-      {
-        duration: 10,
-        cueOutCont: '10/30'
-      },
-      {
-        duration: 10,
-        cueOutCont: '20/30'
-      }
-    ]
-  }, 10);
-
-  QUnit.equal(cueTagsTrack.cues.length, 1, 'adds a single cue for new ad');
-
-  let testCue = cueTagsTrack.cues[0];
-
-  QUnit.equal(testCue.startTime, 10, 'cue starts at 10');
-  QUnit.equal(testCue.endTime, 40, 'cue ends at start time plus segment durations');
-  QUnit.equal(testCue.adStartTime, 10, 'cue ad starts at 10');
-  QUnit.equal(testCue.adEndTime, 40, 'cue ad ends at 40');
-
-  this.masterPlaylistController.updateCues_({
-    segments: [
-      {
-        duration: 10,
-        cueOutCont: '10/30'
-      },
-      {
-        duration: 10,
-        cueIn: ''
-      },
-      {
-        duration: 10
-      }
-    ]
-  }, 20);
-
-  QUnit.equal(cueTagsTrack.cues.length, 1, 'did not remove cue or add a new one');
-
-  QUnit.equal(testCue.startTime, 10, 'cue still starts at 10');
-  QUnit.equal(testCue.endTime, 30, 'cue end updated to 30');
-  QUnit.equal(testCue.adStartTime, 10, 'cue ad still starts at 10');
-  QUnit.equal(testCue.adEndTime, 30,
-    'cue ad end updated to 30 to account for early cueIn');
-
-  videojs.options.hls = origHlsOptions;
-});
-
-QUnit.test('correctly handle multiple ad cues', function() {
-  let origHlsOptions = videojs.options.hls;
-
-  videojs.options.hls = {
-    useCueTags: true
-  };
-
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  let cueTagsTrack = this.masterPlaylistController.cueTagsTrack_;
-
-  this.masterPlaylistController.updateCues_({
-    segments: [
-      {
-        duration: 10
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10,
-        cueOut: '30'
-      },
-      {
-        duration: 10,
-        cueOutCont: '10/30'
-      },
-      {
-        duration: 10,
-        cueOutCont: '20/30'
-      },
-      {
-        duration: 10,
-        cueIn: ''
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10,
-        cueOut: '20'
-      },
-      {
-        duration: 10,
-        cueOutCont: '10/20'
-      },
-      {
-        duration: 10,
-        cueIn: ''
-      },
-      {
-        duration: 10
-      }
-    ]
-  });
-
-  QUnit.equal(cueTagsTrack.cues.length, 2, 'correctly created 2 cues for the ads');
-  QUnit.equal(cueTagsTrack.cues[0].startTime, 30, 'cue created at correct start time');
-  QUnit.equal(cueTagsTrack.cues[0].endTime, 60, 'cue created at correct end time');
-  QUnit.equal(cueTagsTrack.cues[1].startTime, 100, 'cue created at correct start time');
-  QUnit.equal(cueTagsTrack.cues[1].endTime, 120, 'cue created at correct end time');
-
-  videojs.options.hls = origHlsOptions;
-});
-
-QUnit.test('findAdCue returns correct cue', function() {
-  let track = {
-    cues: [
-      {
-        adStartTime: 0,
-        adEndTime: 30
-      },
-      {
-        adStartTime: 45,
-        adEndTime: 55
-      },
-      {
-        adStartTime: 100,
-        adEndTime: 120
-      }
-    ]
-  };
-
-  let cue;
-
-  cue = findAdCue(track, 15);
-  QUnit.equal(cue.adStartTime, 0, 'returned correct cue');
-
-  cue = findAdCue(track, 40);
-  QUnit.equal(cue, null, 'cue not found, returned null');
-
-  cue = findAdCue(track, 120);
-  QUnit.equal(cue.adStartTime, 100, 'returned correct cue');
 });
