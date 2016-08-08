@@ -7,7 +7,7 @@ import {
   standardXHRResponse,
   openMediaSource
 } from './test-helpers.js';
-import {default as MasterPlaylistController, findAdCue} from '../src/master-playlist-controller';
+import MasterPlaylistController from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
 import { Hls } from '../src/videojs-contrib-hls';
@@ -702,113 +702,4 @@ QUnit.test('respects useCueTags option', function() {
            'adds cueTagsTrack as a text track if useCueTags is truthy');
 
   videojs.options.hls = origHlsOptions;
-});
-
-QUnit.test('correctly handle multiple ad cues', function() {
-  let origHlsOptions = videojs.options.hls;
-
-  videojs.options.hls = {
-    useCueTags: true
-  };
-
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  let cueTagsTrack = this.masterPlaylistController.cueTagsTrack_;
-
-  this.masterPlaylistController.updateCues_({
-    segments: [
-      {
-        duration: 10
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10,
-        cueOut: '30'
-      },
-      {
-        duration: 10,
-        cueOutCont: '10/30'
-      },
-      {
-        duration: 10,
-        cueOutCont: '20/30'
-      },
-      {
-        duration: 10,
-        cueIn: ''
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10
-      },
-      {
-        duration: 10,
-        cueOut: '20'
-      },
-      {
-        duration: 10,
-        cueOutCont: '10/20'
-      },
-      {
-        duration: 10,
-        cueIn: ''
-      },
-      {
-        duration: 10
-      }
-    ]
-  });
-
-  QUnit.equal(cueTagsTrack.cues.length, 2, 'correctly created 2 cues for the ads');
-  QUnit.equal(cueTagsTrack.cues[0].startTime, 30, 'cue created at correct start time');
-  QUnit.equal(cueTagsTrack.cues[0].endTime, 60, 'cue created at correct end time');
-  QUnit.equal(cueTagsTrack.cues[1].startTime, 100, 'cue created at correct start time');
-  QUnit.equal(cueTagsTrack.cues[1].endTime, 120, 'cue created at correct end time');
-
-  videojs.options.hls = origHlsOptions;
-});
-
-QUnit.test('findAdCue returns correct cue', function() {
-  let track = {
-    cues: [
-      {
-        adStartTime: 0,
-        adEndTime: 30
-      },
-      {
-        adStartTime: 45,
-        adEndTime: 55
-      },
-      {
-        adStartTime: 100,
-        adEndTime: 120
-      }
-    ]
-  };
-
-  let cue;
-
-  cue = findAdCue(track, 15);
-  QUnit.equal(cue.adStartTime, 0, 'returned correct cue');
-
-  cue = findAdCue(track, 40);
-  QUnit.equal(cue, null, 'cue not found, returned null');
-
-  cue = findAdCue(track, 120);
-  QUnit.equal(cue.adStartTime, 100, 'returned correct cue');
 });
