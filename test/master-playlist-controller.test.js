@@ -695,8 +695,8 @@ QUnit.test('respects useCueTags option', function() {
   QUnit.ok(this.masterPlaylistController.cueTagsTrack_,
            'creates cueTagsTrack_ if useCueTags is truthy');
   QUnit.equal(this.masterPlaylistController.cueTagsTrack_.label,
-              'hls-segment-metadata',
-              'cueTagsTrack_ has label of hls-segment-metadata');
+              'ad-cues',
+              'cueTagsTrack_ has label of ad-cues');
   QUnit.equal(this.player.textTracks()[0], this.masterPlaylistController.cueTagsTrack_,
            'adds cueTagsTrack as a text track if useCueTags is truthy');
 
