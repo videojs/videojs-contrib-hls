@@ -181,16 +181,24 @@ export default class SegmentLoader extends videojs.EventTarget {
    * and reset to a default state
    */
   abort() {
-    if (this.state !== 'WAITING') {
+    if (this.state === 'INIT' ||
+        this.state === 'READY' ||
+        this.state === 'PAUSED') {
       return;
+    }
+
+    if (this.state === 'WAITING') {
+      this.state = 'READY';
+    }
+    if (this.state === 'PAUSING') {
+      this.state = 'PAUSED';
     }
 
     this.abort_();
 
     // don't wait for buffer check timeouts to begin fetching the
     // next segment
-    if (!this.paused()) {
-      this.state = 'READY';
+    if (this.state === 'READY') {
       this.fillBuffer_();
     }
   }
@@ -214,7 +222,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * load a playlist and start to fill the buffer
    */
   load() {
-    this.monitorBuffer_();
+    this.resume();
 
     // if we don't have a playlist yet, keep waiting for one to be
     // specified
@@ -225,8 +233,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     // if we're in the middle of processing a segment already, don't
     // kick off an additional segment request
     if (!this.sourceUpdater_ ||
-        (this.state !== 'READY' &&
-        this.state !== 'INIT')) {
+        this.state === 'WAITING' ||
+        this.state === 'PAUSING' ||
+        this.state === 'PAUSED') {
       return;
     }
 
@@ -247,8 +256,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // buffering now
     if (this.sourceUpdater_ &&
         media &&
-        this.state === 'INIT' &&
-        !this.paused()) {
+        this.state === 'INIT') {
       this.state = 'READY';
       return this.fillBuffer_();
     }
@@ -266,15 +274,23 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       this.checkBufferTimeout_ = null;
     }
+    if (this.state === 'READY') {
+      this.state === 'PAUSED';
+    }
+    if (this.state === 'WAITING') {
+      this.state === 'PAUSING';
+    }
   }
 
-  /**
-   * Returns whether the segment loader is fetching additional
-   * segments when given the opportunity. This property can be
-   * modified through calls to pause() and load().
-   */
-  paused() {
-    return this.checkBufferTimeout_ === null;
+  resume() {
+    if (this.state === 'PAUSED') {
+      this.state = 'READY';
+    }
+    if (this.state === 'PAUSING') {
+      this.state = 'WAITING';
+    }
+
+    this.monitorBuffer_();
   }
 
   /**
@@ -301,8 +317,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       // if we were unpaused but waiting for a sourceUpdater, start
       // buffering now
       if (this.playlist_ &&
-          this.state === 'INIT' &&
-          !this.paused()) {
+          this.state === 'INIT') {
         this.state = 'READY';
         return this.fillBuffer_();
       }
@@ -492,7 +507,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       let correctionApplied =
         this.incrementTimeCorrection_(this.playlist_.targetDuration / 2, 1);
 
-      if (correctionApplied && !this.paused()) {
+      if (correctionApplied && this.state === 'READY') {
         this.fillBuffer_();
       }
 
@@ -746,8 +761,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     let segmentInfo;
     let segment;
 
-    this.state = 'DECRYPTING';
-
     segmentInfo = this.pendingSegment_;
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
@@ -777,7 +790,6 @@ export default class SegmentLoader extends videojs.EventTarget {
   handleSegment_() {
     let segmentInfo;
 
-    this.state = 'APPENDING';
     segmentInfo = this.pendingSegment_;
     segmentInfo.buffered = this.sourceUpdater_.buffered();
     this.currentTimeline_ = segmentInfo.timeline;
@@ -848,11 +860,15 @@ export default class SegmentLoader extends videojs.EventTarget {
       }
     }
 
-    this.state = 'READY';
+    if (this.state === 'WAITING') {
+      this.state = 'READY';
+    } else if (this.state === 'PAUSING') {
+      this.state = 'PAUSED';
+    }
 
     if (timelineUpdated) {
       this.timeCorrection_ = 0;
-      if (!this.paused()) {
+      if (this.state === 'READY') {
         this.fillBuffer_();
       }
       return;
@@ -865,7 +881,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // index calculations.
     let correctionApplied = this.incrementTimeCorrection_(segmentInfo.duration, 4);
 
-    if (correctionApplied && !this.paused()) {
+    if (correctionApplied && this.state === 'READY') {
       this.fillBuffer_();
     }
   }
