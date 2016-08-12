@@ -362,6 +362,21 @@ QUnit.test('moves to HAVE_METADATA after loading a media playlist', function() {
   QUnit.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
 });
 
+QUnit.test('defaults missing media groups for a media playlist', function() {
+  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
+
+  loader.load();
+  this.requests.pop().respond(200, null,
+                              '#EXTM3U\n' +
+                              '#EXTINF:10,\n' +
+                              '0.ts\n');
+
+  QUnit.ok(loader.master.mediaGroups.AUDIO, 'defaulted audio');
+  QUnit.ok(loader.master.mediaGroups.VIDEO, 'defaulted video');
+  QUnit.ok(loader.master.mediaGroups['CLOSED-CAPTIONS'], 'defaulted closed captions');
+  QUnit.ok(loader.master.mediaGroups.SUBTITLES, 'defaulted subtitles');
+});
+
 QUnit.test('moves to HAVE_CURRENT_METADATA when refreshing the playlist', function() {
   let loader = new PlaylistLoader('live.m3u8', this.fakeHls);
 

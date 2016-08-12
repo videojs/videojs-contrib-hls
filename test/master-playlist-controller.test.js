@@ -7,6 +7,7 @@ import {
   standardXHRResponse,
   openMediaSource
 } from './test-helpers.js';
+import manifests from './test-manifests.js';
 import MasterPlaylistController from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
@@ -272,6 +273,32 @@ function() {
               '16 bytes downloaded');
 });
 
+QUnit.test('updates the enabled track when switching audio groups', function() {
+  openMediaSource(this.player, this.clock);
+  // master
+  this.requests.shift().respond(200, null,
+                                manifests.multipleAudioGroupsCombinedMain);
+  // media
+  standardXHRResponse(this.requests.shift());
+  // audio media
+  standardXHRResponse(this.requests.shift());
+
+  let mpc = this.masterPlaylistController;
+  let combinedPlaylist = mpc.master().playlists[0];
+
+  mpc.masterPlaylistLoader_.media(combinedPlaylist);
+  // updated media
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXTINF:5.0\n' +
+                                '0.ts\n' +
+                                '#EXT-X-ENDLIST\n');
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.ok(mpc.activeAudioGroup().find((track) => track.enabled),
+           'enabled a track in the new audio group');
+});
+
 QUnit.test('blacklists switching from video+audio playlists to audio only', function() {
   let audioPlaylist;
 
@@ -384,6 +411,34 @@ function() {
   QUnit.equal(alternatePlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
+});
+
+QUnit.test('blacklists the current playlist when audio changes in Firefox', function() {
+  videojs.browser.IS_FIREFOX = true;
+
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  let media = this.masterPlaylistController.media();
+
+  // initial audio config
+  this.masterPlaylistController.mediaSource.trigger({
+    type: 'audioinfo',
+    info: {}
+  });
+  // updated audio config
+
+  this.masterPlaylistController.mediaSource.trigger({
+    type: 'audioinfo',
+    info: {
+      different: true
+    }
+  });
+  QUnit.ok(media.excludeUntil > 0, 'blacklisted the old playlist');
+  QUnit.equal(this.env.log.warn.callCount, 2, 'logged two warnings');
+  this.env.log.warn.callCount = 0;
 });
 
 QUnit.test('updates the combined segment loader on media changes', function() {

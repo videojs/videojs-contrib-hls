@@ -797,6 +797,13 @@ export default class SegmentLoader extends videojs.EventTarget {
     segmentInfo = this.pendingSegment_;
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
+    // some videos don't start from presentation time zero
+    //if that is the case, use timestamp offset to adjust them so that
+    //it is not necessary to seek before playback can begin
+    if (true) {
+      console.log('implement me');
+    }
+
     if (segment.key) {
       // this is an encrypted segment
       // incrementally decrypt the segment

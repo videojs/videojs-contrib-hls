@@ -90,6 +90,9 @@ QUnit.module('HLS', {
     this.old.Decrypt = videojs.Hls.Decrypter;
     videojs.Hls.Decrypter = function() {};
 
+    // save and restore browser detection for the Firefox-specific tests
+    this.old.IS_FIREFOX = videojs.browser.IS_FIREFOX;
+
     // setup a player
     this.player = createPlayer();
   },
@@ -104,6 +107,7 @@ QUnit.module('HLS', {
 
     videojs.Hls.supportsNativeHls = this.old.NativeHlsSupport;
     videojs.Hls.Decrypter = this.old.Decrypt;
+    videojs.browser.IS_FIREFOX = this.old.IS_FIREFOX;
 
     this.player.dispose();
   }
@@ -260,11 +264,11 @@ QUnit.test('codecs are passed to the source buffer', function() {
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:CODECS="video, audio"\n' +
+                                '#EXT-X-STREAM-INF:CODECS="avc1.dd00dd, mp4a.40.f"\n' +
                                 'media.m3u8\n');
   standardXHRResponse(this.requests.shift());
   QUnit.equal(codecs.length, 1, 'created a source buffer');
-  QUnit.equal(codecs[0], 'video/mp2t; codecs="video, audio"', 'specified the codecs');
+  QUnit.equal(codecs[0], 'video/mp2t; codecs="avc1.dd00dd, mp4a.40.f"', 'specified the codecs');
 });
 
 QUnit.test('including HLS as a tech does not error', function() {
@@ -1453,6 +1457,7 @@ QUnit.test('re-emits mediachange events', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+  standardXHRResponse(this.requests.shift());
 
   this.player.tech_.hls.playlists.trigger('mediachange');
   QUnit.strictEqual(mediaChanges, 1, 'fired mediachange');
@@ -1713,7 +1718,7 @@ QUnit.test('resolves relative key URLs against the playlist', function() {
               'resolves the key URL');
 });
 
-QUnit.test('adds 1 default audio track if we have not parsed any, and the playlist is loaded', function() {
+QUnit.test('adds 1 default audio track if we have not parsed any and the playlist is loaded', function() {
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1725,12 +1730,11 @@ QUnit.test('adds 1 default audio track if we have not parsed any, and the playli
 
   // master
   standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
 
   QUnit.equal(this.player.audioTracks().length, 1, 'one audio track after load');
-  QUnit.ok(this.player.audioTracks()[0] instanceof HlsAudioTrack, 'audio track is an hls audio track');
-
-  // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
+  QUnit.equal(this.player.audioTracks()[0].label, 'default', 'set the label');
 });
 
 QUnit.test('adds 1 default audio track if in flash mode', function() {
@@ -1754,9 +1758,11 @@ QUnit.test('adds 1 default audio track if in flash mode', function() {
 
   // master
   standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
 
   QUnit.equal(this.player.audioTracks().length, 1, 'one audio track after load');
-  QUnit.ok(this.player.audioTracks()[0] instanceof HlsAudioTrack, 'audio track is an hls audio track');
+  QUnit.equal(this.player.audioTracks()[0].label, 'default', 'set the label');
 
   videojs.options.hls = hlsOptions;
 });
@@ -1773,64 +1779,22 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
 
   // master
   standardXHRResponse(this.requests.shift());
-  let hls = this.player.tech_.hls;
-  let hlsAudioTracks = hls.masterPlaylistController_.audioTracks_;
+  // media
+  standardXHRResponse(this.requests.shift());
   let vjsAudioTracks = this.player.audioTracks();
 
-  QUnit.equal(hlsAudioTracks.length, 3, '3 active hls tracks');
   QUnit.equal(vjsAudioTracks.length, 3, '3 active vjs tracks');
 
   QUnit.equal(vjsAudioTracks[0].enabled, true, 'default track is enabled');
-  QUnit.equal(hlsAudioTracks[0].enabled, true, 'default track is enabled');
 
   vjsAudioTracks[1].enabled = true;
-  QUnit.equal(hlsAudioTracks[1].enabled, true, 'new track is enabled on hls');
   QUnit.equal(vjsAudioTracks[1].enabled, true, 'new track is enabled on vjs');
-
   QUnit.equal(vjsAudioTracks[0].enabled, false, 'main track is disabled');
-  QUnit.equal(hlsAudioTracks[0].enabled, false, 'main track is disabled');
-
-  hlsAudioTracks[2].enabled = true;
-  QUnit.equal(hlsAudioTracks[2].enabled, true, 'new track is enabled on hls');
-  QUnit.equal(vjsAudioTracks[2].enabled, true, 'new track is enabled on vjs');
-
-  QUnit.equal(vjsAudioTracks[1].enabled, false, 'main track is disabled');
-  QUnit.equal(hlsAudioTracks[1].enabled, false, 'main track is disabled');
-
-  // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
-QUnit.test('audio info from audioinfo event is stored on hls', function() {
-  // force non-firefox as firefox has specific behavior
-  let oldIsFirefox = videojs.browser.IS_FIREFOX;
-
-  videojs.browser.IS_FIREFOX = false;
-
-  this.player.src({
-    src: 'manifest/multipleAudioGroups.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  let hls = this.player.tech_.hls;
-  let mpc = hls.masterPlaylistController_;
-  let info = {foo: 'bar'};
-
-  QUnit.ok(!hls.audioInfo_, 'hls has no audioInfo_');
-
-  mpc.trigger({type: 'audioinfo', info});
-  QUnit.equal(hls.audioInfo_, info, 'hls has the info from the event');
-
-  info = {bar: 'foo'};
-  mpc.trigger({type: 'audioinfo', info});
-  QUnit.equal(hls.audioInfo_, info, 'hls has the new info from the event');
-
-  videojs.browser.IS_FIREFOX = oldIsFirefox;
-});
-
-QUnit.test('audioinfo changes with three tracks, enabled track is blacklisted and removed', function() {
-  let oldIsFirefox = videojs.browser.IS_FIREFOX;
-  let at = this.player.audioTracks();
+QUnit.test('when audioinfo changes on an independent audio track in Firefox, the enabled track is blacklisted and removed', function() {
+  let audioTracks = this.player.audioTracks();
+  let oldLabel;
 
   videojs.browser.IS_FIREFOX = true;
   this.player.src({
@@ -1840,54 +1804,34 @@ QUnit.test('audioinfo changes with three tracks, enabled track is blacklisted an
   let hls = this.player.tech_.hls;
   let mpc = hls.masterPlaylistController_;
 
-  QUnit.equal(at.length, 0, 'zero audio tracks at load time');
-  QUnit.ok(!hls.audioInfo_, 'no audio info on hls');
   openMediaSource(this.player, this.clock);
-  standardXHRResponse(this.requests.shift());
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(at.length, 3, 'three audio track after load');
-  QUnit.ok(!hls.audioInfo_, 'no audio info on hls');
 
-  let defaultTrack;
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+  QUnit.equal(audioTracks.length, 3, 'three audio track after load');
 
-  mpc.audioTracks_.forEach((t) => {
-    if (!defaultTrack && t.default) {
-      defaultTrack = t;
-    }
+  let defaultTrack = mpc.activeAudioGroup().find((track) => {
+    return track.properties_.default;
   });
 
-  let blacklistPlaylistCalls = 0;
-  let info = {foo: 'bar'};
-
-  // noop as there is no real playlist
-  mpc.useAudio = () => {};
-
   // initial audio info
-  mpc.trigger({type: 'audioinfo', info});
-  QUnit.equal(hls.audioInfo_, info, 'hls has the info from the event');
+  hls.mediaSource.trigger({ type: 'audioinfo', info: { foo: 'bar' }});
+  oldLabel = audioTracks[1].label;
 
   // simulate audio info change and mock things
-  let oldLabel = at[1].label;
+  audioTracks[1].enabled = true;
+  hls.mediaSource.trigger({ type: 'audioinfo', info: { bar: 'foo' }});
 
-  at[1].enabled = true;
-  mpc.blacklistCurrentPlaylist = () => blacklistPlaylistCalls++;
-  mpc.trigger({type: 'audioinfo', info: {bar: 'foo'}});
-
-  QUnit.equal(hls.audioInfo_, info, 'hls did not store the changed audio info');
-  QUnit.equal(at.length, 2, 'two audio tracks after bad audioinfo change');
-  QUnit.notEqual(at[1].label, oldLabel, 'audio track at index 1 is not the same');
+  QUnit.equal(audioTracks.length, 2, 'two audio tracks after bad audioinfo change');
+  QUnit.notEqual(audioTracks[1].label, oldLabel, 'audio track at index 1 is not the same');
   QUnit.equal(defaultTrack.enabled, true, 'default track is enabled again');
-  QUnit.equal(blacklistPlaylistCalls, 0, 'blacklist was not called on playlist');
   QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
-  videojs.browser.IS_FIREFOX = oldIsFirefox;
-
-  // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
 QUnit.test('audioinfo changes with one track, blacklist playlist', function() {
-  let oldIsFirefox = videojs.browser.IS_FIREFOX;
-  let at = this.player.audioTracks();
+  let audioTracks = this.player.audioTracks();
 
   videojs.browser.IS_FIREFOX = true;
   this.player.src({
@@ -1895,35 +1839,28 @@ QUnit.test('audioinfo changes with one track, blacklist playlist', function() {
     type: 'application/vnd.apple.mpegurl'
   });
 
-  QUnit.equal(at.length, 0, 'zero audio tracks at load time');
+  QUnit.equal(audioTracks.length, 0, 'zero audio tracks at load time');
   openMediaSource(this.player, this.clock);
   standardXHRResponse(this.requests.shift());
   standardXHRResponse(this.requests.shift());
-  QUnit.equal(at.length, 1, 'one audio track after load');
+  QUnit.equal(audioTracks.length, 1, 'one audio track after load');
 
   let mpc = this.player.tech_.hls.masterPlaylistController_;
-  let blacklistPlaylistCalls = 0;
+  let oldMedia = mpc.media();
 
-  mpc.blacklistCurrentPlaylist = () => blacklistPlaylistCalls++;
-  // noop as there is no real playlist
-  mpc.useAudio = () => {};
-  mpc.trigger({type: 'audioinfo', info: {foo: 'bar'}});
+  // initial audio info
+  mpc.mediaSource.trigger({type: 'audioinfo', info: { foo: 'bar' }});
 
   // simulate audio info change in main track
-  mpc.trigger({type: 'audioinfo', info: {bar: 'foo'}});
+  mpc.mediaSource.trigger({type: 'audioinfo', info: { bar: 'foo' }});
 
-  QUnit.equal(at.length, 1, 'still have one audio track');
-  QUnit.equal(blacklistPlaylistCalls, 1, 'blacklist was called on playlist');
-  QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
-  videojs.browser.IS_FIREFOX = oldIsFirefox;
-
-  // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
+  QUnit.equal(audioTracks.length, 1, 'still have one audio track');
+  QUnit.ok(oldMedia.excludeUntil > 0, 'blacklisted old playlist');
+  QUnit.equal(this.env.log.warn.calls, 2, 'firefox issue warning logged');
 });
 
-QUnit.test('audioinfo changes with three tracks, default is enabled, blacklisted playlist', function() {
-  let oldIsFirefox = videojs.browser.IS_FIREFOX;
-  let at = this.player.audioTracks();
+QUnit.test('changing audioinfo for muxed audio blacklists the current playlist in Firefox', function() {
+  let audioTracks = this.player.audioTracks();
 
   videojs.browser.IS_FIREFOX = true;
   this.player.src({
@@ -1931,45 +1868,48 @@ QUnit.test('audioinfo changes with three tracks, default is enabled, blacklisted
     type: 'application/vnd.apple.mpegurl'
   });
 
-  QUnit.equal(at.length, 0, 'zero audio tracks at load time');
+  QUnit.equal(audioTracks.length, 0, 'zero audio tracks at load time');
   openMediaSource(this.player, this.clock);
-  standardXHRResponse(this.requests.shift());
-  standardXHRResponse(this.requests.shift());
-  QUnit.equal(at.length, 3, 'three audio track after load');
-
   let hls = this.player.tech_.hls;
   let mpc = hls.masterPlaylistController_;
 
+  // master
+  standardXHRResponse(this.requests.shift());
+  // video media
+  standardXHRResponse(this.requests.shift());
+  // video segments
+  standardXHRResponse(this.requests.shift());
+  standardXHRResponse(this.requests.shift());
+  // audio media
+  standardXHRResponse(this.requests.shift());
+  // ignore audio requests
+  this.requests.length = 0;
+  QUnit.equal(audioTracks.length, 3, 'three audio track after load');
+
   // force audio group with combined audio to enabled
-  mpc.activeAudioGroup = () => 'audio-lo';
-  let defaultTrack;
+  mpc.masterPlaylistLoader_.media(mpc.master().playlists[0]);
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXTINF:10,\n' +
+                                '0.ts\n' +
+                                '#EXT-X-ENDLIST\n');
 
-  mpc.audioTracks_.forEach((t) => {
-    if (!defaultTrack && t.default) {
-      defaultTrack = t;
-    }
+  let defaultTrack = mpc.activeAudioGroup().find((track) => {
+    return track.properties_.default;
   });
-
-  let blacklistPlaylistCalls = 0;
-
-  // noop as there is no real playlist
-  mpc.useAudio = () => {};
+  let oldPlaylist = mpc.media();
 
   // initial audio info
-  mpc.trigger({type: 'audioinfo', info: {foo: 'bar'}});
+  mpc.mediaSource.trigger({type: 'audioinfo', info: { foo: 'bar' }});
 
-  // simulate audio info change and mock things
-  mpc.blacklistCurrentPlaylist = () => blacklistPlaylistCalls++;
-  mpc.trigger({type: 'audioinfo', info: {bar: 'foo'}});
+  // simulate audio info change
+  mpc.mediaSource.trigger({type: 'audioinfo', info: { bar: 'foo' }});
 
-  QUnit.equal(at.length, 3, 'three audio tracks after bad audioinfo change');
+  audioTracks = this.player.audioTracks();
+  QUnit.equal(audioTracks.length, 3, 'three audio tracks after bad audioinfo change');
   QUnit.equal(defaultTrack.enabled, true, 'default audio still enabled');
-  QUnit.equal(blacklistPlaylistCalls, 1, 'blacklist was called on playlist');
-  QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
-  videojs.browser.IS_FIREFOX = oldIsFirefox;
-
-  // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
+  QUnit.ok(oldPlaylist.excludeUntil > 0, 'blacklisted the old playlist');
+  QUnit.equal(this.env.log.warn.calls, 2, 'firefox issue warning logged');
 });
 
 QUnit.test('cleans up the buffer when loading live segments', function() {
@@ -2125,75 +2065,57 @@ QUnit.test('when mediaGroup changes enabled track should not change', function()
     src: 'manifest/multipleAudioGroups.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-
-  QUnit.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
   openMediaSource(this.player, this.clock);
 
   // master
   standardXHRResponse(this.requests.shift());
+  // video media
   standardXHRResponse(this.requests.shift());
   let hls = this.player.tech_.hls;
+  let mpc = hls.masterPlaylistController_;
   let audioTracks = this.player.audioTracks();
 
   QUnit.equal(audioTracks.length, 3, 'three audio tracks after load');
-  let trackOne = audioTracks[0];
-  let trackTwo = audioTracks[1];
-  let trackThree = audioTracks[2];
-
-  QUnit.equal(trackOne.enabled, true, 'track one enabled after load');
+  QUnit.equal(audioTracks[0].enabled, true, 'track one enabled after load');
 
   let oldMediaGroup = hls.playlists.media().attributes.AUDIO;
 
+  // clear out any outstanding requests
+  this.requests.length = 0;
   // force mpc to select a playlist from a new media group
-  hls.selectPlaylist = () => {
-    let playlist;
+  mpc.masterPlaylistLoader_.media(mpc.master().playlists[0]);
+  // video media
+  standardXHRResponse(this.requests.shift());
 
-    hls.playlists.master.playlists.forEach((p) => {
-      if (!playlist && p.attributes.AUDIO !== oldMediaGroup) {
-        playlist = p;
-      }
-    });
-    return playlist;
-  };
-
-  // select a new mediaGroup
-  hls.masterPlaylistController_.blacklistCurrentPlaylist();
-  while (this.requests.length > 0) {
-    standardXHRResponse(this.requests.shift());
-  }
   QUnit.notEqual(oldMediaGroup, hls.playlists.media().attributes.AUDIO, 'selected a new playlist');
-  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
+  audioTracks = this.player.audioTracks();
 
-  QUnit.equal(audioTracks.length, 3, 'three audio tracks after mediaGroup Change');
-  QUnit.equal(audioTracks[0], trackOne, 'track one did not change');
-  QUnit.equal(audioTracks[1], trackTwo, 'track two did not change');
-  QUnit.equal(audioTracks[2], trackThree, 'track three did not change');
+  QUnit.equal(audioTracks.length, 3, 'three audio tracks after changing mediaGroup');
+  QUnit.ok(audioTracks[0].properties_.default, 'track one should be the default');
+  QUnit.ok(audioTracks[0].enabled, 'enabled the default track');
+  QUnit.notOk(audioTracks[1].enabled, 'disabled track two');
+  QUnit.notOk(audioTracks[2].enabled, 'disabled track three');
 
-  trackTwo.enabled = true;
-  QUnit.equal(trackOne.enabled, false, 'track 1 - now disabled');
-  QUnit.equal(trackTwo.enabled, true, 'track 2 - now enabled');
-  QUnit.equal(trackThree.enabled, false, 'track 3 - disabled');
+  audioTracks[1].enabled = true;
+  QUnit.notOk(audioTracks[0].enabled, 'disabled track one');
+  QUnit.ok(audioTracks[1].enabled, 'enabled track two');
+  QUnit.notOk(audioTracks[2].enabled, 'disabled track three');
 
   oldMediaGroup = hls.playlists.media().attributes.AUDIO;
-  // select a new mediaGroup
-  hls.masterPlaylistController_.blacklistCurrentPlaylist();
-  while (this.requests.length > 0) {
-    standardXHRResponse(this.requests.shift());
-  }
+  // clear out any outstanding requests
+  this.requests.length = 0;
+  // swap back to the old media group
+  // this playlist is already loaded so no new requests are made
+  mpc.masterPlaylistLoader_.media(mpc.master().playlists[3]);
+
   QUnit.notEqual(oldMediaGroup, hls.playlists.media().attributes.AUDIO, 'selected a new playlist');
-  QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
+  audioTracks = this.player.audioTracks();
 
-  QUnit.equal(audioTracks.length, 3, 'three audio tracks after mediaGroup Change');
-  QUnit.equal(audioTracks[0], trackOne, 'track one did not change');
-  QUnit.equal(audioTracks[1], trackTwo, 'track two did not change');
-  QUnit.equal(audioTracks[2], trackThree, 'track three did not change');
-
-  QUnit.equal(trackOne.enabled, false, 'track 1 - still disabled');
-  QUnit.equal(trackTwo.enabled, true, 'track 2 - still enabled');
-  QUnit.equal(trackThree.enabled, false, 'track 3 - disabled');
-
-  // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
+  QUnit.equal(audioTracks.length, 3, 'three audio tracks after reverting mediaGroup');
+  QUnit.ok(audioTracks[0].properties_.default, 'track one should be the default');
+  QUnit.notOk(audioTracks[0].enabled, 'the default track is still disabled');
+  QUnit.ok(audioTracks[1].enabled, 'track two is still enabled');
+  QUnit.notOk(audioTracks[2].enabled, 'track three is still disabled');
 });
 
 QUnit.test('Allows specifying the beforeRequest function on the player', function() {
