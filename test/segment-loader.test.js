@@ -66,8 +66,7 @@ QUnit.test('fails without required initialization options', function() {
 QUnit.test('load waits until a playlist and mime type are specified to proceed',
 function() {
   loader.load();
-  QUnit.equal(loader.state, 'INIT', 'waiting in init');
-  QUnit.equal(loader.paused(), false, 'not paused');
+  QUnit.equal(loader.state, 'PRELOAD', 'waiting in init ready to preload');
 
   loader.playlist(playlistWithDuration(10));
   QUnit.equal(this.requests.length, 0, 'have not made a request yet');
@@ -81,14 +80,12 @@ QUnit.test('calling mime type and load begins buffering', function() {
   QUnit.equal(loader.state, 'INIT', 'starts in the init state');
   loader.playlist(playlistWithDuration(10));
   QUnit.equal(loader.state, 'INIT', 'starts in the init state');
-  QUnit.ok(loader.paused(), 'starts paused');
 
   loader.mimeType(this.mimeType);
   QUnit.equal(loader.state, 'INIT', 'still in the init state');
   loader.load();
 
   QUnit.equal(loader.state, 'WAITING', 'moves to the ready state');
-  QUnit.ok(!loader.paused(), 'loading is not paused');
   QUnit.equal(this.requests.length, 1, 'requested a segment');
 });
 
@@ -126,24 +123,23 @@ QUnit.test('calling load should unpause', function() {
   sourceBuffer = mediaSource.sourceBuffers[0];
 
   loader.load();
-  QUnit.equal(loader.paused(), false, 'loading unpauses');
+  QUnit.equal(loader.state, 'WAITING', 'loading unpauses');
 
   loader.pause();
   this.clock.tick(1);
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
 
-  QUnit.equal(loader.paused(), true, 'stayed paused');
+  QUnit.equal(loader.state, 'PAUSING', 'stayed paused');
   loader.load();
-  QUnit.equal(loader.paused(), false, 'unpaused during processing');
+  QUnit.equal(loader.state, 'WAITING', 'unpaused during processing');
 
   loader.pause();
   sourceBuffer.trigger('updateend');
-  QUnit.equal(loader.state, 'READY', 'finished processing');
-  QUnit.ok(loader.paused(), 'stayed paused');
+  QUnit.equal(loader.state, 'PAUSED', 'finished processing and transitioned to paused');
 
   loader.load();
-  QUnit.equal(loader.paused(), false, 'unpaused');
+  QUnit.equal(loader.state, 'WAITING', 'unpaused');
 
   // verify stats
   QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
@@ -572,8 +568,7 @@ QUnit.test('segment 404s should trigger an error', function() {
   QUnit.equal(errors.length, 1, 'triggered an error');
   QUnit.equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
   QUnit.ok(loader.error().xhr, 'included the request object');
-  QUnit.ok(loader.paused(), 'paused the loader');
-  QUnit.equal(loader.state, 'READY', 'returned to the ready state');
+  QUnit.ok(loader.state === 'PAUSED', 'paused the loader');
 });
 
 QUnit.test('segment 5xx status codes trigger an error', function() {
@@ -590,8 +585,7 @@ QUnit.test('segment 5xx status codes trigger an error', function() {
   QUnit.equal(errors.length, 1, 'triggered an error');
   QUnit.equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
   QUnit.ok(loader.error().xhr, 'included the request object');
-  QUnit.ok(loader.paused(), 'paused the loader');
-  QUnit.equal(loader.state, 'READY', 'returned to the ready state');
+  QUnit.equal(loader.state, 'PAUSED', 'paused the loader');
 });
 
 QUnit.test('fires ended at the end of a playlist', function() {
@@ -677,12 +671,10 @@ QUnit.test('calling load with an encrypted segment requests key and segment', fu
   QUnit.equal(loader.state, 'INIT', 'starts in the init state');
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   QUnit.equal(loader.state, 'INIT', 'starts in the init state');
-  QUnit.ok(loader.paused(), 'starts paused');
 
   loader.mimeType(this.mimeType);
   loader.load();
   QUnit.equal(loader.state, 'WAITING', 'moves to the ready state');
-  QUnit.ok(!loader.paused(), 'loading is not paused');
   QUnit.equal(this.requests.length, 2, 'requested a segment and key');
   QUnit.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
   QUnit.equal(this.requests[1].url, '0.ts', 'requested the first segment');
@@ -732,8 +724,7 @@ QUnit.test('key 404s should trigger an error', function() {
   QUnit.equal(loader.error().message, 'HLS key request error at URL: 0-key.php',
         'receieved a key error message');
   QUnit.ok(loader.error().xhr, 'included the request object');
-  QUnit.ok(loader.paused(), 'paused the loader');
-  QUnit.equal(loader.state, 'READY', 'returned to the ready state');
+  QUnit.equal(loader.state, 'PAUSED', 'paused the loader');
 });
 
 QUnit.test('key 5xx status codes trigger an error', function() {
@@ -752,8 +743,7 @@ QUnit.test('key 5xx status codes trigger an error', function() {
   QUnit.equal(loader.error().message, 'HLS key request error at URL: 0-key.php',
         'receieved a key error message');
   QUnit.ok(loader.error().xhr, 'included the request object');
-  QUnit.ok(loader.paused(), 'paused the loader');
-  QUnit.equal(loader.state, 'READY', 'returned to the ready state');
+  QUnit.equal(loader.state, 'PAUSED', 'paused the loader');
 });
 
 QUnit.test('the key is saved to the segment in the correct format', function() {

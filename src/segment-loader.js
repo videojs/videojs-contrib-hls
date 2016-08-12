@@ -187,10 +187,11 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    if (this.state === 'WAITING') {
+    if (this.state === 'PRELOAD') {
+      this.state = 'INIT';
+    } else if (this.state === 'WAITING') {
       this.state = 'READY';
-    }
-    if (this.state === 'PAUSING') {
+    } else if (this.state === 'PAUSING') {
       this.state = 'PAUSED';
     }
 
@@ -256,7 +257,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // buffering now
     if (this.sourceUpdater_ &&
         media &&
-        this.state === 'INIT') {
+        this.state === 'PRELOAD') {
       this.state = 'READY';
       return this.fillBuffer_();
     }
@@ -274,19 +275,21 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       this.checkBufferTimeout_ = null;
     }
-    if (this.state === 'READY') {
-      this.state === 'PAUSED';
-    }
-    if (this.state === 'WAITING') {
-      this.state === 'PAUSING';
+    if (this.state === 'PRELOAD') {
+      this.state = 'INIT';
+    } else if (this.state === 'READY') {
+      this.state = 'PAUSED';
+    } else if (this.state === 'WAITING') {
+      this.state = 'PAUSING';
     }
   }
 
   resume() {
-    if (this.state === 'PAUSED') {
+    if (this.state === 'INIT') {
+      this.state = 'PRELOAD';
+    } else if (this.state === 'PAUSED') {
       this.state = 'READY';
-    }
-    if (this.state === 'PAUSING') {
+    } else if (this.state === 'PAUSING') {
       this.state = 'WAITING';
     }
 
@@ -317,7 +320,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       // if we were unpaused but waiting for a sourceUpdater, start
       // buffering now
       if (this.playlist_ &&
-          this.state === 'INIT') {
+          this.state === 'PRELOAD') {
         this.state = 'READY';
         return this.fillBuffer_();
       }
@@ -764,6 +767,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     segmentInfo = this.pendingSegment_;
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
+    // this.state = 'DECRYPTING';
+
     if (segment.key) {
       // this is an encrypted segment
       // incrementally decrypt the segment
@@ -789,6 +794,8 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   handleSegment_() {
     let segmentInfo;
+
+    // this.state = 'APPENDING';
 
     segmentInfo = this.pendingSegment_;
     segmentInfo.buffered = this.sourceUpdater_.buffered();
