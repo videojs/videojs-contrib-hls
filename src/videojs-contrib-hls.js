@@ -17,33 +17,6 @@ import MasterPlaylistController from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
 
-/**
- * determine if an object a is differnt from
- * and object b. both only having one dimensional
- * properties
- *
- * @param {Object} a object one
- * @param {Object} b object two
- * @return {Boolean} if the object has changed or not
- */
-const objectChanged = function(a, b) {
-  if (typeof a !== typeof b) {
-    return true;
-  }
-  // if we have a different number of elements
-  // something has changed
-  if (Object.keys(a).length !== Object.keys(b).length) {
-    return true;
-  }
-
-  for (let prop in a) {
-    if (!b[prop] || a[prop] !== b[prop]) {
-      return true;
-    }
-  }
-  return false;
-};
-
 const Hls = {
   PlaylistLoader,
   Playlist,
@@ -426,60 +399,17 @@ class HlsHandler extends Component {
       this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
     });
 
-    this.masterPlaylistController_.on('audioinfo', (e) => {
-      if (!videojs.browser.IS_FIREFOX ||
-          !this.audioInfo_ ||
-          !objectChanged(this.audioInfo_, e.info)) {
-        this.audioInfo_ = e.info;
-        return;
-      }
-
-      let error = 'had different audio properties (channels, sample rate, etc.) ' +
-                  'or changed in some other way.  This behavior is currently ' +
-                  'unsupported in Firefox due to an issue: \n\n' +
-                  'https://bugzilla.mozilla.org/show_bug.cgi?id=1247138\n\n';
-
-      let enabledTrack;
-      let defaultTrack;
-
-      this.masterPlaylistController_.audioTracks_.forEach((t) => {
-        if (!defaultTrack && t.default) {
-          defaultTrack = t;
-        }
-
-        if (!enabledTrack && t.enabled) {
-          enabledTrack = t;
-        }
-      });
-
-      // they did not switch audiotracks
-      // blacklist the current playlist
-      if (!enabledTrack.getLoader(this.activeAudioGroup_())) {
-        error = `The rendition that we tried to switch to ${error}` +
-                'Unfortunately that means we will have to blacklist ' +
-                'the current playlist and switch to another. Sorry!';
-        this.masterPlaylistController_.blacklistCurrentPlaylist();
-      } else {
-        error = `The audio track '${enabledTrack.label}' that we tried to ` +
-                `switch to ${error} Unfortunately this means we will have to ` +
-                `return you to the main track '${defaultTrack.label}'. Sorry!`;
-        defaultTrack.enabled = true;
-        this.tech_.audioTracks().removeTrack(enabledTrack);
-      }
-
-      videojs.log.warn(error);
-      this.masterPlaylistController_.setupAudio();
+    this.masterPlaylistController_.on('selectedinitialmedia', () => {
+      // Add the manual rendition mix-in to HlsHandler
+      renditionSelectionMixin(this);
     });
 
-    this.masterPlaylistController_.on('selectedinitialmedia', () => {
+    this.masterPlaylistController_.on('audioupdate', () => {
       // clear current audioTracks
       this.tech_.clearTracks('audio');
       this.masterPlaylistController_.activeAudioGroup().forEach((audioTrack) => {
         this.tech_.audioTracks().addTrack(audioTrack);
       });
-
-      // Add the manual rendition mix-in to HlsHandler
-      renditionSelectionMixin(this);
     });
 
     // the bandwidth of the primary segment loader is our best

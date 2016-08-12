@@ -471,6 +471,12 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       // loaded a media playlist
       // infer a master playlist if none was previously requested
       loader.master = {
+        mediaGroups: {
+          'AUDIO': {},
+          'VIDEO': {},
+          'CLOSED-CAPTIONS': {},
+          'SUBTITLES': {}
+        },
         uri: window.location.href,
         playlists: [{
           uri: srcUrl

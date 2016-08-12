@@ -236,6 +236,18 @@ QUnit.test('segment request timeouts reset bandwidth', function() {
   QUnit.ok(isNaN(loader.roundTrip), 'reset round trip time');
 });
 
+QUnit.test('updates timestamps when segments do not start at zero', function() {
+  loader.playlist(playlistWithDuration(10));
+  loader.mimeType('video/mp4');
+  loader.load();
+
+  this.clock.tick(100);
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200,null, '');
+
+  QUnit.equal(loader.sourceUpdater_.timestampOffset, 10, 'set timestampOffset');
+});
+
 QUnit.test('appending a segment triggers progress', function() {
   let progresses = 0;
 

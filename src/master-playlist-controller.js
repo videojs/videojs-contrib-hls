@@ -5,11 +5,37 @@ import PlaylistLoader from './playlist-loader';
 import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
-import HlsAudioTrack from './hls-audio-track';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
 let Hls;
+
+/**
+ * determine if an object a is differnt from
+ * and object b. both only having one dimensional
+ * properties
+ *
+ * @param {Object} a object one
+ * @param {Object} b object two
+ * @return {Boolean} if the object has changed or not
+ */
+const objectChanged = function(a, b) {
+  if (typeof a !== typeof b) {
+    return true;
+  }
+  // if we have a different number of elements
+  // something has changed
+  if (Object.keys(a).length !== Object.keys(b).length) {
+    return true;
+  }
+
+  for (let prop in a) {
+    if (!b[prop] || a[prop] !== b[prop]) {
+      return true;
+    }
+  }
+  return false;
+};
 
 const parseCodecs = function(codecs) {
   let result = {
@@ -31,7 +57,8 @@ const parseCodecs = function(codecs) {
   }
 
   // parse the last field of the audio codec
-  result.audioProfile = (/(^|\s|,)+mp4a.\d+\.(\d+)/i).exec(codecs);
+  result.audioProfile =
+    (/(^|\s|,)+mp4a.[0-9A-Fa-f]+\.([0-9A-Fa-f]+)/i).exec(codecs);
   result.audioProfile = result.audioProfile && result.audioProfile[2];
 
   return result;
@@ -56,8 +83,8 @@ const mimeTypesForPlaylist = function(master, media) {
     videoCodec: 'avc1.4d400d',
     audioProfile: '2'
   };
+  let audioGroup = [];
   let mediaAttributes;
-  let audioGroup;
 
   if (!media) {
     // not enough information, return an error
@@ -67,7 +94,9 @@ const mimeTypesForPlaylist = function(master, media) {
   // playlist or is using the mp4 container. We don't currently
   // support iframe playlists, so assume this is signalling mp4
   // fragments.
-  if (media.segments.length && media.segments[0].map) {
+  // the existence check for segments can be removed once
+  // https://github.com/videojs/m3u8-parser/issues/8 is closed
+  if (media.segments && media.segments.length && media.segments[0].map) {
     container = 'mp4';
   }
 
@@ -78,7 +107,9 @@ const mimeTypesForPlaylist = function(master, media) {
     codecs = parseCodecs(mediaAttributes.CODECS);
   }
 
-  audioGroup = master.mediaGroups.AUDIO[mediaAttributes.AUDIO];
+  if (master.mediaGroups.AUDIO) {
+    audioGroup = master.mediaGroups.AUDIO[mediaAttributes.AUDIO];
+  }
   for (let groupId in audioGroup) {
     if (audioGroup[groupId].uri !== undefined) {
       // separate SourceBuffers for video and audio
@@ -92,7 +123,8 @@ const mimeTypesForPlaylist = function(master, media) {
 
   // single SourceBuffer with muxed video and audio
   return [
-    'video/' + container + '; codecs="' + codecs.videoCodec +
+    'video/' + container + '; codecs="' +
+      codecs.videoCodec + codecs.videoObjectTypeIndicator +
       ', mp4a.40.' + codecs.audioProfile + '"'
   ];
 };
@@ -132,7 +164,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.audioGroups_ = {};
 
     this.mediaSource = new videojs.MediaSource({ mode });
-    this.mediaSource.on('audioinfo', (e) => this.trigger(e));
+    this.audioinfo_ = null;
+    this.mediaSource.on('audioinfo', this.handleAudioinfoUpdate_.bind(this));
+
     // load the media source into the player
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
 
@@ -183,7 +217,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
       this.setupSourceBuffers_();
       this.setupFirstPlay();
+
+      this.fillAudioTracks_();
       this.setupAudio();
+      this.trigger('audioupdate');
 
       this.trigger('selectedinitialmedia');
     });
@@ -196,7 +233,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         // select the initial variant
         this.initialMedia_ = this.selectPlaylist();
         this.masterPlaylistLoader_.media(this.initialMedia_);
-        this.fillAudioTracks_();
         return;
       }
 
@@ -225,6 +261,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('mediachange', () => {
       let media = this.masterPlaylistLoader_.media();
+      let activeAudioGroup;
+      let activeTrack;
 
       this.mainSegmentLoader_.abort();
 
@@ -235,6 +273,15 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.mainSegmentLoader_.playlist(media);
       this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
       this.mainSegmentLoader_.load();
+
+      // if the audio group has changed, a new audio track has to be
+      // enabled
+      activeAudioGroup = this.activeAudioGroup();
+      activeTrack = activeAudioGroup.find((track) => track.enabled);
+      if (!activeTrack) {
+        this.setupAudio();
+        this.trigger('audioupdate');
+      }
 
       this.tech_.trigger({
         type: 'mediachange',
@@ -269,6 +316,45 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.audioPlaylistLoader_ = null;
       this.setupAudio();
     });
+  }
+
+  handleAudioinfoUpdate_(event) {
+    if (!videojs.browser.IS_FIREFOX ||
+        !this.audioInfo_ ||
+        !objectChanged(this.audioInfo_, event.info)) {
+      this.audioInfo_ = event.info;
+      return;
+    }
+
+    let error = 'had different audio properties (channels, sample rate, etc.) ' +
+        'or changed in some other way.  This behavior is currently ' +
+        'unsupported in Firefox due to an issue: \n\n' +
+        'https://bugzilla.mozilla.org/show_bug.cgi?id=1247138\n\n';
+
+    let enabledIndex = this.activeAudioGroup().findIndex((track) => track.enabled);
+    let enabledTrack = this.activeAudioGroup()[enabledIndex];
+    let defaultTrack = this.activeAudioGroup().find((track) => {
+      return track.properties_ && track.properties_.default;
+    });
+
+    // they did not switch audiotracks
+    // blacklist the current playlist
+    if (!this.audioPlaylistLoader_) {
+      error = `The rendition that we tried to switch to ${error}` +
+        'Unfortunately that means we will have to blacklist ' +
+        'the current playlist and switch to another. Sorry!';
+      this.blacklistCurrentPlaylist();
+    } else {
+      error = `The audio track '${enabledTrack.label}' that we tried to ` +
+        `switch to ${error} Unfortunately this means we will have to ` +
+        `return you to the main track '${defaultTrack.label}'. Sorry!`;
+      defaultTrack.enabled = true;
+      this.activeAudioGroup().splice(enabledIndex, 1);
+      this.trigger('audioupdate');
+    }
+
+    videojs.log.warn(error);
+    this.setupAudio();
   }
 
   /**
@@ -363,7 +449,13 @@ export default class MasterPlaylistController extends videojs.EventTarget {
    */
   activeAudioGroup() {
     let videoPlaylist = this.masterPlaylistLoader_.media();
-    return this.audioGroups_[videoPlaylist.attributes.AUDIO || 'main'];
+    let result;
+
+    if (videoPlaylist.attributes && videoPlaylist.attributes.AUDIO) {
+      result = this.audioGroups_[videoPlaylist.attributes.AUDIO];
+    }
+
+    return result || this.audioGroups_.main;
   }
 
   /**
@@ -378,24 +470,31 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     // rendition
     let audioGroup = this.activeAudioGroup();
     let track = audioGroup.find((audioTrack) => {
-      return audioTrack.properties_.default
-    }) || audioTrack[0];
+      return audioTrack.enabled;
+    });
 
-    track.enabled = true;
+    if (!track) {
+      track = audioGroup.find((audioTrack) => {
+        return audioTrack.properties_.default;
+      }) || audioGroup[0];
+      track.enabled = true;
+    }
 
-    // stop downloading segments for the old track
+    // stop playlist and segment loading for audio
+    if (this.audioPlaylistLoader_) {
+      this.audioPlaylistLoader_.dispose();
+      this.audioPlaylistLoader_ = null;
+    }
     this.audioSegmentLoader_.pause();
 
     if (!track.properties_.resolvedUri) {
-      // audio is muxed in, no need for a separate playlist and segment loader
+      // this audio track is muxed in so separate loaders are not
+      // required
       return;
     }
 
     // startup playlist and segment loaders for the enabled audio
     // track
-    if (this.audioPlaylistLoader_) {
-      this.audioPlaylistLoader_.dispose();
-    }
     this.audioPlaylistLoader_ = new PlaylistLoader(track.properties_.resolvedUri,
                                                    this.hls_,
                                                    this.withCredentials);
@@ -739,10 +838,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.dispose();
     this.mainSegmentLoader_.dispose();
 
-    this.audioGroups_.length = 0;
-    if (this.audioPlaylistLoader_) {
-      this.audioPlaylistLoader_.dispose();
-    }
     this.audioSegmentLoader_.dispose();
   }
 

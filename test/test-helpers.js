@@ -116,7 +116,13 @@ let fakeEnvironment = {
     this.xhr.restore();
     ['warn', 'error'].forEach((level) => {
       if (this.log && this.log[level] && this.log[level].restore) {
-        QUnit.equal(this.log[level].callCount, 0, `no unexpected logs on ${level}`);
+        let calls = this.log[level].args.map((args) => {
+          return args.join(', ');
+        }).join('\n  ');
+
+        QUnit.equal(this.log[level].callCount,
+                    0,
+                    'no unexpected logs at level "' + level + '":\n  ' + calls);
         this.log[level].restore();
       }
     });
