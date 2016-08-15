@@ -501,7 +501,7 @@ QUnit.test('abort does not cancel segment processing in progress', function() {
   this.requests.shift().respond(200, null, '');
 
   loader.abort();
-  QUnit.equal(loader.state, 'APPENDING', 'still appending');
+  QUnit.equal(loader.state, 'READY', 'loader aborted, ready for next segment');
 
   // verify stats
   QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
@@ -867,7 +867,7 @@ QUnit.test('calling load with an encrypted segment waits for both key and segmen
   keyRequest = this.requests.shift();
   keyRequest.response = new Uint32Array([0, 0, 0, 0]).buffer;
   keyRequest.respond(200, null, '');
-  QUnit.equal(loader.state, 'DECRYPTING', 'moves to decrypting state');
+  QUnit.equal(loader.state, 'WAITING', 'moves to decrypting state');
 
   // verify stats
   QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
