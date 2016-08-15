@@ -218,11 +218,8 @@ for more info.
 * can be used as an initialization option
 
 When the `useCueTags` property is set to `true,` a text track is created with
-label 'hls-segment-metadata' and kind 'metadata'. The track is then added to
-`player.textTracks()`. Whenever a segment associated with a cue tag is playing,
-the cue tags will be listed as a properties inside of a stringified JSON object
-under its active cue's `text` property. The properties that are currently
-supported are cueOut, cueOutCont, and cueIn. Changes in active cue may be
+label 'ad-cues' and kind 'metadata'. The track is then added to
+`player.textTracks()`. Changes in active cue may be
 tracked by following the Video.js cue points API for text tracks. For example:
 
 ```javascript
@@ -230,7 +227,7 @@ let textTracks = player.textTracks();
 let cuesTrack;
 
 for (let i = 0; i < textTracks.length; i++) {
-  if (textTracks[i].label === 'hls-segment-metadata') {
+  if (textTracks[i].label === 'ad-cues') {
     cuesTrack = textTracks[i];
   }
 }
@@ -240,12 +237,9 @@ cuesTrack.addEventListener('cuechange', function() {
 
   for (let i = 0; i < activeCues.length; i++) {
     let activeCue = activeCues[i];
-    let cueData = JSON.parse(activeCue.text);
 
     console.log('Cue runs from ' + activeCue.startTime +
-                ' to ' + activeCue.endTime +
-                ' with cue tag contents ' +
-                (cueData.cueOut || cueData.cueOutCont || cueData.cueIn));
+                ' to ' + activeCue.endTime);
   }
 });
 ```

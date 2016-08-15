@@ -6,7 +6,7 @@ import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
 import HlsAudioTrack from './hls-audio-track';
-import window from 'global/window';
+import AdCueTags from './ad-cue-tags';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -62,7 +62,8 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     this.mode_ = mode;
     this.useCueTags_ = useCueTags;
     if (this.useCueTags_) {
-      this.cueTagsTrack_ = this.tech_.addTextTrack('metadata', 'hls-segment-metadata');
+      this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
+        'ad-cues');
       this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
       this.tech_.textTracks().addTrack_(this.cueTagsTrack_);
     }
@@ -133,7 +134,10 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         return;
       }
 
-      this.updateCues_(updatedPlaylist);
+      if (this.useCueTags_) {
+        this.updateAdCues_(updatedPlaylist,
+                           this.masterPlaylistLoader_.expired_);
+      }
 
       // TODO: Create a new event on the PlaylistLoader that signals
       // that the segments have changed in some way and use that to
@@ -831,43 +835,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     });
   }
 
-  updateCues_(media) {
-    if (!this.useCueTags_ || !media.segments) {
-      return;
-    }
-
-    while (this.cueTagsTrack_.cues.length) {
-      this.cueTagsTrack_.removeCue(this.cueTagsTrack_.cues[0]);
-    }
-
-    let mediaTime = 0;
-
-    for (let i = 0; i < media.segments.length; i++) {
-      let segment = media.segments[i];
-
-      if ('cueOut' in segment || 'cueOutCont' in segment || 'cueIn' in segment) {
-        let cueJson = {};
-
-        if ('cueOut' in segment) {
-          cueJson.cueOut = segment.cueOut;
-        }
-        if ('cueOutCont' in segment) {
-          cueJson.cueOutCont = segment.cueOutCont;
-        }
-        if ('cueIn' in segment) {
-          cueJson.cueIn = segment.cueIn;
-        }
-
-        // Use a short duration for the cue point, as it should trigger for a segment
-        // transition (in this case, defined as the beginning of the segment that the tag
-        // precedes), but keep it for a minimum of 0.5 seconds to remain usable (won't
-        // lose it as an active cue by the time a user retrieves the active cues).
-        this.cueTagsTrack_.addCue(new window.VTTCue(mediaTime,
-                                                    mediaTime + 0.5,
-                                                    JSON.stringify(cueJson)));
-      }
-
-      mediaTime += segment.duration;
-    }
+  updateAdCues_(media, offset = 0) {
+    AdCueTags.updateAdCues(media, this.cueTagsTrack_, offset);
   }
 }
