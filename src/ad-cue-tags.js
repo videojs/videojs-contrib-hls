@@ -61,7 +61,7 @@ const updateAdCues = function(media, track, offset = 0) {
       if ('cueOut' in segment) {
         cue = new window.VTTCue(mediaTime,
                                 mediaTime + segment.duration,
-                                '');
+                                segment.cueOut);
         cue.adStartTime = mediaTime;
         // Assumes tag format to be
         // #EXT-X-CUE-OUT:30
