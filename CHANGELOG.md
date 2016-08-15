@@ -2,6 +2,12 @@ CHANGELOG
 =========
 
 --------------------
+## 3.5.0 (2016-08-15)
+* Updated support for #ext-x-cue-out, #ext-x-cue-in, and #ext-x-cue-out-cont to create a single cue spanning the range of time covered by the ad break
+* Updated to videojs-media-sources 3.1.4
+  * Increased the values of the FlashConstants to push more data into flash per chunk-interval
+
+--------------------
 ## 3.4.0 (2016-07-29)
 * Added support for #ext-x-cue-out, #ext-x-cue-in, and #ext-x-cue-out-cont via a special TextTrack
 * Added the ability to skip gaps caused by video underflow behavior in Chrome
