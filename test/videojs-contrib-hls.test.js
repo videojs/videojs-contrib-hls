@@ -1629,6 +1629,7 @@ QUnit.test('switching playlists with an outstanding key request aborts request a
   keyXhr = this.requests.shift();
   QUnit.ok(!keyXhr.aborted, 'key request outstanding');
 
+  this.player.tech_.hls.playlists.trigger('mediachanging');
   this.player.tech_.hls.playlists.trigger('mediachange');
 
   QUnit.ok(keyXhr.aborted, 'key request aborted');
