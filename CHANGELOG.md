@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 3.5.1 (2016-08-16)
+* Fixes an issue where playback can stall when going in/out of fullscreen
+
+--------------------
 ## 3.5.0 (2016-08-15)
 * Updated support for #ext-x-cue-out, #ext-x-cue-in, and #ext-x-cue-out-cont to create a single cue spanning the range of time covered by the ad break
 * Updated to videojs-media-sources 3.1.4
