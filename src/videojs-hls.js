@@ -697,6 +697,10 @@ videojs.HlsHandler.prototype.selectPlaylist = function () {
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
   sortedPlaylists = sortedPlaylists.filter(function(variant) {
+    // Exclude audio variants. This method must return a video variant.
+    if ((variant.uri || '').indexOf('hls_audio') !== -1) {
+      return false;
+    }
     if (variant.excludeUntil !== undefined) {
       return now >= variant.excludeUntil;
     }
