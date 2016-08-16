@@ -741,7 +741,8 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (!this.xhr_.segmentXhr && !this.xhr_.keyXhr) {
       this.xhr_ = null;
-      this.processResponse_();
+      this.pendingSegment_ = null;
+      this.processResponse_(segmentInfo);
     }
   }
 
@@ -760,14 +761,10 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * @private
    */
-  processResponse_() {
-    let segmentInfo;
+  processResponse_(segmentInfo) {
     let segment;
 
-    segmentInfo = this.pendingSegment_;
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
-
-    // this.state = 'DECRYPTING';
 
     if (segment.key) {
       // this is an encrypted segment
@@ -779,11 +776,11 @@ export default class SegmentLoader extends videojs.EventTarget {
                     (function(err, bytes) {
                       // err always null
                       segmentInfo.bytes = bytes;
-                      this.handleSegment_();
+                      this.handleSegment_(segmentInfo);
                     }).bind(this));
       /* eslint-enable */
     } else {
-      this.handleSegment_();
+      this.handleSegment_(segmentInfo);
     }
   }
 
@@ -792,12 +789,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * @private
    */
-  handleSegment_() {
-    let segmentInfo;
-
-    // this.state = 'APPENDING';
-
-    segmentInfo = this.pendingSegment_;
+  handleSegment_(segmentInfo) {
     segmentInfo.buffered = this.sourceUpdater_.buffered();
     this.currentTimeline_ = segmentInfo.timeline;
 
@@ -806,7 +798,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     this.sourceUpdater_.appendBuffer(segmentInfo.bytes,
-                                     this.handleUpdateEnd_.bind(this));
+                                     this.handleUpdateEnd_.bind(this, segmentInfo));
   }
 
   /**
@@ -816,11 +808,8 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * @private
    */
-  handleUpdateEnd_() {
-    let segmentInfo = this.pendingSegment_;
+  handleUpdateEnd_(segmentInfo) {
     let currentTime = this.currentTime_();
-
-    this.pendingSegment_ = null;
 
     // add segment metadata if it we have gained information during the
     // last append
