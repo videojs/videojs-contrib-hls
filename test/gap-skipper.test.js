@@ -174,20 +174,14 @@ QUnit.test('skips gap from video underflow', function() {
     'returns null when gap is after current time');
   QUnit.equal(
     this.gapSkipper.gapFromVideoUnderflow_(
-      videojs.createTimeRanges([[0, 10], [11.1, 20]]), 13),
+      videojs.createTimeRanges([[0, 10.1], [10.2, 20]]), 12.1),
     null,
-    'returns null when gap is too large');
-  QUnit.equal(
-    this.gapSkipper.gapFromVideoUnderflow_(
-      videojs.createTimeRanges([[0, 10], [10.1, 20]]), 12.1),
-    null,
-    'returns null when time is less than or euqal to 2 seconds ahead');
+    'returns null when time is less than or equal to 2 seconds ahead');
   QUnit.equal(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 14.1),
     null,
     'returns null when time is greater than or equal to 4 seconds ahead');
-
   QUnit.deepEqual(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 12.2),

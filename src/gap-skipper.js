@@ -165,7 +165,7 @@ export default class GapSkipper {
     // (13 seconds), at which point it stops as well. Since current time is past the
     // gap, findNextRange will return no ranges.
     //
-    // To check for this issue, we see if there is a small gap that is somewhere within
+    // To check for this issue, we see if there is a gap that starts somewhere within
     // a 3 second range (3 seconds +/- 1 second) back from our current time.
     let gaps = Ranges.findGaps(buffered);
 
@@ -173,10 +173,8 @@ export default class GapSkipper {
       let start = gaps.start(i);
       let end = gaps.end(i);
 
-      // gap is small
-      if (end - start < 1 &&
-        // gap is 3 seconds back +/- 1 second
-        currentTime - start < 4 && currentTime - end > 2) {
+      // gap is starts no more than 4 seconds back
+      if (currentTime - start < 4 && currentTime - start > 2) {
         return {
           start,
           end
