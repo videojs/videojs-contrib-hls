@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 3.5.2 (2016-08-17)
+* Changes to the underflow-detection in the gap-skipper to remove restrictions on the size of the gaps it is able to skip
+
+--------------------
 ## 3.5.1 (2016-08-16)
 * Fixes an issue where playback can stall when going in/out of fullscreen
 
