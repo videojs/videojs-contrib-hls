@@ -757,7 +757,9 @@ QUnit.test('the key is saved to the segment in the correct format', function() {
   loader.load();
 
   // stop processing so we can examine segment info
-  loader.processResponse_ = function() {};
+  loader.processResponse_ = function(response) {
+    segmentInfo = response;
+  };
 
   keyRequest = this.requests.shift();
   keyRequest.response = new Uint32Array([0, 1, 2, 3]).buffer;
@@ -767,7 +769,6 @@ QUnit.test('the key is saved to the segment in the correct format', function() {
   segmentRequest.response = new Uint8Array(10).buffer;
   segmentRequest.respond(200, null, '');
 
-  segmentInfo = loader.pendingSegment_;
   segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
   QUnit.deepEqual(segment.key.bytes,
@@ -792,7 +793,9 @@ function() {
   loader.load();
 
   // stop processing so we can examine segment info
-  loader.processResponse_ = function() {};
+  loader.processResponse_ = function(response) {
+    segmentInfo = response;
+  };
 
   keyRequest = this.requests.shift();
   keyRequest.response = new Uint32Array([0, 0, 0, 0]).buffer;
@@ -802,7 +805,6 @@ function() {
   segmentRequest.response = new Uint8Array(10).buffer;
   segmentRequest.respond(200, null, '');
 
-  segmentInfo = loader.pendingSegment_;
   segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
   QUnit.deepEqual(segment.key.iv, new Uint32Array([0, 0, 0, 5]),
@@ -816,9 +818,12 @@ function() {
 QUnit.test('segment with key has decrypted bytes appended during processing', function() {
   let keyRequest;
   let segmentRequest;
+  let segmentInfo;
 
   // stop processing so we can examine segment info
-  loader.handleSegment_ = function() {};
+  loader.handleSegment_ = function(response) {
+    segmentInfo = response;
+  };
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
@@ -827,8 +832,8 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   segmentRequest = this.requests.pop();
   segmentRequest.response = new Uint8Array(8).buffer;
   segmentRequest.respond(200, null, '');
-  QUnit.ok(loader.pendingSegment_.encryptedBytes, 'encrypted bytes in segment');
-  QUnit.ok(!loader.pendingSegment_.bytes, 'no decrypted bytes in segment');
+  QUnit.ok(segmentInfo.encryptedBytes, 'encrypted bytes in segment');
+  QUnit.ok(!segmentInfo.bytes, 'no decrypted bytes in segment');
 
   keyRequest = this.requests.shift();
   keyRequest.response = new Uint32Array([0, 0, 0, 0]).buffer;
@@ -838,7 +843,7 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   this.clock.tick(1);
   // Allow the decrypter's async stream to run the callback
   this.clock.tick(1);
-  QUnit.ok(loader.pendingSegment_.bytes, 'decrypted bytes in segment');
+  QUnit.ok(segmentInfo.bytes, 'decrypted bytes in segment');
 
   // verify stats
   QUnit.equal(loader.mediaBytesTransferred, 8, '8 bytes');
