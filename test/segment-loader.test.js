@@ -832,8 +832,8 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   segmentRequest = this.requests.pop();
   segmentRequest.response = new Uint8Array(8).buffer;
   segmentRequest.respond(200, null, '');
-  QUnit.ok(segmentInfo.encryptedBytes, 'encrypted bytes in segment');
-  QUnit.ok(!segmentInfo.bytes, 'no decrypted bytes in segment');
+  QUnit.ok(loader.pendingSegment_.encryptedBytes, 'encrypted bytes in segment');
+  QUnit.ok(!loader.pendingSegment_.bytes, 'no decrypted bytes in segment');
 
   keyRequest = this.requests.shift();
   keyRequest.response = new Uint32Array([0, 0, 0, 0]).buffer;
