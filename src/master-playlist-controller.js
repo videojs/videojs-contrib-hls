@@ -476,8 +476,6 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         // 4) the player has not started playing
         !this.hasPlayed_) {
 
-      this.load();
-
       // trigger the playlist loader to start "expired time"-tracking
       this.masterPlaylistLoader_.trigger('firstplay');
       this.hasPlayed_ = true;
@@ -487,6 +485,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       if (seekable.length) {
         this.tech_.setCurrentTime(seekable.end(0));
       }
+
+      // now that we seeked to the current time, load the segment
+      this.load();
 
       return true;
     }
