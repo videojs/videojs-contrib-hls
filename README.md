@@ -1,8 +1,11 @@
-# video.js HLS Source Handler
+# video.js HLS Source Handler [![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
+
 
 Play back HLS with video.js, even where it's not natively supported.
 
-[![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
+Lead Maintainer: Jon-Carlos Rivera [@imbcmdth](https://github.com/imbcmdth)
+
+Maintenance Status: Stable
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
