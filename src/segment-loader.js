@@ -6,6 +6,7 @@ import {getMediaIndexForTime_ as getMediaIndexForTime, duration} from './playlis
 import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import {Decrypter} from './decrypter';
+import mp4probe from 'mux.js/lib/mp4/probe';
 import Config from './config';
 
 // in ms
@@ -165,6 +166,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.expired_ = 0;
     this.timeCorrection_ = 0;
     this.currentTimeline_ = -1;
+    this.zeroOffset_ = NaN;
     this.xhr_ = null;
     this.pendingSegment_ = null;
     this.sourceUpdater_ = null;
@@ -758,10 +760,14 @@ export default class SegmentLoader extends videojs.EventTarget {
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
     // some videos don't start from presentation time zero
-    //if that is the case, use timestamp offset to adjust them so that
-    //it is not necessary to seek before playback can begin
-    if (true) {
-      console.log('implement me');
+    // if that is the case, set the timestamp offset on the first
+    // segment to adjust them so that it is not necessary to seek
+    // before playback can begin
+    if (segment.map && isNaN(this.zeroOffset_)) {
+      let timescales = mp4probe.timescale(segment.map.bytes);
+      let startTime = mp4probe.startTime(timescales, segmentInfo.bytes);
+      this.zeroOffset_ = startTime;
+      segmentInfo.timestampOffset -= startTime;
     }
 
     if (segment.key) {

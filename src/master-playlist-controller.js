@@ -80,7 +80,8 @@ const parseCodecs = function(codecs) {
 const mimeTypesForPlaylist = function(master, media) {
   let container = 'mp2t';
   let codecs = {
-    videoCodec: 'avc1.4d400d',
+    videoCodec: 'avc1',
+    videoObjectTypeIndicator: '.4d400d',
     audioProfile: '2'
   };
   let audioGroup = [];
