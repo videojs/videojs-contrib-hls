@@ -250,13 +250,13 @@ QUnit.test('updates timestamps when segments do not start at zero', function() {
     segment.map = {
       resolvedUri: 'init.mp4',
       bytes: new Uint8Array(10)
-    }
+    };
   });
   loader.playlist(playlist);
   loader.mimeType('video/mp4');
   loader.load();
 
-  this.startTime.returns(11)
+  this.startTime.returns(11);
 
   this.clock.tick(100);
   // init

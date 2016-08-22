@@ -806,6 +806,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (segment.map && isNaN(this.zeroOffset_)) {
       let timescales = mp4probe.timescale(segment.map.bytes);
       let startTime = mp4probe.startTime(timescales, segmentInfo.bytes);
+
       this.zeroOffset_ = startTime;
       segmentInfo.timestampOffset -= startTime;
     }

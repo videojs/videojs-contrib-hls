@@ -280,8 +280,14 @@ QUnit.test('updates the enabled track when switching audio groups', function() {
                                 manifests.multipleAudioGroupsCombinedMain);
   // media
   standardXHRResponse(this.requests.shift());
+  // init segment
+  standardXHRResponse(this.requests.shift());
+  // video segment
+  standardXHRResponse(this.requests.shift());
   // audio media
   standardXHRResponse(this.requests.shift());
+  // ignore audio segment requests
+  this.requests.length = 0;
 
   let mpc = this.masterPlaylistController;
   let combinedPlaylist = mpc.master().playlists[0];
@@ -293,7 +299,6 @@ QUnit.test('updates the enabled track when switching audio groups', function() {
                                 '#EXTINF:5.0\n' +
                                 '0.ts\n' +
                                 '#EXT-X-ENDLIST\n');
-  standardXHRResponse(this.requests.shift());
 
   QUnit.ok(mpc.activeAudioGroup().find((track) => track.enabled),
            'enabled a track in the new audio group');

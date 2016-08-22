@@ -249,11 +249,13 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * @return {Boolean} true if on lowest rendition
    */
   loader.isLowestEnabledRendition_ = function() {
-    if (!loader.media()) {
+    let media = loader.media();
+
+    if (!media || !media.attributes) {
       return false;
     }
 
-    let currentPlaylist = loader.media().attributes.BANDWIDTH;
+    let currentBandwidth = loader.media().attributes.BANDWIDTH || 0;
 
     return !(loader.master.playlists.filter((element, index, array) => {
       let enabled = typeof element.excludeUntil === 'undefined' ||
@@ -265,7 +267,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
       let item = element.attributes.BANDWIDTH;
 
-      return item <= currentPlaylist;
+      return item <= currentBandwidth;
 
     }).length > 1);
   };
