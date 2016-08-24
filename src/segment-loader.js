@@ -252,6 +252,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // buffering now
     if (this.sourceUpdater_ &&
         media &&
+        this.state === 'INIT' &&
         !this.paused()) {
       this.state = 'READY';
       return this.fillBuffer_();
@@ -323,6 +324,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       // if we were unpaused but waiting for a sourceUpdater, start
       // buffering now
       if (this.playlist_ &&
+          this.state === 'INIT' &&
           !this.paused()) {
         this.state = 'READY';
         return this.fillBuffer_();
@@ -809,6 +811,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     this.state = 'APPENDING';
+    this.pendingSegment_ = null;
 
     segmentInfo.buffered = this.sourceUpdater_.buffered();
     this.currentTimeline_ = segmentInfo.timeline;

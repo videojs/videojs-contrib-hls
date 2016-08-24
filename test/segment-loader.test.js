@@ -66,7 +66,7 @@ QUnit.test('fails without required initialization options', function() {
 QUnit.test('load waits until a playlist and mime type are specified to proceed',
 function() {
   loader.load();
-  QUnit.equal(loader.state, 'PRELOAD', 'waiting in init ready to preload');
+  QUnit.equal(loader.state, 'INIT', 'waiting in init ready to preload');
 
   loader.playlist(playlistWithDuration(10));
   QUnit.equal(this.requests.length, 0, 'have not made a request yet');
@@ -124,22 +124,28 @@ QUnit.test('calling load should unpause', function() {
 
   loader.load();
   QUnit.equal(loader.state, 'WAITING', 'loading unpauses');
-
-  loader.pause();
   this.clock.tick(1);
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
 
-  QUnit.equal(loader.state, 'PAUSING', 'stayed paused');
+  QUnit.equal(loader.state, 'APPENDING', 'loader processing response');
+  QUnit.ok(!loader.paused(), 'loader is unpaused');
+  loader.pause();
+  QUnit.equal(loader.state, 'APPENDING', 'loader still processing');
+  QUnit.ok(loader.paused(), 'loader is paused');
+
   loader.load();
-  QUnit.equal(loader.state, 'WAITING', 'unpaused during processing');
+  QUnit.ok(!loader.paused(), 'loader unpaused');
+  QUnit.equal(loader.state, 'APPENDING', 'loader still processing')
 
   loader.pause();
   sourceBuffer.trigger('updateend');
-  QUnit.equal(loader.state, 'PAUSED', 'finished processing and transitioned to paused');
+  QUnit.equal(loader.state, 'READY', 'finished processing and transitioned to ready');
+  QUnit.ok(loader.paused(), 'loader is paused');
 
   loader.load();
   QUnit.equal(loader.state, 'WAITING', 'unpaused');
+  QUnit.ok(!loader.paused(), 'loader unpaused');
 
   // verify stats
   QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
@@ -184,10 +190,10 @@ QUnit.test('does not check the buffer while paused', function() {
   loader.load();
   sourceBuffer = mediaSource.sourceBuffers[0];
 
-  loader.pause();
   this.clock.tick(1);
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
+  loader.pause();
   sourceBuffer.trigger('updateend');
 
   this.clock.tick(10 * 1000);
@@ -365,48 +371,6 @@ QUnit.test('never attempt to load a segment that ' +
   QUnit.equal(loader.mediaRequests, 1, '1 requests');
 });
 
-QUnit.test('adjusts the playlist offset if no buffering progress is made', function() {
-  let sourceBuffer;
-  let playlist;
-
-  playlist = playlistWithDuration(40);
-  playlist.endList = false;
-  loader.playlist(playlist);
-  loader.mimeType(this.mimeType);
-  loader.load();
-  sourceBuffer = mediaSource.sourceBuffers[0];
-
-  // buffer some content and switch playlists on progress
-  this.clock.tick(1);
-  this.requests[0].response = new Uint8Array(10).buffer;
-  this.requests.shift().respond(200, null, '');
-  loader.on('progress', function f() {
-    loader.off('progress', f);
-    // switch playlists
-    playlist = playlistWithDuration(40);
-    playlist.uri = 'alternate.m3u8';
-    playlist.endList = false;
-    loader.playlist(playlist);
-  });
-  sourceBuffer.buffered = videojs.createTimeRanges([[0, 5]]);
-  sourceBuffer.trigger('updateend');
-
-  // the next segment doesn't increase the buffer at all
-  QUnit.equal(this.requests[0].url, '0.ts', 'requested the same segment');
-  this.clock.tick(1);
-  this.requests[0].response = new Uint8Array(10).buffer;
-  this.requests.shift().respond(200, null, '');
-  sourceBuffer.trigger('updateend');
-
-  // so the loader should try the next segment
-  QUnit.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
-
-  // verify stats
-  QUnit.equal(loader.mediaBytesTransferred, 20, '20 bytes');
-  QUnit.equal(loader.mediaTransferDuration, 2, '2 ms (clocks above)');
-  QUnit.equal(loader.mediaRequests, 2, '2 requests');
-});
-
 QUnit.test('adjusts the playlist offset even when segment.end is set if no' +
            ' buffering progress is made', function() {
   let sourceBuffer;
@@ -492,7 +456,12 @@ QUnit.test('cancels outstanding requests on abort', function() {
   QUnit.equal(loader.state, 'WAITING', 'back to the waiting state');
 });
 
-QUnit.test('abort does not cancel segment processing in progress', function() {
+QUnit.test('abort cancels segment processing in progress', function() {
+  loader.handleSegment_ = function() {};
+  loader.paused = function() {
+    return true;
+  }
+
   loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
   loader.load();
@@ -500,8 +469,74 @@ QUnit.test('abort does not cancel segment processing in progress', function() {
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
 
+
+  QUnit.equal(loader.state, 'WAITING', 'loader processing request');
   loader.abort();
   QUnit.equal(loader.state, 'READY', 'loader aborted, ready for next segment');
+
+  // verify stats
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
+});
+
+QUnit.test('abort does not cancel segment processing during append', function() {
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+
+  QUnit.equal(loader.state, 'APPENDING', 'loader appending segment');
+  loader.abort();
+  QUnit.equal(loader.state, 'APPENDING', 'loader still appending');
+
+  // verify stats
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
+});
+
+QUnit.test('pause cancels segment processing before append', function() {
+  loader.handleSegment_ = function() {};
+
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+
+  QUnit.equal(loader.state, 'WAITING', 'loader processing segment');
+  loader.pause();
+  QUnit.equal(loader.state, 'READY', 'loader is ready to load another segment');
+  QUnit.ok(loader.paused(), 'loader is paused');
+  QUnit.ok(!loader.pendingSegment_, 'pending segment aborted');
+
+  // verify stats
+  QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
+  QUnit.equal(loader.mediaRequests, 1, '1 request');
+});
+
+QUnit.test('pause does not cancel segment processing during append', function() {
+  loader.handleSegment_ = function() {
+    loader.state = 'APPENDING';
+  };
+
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+
+  QUnit.equal(loader.state, 'APPENDING', 'loader appending segment');
+  loader.pause();
+  QUnit.equal(loader.state, 'APPENDING', 'loader still appending');
+  QUnit.ok(loader.paused(), 'loader is paused');
+  QUnit.ok(loader.pendingSegment_, 'loader is still processing appending segment');
 
   // verify stats
   QUnit.equal(loader.mediaBytesTransferred, 10, '10 bytes');
@@ -568,7 +603,7 @@ QUnit.test('segment 404s should trigger an error', function() {
   QUnit.equal(errors.length, 1, 'triggered an error');
   QUnit.equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
   QUnit.ok(loader.error().xhr, 'included the request object');
-  QUnit.ok(loader.state === 'PAUSED', 'paused the loader');
+  QUnit.ok(loader.paused(), 'paused the loader');
 });
 
 QUnit.test('segment 5xx status codes trigger an error', function() {
@@ -585,7 +620,7 @@ QUnit.test('segment 5xx status codes trigger an error', function() {
   QUnit.equal(errors.length, 1, 'triggered an error');
   QUnit.equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
   QUnit.ok(loader.error().xhr, 'included the request object');
-  QUnit.equal(loader.state, 'PAUSED', 'paused the loader');
+  QUnit.ok(loader.paused(), 'paused the loader');
 });
 
 QUnit.test('fires ended at the end of a playlist', function() {
@@ -724,7 +759,7 @@ QUnit.test('key 404s should trigger an error', function() {
   QUnit.equal(loader.error().message, 'HLS key request error at URL: 0-key.php',
         'receieved a key error message');
   QUnit.ok(loader.error().xhr, 'included the request object');
-  QUnit.equal(loader.state, 'PAUSED', 'paused the loader');
+  QUnit.ok(loader.paused(), 'paused the loader');
 });
 
 QUnit.test('key 5xx status codes trigger an error', function() {
@@ -743,7 +778,7 @@ QUnit.test('key 5xx status codes trigger an error', function() {
   QUnit.equal(loader.error().message, 'HLS key request error at URL: 0-key.php',
         'receieved a key error message');
   QUnit.ok(loader.error().xhr, 'included the request object');
-  QUnit.equal(loader.state, 'PAUSED', 'paused the loader');
+  QUnit.ok(loader.paused(), 'paused the loader');
 });
 
 QUnit.test('the key is saved to the segment in the correct format', function() {
@@ -757,9 +792,7 @@ QUnit.test('the key is saved to the segment in the correct format', function() {
   loader.load();
 
   // stop processing so we can examine segment info
-  loader.processResponse_ = function(response) {
-    segmentInfo = response;
-  };
+  loader.processResponse_ = function() {};
 
   keyRequest = this.requests.shift();
   keyRequest.response = new Uint32Array([0, 1, 2, 3]).buffer;
@@ -769,6 +802,7 @@ QUnit.test('the key is saved to the segment in the correct format', function() {
   segmentRequest.response = new Uint8Array(10).buffer;
   segmentRequest.respond(200, null, '');
 
+  segmentInfo = loader.pendingSegment_;
   segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
   QUnit.deepEqual(segment.key.bytes,
@@ -793,9 +827,7 @@ function() {
   loader.load();
 
   // stop processing so we can examine segment info
-  loader.processResponse_ = function(response) {
-    segmentInfo = response;
-  };
+  loader.processResponse_ = function() {};
 
   keyRequest = this.requests.shift();
   keyRequest.response = new Uint32Array([0, 0, 0, 0]).buffer;
@@ -805,6 +837,7 @@ function() {
   segmentRequest.response = new Uint8Array(10).buffer;
   segmentRequest.respond(200, null, '');
 
+  segmentInfo = loader.pendingSegment_;
   segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
   QUnit.deepEqual(segment.key.iv, new Uint32Array([0, 0, 0, 5]),
@@ -818,12 +851,9 @@ function() {
 QUnit.test('segment with key has decrypted bytes appended during processing', function() {
   let keyRequest;
   let segmentRequest;
-  let segmentInfo;
 
   // stop processing so we can examine segment info
-  loader.handleSegment_ = function(response) {
-    segmentInfo = response;
-  };
+  loader.handleSegment_ = function() {};
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
@@ -843,7 +873,7 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   this.clock.tick(1);
   // Allow the decrypter's async stream to run the callback
   this.clock.tick(1);
-  QUnit.ok(segmentInfo.bytes, 'decrypted bytes in segment');
+  QUnit.ok(loader.pendingSegment_.bytes, 'decrypted bytes in segment');
 
   // verify stats
   QUnit.equal(loader.mediaBytesTransferred, 8, '8 bytes');
