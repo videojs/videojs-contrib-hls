@@ -136,7 +136,7 @@ QUnit.test('calling load should unpause', function() {
 
   loader.load();
   QUnit.ok(!loader.paused(), 'loader unpaused');
-  QUnit.equal(loader.state, 'APPENDING', 'loader still processing')
+  QUnit.equal(loader.state, 'APPENDING', 'loader still processing');
 
   loader.pause();
   sourceBuffer.trigger('updateend');
@@ -460,7 +460,7 @@ QUnit.test('abort cancels segment processing in progress', function() {
   loader.handleSegment_ = function() {};
   loader.paused = function() {
     return true;
-  }
+  };
 
   loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
@@ -468,7 +468,6 @@ QUnit.test('abort cancels segment processing in progress', function() {
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
-
 
   QUnit.equal(loader.state, 'WAITING', 'loader processing request');
   loader.abort();
@@ -486,7 +485,6 @@ QUnit.test('abort does not cancel segment processing during append', function() 
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
-
 
   QUnit.equal(loader.state, 'APPENDING', 'loader appending segment');
   loader.abort();
@@ -506,7 +504,6 @@ QUnit.test('pause cancels segment processing before append', function() {
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
-
 
   QUnit.equal(loader.state, 'WAITING', 'loader processing segment');
   loader.pause();
@@ -530,7 +527,6 @@ QUnit.test('pause does not cancel segment processing during append', function() 
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
-
 
   QUnit.equal(loader.state, 'APPENDING', 'loader appending segment');
   loader.pause();
