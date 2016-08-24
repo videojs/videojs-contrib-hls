@@ -2,6 +2,12 @@ CHANGELOG
 =========
 
 --------------------
+## 3.5.3 (2016-08-24)
+* Updated videojs-contrib-mediasources to 3.1.5
+  * Updated Mux.js to 2.4.2
+    * Fixed caption-packet sorting to be stable on Chromium
+
+--------------------
 ## 3.5.2 (2016-08-17)
 * Changes to the underflow-detection in the gap-skipper to remove restrictions on the size of the gaps it is able to skip
 
