@@ -6,7 +6,7 @@ import { useFakeEnvironment } from './test-helpers';
 
 QUnit.module('Playlist Duration');
 
-QUnit.test('total duration for live playlists is Infinity', function() {
+QUnit.test('total duration for live playlists is Infinity', function(assert) {
   let duration = Playlist.duration({
     segments: [{
       duration: 4,
@@ -14,12 +14,12 @@ QUnit.test('total duration for live playlists is Infinity', function() {
     }]
   });
 
-  QUnit.equal(duration, Infinity, 'duration is infinity');
+  assert.equal(duration, Infinity, 'duration is infinity');
 });
 
 QUnit.module('Playlist Interval Duration');
 
-QUnit.test('accounts for non-zero starting VOD media sequences', function() {
+QUnit.test('accounts for non-zero starting VOD media sequences', function(assert) {
   let duration = Playlist.duration({
     mediaSequence: 10,
     endList: true,
@@ -38,10 +38,10 @@ QUnit.test('accounts for non-zero starting VOD media sequences', function() {
     }]
   });
 
-  QUnit.equal(duration, 4 * 10, 'includes only listed segments');
+  assert.equal(duration, 4 * 10, 'includes only listed segments');
 });
 
-QUnit.test('uses timeline values when available', function() {
+QUnit.test('uses timeline values when available', function(assert) {
   let duration = Playlist.duration({
     mediaSequence: 0,
     endList: true,
@@ -63,10 +63,10 @@ QUnit.test('uses timeline values when available', function() {
     }]
   }, 4);
 
-  QUnit.equal(duration, 4 * 10 + 2, 'used timeline values');
+  assert.equal(duration, 4 * 10 + 2, 'used timeline values');
 });
 
-QUnit.test('works when partial timeline information is available', function() {
+QUnit.test('works when partial timeline information is available', function(assert) {
   let duration = Playlist.duration({
     mediaSequence: 0,
     endList: true,
@@ -91,10 +91,10 @@ QUnit.test('works when partial timeline information is available', function() {
     }]
   }, 5);
 
-  QUnit.equal(duration, 50.0002, 'calculated with mixed intervals');
+  assert.equal(duration, 50.0002, 'calculated with mixed intervals');
 });
 
-QUnit.test('uses timeline values for the expired duration of live playlists', function() {
+QUnit.test('uses timeline values for the expired duration of live playlists', function(assert) {
   let playlist = {
     mediaSequence: 12,
     segments: [{
@@ -109,15 +109,15 @@ QUnit.test('uses timeline values for the expired duration of live playlists', fu
   let duration;
 
   duration = Playlist.duration(playlist, playlist.mediaSequence);
-  QUnit.equal(duration, 110.5, 'used segment end time');
+  assert.equal(duration, 110.5, 'used segment end time');
   duration = Playlist.duration(playlist, playlist.mediaSequence + 1);
-  QUnit.equal(duration, 120.5, 'used segment end time');
+  assert.equal(duration, 120.5, 'used segment end time');
   duration = Playlist.duration(playlist, playlist.mediaSequence + 2);
-  QUnit.equal(duration, 120.5 + 9, 'used segment end time');
+  assert.equal(duration, 120.5 + 9, 'used segment end time');
 });
 
 QUnit.test('looks outside the queried interval for live playlist timeline values',
-function() {
+function(assert) {
   let playlist = {
     mediaSequence: 12,
     segments: [{
@@ -132,10 +132,10 @@ function() {
   let duration;
 
   duration = Playlist.duration(playlist, playlist.mediaSequence);
-  QUnit.equal(duration, 120.5 - 9 - 10, 'used segment end time');
+  assert.equal(duration, 120.5 - 9 - 10, 'used segment end time');
 });
 
-QUnit.test('ignores discontinuity sequences later than the end', function() {
+QUnit.test('ignores discontinuity sequences later than the end', function(assert) {
   let duration = Playlist.duration({
     mediaSequence: 0,
     discontinuityStarts: [1, 3],
@@ -156,10 +156,10 @@ QUnit.test('ignores discontinuity sequences later than the end', function() {
     }]
   }, 2);
 
-  QUnit.equal(duration, 19, 'excluded the later segments');
+  assert.equal(duration, 19, 'excluded the later segments');
 });
 
-QUnit.test('handles trailing segments without timeline information', function() {
+QUnit.test('handles trailing segments without timeline information', function(assert) {
   let duration;
   let playlist = {
     mediaSequence: 0,
@@ -182,13 +182,13 @@ QUnit.test('handles trailing segments without timeline information', function() 
   };
 
   duration = Playlist.duration(playlist, 3);
-  QUnit.equal(duration, 29.45, 'calculated duration');
+  assert.equal(duration, 29.45, 'calculated duration');
 
   duration = Playlist.duration(playlist, 2);
-  QUnit.equal(duration, 19.5, 'calculated duration');
+  assert.equal(duration, 19.5, 'calculated duration');
 });
 
-QUnit.test('uses timeline intervals when segments have them', function() {
+QUnit.test('uses timeline intervals when segments have them', function(assert) {
   let duration;
   let playlist = {
     mediaSequence: 0,
@@ -208,14 +208,14 @@ QUnit.test('uses timeline intervals when segments have them', function() {
   };
 
   duration = Playlist.duration(playlist, 2);
-  QUnit.equal(duration, 20.1, 'used the timeline-based interval');
+  assert.equal(duration, 20.1, 'used the timeline-based interval');
 
   duration = Playlist.duration(playlist, 3);
-  QUnit.equal(duration, 30.1, 'used the timeline-based interval');
+  assert.equal(duration, 30.1, 'used the timeline-based interval');
 });
 
 QUnit.test('counts the time between segments as part of the earlier segment\'s duration',
-function() {
+function(assert) {
   let duration = Playlist.duration({
     mediaSequence: 0,
     endList: true,
@@ -231,10 +231,10 @@ function() {
     }]
   }, 1);
 
-  QUnit.equal(duration, 10.1, 'included the segment gap');
+  assert.equal(duration, 10.1, 'included the segment gap');
 });
 
-QUnit.test('accounts for discontinuities', function() {
+QUnit.test('accounts for discontinuities', function(assert) {
   let duration = Playlist.duration({
     mediaSequence: 0,
     endList: true,
@@ -249,10 +249,10 @@ QUnit.test('accounts for discontinuities', function() {
     }]
   }, 2);
 
-  QUnit.equal(duration, 10 + 10, 'handles discontinuities');
+  assert.equal(duration, 10 + 10, 'handles discontinuities');
 });
 
-QUnit.test('a non-positive length interval has zero duration', function() {
+QUnit.test('a non-positive length interval has zero duration', function(assert) {
   let playlist = {
     mediaSequence: 0,
     discontinuityStarts: [1],
@@ -266,14 +266,14 @@ QUnit.test('a non-positive length interval has zero duration', function() {
     }]
   };
 
-  QUnit.equal(Playlist.duration(playlist, 0), 0, 'zero-length duration is zero');
-  QUnit.equal(Playlist.duration(playlist, 0, false), 0, 'zero-length duration is zero');
-  QUnit.equal(Playlist.duration(playlist, -1), 0, 'negative length duration is zero');
+  assert.equal(Playlist.duration(playlist, 0), 0, 'zero-length duration is zero');
+  assert.equal(Playlist.duration(playlist, 0, false), 0, 'zero-length duration is zero');
+  assert.equal(Playlist.duration(playlist, -1), 0, 'negative length duration is zero');
 });
 
 QUnit.module('Playlist Seekable');
 
-QUnit.test('calculates seekable time ranges from the available segments', function() {
+QUnit.test('calculates seekable time ranges from the available segments', function(assert) {
   let playlist = {
     mediaSequence: 0,
     segments: [{
@@ -287,12 +287,12 @@ QUnit.test('calculates seekable time ranges from the available segments', functi
   };
   let seekable = Playlist.seekable(playlist);
 
-  QUnit.equal(seekable.length, 1, 'there are seekable ranges');
-  QUnit.equal(seekable.start(0), 0, 'starts at zero');
-  QUnit.equal(seekable.end(0), Playlist.duration(playlist), 'ends at the duration');
+  assert.equal(seekable.length, 1, 'there are seekable ranges');
+  assert.equal(seekable.start(0), 0, 'starts at zero');
+  assert.equal(seekable.end(0), Playlist.duration(playlist), 'ends at the duration');
 });
 
-QUnit.test('master playlists have empty seekable ranges', function() {
+QUnit.test('master playlists have empty seekable ranges', function(assert) {
   let seekable = Playlist.seekable({
     playlists: [{
       uri: 'low.m3u8'
@@ -301,13 +301,18 @@ QUnit.test('master playlists have empty seekable ranges', function() {
     }]
   });
 
-  QUnit.equal(seekable.length, 0, 'no seekable ranges from a master playlist');
+  assert.equal(seekable.length, 0, 'no seekable ranges from a master playlist');
 });
 
 QUnit.test('seekable end is three target durations from the actual end of live playlists',
-function() {
+function(assert) {
   let seekable = Playlist.seekable({
     mediaSequence: 0,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 0
+    },
+    targetDuration: 10,
     segments: [{
       duration: 7,
       uri: '0.ts'
@@ -323,40 +328,19 @@ function() {
     }]
   });
 
-  QUnit.equal(seekable.length, 1, 'there are seekable ranges');
-  QUnit.equal(seekable.start(0), 0, 'starts at zero');
-  QUnit.equal(seekable.end(0), 7, 'ends three target durations from the last segment');
+  assert.equal(seekable.length, 1, 'there are seekable ranges');
+  assert.equal(seekable.start(0), 0, 'starts at zero');
+  assert.equal(seekable.end(0), 7, 'ends three target durations from the last segment');
 });
 
-QUnit.test('only considers available segments', function() {
-  let seekable = Playlist.seekable({
-    mediaSequence: 7,
-    segments: [{
-      uri: '8.ts',
-      duration: 10
-    }, {
-      uri: '9.ts',
-      duration: 10
-    }, {
-      uri: '10.ts',
-      duration: 10
-    }, {
-      uri: '11.ts',
-      duration: 10
-    }]
-  });
-
-  QUnit.equal(seekable.length, 1, 'there are seekable ranges');
-  QUnit.equal(seekable.start(0), 0, 'starts at the earliest available segment');
-  QUnit.equal(seekable.end(0),
-              10,
-              'ends three target durations from the last available segment');
-});
-
-QUnit.test('seekable end accounts for non-standard target durations', function() {
+QUnit.test('seekable end accounts for non-standard target durations', function(assert) {
   let seekable = Playlist.seekable({
     targetDuration: 2,
     mediaSequence: 0,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 0
+    },
     segments: [{
       duration: 2,
       uri: '0.ts'
@@ -375,15 +359,184 @@ QUnit.test('seekable end accounts for non-standard target durations', function()
     }]
   });
 
-  QUnit.equal(seekable.start(0), 0, 'starts at the earliest available segment');
-  QUnit.equal(seekable.end(0),
+  assert.equal(seekable.start(0), 0, 'starts at the earliest available segment');
+  assert.equal(seekable.end(0),
               9 - (2 + 2 + 1),
               'allows seeking no further than three segments from the end');
 });
 
+QUnit.test('playlist with no sync points has empty seekable range', function(assert) {
+  let seekable = Playlist.seekable({
+    targetDuration: 10,
+    mediaSequence: 0,
+    segments: [{
+      duration: 7,
+      uri: '0.ts'
+    }, {
+      duration: 10,
+      uri: '1.ts'
+    }, {
+      duration: 10,
+      uri: '2.ts'
+    }, {
+      duration: 10,
+      uri: '3.ts'
+    }]
+  });
+
+  assert.equal(seekable.length, 0, 'no seekable range for playlist with no sync points');
+});
+
+QUnit.test('seekable uses available sync points for calculating seekable range',
+  function(assert) {
+    let seekable;
+
+    seekable = Playlist.seekable({
+      targetDuration: 10,
+      mediaSequence: 100,
+      syncInfo: {
+        time: 50,
+        mediaSequence: 95
+      },
+      segments: [
+        {
+          duration: 10,
+          uri: '0.ts'
+        },
+        {
+          duration: 10,
+          uri: '1.ts'
+        },
+        {
+          duration: 10,
+          uri: '2.ts'
+        },
+        {
+          duration: 10,
+          uri: '3.ts'
+        },
+        {
+          duration: 10,
+          uri: '4.ts'
+        }
+      ]
+    });
+
+    assert.ok(seekable.length, 'seekable range calculated');
+    assert.equal(seekable.start(0), 100, 'estimated start time based on expired sync point');
+    assert.equal(seekable.end(0), 120, 'allows seeking no further than three segments from the end');
+
+    seekable = Playlist.seekable({
+      targetDuration: 10,
+      mediaSequence: 100,
+      segments: [
+        {
+          duration: 10,
+          uri: '0.ts'
+        },
+        {
+          duration: 10,
+          uri: '1.ts',
+          start: 108.5,
+          end: 118.4
+        },
+        {
+          duration: 10,
+          uri: '2.ts'
+        },
+        {
+          duration: 10,
+          uri: '3.ts'
+        },
+        {
+          duration: 10,
+          uri: '4.ts'
+        }
+      ]
+    });
+
+    assert.ok(seekable.length, 'seekable range calculated');
+    assert.equal(seekable.start(0), 98.5, 'estimated start time using segmentSync');
+    assert.equal(seekable.end(0), 118.4, 'allows seeking no further than three segments from the end');
+
+    seekable = Playlist.seekable({
+      targetDuration: 10,
+      mediaSequence: 100,
+      syncInfo: {
+        time: 50,
+        mediaSequence: 95
+      },
+      segments: [
+        {
+          duration: 10,
+          uri: '0.ts'
+        },
+        {
+          duration: 10,
+          uri: '1.ts',
+          start: 108.5,
+          end: 118.5
+        },
+        {
+          duration: 10,
+          uri: '2.ts'
+        },
+        {
+          duration: 10,
+          uri: '3.ts'
+        },
+        {
+          duration: 10,
+          uri: '4.ts'
+        }
+      ]
+    });
+
+    assert.ok(seekable.length, 'seekable range calculated');
+    assert.equal(seekable.start(0), 98.5, 'estimated start time using nearest sync point (segmentSync in this case)');
+    assert.equal(seekable.end(0), 118.5, 'allows seeking no further than three segments from the end');
+
+    seekable = Playlist.seekable({
+      targetDuration: 10,
+      mediaSequence: 100,
+      syncInfo: {
+        time: 90.8,
+        mediaSequence: 99
+      },
+      segments: [
+        {
+          duration: 10,
+          uri: '0.ts'
+        },
+        {
+          duration: 10,
+          uri: '1.ts'
+        },
+        {
+          duration: 10,
+          uri: '2.ts',
+          start: 118.5,
+          end: 128.5
+        },
+        {
+          duration: 10,
+          uri: '3.ts'
+        },
+        {
+          duration: 10,
+          uri: '4.ts'
+        }
+      ]
+    });
+
+    assert.ok(seekable.length, 'seekable range calculated');
+    assert.equal(seekable.start(0), 100.8, 'estimated start time using nearest sync point (expiredSync in this case)');
+    assert.equal(seekable.end(0), 118.5, 'allows seeking no further than three segments from the end');
+  });
+
 QUnit.module('Playlist Media Index For Time', {
-  beforeEach() {
-    this.env = useFakeEnvironment();
+  beforeEach(assert) {
+    this.env = useFakeEnvironment(assert);
     this.clock = this.env.clock;
     this.requests = this.env.requests;
     this.fakeHls = {
@@ -395,7 +548,7 @@ QUnit.module('Playlist Media Index For Time', {
   }
 });
 
-QUnit.test('can get media index by playback position for non-live videos', function() {
+QUnit.test('can get media index by playback position for non-live videos', function(assert) {
   let media;
   let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
 
@@ -415,16 +568,19 @@ QUnit.test('can get media index by playback position for non-live videos', funct
 
   media = loader.media();
 
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, -1), 0,
+  assert.equal(Playlist.getMediaInfoForTime_(media, -1, 0, 0).mediaIndex, 0,
               'the index is never less than zero');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 0), 0, 'time zero is index zero');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 3), 0, 'time three is index zero');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 10), 2, 'time 10 is index 2');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 22), 2,
+  assert.equal(Playlist.getMediaInfoForTime_(media, 0, 0, 0).mediaIndex, 0,
+    'time zero is index zero');
+  assert.equal(Playlist.getMediaInfoForTime_(media, 3, 0, 0).mediaIndex, 0,
+    'time three is index zero');
+  assert.equal(Playlist.getMediaInfoForTime_(media, 10, 0, 0).mediaIndex, 2,
+    'time 10 is index 2');
+  assert.equal(Playlist.getMediaInfoForTime_(media, 22, 0, 0).mediaIndex, 2,
               'time greater than the length is index 2');
 });
 
-QUnit.test('returns the lower index when calculating for a segment boundary', function() {
+QUnit.test('returns the lower index when calculating for a segment boundary', function(assert) {
   let media;
   let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
 
@@ -442,14 +598,17 @@ QUnit.test('returns the lower index when calculating for a segment boundary', fu
 
   media = loader.media();
 
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 4), 1, 'rounds up exact matches');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 3.7), 0, 'rounds down');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 4.5), 1, 'rounds up at 0.5');
+  assert.equal(Playlist.getMediaInfoForTime_(media, 4, 0, 0).mediaIndex, 0,
+    'rounds down exact matches');
+  assert.equal(Playlist.getMediaInfoForTime_(media, 3.7, 0, 0).mediaIndex, 0,
+    'rounds down');
+  assert.equal(Playlist.getMediaInfoForTime_(media, 4.5, 0, 0).mediaIndex, 1,
+    'rounds up at 0.5');
 });
 
 QUnit.test(
 'accounts for non-zero starting segment time when calculating media index',
-function() {
+function(assert) {
   let media;
   let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
 
@@ -463,181 +622,63 @@ function() {
     '#EXTINF:5,\n' +
     '1002.ts\n'
   );
-  loader.media().segments[0].end = 154;
 
   media = loader.media();
 
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 45),
-    -1,
-    'expired content returns negative one'
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 45, 0, 150).mediaIndex,
+    0,
+    'expired content returns 0 for earliest segment available'
   );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 75),
-    -1,
-    'expired content returns  negative one'
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 75, 0, 150).mediaIndex,
+    0,
+    'expired content returns 0 for earliest segment available'
   );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 0),
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 0, 0, 150).mediaIndex,
     0,
     'time of 0 with no expired time returns first segment'
   );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100),
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 50 + 100, 0, 150).mediaIndex,
     0,
     'calculates the earliest available position'
   );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 2),
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 2, 0, 150).mediaIndex,
     0,
     'calculates within the first segment'
   );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 2),
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 2, 0, 150).mediaIndex,
     0,
     'calculates within the first segment'
   );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 4),
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 4, 0, 150).mediaIndex,
+    0,
+    'calculates earlier segment on exact boundary match'
+  );
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 4.5, 0, 150).mediaIndex,
     1,
     'calculates within the second segment'
   );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 4.5),
-    1,
-    'calculates within the second segment'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 6),
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 6, 0, 150).mediaIndex,
     1,
     'calculates within the second segment'
   );
 
-  loader.media().segments[1].end = 159;
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 159),
-    2,
-    'returns number of segments when time is equal to end of last segment'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 159.1),
-    2,
-    'returns number of segments when time is past end of last segment'
-  );
-});
-
-QUnit.test('prefers precise segment timing when tracking expired time', function() {
-  let media;
-  let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
-
-  loader.load();
-
-  loader.trigger('firstplay');
-  this.requests.shift().respond(200, null,
-    '#EXTM3U\n' +
-    '#EXT-X-MEDIA-SEQUENCE:1001\n' +
-    '#EXTINF:4,\n' +
-    '1001.ts\n' +
-    '#EXTINF:5,\n' +
-    '1002.ts\n'
-  );
-  // setup the loader with an "imprecise" value as if it had been
-  // accumulating segment durations as they expire
-  loader.expired_ = 160;
-  // annotate the first segment with a start time
-  // this number would be coming from the Source Buffer in practice
-  loader.media().segments[0].end = 150;
-
-  media = loader.media();
-
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 149),
-    0,
-    'prefers the value on the first segment'
-  );
-
-  // trigger a playlist refresh
-  this.clock.tick(10 * 1000);
-  this.requests.shift().respond(200, null,
-    '#EXTM3U\n' +
-    '#EXT-X-MEDIA-SEQUENCE:1002\n' +
-    '#EXTINF:5,\n' +
-    '1002.ts\n'
-  );
-
-  media = loader.media();
-
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 150 + 4 + 1),
-    0,
-    'tracks precise expired times'
-  );
-});
-
-QUnit.test('accounts for expired time when calculating media index', function() {
-  let media;
-  let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
-  let expired = 150;
-
-  loader.load();
-
-  this.requests.shift().respond(200, null,
-    '#EXTM3U\n' +
-    '#EXT-X-MEDIA-SEQUENCE:1001\n' +
-    '#EXTINF:4,\n' +
-    '1001.ts\n' +
-    '#EXTINF:5,\n' +
-    '1002.ts\n'
-  );
-
-  media = loader.media();
-
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 0, expired),
-    -1,
-    'expired content returns a negative index'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 75, expired),
-    -1,
-    'expired content returns a negative index'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100, expired),
-    0,
-    'calculates the earliest available position'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 2, expired),
-    0,
-    'calculates within the first segment'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 2, expired),
-    0,
-    'calculates within the first segment'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 4.5, expired),
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 159, 0, 150).mediaIndex,
     1,
-    'calculates within the second segment'
+    'returns last segment when time is equal to end of last segment'
   );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 6, expired),
+  assert.equal(
+    Playlist.getMediaInfoForTime_(media, 160, 0, 150).mediaIndex,
     1,
-    'calculates within the second segment'
-  );
-});
-
-QUnit.test('returns index 0 when time is 0 and expired is falsy', function() {
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_({segments: []}, 0, 0),
-    0,
-    'returns 0 when time is 0 and expired is 0'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_({segments: []}, 0),
-    0,
-    'returns 0 when time is 0 and expired is undefined'
+    'returns last segment when time is past end of last segment'
   );
 });

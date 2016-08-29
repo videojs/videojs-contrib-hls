@@ -66,57 +66,57 @@ QUnit.module('ReloadSourceOnError', {
   }
 });
 
-QUnit.test('triggers on player error', function() {
+QUnit.test('triggers on player error', function(assert) {
   this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
 
-  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
-  QUnit.deepEqual(this.player.src.calledWith[0], this.tech.currentSource_, 'player.src was called with player.currentSource');
+  assert.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+  assert.deepEqual(this.player.src.calledWith[0], this.tech.currentSource_, 'player.src was called with player.currentSource');
 });
 
-QUnit.test('seeks to currentTime in VOD', function() {
+QUnit.test('seeks to currentTime in VOD', function(assert) {
   this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  QUnit.equal(this.player.currentTime.calledWith.length, 1, 'player.currentTime was only called once');
-  QUnit.deepEqual(this.player.currentTime.calledWith[0], 10, 'player.currentTime was called with the right value');
+  assert.equal(this.player.currentTime.calledWith.length, 1, 'player.currentTime was only called once');
+  assert.deepEqual(this.player.currentTime.calledWith[0], 10, 'player.currentTime was called with the right value');
 });
 
-QUnit.test('doesn\'t seek to currentTime in live', function() {
+QUnit.test('doesn\'t seek to currentTime in live', function(assert) {
   this.player.reloadSourceOnError();
   this.player.currentValues.duration = Infinity;
 
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  QUnit.equal(this.player.currentTime.calledWith.length, 0, 'player.currentTime was not called');
-  QUnit.deepEqual(this.player.currentTime(), 0, 'player.currentTime is still zero');
+  assert.equal(this.player.currentTime.calledWith.length, 0, 'player.currentTime was not called');
+  assert.deepEqual(this.player.currentTime(), 0, 'player.currentTime is still zero');
 });
 
-QUnit.test('by default, only allows a retry once every 30 seconds', function() {
+QUnit.test('by default, only allows a retry once every 30 seconds', function(assert) {
   this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+  assert.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
 
   // Advance 59 seconds
   this.clock.tick(59 * 1000);
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  QUnit.equal(this.player.src.calledWith.length, 2, 'player.src was called twice');
+  assert.equal(this.player.src.calledWith.length, 2, 'player.src was called twice');
 
   // Advance 29 seconds
   this.clock.tick(29 * 1000);
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  QUnit.equal(this.player.src.calledWith.length, 2, 'player.src was called twice');
+  assert.equal(this.player.src.calledWith.length, 2, 'player.src was called twice');
 });
 
-QUnit.test('allows you to override the default retry interval', function() {
+QUnit.test('allows you to override the default retry interval', function(assert) {
   this.player.reloadSourceOnError({
     errorInterval: 60
   });
@@ -124,26 +124,26 @@ QUnit.test('allows you to override the default retry interval', function() {
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+  assert.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
 
   // Advance 59 seconds
   this.clock.tick(59 * 1000);
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+  assert.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
 });
 
-QUnit.test('the plugin cleans up after it\'s previous incarnation when called again', function() {
+QUnit.test('the plugin cleans up after it\'s previous incarnation when called again', function(assert) {
   this.player.reloadSourceOnError();
   this.player.reloadSourceOnError();
 
   this.player.trigger('error', -2);
 
-  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+  assert.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
 });
 
-QUnit.test('allows you to provide a getSource function', function() {
+QUnit.test('allows you to provide a getSource function', function(assert) {
   const newSource = {
     src: 'newsource.m3u8',
     type: 'this/matters'
@@ -157,29 +157,29 @@ QUnit.test('allows you to provide a getSource function', function() {
 
   this.player.trigger('error', -2);
 
-  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
-  QUnit.deepEqual(this.player.src.calledWith[0], newSource, 'player.src was called with return value of options.getSource()');
+  assert.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+  assert.deepEqual(this.player.src.calledWith[0], newSource, 'player.src was called with return value of options.getSource()');
 });
 
-QUnit.test('errors if getSource is not a function', function() {
+QUnit.test('errors if getSource is not a function', function(assert) {
   this.player.reloadSourceOnError({
     getSource: 'totally not a function'
   });
 
   this.player.trigger('error', -2);
 
-  QUnit.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
-  QUnit.equal(this.errors.length, 1, 'videojs.log.error was called once');
+  assert.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
+  assert.equal(this.errors.length, 1, 'videojs.log.error was called once');
 });
 
-QUnit.test('should not set source if getSource returns null or undefined', function() {
+QUnit.test('should not set source if getSource returns null or undefined', function(assert) {
   this.player.reloadSourceOnError({
     getSource: () => undefined
   });
 
   this.player.trigger('error', -2);
 
-  QUnit.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
+  assert.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
 
   this.player.reloadSourceOnError({
     getSource: () => null
@@ -187,5 +187,5 @@ QUnit.test('should not set source if getSource returns null or undefined', funct
 
   this.player.trigger('error', -2);
 
-  QUnit.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
+  assert.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
 });

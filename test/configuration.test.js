@@ -31,8 +31,8 @@ const options = [{
 }];
 
 QUnit.module('Configuration - Deprication', {
-  beforeEach() {
-    this.env = useFakeEnvironment();
+  beforeEach(assert) {
+    this.env = useFakeEnvironment(assert);
     this.requests = this.env.requests;
     this.mse = useFakeMediaSource();
     this.clock = this.env.clock;
@@ -52,35 +52,35 @@ QUnit.module('Configuration - Deprication', {
   }
 });
 
-QUnit.test('GOAL_BUFFER_LENGTH get warning', function() {
-  QUnit.equal(Hls.GOAL_BUFFER_LENGTH,
+QUnit.test('GOAL_BUFFER_LENGTH get warning', function(assert) {
+  assert.equal(Hls.GOAL_BUFFER_LENGTH,
               Config.GOAL_BUFFER_LENGTH,
               'Hls.GOAL_BUFFER_LENGTH returns the default');
-  QUnit.equal(this.env.log.warn.calls, 1, 'logged a warning');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
 });
 
-QUnit.test('GOAL_BUFFER_LENGTH set warning', function() {
+QUnit.test('GOAL_BUFFER_LENGTH set warning', function(assert) {
   Hls.GOAL_BUFFER_LENGTH = 10;
-  QUnit.equal(this.env.log.warn.calls, 1, 'logged a warning');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
 
-  QUnit.equal(Config.GOAL_BUFFER_LENGTH, 10, 'returns what we set it to');
+  assert.equal(Config.GOAL_BUFFER_LENGTH, 10, 'returns what we set it to');
 });
 
-QUnit.test('GOAL_BUFFER_LENGTH set warning and invalid', function() {
+QUnit.test('GOAL_BUFFER_LENGTH set warning and invalid', function(assert) {
   Hls.GOAL_BUFFER_LENGTH = 'nope';
-  QUnit.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  QUnit.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
+  assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
 
   Hls.GOAL_BUFFER_LENGTH = 0;
-  QUnit.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  QUnit.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
+  assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
 });
 
 QUnit.module('Configuration - Options', {
-  beforeEach() {
-    this.env = useFakeEnvironment();
+  beforeEach(assert) {
+    this.env = useFakeEnvironment(assert);
     this.requests = this.env.requests;
     this.mse = useFakeMediaSource();
     this.clock = this.env.clock;
@@ -103,7 +103,7 @@ QUnit.module('Configuration - Options', {
 });
 
 options.forEach((opt) => {
-  QUnit.test(`default ${opt.name}`, function() {
+  QUnit.test(`default ${opt.name}`, function(assert) {
     this.player = createPlayer();
     this.player.src({
       src: 'http://example.com/media.m3u8',
@@ -113,12 +113,12 @@ options.forEach((opt) => {
     let hls = this.player.tech_.hls;
 
     openMediaSource(this.player, this.clock);
-    QUnit.equal(hls.options_[opt.name],
+    assert.equal(hls.options_[opt.name],
                 opt.default,
                 `${opt.name} should be default`);
   });
 
-  QUnit.test(`global ${opt.name}`, function() {
+  QUnit.test(`global ${opt.name}`, function(assert) {
     videojs.options.hls[opt.name] = opt.test;
     this.player = createPlayer();
     this.player.src({
@@ -129,12 +129,12 @@ options.forEach((opt) => {
     let hls = this.player.tech_.hls;
 
     openMediaSource(this.player, this.clock);
-    QUnit.equal(hls.options_[opt.name],
+    assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to global`);
   });
 
-  QUnit.test(`sourceHandler ${opt.name}`, function() {
+  QUnit.test(`sourceHandler ${opt.name}`, function(assert) {
     let sourceHandlerOptions = {html5: {hls: {}}};
 
     sourceHandlerOptions.html5.hls[opt.name] = opt.test;
@@ -147,12 +147,12 @@ options.forEach((opt) => {
     let hls = this.player.tech_.hls;
 
     openMediaSource(this.player, this.clock);
-    QUnit.equal(hls.options_[opt.name],
+    assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourceHandler Option`);
   });
 
-  QUnit.test(`src ${opt.name}`, function() {
+  QUnit.test(`src ${opt.name}`, function(assert) {
     let srcOptions = {
       src: 'http://example.com/media.m3u8',
       type: 'application/vnd.apple.mpegurl'
@@ -165,12 +165,12 @@ options.forEach((opt) => {
     let hls = this.player.tech_.hls;
 
     openMediaSource(this.player, this.clock);
-    QUnit.equal(hls.options_[opt.name],
+    assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to src option`);
   });
 
-  QUnit.test(`srcHandler overrides global ${opt.name}`, function() {
+  QUnit.test(`srcHandler overrides global ${opt.name}`, function(assert) {
     let sourceHandlerOptions = {html5: {hls: {}}};
 
     sourceHandlerOptions.html5.hls[opt.name] = opt.test;
@@ -184,12 +184,12 @@ options.forEach((opt) => {
     let hls = this.player.tech_.hls;
 
     openMediaSource(this.player, this.clock);
-    QUnit.equal(hls.options_[opt.name],
+    assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourchHandler option`);
   });
 
-  QUnit.test(`src overrides sourceHandler ${opt.name}`, function() {
+  QUnit.test(`src overrides sourceHandler ${opt.name}`, function(assert) {
     let sourceHandlerOptions = {html5: {hls: {}}};
     let srcOptions = {
       src: 'http://example.com/media.m3u8',
@@ -204,7 +204,7 @@ options.forEach((opt) => {
     let hls = this.player.tech_.hls;
 
     openMediaSource(this.player, this.clock);
-    QUnit.equal(hls.options_[opt.name],
+    assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourchHandler option`);
   });
@@ -220,33 +220,33 @@ QUnit.module('Configuration - Global Only', {
   }
 });
 
-QUnit.test('global mode override - flash', function() {
+QUnit.test('global mode override - flash', function(assert) {
   videojs.options.hls.mode = 'flash';
   let htmlSourceHandler = new HlsSourceHandler('html5');
   let flashSourceHandler = new HlsSourceHandler('flash');
 
-  QUnit.equal(
+  assert.equal(
     htmlSourceHandler.canHandleSource({type: 'application/x-mpegURL'}),
     false,
     'Cannot play html as we are overriden not to');
 
-  QUnit.equal(
+  assert.equal(
     flashSourceHandler.canHandleSource({type: 'application/x-mpegURL'}),
     true,
     'Can play flash as it is supported and overides allow');
 });
 
-QUnit.test('global mode override - html', function() {
+QUnit.test('global mode override - html', function(assert) {
   videojs.options.hls.mode = 'html5';
   let htmlSourceHandler = new HlsSourceHandler('html5');
   let flashSourceHandler = new HlsSourceHandler('flash');
 
-  QUnit.equal(
+  assert.equal(
     htmlSourceHandler.canHandleSource({type: 'application/x-mpegURL'}),
     true,
     'Can play html as we support it and overides allow');
 
-  QUnit.equal(
+  assert.equal(
     flashSourceHandler.canHandleSource({type: 'application/x-mpegURL'}),
     false,
     'Cannot play flash as we are overiden not to');
