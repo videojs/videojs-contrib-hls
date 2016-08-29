@@ -18,8 +18,6 @@ Maintenance Status: Stable
   - [Manual Build](#manual-build)
 - [Contributing](#contributing)
 - [Getting Started](#getting-started)
-- [Known Issues](#known-issues)
-  - [IE11](#ie11)
 - [Documentation](#documentation)
   - [Options](#options)
     - [How to use](#how-to-use)
@@ -43,6 +41,9 @@ Maintenance Status: Stable
     - [mediachange](#mediachange)
   - [In-Band Metadata](#in-band-metadata)
 - [Hosting Considerations](#hosting-considerations)
+- [Known Issues](#known-issues)
+  - [IE11](#ie11)
+  - [Fragmented MP4 Support](#fragmented-mp4-support)
   - [Testing](#testing)
 - [Release History](#release-history)
 - [Building](#building)
@@ -137,8 +138,8 @@ are some highlights:
   as possible with standard HTML APIs
 - Stream with multiple audio tracks and switching to those audio tracks
   (see the docs folder) for info
-- Media content in 
-  [fragmented MP4s](https://developer.apple.com/videos/play/wwdc2016/504/) 
+- Media content in
+  [fragmented MP4s](https://developer.apple.com/videos/play/wwdc2016/504/)
   instead of the MPEG2-TS container format.
 
 [0]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track
@@ -441,9 +442,9 @@ videos stopping playback with media decode errors. The known workaround
 for this issues is to force the player to use flash when running on IE11.
 
 ### Fragmented MP4 Support
-Edge has native support for HLS but only in the MPEG2-TS container. If 
-you attempt to play an HLS stream with fragmented MP4 segments, Edge 
-will stall. Fragmented MP4s are only supported on browser that have 
+Edge has native support for HLS but only in the MPEG2-TS container. If
+you attempt to play an HLS stream with fragmented MP4 segments, Edge
+will stall. Fragmented MP4s are only supported on browser that have
 [Media Source Extensions](http://caniuse.com/#feat=mediasource) available.
 
 ### Testing

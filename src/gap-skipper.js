@@ -39,9 +39,9 @@ export default class GapSkipper {
     this.lastRecordedTime = null;
     this.timer_ = null;
 
-    if (options.debug) {
+//    if (options.debug) {
       this.logger_ = videojs.log.bind(videojs, 'gap-skipper ->');
-    }
+//    }
     this.logger_('initialize');
 
     let waitingHandler = ()=> this.waiting_();
@@ -87,7 +87,7 @@ export default class GapSkipper {
 
     let currentTime = this.tech_.currentTime();
 
-    if (this.consecutiveUpdates === 5 &&
+    if (this.consecutiveUpdates >= 5 &&
         currentTime === this.lastRecordedTime) {
       this.consecutiveUpdates++;
       this.waiting_();

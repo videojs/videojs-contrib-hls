@@ -457,6 +457,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
            this.mainSegmentLoader_.mediaBytesTransferred;
   }
 
+  mediaSecondsLoaded_() {
+    return Math.max(this.audioSegmentLoader_.mediaSecondsLoaded_ +
+                    this.mainSegmentLoader_.mediaSecondsLoaded_);
+  }
+
   /**
    * fill our internal list of HlsAudioTracks with data from
    * the master playlist or use a default
@@ -557,9 +562,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.audioPlaylistLoader_ = null;
     }
     this.audioSegmentLoader_.pause();
-    this.audioSegmentLoader_.clearBuffer();
+    this.audioSegmentLoader_.resetEverything();
 
     if (!track.properties_.resolvedUri) {
+//      this.mainSegmentLoader_.resetEverything();
       return;
     }
 
@@ -626,8 +632,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     if (media !== this.masterPlaylistLoader_.media()) {
       this.masterPlaylistLoader_.media(media);
-      this.mainSegmentLoader_.sourceUpdater_.remove(this.tech_.currentTime() + 5,
-                                                    Infinity);
+
+      this.mainSegmentLoader_.resetFetcher();
+      if (this.audiosegmentloader_) {
+        this.audioSegmentLoader_.resetFetcher();
+      }
     }
   }
 
@@ -802,8 +811,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // cancel outstanding requests so we begin buffering at the new
     // location
     this.mainSegmentLoader_.abort();
+    this.mainSegmentLoader_.resetEverything();
     if (this.audioPlaylistLoader_) {
       this.audioSegmentLoader_.abort();
+      this.audioSegmentLoader_.resetEverything();
     }
 
     if (!this.tech_.paused()) {

@@ -399,6 +399,10 @@ class HlsHandler extends Component {
       mediaBytesTransferred: {
         get: () => this.masterPlaylistController_.mediaBytesTransferred_() || 0,
         enumerable: true
+      },
+      mediaSecondsLoaded: {
+        get: () => this.masterPlaylistController_.mediaSecondsLoaded_() || 0,
+        enumerable: true
       }
     });
 
