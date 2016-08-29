@@ -87,7 +87,7 @@ export default class GapSkipper {
 
     let currentTime = this.tech_.currentTime();
 
-    if (this.consecutiveUpdates === 5 &&
+    if (this.consecutiveUpdates >= 5 &&
         currentTime === this.lastRecordedTime) {
       this.consecutiveUpdates++;
       this.waiting_();
