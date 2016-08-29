@@ -103,8 +103,8 @@ QUnit.test('obeys metadata preload option', function() {
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
-QUnit.test('clears some of the buffer for a fast quality change', function() {
-  let removes = [];
+QUnit.test('resyncs SegmentLoader for a fast quality change', function() {
+  let resyncs = 0;
 
   // master
   standardXHRResponse(this.requests.shift());
@@ -114,45 +114,44 @@ QUnit.test('clears some of the buffer for a fast quality change', function() {
 
   let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
 
-  segmentLoader.sourceUpdater_.remove = function(start, end) {
-    removes.push({ start, end });
+  segmentLoader.resyncLoader = function() {
+    resyncs++;
   };
+
   this.masterPlaylistController.selectPlaylist = () => {
     return this.masterPlaylistController.master().playlists[0];
   };
-  this.masterPlaylistController.tech_.currentTime = () => 7;
 
   this.masterPlaylistController.fastQualityChange_();
 
-  QUnit.equal(removes.length, 1, 'removed buffered content');
-  QUnit.equal(removes[0].start, 7 + 5, 'removed from a bit after current time');
-  QUnit.equal(removes[0].end, Infinity, 'removed to the end');
+  QUnit.equal(resyncs, 1, 'resynced the segmentLoader');
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
-QUnit.test('does not clear the buffer when no fast quality change occurs', function() {
-  let removes = [];
+QUnit.test('does not resync the segmentLoader when no fast quality change occurs',
+  function() {
+    let resyncs = 0;
 
-  // master
-  standardXHRResponse(this.requests.shift());
-  // media
-  standardXHRResponse(this.requests.shift());
-  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+    // master
+    standardXHRResponse(this.requests.shift());
+    // media
+    standardXHRResponse(this.requests.shift());
+    this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
-  let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
+    let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
 
-  segmentLoader.sourceUpdater_.remove = function(start, end) {
-    removes.push({ start, end });
-  };
+    segmentLoader.resyncLoader = function() {
+      resyncs++;
+    };
 
-  this.masterPlaylistController.fastQualityChange_();
+    this.masterPlaylistController.fastQualityChange_();
 
-  QUnit.equal(removes.length, 0, 'did not remove content');
-  // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
-});
+    QUnit.equal(resyncs, 0, 'did not resync the segmentLoader');
+    // verify stats
+    QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
+  });
 
 QUnit.test('if buffered, will request second segment byte range', function() {
   this.requests.length = 0;
@@ -178,9 +177,10 @@ QUnit.test('if buffered, will request second segment byte range', function() {
 
   // segment
   standardXHRResponse(this.requests[1]);
+  this.masterPlaylistController.mainSegmentLoader_.fetchAtBuffer_ = true;
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   this.clock.tick(10 * 1000);
-  QUnit.equal(this.requests[2].headers.Range, 'bytes=1823412-2299991');
+  QUnit.equal(this.requests[2].headers.Range, 'bytes=522828-1110327');
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
