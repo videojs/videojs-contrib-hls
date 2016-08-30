@@ -31,7 +31,7 @@ const objectChanged = function(a, b) {
   }
 
   for (let prop in a) {
-    if (!b[prop] || a[prop] !== b[prop]) {
+    if (a[prop] !== b[prop]) {
       return true;
     }
   }

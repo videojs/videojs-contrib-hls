@@ -644,6 +644,12 @@ export default class SegmentLoader extends videojs.EventTarget {
           this.segmentXhr.abort();
           this.segmentXhr = null;
         }
+        if (this.initSegmentXhr) {
+          // Prevent error handler from running.
+          this.initSegmentXhr.onreadystatechange = null;
+          this.initSegmentXhr.abort();
+          this.initSegmentXhr = null;
+        }
         if (this.keyXhr) {
           // Prevent error handler from running.
           this.keyXhr.onreadystatechange = null;
@@ -769,7 +775,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.initSegments_[initSegmentId(segment.map)] = segment.map;
     }
 
-    if (!this.xhr_.segmentXhr && !this.xhr_.keyXhr && !this.initSegmentXhr) {
+    if (!this.xhr_.segmentXhr && !this.xhr_.keyXhr && !this.xhr_.initSegmentXhr) {
       this.xhr_ = null;
       this.processResponse_();
     }
