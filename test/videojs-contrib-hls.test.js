@@ -2551,6 +2551,7 @@ QUnit.test('uses user defined selectPlaylist from HlsHandler if specified', func
   QUnit.equal(setSelectPlaylistCount, 1, 'uses set playlist selector');
 
   Hls.STANDARD_PLAYLIST_SELECTOR = origStandardPlaylistSelector;
+  delete HlsHandler.prototype.selectPlaylist;
 });
 
 QUnit.module('HLS - Encryption', {
