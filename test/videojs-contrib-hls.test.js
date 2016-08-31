@@ -2064,7 +2064,7 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
   // Change seekable so that it starts *after* the currentTime which was set
   // based on the previous seekable range (the end of 80)
   seekable = videojs.createTimeRanges([[100, 120]]);
-  
+
   // request first playable segment
   standardXHRResponse(this.requests[1]);
 
