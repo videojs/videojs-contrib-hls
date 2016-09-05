@@ -87,6 +87,7 @@ const mimeTypesForPlaylist = function(master, media) {
   };
   let audioGroup = [];
   let mediaAttributes;
+  let previousGroup = null;
 
   if (!media) {
     // not enough information, return an error
@@ -112,18 +113,32 @@ const mimeTypesForPlaylist = function(master, media) {
   if (master.mediaGroups.AUDIO) {
     audioGroup = master.mediaGroups.AUDIO[mediaAttributes.AUDIO];
   }
+
+  // if audio could be muxed or unmuxed, use mime types appropriate
+  // for both scenarios
   for (let groupId in audioGroup) {
-    if (audioGroup[groupId].uri !== undefined) {
-      // separate SourceBuffers for video and audio
+    if (previousGroup && (!!audioGroup[groupId].uri !== !!previousGroup.uri)) {
+      // one source buffer with muxed video and audio and another for
+      // the alternate audio
       return [
         'video/' + container + '; codecs="' +
-          codecs.videoCodec + codecs.videoObjectTypeIndicator + '"',
+          codecs.videoCodec + codecs.videoObjectTypeIndicator + ', mp4a.40.' + codecs.audioProfile + '"',
         'audio/' + container + '; codecs="mp4a.40.' + codecs.audioProfile + '"'
       ];
     }
+    previousGroup = audioGroup[groupId];
+  }
+  // if all video and audio is unmuxed, use two single-codec mime
+  // types
+  if (previousGroup && previousGroup.uri) {
+    return [
+      'video/' + container + '; codecs="' +
+        codecs.videoCodec + codecs.videoObjectTypeIndicator + '"',
+      'audio/' + container + '; codecs="mp4a.40.' + codecs.audioProfile + '"'
+    ];
   }
 
-  // single SourceBuffer with muxed video and audio
+  // all video and audio are muxed, use a dual-codec mime type
   return [
     'video/' + container + '; codecs="' +
       codecs.videoCodec + codecs.videoObjectTypeIndicator +
@@ -463,6 +478,11 @@ export default class MasterPlaylistController extends videojs.EventTarget {
         this.audioGroups_[mediaGroup].push(track);
       }
     }
+
+    // enable the default active track
+    (this.activeAudioGroup().find((audioTrack) => {
+      return audioTrack.properties_.default;
+    }) || this.activeAudioGroup()[0]).enabled = true;
   }
 
   /**
@@ -518,10 +538,9 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       this.audioPlaylistLoader_ = null;
     }
     this.audioSegmentLoader_.pause();
+    this.audioSegmentLoader_.clearBuffer();
 
     if (!track.properties_.resolvedUri) {
-      // this audio track is muxed in so separate loaders are not
-      // required
       return;
     }
 

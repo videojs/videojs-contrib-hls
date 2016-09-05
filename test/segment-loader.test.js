@@ -130,7 +130,6 @@ QUnit.test('calling load should unpause', function() {
   loader.pause();
 
   loader.mimeType(this.mimeType);
-  sourceBuffer = mediaSource.sourceBuffers[0];
 
   loader.load();
   QUnit.equal(loader.paused(), false, 'loading unpauses');
@@ -145,6 +144,7 @@ QUnit.test('calling load should unpause', function() {
   QUnit.equal(loader.paused(), false, 'unpaused during processing');
 
   loader.pause();
+  sourceBuffer = mediaSource.sourceBuffers[0];
   sourceBuffer.trigger('updateend');
   QUnit.equal(loader.state, 'READY', 'finished processing');
   QUnit.ok(loader.paused(), 'stayed paused');
@@ -1030,16 +1030,21 @@ QUnit.test('key request timeouts reset bandwidth', function() {
   QUnit.ok(isNaN(loader.roundTrip), 'reset round trip time');
 });
 
-QUnit.test('GOAL_BUFFER_LENGTH changes to 1 segment ' +
-           ' which is already buffered, no new request is formed', function() {
-  Config.GOAL_BUFFER_LENGTH = 1;
-  loader.mimeType(this.mimeType);
-  let segmentInfo = loader.checkBuffer_(videojs.createTimeRanges([[0, 1]]),
-                                        playlistWithDuration(20),
-                                        0);
+QUnit.test('checks the goal buffer configuration every loading opportunity', function() {
+  let playlist = playlistWithDuration(20);
+  let defaultGoal = Config.GOAL_BUFFER_LENGTH;
+  let segmentInfo;
 
+  Config.GOAL_BUFFER_LENGTH = 1;
+  loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
+  loader.load();
+
+  segmentInfo = loader.checkBuffer_(videojs.createTimeRanges([[0, 1]]),
+                                    playlist,
+                                    0);
   QUnit.ok(!segmentInfo, 'no request generated');
-  Config.GOAL_BUFFER_LENGTH = 30;
+  Config.GOAL_BUFFER_LENGTH = defaultGoal;
 });
 
 QUnit.module('Segment Loading Calculation', {
@@ -1160,22 +1165,6 @@ function() {
   segmentInfo = loader.checkBuffer_(buffered, playlist, 50);
 
   QUnit.ok(!segmentInfo, 'no request was made');
-});
-
-QUnit.test('calculates timestampOffset for discontinuities', function() {
-  let segmentInfo;
-  let playlist;
-
-  loader.mimeType(this.mimeType);
-
-  playlist = playlistWithDuration(60);
-  playlist.segments[3].end = 37.9;
-  playlist.discontinuityStarts = [4];
-  playlist.segments[4].discontinuity = true;
-  playlist.segments[4].timeline = 1;
-
-  segmentInfo = loader.checkBuffer_(videojs.createTimeRanges([[0, 37.9]]), playlist, 36);
-  QUnit.equal(segmentInfo.timestampOffset, 37.9, 'placed the discontinuous segment');
 });
 
 QUnit.test('adjusts calculations based on expired time', function() {
