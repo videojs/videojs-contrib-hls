@@ -8,7 +8,10 @@ import {
   openMediaSource
 } from './test-helpers.js';
 import manifests from './test-manifests.js';
-import MasterPlaylistController from '../src/master-playlist-controller';
+import {
+  MasterPlaylistController,
+  mimeTypesForPlaylist_
+} from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
 import { Hls } from '../src/videojs-contrib-hls';
@@ -761,4 +764,117 @@ QUnit.test('respects useCueTags option', function() {
            'adds cueTagsTrack as a text track if useCueTags is truthy');
 
   videojs.options.hls = origHlsOptions;
+});
+
+QUnit.module('Codec to MIME Type Conversion');
+
+QUnit.test('recognizes muxed codec configurations', function() {
+  QUnit.deepEqual(mimeTypesForPlaylist_({ mediaGroups: {} }, {}),
+                  [ 'video/mp2t; codecs="avc1.4d400d, mp4a.40.2"' ],
+                  'returns a default MIME type when no codecs are present');
+
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {},
+    playlists: []
+  }, {
+    attributes: {
+      CODECS: 'mp4a.40.E,avc1.deadbeef'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.deadbeef, mp4a.40.E"'
+  ], 'returned the parsed muxed type');
+});
+
+QUnit.test('recognizes mixed codec configurations', function() {
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {
+      AUDIO: {
+        hi: {
+          en: {},
+          es: {
+            uri: 'http://example.com/alt-audio.m3u8'
+          }
+        }
+      }
+    },
+    playlists: []
+  }, {
+    attributes: {
+      AUDIO: 'hi'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.4d400d, mp4a.40.2"',
+    'audio/mp2t; codecs="mp4a.40.2"'
+  ], 'returned a default muxed type with alternate audio');
+
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {
+      AUDIO: {
+        hi: {
+          eng: {},
+          es: {
+            uri: 'http://example.com/alt-audio.m3u8'
+          }
+        }
+      }
+    },
+    playlists: []
+  }, {
+    attributes: {
+      CODECS: 'mp4a.40.E,avc1.deadbeef',
+      AUDIO: 'hi'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.deadbeef, mp4a.40.E"',
+    'audio/mp2t; codecs="mp4a.40.E"'
+  ], 'returned a parsed muxed type with alternate audio');
+});
+
+QUnit.test('recognizes unmuxed codec configurations', function() {
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {
+      AUDIO: {
+        hi: {
+          eng: {
+            uri: 'http://example.com/eng.m3u8'
+          },
+          es: {
+            uri: 'http://example.com/eng.m3u8'
+          }
+        }
+      }
+    },
+    playlists: []
+  }, {
+    attributes: {
+      AUDIO: 'hi'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.4d400d"',
+    'audio/mp2t; codecs="mp4a.40.2"'
+  ], 'returned default unmuxed types');
+
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {
+      AUDIO: {
+        hi: {
+          eng: {
+            uri: 'http://example.com/alt-audio.m3u8'
+          },
+          es: {
+            uri: 'http://example.com/eng.m3u8'
+          }
+        }
+      }
+    },
+    playlists: []
+  }, {
+    attributes: {
+      CODECS: 'mp4a.40.E,avc1.deadbeef',
+      AUDIO: 'hi'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.deadbeef"',
+    'audio/mp2t; codecs="mp4a.40.E"'
+  ], 'returned parsed unmuxed types');
 });

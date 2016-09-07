@@ -13,7 +13,7 @@ import utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
 import m3u8 from 'm3u8-parser';
 import videojs from 'video.js';
-import MasterPlaylistController from './master-playlist-controller';
+import { MasterPlaylistController } from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
 import GapSkipper from './gap-skipper';

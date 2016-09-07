@@ -38,6 +38,12 @@ const objectChanged = function(a, b) {
   return false;
 };
 
+/**
+ * Parses a codec string to retrieve the number of codecs specified,
+ * the video codec and object type indicator, and the audio profile.
+ *
+ * @private
+ */
 const parseCodecs = function(codecs) {
   let result = {
     codecCount: 0,
@@ -76,9 +82,10 @@ const parseCodecs = function(codecs) {
  * @return {Array} the MIME type strings. If the array has more than
  * one entry, the first element should be applied to the video
  * SourceBuffer and the second to the audio SourceBuffer.
+ *
  * @private
  */
-const mimeTypesForPlaylist = function(master, media) {
+export const mimeTypesForPlaylist_ = function(master, media) {
   let container = 'mp2t';
   let codecs = {
     videoCodec: 'avc1',
@@ -107,7 +114,11 @@ const mimeTypesForPlaylist = function(master, media) {
   // defaults
   mediaAttributes = media.attributes || {};
   if (mediaAttributes.CODECS) {
-    codecs = parseCodecs(mediaAttributes.CODECS);
+    let parsedCodecs = parseCodecs(mediaAttributes.CODECS);
+
+    Object.keys(parsedCodecs).forEach((key) => {
+      codecs[key] = parsedCodecs[key] || codecs[key];
+    });
   }
 
   if (master.mediaGroups.AUDIO) {
@@ -155,7 +166,7 @@ const mimeTypesForPlaylist = function(master, media) {
  * @class MasterPlaylistController
  * @extends videojs.EventTarget
  */
-export default class MasterPlaylistController extends videojs.EventTarget {
+export class MasterPlaylistController extends videojs.EventTarget {
   constructor(options) {
     super();
 
@@ -926,7 +937,7 @@ export default class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    mimeTypes = mimeTypesForPlaylist(this.masterPlaylistLoader_.master, media);
+    mimeTypes = mimeTypesForPlaylist_(this.masterPlaylistLoader_.master, media);
     if (mimeTypes.length < 1) {
       this.error =
         'No compatible SourceBuffer configuration for the variant stream:' +
