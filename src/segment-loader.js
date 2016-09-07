@@ -181,16 +181,21 @@ export default class SegmentLoader extends videojs.EventTarget {
    * and reset to a default state
    */
   abort() {
-    if (this.state !== 'WAITING') {
+    if (this.state === 'INIT' ||
+        this.state === 'READY' ||
+        this.state === 'APPENDING') {
       return;
+    }
+
+    if (this.state === 'WAITING') {
+      this.state = 'READY';
     }
 
     this.abort_();
 
     // don't wait for buffer check timeouts to begin fetching the
     // next segment
-    if (!this.paused()) {
-      this.state = 'READY';
+    if (this.state === 'READY' && !this.paused()) {
       this.fillBuffer_();
     }
   }
@@ -214,7 +219,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * load a playlist and start to fill the buffer
    */
   load() {
-    this.monitorBuffer_();
+    this.resume();
 
     // if we don't have a playlist yet, keep waiting for one to be
     // specified
@@ -225,8 +230,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     // if we're in the middle of processing a segment already, don't
     // kick off an additional segment request
     if (!this.sourceUpdater_ ||
-        (this.state !== 'READY' &&
-        this.state !== 'INIT')) {
+        this.state === 'WAITING' ||
+        this.state === 'APPENDING') {
       return;
     }
 
@@ -266,15 +271,33 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       this.checkBufferTimeout_ = null;
     }
+    if (this.state === 'WAITING') {
+      this.abort_();
+      this.state = 'READY';
+    }
   }
 
   /**
    * Returns whether the segment loader is fetching additional
    * segments when given the opportunity. This property can be
-   * modified through calls to pause() and load().
+   * modified through calls to pause() and load() or resume().
    */
   paused() {
     return this.checkBufferTimeout_ === null;
+  }
+
+  /**
+   * Resumes monitoring of the buffer for the segment loader to begin
+   * fetching segments when ready
+   */
+  resume() {
+    if (this.state === 'INIT' &&
+        this.sourceUpdater_ &&
+        this.playlist_) {
+      this.state = 'READY';
+    }
+
+    this.monitorBuffer_();
   }
 
   /**
@@ -492,7 +515,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       let correctionApplied =
         this.incrementTimeCorrection_(this.playlist_.targetDuration / 2, 1);
 
-      if (correctionApplied && !this.paused()) {
+      if (correctionApplied && this.state === 'READY') {
         this.fillBuffer_();
       }
 
@@ -743,12 +766,11 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   processResponse_() {
-    let segmentInfo;
     let segment;
-
-    this.state = 'DECRYPTING';
+    let segmentInfo;
 
     segmentInfo = this.pendingSegment_;
+
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
     if (segment.key) {
@@ -777,8 +799,20 @@ export default class SegmentLoader extends videojs.EventTarget {
   handleSegment_() {
     let segmentInfo;
 
-    this.state = 'APPENDING';
     segmentInfo = this.pendingSegment_;
+
+    if (!segmentInfo) {
+      // Segment was aborted during processing.
+      if (!this.paused()) {
+        this.state = 'READY';
+        this.fillBuffer_();
+      }
+      return;
+    }
+
+    this.state = 'APPENDING';
+    this.pendingSegment_ = null;
+
     segmentInfo.buffered = this.sourceUpdater_.buffered();
     this.currentTimeline_ = segmentInfo.timeline;
 
@@ -787,7 +821,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     this.sourceUpdater_.appendBuffer(segmentInfo.bytes,
-                                     this.handleUpdateEnd_.bind(this));
+                                     this.handleUpdateEnd_.bind(this, segmentInfo));
   }
 
   /**
@@ -797,11 +831,8 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * @private
    */
-  handleUpdateEnd_() {
-    let segmentInfo = this.pendingSegment_;
+  handleUpdateEnd_(segmentInfo) {
     let currentTime = this.currentTime_();
-
-    this.pendingSegment_ = null;
 
     // add segment metadata if it we have gained information during the
     // last append
