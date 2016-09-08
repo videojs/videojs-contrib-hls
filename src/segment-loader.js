@@ -413,7 +413,21 @@ export default class SegmentLoader extends videojs.EventTarget {
                                         this.expired_);
     }
 
-    if (mediaIndex < 0 || mediaIndex === playlist.segments.length) {
+    if (mediaIndex === playlist.segments.length) {
+      if (playlist.endList &&
+          buffered.length) {
+        let endOfBuffer = buffered.end(buffered.length - 1);
+        let lastSegment = playlist.segments[playlist.segments.length - 1];
+
+        if (lastSegment.end &&
+            lastSegment.end < endOfBuffer + Ranges.TIME_FUDGE_FACTOR &&
+            this.mediaSource_.readyState === 'open') {
+          this.mediaSource_.endOfStream();
+        }
+      }
+      return null;
+    }
+    if (mediaIndex < 0) {
       return null;
     }
 
