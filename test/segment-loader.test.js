@@ -736,6 +736,7 @@ QUnit.test('fires ended at the end of a playlist', function() {
     sourceBuffers: mediaSource.sourceBuffers,
     endOfStream() {
       endOfStreams++;
+      this.readyState = 'ended';
     }
   };
 
@@ -1074,6 +1075,9 @@ QUnit.test('requests the first segment with an empty buffer', function() {
 
   let segmentInfo = loader.checkBuffer_(videojs.createTimeRanges(),
                                         playlistWithDuration(20),
+                                        0,
+                                        false,
+                                        0,
                                         0);
 
   QUnit.ok(segmentInfo, 'generated a request');
@@ -1116,7 +1120,7 @@ QUnit.test('downloads the next segment if the buffer is getting low', function()
 
   playlist.segments[1].end = 19.999;
   buffered = videojs.createTimeRanges([[0, 19.999]]);
-  segmentInfo = loader.checkBuffer_(buffered, playlist, 15);
+  segmentInfo = loader.checkBuffer_(buffered, playlist, 15, true, 0, 0);
 
   QUnit.ok(segmentInfo, 'made a request');
   QUnit.equal(segmentInfo.uri, '2.ts', 'requested the third segment');
@@ -1129,12 +1133,12 @@ QUnit.test('buffers based on the correct TimeRange if multiple ranges exist', fu
   loader.mimeType(this.mimeType);
 
   buffered = videojs.createTimeRanges([[0, 10], [20, 30]]);
-  segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(40), 8);
+  segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(40), 8, true, 0, 0);
 
   QUnit.ok(segmentInfo, 'made a request');
   QUnit.equal(segmentInfo.uri, '1.ts', 'requested the second segment');
 
-  segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(40), 20);
+  segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(40), 20, true, 0, 0);
   QUnit.ok(segmentInfo, 'made a request');
   QUnit.equal(segmentInfo.uri, '3.ts', 'requested the fourth segment');
 });
@@ -1181,7 +1185,10 @@ QUnit.test('adjusts calculations based on expired time', function() {
 
   segmentInfo = loader.checkBuffer_(buffered,
                                     playlist,
-                                    40 - Config.GOAL_BUFFER_LENGTH);
+                                    40 - Config.GOAL_BUFFER_LENGTH,
+                                    true,
+                                    loader.expired_,
+                                    0);
 
   QUnit.ok(segmentInfo, 'fetched a segment');
   QUnit.equal(segmentInfo.uri, '2.ts', 'accounted for expired time');

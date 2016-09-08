@@ -363,10 +363,14 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @param {TimeRanges} buffered - the state of the buffer
    * @param {Object} playlist - the playlist object to fetch segments from
    * @param {Number} currentTime - the playback position in seconds
+   * @param {Boolean} hasPlayed - if the player has played before
+   * @param {Number} expired - the seconds expired off the playlist
+   * @param {Number} timeCorrection - correction value to add to current time when
+   *  when determining media index to use
    * @returns {Object} a segment info object that describes the
    * request that should be made or null if no request is necessary
    */
-  checkBuffer_(buffered, playlist, currentTime) {
+  checkBuffer_(buffered, playlist, currentTime, hasPlayed, expired, timeCorrection) {
     let currentBuffered = Ranges.findRange(buffered, currentTime);
 
     // There are times when MSE reports the first segment as starting a
@@ -389,8 +393,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (currentBuffered.length === 0) {
       // find the segment containing currentTime
       mediaIndex = getMediaIndexForTime(playlist,
-                                        currentTime + this.timeCorrection_,
-                                        this.expired_);
+                                        currentTime + timeCorrection,
+                                        expired);
     } else {
       // find the segment adjacent to the end of the current
       // buffered region
@@ -399,18 +403,18 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       // if the video has not yet played only, and we already have
       // one segment downloaded do nothing
-      if (!this.hasPlayed_() && bufferedTime >= 1) {
+      if (!hasPlayed && bufferedTime >= 1) {
         return null;
       }
 
       // if there is plenty of content buffered, and the video has
       // been played before relax for awhile
-      if (this.hasPlayed_() && bufferedTime >= Config.GOAL_BUFFER_LENGTH) {
+      if (hasPlayed && bufferedTime >= Config.GOAL_BUFFER_LENGTH) {
         return null;
       }
       mediaIndex = getMediaIndexForTime(playlist,
-                                        currentBufferedEnd + this.timeCorrection_,
-                                        this.expired_);
+                                        currentBufferedEnd + timeCorrection,
+                                        expired);
     }
 
     if (mediaIndex === playlist.segments.length) {
@@ -420,9 +424,8 @@ export default class SegmentLoader extends videojs.EventTarget {
         let lastSegment = playlist.segments[playlist.segments.length - 1];
 
         if (lastSegment.end &&
-            lastSegment.end < endOfBuffer + Ranges.TIME_FUDGE_FACTOR &&
-            this.mediaSource_.readyState === 'open') {
-          this.mediaSource_.endOfStream();
+            lastSegment.end < endOfBuffer + Ranges.TIME_FUDGE_FACTOR) {
+          return { isEndOfStream: true };
         }
       }
       return null;
@@ -432,6 +435,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     segment = playlist.segments[mediaIndex];
+
     return {
       // resolve the segment URL relative to the playlist
       uri: segment.resolvedUri,
@@ -495,15 +499,25 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     // see if we need to begin loading immediately
-    let segmentInfo = this.checkBuffer_(this.sourceUpdater_.buffered(),
-                                        this.playlist_,
-                                        this.currentTime_());
+    let request = this.checkBuffer_(this.sourceUpdater_.buffered(),
+                                    this.playlist_,
+                                    this.currentTime_(),
+                                    this.hasPlayed_(),
+                                    this.expired_,
+                                    this.timeCorrection_);
 
-    if (!segmentInfo) {
+    if (!request) {
       return;
     }
 
-    if (segmentInfo.mediaIndex === this.playlist_.segments.length - 1 &&
+    if (request.isEndOfStream) {
+      if (this.mediaSource_.readyState === 'open') {
+        this.mediaSource_.endOfStream();
+      }
+      return;
+    }
+
+    if (request.mediaIndex === this.playlist_.segments.length - 1 &&
         this.mediaSource_.readyState === 'ended' &&
         !this.seeking_()) {
       return;
@@ -514,16 +528,13 @@ export default class SegmentLoader extends videojs.EventTarget {
                                   this.playlist_.mediaSequence + segmentInfo.mediaIndex,
                                   this.expired_);
 
-    // We will need to change timestampOffset of the sourceBuffer if either of
-    // the following conditions are true:
-    // - The segment.timeline !== this.currentTimeline
-    //   (we are crossing a discontinuity)
+    //   (we are crossing a discontinuity somehow)
     // - The "timestampOffset" for the start of this segment is less than
     //   the currently set timestampOffset
-    segmentInfo.timestampOffset = this.sourceUpdater_.timestampOffset();
+    request.timestampOffset = this.sourceUpdater_.timestampOffset();
     if (segment.timeline !== this.currentTimeline_ ||
         startOfSegment < this.sourceUpdater_.timestampOffset()) {
-      segmentInfo.timestampOffset = startOfSegment;
+      request.timestampOffset = startOfSegment;
     }
 
     // Sanity check the segment-index determining logic by calcuating the
