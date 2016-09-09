@@ -303,7 +303,7 @@ QUnit.test('updates the enabled track when switching audio groups', function() {
                                 '0.ts\n' +
                                 '#EXT-X-ENDLIST\n');
 
-  QUnit.ok(mpc.activeAudioGroup().find((track) => track.enabled),
+  QUnit.ok(mpc.activeAudioGroup().filter((track) => track.enabled)[0],
            'enabled a track in the new audio group');
 });
 

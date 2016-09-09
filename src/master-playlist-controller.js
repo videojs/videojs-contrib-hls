@@ -260,7 +260,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.load();
       }
 
-      this.setupSourceBuffers_();
+      try {
+        this.setupSourceBuffers_();
+      } catch (e) {
+        videojs.log.warn('Failed to create SourceBuffers', e);
+        return this.mediaSource.endOfStream('decode');
+      }
       this.setupFirstPlay();
 
       this.fillAudioTracks_();
@@ -335,7 +340,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // if the audio group has changed, a new audio track has to be
       // enabled
       activeAudioGroup = this.activeAudioGroup();
-      activeTrack = activeAudioGroup.find((track) => track.enabled);
+      activeTrack = activeAudioGroup.filter((track) => track.enabled)[0];
       if (!activeTrack) {
         this.setupAudio();
         this.trigger('audioupdate');
@@ -389,11 +394,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
         'unsupported in Firefox due to an issue: \n\n' +
         'https://bugzilla.mozilla.org/show_bug.cgi?id=1247138\n\n';
 
-    let enabledIndex = this.activeAudioGroup().findIndex((track) => track.enabled);
+    let enabledIndex =
+        this.activeAudioGroup()
+          .map((track) => track.enabled)
+          .indexOf(true);
     let enabledTrack = this.activeAudioGroup()[enabledIndex];
-    let defaultTrack = this.activeAudioGroup().find((track) => {
+    let defaultTrack = this.activeAudioGroup().filter((track) => {
       return track.properties_ && track.properties_.default;
-    });
+    })[0];
 
     // they did not switch audiotracks
     // blacklist the current playlist
@@ -491,9 +499,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     // enable the default active track
-    (this.activeAudioGroup().find((audioTrack) => {
+    (this.activeAudioGroup().filter((audioTrack) => {
       return audioTrack.properties_.default;
-    }) || this.activeAudioGroup()[0]).enabled = true;
+    })[0] || this.activeAudioGroup()[0]).enabled = true;
   }
 
   /**
@@ -532,14 +540,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // determine whether seperate loaders are required for the audio
     // rendition
     let audioGroup = this.activeAudioGroup();
-    let track = audioGroup.find((audioTrack) => {
+    let track = audioGroup.filter((audioTrack) => {
       return audioTrack.enabled;
-    });
+    })[0];
 
     if (!track) {
-      track = audioGroup.find((audioTrack) => {
+      track = audioGroup.filter((audioTrack) => {
         return audioTrack.properties_.default;
-      }) || audioGroup[0];
+      })[0] || audioGroup[0];
       track.enabled = true;
     }
 
@@ -693,7 +701,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // Only attempt to create the source buffer if none already exist.
     // handleSourceOpen is also called when we are "re-opening" a source buffer
     // after `endOfStream` has been called (in response to a seek for instance)
-    this.setupSourceBuffers_();
+    try {
+      this.setupSourceBuffers_();
+    } catch (e) {
+      videojs.log.warn('Failed to create Source Buffers', e);
+      return this.mediaSource.endOfStream('decode');
+    }
 
     // if autoplay is enabled, begin playback. This is duplicative of
     // code in video.js but is required because play() must be invoked

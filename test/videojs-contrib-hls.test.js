@@ -1812,9 +1812,9 @@ QUnit.test('when audioinfo changes on an independent audio track in Firefox, the
   standardXHRResponse(this.requests.shift());
   QUnit.equal(audioTracks.length, 3, 'three audio track after load');
 
-  let defaultTrack = mpc.activeAudioGroup().find((track) => {
+  let defaultTrack = mpc.activeAudioGroup().filter((track) => {
     return track.properties_.default;
-  });
+  })[0];
 
   // initial audio info
   hls.mediaSource.trigger({ type: 'audioinfo', info: { foo: 'bar' }});
@@ -1894,9 +1894,9 @@ QUnit.test('changing audioinfo for muxed audio blacklists the current playlist i
                                 '0.ts\n' +
                                 '#EXT-X-ENDLIST\n');
 
-  let defaultTrack = mpc.activeAudioGroup().find((track) => {
+  let defaultTrack = mpc.activeAudioGroup().filter((track) => {
     return track.properties_.default;
-  });
+  })[0];
   let oldPlaylist = mpc.media();
 
   // initial audio info
