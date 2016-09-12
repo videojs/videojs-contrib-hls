@@ -1002,7 +1002,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
       };
 
       if (variant.attributes && variant.attributes.CODECS) {
-        variantCodecs = parseCodecs(variant.attributes.CODECS);
+        let codecString = variant.attributes.CODECS;
+
+        variantCodecs = parseCodecs(codecString);
+        if (!MediaSource.isTypeSupported('video/mp4; codecs="' + codecString + '"')) {
+          variant.excludeUntil = Infinity;
+        }
       }
 
       // if the streams differ in the presence or absence of audio or
@@ -1022,6 +1027,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
           (audioProfile === '5' && variantCodecs.audioProfile !== '5')) {
         variant.excludeUntil = Infinity;
       }
+
     });
   }
 
