@@ -19,7 +19,9 @@
     "build:js:browserify": "browserify . -s videojs-contrib-hls -g browserify-shim -o dist/videojs-contrib-hls.js",
     "build:js:collapse": "bundle-collapser dist/videojs-contrib-hls.js -o dist/videojs-contrib-hls.min.js",
     "build:js:uglify": "uglifyjs dist/videojs-contrib-hls.min.js --comments -m -c -o dist/videojs-contrib-hls.min.js",
-    "build:test": "npm-run-all build:test:manifest build:test:js",
+    "build:test:browserify": "browserify test/browserify-test.js -o dist-test/browserify-test.js",
+    "build:test:webpack": "webpack test/webpack-test.js dist-test/webpack-test.js",
+    "build:test": "npm-run-all build:test:manifest build:test:js build:test:browserify build:test:webpack",
     "build:test:js": "node scripts/build-test.js",
     "build:test:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.build();\"",
     "clean": "npm-run-all -p clean:*",
@@ -45,7 +47,9 @@
     "watch:js:babel": "npm run build:js:babel -- --watch",
     "watch:js:browserify": "watchify . -v -g browserify-shim -o dist/videojs-contrib-hls.js",
     "watch:js:switcher": "watchify utils/switcher/switcher.js -v -t babelify -g browserify-shim -o dist/switcher.js",
-    "watch:test": "npm-run-all -p watch:test:*",
+    "watch:test:browserify": "watchify test/browserify-test.js -o dist-test/browserify-test.js",
+    "watch:test:webpack": "watchify test/webpack-test.js -o dist-test/webpack-test.js",
+    "watch:test": "npm-run-all -p watch:test:js watch:test:webpack watch:test:browserify",
     "watch:test:js": "node scripts/watch-test.js",
     "watch:test:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.watch();\"",
     "prepublish": "npm run build"
@@ -124,6 +128,7 @@
     "sinon": "1.10.2",
     "uglify-js": "^2.5.0",
     "videojs-standard": "^4.0.3",
-    "watchify": "^3.6.0"
+    "watchify": "^3.6.0",
+    "webpack": "^1.13.2"
   }
 }
