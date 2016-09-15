@@ -97,6 +97,9 @@ const updateMaster = function(master, media) {
         if (segment.key && !segment.key.resolvedUri) {
           segment.key.resolvedUri = resolveUrl(playlist.resolvedUri, segment.key.uri);
         }
+        if (segment.map && !segment.map.resolvedUri) {
+          segment.map.resolvedUri = resolveUrl(playlist.resolvedUri, segment.map.uri);
+        }
       }
       changed = true;
     }
@@ -246,11 +249,13 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * @return {Boolean} true if on lowest rendition
    */
   loader.isLowestEnabledRendition_ = function() {
-    if (!loader.media()) {
+    let media = loader.media();
+
+    if (!media || !media.attributes) {
       return false;
     }
 
-    let currentPlaylist = loader.media().attributes.BANDWIDTH;
+    let currentBandwidth = loader.media().attributes.BANDWIDTH || 0;
 
     return !(loader.master.playlists.filter((element, index, array) => {
       let enabled = typeof element.excludeUntil === 'undefined' ||
@@ -262,7 +267,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
       let item = element.attributes.BANDWIDTH;
 
-      return item <= currentPlaylist;
+      return item <= currentBandwidth;
 
     }).length > 1);
   };
@@ -508,6 +513,12 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       // loaded a media playlist
       // infer a master playlist if none was previously requested
       loader.master = {
+        mediaGroups: {
+          'AUDIO': {},
+          'VIDEO': {},
+          'CLOSED-CAPTIONS': {},
+          'SUBTITLES': {}
+        },
         uri: window.location.href,
         playlists: [{
           uri: srcUrl

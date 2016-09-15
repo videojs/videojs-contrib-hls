@@ -14,7 +14,7 @@
 
   <!-- player stats visualization -->
   <link href="stats.css" rel="stylesheet">
-  <script src="../switcher/js/vendor/d3.min.js"></script>
+  <script src="/node_modules/d3/d3.min.js"></script>
 
   <style>
     body {
@@ -210,12 +210,6 @@
 
     function setup(player) {
       player.ready(function() {
-
-        // ------------
-        // Audio Track Switcher
-        // ------------
-
-        player.controlBar.addChild('AudioTrackButton', {}, 13);
 
         // ------------
         // Player Stats

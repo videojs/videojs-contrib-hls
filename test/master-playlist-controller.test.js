@@ -7,7 +7,11 @@ import {
   standardXHRResponse,
   openMediaSource
 } from './test-helpers.js';
-import MasterPlaylistController from '../src/master-playlist-controller';
+import manifests from './test-manifests.js';
+import {
+  MasterPlaylistController,
+  mimeTypesForPlaylist_
+} from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
 import { Hls } from '../src/videojs-contrib-hls';
@@ -272,6 +276,37 @@ function() {
               '16 bytes downloaded');
 });
 
+QUnit.test('updates the enabled track when switching audio groups', function() {
+  openMediaSource(this.player, this.clock);
+  // master
+  this.requests.shift().respond(200, null,
+                                manifests.multipleAudioGroupsCombinedMain);
+  // media
+  standardXHRResponse(this.requests.shift());
+  // init segment
+  standardXHRResponse(this.requests.shift());
+  // video segment
+  standardXHRResponse(this.requests.shift());
+  // audio media
+  standardXHRResponse(this.requests.shift());
+  // ignore audio segment requests
+  this.requests.length = 0;
+
+  let mpc = this.masterPlaylistController;
+  let combinedPlaylist = mpc.master().playlists[0];
+
+  mpc.masterPlaylistLoader_.media(combinedPlaylist);
+  // updated media
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXTINF:5.0\n' +
+                                '0.ts\n' +
+                                '#EXT-X-ENDLIST\n');
+
+  QUnit.ok(mpc.activeAudioGroup().filter((track) => track.enabled)[0],
+           'enabled a track in the new audio group');
+});
+
 QUnit.test('blacklists switching from video+audio playlists to audio only', function() {
   let audioPlaylist;
 
@@ -384,6 +419,34 @@ function() {
   QUnit.equal(alternatePlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
+});
+
+QUnit.test('blacklists the current playlist when audio changes in Firefox', function() {
+  videojs.browser.IS_FIREFOX = true;
+
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  let media = this.masterPlaylistController.media();
+
+  // initial audio config
+  this.masterPlaylistController.mediaSource.trigger({
+    type: 'audioinfo',
+    info: {}
+  });
+  // updated audio config
+
+  this.masterPlaylistController.mediaSource.trigger({
+    type: 'audioinfo',
+    info: {
+      different: true
+    }
+  });
+  QUnit.ok(media.excludeUntil > 0, 'blacklisted the old playlist');
+  QUnit.equal(this.env.log.warn.callCount, 2, 'logged two warnings');
+  this.env.log.warn.callCount = 0;
 });
 
 QUnit.test('updates the combined segment loader on media changes', function() {
@@ -701,4 +764,117 @@ QUnit.test('respects useCueTags option', function() {
            'adds cueTagsTrack as a text track if useCueTags is truthy');
 
   videojs.options.hls = origHlsOptions;
+});
+
+QUnit.module('Codec to MIME Type Conversion');
+
+QUnit.test('recognizes muxed codec configurations', function() {
+  QUnit.deepEqual(mimeTypesForPlaylist_({ mediaGroups: {} }, {}),
+                  [ 'video/mp2t; codecs="avc1.4d400d, mp4a.40.2"' ],
+                  'returns a default MIME type when no codecs are present');
+
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {},
+    playlists: []
+  }, {
+    attributes: {
+      CODECS: 'mp4a.40.E,avc1.deadbeef'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.deadbeef, mp4a.40.E"'
+  ], 'returned the parsed muxed type');
+});
+
+QUnit.test('recognizes mixed codec configurations', function() {
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {
+      AUDIO: {
+        hi: {
+          en: {},
+          es: {
+            uri: 'http://example.com/alt-audio.m3u8'
+          }
+        }
+      }
+    },
+    playlists: []
+  }, {
+    attributes: {
+      AUDIO: 'hi'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.4d400d, mp4a.40.2"',
+    'audio/mp2t; codecs="mp4a.40.2"'
+  ], 'returned a default muxed type with alternate audio');
+
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {
+      AUDIO: {
+        hi: {
+          eng: {},
+          es: {
+            uri: 'http://example.com/alt-audio.m3u8'
+          }
+        }
+      }
+    },
+    playlists: []
+  }, {
+    attributes: {
+      CODECS: 'mp4a.40.E,avc1.deadbeef',
+      AUDIO: 'hi'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.deadbeef, mp4a.40.E"',
+    'audio/mp2t; codecs="mp4a.40.E"'
+  ], 'returned a parsed muxed type with alternate audio');
+});
+
+QUnit.test('recognizes unmuxed codec configurations', function() {
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {
+      AUDIO: {
+        hi: {
+          eng: {
+            uri: 'http://example.com/eng.m3u8'
+          },
+          es: {
+            uri: 'http://example.com/eng.m3u8'
+          }
+        }
+      }
+    },
+    playlists: []
+  }, {
+    attributes: {
+      AUDIO: 'hi'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.4d400d"',
+    'audio/mp2t; codecs="mp4a.40.2"'
+  ], 'returned default unmuxed types');
+
+  QUnit.deepEqual(mimeTypesForPlaylist_({
+    mediaGroups: {
+      AUDIO: {
+        hi: {
+          eng: {
+            uri: 'http://example.com/alt-audio.m3u8'
+          },
+          es: {
+            uri: 'http://example.com/eng.m3u8'
+          }
+        }
+      }
+    },
+    playlists: []
+  }, {
+    attributes: {
+      CODECS: 'mp4a.40.E,avc1.deadbeef',
+      AUDIO: 'hi'
+    }
+  }), [
+    'video/mp2t; codecs="avc1.deadbeef"',
+    'audio/mp2t; codecs="mp4a.40.E"'
+  ], 'returned parsed unmuxed types');
 });
