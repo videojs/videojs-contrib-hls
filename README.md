@@ -443,7 +443,8 @@ for this issues is to force the player to use flash when running on IE11.
 ### Fragmented MP4 Support
 Edge has native support for HLS but only in the MPEG2-TS container. If 
 you attempt to play an HLS stream with fragmented MP4 segments, Edge 
-will stall.
+will stall. Fragmented MP4s are only supported on browser that have 
+[Media Source Extensions](http://caniuse.com/#feat=mediasource) available.
 
 ### Testing
 
