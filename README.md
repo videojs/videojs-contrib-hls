@@ -91,16 +91,6 @@ player.play();
 
 Check out our [live example](http://jsbin.com/liwecukasi/edit?html,output) if you're having trouble.
 
-## Known Issues
-Issues that are currenty know about with workarounds. If you want to
-help find a solution that would be appreciated!
-
-### IE11
-In some IE11 setups there are issues working with its native HTML
-SourceBuffers functionality. This leads to various issues, such as
-videos stopping playback with media decode errors. The known workaround
-for this issues is to force the player to use flash when running on IE11.
-
 ## Documentation
 [HTTP Live Streaming](https://developer.apple.com/streaming/) (HLS) has
 become a de-facto standard for streaming video on mobile devices
@@ -438,6 +428,22 @@ headers](https://developer.mozilla.org/en-US/docs/HTTP/Access_control_CORS)
 configured. Easy [instructions are
 available](http://enable-cors.org/server.html) for popular webservers
 and most CDNs should have no trouble turning CORS on for your account.
+
+
+## Known Issues
+Issues that are currenty know about with workarounds. If you want to
+help find a solution that would be appreciated!
+
+### IE11
+In some IE11 setups there are issues working with its native HTML
+SourceBuffers functionality. This leads to various issues, such as
+videos stopping playback with media decode errors. The known workaround
+for this issues is to force the player to use flash when running on IE11.
+
+### Fragmented MP4 Support
+Edge has native support for HLS but only in the MPEG2-TS container. If 
+you attempt to play an HLS stream with fragmented MP4 segments, Edge 
+will stall.
 
 ### Testing
 
