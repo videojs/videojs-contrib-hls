@@ -1948,11 +1948,8 @@ QUnit.test('cleans up the buffer when loading live segments', function() {
   };
   this.player.tech_.trigger('play');
 
-  this.clock.tick(1);
-  // this.requests[1] is an aborted XHR
-  // since we are in a live stream that request is aborted by
-  // the seek-to-live behavior
-  standardXHRResponse(this.requests[2]);
+  // request first playable segment
+  standardXHRResponse(this.requests[1]);
 
   QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8',
                     'master playlist requested');
@@ -2003,14 +2000,13 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
   };
 
   this.player.tech_.trigger('play');
-  this.clock.tick(1);
+
   // Change seekable so that it starts *after* the currentTime which was set
   // based on the previous seekable range (the end of 80)
   seekable = videojs.createTimeRanges([[100, 120]]);
-  // this.requests[1] is an aborted XHR
-  // since we are in a live stream that request is aborted by
-  // the seek-to-live behavior
-  standardXHRResponse(this.requests[2]);
+
+  // request first playable segment
+  standardXHRResponse(this.requests[1]);
 
   QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
