@@ -615,12 +615,21 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // optionally, request the decryption key
     if (segment.key) {
-      let keyRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
-        uri: segment.key.resolvedUri,
-        responseType: 'arraybuffer'
-      });
+      if(localStorage[segment.key.uri]){
+        let localKeyString = localStorage[segment.key.uri];
+        let localKeyArray = [];
+        for(let j=0;j<4;j++){
+          localKeyArray.push(parseInt(localKeyString.substr(10*j,10)));
+        }
+        segment.key.bytes=localKeyArray;
+      }else{
+        let keyRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
+          uri: segment.key.resolvedUri,
+          responseType: 'arraybuffer'
+        });
 
-      keyXhr = this.hls_.xhr(keyRequestOptions, this.handleResponse_.bind(this));
+        keyXhr = this.hls_.xhr(keyRequestOptions, this.handleResponse_.bind(this));
+      }
     }
 
     // optionally, request the associated media init segment
@@ -772,6 +781,18 @@ export default class SegmentLoader extends videojs.EventTarget {
         view.getUint32(8),
         view.getUint32(12)
       ]);
+
+      let str = '';
+      segment.key.bytes.map(function(value){
+        let length = value.toString().length;
+        let s = '';
+        for(let j = 0;j<10-length;j++){
+          s += '0';
+        };
+        s += value;
+        str += s;
+      })
+      localStorage[segment.key.uri]=str;
 
       // if the media sequence is greater than 2^32, the IV will be incorrect
       // assuming 10s segments, that would be about 1300 years
