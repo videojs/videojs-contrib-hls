@@ -382,7 +382,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   handleAudioinfoUpdate_(event) {
-    if (!videojs.browser.IS_FIREFOX ||
+    if (Hls.supportsAudioInfoChange()
         !this.audioInfo_ ||
         !objectChanged(this.audioInfo_, event.info)) {
       this.audioInfo_ = event.info;
@@ -391,7 +391,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     let error = 'had different audio properties (channels, sample rate, etc.) ' +
         'or changed in some other way.  This behavior is currently ' +
-        'unsupported in Firefox due to an issue: \n\n' +
+        'unsupported in Firefox 48 and below due to an issue: \n\n' +
         'https://bugzilla.mozilla.org/show_bug.cgi?id=1247138\n\n';
 
     let enabledIndex =

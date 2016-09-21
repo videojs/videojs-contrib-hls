@@ -244,6 +244,18 @@ Hls.isSupported = function() {
                           'your player\'s techOrder.');
 };
 
+/**
+ * Determines whether the browser supports a change in the audio configuration
+ * during playback. Currently only Firefox 48 and below do not support this.
+ * window.isSecureContext is a propterty that was added to window in firefox 49,
+ * so we can use it to detect Firefox 49+.
+ *
+ * @return {Boolean} Whether the browser supports audio config change during playback
+ */
+Hls.supportsAudioInfoChange = function() {
+  return !videojs.browser.IS_FIREFOX || window.hasOwnProperty('isSecureContext');
+};
+
 const Component = videojs.getComponent('Component');
 
 /**
