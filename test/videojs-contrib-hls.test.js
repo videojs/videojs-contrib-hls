@@ -1797,9 +1797,9 @@ QUnit.test('when audioinfo changes on an independent audio track in Firefox 48 &
   let oldLabel;
 
   videojs.browser.IS_FIREFOX = true;
-  let origSupportsAudioInfoChange = videojs.Hls.supportsAudioInfoChange;
+  let origSupportsAudioInfoChange_ = videojs.Hls.supportsAudioInfoChange_;
 
-  videojs.Hls.supportsAudioInfoChange = () => false;
+  videojs.Hls.supportsAudioInfoChange_ = () => false;
 
   this.player.src({
     src: 'manifest/multipleAudioGroups.m3u8',
@@ -1832,16 +1832,16 @@ QUnit.test('when audioinfo changes on an independent audio track in Firefox 48 &
   QUnit.notEqual(audioTracks[1].label, oldLabel, 'audio track at index 1 is not the same');
   QUnit.equal(defaultTrack.enabled, true, 'default track is enabled again');
   QUnit.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
-  videojs.Hls.supportsAudioInfoChange = origSupportsAudioInfoChange;
+  videojs.Hls.supportsAudioInfoChange_ = origSupportsAudioInfoChange_;
 });
 
 QUnit.test('audioinfo changes with one track, blacklist playlist on Firefox 48 & below', function() {
   let audioTracks = this.player.audioTracks();
 
   videojs.browser.IS_FIREFOX = true;
-  let origSupportsAudioInfoChange = videojs.Hls.supportsAudioInfoChange;
+  let origSupportsAudioInfoChange_ = videojs.Hls.supportsAudioInfoChange_;
 
-  videojs.Hls.supportsAudioInfoChange = () => false;
+  videojs.Hls.supportsAudioInfoChange_ = () => false;
 
   this.player.src({
     src: 'manifest/master.m3u8',
@@ -1866,16 +1866,16 @@ QUnit.test('audioinfo changes with one track, blacklist playlist on Firefox 48 &
   QUnit.equal(audioTracks.length, 1, 'still have one audio track');
   QUnit.ok(oldMedia.excludeUntil > 0, 'blacklisted old playlist');
   QUnit.equal(this.env.log.warn.calls, 2, 'firefox issue warning logged');
-  videojs.Hls.supportsAudioInfoChange = origSupportsAudioInfoChange;
+  videojs.Hls.supportsAudioInfoChange_ = origSupportsAudioInfoChange_;
 });
 
 QUnit.test('changing audioinfo for muxed audio blacklists the current playlist in Firefox', function() {
   let audioTracks = this.player.audioTracks();
 
   videojs.browser.IS_FIREFOX = true;
-  let origSupportsAudioInfoChange = videojs.Hls.supportsAudioInfoChange;
+  let origSupportsAudioInfoChange_ = videojs.Hls.supportsAudioInfoChange_;
 
-  videojs.Hls.supportsAudioInfoChange = () => false;
+  videojs.Hls.supportsAudioInfoChange_ = () => false;
 
   this.player.src({
     src: 'manifest/multipleAudioGroupsCombinedMain.m3u8',
@@ -1924,7 +1924,7 @@ QUnit.test('changing audioinfo for muxed audio blacklists the current playlist i
   QUnit.equal(defaultTrack.enabled, true, 'default audio still enabled');
   QUnit.ok(oldPlaylist.excludeUntil > 0, 'blacklisted the old playlist');
   QUnit.equal(this.env.log.warn.calls, 2, 'firefox issue warning logged');
-  videojs.Hls.supportsAudioInfoChange = origSupportsAudioInfoChange;
+  videojs.Hls.supportsAudioInfoChange_ = origSupportsAudioInfoChange_;
 });
 
 QUnit.test('cleans up the buffer when loading live segments', function() {

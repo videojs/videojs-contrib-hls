@@ -425,9 +425,9 @@ QUnit.test('blacklists the current playlist when audio changes in Firefox 48 & b
   function() {
     videojs.browser.IS_FIREFOX = true;
 
-    let origSupportsAudioInfoChange = videojs.Hls.supportsAudioInfoChange;
+    let origSupportsAudioInfoChange_ = videojs.Hls.supportsAudioInfoChange_;
 
-    videojs.Hls.supportsAudioInfoChange = () => false;
+    videojs.Hls.supportsAudioInfoChange_ = () => false;
 
     // master
     standardXHRResponse(this.requests.shift());
@@ -452,7 +452,7 @@ QUnit.test('blacklists the current playlist when audio changes in Firefox 48 & b
     QUnit.ok(media.excludeUntil > 0, 'blacklisted the old playlist');
     QUnit.equal(this.env.log.warn.callCount, 2, 'logged two warnings');
     this.env.log.warn.callCount = 0;
-    videojs.Hls.supportsAudioInfoChange = origSupportsAudioInfoChange;
+    videojs.Hls.supportsAudioInfoChange_ = origSupportsAudioInfoChange_;
   });
 
 QUnit.test('updates the combined segment loader on media changes', function() {
