@@ -421,33 +421,38 @@ function() {
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
 
-QUnit.test('blacklists the current playlist when audio changes in Firefox', function() {
-  videojs.browser.IS_FIREFOX = true;
+QUnit.test('blacklists the current playlist when audio changes in Firefox 48 & below',
+  function() {
+    videojs.browser.IS_FIREFOX = true;
 
-  // master
-  standardXHRResponse(this.requests.shift());
-  // media
-  standardXHRResponse(this.requests.shift());
+    let origSupportsAudioInfoChange = videojs.Hls.supportsAudioInfoChange;
+    videojs.Hls.supportsAudioInfoChange = () => false;
 
-  let media = this.masterPlaylistController.media();
+    // master
+    standardXHRResponse(this.requests.shift());
+    // media
+    standardXHRResponse(this.requests.shift());
 
-  // initial audio config
-  this.masterPlaylistController.mediaSource.trigger({
-    type: 'audioinfo',
-    info: {}
+    let media = this.masterPlaylistController.media();
+
+    // initial audio config
+    this.masterPlaylistController.mediaSource.trigger({
+      type: 'audioinfo',
+      info: {}
+    });
+    // updated audio config
+
+    this.masterPlaylistController.mediaSource.trigger({
+      type: 'audioinfo',
+      info: {
+        different: true
+      }
+    });
+    QUnit.ok(media.excludeUntil > 0, 'blacklisted the old playlist');
+    QUnit.equal(this.env.log.warn.callCount, 2, 'logged two warnings');
+    this.env.log.warn.callCount = 0;
+    videojs.Hls.supportsAudioInfoChange = origSupportsAudioInfoChange;
   });
-  // updated audio config
-
-  this.masterPlaylistController.mediaSource.trigger({
-    type: 'audioinfo',
-    info: {
-      different: true
-    }
-  });
-  QUnit.ok(media.excludeUntil > 0, 'blacklisted the old playlist');
-  QUnit.equal(this.env.log.warn.callCount, 2, 'logged two warnings');
-  this.env.log.warn.callCount = 0;
-});
 
 QUnit.test('updates the combined segment loader on media changes', function() {
   let updates = [];

@@ -382,7 +382,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   handleAudioinfoUpdate_(event) {
-    if (Hls.supportsAudioInfoChange()
+    if (Hls.supportsAudioInfoChange() ||
         !this.audioInfo_ ||
         !objectChanged(this.audioInfo_, event.info)) {
       this.audioInfo_ = event.info;
