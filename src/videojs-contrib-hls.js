@@ -252,7 +252,7 @@ Hls.isSupported = function() {
  *
  * @return {Boolean} Whether the browser supports audio config change during playback
  */
-Hls.supportsAudioInfoChange = function() {
+Hls.supportsAudioInfoChange_ = function() {
   return !videojs.browser.IS_FIREFOX || window.hasOwnProperty('isSecureContext');
 };
 
