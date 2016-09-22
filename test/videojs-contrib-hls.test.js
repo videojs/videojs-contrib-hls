@@ -1798,6 +1798,7 @@ QUnit.test('when audioinfo changes on an independent audio track in Firefox 48 &
 
   videojs.browser.IS_FIREFOX = true;
   let origSupportsAudioInfoChange = videojs.Hls.supportsAudioInfoChange;
+
   videojs.Hls.supportsAudioInfoChange = () => false;
 
   this.player.src({
@@ -1839,6 +1840,7 @@ QUnit.test('audioinfo changes with one track, blacklist playlist on Firefox 48 &
 
   videojs.browser.IS_FIREFOX = true;
   let origSupportsAudioInfoChange = videojs.Hls.supportsAudioInfoChange;
+
   videojs.Hls.supportsAudioInfoChange = () => false;
 
   this.player.src({
@@ -1872,6 +1874,7 @@ QUnit.test('changing audioinfo for muxed audio blacklists the current playlist i
 
   videojs.browser.IS_FIREFOX = true;
   let origSupportsAudioInfoChange = videojs.Hls.supportsAudioInfoChange;
+
   videojs.Hls.supportsAudioInfoChange = () => false;
 
   this.player.src({

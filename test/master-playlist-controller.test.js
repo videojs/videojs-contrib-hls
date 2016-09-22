@@ -426,6 +426,7 @@ QUnit.test('blacklists the current playlist when audio changes in Firefox 48 & b
     videojs.browser.IS_FIREFOX = true;
 
     let origSupportsAudioInfoChange = videojs.Hls.supportsAudioInfoChange;
+
     videojs.Hls.supportsAudioInfoChange = () => false;
 
     // master
