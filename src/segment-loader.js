@@ -523,9 +523,9 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    let segment = this.playlist_.segments[segmentInfo.mediaIndex];
+    let segment = this.playlist_.segments[request.mediaIndex];
     let startOfSegment = duration(this.playlist_,
-                                  this.playlist_.mediaSequence + segmentInfo.mediaIndex,
+                                  this.playlist_.mediaSequence + request.mediaIndex,
                                   this.expired_);
 
     //   (we are crossing a discontinuity somehow)
@@ -560,7 +560,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    this.loadSegment_(segmentInfo);
+    this.loadSegment_(request);
   }
 
   /**
