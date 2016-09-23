@@ -380,7 +380,6 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     let bufferedTime;
     let currentBufferedEnd;
-    let segment;
     let mediaIndex;
 
     if (!playlist.segments.length) {
@@ -454,13 +453,12 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    let
-      buffered = this.sourceUpdater_.buffered(),
-      playlist = this.playlist_,
-      currentTime = this.currentTime_(),
-      hasPlayed = this.hasPlayed_(),
-      expired = this.expired_,
-      timeCorrection = this.timeCorrection_;
+    let buffered = this.sourceUpdater_.buffered();
+    let playlist = this.playlist_;
+    let currentTime = this.currentTime_();
+    let hasPlayed = this.hasPlayed_();
+    let expired = this.expired_;
+    let timeCorrection = this.timeCorrection_;
 
     // see if we need to begin loading immediately
     let requestIndex = this.checkBuffer_(buffered,
