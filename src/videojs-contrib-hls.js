@@ -244,6 +244,8 @@ Hls.isSupported = function() {
                           'your player\'s techOrder.');
 };
 
+const USER_AGENT = window.navigator && window.navigator.userAgent || '';
+
 /**
  * Determines whether the browser supports a change in the audio configuration
  * during playback. Currently only Firefox 48 and below do not support this.
@@ -253,7 +255,13 @@ Hls.isSupported = function() {
  * @return {Boolean} Whether the browser supports audio config change during playback
  */
 Hls.supportsAudioInfoChange_ = function() {
-  return !videojs.browser.IS_FIREFOX || window.hasOwnProperty('isSecureContext');
+  if (videojs.browser.IS_FIREFOX) {
+    let firefoxVersionMap = (/Firefox\/([\d.]+)/i).exec(USER_AGENT);
+    let version = parseInt(firefoxVersionMap[1], 10);
+
+    return version >= 49;
+  }
+  return true;
 };
 
 const Component = videojs.getComponent('Component');
