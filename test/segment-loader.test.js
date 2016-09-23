@@ -1073,12 +1073,14 @@ QUnit.module('Segment Loading Calculation', {
 QUnit.test('requests the first segment with an empty buffer', function() {
   loader.mimeType(this.mimeType);
 
-  let segmentInfo = loader.checkBuffer_(videojs.createTimeRanges(),
-                                        playlistWithDuration(20),
+  let playlist = playlistWithDuration(20);
+  let segmentIndex = loader.checkBuffer_(videojs.createTimeRanges(),
+                                        playlist,
                                         0,
                                         false,
                                         0,
                                         0);
+  let segmentInfo = playlist.segments[segmentIndex];
 
   QUnit.ok(segmentInfo, 'generated a request');
   QUnit.equal(segmentInfo.uri, '0.ts', 'requested the first segment');
@@ -1113,6 +1115,7 @@ QUnit.test('does not download the next segment if the buffer is full', function(
 QUnit.test('downloads the next segment if the buffer is getting low', function() {
   let buffered;
   let segmentInfo;
+  let segmentIndex;
   let playlist = playlistWithDuration(30);
 
   loader.mimeType(this.mimeType);
@@ -1120,7 +1123,8 @@ QUnit.test('downloads the next segment if the buffer is getting low', function()
 
   playlist.segments[1].end = 19.999;
   buffered = videojs.createTimeRanges([[0, 19.999]]);
-  segmentInfo = loader.checkBuffer_(buffered, playlist, 15, true, 0, 0);
+  segmentIndex = loader.checkBuffer_(buffered, playlist, 15, true, 0, 0);
+  segmentInfo = playlist.segments[segmentIndex];
 
   QUnit.ok(segmentInfo, 'made a request');
   QUnit.equal(segmentInfo.uri, '2.ts', 'requested the third segment');
@@ -1129,16 +1133,20 @@ QUnit.test('downloads the next segment if the buffer is getting low', function()
 QUnit.test('buffers based on the correct TimeRange if multiple ranges exist', function() {
   let buffered;
   let segmentInfo;
+  let segmentIndex;
+  let playlist = playlistWithDuration(40);
 
   loader.mimeType(this.mimeType);
 
   buffered = videojs.createTimeRanges([[0, 10], [20, 30]]);
-  segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(40), 8, true, 0, 0);
+  segmentIndex = loader.checkBuffer_(buffered, playlist, 8, true, 0, 0);
+  segmentInfo = playlist.segments[segmentIndex];
 
   QUnit.ok(segmentInfo, 'made a request');
   QUnit.equal(segmentInfo.uri, '1.ts', 'requested the second segment');
 
-  segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(40), 20, true, 0, 0);
+  segmentIndex = loader.checkBuffer_(buffered, playlist, 20, true, 0, 0);
+  segmentInfo = playlist.segments[segmentIndex];
   QUnit.ok(segmentInfo, 'made a request');
   QUnit.equal(segmentInfo.uri, '3.ts', 'requested the fourth segment');
 });
@@ -1175,6 +1183,7 @@ QUnit.test('adjusts calculations based on expired time', function() {
   let buffered;
   let playlist;
   let segmentInfo;
+  let segmentIndex;
 
   loader.mimeType(this.mimeType);
 
@@ -1183,12 +1192,13 @@ QUnit.test('adjusts calculations based on expired time', function() {
 
   loader.expired(10);
 
-  segmentInfo = loader.checkBuffer_(buffered,
+  segmentIndex = loader.checkBuffer_(buffered,
                                     playlist,
                                     40 - Config.GOAL_BUFFER_LENGTH,
                                     true,
                                     loader.expired_,
                                     0);
+  segmentInfo = playlist.segments[segmentIndex];
 
   QUnit.ok(segmentInfo, 'fetched a segment');
   QUnit.equal(segmentInfo.uri, '2.ts', 'accounted for expired time');
