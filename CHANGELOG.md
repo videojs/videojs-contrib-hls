@@ -2,6 +2,15 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.0 (2016-09-27)
+* Updated Mux.js to 2.5.0
+    * Added support for generating version 1 TFDT boxes
+    * Added TS inspector
+* Added bundle-collapser to create smaller dist files
+* Added fMP4 support
+* Fixed a bug that resulted in us loading the first segment on a live stream
+
+--------------------
 ## 3.5.3 (2016-08-24)
 * Updated videojs-contrib-mediasources to 3.1.5
   * Updated Mux.js to 2.4.2
