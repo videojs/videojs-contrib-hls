@@ -220,7 +220,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       seekable: () => this.seekable(),
       seeking: () => this.tech_.seeking(),
       setCurrentTime: (a) => this.tech_.setCurrentTime(a),
-      hasPlayed: () => this.tech_.played().length !== 0,
+      hasPlayed: () => this.hasPlayed_ || this.tech_.played().length !== 0,
       bandwidth
     };
 
@@ -458,8 +458,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   mediaSecondsLoaded_() {
-    return Math.max(this.audioSegmentLoader_.mediaSecondsLoaded_ +
-                    this.mainSegmentLoader_.mediaSecondsLoaded_);
+    return Math.max(this.audioSegmentLoader_.mediaSecondsLoaded +
+                    this.mainSegmentLoader_.mediaSecondsLoaded);
   }
 
   /**
