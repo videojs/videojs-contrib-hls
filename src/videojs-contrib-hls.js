@@ -288,7 +288,7 @@ class HlsHandler extends Component {
       if (!_player.hasOwnProperty('hls')) {
         Object.defineProperty(_player, 'hls', {
           get: () => {
-            videojs.log.warn('player.hls is deprecated. Use player.tech.hls instead.');
+            videojs.log.warn('player.hls is deprecated. Use player.tech_.hls instead.');
             return this;
           }
         });
