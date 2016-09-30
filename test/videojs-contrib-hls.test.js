@@ -127,7 +127,7 @@ QUnit.test('deprication warning is show when using player.hls', function() {
   };
   let hls = this.player.hls;
 
-  QUnit.equal(warning, 'player.hls is deprecated. Use player.tech.hls instead.', 'warning would have been shown');
+  QUnit.equal(warning, 'player.hls is deprecated. Use player.tech_.hls instead.', 'warning would have been shown');
   QUnit.ok(hls, 'an instance of hls is returned by player.hls');
   videojs.log.warn = oldWarn;
 });
