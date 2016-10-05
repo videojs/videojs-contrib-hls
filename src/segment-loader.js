@@ -2,7 +2,7 @@
  * @file segment-loader.js
  */
 import Ranges from './ranges';
-import {getMediaIndexForTime_ as getMediaIndexForTime, duration, sumDurations} from './playlist';
+import {getMediaInfoForTime_ as getMediaInfoForTime} from './playlist';
 import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import {Decrypter} from 'aes-decrypter';
@@ -12,13 +12,14 @@ import SyncController from './sync-controller';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
+const c = 'console';
 
 // temporary, switchable debug logging
-const log = function () {
+const log = function() {
   if (window.logit) {
-    console.log.apply(console, arguments);
+    window[c].log.apply(window[c], arguments);
   }
-}
+};
 
 /**
  * Determines if we should call endOfStream on the media source based
@@ -148,14 +149,14 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.activeInitSegmentId_ = null;
     this.initSegments_ = {};
 
-    // TODO: Remove
-    this.expired_ = 0;
-
     // Manages the tracking and generation of sync-points, mappings
     // between a time in the display time and a segment index within
     // a playlist
     this.syncController_ = new SyncController();
-    this.syncPoint_ = null;
+    this.syncPoint_ = {
+      segmentIndex: 0,
+      time: 0
+    };
 
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
@@ -277,6 +278,11 @@ export default class SegmentLoader extends videojs.EventTarget {
         // We must "resync" the fetcher when we switch renditions
         this.resyncFetcher();
       }
+    } else if (!this.hasPlayed_()) {
+      newPlaylist.syncInfo = {
+        mediaSequence: newPlaylist.mediaSequence,
+        time: 0
+      };
     }
 
     this.playlist_ = newPlaylist;
@@ -310,15 +316,6 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   paused() {
     return this.checkBufferTimeout_ === null;
-  }
-
-  /**
-   * setter for expired time on the SegmentLoader
-   *
-   * @param {Number} expired the exired time to set
-   */
-  expired(expired) {
-    this.expired_ = expired;
   }
 
   /**
@@ -385,9 +382,9 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (segmentIndexArray.length) {
       return segmentIndexArray[Math.min(segmentIndexArray.length - 1, 1)].segmentIndex;
-    } else {
-      return Math.max(playlist.segments.length - 1, 0);
     }
+
+    return Math.max(playlist.segments.length - 1, 0);
   }
 
   /**
@@ -404,6 +401,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
     let lastBufferedEnd = 0;
+    let startOfSegment;
 
     if (buffered.length) {
       lastBufferedEnd = buffered.end(buffered.length - 1);
@@ -437,13 +435,13 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (syncPoint === null) {
       mediaIndex = this.getSyncSegmentCandidate_(playlist);
       log('getSync', mediaIndex);
-      return this.generateSegmentInfo_(playlist, mediaIndex, true);
+      return this.generateSegmentInfo_(playlist, mediaIndex, null, true);
     }
 
     // Under normal playback conditions fetching is a simple walk forward
     if (mediaIndex !== null) {
       log('++', mediaIndex + 1);
-      return this.generateSegmentInfo_(playlist, mediaIndex + 1, false);
+      return this.generateSegmentInfo_(playlist, mediaIndex + 1, lastBufferedEnd, false);
     }
 
     // There is a sync-point but the lack of a mediaIndex indicates that
@@ -451,16 +449,22 @@ export default class SegmentLoader extends videojs.EventTarget {
     // fetch
     if (this.fetchAtBuffer_) {
       // Find the segment containing currentTime
-      mediaIndex =  getMediaIndexForTime(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
+      let mediaSourceInfo = getMediaInfoForTime(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
+
+      mediaIndex = mediaSourceInfo.mediaIndex;
+      startOfSegment = mediaSourceInfo.startTime;
     } else {
       // Find the segment containing the end of the buffer
-      mediaIndex =  getMediaIndexForTime(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
+      let mediaSourceInfo = getMediaInfoForTime(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
+
+      mediaIndex = mediaSourceInfo.mediaIndex;
+      startOfSegment = mediaSourceInfo.startTime;
     }
     log('gMIFT', mediaIndex);
-    return this.generateSegmentInfo_(playlist, mediaIndex, false);
+    return this.generateSegmentInfo_(playlist, mediaIndex, startOfSegment, false);
   }
 
-  generateSegmentInfo_(playlist, mediaIndex, isSyncRequest) {
+  generateSegmentInfo_(playlist, mediaIndex, startOfSegment, isSyncRequest) {
     if (mediaIndex < 0 || mediaIndex >= playlist.segments.length) {
       return null;
     }
@@ -475,6 +479,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       // whether or not to update the SegmentLoader's state with this
       // segment's mediaIndex
       isSyncRequest,
+      startOfSegment,
       // the segment's playlist
       playlist,
       // unencrypted bytes of the segment
@@ -553,15 +558,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.fetchAtBuffer_ = true;
     }
 
-    let segment = this.playlist_.segments[segmentInfo.mediaIndex];
-    // TODO: Replace with a sync-point based implementation to calculate the
-    // start of the segment.
-    // * Do we need to calculate the start of the segment when isSyncRequest is true?
-    // * Do we need to append the sync-request?
-    let startOfSegment = duration(this.playlist_,
-                                  this.playlist_.mediaSequence + segmentInfo.mediaIndex,
-                                  this.expired_);
-
     // We will need to change timestampOffset of the sourceBuffer if either of
     // the following conditions are true:
     // - The segment.timeline !== this.currentTimeline
@@ -569,9 +565,10 @@ export default class SegmentLoader extends videojs.EventTarget {
     // - The "timestampOffset" for the start of this segment is less than
     //   the currently set timestampOffset
     if (segmentInfo.timeline !== this.currentTimeline_ ||
-        startOfSegment < this.sourceUpdater_.timestampOffset()) {
+        (isNaN(segmentInfo.startOfSegment) &&
+        segmentInfo.startOfSegment < this.sourceUpdater_.timestampOffset())) {
       this.syncController_.reset();
-      segmentInfo.timestampOffset = startOfSegment;
+      segmentInfo.timestampOffset = segmentInfo.startOfSegment;
     }
 
     this.currentTimeline_ = segmentInfo.timeline;
@@ -896,6 +893,12 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.syncController_.probeSegmentInfo(segmentInfo);
 
+    if (segmentInfo.isSyncRequest) {
+      this.pendingSegment_ = null;
+      this.state = 'READY';
+      return;
+    }
+
     if (segmentInfo.timestampOffset !== null) {
       this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
     }
@@ -941,6 +944,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.pendingSegment_ = null;
 
     let currentMediaIndex = segmentInfo.mediaIndex;
+
     currentMediaIndex +=
       segmentInfo.playlist.mediaSequence - this.playlist_.mediaSequence;
 

@@ -4,11 +4,13 @@
 
 import mp4probe from 'mux.js/lib/mp4/probe';
 import {inspect as tsprobe} from 'mux.js/lib/tools/ts-inspector.js';
+import {sumDurations} from './playlist';
 
+const c = 'console';
 // temporary, switchable debug logging
-const log = function () {
+const log = function() {
   if (window.logit) {
-    console.log.apply(console, arguments);
+    window[c].log.apply(window[c], arguments);
   }
 };
 
@@ -85,6 +87,7 @@ const syncPointStrategies = [
               time: syncController.discontinuities[discontinuity].time,
               segmentIndex
             };
+
             return syncPoint;
           }
         }
@@ -114,7 +117,7 @@ export default class SyncController {
   constructor() {
     // Segment Loader state variables...
     // ...for synching across variants
-    this.inspectCache_;
+    this.inspectCache_ = undefined;
 
     // ...for synching across variants
     this.timelines = [];
@@ -134,15 +137,13 @@ export default class SyncController {
    * @returns {Object} - A sync-point object
    */
   getSyncPoint(playlist, duration, currentTimeline) {
-    let strategies = Object.keys(syncPointStrategies);
-
     // Try to find a sync-point in by utilizing various strategies...
     for (let i = 0; i < syncPointStrategies.length; i++) {
       let strategy = syncPointStrategies[i];
       let syncPoint = strategy.run(this, playlist, duration, currentTimeline);
 
       if (syncPoint) {
-        log (`syncPoint found via <${strategy.name}>:`, syncPoint);
+        log(`syncPoint found via <${strategy.name}>:`, syncPoint);
         return syncPoint;
       }
     }
@@ -188,6 +189,7 @@ export default class SyncController {
   setDateTimeMapping(playlist) {
     if (!this.datetimeToDisplayTime && playlist.dateTimeObject) {
       let playlistTimestamp = playlist.dateTimeObject.getTime() / 1000;
+
       this.datetimeToDisplayTime = -playlistTimestamp;
     }
   }
@@ -253,7 +255,6 @@ export default class SyncController {
    * @return {object} The start and end time of the current segment in "media time"
    */
   probeTsSegment_(segmentInfo) {
-    let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
     let timeInfo = tsprobe(segmentInfo.bytes, this.inspectCache_);
     let segmentStartTime;
     let segmentEndTime;
@@ -304,13 +305,14 @@ export default class SyncController {
   }
 
   /**
-   * Each time we
+   * Each time we have discontinuity in the playlist, attempt to calculate the location
+   * in display of the start of the discontinuity and save that. We also save an accuracy
+   * value so that we save values with the most accuracy (closest to 0.)
    *
    * @private
    * @param {SegmentInfo} segmentInfo - The current active request information
-   * @param {object} timingInfo - The start and end time of the current segment in "media time"
    */
-  saveDiscontinuitySyncInfo_(segmentInfo){
+  saveDiscontinuitySyncInfo_(segmentInfo) {
     let playlist = segmentInfo.playlist;
     let segment = playlist.segments[segmentInfo.mediaIndex];
 
@@ -336,7 +338,7 @@ export default class SyncController {
 
           this.discontinuities[discontinuity] = {
             time: segment.end + sumDurations(playlist, segmentInfo.mediaIndex + 1, segmentIndex),
-            accuracy: accuracy
+            accuracy
           };
         }
       }

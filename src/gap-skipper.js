@@ -39,9 +39,9 @@ export default class GapSkipper {
     this.lastRecordedTime = null;
     this.timer_ = null;
 
-//    if (options.debug) {
+    if (options.debug) {
       this.logger_ = videojs.log.bind(videojs, 'gap-skipper ->');
-//    }
+    }
     this.logger_('initialize');
 
     let waitingHandler = ()=> this.waiting_();

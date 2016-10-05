@@ -187,11 +187,33 @@ export const duration = function(playlist, endSequence, expired) {
                           expired);
 };
 
+/**
+  * Calculate the time between two indexes in the current playlist
+  * neight the start- nor the end-index need to be within the current
+  * playlist in which case, the targetDuration of the playlist is used
+  * to approximate the durations of the segments
+  *
+  * @param {Object} playlist a media playlist object
+  * @param {Number} startIndex
+  * @param {Number} endIndex
+  * @return {Number} the number of seconds between startIndex and endIndex
+  */
 export const sumDurations = function(playlist, startIndex, endIndex) {
-  let durations = 0;
+  let duration = 0;
+
+  if (startIndex > endIndex) {
+    [startIndex, endIndex] = [endIndex, startIndex];
+  }
+
+  if (startIndex < 0) {
+    for (let i = startIndex; i < Math.min(0, endIndex); i++) {
+      duration += playlist.targetDuration;
+    }
+    startIndex = 0;
+  }
 
   for (let i = startIndex; i < endIndex; i++) {
-    durations += playlist.segments[i].duration;
+    duration += playlist.segments[i].duration;
   }
 
   return duration;
@@ -239,14 +261,14 @@ export const seekable = function(playlist, expired) {
   return createTimeRange(start, end);
 };
 
-let isWholeNumber = function (num) {
+const isWholeNumber = function(num) {
   return (num - Math.floor(num)) === 0;
 };
 
-let ceilLeastSignificantDigit = function(num) {
+const roundSignificantDigit = function(increment, num) {
   // If we have a whole number, just add 1 to it
   if (isWholeNumber(num)) {
-    return num + 0.1;
+    return num + (increment * 0.1);
   }
 
   let numDecimalDigits = num.toString().split('.')[1].length;
@@ -257,49 +279,31 @@ let ceilLeastSignificantDigit = function(num) {
 
     if (isWholeNumber(temp) ||
         i === numDecimalDigits) {
-      return (temp + 1) / scale;
+      return (temp + increment) / scale;
     }
   }
 };
 
-let floorLeastSignificantDigit = function(num) {
-  // If we have a whole number, just add 1 to it
-  if (isWholeNumber(num)) {
-    return num - 0.1;
-  }
-
-  let numDecimalDigits = num.toString().split('.')[1].length;
-
-  for (let i = 1; i <= numDecimalDigits; i++) {
-    let scale = Math.pow(10, i);
-    let temp = num * scale;
-
-    if (isWholeNumber(temp) ||
-        i === numDecimalDigits) {
-      return (temp - 1) / scale;
-    }
-  }
-};
+const ceilLeastSignificantDigit = roundSignificantDigit.bind(null, 1);
+const floorLeastSignificantDigit = roundSignificantDigit.bind(null, -1);
 
 /**
- * Determine the index of the segment that contains a specified
- * playback position in a media playlist.
+ * Determine the index and estimated starting time of the segment that
+ * contains a specified playback position in a media playlist.
  *
  * @param {Object} playlist the media playlist to query
- * @param {Number} time The number of seconds since the earliest
+ * @param {Number} currentTime The number of seconds since the earliest
  * possible position to determine the containing segment for
- * @param {Number=} expired the duration of content, in
- * seconds, that has been removed from this playlist because it
- * expired
- * @return {Number} The number of the media segment that contains
- * that time position.
+ * @param {Number} startIndex
+ * @param {Number} startTime
+ * @return {Object}
  */
-export const getMediaIndexForTime_ = function(playlist, time, startIndex, startTime) {
+export const getMediaInfoForTime_ = function(playlist, currentTime, startIndex, startTime) {
   let i;
   let segment;
   let numSegments = playlist.segments.length;
 
-  time = time - startTime;
+  let time = currentTime - startTime;
 
   if (time < 0) {
     // Walk backward from startIndex in the playlist, adding durations
@@ -308,45 +312,61 @@ export const getMediaIndexForTime_ = function(playlist, time, startIndex, startT
       for (i = startIndex - 1; i >= 0; i--) {
         segment = playlist.segments[i];
         time += Math.min(floorLeastSignificantDigit(segment.duration));
-        console.log('time', time, i);
         if (time > 0) {
-          return i;
+          return {
+            mediaIndex: i,
+            startTime: startTime - sumDurations(playlist, startIndex, i)
+          };
         }
       }
     }
-
     // We were unable to find a good segment within the playlist
-    return 0;
-  } else {
-    // Walk forward from startIndex in the playlist, subtracting durations
-    // until we find a segment that contains `time` and return it
-    if (startIndex < 0) {
-      for (i = startIndex; i < 0; i++) {
-      time -= playlist.targetDuration + 0.1;
-        if (time < 0) {
-          // We were unable to find a good segment within the playlist
-          return 0;
-        }
-      }
-      startIndex = 0;
-    }
-
-    for (i = startIndex; i < numSegments; i++) {
-      segment = playlist.segments[i];
-      time -= Math.min(ceilLeastSignificantDigit(segment.duration));
-      if (time < 0) {
-        return i;
-      }
-    }
-
-    // We are out of possible candidates so load the first one...
-    return numSegments - 1;
+    // so select the first segment
+    return {
+      mediaIndex: 0,
+      startTime: currentTime
+    };
   }
+
+  // When startIndex is negative, we first walk forward to first segment
+  // adding target durations. If we "run out of time" before getting to
+  // the first segment, return the first segment
+  if (startIndex < 0) {
+    for (i = startIndex; i < 0; i++) {
+      time -= playlist.targetDuration;
+      if (time < 0) {
+        return {
+          mediaIndex: 0,
+          startTime: currentTime
+        };
+      }
+    }
+    startIndex = 0;
+  }
+
+  // Walk forward from startIndex in the playlist, subtracting durations
+  // until we find a segment that contains `time` and return it
+  for (i = startIndex; i < numSegments; i++) {
+    segment = playlist.segments[i];
+    time -= Math.min(ceilLeastSignificantDigit(segment.duration));
+    if (time < 0) {
+      return {
+        mediaIndex: i,
+        startTime: startTime + sumDurations(playlist, startIndex, i)
+      };
+    }
+  }
+
+  // We are out of possible candidates so load the last one...
+  return {
+    mediaIndex: numSegments - 1,
+    startTime: currentTime
+  };
 };
 
 Playlist.duration = duration;
 Playlist.seekable = seekable;
-Playlist.getMediaIndexForTime_ = getMediaIndexForTime_;
+Playlist.getMediaInfoForTime_ = getMediaInfoForTime_;
 
 // exports
 export default Playlist;

@@ -256,7 +256,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // downloading segments
       if (media.endList && this.tech_.preload() !== 'none') {
         this.mainSegmentLoader_.playlist(media, this.requestOptions_);
-        this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
         this.mainSegmentLoader_.load();
       }
 
@@ -296,7 +295,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // update the SegmentLoader instead of doing it twice here and
       // on `mediachange`
       this.mainSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
-      this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
       this.updateDuration();
 
       // update seekable
@@ -334,7 +332,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // update the SegmentLoader instead of doing it twice here and
       // on `loadedplaylist`
       this.mainSegmentLoader_.playlist(media, this.requestOptions_);
-      this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
       this.mainSegmentLoader_.load();
 
       // if the audio group has changed, a new audio track has to be
