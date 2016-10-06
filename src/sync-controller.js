@@ -219,8 +219,11 @@ export default class SyncController {
     } else {
       timingInfo = this.probeTsSegment_(segmentInfo);
     }
-    this.calculateSegmentTimeMapping_(segmentInfo, timingInfo);
-    this.saveDiscontinuitySyncInfo_(segmentInfo);
+
+    if (timingInfo) {
+      this.calculateSegmentTimeMapping_(segmentInfo, timingInfo);
+      this.saveDiscontinuitySyncInfo_(segmentInfo);
+    }
   }
 
   /**
@@ -258,6 +261,10 @@ export default class SyncController {
     let timeInfo = tsprobe(segmentInfo.bytes, this.inspectCache_);
     let segmentStartTime;
     let segmentEndTime;
+
+    if (!timeInfo) {
+      return null;
+    }
 
     if (timeInfo.video && timeInfo.video.length === 2) {
       this.inspectCache_ = timeInfo.video[1].dts;
