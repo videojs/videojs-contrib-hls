@@ -415,12 +415,15 @@ QUnit.test('can get media index by playback position for non-live videos', funct
 
   media = loader.media();
 
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, -1), 0,
+  QUnit.equal(Playlist.getMediaInfoForTime_(media, -1, 0, 0).mediaIndex, 0,
               'the index is never less than zero');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 0), 0, 'time zero is index zero');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 3), 0, 'time three is index zero');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 10), 2, 'time 10 is index 2');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 22), 2,
+  QUnit.equal(Playlist.getMediaInfoForTime_(media, 0, 0, 0).mediaIndex, 0,
+    'time zero is index zero');
+  QUnit.equal(Playlist.getMediaInfoForTime_(media, 3, 0, 0).mediaIndex, 0,
+    'time three is index zero');
+  QUnit.equal(Playlist.getMediaInfoForTime_(media, 10, 0, 0).mediaIndex, 2,
+    'time 10 is index 2');
+  QUnit.equal(Playlist.getMediaInfoForTime_(media, 22, 0, 0).mediaIndex, 2,
               'time greater than the length is index 2');
 });
 
@@ -442,9 +445,12 @@ QUnit.test('returns the lower index when calculating for a segment boundary', fu
 
   media = loader.media();
 
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 4), 1, 'rounds up exact matches');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 3.7), 0, 'rounds down');
-  QUnit.equal(Playlist.getMediaIndexForTime_(media, 4.5), 1, 'rounds up at 0.5');
+  QUnit.equal(Playlist.getMediaInfoForTime_(media, 4, 0, 0).mediaIndex, 0,
+    'rounds down exact matches');
+  QUnit.equal(Playlist.getMediaInfoForTime_(media, 3.7, 0, 0).mediaIndex, 0,
+    'rounds down');
+  QUnit.equal(Playlist.getMediaInfoForTime_(media, 4.5, 0, 0).mediaIndex, 1,
+    'rounds up at 0.5');
 });
 
 QUnit.test(
@@ -463,181 +469,63 @@ function() {
     '#EXTINF:5,\n' +
     '1002.ts\n'
   );
-  loader.media().segments[0].end = 154;
 
   media = loader.media();
 
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 45),
-    -1,
-    'expired content returns negative one'
+    Playlist.getMediaInfoForTime_(media, 45, 0, 150).mediaIndex,
+    0,
+    'expired content returns 0 for earliest segment available'
   );
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 75),
-    -1,
-    'expired content returns  negative one'
+    Playlist.getMediaInfoForTime_(media, 75, 0, 150).mediaIndex,
+    0,
+    'expired content returns 0 for earliest segment available'
   );
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 0),
+    Playlist.getMediaInfoForTime_(media, 0, 0, 150).mediaIndex,
     0,
     'time of 0 with no expired time returns first segment'
   );
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100),
+    Playlist.getMediaInfoForTime_(media, 50 + 100, 0, 150).mediaIndex,
     0,
     'calculates the earliest available position'
   );
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 2),
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 2, 0, 150).mediaIndex,
     0,
     'calculates within the first segment'
   );
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 2),
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 2, 0, 150).mediaIndex,
     0,
     'calculates within the first segment'
   );
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 4),
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 4, 0, 150).mediaIndex,
+    0,
+    'calculates earlier segment on exact boundary match'
+  );
+  QUnit.equal(
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 4.5, 0, 150).mediaIndex,
     1,
     'calculates within the second segment'
   );
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 4.5),
-    1,
-    'calculates within the second segment'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 6),
+    Playlist.getMediaInfoForTime_(media, 50 + 100 + 6, 0, 150).mediaIndex,
     1,
     'calculates within the second segment'
   );
 
-  loader.media().segments[1].end = 159;
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 159),
-    2,
-    'returns number of segments when time is equal to end of last segment'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 159.1),
-    2,
-    'returns number of segments when time is past end of last segment'
-  );
-});
-
-QUnit.test('prefers precise segment timing when tracking expired time', function() {
-  let media;
-  let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
-
-  loader.load();
-
-  loader.trigger('firstplay');
-  this.requests.shift().respond(200, null,
-    '#EXTM3U\n' +
-    '#EXT-X-MEDIA-SEQUENCE:1001\n' +
-    '#EXTINF:4,\n' +
-    '1001.ts\n' +
-    '#EXTINF:5,\n' +
-    '1002.ts\n'
-  );
-  // setup the loader with an "imprecise" value as if it had been
-  // accumulating segment durations as they expire
-  loader.expired_ = 160;
-  // annotate the first segment with a start time
-  // this number would be coming from the Source Buffer in practice
-  loader.media().segments[0].end = 150;
-
-  media = loader.media();
-
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 149),
-    0,
-    'prefers the value on the first segment'
-  );
-
-  // trigger a playlist refresh
-  this.clock.tick(10 * 1000);
-  this.requests.shift().respond(200, null,
-    '#EXTM3U\n' +
-    '#EXT-X-MEDIA-SEQUENCE:1002\n' +
-    '#EXTINF:5,\n' +
-    '1002.ts\n'
-  );
-
-  media = loader.media();
-
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 150 + 4 + 1),
-    0,
-    'tracks precise expired times'
-  );
-});
-
-QUnit.test('accounts for expired time when calculating media index', function() {
-  let media;
-  let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
-  let expired = 150;
-
-  loader.load();
-
-  this.requests.shift().respond(200, null,
-    '#EXTM3U\n' +
-    '#EXT-X-MEDIA-SEQUENCE:1001\n' +
-    '#EXTINF:4,\n' +
-    '1001.ts\n' +
-    '#EXTINF:5,\n' +
-    '1002.ts\n'
-  );
-
-  media = loader.media();
-
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 0, expired),
-    -1,
-    'expired content returns a negative index'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 75, expired),
-    -1,
-    'expired content returns a negative index'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100, expired),
-    0,
-    'calculates the earliest available position'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 2, expired),
-    0,
-    'calculates within the first segment'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 2, expired),
-    0,
-    'calculates within the first segment'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 4.5, expired),
+    Playlist.getMediaInfoForTime_(media, 159, 0, 150).mediaIndex,
     1,
-    'calculates within the second segment'
+    'returns last segment when time is equal to end of last segment'
   );
   QUnit.equal(
-    Playlist.getMediaIndexForTime_(media, 50 + 100 + 6, expired),
+    Playlist.getMediaInfoForTime_(media, 160, 0, 150).mediaIndex,
     1,
-    'calculates within the second segment'
-  );
-});
-
-QUnit.test('returns index 0 when time is 0 and expired is falsy', function() {
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_({segments: []}, 0, 0),
-    0,
-    'returns 0 when time is 0 and expired is 0'
-  );
-  QUnit.equal(
-    Playlist.getMediaIndexForTime_({segments: []}, 0),
-    0,
-    'returns 0 when time is 0 and expired is undefined'
+    'returns last segment when time is past end of last segment'
   );
 });
