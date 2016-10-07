@@ -1262,6 +1262,32 @@ QUnit.test('if mode global option is used, mode is set to global option', functi
   videojs.options.hls = hlsOptions;
 });
 
+QUnit.test('respects bandwidth option of 0', function() {
+  this.player.dispose();
+  this.player = createPlayer({ html5: { hls: { bandwidth: 0 } } });
+
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  openMediaSource(this.player, this.clock);
+  QUnit.equal(this.player.tech_.hls.bandwidth, 0, 'set bandwidth to 0');
+});
+
+QUnit.test('uses default bandwidth option if non-numerical value provided', function() {
+  this.player.dispose();
+  this.player = createPlayer({ html5: { hls: { bandwidth: 'garbage' } } });
+
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  openMediaSource(this.player, this.clock);
+  QUnit.equal(this.player.tech_.hls.bandwidth, 4194304, 'set bandwidth to default');
+});
+
 QUnit.test('does not break if the playlist has no segments', function() {
   this.player.src({
     src: 'manifest/master.m3u8',
