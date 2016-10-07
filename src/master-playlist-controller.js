@@ -559,12 +559,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.audioPlaylistLoader_ = null;
     }
     this.audioSegmentLoader_.pause();
-    this.audioSegmentLoader_.resetEverything();
 
     if (!track.properties_.resolvedUri) {
-//      this.mainSegmentLoader_.resetEverything();
+      this.mainSegmentLoader_.resetEverything();
       return;
     }
+    this.audioSegmentLoader_.resetEverything();
 
     // startup playlist and segment loaders for the enabled audio
     // track
