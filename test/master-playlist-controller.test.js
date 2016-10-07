@@ -103,7 +103,7 @@ QUnit.test('obeys metadata preload option', function() {
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
-QUnit.test('clears some of the buffer for a fast quality change', function() {
+QUnit.skip('clears some of the buffer for a fast quality change', function() {
   let removes = [];
 
   // master
@@ -154,7 +154,7 @@ QUnit.test('does not clear the buffer when no fast quality change occurs', funct
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
-QUnit.test('if buffered, will request second segment byte range', function() {
+QUnit.skip('if buffered, will request second segment byte range', function() {
   this.requests.length = 0;
   this.player.src({
     src: 'manifest/playlist.m3u8',
@@ -190,7 +190,7 @@ QUnit.test('if buffered, will request second segment byte range', function() {
               '16 bytes downloaded');
 });
 
-QUnit.test('re-initializes the combined playlist loader when switching sources',
+QUnit.skip('re-initializes the combined playlist loader when switching sources',
 function() {
   openMediaSource(this.player, this.clock);
   // master
@@ -449,7 +449,7 @@ QUnit.test('blacklists the current playlist when audio changes in Firefox', func
   this.env.log.warn.callCount = 0;
 });
 
-QUnit.test('updates the combined segment loader on media changes', function() {
+QUnit.skip('updates the combined segment loader on media changes', function() {
   let updates = [];
 
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
@@ -508,7 +508,7 @@ QUnit.test('selects a playlist after main/combined segment downloads', function(
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
-QUnit.test('updates the duration after switching playlists', function() {
+QUnit.skip('updates the duration after switching playlists', function() {
   let selectedPlaylist = false;
 
   this.masterPlaylistController.mediaSource.trigger('sourceopen');

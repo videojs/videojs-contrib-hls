@@ -311,7 +311,7 @@ export const getMediaInfoForTime_ = function(playlist, currentTime, startIndex, 
     if (startIndex > 0) {
       for (i = startIndex - 1; i >= 0; i--) {
         segment = playlist.segments[i];
-        time += Math.min(floorLeastSignificantDigit(segment.duration));
+        time += floorLeastSignificantDigit(segment.duration);
         if (time > 0) {
           return {
             mediaIndex: i,
@@ -348,7 +348,7 @@ export const getMediaInfoForTime_ = function(playlist, currentTime, startIndex, 
   // until we find a segment that contains `time` and return it
   for (i = startIndex; i < numSegments; i++) {
     segment = playlist.segments[i];
-    time -= Math.min(ceilLeastSignificantDigit(segment.duration));
+    time -= ceilLeastSignificantDigit(segment.duration);
     if (time < 0) {
       return {
         mediaIndex: i,

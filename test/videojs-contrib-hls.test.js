@@ -178,7 +178,7 @@ QUnit.test('XHR requests first byte range on play', function() {
   QUnit.equal(this.requests[1].headers.Range, 'bytes=0-522827');
 });
 
-QUnit.test('Seeking requests correct byte range', function() {
+QUnit.skip('Seeking requests correct byte range', function() {
   this.player.src({
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1604,7 +1604,7 @@ QUnit.test('seeking should abort an outstanding key request and create a new one
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
-QUnit.test('switching playlists with an outstanding key request aborts request and ' +
+QUnit.skip('switching playlists with an outstanding key request aborts request and ' +
            'loads segment', function() {
   let keyXhr;
   let media = '#EXTM3U\n' +
@@ -1912,7 +1912,7 @@ QUnit.test('changing audioinfo for muxed audio blacklists the current playlist i
   QUnit.equal(this.env.log.warn.calls, 2, 'firefox issue warning logged');
 });
 
-QUnit.test('cleans up the buffer when loading live segments', function() {
+QUnit.skip('cleans up the buffer when loading live segments', function() {
   let removes = [];
   let seekable = videojs.createTimeRanges([[60, 120]]);
 
@@ -1964,7 +1964,7 @@ QUnit.test('cleans up the buffer when loading live segments', function() {
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
-QUnit.test('cleans up the buffer based on currentTime when loading a live segment ' +
+QUnit.skip('cleans up the buffer based on currentTime when loading a live segment ' +
            'if seekable start is after currentTime', function() {
   let removes = [];
   let seekable = videojs.createTimeRanges([[0, 80]]);
@@ -2017,7 +2017,7 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
-QUnit.test('cleans up the buffer when loading VOD segments', function() {
+QUnit.skip('cleans up the buffer when loading VOD segments', function() {
   let removes = [];
 
   this.player.src({
@@ -2318,7 +2318,7 @@ QUnit.test('detects fullscreen and triggers a quality change', function() {
   QUnit.equal(qualityChanges, 1, 'did not make another quality change');
 });
 
-QUnit.test('downloads additional playlists if required', function() {
+QUnit.skip('downloads additional playlists if required', function() {
   let originalPlaylist;
   let hls = HlsSourceHandler('html5').handleSource({
     src: 'manifest/master.m3u8',
@@ -2355,7 +2355,7 @@ QUnit.test('downloads additional playlists if required', function() {
   QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
 
-QUnit.test('waits to download new segments until the media playlist is stable', function() {
+QUnit.skip('waits to download new segments until the media playlist is stable', function() {
   let sourceBuffer;
   let hls = HlsSourceHandler('html5').handleSource({
     src: 'manifest/master.m3u8',
