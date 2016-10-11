@@ -199,7 +199,7 @@ export const duration = function(playlist, endSequence, expired) {
   * @return {Number} the number of seconds between startIndex and endIndex
   */
 export const sumDurations = function(playlist, startIndex, endIndex) {
-  let duration = 0;
+  let durations = 0;
 
   if (startIndex > endIndex) {
     [startIndex, endIndex] = [endIndex, startIndex];
@@ -207,16 +207,16 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
 
   if (startIndex < 0) {
     for (let i = startIndex; i < Math.min(0, endIndex); i++) {
-      duration += playlist.targetDuration;
+      durations += playlist.targetDuration;
     }
     startIndex = 0;
   }
 
   for (let i = startIndex; i < endIndex; i++) {
-    duration += playlist.segments[i].duration;
+    durations += playlist.segments[i].duration;
   }
 
-  return duration;
+  return durations;
 };
 /**
   * Calculates the interval of time that is currently seekable in a
