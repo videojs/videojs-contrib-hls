@@ -630,9 +630,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     if (media !== this.masterPlaylistLoader_.media()) {
       this.masterPlaylistLoader_.media(media);
 
-      this.mainSegmentLoader_.resetFetcher();
+      this.mainSegmentLoader_.resetLoader();
       if (this.audiosegmentloader_) {
-        this.audioSegmentLoader_.resetFetcher();
+        this.audioSegmentLoader_.resetLoader();
       }
     }
   }

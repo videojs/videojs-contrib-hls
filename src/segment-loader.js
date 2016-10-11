@@ -276,7 +276,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         this.syncController_.saveExpiredSegmentInfo(oldPlaylist, newPlaylist);
       } else {
         // We must "resync" the fetcher when we switch renditions
-        this.resyncFetcher();
+        this.resyncLoader();
       }
     } else if (!this.hasPlayed_()) {
       newPlaylist.syncInfo = {
@@ -815,7 +815,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * Delete all the buffered data and reset the SegmentLoader
    */
   resetEverything() {
-    this.resetFetcher();
+    this.resetLoader();
     this.remove(0, Infinity);
   }
 
@@ -825,16 +825,16 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * Useful for fast quality changes
    */
-  resetFetcher() {
+  resetLoader() {
     this.fetchAtBuffer_ = false;
-    this.resyncFetcher();
+    this.resyncLoader();
   }
 
   /**
    * Force the SegmentLoader to restart synchronization and make a conservative guess
    * before returning to the simple walk-forward method
    */
-  resyncFetcher() {
+  resyncLoader() {
     this.mediaIndex = null;
     this.syncPoint_ = null;
   }

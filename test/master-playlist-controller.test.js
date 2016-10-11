@@ -103,8 +103,8 @@ QUnit.test('obeys metadata preload option', function() {
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
-QUnit.skip('clears some of the buffer for a fast quality change', function() {
-  let removes = [];
+QUnit.test('resyncs SegmentLoader for a fast quality change', function() {
+  let resyncs = 0;
 
   // master
   standardXHRResponse(this.requests.shift());
@@ -114,45 +114,44 @@ QUnit.skip('clears some of the buffer for a fast quality change', function() {
 
   let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
 
-  segmentLoader.sourceUpdater_.remove = function(start, end) {
-    removes.push({ start, end });
+  segmentLoader.resyncLoader = function() {
+    resyncs++
   };
+
   this.masterPlaylistController.selectPlaylist = () => {
     return this.masterPlaylistController.master().playlists[0];
   };
-  this.masterPlaylistController.tech_.currentTime = () => 7;
 
   this.masterPlaylistController.fastQualityChange_();
 
-  QUnit.equal(removes.length, 1, 'removed buffered content');
-  QUnit.equal(removes[0].start, 7 + 5, 'removed from a bit after current time');
-  QUnit.equal(removes[0].end, Infinity, 'removed to the end');
+  QUnit.equal(resyncs, 1, 'resynced the segmentLoader');
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
-QUnit.test('does not clear the buffer when no fast quality change occurs', function() {
-  let removes = [];
+QUnit.test('does not resync the segmentLoader when no fast quality change occurs',
+  function() {
+    let resyncs = 0;
 
-  // master
-  standardXHRResponse(this.requests.shift());
-  // media
-  standardXHRResponse(this.requests.shift());
-  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+    // master
+    standardXHRResponse(this.requests.shift());
+    // media
+    standardXHRResponse(this.requests.shift());
+    this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
-  let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
+    let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
 
-  segmentLoader.sourceUpdater_.remove = function(start, end) {
-    removes.push({ start, end });
-  };
+    segmentLoader.resyncLoader = function() {
+      resyncs++
+    };
 
-  this.masterPlaylistController.fastQualityChange_();
+    this.masterPlaylistController.fastQualityChange_();
 
-  QUnit.equal(removes.length, 0, 'did not remove content');
-  // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
-});
+    QUnit.equal(resyncs, 0, 'did not resync the segmentLoader');
+    // verify stats
+    QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
+  });
 
 QUnit.skip('if buffered, will request second segment byte range', function() {
   this.requests.length = 0;
@@ -190,7 +189,7 @@ QUnit.skip('if buffered, will request second segment byte range', function() {
               '16 bytes downloaded');
 });
 
-QUnit.skip('re-initializes the combined playlist loader when switching sources',
+QUnit.test('re-initializes the combined playlist loader when switching sources',
 function() {
   openMediaSource(this.player, this.clock);
   // master
@@ -449,7 +448,7 @@ QUnit.test('blacklists the current playlist when audio changes in Firefox', func
   this.env.log.warn.callCount = 0;
 });
 
-QUnit.skip('updates the combined segment loader on media changes', function() {
+QUnit.test('updates the combined segment loader on media changes', function() {
   let updates = [];
 
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
@@ -508,7 +507,7 @@ QUnit.test('selects a playlist after main/combined segment downloads', function(
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
-QUnit.skip('updates the duration after switching playlists', function() {
+QUnit.test('updates the duration after switching playlists', function() {
   let selectedPlaylist = false;
 
   this.masterPlaylistController.mediaSource.trigger('sourceopen');

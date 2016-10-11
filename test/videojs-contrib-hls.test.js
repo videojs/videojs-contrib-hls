@@ -1433,18 +1433,6 @@ QUnit.test('has no effect if native HLS is available', function() {
   player.dispose();
 });
 
-// TODO: this test seems to be very old do we still need it?
-// it does not appear to test anything at all...
-QUnit.skip('is not supported on browsers without typed arrays', function() {
-  let oldArray = window.Uint8Array;
-
-  window.Uint8Array = null;
-  QUnit.ok(!videojs.Hls.isSupported(), 'HLS is not supported');
-
-  // cleanup
-  window.Uint8Array = oldArray;
-});
-
 QUnit.test('re-emits mediachange events', function() {
   let mediaChanges = 0;
 
