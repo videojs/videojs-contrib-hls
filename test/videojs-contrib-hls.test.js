@@ -178,7 +178,7 @@ QUnit.test('XHR requests first byte range on play', function() {
   QUnit.equal(this.requests[1].headers.Range, 'bytes=0-522827');
 });
 
-QUnit.skip('Seeking requests correct byte range', function() {
+QUnit.test('Seeking requests correct byte range', function() {
   this.player.src({
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -187,7 +187,7 @@ QUnit.skip('Seeking requests correct byte range', function() {
   openMediaSource(this.player, this.clock);
   standardXHRResponse(this.requests[0]);
   this.clock.tick(1);
-  this.player.currentTime(40);
+  this.player.currentTime(41);
   this.clock.tick(1);
   QUnit.equal(this.requests[2].headers.Range, 'bytes=2299992-2835603');
 });
@@ -1592,7 +1592,7 @@ QUnit.test('seeking should abort an outstanding key request and create a new one
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
-QUnit.skip('switching playlists with an outstanding key request aborts request and ' +
+QUnit.test('switching playlists with an outstanding key request aborts request and ' +
            'loads segment', function() {
   let keyXhr;
   let media = '#EXTM3U\n' +
@@ -1900,7 +1900,7 @@ QUnit.test('changing audioinfo for muxed audio blacklists the current playlist i
   QUnit.equal(this.env.log.warn.calls, 2, 'firefox issue warning logged');
 });
 
-QUnit.skip('cleans up the buffer when loading live segments', function() {
+QUnit.test('cleans up the buffer when loading live segments', function() {
   let removes = [];
   let seekable = videojs.createTimeRanges([[60, 120]]);
 
@@ -1912,6 +1912,11 @@ QUnit.skip('cleans up the buffer when loading live segments', function() {
 
   this.player.tech_.hls.masterPlaylistController_.seekable = function() {
     return seekable;
+  };
+
+  // This is so we do not track first call to remove during segment loader init
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.resetEverything = function() {
+    this.resetLoader();
   };
 
   this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
@@ -1942,9 +1947,8 @@ QUnit.skip('cleans up the buffer when loading live segments', function() {
   QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8',
                     'master playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
-  // segment-loader removes up to the segment prior to seekable.start
-  // to avoid crossing segment-boundaries
-  QUnit.deepEqual(removes[0], [0, seekable.start(0) - 10],
+  // segment-loader removes up to seekable.start
+  QUnit.deepEqual(removes[0], [0, seekable.start(0)],
                   'remove called with the right range');
 
   // verify stats
@@ -1952,7 +1956,7 @@ QUnit.skip('cleans up the buffer when loading live segments', function() {
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
-QUnit.skip('cleans up the buffer based on currentTime when loading a live segment ' +
+QUnit.test('cleans up the buffer based on currentTime when loading a live segment ' +
            'if seekable start is after currentTime', function() {
   let removes = [];
   let seekable = videojs.createTimeRanges([[0, 80]]);
@@ -1964,6 +1968,11 @@ QUnit.skip('cleans up the buffer based on currentTime when loading a live segmen
   openMediaSource(this.player, this.clock);
   this.player.tech_.hls.masterPlaylistController_.seekable = function() {
     return seekable;
+  };
+
+  // This is so we do not track first call to remove during segment loader init
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.resetEverything = function() {
+    this.resetLoader();
   };
 
   this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
@@ -1998,14 +2007,14 @@ QUnit.skip('cleans up the buffer based on currentTime when loading a live segmen
 
   QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, 80 - 70], 'remove called with the right range');
+  QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
-QUnit.skip('cleans up the buffer when loading VOD segments', function() {
+QUnit.test('cleans up the buffer when loading VOD segments', function() {
   let removes = [];
 
   this.player.src({
@@ -2013,6 +2022,12 @@ QUnit.skip('cleans up the buffer when loading VOD segments', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+
+  // This is so we do not track first call to remove during segment loader init
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.resetEverything = function() {
+    this.resetLoader();
+  };
+
   this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
     return new (videojs.extend(videojs.EventTarget, {
       constructor() {},
@@ -2306,7 +2321,7 @@ QUnit.test('detects fullscreen and triggers a quality change', function() {
   QUnit.equal(qualityChanges, 1, 'did not make another quality change');
 });
 
-QUnit.skip('downloads additional playlists if required', function() {
+QUnit.test('downloads additional playlists if required', function() {
   let originalPlaylist;
   let hls = HlsSourceHandler('html5').handleSource({
     src: 'manifest/master.m3u8',
@@ -2343,7 +2358,7 @@ QUnit.skip('downloads additional playlists if required', function() {
   QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
 
-QUnit.skip('waits to download new segments until the media playlist is stable', function() {
+QUnit.test('waits to download new segments until the media playlist is stable', function() {
   let sourceBuffer;
   let hls = HlsSourceHandler('html5').handleSource({
     src: 'manifest/master.m3u8',

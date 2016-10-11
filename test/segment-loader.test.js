@@ -371,6 +371,12 @@ QUnit.skip('adjusts the playlist offset even when segment.end is set if no' +
   let sourceBuffer;
   let playlist;
 
+  let inspectTs = loader.syncController_.probeTsSegment_;
+
+  loader.syncController_.probeTsSegment_ = function() {
+    return { start: 0, end: 5 };
+  };
+
   playlist = playlistWithDuration(40);
   playlist.endList = false;
   loader.playlist(playlist);
@@ -386,6 +392,7 @@ QUnit.skip('adjusts the playlist offset even when segment.end is set if no' +
   loader.one('progress', function f() {
     QUnit.equal(playlist.segments[0].end, 5, 'segment.end was set based on the buffer');
     playlist.segments[0].end = 10;
+    loader.syncController_.probeTsSegment_ = inspectTs;
   });
 
   sourceBuffer.trigger('updateend');
@@ -590,8 +597,12 @@ QUnit.test('sets the timestampOffset on timeline change', function() {
   QUnit.equal(loader.mediaRequests, 2, '2 requests');
 });
 
-QUnit.skip('tracks segment end times as they are buffered', function() {
+QUnit.test('tracks segment end times as they are buffered', function() {
   let playlist = playlistWithDuration(20);
+
+  loader.syncController_.probeTsSegment_ = function(segmentInfo) {
+    return { start: 0, end: 9.5 };
+  };
 
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
@@ -600,9 +611,6 @@ QUnit.skip('tracks segment end times as they are buffered', function() {
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
 
-  mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([
-    [0, 9.5]
-  ]);
   mediaSource.sourceBuffers[0].trigger('updateend');
   QUnit.equal(playlist.segments[0].end, 9.5, 'updated duration');
 
@@ -1084,14 +1092,19 @@ QUnit.skip('buffers based on the correct TimeRange if multiple ranges exist', fu
   QUnit.equal(segmentInfo.uri, '3.ts', 'requested the fourth segment');
 });
 
-QUnit.skip('stops downloading segments at the end of the playlist', function() {
+QUnit.test('stops downloading segments at the end of the playlist', function() {
   let buffered;
   let segmentInfo;
 
   loader.mimeType(this.mimeType);
 
   buffered = videojs.createTimeRanges([[0, 60]]);
-  segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(60), 0);
+  segmentInfo = loader.checkBuffer_(buffered,
+                                    playlistWithDuration(60),
+                                    null,
+                                    true,
+                                    0,
+                                    null);
 
   QUnit.ok(!segmentInfo, 'no request was made');
 });

@@ -115,7 +115,7 @@ QUnit.test('resyncs SegmentLoader for a fast quality change', function() {
   let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
 
   segmentLoader.resyncLoader = function() {
-    resyncs++
+    resyncs++;
   };
 
   this.masterPlaylistController.selectPlaylist = () => {
@@ -143,7 +143,7 @@ QUnit.test('does not resync the segmentLoader when no fast quality change occurs
     let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
 
     segmentLoader.resyncLoader = function() {
-      resyncs++
+      resyncs++;
     };
 
     this.masterPlaylistController.fastQualityChange_();
@@ -153,7 +153,7 @@ QUnit.test('does not resync the segmentLoader when no fast quality change occurs
     QUnit.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
   });
 
-QUnit.skip('if buffered, will request second segment byte range', function() {
+QUnit.test('if buffered, will request second segment byte range', function() {
   this.requests.length = 0;
   this.player.src({
     src: 'manifest/playlist.m3u8',
@@ -177,9 +177,10 @@ QUnit.skip('if buffered, will request second segment byte range', function() {
 
   // segment
   standardXHRResponse(this.requests[1]);
+  this.masterPlaylistController.mainSegmentLoader_.fetchAtBuffer_ = true;
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   this.clock.tick(10 * 1000);
-  QUnit.equal(this.requests[2].headers.Range, 'bytes=1823412-2299991');
+  QUnit.equal(this.requests[2].headers.Range, 'bytes=522828-1110327');
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
