@@ -1,4 +1,6 @@
 var merge = require('lodash-compat/object/merge');
+var istanbul = require('browserify-istanbul');
+var isparta = require('isparta');
 
 var DEFAULTS = {
   basePath: '../..',
@@ -17,14 +19,16 @@ var DEFAULTS = {
 
   plugins: [
     'karma-browserify',
+    'karma-coverage',
     'karma-qunit'
   ],
 
   preprocessors: {
-    'test/**/*.test.js': ['browserify']
+    'test/**/*.test.js': ['browserify'],
+    'src/**/*.js': ['browserify', 'coverage']
   },
 
-  reporters: ['dots'],
+  reporters: ['coverage', 'dots'],
   port: 9876,
   colors: true,
   autoWatch: false,
@@ -35,11 +39,25 @@ var DEFAULTS = {
     debug: true,
     transform: [
       'babelify',
-      'browserify-shim'
+      'browserify-shim',
+      istanbul({
+        instrumenter: isparta,
+        ignore: ['**/node_modules/**', '**/test/**']
+      })
     ],
     noParse: [
       'test/data/**',
     ]
+  },
+
+  babelPreprocessor: {
+    options: {
+      presets: ['es2015'],
+      sourceMap: 'inline'
+    },
+    sourceFileName: function (file) {
+      return file.originalPath;
+    }
   },
 
   customLaunchers: {
