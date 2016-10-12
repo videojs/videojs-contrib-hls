@@ -441,7 +441,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Under normal playback conditions fetching is a simple walk forward
     if (mediaIndex !== null) {
       log('++', mediaIndex + 1);
-      startOfSegment = playlist.segments[mediaIndex].end || lastBufferedEnd;
+      let segment = playlist.segments[mediaIndex];
+      startOfSegment = segment ? segment.end : lastBufferedEnd;
       return this.generateSegmentInfo_(playlist, mediaIndex + 1, startOfSegment, false);
     }
 

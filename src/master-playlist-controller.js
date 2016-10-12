@@ -220,7 +220,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       seekable: () => this.seekable(),
       seeking: () => this.tech_.seeking(),
       setCurrentTime: (a) => this.tech_.setCurrentTime(a),
-      hasPlayed: () => this.hasPlayed_ || this.tech_.played().length !== 0,
+      hasPlayed: () => this.hasPlayed_,
       bandwidth
     };
 
