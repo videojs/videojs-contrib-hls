@@ -649,7 +649,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.tech_.setCurrentTime(0);
     }
 
-    this.load();
+    if (this.hasPlayed_) {
+      this.load();
+    }
 
     // if the viewer has paused and we fell out of the live window,
     // seek forward to the earliest available position
@@ -658,7 +660,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
         return this.tech_.setCurrentTime(this.tech_.seekable().start(0));
       }
     }
-
   }
 
   /**
