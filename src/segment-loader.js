@@ -441,7 +441,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Under normal playback conditions fetching is a simple walk forward
     if (mediaIndex !== null) {
       log('++', mediaIndex + 1);
-      return this.generateSegmentInfo_(playlist, mediaIndex + 1, lastBufferedEnd, false);
+      startOfSegment = playlist.segments[mediaIndex].end || lastBufferedEnd;
+      return this.generateSegmentInfo_(playlist, mediaIndex + 1, startOfSegment, false);
     }
 
     // There is a sync-point but the lack of a mediaIndex indicates that
@@ -460,7 +461,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       mediaIndex = mediaSourceInfo.mediaIndex;
       startOfSegment = mediaSourceInfo.startTime;
     }
-    log('gMIFT', mediaIndex);
+    log('gMIFT', mediaIndex, 'sos', startOfSegment);
     return this.generateSegmentInfo_(playlist, mediaIndex, startOfSegment, false);
   }
 
@@ -565,7 +566,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // - The "timestampOffset" for the start of this segment is less than
     //   the currently set timestampOffset
     if (segmentInfo.timeline !== this.currentTimeline_ ||
-        (isNaN(segmentInfo.startOfSegment) &&
+        ((segmentInfo.startOfSegment !== null) &&
         segmentInfo.startOfSegment < this.sourceUpdater_.timestampOffset())) {
       this.syncController_.reset();
       segmentInfo.timestampOffset = segmentInfo.startOfSegment;
