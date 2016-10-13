@@ -2,6 +2,12 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.1 (2016-10-13)
+* Allow for initial bandwidth option of 0 
+* Added support for MAAT in Firefox 49 
+* Corrected deprecation warning for `player.hls`
+
+--------------------
 ## 3.6.0 (2016-09-27)
 * Updated Mux.js to 2.5.0
     * Added support for generating version 1 TFDT boxes
