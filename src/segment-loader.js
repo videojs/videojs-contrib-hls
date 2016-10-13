@@ -443,7 +443,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       log('++', mediaIndex + 1);
       let segment = playlist.segments[mediaIndex];
 
-      if(segment && segment.end) {
+      if (segment && segment.end) {
         startOfSegment = segment.end;
       } else {
         startOfSegment = lastBufferedEnd;

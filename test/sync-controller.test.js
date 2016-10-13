@@ -186,7 +186,7 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
       mediaIndex: 0,
       playlist,
       timeline: 0,
-      timestampOffset: 0,
+      timestampOffset: 0
     };
     let segment = playlist.segments[0];
 
