@@ -630,9 +630,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     if (media !== this.masterPlaylistLoader_.media()) {
       this.masterPlaylistLoader_.media(media);
 
-      this.mainSegmentLoader_.resetFetcher();
+      this.mainSegmentLoader_.resetLoader();
       if (this.audiosegmentloader_) {
-        this.audioSegmentLoader_.resetFetcher();
+        this.audioSegmentLoader_.resetLoader();
       }
     }
   }
@@ -696,6 +696,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.load();
 
       return true;
+    } else if (media &&
+        // 2) the video is a VOD
+        media.endList) {
+      this.hasPlayed_ = this.tech_.played().length !== 0;
     }
     return false;
   }

@@ -14,7 +14,7 @@ const log = function() {
   }
 };
 
-const syncPointStrategies = [
+export const syncPointStrategies = [
   // Stategy "VOD": Handle the VOD-case where the sync-point is *always*
   //                the equivalence display-time 0 === segment-index 0
   {

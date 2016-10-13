@@ -187,7 +187,7 @@ QUnit.test('Seeking requests correct byte range', function() {
   openMediaSource(this.player, this.clock);
   standardXHRResponse(this.requests[0]);
   this.clock.tick(1);
-  this.player.currentTime(40);
+  this.player.currentTime(41);
   this.clock.tick(1);
   QUnit.equal(this.requests[2].headers.Range, 'bytes=2299992-2835603');
 });
@@ -1433,18 +1433,6 @@ QUnit.test('has no effect if native HLS is available', function() {
   player.dispose();
 });
 
-// TODO: this test seems to be very old do we still need it?
-// it does not appear to test anything at all...
-QUnit.skip('is not supported on browsers without typed arrays', function() {
-  let oldArray = window.Uint8Array;
-
-  window.Uint8Array = null;
-  QUnit.ok(!videojs.Hls.isSupported(), 'HLS is not supported');
-
-  // cleanup
-  window.Uint8Array = oldArray;
-});
-
 QUnit.test('re-emits mediachange events', function() {
   let mediaChanges = 0;
 
@@ -1926,6 +1914,11 @@ QUnit.test('cleans up the buffer when loading live segments', function() {
     return seekable;
   };
 
+  // This is so we do not track first call to remove during segment loader init
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.resetEverything = function() {
+    this.resetLoader();
+  };
+
   this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
     return new (videojs.extend(videojs.EventTarget, {
       constructor() {},
@@ -1954,9 +1947,8 @@ QUnit.test('cleans up the buffer when loading live segments', function() {
   QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8',
                     'master playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
-  // segment-loader removes up to the segment prior to seekable.start
-  // to avoid crossing segment-boundaries
-  QUnit.deepEqual(removes[0], [0, seekable.start(0) - 10],
+  // segment-loader removes up to seekable.start
+  QUnit.deepEqual(removes[0], [0, seekable.start(0)],
                   'remove called with the right range');
 
   // verify stats
@@ -1976,6 +1968,11 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
   openMediaSource(this.player, this.clock);
   this.player.tech_.hls.masterPlaylistController_.seekable = function() {
     return seekable;
+  };
+
+  // This is so we do not track first call to remove during segment loader init
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.resetEverything = function() {
+    this.resetLoader();
   };
 
   this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
@@ -2010,7 +2007,7 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
 
   QUnit.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, 80 - 70], 'remove called with the right range');
+  QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
@@ -2025,6 +2022,12 @@ QUnit.test('cleans up the buffer when loading VOD segments', function() {
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+
+  // This is so we do not track first call to remove during segment loader init
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.resetEverything = function() {
+    this.resetLoader();
+  };
+
   this.player.tech_.hls.mediaSource.addSourceBuffer = function() {
     return new (videojs.extend(videojs.EventTarget, {
       constructor() {},

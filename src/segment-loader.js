@@ -276,7 +276,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         this.syncController_.saveExpiredSegmentInfo(oldPlaylist, newPlaylist);
       } else {
         // We must "resync" the fetcher when we switch renditions
-        this.resyncFetcher();
+        this.resyncLoader();
       }
     } else if (!this.hasPlayed_()) {
       newPlaylist.syncInfo = {
@@ -442,7 +442,12 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (mediaIndex !== null) {
       log('++', mediaIndex + 1);
       let segment = playlist.segments[mediaIndex];
-      startOfSegment = segment ? segment.end : lastBufferedEnd;
+
+      if (segment && segment.end) {
+        startOfSegment = segment.end;
+      } else {
+        startOfSegment = lastBufferedEnd;
+      }
       return this.generateSegmentInfo_(playlist, mediaIndex + 1, startOfSegment, false);
     }
 
@@ -450,13 +455,13 @@ export default class SegmentLoader extends videojs.EventTarget {
     // we need to make a good conservative guess about which segment to
     // fetch
     if (this.fetchAtBuffer_) {
-      // Find the segment containing currentTime
+      // Find the segment containing the end of the buffer
       let mediaSourceInfo = getMediaInfoForTime(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
 
       mediaIndex = mediaSourceInfo.mediaIndex;
       startOfSegment = mediaSourceInfo.startTime;
     } else {
-      // Find the segment containing the end of the buffer
+      // Find the segment containing currentTime
       let mediaSourceInfo = getMediaInfoForTime(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
 
       mediaIndex = mediaSourceInfo.mediaIndex;
@@ -815,7 +820,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * Delete all the buffered data and reset the SegmentLoader
    */
   resetEverything() {
-    this.resetFetcher();
+    this.resetLoader();
     this.remove(0, Infinity);
   }
 
@@ -825,16 +830,16 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * Useful for fast quality changes
    */
-  resetFetcher() {
+  resetLoader() {
     this.fetchAtBuffer_ = false;
-    this.resyncFetcher();
+    this.resyncLoader();
   }
 
   /**
    * Force the SegmentLoader to restart synchronization and make a conservative guess
    * before returning to the simple walk-forward method
    */
-  resyncFetcher() {
+  resyncLoader() {
     this.mediaIndex = null;
     this.syncPoint_ = null;
   }
