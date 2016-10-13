@@ -221,8 +221,9 @@ export default class SyncController {
     }
 
     if (timingInfo) {
-      this.calculateSegmentTimeMapping_(segmentInfo, timingInfo);
-      this.saveDiscontinuitySyncInfo_(segmentInfo);
+      if (this.calculateSegmentTimeMapping_(segmentInfo, timingInfo)) {
+        this.saveDiscontinuitySyncInfo_(segmentInfo);
+      }
     }
   }
 
@@ -305,10 +306,13 @@ export default class SyncController {
 
       segment.start = segmentInfo.timestampOffset;
       segment.end = timingInfo.end + mappingObj.mapping;
-    } else {
+    } else if (mappingObj) {
       segment.start = timingInfo.start + mappingObj.mapping;
       segment.end = timingInfo.end + mappingObj.mapping;
+    } else {
+      return false;
     }
+    return true;
   }
 
   /**
