@@ -24,11 +24,10 @@ var DEFAULTS = {
   ],
 
   preprocessors: {
-    'test/**/*.test.js': ['browserify'],
-    'src/**/*.js': ['browserify', 'coverage']
+    'test/**/*.test.js': ['browserify']
   },
 
-  reporters: ['coverage', 'dots'],
+  reporters: ['dots'],
   port: 9876,
   colors: true,
   autoWatch: false,
@@ -39,11 +38,7 @@ var DEFAULTS = {
     debug: true,
     transform: [
       'babelify',
-      'browserify-shim',
-      istanbul({
-        instrumenter: isparta,
-        ignore: ['**/node_modules/**', '**/test/**']
-      })
+      'browserify-shim'
     ],
     noParse: [
       'test/data/**',
@@ -67,6 +62,20 @@ var DEFAULTS = {
     }
   }
 };
+
+// Coverage reporting
+// Coverage is enabled by passing the flag --coverage to npm test
+var coverageFlag = process.env.npm_config_coverage;
+var reportCoverage = process.env.TRAVIS || coverageFlag;
+
+if (reportCoverage) {
+  DEFAULTS.reporters.push('coverage');
+  DEFAULTS.browserify.transform.push(istanbul({
+    instrumenter: isparta,
+    ignore: ['**/node_modules/**', '**/test/**']
+  }));
+  DEFAULTS.preprocessors['src/**/*.js'] = ['browserify', 'coverage'];
+}
 
 /**
  * Customizes target/source merging with lodash merge.

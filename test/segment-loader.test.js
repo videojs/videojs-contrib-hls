@@ -1040,7 +1040,12 @@ QUnit.test('does not download the next segment if the buffer is full', function(
   buffered = videojs.createTimeRanges([
     [0, 15 + Config.GOAL_BUFFER_LENGTH]
   ]);
-  segmentInfo = loader.checkBuffer_(buffered, playlistWithDuration(30), 15);
+  segmentInfo = loader.checkBuffer_(buffered,
+                                    playlistWithDuration(30),
+                                    null,
+                                    true,
+                                    15,
+                                    { segmentIndex: 0, time: 0 });
 
   QUnit.ok(!segmentInfo, 'no segment request generated');
 });
@@ -1120,7 +1125,12 @@ function() {
   buffered = videojs.createTimeRanges([[0, 59.9]]);
   playlist = playlistWithDuration(60);
   playlist.segments[playlist.segments.length - 1].end = 59.9;
-  segmentInfo = loader.checkBuffer_(buffered, playlist, 50);
+  segmentInfo = loader.checkBuffer_(buffered,
+                                    playlist,
+                                    playlist.segments.length - 1,
+                                    true,
+                                    50,
+                                    { segmentIndex: 0, time: 0 });
 
   QUnit.ok(!segmentInfo, 'no request was made');
 });

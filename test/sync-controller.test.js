@@ -65,13 +65,13 @@ QUnit.test('returns correct sync point for Segment strategy', function() {
       { timeline: 0 },
       { timeline: 1 },
       { timeline: 1 },
-      { timeline: 1, start: 30 }, //index 4
+      { timeline: 1, start: 30 },
       { timeline: 1 },
       { timeline: 2 },
-      { timeline: 2 },
+      { timeline: 2 }
     ]
   };
-  let currentTimeline ;
+  let currentTimeline;
   let syncPoint;
 
   currentTimeline = 0;
@@ -98,12 +98,12 @@ QUnit.test('returns correct sync point for Discontinuity strategy', function() {
       { timeline: 3, start: 60, end: 70, duration: 10 },
       { timeline: 4, start: 70, end: 80, duration: 10, discontinuity: true },
       { timeline: 4, start: 80, end: 90, duration: 10 },
-      { timeline: 4, start: 90, end: 100, duration: 10 },
+      { timeline: 4, start: 90, end: 100, duration: 10 }
     ]
   };
   let segmentInfo = {
-    playlist: playlist,
-    mediaIndex: 2,
+    playlist,
+    mediaIndex: 2
   };
   let currentTimeline = 3;
   let syncPoint;
