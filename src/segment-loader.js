@@ -9,6 +9,7 @@ import {Decrypter} from 'aes-decrypter';
 import mp4probe from 'mux.js/lib/mp4/probe';
 import Config from './config';
 import window from 'global/window';
+import {getStoredKey,setStoredKey} from './key';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -615,12 +616,17 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // optionally, request the decryption key
     if (segment.key) {
-      let keyRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
-        uri: segment.key.resolvedUri,
-        responseType: 'arraybuffer'
-      });
+      let bytes = getStoredKey(segment.key.uri);
+      if( bytes ){
+        segment.key.bytes = bytes;
+      }else{
+        let keyRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
+          uri: segment.key.resolvedUri,
+          responseType: 'arraybuffer'
+        });
 
-      keyXhr = this.hls_.xhr(keyRequestOptions, this.handleResponse_.bind(this));
+        keyXhr = this.hls_.xhr(keyRequestOptions, this.handleResponse_.bind(this));
+      }
     }
 
     // optionally, request the associated media init segment
@@ -772,6 +778,8 @@ export default class SegmentLoader extends videojs.EventTarget {
         view.getUint32(8),
         view.getUint32(12)
       ]);
+
+      setStoredKey(segment.key.uri,segment.key.bytes);
 
       // if the media sequence is greater than 2^32, the IV will be incorrect
       // assuming 10s segments, that would be about 1300 years
