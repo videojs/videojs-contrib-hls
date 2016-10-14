@@ -213,6 +213,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // load the media source into the player
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
 
+    this.hasPlayed_ = () => false;
+
     let segmentLoaderOptions = {
       hls: this.hls_,
       mediaSource: this.mediaSource,
@@ -220,7 +222,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       seekable: () => this.seekable(),
       seeking: () => this.tech_.seeking(),
       setCurrentTime: (a) => this.tech_.setCurrentTime(a),
-      hasPlayed: () => this.hasPlayed_,
+      hasPlayed: () => this.hasPlayed_(),
       bandwidth
     };
 
@@ -649,7 +651,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.tech_.setCurrentTime(0);
     }
 
-    if (this.hasPlayed_) {
+    if (this.hasPlayed_()) {
       this.load();
     }
 
@@ -680,11 +682,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
         !this.tech_.paused() &&
 
         // 4) the player has not started playing
-        !this.hasPlayed_) {
+        !this.hasPlayed_()) {
 
       // trigger the playlist loader to start "expired time"-tracking
       this.masterPlaylistLoader_.trigger('firstplay');
-      this.hasPlayed_ = true;
+      this.hasPlayed_ = () => true;
 
       // seek to the latest media position for live videos
       seekable = this.seekable();
@@ -699,7 +701,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     } else if (media &&
         // 2) the video is a VOD
         media.endList) {
-      this.hasPlayed_ = this.tech_.played().length !== 0;
+      this.hasPlayed_ = () => this.tech_.played().length !== 0;
     }
     return false;
   }
