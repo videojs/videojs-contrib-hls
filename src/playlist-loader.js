@@ -505,12 +505,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         if (!request) {
           // no media playlist was specifically selected so start
           // from the first listed one
-          /**
-           * Des      : ...
-           * Author   : ZhaoYang
-           * Date     : 2016-09-21
-           */
-          loader.media(parser.manifest.playlists[parser.manifest.playlists.length - 1]);
+          loader.media(parser.manifest.playlists[0]);
         }
         return;
       }

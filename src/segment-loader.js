@@ -866,18 +866,6 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.state = 'APPENDING';
     segmentInfo = this.pendingSegment_;
-    /**
-     * Des      : ...
-     * Author   : ZhaoYang
-     * Date     : 2016-09-21
-     */
-    let data = {
-      bandwidth : this.bandwidth,
-      size : segmentInfo.bytes.byteLength,
-      url : segmentInfo.uri
-    }
-    this.mediaSource_.player_.hls.trigger('networkspeed', data);
-
     segmentInfo.buffered = this.sourceUpdater_.buffered();
     segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
     this.currentTimeline_ = segmentInfo.timeline;

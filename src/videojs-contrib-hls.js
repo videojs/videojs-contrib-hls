@@ -84,12 +84,6 @@ const safeGetComputedStyle = function(el, property) {
  * bandwidth, accounting for some amount of bandwidth variance
  */
 Hls.STANDARD_PLAYLIST_SELECTOR = function() {
-  /**
-   * Des:Switch Definition Automatically
-   * Author:ZhaoYang
-   * Date:2016-09-21
-   */
-  return this.playlists.media();
   let effectiveBitrate;
   let sortedPlaylists = this.playlists.master.playlists.slice();
   let bandwidthPlaylists = [];

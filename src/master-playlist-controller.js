@@ -313,15 +313,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.on('mediachanging', () => {
       this.mainSegmentLoader_.abort();
       this.mainSegmentLoader_.pause();
-      /**
-       * Des      : Trigger Event
-       * Author   : ZhaoYang
-       * Date     : 2016-09-21
-       */
-      this.tech_.trigger({
-        type: 'mediachanging',
-        bubbles: true
-      });
     });
 
     this.masterPlaylistLoader_.on('mediachange', () => {
@@ -344,12 +335,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // on `loadedplaylist`
       this.mainSegmentLoader_.playlist(media, this.requestOptions_);
       this.mainSegmentLoader_.expired(this.masterPlaylistLoader_.expired_);
-      /**
-       * Des      : Clear Buffer
-       * Author   : ZhaoYang
-       * Date     : 2016-09-21
-       */
-      this.mainSegmentLoader_.clearBuffer();
       this.mainSegmentLoader_.load();
 
       // if the audio group has changed, a new audio track has to be
