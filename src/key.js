@@ -7,10 +7,7 @@
  * @private
  */
 
-let keyObject = {
-    uri: '',
-    keyData: {}
-};
+let keyObject = {};
 
 /**
  * Test if wo have stored the key
@@ -20,8 +17,8 @@ let keyObject = {
  * @function getStoredKey
  */
 export function getStoredKey(uri) {
-    if (keyObject.uri === uri) {
-        return keyObject.keyData[uri];
+    if (keyObject[uri]) {
+        return keyObject[uri];
     }
     return false;
 }
@@ -32,7 +29,5 @@ export function getStoredKey(uri) {
  * @param {Unit32Array} key The data of key in Uint32Array Typed Array
  */
 export function setStoredKey(uri, key) {
-    keyObject.uri = uri;
-    keyObject.keyData = {};
-    keyObject.keyData[uri] = key;
+    keyObject[uri] = key;
 }
