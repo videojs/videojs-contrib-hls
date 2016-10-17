@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.2 (2016-10-17)
+* Update videojs-contrib-media-sources to 4.0.0
+  * Append init segment data on audio track changes
+
+--------------------
 ## 3.6.1 (2016-10-13)
 * Allow for initial bandwidth option of 0 
 * Added support for MAAT in Firefox 49 
