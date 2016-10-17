@@ -5,6 +5,7 @@ CHANGELOG
 ## 3.6.2 (2016-10-17)
 * Update videojs-contrib-media-sources to 4.0.0
   * Append init segment data on audio track changes
+  * Normalize ID3 behavior to follow Safari's implementation
 
 --------------------
 ## 3.6.1 (2016-10-13)
