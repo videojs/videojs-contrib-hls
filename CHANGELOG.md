@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.3 (2016-10-18)
+* Update videojs-contrib-media-sources to 4.0.1
+  * Fix flash fallback
+
+--------------------
 ## 3.6.2 (2016-10-17)
 * Update videojs-contrib-media-sources to 4.0.0
   * Append init segment data on audio track changes
