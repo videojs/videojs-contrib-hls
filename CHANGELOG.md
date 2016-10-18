@@ -2,6 +2,14 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.4 (2016-10-18)
+* Fix 'ended' event not firing after replay
+* Updated videojs-contrib-media-sources to 4.0.2
+  * Only trim FLV tags when seeking to prevent triming I frames
+  * Updated Mux.js to 3.0.2
+    * Set h264Frame to null after we finish the frame
+
+--------------------
 ## 3.6.3 (2016-10-18)
 * Update videojs-contrib-media-sources to 4.0.1
   * Fix flash fallback
