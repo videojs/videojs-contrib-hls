@@ -93,7 +93,7 @@
     "aes-decrypter": "^1.0.3",
     "mux.js": "^2.4.0",
     "video.js": "^5.10.1",
-    "videojs-contrib-media-sources": "^4.0.0",
+    "videojs-contrib-media-sources": "^4.0.1",
     "videojs-swf": "^5.0.2",
     "global": "^4.3.0"
   },
