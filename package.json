@@ -91,7 +91,7 @@
   "dependencies": {
     "m3u8-parser": "^1.0.2",
     "aes-decrypter": "^1.0.3",
-    "mux.js": "^2.4.0",
+    "mux.js": "^3.0.0",
     "video.js": "^5.10.1",
     "videojs-contrib-media-sources": "^4.0.1",
     "videojs-swf": "^5.0.2",
