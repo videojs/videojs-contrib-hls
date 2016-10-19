@@ -2,6 +2,13 @@ CHANGELOG
 =========
 
 --------------------
+## 3.7.0-beta (2016-10-19)
+* First (beta) release of the rewriting of the segment loading logic
+  * Attempt to simplify the logic by making explicit all the states the loader can be in depending on what information is available
+  * Once things are going well, just walk forward
+  * Ignore gaps in the buffer since the buffer represents a contiguously fetched group of segments and any gaps are intrinsic to the content and not caused by the loading logic
+
+--------------------
 ## 3.6.4 (2016-10-18)
 * Fix 'ended' event not firing after replay
 * Updated videojs-contrib-media-sources to 4.0.2
@@ -22,8 +29,8 @@ CHANGELOG
 
 --------------------
 ## 3.6.1 (2016-10-13)
-* Allow for initial bandwidth option of 0 
-* Added support for MAAT in Firefox 49 
+* Allow for initial bandwidth option of 0
+* Added support for MAAT in Firefox 49
 * Corrected deprecation warning for `player.hls`
 
 --------------------
