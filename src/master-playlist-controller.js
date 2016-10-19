@@ -1006,7 +1006,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
         let codecString = variant.attributes.CODECS;
 
         variantCodecs = parseCodecs(codecString);
-        if (!MediaSource.isTypeSupported('video/mp4; codecs="' + codecString + '"')) {
+        if (window.MediaSource &&
+            window.MediaSource.isTypeSupported &&
+            !window.MediaSource.isTypeSupported('video/mp4; codecs="' + codecString + '"')) {
           variant.excludeUntil = Infinity;
         }
       }

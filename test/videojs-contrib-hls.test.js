@@ -2284,6 +2284,23 @@ QUnit.module('HLS Integration', {
   }
 });
 
+QUnit.test('does not error when MediaSource is not defined', function() {
+  window.MediaSource = null;
+
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/alternateAudio.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  QUnit.ok(true, 'did not throw an exception');
+});
+
 QUnit.test('aborts all in-flight work when disposed', function() {
   let hls = HlsSourceHandler('html5').handleSource({
     src: 'manifest/master.m3u8',
