@@ -9,6 +9,8 @@ import {
 } from './test-helpers.js';
 import GapSkipper from '../src/gap-skipper';
 
+let checkTimeupdate_;
+
 QUnit.module('GapSkipper', {
   beforeEach() {
     this.env = useFakeEnvironment();
@@ -135,8 +137,6 @@ QUnit.test('skips over gap in Chrome due to video underflow', function() {
   QUnit.equal(seeks.length, 1, 'one seek');
   QUnit.equal(seeks[0], 13, 'player seeked to current time');
 });
-
-var checkTimeupdate_;
 
 QUnit.module('GapSkipper isolated functions', {
   beforeEach() {
