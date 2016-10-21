@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 3.7.0-beta3 (2016-10-21)
+* Updated videojs-contrib-media-sources to 4.0.4
+
+--------------------
 ## 3.7.0-beta2 (2016-10-21)
 * Fixed an issue where preload="none" was broken and would not start playback
 * Fixed an issue where aborted segment loads would through off the fetch logic
