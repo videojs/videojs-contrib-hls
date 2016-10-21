@@ -165,6 +165,7 @@ QUnit.test('if buffered, will request second segment byte range', function() {
   this.player.tech_.triggerReady();
   this.clock.tick(1);
   this.player.tech_.trigger('play');
+  this.player.tech_.paused_ = false;
   this.player.tech_.played = () => videojs.createTimeRanges([[0, 20]]);
 
   openMediaSource(this.player, this.clock);

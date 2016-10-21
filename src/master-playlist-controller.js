@@ -261,6 +261,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.load();
       }
 
+      this.fillAudioTracks_();
+      this.setupAudio();
+
       try {
         this.setupSourceBuffers_();
       } catch (e) {
@@ -269,10 +272,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
       this.setupFirstPlay();
 
-      this.fillAudioTracks_();
-      this.setupAudio();
       this.trigger('audioupdate');
-
       this.trigger('selectedinitialmedia');
     });
 
@@ -672,36 +672,30 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let seekable;
     let media = this.masterPlaylistLoader_.media();
 
-    // check that everything is ready to begin buffering
+    // check that everything is ready to begin buffering in the live
+    // scenario
     // 1) the active media playlist is available
     if (media &&
-        // 2) the video is a live stream
-        !media.endList &&
-
-        // 3) the player is not paused
+        // 2) the player is not paused
         !this.tech_.paused() &&
-
-        // 4) the player has not started playing
+        // 3) the player has not started playing
         !this.hasPlayed_()) {
 
-      // trigger the playlist loader to start "expired time"-tracking
-      this.masterPlaylistLoader_.trigger('firstplay');
-      this.hasPlayed_ = () => true;
-
-      // seek to the latest media position for live videos
-      seekable = this.seekable();
-      if (seekable.length) {
-        this.tech_.setCurrentTime(seekable.end(0));
+      // when the video is a live stream
+      if (!media.endList) {
+        // trigger the playlist loader to start "expired time"-tracking
+        this.masterPlaylistLoader_.trigger('firstplay');
+        this.trigger('firstplay');
+        // seek to the latest media position for live videos
+        seekable = this.seekable();
+        if (seekable.length) {
+          this.tech_.setCurrentTime(seekable.end(0));
+        }
       }
-
-      // now that we seeked to the current time, load the segment
+      this.hasPlayed_ = () => true;
+      // now that we are ready, load the segment
       this.load();
-
       return true;
-    } else if (media &&
-        // 2) the video is a VOD
-        media.endList) {
-      this.hasPlayed_ = () => this.tech_.played().length !== 0;
     }
     return false;
   }

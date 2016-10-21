@@ -260,6 +260,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     let oldPlaylist = this.playlist_;
+    let segmentInfo = this.pendingSegment_;
 
     if (this.mediaIndex !== null) {
       // We reloaded the same playlist so we are in a live scenario
@@ -269,6 +270,11 @@ export default class SegmentLoader extends videojs.EventTarget {
         let mediaSequenceDiff = newPlaylist.mediaSequence - oldPlaylist.mediaSequence;
 
         this.mediaIndex -= mediaSequenceDiff;
+
+        if (segmentInfo && !segmentInfo.isSyncRequest) {
+          segmentInfo.mediaIndex -= mediaSequenceDiff;
+        }
+
         this.syncController_.saveExpiredSegmentInfo(oldPlaylist, newPlaylist);
       } else {
         // We must "resync" the fetcher when we switch renditions
@@ -569,11 +575,6 @@ export default class SegmentLoader extends videojs.EventTarget {
         this.mediaSource_.readyState === 'ended' &&
         !this.seeking_()) {
       return;
-    }
-
-    if (!segmentInfo.isSyncRequest) {
-      this.mediaIndex = segmentInfo.mediaIndex;
-      this.fetchAtBuffer_ = true;
     }
 
     // We will need to change timestampOffset of the sourceBuffer if either of
@@ -958,6 +959,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     let segmentInfo = this.pendingSegment_;
 
     log('handleUpdateEnd_');
+
+    if (!segmentInfo.isSyncRequest) {
+      this.mediaIndex = segmentInfo.mediaIndex;
+      this.fetchAtBuffer_ = true;
+    }
 
     this.pendingSegment_ = null;
 

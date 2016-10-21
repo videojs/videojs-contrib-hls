@@ -298,6 +298,7 @@ class HlsHandler extends Component {
     this.tech_ = tech;
     this.source_ = source;
     this.stats = {};
+    this.ignoreNextSeekingEvent_ = false;
 
     // handle global & Source Handler level options
     this.options_ = videojs.mergeOptions(videojs.options.hls || {}, options.hls);
@@ -320,6 +321,11 @@ class HlsHandler extends Component {
     });
 
     this.on(this.tech_, 'seeking', function() {
+      if (this.ignoreNextSeekingEvent_) {
+        this.ignoreNextSeekingEvent_ = false;
+        return;
+      }
+
       this.setCurrentTime(this.tech_.currentTime());
     });
     this.on(this.tech_, 'error', function() {
@@ -453,6 +459,12 @@ class HlsHandler extends Component {
     this.on(this.masterPlaylistController_, 'progress', function() {
       this.bandwidth = this.masterPlaylistController_.mainSegmentLoader_.bandwidth;
       this.tech_.trigger('progress');
+    });
+
+    // In the live case, we need to ignore the very first `seeking` event since
+    // that will be the result of the seek-to-live behavior
+    this.on(this.masterPlaylistController_, 'firstplay', function() {
+      this.ignoreNextSeekingEvent_ = true;
     });
 
     // do nothing if the tech has been disposed already
