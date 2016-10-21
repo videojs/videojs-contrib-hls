@@ -232,6 +232,7 @@ export default class GapSkipper {
         // the gap, leading currentTime into a buffered range. Seeking to currentTime
         // allows the video to catch up to the audio position without losing any audio
         // (only suffering ~3 seconds of frozen video and a pause in audio playback).
+        this.consecutiveUpdates = 0;
         this.tech_.setCurrentTime(currentTime);
       }
       return;
