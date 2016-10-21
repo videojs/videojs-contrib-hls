@@ -60,11 +60,9 @@ QUnit.test('skips over gap in firefox with waiting event', function() {
   // check that player jumped the gap
   QUnit.equal(Math.round(this.player.currentTime()),
     20, 'Player seeked over gap after timer');
-
 });
 
 QUnit.test('skips over gap in chrome without waiting event', function() {
-
   this.player.autoplay(true);
 
   // create a buffer with a gap between 10 & 20 seconds
@@ -89,10 +87,8 @@ QUnit.test('skips over gap in chrome without waiting event', function() {
 
   // seek to 10 seconds & simulate chrome waiting event
   this.player.currentTime(10);
-  for (let i = 0; i < 10; i++) {
-    this.player.tech_.trigger('timeupdate');
-  }
-  this.clock.tick(2000);
+
+  this.clock.tick(4000);
 
   // checks that player doesn't seek before timer expires
   QUnit.equal(this.player.currentTime(), 10, 'Player doesnt seek over gap pre-timer');
@@ -134,22 +130,28 @@ QUnit.test('skips over gap in Chrome due to video underflow', function() {
     seeks.push(time);
   };
 
-  for (let i = 0; i < 7; i++) {
-    this.player.tech_.trigger('timeupdate');
-  }
+  this.clock.tick(2000);
 
   QUnit.equal(seeks.length, 1, 'one seek');
   QUnit.equal(seeks[0], 13, 'player seeked to current time');
 });
 
+var checkTimeupdate_;
+
 QUnit.module('GapSkipper isolated functions', {
   beforeEach() {
+    checkTimeupdate_ = GapSkipper.prototype.checkTimeupdate_;
+    GapSkipper.prototype.checkTimeupdate_ = () => {};
     this.gapSkipper = new GapSkipper({
       tech: {
         on: () => {},
         off: () => {}
       }
     });
+  },
+  afterEach() {
+    this.gapSkipper.dispose();
+    GapSkipper.prototype.checkTimeupdate_ = checkTimeupdate_;
   }
 });
 
