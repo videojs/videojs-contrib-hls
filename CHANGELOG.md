@@ -2,6 +2,13 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.5 (2016-10-21)
+* Use setTimeout in gap skipper instead of relying on timeupdate events
+* Updated videojs-contrib-media-sources to 4.0.4
+  * Check if metadata track exists
+  * Append init segment to video buffer for every segment
+
+--------------------
 ## 3.6.4 (2016-10-18)
 * Fix 'ended' event not firing after replay
 * Updated videojs-contrib-media-sources to 4.0.2
