@@ -38,28 +38,46 @@ export default class GapSkipper {
     this.consecutiveUpdates = 0;
     this.lastRecordedTime = null;
     this.timer_ = null;
+    this.checkCurrentTimeTimeout_ = null;
 
     if (options.debug) {
       this.logger_ = videojs.log.bind(videojs, 'gap-skipper ->');
     }
     this.logger_('initialize');
 
-    let waitingHandler = ()=> this.waiting_();
-    let timeupdateHandler = ()=> this.timeupdate_();
-    let cancelTimerHandler = ()=> this.cancelTimer_();
+    let waitingHandler = () => this.waiting_();
+    let cancelTimerHandler = () => this.cancelTimer_();
 
     this.tech_.on('waiting', waitingHandler);
-    this.tech_.on('timeupdate', timeupdateHandler);
     this.tech_.on(timerCancelEvents, cancelTimerHandler);
+    this.monitorCurrentTime_();
 
     // Define the dispose function to clean up our events
     this.dispose = () => {
       this.logger_('dispose');
       this.tech_.off('waiting', waitingHandler);
-      this.tech_.off('timeupdate', timeupdateHandler);
       this.tech_.off(timerCancelEvents, cancelTimerHandler);
+      if (this.checkCurrentTimeTimeout_) {
+        clearTimeout(this.checkCurrentTimeTimeout_);
+      }
       this.cancelTimer_();
     };
+  }
+
+  /**
+   * Periodically check for timeupdates to see if a gap has been encountered.
+   *
+   * @private
+   */
+  monitorCurrentTime_() {
+    this.checkCurrentTime_();
+
+    if (this.checkCurrentTimeTimeout_) {
+      clearTimeout(this.checkCurrentTimeTimeout_);
+    }
+
+    // 42 = 24 fps // 250 is what Webkit uses // FF uses 15
+    this.checkCurrentTimeTimeout_ = setTimeout(this.monitorCurrentTime_.bind(this), 250);
   }
 
   /**
@@ -80,7 +98,7 @@ export default class GapSkipper {
    *
    * @private
    */
-  timeupdate_() {
+  checkCurrentTime_() {
     if (this.tech_.paused() || this.tech_.seeking()) {
       return;
     }
