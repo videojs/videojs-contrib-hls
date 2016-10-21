@@ -2,6 +2,12 @@ CHANGELOG
 =========
 
 --------------------
+## 3.7.0-beta2 (2016-10-21)
+* Fixed an issue where preload="none" was broken and would not start playback
+* Fixed an issue where aborted segment loads would through off the fetch logic
+* Live streams no longer fetch the initial segment twice when played for the first time
+
+--------------------
 ## 3.7.0-beta (2016-10-19)
 * First (beta) release of the rewriting of the segment loading logic
   * Attempt to simplify the logic by making explicit all the states the loader can be in depending on what information is available
