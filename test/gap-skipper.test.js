@@ -9,7 +9,7 @@ import {
 } from './test-helpers.js';
 import GapSkipper from '../src/gap-skipper';
 
-let checkTimeupdate_;
+let monitorCurrentTime_;
 
 QUnit.module('GapSkipper', {
   beforeEach() {
@@ -140,8 +140,8 @@ QUnit.test('skips over gap in Chrome due to video underflow', function() {
 
 QUnit.module('GapSkipper isolated functions', {
   beforeEach() {
-    checkTimeupdate_ = GapSkipper.prototype.checkTimeupdate_;
-    GapSkipper.prototype.checkTimeupdate_ = () => {};
+    monitorCurrentTime_ = GapSkipper.prototype.monitorCurrentTime_;
+    GapSkipper.prototype.monitorCurrentTime_ = () => {};
     this.gapSkipper = new GapSkipper({
       tech: {
         on: () => {},
@@ -151,7 +151,7 @@ QUnit.module('GapSkipper isolated functions', {
   },
   afterEach() {
     this.gapSkipper.dispose();
-    GapSkipper.prototype.checkTimeupdate_ = checkTimeupdate_;
+    GapSkipper.prototype.monitorCurrentTime_ = monitorCurrentTime_;
   }
 });
 
