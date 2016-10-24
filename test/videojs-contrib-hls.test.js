@@ -83,10 +83,6 @@ QUnit.module('HLS', {
     // store functionality that some tests need to mock
     this.old.GlobalOptions = videojs.mergeOptions(videojs.options);
 
-    // force the HLS tech to run
-    this.old.NativeHlsSupport = videojs.Hls.supportsNativeHls;
-    videojs.Hls.supportsNativeHls = false;
-
     this.old.Decrypt = videojs.Hls.Decrypter;
     videojs.Hls.Decrypter = function() {};
 
@@ -105,7 +101,6 @@ QUnit.module('HLS', {
     Flash.isSupported = this.old.FlashSupported;
     merge(Flash, this.old.Flash);
 
-    videojs.Hls.supportsNativeHls = this.old.NativeHlsSupport;
     videojs.Hls.Decrypter = this.old.Decrypt;
     videojs.browser.IS_FIREFOX = this.old.IS_FIREFOX;
 
@@ -1443,20 +1438,6 @@ QUnit.test('fires loadstart manually if Flash is used', function() {
   QUnit.equal(loadstarts, 0, 'loadstart is not synchronous');
   this.clock.tick(1);
   QUnit.equal(loadstarts, 1, 'fired loadstart');
-});
-
-QUnit.test('has no effect if native HLS is available', function() {
-  let player;
-
-  Hls.supportsNativeHls = true;
-  player = createPlayer();
-  player.src({
-    src: 'http://example.com/manifest/master.m3u8',
-    type: 'application/x-mpegURL'
-  });
-
-  QUnit.ok(!player.tech_.hls, 'did not load hls tech');
-  player.dispose();
 });
 
 QUnit.test('re-emits mediachange events', function() {
