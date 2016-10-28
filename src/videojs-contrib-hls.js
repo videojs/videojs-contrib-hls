@@ -103,10 +103,8 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
   sortedPlaylists = sortedPlaylists.filter((localVariant) => {
-    if (typeof localVariant.excludeUntil !== 'undefined') {
-      return now >= localVariant.excludeUntil;
-    }
-    return true;
+    let blacklisted = localVariant.excludeUntil && localVariant.excludeUntil > Date.now();
+    return (!localVariant.disabled && !blacklisted)
   });
 
   // filter out any variant that has greater effective bitrate

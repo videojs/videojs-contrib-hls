@@ -229,8 +229,10 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * @return {Number} number of eneabled playlists
    */
   loader.enabledPlaylists_ = function() {
-    return loader.master.playlists.filter((element, index, array) => {
-      return !element.excludeUntil || element.excludeUntil <= Date.now();
+    return loader.master.playlists.filter((playlist) => {
+      let blacklisted = playlist.excludeUntil && playlist.excludeUntil > Date.now();
+
+      return (!playlist.disabled && !blacklisted);
     }).length;
   };
 
@@ -249,8 +251,8 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     let currentBandwidth = loader.media().attributes.BANDWIDTH || 0;
 
     return !(loader.master.playlists.filter((playlist) => {
-      let enabled = typeof playlist.excludeUntil === 'undefined' ||
-                      playlist.excludeUntil <= Date.now();
+      let blacklisted = playlist.excludeUntil && playlist.excludeUntil > Date.now();
+      let enabled = (!playlist.disabled && !blacklisted);
 
       if (!enabled) {
         return false;
