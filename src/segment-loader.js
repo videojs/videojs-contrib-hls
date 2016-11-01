@@ -273,6 +273,10 @@ export default class SegmentLoader extends videojs.EventTarget {
 
         if (segmentInfo && !segmentInfo.isSyncRequest) {
           segmentInfo.mediaIndex -= mediaSequenceDiff;
+
+          if (segmentInfo.mediaIndex < 0) {
+            this.abort_();
+          }
         }
 
         this.syncController_.saveExpiredSegmentInfo(oldPlaylist, newPlaylist);
@@ -513,6 +517,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   abort_() {
     if (this.xhr_) {
       this.xhr_.abort();
+      this.xhr_ = null;
     }
 
     // clear out the segment being processed
