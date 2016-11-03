@@ -78,6 +78,12 @@
       <input type="radio" name="autoplay" value="on"> On
       <input type="radio" name="autoplay" value="off" checked> Off
     </label>
+    <br>
+    <label>
+      Override Native:
+      <input type="radio" name="override-native" value="on"> On
+      <input type="radio" name="override-native" value="off" checked> Off
+    </label>
 
     <br>
     <br>
@@ -157,6 +163,7 @@
       var techRadios = document.getElementsByName('technology-mode');
       var techMode = getCheckedValue('technology-mode') || 'auto';
       var autoplay = getCheckedValue('autoplay') || 'off';
+      var overrideNative = getCheckedValue('override-native') || 'off';
       var captionTrack = document.getElementById('caption-track').value || "";
       var url = document.getElementById('url-to-load').value || "";
       var options = {};
@@ -179,6 +186,11 @@
         } else if (techMode === 'off') {
           options.autoplay = false;
         }
+      }
+      if (overrideNative === 'on') {
+        videojs.options.hls.overrideNative = true;
+      } else if (overrideNative === 'off') {
+        videojs.options.hls.overrideNative = false;
       }
       var type = document.getElementById('url-content-type').value;
       // use the form data to add a src to the player
