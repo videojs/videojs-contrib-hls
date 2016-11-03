@@ -1459,6 +1459,21 @@ QUnit.test('has no effect if native HLS is available', function() {
   player.dispose();
 });
 
+QUnit.test('loads if native HLS is available and override is set', function() {
+  videojs.options.hls.overrideNative = true;
+  let player;
+
+  Hls.supportsNativeHls = true;
+  player = createPlayer();
+  player.src({
+    src: 'http://example.com/manifest/master.m3u8',
+    type: 'application/x-mpegURL'
+  });
+
+  QUnit.ok(player.tech_.hls, 'did load hls tech');
+  player.dispose();
+});
+
 QUnit.test('re-emits mediachange events', function() {
   let mediaChanges = 0;
 
