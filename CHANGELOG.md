@@ -2,10 +2,15 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.7 (2016-11-03)
+* Update videojs-contrib-media-sources to 4.0.5
+  * Fix an issue with ID3 and 608 cue translation
+
+--------------------
 ## 3.6.6 (2016-10-21)
 * Use setTimeout in gap skipper instead of relying on timeupdate events
 * Updated videojs-contrib-media-sources to 4.0.4
-  * Append init segment to video buffer for every segment
+  * Append init segment to video buffer for every segmentw
 
 --------------------
 ## 3.6.4 (2016-10-18)
