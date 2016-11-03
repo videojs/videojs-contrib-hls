@@ -187,11 +187,9 @@
           options.autoplay = false;
         }
       }
-      if (overrideNative === 'on') {
-        videojs.options.hls.overrideNative = true;
-      } else if (overrideNative === 'off') {
-        videojs.options.hls.overrideNative = false;
-      }
+
+      videojs.options.hls.overrideNative = overrideNative === 'on';
+
       var type = document.getElementById('url-content-type').value;
       // use the form data to add a src to the player
       try {
