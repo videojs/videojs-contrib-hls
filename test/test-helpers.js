@@ -90,7 +90,7 @@ class MockMediaSource extends videojs.EventTarget {
 
 export const useFakeMediaSource = function() {
   let RealMediaSource = videojs.MediaSource;
-  let realCreateObjectURL = window.URL.createObjectURL;
+  let realCreateObjectURL = videojs.URL.createObjectURL;
   let id = 0;
 
   videojs.MediaSource = MockMediaSource;
@@ -109,30 +109,32 @@ export const useFakeMediaSource = function() {
   };
 };
 
-let fakeEnvironment = {
-  requests: [],
-  restore() {
-    this.clock.restore();
-    videojs.xhr.XMLHttpRequest = window.XMLHttpRequest;
-    this.xhr.restore();
-    ['warn', 'error'].forEach((level) => {
-      if (this.log && this.log[level] && this.log[level].restore) {
-        if (QUnit) {
-          let calls = this.log[level].args.map((args) => {
-            return args.join(', ');
-          }).join('\n  ');
-
-          QUnit.equal(this.log[level].callCount,
-                      0,
-                      'no unexpected logs at level "' + level + '":\n  ' + calls);
-        }
-        this.log[level].restore();
-      }
-    });
-  }
-};
-
 export const useFakeEnvironment = function() {
+  let realXMLHttpRequest = videojs.xhr.XMLHttpRequest;
+
+  let fakeEnvironment = {
+    requests: [],
+    restore() {
+      this.clock.restore();
+      videojs.xhr.XMLHttpRequest = realXMLHttpRequest;
+      this.xhr.restore();
+      ['warn', 'error'].forEach((level) => {
+        if (this.log && this.log[level] && this.log[level].restore) {
+          if (QUnit) {
+            let calls = this.log[level].args.map((args) => {
+              return args.join(', ');
+            }).join('\n  ');
+
+            QUnit.equal(this.log[level].callCount,
+                        0,
+                        'no unexpected logs at level "' + level + '":\n  ' + calls);
+          }
+          this.log[level].restore();
+        }
+      });
+    }
+  };
+
   fakeEnvironment.log = {};
   ['warn', 'error'].forEach((level) => {
     // you can use .log[level].args to get args
