@@ -4,7 +4,7 @@
 import Ranges from './ranges';
 import videojs from 'video.js';
 
-// Set of events that reset the timed-check logic and clear the timeout
+// Set of events that reset the always-be-playing time check logic and clear the timeout
 const timerCancelEvents = [
   'seeking',
   'seeked',
@@ -99,6 +99,7 @@ export default class AlwaysBePlaying {
     } else {
       this.consecutiveUpdates = 0;
       this.lastRecordedTime = currentTime;
+      this.seekedAtTime = null;
     }
   }
 
@@ -139,8 +140,7 @@ export default class AlwaysBePlaying {
     if (playlist &&
         !playlist.endList &&
         seekable.length &&
-        currentTime < seekable.start(0) &&
-        this.seekedAtTime !== currentTime) {
+        currentTime < seekable.start(0)) {
       this.seekedAtTime = currentTime;
 
       let livePoint = seekable.end(seekable.length - 1);
@@ -151,8 +151,6 @@ export default class AlwaysBePlaying {
       this.tech_.setCurrentTime(livePoint);
       return;
     }
-
-    this.seekedAtTime = null;
 
     let buffered = this.tech_.buffered();
     let nextRange = Ranges.findNextRange(buffered, currentTime);
