@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 3.7.0-beta4 (2016-11-04)
+* Added `videojs.options.hls.overrideNative` option
+
+--------------------
 ## 3.7.0-beta3 (2016-10-21)
 * Updated videojs-contrib-media-sources to 4.0.4
 
