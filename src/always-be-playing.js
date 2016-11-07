@@ -136,26 +136,41 @@ export default class AlwaysBePlaying {
       return;
     }
 
-    // check to see if we fell out of the live window
-    if (playlist &&
-        !playlist.endList &&
-        seekable.length &&
-        currentTime < seekable.start(0)) {
-      this.seekedAtTime = currentTime;
-
-      let livePoint = seekable.end(seekable.length - 1);
-
-      this.logger_(`Fell out of live window at time ${currentTime}. Seeking to ` +
-                   `live point (seekable end) ${livePoint}`);
-      this.cancelTimer_();
-      this.tech_.setCurrentTime(livePoint);
+    if (this.checkFellOutOfLiveWindow_(playlist, seekable, currentTime)) {
       return;
     }
 
     let buffered = this.tech_.buffered();
     let nextRange = Ranges.findNextRange(buffered, currentTime);
 
-    // check for video underflow
+    if (this.checkVideoUnderflow_(nextRange, buffered, currentTime)) {
+      return;
+    }
+
+    this.checkGap_(nextRange, currentTime);
+  }
+
+  checkFellOutOfLiveWindow_(playlist, seekable, currentTime) {
+    if (!playlist ||
+        playlist.endList ||
+        !seekable.length ||
+        currentTime >= seekable.start(0)) {
+      return false;
+    }
+
+    this.seekedAtTime = currentTime;
+
+    let livePoint = seekable.end(seekable.length - 1);
+
+    this.logger_(`Fell out of live window at time ${currentTime}. Seeking to ` +
+                 `live point (seekable end) ${livePoint}`);
+    this.cancelTimer_();
+    this.tech_.setCurrentTime(livePoint);
+
+    return true;
+  }
+
+  checkVideoUnderflow_(nextRange, buffered, currentTime) {
     if (nextRange.length === 0) {
       // Even if there is no available next range, there is still a possibility we are
       // stuck in a gap due to video underflow.
@@ -164,25 +179,36 @@ export default class AlwaysBePlaying {
       if (gap) {
         this.logger_(`Encountered a gap in video from ${gap.start} to ${gap.end}. ` +
                      `Seeking to current time ${currentTime}`);
+
         // Even though the video underflowed and was stuck in a gap, the audio overplayed
         // the gap, leading currentTime into a buffered range. Seeking to currentTime
         // allows the video to catch up to the audio position without losing any audio
         // (only suffering ~3 seconds of frozen video and a pause in audio playback).
         this.cancelTimer_();
         this.tech_.setCurrentTime(currentTime);
+
+        return true;
       }
-      return;
+    }
+
+    return false;
+  }
+
+  checkGap_(nextRange, currentTime) {
+    if (nextRange.length === 0) {
+      return false;
     }
 
     let difference = nextRange.start(0) - currentTime;
 
-    // check for gap
     this.logger_(`Stopped at ${currentTime}, setting timer for ${difference}, seeking ` +
                  `to ${nextRange.start(0)}`);
 
     this.timer_ = setTimeout(this.skipTheGap_.bind(this),
                              difference * 1000,
                              currentTime);
+
+    return true;
   }
 
   /**
