@@ -99,7 +99,6 @@ export default class AlwaysBePlaying {
     } else {
       this.consecutiveUpdates = 0;
       this.lastRecordedTime = currentTime;
-      this.seekedAtTime = null;
     }
   }
 
@@ -130,9 +129,7 @@ export default class AlwaysBePlaying {
     let currentTime = this.tech_.currentTime();
     let playlist = this.playlist();
 
-    if (this.tech_.seeking() ||
-        this.timer_ !== null ||
-        this.seekedAtTime === currentTime) {
+    if (this.tech_.seeking() || this.timer_ !== null) {
       return;
     }
 
@@ -157,8 +154,6 @@ export default class AlwaysBePlaying {
         currentTime >= seekable.start(0)) {
       return false;
     }
-
-    this.seekedAtTime = currentTime;
 
     let livePoint = seekable.end(seekable.length - 1);
 
