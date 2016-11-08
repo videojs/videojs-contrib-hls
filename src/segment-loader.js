@@ -154,6 +154,8 @@ export default class SegmentLoader extends videojs.EventTarget {
       time: 0
     };
 
+    this.syncController_.on('syncinfoupdate', () => this.trigger('syncinfoupdate'));
+
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
   }
@@ -285,6 +287,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         mediaSequence: newPlaylist.mediaSequence,
         time: 0
       };
+      this.trigger('syncinfoupdate');
     }
 
     this.playlist_ = newPlaylist;

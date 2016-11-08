@@ -308,6 +308,11 @@ QUnit.test('seekable end is three target durations from the actual end of live p
 function(assert) {
   let seekable = Playlist.seekable({
     mediaSequence: 0,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 0
+    },
+    targetDuration: 10,
     segments: [{
       duration: 7,
       uri: '0.ts'
@@ -328,35 +333,14 @@ function(assert) {
   assert.equal(seekable.end(0), 7, 'ends three target durations from the last segment');
 });
 
-QUnit.test('only considers available segments', function(assert) {
-  let seekable = Playlist.seekable({
-    mediaSequence: 7,
-    segments: [{
-      uri: '8.ts',
-      duration: 10
-    }, {
-      uri: '9.ts',
-      duration: 10
-    }, {
-      uri: '10.ts',
-      duration: 10
-    }, {
-      uri: '11.ts',
-      duration: 10
-    }]
-  });
-
-  assert.equal(seekable.length, 1, 'there are seekable ranges');
-  assert.equal(seekable.start(0), 0, 'starts at the earliest available segment');
-  assert.equal(seekable.end(0),
-              10,
-              'ends three target durations from the last available segment');
-});
-
 QUnit.test('seekable end accounts for non-standard target durations', function(assert) {
   let seekable = Playlist.seekable({
     targetDuration: 2,
     mediaSequence: 0,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 0
+    },
     segments: [{
       duration: 2,
       uri: '0.ts'

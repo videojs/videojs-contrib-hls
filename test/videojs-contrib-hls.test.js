@@ -1106,10 +1106,8 @@ QUnit.test('adjusts the seekable start based on the amount of expired live conte
   standardXHRResponse(this.requests.shift());
 
   // add timeline info to the playlist
-  this.player.tech_.hls.playlists.media().segments[1].end = 29.5;
-  // expired_ should be ignored if there is timeline information on
-  // the playlist
-  this.player.tech_.hls.playlists.expired_ = 172;
+  this.player.tech_.hls.playlists.media().segments[2].start = 29.5;
+  this.player.tech_.hls.masterPlaylistController_.onSyncInfoUpdate_();
 
   assert.equal(this.player.seekable().start(0),
               29.5 - 29,
@@ -1124,11 +1122,15 @@ QUnit.test('estimates seekable ranges for live streams that have been paused for
   openMediaSource(this.player, this.clock);
 
   standardXHRResponse(this.requests.shift());
-  this.player.tech_.hls.playlists.expired_ = 172;
-
+  this.player.tech_.hls.playlists.media().mediaSequence = 172;
+  this.player.tech_.hls.playlists.media().syncInfo = {
+    mediaSequence: 130,
+    time: 80
+  };
+  this.player.tech_.hls.masterPlaylistController_.onSyncInfoUpdate_();
   assert.equal(this.player.seekable().start(0),
-              this.player.tech_.hls.playlists.expired_,
-              'offset the seekable start');
+               500,
+               'offset the seekable start');
 });
 
 QUnit.test('resets the time to a seekable position when resuming a live stream ' +

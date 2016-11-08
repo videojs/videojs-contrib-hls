@@ -5,6 +5,7 @@
 import mp4probe from 'mux.js/lib/mp4/probe';
 import {inspect as tsprobe} from 'mux.js/lib/tools/ts-inspector.js';
 import {sumDurations} from './playlist';
+import videojs from 'video.js';
 
 const c = 'console';
 // temporary, switchable debug logging
@@ -113,8 +114,9 @@ export const syncPointStrategies = [
   }
 ];
 
-export default class SyncController {
+export default class SyncController extends videojs.EventTarget {
   constructor() {
+    super();
     // Segment Loader state variables...
     // ...for synching across variants
     this.inspectCache_ = undefined;
@@ -175,6 +177,7 @@ export default class SyncController {
           time: lastRemovedSegment.start
         };
         log('playlist sync:', newPlaylist.syncInfo);
+        this.trigger('syncinfoupdate');
         break;
       }
     }
@@ -312,6 +315,7 @@ export default class SyncController {
     } else {
       return false;
     }
+    this.trigger('syncinfoupdate');
     return true;
   }
 

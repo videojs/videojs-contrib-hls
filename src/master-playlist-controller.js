@@ -213,6 +213,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // load the media source into the player
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
 
+    this.seekable_ = null;
     this.hasPlayed_ = () => false;
 
     let segmentLoaderOptions = {
@@ -278,7 +279,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('loadedplaylist', () => {
       let updatedPlaylist = this.masterPlaylistLoader_.media();
-      let seekable;
+      let onDurationchange;
+      let addSeekableRange;
 
       if (!updatedPlaylist) {
         // select the initial variant
@@ -288,8 +290,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
 
       if (this.useCueTags_) {
-        this.updateAdCues_(updatedPlaylist,
-                           this.masterPlaylistLoader_.expired_);
+        this.updateAdCues_(updatedPlaylist);
       }
 
       // TODO: Create a new event on the PlaylistLoader that signals
@@ -299,10 +300,28 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.mainSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
       this.updateDuration();
 
-      // update seekable
-      seekable = this.seekable();
-      if (!updatedPlaylist.endList && seekable.length !== 0) {
-        this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
+      if (!updatedPlaylist.endList) {
+        addSeekableRange = () => {
+          let seekable = this.seekable();
+
+          if (seekable.length !== 0) {
+            this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
+          }
+        };
+
+        if (this.duration() !== Infinity) {
+          onDurationchange = () => {
+            if (this.duration() === Infinity) {
+              addSeekableRange();
+            } else {
+              this.tech_.one('durationchange', onDurationchange);
+            }
+          };
+
+          this.tech_.one('durationchange', onDurationchange);
+        } else {
+          addSeekableRange();
+        }
       }
     });
 
@@ -369,6 +388,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.mainSegmentLoader_.on('error', () => {
       this.blacklistCurrentPlaylist(this.mainSegmentLoader_.error());
+    });
+
+    this.mainSegmentLoader_.on('syncinfoupdate', () => {
+      this.onSyncInfoUpdate_();
+    });
+
+    this.audioSegmentLoader_.on('syncinfoupdate', () => {
+      this.onSyncInfoUpdate_();
     });
 
     this.audioSegmentLoader_.on('error', () => {
@@ -586,11 +613,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
           (audioPlaylist.endList && this.tech_.preload() !== 'none')) {
         this.audioSegmentLoader_.load();
       }
-
-      if (!audioPlaylist.endList) {
-        // trigger the playlist loader to start "expired time"-tracking
-        this.audioPlaylistLoader_.trigger('firstplay');
-      }
     });
 
     this.audioPlaylistLoader_.on('loadedplaylist', () => {
@@ -683,8 +705,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       // when the video is a live stream
       if (!media.endList) {
-        // trigger the playlist loader to start "expired time"-tracking
-        this.masterPlaylistLoader_.trigger('firstplay');
         this.trigger('firstplay');
         // seek to the latest media position for live videos
         seekable = this.seekable();
@@ -846,39 +866,48 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {TimeRange} the seekable range
    */
   seekable() {
+    if (!this.seekable_) {
+      return videojs.createTimeRanges();
+    }
+
+    return this.seekable_;
+  }
+
+  onSyncInfoUpdate_() {
     let media;
     let mainSeekable;
     let audioSeekable;
 
     if (!this.masterPlaylistLoader_) {
-      return videojs.createTimeRanges();
-    }
-    media = this.masterPlaylistLoader_.media();
-    if (!media) {
-      return videojs.createTimeRanges();
+      return;
     }
 
-    mainSeekable = Hls.Playlist.seekable(media,
-                                         this.masterPlaylistLoader_.expired_);
+    media = this.masterPlaylistLoader_.media();
+
+    if (!media) {
+      return;
+    }
+
+    mainSeekable = Hls.Playlist.seekable(media);
     if (mainSeekable.length === 0) {
-      return mainSeekable;
+      return;
     }
 
     if (this.audioPlaylistLoader_) {
-      audioSeekable = Hls.Playlist.seekable(this.audioPlaylistLoader_.media(),
-                                            this.audioPlaylistLoader_.expired_);
+      audioSeekable = Hls.Playlist.seekable(this.audioPlaylistLoader_.media());
       if (audioSeekable.length === 0) {
-        return audioSeekable;
+        return;
       }
     }
 
     if (!audioSeekable) {
       // seekable has been calculated based on buffering video data so it
       // can be returned directly
-      return mainSeekable;
+      this.seekable_ = mainSeekable;
+      return;
     }
 
-    return videojs.createTimeRanges([[
+    this.seekable_ = videojs.createTimeRanges([[
       (audioSeekable.start(0) > mainSeekable.start(0)) ? audioSeekable.start(0) :
                                                          mainSeekable.start(0),
       (audioSeekable.end(0) < mainSeekable.end(0)) ? audioSeekable.end(0) :
@@ -1043,7 +1072,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
   }
 
-  updateAdCues_(media, offset = 0) {
+  updateAdCues_(media) {
+    let offset = 0;
+    let seekable = this.seekable();
+
+    if (seekable.length) {
+      offset = seekable.start(0);
+    }
+
     AdCueTags.updateAdCues(media, this.cueTagsTrack_, offset);
   }
 }

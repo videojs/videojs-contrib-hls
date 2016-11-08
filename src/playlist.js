@@ -232,14 +232,15 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
   * @return {TimeRanges} the periods of time that are valid targets
   * for seeking
   */
-export const seekable = function(playlist, expired) {
+export const seekable = function(playlist) {
   let start;
   let end;
   let endSequence;
-
-  if (typeof expired !== 'number') {
-    expired = 0;
-  }
+  let expiredSyncPoint;
+  let firstSyncPoint;
+  let expired;
+  let expiredStart;
+  let segments;
 
   // without segments, there are no seekable ranges
   if (!playlist || !playlist.segments) {
@@ -249,6 +250,51 @@ export const seekable = function(playlist, expired) {
   if (playlist.endList) {
     return createTimeRange(0, duration(playlist));
   }
+
+  segments = playlist.segments;
+  expiredSyncPoint = playlist.syncInfo;
+
+  // Find the first segment with timing information
+  for (let i = 0, l = segments.length; i < l; i++) {
+    let segment = segments[i];
+
+    if (typeof segment.start !== 'undefined') {
+      firstSyncPoint = {
+        mediaSequence: playlist.mediaSequence + i,
+        time: segment.start
+      };
+      break;
+    }
+  }
+
+  // We have no sync information for this playlist so we can't create a seekable range
+  if (!expiredSyncPoint && !firstSyncPoint) {
+    return createTimeRange();
+  }
+
+  // If we dont have an expired sync point, estimate expired time based on first sync,
+  // else if we dont have a first sync point, estimate based on expired sync,
+  // otherwise estimate based on whichever is nearest to the start of the playlist
+  if (!firstSyncPoint) {
+    expiredStart = expiredSyncPoint.mediaSequence - playlist.mediaSequence;
+    expired = expiredSyncPoint.time;
+  } else if (!expiredSyncPoint) {
+    expiredStart = firstSyncPoint.mediaSequence - playlist.mediaSequence;
+    expired = -firstSyncPoint.time;
+  } else {
+    let expiredDiff = expiredSyncPoint.mediaSequence - playlist.mediaSequence;
+    let firstDiff = firstSyncPoint.mediaSequence - playlist.mediaSequence;
+
+    if (Math.abs(expiredDiff) > Math.abs(firstDiff)) {
+      expiredStart = firstDiff;
+      expired = -firstSyncPoint.time;
+    } else {
+      expiredStart = expiredDiff;
+      expired = expiredSyncPoint.time;
+    }
+  }
+
+  expired = Math.abs(expired + sumDurations(playlist, expiredStart, 0));
 
   // live playlists should not expose three segment durations worth
   // of content from the end of the playlist
