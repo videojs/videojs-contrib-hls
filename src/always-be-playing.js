@@ -57,7 +57,7 @@ export default class AlwaysBePlaying {
   }
 
   /**
-   * Periodically check for timeupdates
+   * Periodically check current time to see if playback stopped
    *
    * @private
    */
