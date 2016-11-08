@@ -6,6 +6,7 @@ import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
+import AlwaysBePlaying from './always-be-playing';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -234,6 +235,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
     // alternate audio track
     this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
+
+    this.alwaysBePlaying_ = new AlwaysBePlaying(
+      videojs.mergeOptions(options, {
+        playlist: () => this.mainSegmentLoader_.playlist_,
+        seekable: () => this.seekable()
+      }));
+
     this.setupSegmentLoaderListeners_();
 
     this.masterPlaylistLoader_.start();
@@ -911,6 +919,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * that it controls
    */
   dispose() {
+    this.alwaysBePlaying_.dispose();
     this.masterPlaylistLoader_.dispose();
     this.mainSegmentLoader_.dispose();
 

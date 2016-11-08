@@ -1,10 +1,10 @@
 /**
- * @file gap-skipper.js
+ * @file always-be-playing.js
  */
 import Ranges from './ranges';
 import videojs from 'video.js';
 
-// Set of events that reset the gap-skipper logic and clear the timeout
+// Set of events that reset the always-be-playing time check logic and clear the timeout
 const timerCancelEvents = [
   'seeking',
   'seeked',
@@ -14,34 +14,26 @@ const timerCancelEvents = [
 ];
 
 /**
- * The gap skipper object handles all scenarios
- * where the player runs into the end of a buffered
- * region and there is a buffered region ahead.
- *
- * It then handles the skipping behavior by setting a
- * timer to the size (in time) of the gap. This gives
- * the hls segment fetcher time to close the gap and
- * resume playing before the timer is triggered and
- * the gap skipper simply seeks over the gap as a
- * last resort to resume playback.
- *
- * @class GapSkipper
+ * @class AlwaysBePlaying
  */
-export default class GapSkipper {
+export default class AlwaysBePlaying {
   /**
-   * Represents a GapSKipper object.
+   * Represents an AlwaysBePlaying object.
    * @constructor
    * @param {object} options an object that includes the tech and settings
    */
   constructor(options) {
     this.tech_ = options.tech;
+    this.seekable = options.seekable;
+    this.playlist = options.playlist;
+
     this.consecutiveUpdates = 0;
     this.lastRecordedTime = null;
     this.timer_ = null;
     this.checkCurrentTimeTimeout_ = null;
 
     if (options.debug) {
-      this.logger_ = videojs.log.bind(videojs, 'gap-skipper ->');
+      this.logger_ = videojs.log.bind(videojs, 'always-be-playing ->');
     }
     this.logger_('initialize');
 
@@ -65,11 +57,15 @@ export default class GapSkipper {
   }
 
   /**
-   * Periodically check for timeupdates to see if a gap has been encountered.
+   * Periodically check current time to see if playback stopped
    *
    * @private
    */
   monitorCurrentTime_() {
+    if (!this.tech_.el_) {
+      return;
+    }
+
     this.checkCurrentTime_();
 
     if (this.checkCurrentTimeTimeout_) {
@@ -78,17 +74,6 @@ export default class GapSkipper {
 
     // 42 = 24 fps // 250 is what Webkit uses // FF uses 15
     this.checkCurrentTimeTimeout_ = setTimeout(this.monitorCurrentTime_.bind(this), 250);
-  }
-
-  /**
-   * Handler for `waiting` events from the player
-   *
-   * @private
-   */
-  waiting_() {
-    if (!this.tech_.seeking()) {
-      this.setTimer_();
-    }
   }
 
   /**
@@ -105,7 +90,7 @@ export default class GapSkipper {
 
     let currentTime = this.tech_.currentTime();
 
-    if (this.consecutiveUpdates === 5 &&
+    if (this.consecutiveUpdates >= 5 &&
         currentTime === this.lastRecordedTime) {
       this.consecutiveUpdates++;
       this.waiting_();
@@ -135,6 +120,93 @@ export default class GapSkipper {
   }
 
   /**
+   * Handler for `waiting` events from the player
+   *
+   * @private
+   */
+  waiting_() {
+    let seekable = this.seekable();
+    let currentTime = this.tech_.currentTime();
+    let playlist = this.playlist();
+
+    if (this.tech_.seeking() || this.timer_ !== null) {
+      return;
+    }
+
+    if (this.checkFellOutOfLiveWindow_(playlist, seekable, currentTime)) {
+      return;
+    }
+
+    let buffered = this.tech_.buffered();
+    let nextRange = Ranges.findNextRange(buffered, currentTime);
+
+    if (this.checkVideoUnderflow_(nextRange, buffered, currentTime)) {
+      return;
+    }
+
+    this.checkGap_(nextRange, currentTime);
+  }
+
+  checkFellOutOfLiveWindow_(playlist, seekable, currentTime) {
+    if (!playlist ||
+        playlist.endList ||
+        !seekable.length ||
+        currentTime >= seekable.start(0)) {
+      return false;
+    }
+
+    let livePoint = seekable.end(seekable.length - 1);
+
+    this.logger_(`Fell out of live window at time ${currentTime}. Seeking to ` +
+                 `live point (seekable end) ${livePoint}`);
+    this.cancelTimer_();
+    this.tech_.setCurrentTime(livePoint);
+
+    return true;
+  }
+
+  checkVideoUnderflow_(nextRange, buffered, currentTime) {
+    if (nextRange.length === 0) {
+      // Even if there is no available next range, there is still a possibility we are
+      // stuck in a gap due to video underflow.
+      let gap = this.gapFromVideoUnderflow_(buffered, currentTime);
+
+      if (gap) {
+        this.logger_(`Encountered a gap in video from ${gap.start} to ${gap.end}. ` +
+                     `Seeking to current time ${currentTime}`);
+
+        // Even though the video underflowed and was stuck in a gap, the audio overplayed
+        // the gap, leading currentTime into a buffered range. Seeking to currentTime
+        // allows the video to catch up to the audio position without losing any audio
+        // (only suffering ~3 seconds of frozen video and a pause in audio playback).
+        this.cancelTimer_();
+        this.tech_.setCurrentTime(currentTime);
+
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  checkGap_(nextRange, currentTime) {
+    if (nextRange.length === 0) {
+      return false;
+    }
+
+    let difference = nextRange.start(0) - currentTime;
+
+    this.logger_(`Stopped at ${currentTime}, setting timer for ${difference}, seeking ` +
+                 `to ${nextRange.start(0)}`);
+
+    this.timer_ = setTimeout(this.skipTheGap_.bind(this),
+                             difference * 1000,
+                             currentTime);
+
+    return true;
+  }
+
+  /**
    * Timer callback. If playback still has not proceeded, then we seek
    * to the start of the next buffered region.
    *
@@ -145,8 +217,7 @@ export default class GapSkipper {
     let currentTime = this.tech_.currentTime();
     let nextRange = Ranges.findNextRange(buffered, currentTime);
 
-    this.consecutiveUpdates = 0;
-    this.timer_ = null;
+    this.cancelTimer_();
 
     if (nextRange.length === 0 ||
         currentTime !== scheduledCurrentTime) {
@@ -201,52 +272,6 @@ export default class GapSkipper {
     }
 
     return null;
-  }
-
-  /**
-   * Set a timer to skip the unbuffered region.
-   *
-   * @private
-   */
-  setTimer_() {
-    let buffered = this.tech_.buffered();
-    let currentTime = this.tech_.currentTime();
-    let nextRange = Ranges.findNextRange(buffered, currentTime);
-
-    if (this.timer_ !== null) {
-      return;
-    }
-
-    if (nextRange.length === 0) {
-      // Even if there is no available next range, there is still a possibility we are
-      // stuck in a gap due to video underflow.
-      let gap = this.gapFromVideoUnderflow_(buffered, currentTime);
-
-      if (gap) {
-        this.logger_('setTimer_:',
-                     'Encountered a gap in video',
-                     'from: ', gap.start,
-                     'to: ', gap.end,
-                     'seeking to current time: ', currentTime);
-        // Even though the video underflowed and was stuck in a gap, the audio overplayed
-        // the gap, leading currentTime into a buffered range. Seeking to currentTime
-        // allows the video to catch up to the audio position without losing any audio
-        // (only suffering ~3 seconds of frozen video and a pause in audio playback).
-        this.tech_.setCurrentTime(currentTime);
-      }
-      return;
-    }
-
-    let difference = nextRange.start(0) - currentTime;
-
-    this.logger_('setTimer_:',
-                 'stopped at:', currentTime,
-                 'setting timer for:', difference,
-                 'seeking to:', nextRange.start(0));
-
-    this.timer_ = setTimeout(this.skipTheGap_.bind(this),
-                             difference * 1000,
-                             currentTime);
   }
 
   /**
