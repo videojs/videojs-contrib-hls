@@ -162,6 +162,14 @@ QUnit.test('playlist loader detects if we are on lowest rendition', function() {
   };
 
   QUnit.ok(!loader.isLowestEnabledRendition_(), 'Detected not on lowest rendition');
+
+  loader.master.playlists = [{
+    attributes: { BANDWIDTH: 10 }
+  }, {}];
+  loader.media = function() {
+    return loader.master.playlists[0];
+  };
+  QUnit.ok(!loader.isLowestEnabledRendition_(), 'detected not on lowest rendition');
 });
 
 QUnit.test('resolves media initialization segment URIs', function() {

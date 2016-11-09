@@ -257,17 +257,20 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
     let currentBandwidth = loader.media().attributes.BANDWIDTH || 0;
 
-    return !(loader.master.playlists.filter((element, index, array) => {
-      let enabled = typeof element.excludeUntil === 'undefined' ||
-                      element.excludeUntil <= Date.now();
+    return !(loader.master.playlists.filter((playlist) => {
+      let enabled = typeof playlist.excludeUntil === 'undefined' ||
+                      playlist.excludeUntil <= Date.now();
 
       if (!enabled) {
         return false;
       }
 
-      let item = element.attributes.BANDWIDTH;
+      let bandwidth = 0;
 
-      return item <= currentBandwidth;
+      if (playlist && playlist.attributes) {
+        bandwidth = playlist.attributes.BANDWIDTH;
+      }
+      return bandwidth <= currentBandwidth;
 
     }).length > 1);
   };
