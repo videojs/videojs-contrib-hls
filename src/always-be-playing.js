@@ -25,7 +25,6 @@ export default class AlwaysBePlaying {
   constructor(options) {
     this.tech_ = options.tech;
     this.seekable = options.seekable;
-    this.playlist = options.playlist;
 
     this.consecutiveUpdates = 0;
     this.lastRecordedTime = null;
@@ -62,10 +61,6 @@ export default class AlwaysBePlaying {
    * @private
    */
   monitorCurrentTime_() {
-    if (!this.tech_.el_) {
-      return;
-    }
-
     this.checkCurrentTime_();
 
     if (this.checkCurrentTimeTimeout_) {
@@ -120,20 +115,19 @@ export default class AlwaysBePlaying {
   }
 
   /**
-   * Handler for `waiting` events from the player
+   * Handler for situations when we determine the player is waiting
    *
    * @private
    */
   waiting_() {
     let seekable = this.seekable();
     let currentTime = this.tech_.currentTime();
-    let playlist = this.playlist();
 
     if (this.tech_.seeking() || this.timer_ !== null) {
       return;
     }
 
-    if (this.checkFellOutOfLiveWindow_(playlist, seekable, currentTime)) {
+    if (this.checkFellOutOfLiveWindow_(seekable, currentTime)) {
       return;
     }
 
@@ -147,10 +141,10 @@ export default class AlwaysBePlaying {
     this.checkGap_(nextRange, currentTime);
   }
 
-  checkFellOutOfLiveWindow_(playlist, seekable, currentTime) {
-    if (!playlist ||
-        playlist.endList ||
-        !seekable.length ||
+  checkFellOutOfLiveWindow_(seekable, currentTime) {
+    if (!seekable.length ||
+        // can't fall before 0 and also identifies VOD stream
+        seekable.start(0) === 0 ||
         currentTime >= seekable.start(0)) {
       return false;
     }

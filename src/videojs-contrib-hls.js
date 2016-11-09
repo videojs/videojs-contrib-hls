@@ -17,6 +17,7 @@ import { MasterPlaylistController } from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
 import window from 'global/window';
+import AlwaysBePlaying from './always-be-playing';
 
 const Hls = {
   PlaylistLoader,
@@ -370,6 +371,10 @@ class HlsHandler extends Component {
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
+    this.alwaysBePlaying_ = new AlwaysBePlaying(
+      videojs.mergeOptions(this.options_, {
+        seekable: () => this.seekable()
+      }));
 
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
@@ -500,6 +505,9 @@ class HlsHandler extends Component {
   * Abort all outstanding work and cleanup.
   */
   dispose() {
+    if (this.alwaysBePlaying_) {
+      this.alwaysBePlaying_.dispose();
+    }
     if (this.masterPlaylistController_) {
       this.masterPlaylistController_.dispose();
     }

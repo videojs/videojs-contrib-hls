@@ -156,7 +156,7 @@ QUnit.test('seek to live point if we fall off the end of a live playlist', funct
     seeks.push(time);
   };
 
-  this.player.tech_.hls.masterPlaylistController_.alwaysBePlaying_.seekable = () => {
+  this.player.tech_.hls.alwaysBePlaying_.seekable = () => {
     return videojs.createTimeRanges([[1, 45]]);
   };
 
@@ -246,17 +246,7 @@ QUnit.test('check fell out of live window', function() {
   };
 
   QUnit.ok(
-    !checkFellOutOfLiveWindow_(null, videojs.createTimeRanges([[11, 20]]), 10),
-    'false if no playlist');
-  QUnit.equal(seeks.length, 0, 'does not seek');
-  QUnit.ok(
-    !checkFellOutOfLiveWindow_(
-      { endList: true }, videojs.createTimeRanges([[11, 20]]), 10),
-    'false if playlist not live');
-  QUnit.equal(seeks.length, 0, 'does not seek');
-  QUnit.ok(
-    checkFellOutOfLiveWindow_(
-      { endList: false }, videojs.createTimeRanges([[11, 20]]), 10),
+    checkFellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 10),
     'true if playlist live and current time before seekable');
   QUnit.equal(seeks.length, 1, 'seeks');
   QUnit.equal(seeks[0], 20, 'seeks to seekable end');
@@ -264,33 +254,31 @@ QUnit.test('check fell out of live window', function() {
   seeks.length = 0;
 
   QUnit.ok(
-    !checkFellOutOfLiveWindow_(
-      { endList: false }, videojs.createTimeRanges([]), 10),
+    !checkFellOutOfLiveWindow_(videojs.createTimeRanges([]), 10),
     'false if no seekable range');
   QUnit.equal(seeks.length, 0, 'does not seek');
   QUnit.ok(
-    !checkFellOutOfLiveWindow_(
-      { endList: false }, videojs.createTimeRanges([[11, 20]]), 11),
+    !checkFellOutOfLiveWindow_(videojs.createTimeRanges([[0, 10]]), -1),
+    'false if seekable range starts at 0');
+  QUnit.equal(seeks.length, 0, 'does not seek');
+  QUnit.ok(
+    !checkFellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 11),
     'false if current time at seekable start');
   QUnit.equal(seeks.length, 0, 'does not seek');
   QUnit.ok(
-    !checkFellOutOfLiveWindow_(
-      { endList: false }, videojs.createTimeRanges([[11, 20]]), 20),
+    !checkFellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 20),
     'false if current time at seekable end');
   QUnit.equal(seeks.length, 0, 'does not seek');
   QUnit.ok(
-    !checkFellOutOfLiveWindow_(
-      { endList: false }, videojs.createTimeRanges([[11, 20]]), 15),
+    !checkFellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 15),
     'false if current time within seekable range');
   QUnit.equal(seeks.length, 0, 'does not seek');
   QUnit.ok(
-    !checkFellOutOfLiveWindow_(
-      { endList: false }, videojs.createTimeRanges([[11, 20]]), 21),
+    !checkFellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 21),
     'false if current time past seekable range');
   QUnit.equal(seeks.length, 0, 'does not seek');
   QUnit.ok(
-    checkFellOutOfLiveWindow_(
-      { endList: false }, videojs.createTimeRanges([[11, 20]]), 0),
+    checkFellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 0),
     'true if current time is 0 and earlier than seekable range');
   QUnit.equal(seeks.length, 1, 'does not seek');
   QUnit.equal(seeks[0], 20, 'seeks to seekable end');
