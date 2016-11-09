@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.8 (2016-11-09)
+* Enhance gap skipper to seek back into the live window if playback
+  slips out of it. Renamed GapSkipper to PlaybackWatcher.
+
+--------------------
 ## 3.6.7 (2016-11-03)
 * Update videojs-contrib-media-sources to 4.0.5
   * Fix an issue with ID3 and 608 cue translation
