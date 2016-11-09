@@ -7,11 +7,11 @@ import {
   openMediaSource,
   standardXHRResponse
 } from './test-helpers.js';
-import AlwaysBePlaying from '../src/always-be-playing';
+import PlaybackWatcher from '../src/playback-watcher';
 
 let monitorCurrentTime_;
 
-QUnit.module('AlwaysBePlaying', {
+QUnit.module('PlaybackWatcher', {
   beforeEach() {
     this.env = useFakeEnvironment();
     this.requests = this.env.requests;
@@ -156,7 +156,7 @@ QUnit.test('seek to live point if we fall off the end of a live playlist', funct
     seeks.push(time);
   };
 
-  this.player.tech_.hls.alwaysBePlaying_.seekable = () => {
+  this.player.tech_.hls.playbackWatcher_.seekable = () => {
     return videojs.createTimeRanges([[1, 45]]);
   };
 
@@ -166,11 +166,11 @@ QUnit.test('seek to live point if we fall off the end of a live playlist', funct
   QUnit.equal(seeks[0], 45, 'player seeked to live point');
 });
 
-QUnit.module('AlwaysBePlaying isolated functions', {
+QUnit.module('PlaybackWatcher isolated functions', {
   beforeEach() {
-    monitorCurrentTime_ = AlwaysBePlaying.prototype.monitorCurrentTime_;
-    AlwaysBePlaying.prototype.monitorCurrentTime_ = () => {};
-    this.alwaysBePlaying = new AlwaysBePlaying({
+    monitorCurrentTime_ = PlaybackWatcher.prototype.monitorCurrentTime_;
+    PlaybackWatcher.prototype.monitorCurrentTime_ = () => {};
+    this.playbackWatcher = new PlaybackWatcher({
       tech: {
         on: () => {},
         off: () => {}
@@ -178,59 +178,59 @@ QUnit.module('AlwaysBePlaying isolated functions', {
     });
   },
   afterEach() {
-    this.alwaysBePlaying.dispose();
-    AlwaysBePlaying.prototype.monitorCurrentTime_ = monitorCurrentTime_;
+    this.playbackWatcher.dispose();
+    PlaybackWatcher.prototype.monitorCurrentTime_ = monitorCurrentTime_;
   }
 });
 
 QUnit.test('detects gap from video underflow', function() {
   QUnit.equal(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(videojs.createTimeRanges(), 0),
+    this.playbackWatcher.gapFromVideoUnderflow_(videojs.createTimeRanges(), 0),
     null,
     'returns null when buffer is empty');
   QUnit.equal(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(videojs.createTimeRanges([[0, 10]]), 13),
+    this.playbackWatcher.gapFromVideoUnderflow_(videojs.createTimeRanges([[0, 10]]), 13),
     null,
     'returns null when there is only a previous buffer');
   QUnit.equal(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(
+    this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 15),
     null,
     'returns null when gap is too far from current time');
   QUnit.equal(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(
+    this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 9.9),
     null,
     'returns null when gap is after current time');
   QUnit.equal(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(
+    this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10.1], [10.2, 20]]), 12.1),
     null,
     'returns null when time is less than or equal to 2 seconds ahead');
   QUnit.equal(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(
+    this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 14.1),
     null,
     'returns null when time is greater than or equal to 4 seconds ahead');
   QUnit.deepEqual(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(
+    this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 12.2),
     {start: 10, end: 10.1},
     'returns gap when gap is small and time is greater than 2 seconds ahead in a buffer');
   QUnit.deepEqual(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(
+    this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 13),
     {start: 10, end: 10.1},
     'returns gap when gap is small and time is 3 seconds ahead in a buffer');
   QUnit.deepEqual(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(
+    this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 13.9),
     {start: 10, end: 10.1},
     'returns gap when gap is small and time is less than 4 seconds ahead in a buffer');
   // In a case where current time is outside of the buffered range, something odd must've
   // happened, but we should still allow the player to try to continue from that spot.
   QUnit.deepEqual(
-    this.alwaysBePlaying.gapFromVideoUnderflow_(
+    this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 12.9]]), 13),
     {start: 10, end: 10.1},
     'returns gap even when current time is not in buffered range');
@@ -238,7 +238,7 @@ QUnit.test('detects gap from video underflow', function() {
 
 QUnit.test('detects live window falloff', function() {
   let fellOutOfLiveWindow_ =
-    this.alwaysBePlaying.fellOutOfLiveWindow_.bind(this.alwaysBePlaying);
+    this.playbackWatcher.fellOutOfLiveWindow_.bind(this.playbackWatcher);
 
   QUnit.ok(
     fellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 10),

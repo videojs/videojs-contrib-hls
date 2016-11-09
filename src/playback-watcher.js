@@ -1,10 +1,10 @@
 /**
- * @file always-be-playing.js
+ * @file playback-watcher.js
  */
 import Ranges from './ranges';
 import videojs from 'video.js';
 
-// Set of events that reset the always-be-playing time check logic and clear the timeout
+// Set of events that reset the playback-watcher time check logic and clear the timeout
 const timerCancelEvents = [
   'seeking',
   'seeked',
@@ -14,11 +14,11 @@ const timerCancelEvents = [
 ];
 
 /**
- * @class AlwaysBePlaying
+ * @class PlaybackWatcher
  */
-export default class AlwaysBePlaying {
+export default class PlaybackWatcher {
   /**
-   * Represents an AlwaysBePlaying object.
+   * Represents an PlaybackWatcher object.
    * @constructor
    * @param {object} options an object that includes the tech and settings
    */
@@ -32,7 +32,7 @@ export default class AlwaysBePlaying {
     this.checkCurrentTimeTimeout_ = null;
 
     if (options.debug) {
-      this.logger_ = videojs.log.bind(videojs, 'always-be-playing ->');
+      this.logger_ = videojs.log.bind(videojs, 'playback-watcher ->');
     }
     this.logger_('initialize');
 

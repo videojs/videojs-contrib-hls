@@ -17,7 +17,7 @@ import { MasterPlaylistController } from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
 import window from 'global/window';
-import AlwaysBePlaying from './always-be-playing';
+import PlaybackWatcher from './playback-watcher';
 
 const Hls = {
   PlaylistLoader,
@@ -371,7 +371,7 @@ class HlsHandler extends Component {
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
-    this.alwaysBePlaying_ = new AlwaysBePlaying(
+    this.playbackWatcher_ = new PlaybackWatcher(
       videojs.mergeOptions(this.options_, {
         seekable: () => this.seekable()
       }));
@@ -505,8 +505,8 @@ class HlsHandler extends Component {
   * Abort all outstanding work and cleanup.
   */
   dispose() {
-    if (this.alwaysBePlaying_) {
-      this.alwaysBePlaying_.dispose();
+    if (this.playbackWatcher_) {
+      this.playbackWatcher_.dispose();
     }
     if (this.masterPlaylistController_) {
       this.masterPlaylistController_.dispose();
