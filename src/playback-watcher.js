@@ -122,9 +122,21 @@ export default class PlaybackWatcher {
   waiting_() {
     let seekable = this.seekable();
     let currentTime = this.tech_.currentTime();
+    let buffered = this.tech_.buffered();
 
     if (this.tech_.seeking() || this.timer_ !== null) {
       return;
+    }
+
+    if (this.pastLiveWindow_(seekable, currentTime. buffered)) {
+      let seekableEnd = seekable.end(seekable.length - 1);
+
+      // Through slow playlist requests or some other means, we managed to find ourselves
+      // off the front of the live window. It doesn't matter how we got here, but we need
+      // to get back to our safe seekable range.
+      this.logger_(`Fell past live window at time ${currentTime}. Seeking to ` +
+                   `seekable end ${seekableEnd}`);
+      this.tech_.setCurrentTime(seekableEnd);
     }
 
     if (this.fellOutOfLiveWindow_(seekable, currentTime)) {
@@ -138,7 +150,6 @@ export default class PlaybackWatcher {
       return;
     }
 
-    let buffered = this.tech_.buffered();
     let nextRange = Ranges.findNextRange(buffered, currentTime);
 
     if (this.videoUnderflow_(nextRange, buffered, currentTime)) {
@@ -162,6 +173,17 @@ export default class PlaybackWatcher {
                                difference * 1000,
                                currentTime);
     }
+  }
+
+  pastLiveWindow_(seekable, currentTime, buffered) {
+    if (seekable.length &&
+        currentTime > seekable.end(seekable.length - 1) &&
+        (!buffered.length ||
+         currentTime > buffered.end(buffered.length - 1))) {
+      return true;
+    }
+
+    return false;
   }
 
   fellOutOfLiveWindow_(seekable, currentTime) {

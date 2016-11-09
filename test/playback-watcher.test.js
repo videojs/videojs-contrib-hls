@@ -266,3 +266,28 @@ QUnit.test('detects live window falloff', function() {
     fellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 0),
     'true if current time is 0 and earlier than seekable range');
 });
+
+QUnit.test('detects past live window', function() {
+  let pastLiveWindow_ =
+    this.playbackWatcher.pastLiveWindow_.bind(this.playbackWatcher);
+
+  QUnit.ok(
+    !pastLiveWindow_(videojs.createTimeRanges([]), 5, videojs.createTimeRanges([])),
+    'false if no seekable');
+  QUnit.ok(
+    pastLiveWindow_(videojs.createTimeRanges([[0, 4]]), 5, videojs.createTimeRanges([])),
+    'true if after seekable and no buffered');
+  QUnit.ok(
+    !pastLiveWindow_(videojs.createTimeRanges([[0, 4]]),
+                     5,
+                     videojs.createTimeRanges([[0, 5]])),
+    'false if after seekable but in buffered range');
+  QUnit.ok(
+    pastLiveWindow_(videojs.createTimeRanges([[0, 4]]),
+                    5,
+                    videojs.createTimeRanges([[0, 4]])),
+    'true if after seekable and buffered');
+  QUnit.ok(
+    !pastLiveWindow_(videojs.createTimeRanges([[2, 4]]), 1, videojs.createTimeRanges([])),
+    'false if before seekable');
+});
