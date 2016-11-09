@@ -16,8 +16,8 @@ import videojs from 'video.js';
 import { MasterPlaylistController } from './master-playlist-controller';
 import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
-import GapSkipper from './gap-skipper';
 import window from 'global/window';
+import PlaybackWatcher from './playback-watcher';
 
 const Hls = {
   PlaylistLoader,
@@ -371,7 +371,10 @@ class HlsHandler extends Component {
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
-    this.gapSkipper_ = new GapSkipper(this.options_);
+    this.playbackWatcher_ = new PlaybackWatcher(
+      videojs.mergeOptions(this.options_, {
+        seekable: () => this.seekable()
+      }));
 
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
@@ -502,10 +505,12 @@ class HlsHandler extends Component {
   * Abort all outstanding work and cleanup.
   */
   dispose() {
+    if (this.playbackWatcher_) {
+      this.playbackWatcher_.dispose();
+    }
     if (this.masterPlaylistController_) {
       this.masterPlaylistController_.dispose();
     }
-    this.gapSkipper_.dispose();
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
     super.dispose();
   }
