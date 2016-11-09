@@ -127,39 +127,55 @@ export default class AlwaysBePlaying {
       return;
     }
 
-    if (this.checkFellOutOfLiveWindow_(seekable, currentTime)) {
+    if (this.fellOutOfLiveWindow_(seekable, currentTime)) {
+      let livePoint = seekable.end(seekable.length - 1);
+
+      this.logger_(`Fell out of live window at time ${currentTime}. Seeking to ` +
+                   `live point (seekable end) ${livePoint}`);
+      this.cancelTimer_();
+      this.tech_.setCurrentTime(livePoint);
+
       return;
     }
 
     let buffered = this.tech_.buffered();
     let nextRange = Ranges.findNextRange(buffered, currentTime);
 
-    if (this.checkVideoUnderflow_(nextRange, buffered, currentTime)) {
+    if (this.videoUnderflow_(nextRange, buffered, currentTime)) {
+      // Even though the video underflowed and was stuck in a gap, the audio overplayed
+      // the gap, leading currentTime into a buffered range. Seeking to currentTime
+      // allows the video to catch up to the audio position without losing any audio
+      // (only suffering ~3 seconds of frozen video and a pause in audio playback).
+      this.cancelTimer_();
+      this.tech_.setCurrentTime(currentTime);
       return;
     }
 
-    this.checkGap_(nextRange, currentTime);
+    // check for gap
+    if (nextRange.length > 0) {
+      let difference = nextRange.start(0) - currentTime;
+
+      this.logger_(`Stopped at ${currentTime}, setting timer for ${difference}, seeking ` +
+                   `to ${nextRange.start(0)}`);
+
+      this.timer_ = setTimeout(this.skipTheGap_.bind(this),
+                               difference * 1000,
+                               currentTime);
+    }
   }
 
-  checkFellOutOfLiveWindow_(seekable, currentTime) {
-    if (!seekable.length ||
-        // can't fall before 0 and also identifies VOD stream
-        seekable.start(0) === 0 ||
-        currentTime >= seekable.start(0)) {
-      return false;
+  fellOutOfLiveWindow_(seekable, currentTime) {
+    if (seekable.length &&
+        // can't fall before 0 and 0 seekable start identifies VOD stream
+        seekable.start(0) > 0 &&
+        currentTime < seekable.start(0)) {
+      return true;
     }
 
-    let livePoint = seekable.end(seekable.length - 1);
-
-    this.logger_(`Fell out of live window at time ${currentTime}. Seeking to ` +
-                 `live point (seekable end) ${livePoint}`);
-    this.cancelTimer_();
-    this.tech_.setCurrentTime(livePoint);
-
-    return true;
+    return false;
   }
 
-  checkVideoUnderflow_(nextRange, buffered, currentTime) {
+  videoUnderflow_(nextRange, buffered, currentTime) {
     if (nextRange.length === 0) {
       // Even if there is no available next range, there is still a possibility we are
       // stuck in a gap due to video underflow.
@@ -169,35 +185,11 @@ export default class AlwaysBePlaying {
         this.logger_(`Encountered a gap in video from ${gap.start} to ${gap.end}. ` +
                      `Seeking to current time ${currentTime}`);
 
-        // Even though the video underflowed and was stuck in a gap, the audio overplayed
-        // the gap, leading currentTime into a buffered range. Seeking to currentTime
-        // allows the video to catch up to the audio position without losing any audio
-        // (only suffering ~3 seconds of frozen video and a pause in audio playback).
-        this.cancelTimer_();
-        this.tech_.setCurrentTime(currentTime);
-
         return true;
       }
     }
 
     return false;
-  }
-
-  checkGap_(nextRange, currentTime) {
-    if (nextRange.length === 0) {
-      return false;
-    }
-
-    let difference = nextRange.start(0) - currentTime;
-
-    this.logger_(`Stopped at ${currentTime}, setting timer for ${difference}, seeking ` +
-                 `to ${nextRange.start(0)}`);
-
-    this.timer_ = setTimeout(this.skipTheGap_.bind(this),
-                             difference * 1000,
-                             currentTime);
-
-    return true;
   }
 
   /**
