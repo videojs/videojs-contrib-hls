@@ -4,33 +4,51 @@ const defaultOptions = {
   errorInterval: 30
 };
 
+/**
+ * Main entry point for the plugin
+ *
+ * @param {Player} player a reference to a videojs Player instance
+ * @param {Object} [options] an object with plugin options
+ * @private
+ */
 const initPlugin = function(player, options) {
   let lastCalled = 0;
   let seekTo = 0;
   let localOptions = videojs.mergeOptions(defaultOptions, options);
 
+  /**
+   * Player modifications to perform that must wait until `loadedmetadata`
+   * has been triggered
+   *
+   * @private
+   */
   const loadedMetadataHandler = function() {
     if (seekTo) {
       player.currentTime(seekTo);
     }
   };
 
+  /**
+   * Returns the currentSource_ for the current player
+   *
+   * @param {function} next a callback function to return the source object to
+   * @private
+   */
   const getSource = function(next) {
-    let tech = player.tech({ IWillNotUseThisInPlugins: true });
+    let tech = this.tech({ IWillNotUseThisInPlugins: true });
     let sourceObj = tech.currentSource_;
 
     return next(sourceObj);
   };
 
+  /**
+   * Set the source on the player element, play, and seek if necessary
+   *
+   * @param {Object} sourceObj An object specifying the source url and mime-type to play
+   * @private
+   */
   const setSource = function(sourceObj) {
     seekTo = (player.duration() !== Infinity && player.currentTime()) || 0;
-
-    // Do not attempt to reload the source if a source-reload occurred before
-    // 'errorInterval' time has elapsed since the last source-reload
-    if (Date.now() - lastCalled < localOptions.errorInterval * 1000) {
-      return;
-    }
-    lastCalled = Date.now();
 
     player.one('loadedmetadata', loadedMetadataHandler);
 
@@ -38,34 +56,63 @@ const initPlugin = function(player, options) {
     player.play();
   };
 
-  const reloadSource = function() {
+  /**
+   * Attempt to get a source from either the built-in getSource function
+   * or a custom function provided via the options
+   *
+   * @private
+   */
+  const errorHandler = function() {
+    // Do not attempt to reload the source if a source-reload occurred before
+    // 'errorInterval' time has elapsed since the last source-reload
+    if (Date.now() - lastCalled < localOptions.errorInterval * 1000) {
+      return;
+    }
+    lastCalled = Date.now();
+
     if (localOptions.getSource &&
         typeof localOptions.getSource === 'function') {
-      return localOptions.getSource(setSource);
+      return localOptions.getSource.call(player, setSource);
     }
 
-    return getSource(setSource);
+    return getSource.call(player, setSource);
   };
 
+  /**
+   * Unbind any event handlers that were bound by the plugin
+   *
+   * @private
+   */
   const cleanupEvents = function() {
     player.off('loadedmetadata', loadedMetadataHandler);
-    player.off('error', reloadSource);
+    player.off('error', errorHandler);
     player.off('dispose', cleanupEvents);
   };
 
+  /**
+   * Cleanup before re-initializing the plugin
+   *
+   * @param {Object} [newOptions] an object with plugin options
+   * @private
+   */
   const reinitPlugin = function(newOptions) {
     cleanupEvents();
     initPlugin(player, newOptions);
   };
 
-  player.on('error', reloadSource);
+  player.on('error', errorHandler);
   player.on('dispose', cleanupEvents);
+
+  // Overwrite the plugin function so that we can correctly cleanup before
+  // initializing the plugin
   player.reloadSourceOnError = reinitPlugin;
 };
 
 /**
  * Reload the source when an error is detected as long as there
  * wasn't an error previously within the last 30 seconds
+ *
+ * @param {Object} [options] an object with plugin options
  */
 const reloadSourceOnError = function(options) {
   initPlugin(this, options);
