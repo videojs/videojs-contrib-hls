@@ -65,6 +65,13 @@ QUnit.test('triggers on player error', function() {
   QUnit.deepEqual(this.player.src.calledWith[0], this.tech.currentSource_, 'player.src was called with player.currentSource');
 });
 
+QUnit.test('does not load multiple times when reinitialized', function() {
+  reloadSourceOnError.call(this.player);
+  this.player.trigger('error', -2);
+
+  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was called');
+});
+
 QUnit.test('seeks to currentTime in VOD', function() {
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
