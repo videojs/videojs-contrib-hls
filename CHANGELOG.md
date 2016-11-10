@@ -1,5 +1,11 @@
 CHANGELOG
 =========
+--------------------
+## 3.6.9 (2016-11-09)
+* Add a plugin that can be used to automatically reload a source if an
+  error occurs
+* Fix an error when checking if the lowest quality level is currently
+  in use
 
 --------------------
 ## 3.6.8 (2016-11-09)
