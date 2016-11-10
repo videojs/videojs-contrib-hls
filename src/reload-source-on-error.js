@@ -26,7 +26,7 @@ const reloadSourceOnError = function() {
 
   player.on('error', reloadSource);
   player.on('dispose', () => {
-      player.off('error', reloadSource);
+    player.off('error', reloadSource);
   });
 };
 

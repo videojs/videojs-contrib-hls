@@ -1,5 +1,6 @@
 import QUnit from 'qunit';
 import videojs from 'video.js';
+import sinon from 'sinon';
 import reloadSourceOnError from '../src/reload-source-on-error';
 
 QUnit.module('ReloadSourceOnError', {
@@ -7,10 +8,10 @@ QUnit.module('ReloadSourceOnError', {
     this.clock = sinon.useFakeTimers();
 
     // setup a player
-    this.player = new videojs.EventTarget;
+    this.player = new videojs.EventTarget();
     this.player.currentValues = {
       currentTime: 10,
-      duration: 12,
+      duration: 12
     };
 
     this.player.currentSource = () => {
