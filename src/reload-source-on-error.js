@@ -4,7 +4,9 @@
  */
 const reloadSourceOnError = function() {
   const player = this;
+
   player.trigger('reloadSourceOnErrorInit');
+
   let lastCalled = 0;
   const reloadSource = function() {
     let tech = player.tech({ IWillNotUseThisInPlugins: true });
