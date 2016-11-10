@@ -569,7 +569,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   trimBuffer_(segmentInfo) {
     let seekable = this.seekable_();
     let currentTime = this.currentTime_();
-    let removeToTime = 0;
+    let removeToTime;
 
     // Chrome has a hard limit of 150mb of
     // buffer and a very conservative "garbage collector"
@@ -582,15 +582,19 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (seekable.length &&
         seekable.start(0) > 0 &&
         seekable.start(0) < currentTime) {
-      removeToTime = seekable.start(0);
-    } else {
-      removeToTime = currentTime - 60;
+      return seekable.start(0);
+    }
+
+    removeToTime = currentTime - 60;
+
+    if (!this.playlist_.endList) {
+      return removeToTime;
     }
 
     // If we are going to remove time from the front of the buffer, make
     // sure we aren't discarding a partial segment to avoid throwing
     // PLAYER_ERR_TIMEOUT while trying to read a partially discarded segment
-    for (let i = 0; i <= segmentInfo.playlist.segments.length; i++) {
+    for (let i = 1; i <= segmentInfo.playlist.segments.length; i++) {
       // Loop through the segments and calculate the duration to compare
       // against the removeToTime
       let removeDuration = duration(segmentInfo.playlist,
