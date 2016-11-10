@@ -207,7 +207,7 @@ export const mockTech = function(tech) {
     tech.paused_ = false;
     tech.trigger('play');
   };
-  tech.pause_ = tech.pause_;
+  tech.pause_ = tech.pause;
   tech.pause = function() {
     tech.pause_();
     tech.paused_ = true;

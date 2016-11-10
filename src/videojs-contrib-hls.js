@@ -18,6 +18,7 @@ import Config from './config';
 import renditionSelectionMixin from './rendition-mixin';
 import window from 'global/window';
 import PlaybackWatcher from './playback-watcher';
+import reloadSourceOnError from './reload-source-on-error';
 
 const Hls = {
   PlaylistLoader,
@@ -662,6 +663,7 @@ videojs.Hls = Hls;
 videojs.m3u8 = m3u8;
 videojs.registerComponent('Hls', Hls);
 videojs.options.hls = videojs.options.hls || {};
+videojs.plugin('reloadSourceOnError', reloadSourceOnError);
 
 module.exports = {
   Hls,
