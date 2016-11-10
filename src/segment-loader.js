@@ -579,35 +579,42 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // If we have a seekable range use that as the limit for what can be removed safely
     // otherwise remove anything older than 1 minute before the current play head
-    if (seekable.length &&
-        seekable.start(0) > 0 &&
-        seekable.start(0) < currentTime) {
+    if (seekable.length && seekable.start(0) > 0 && seekable.start(0) < currentTime) {
       removeToTime = seekable.start(0);
     } else {
       removeToTime = currentTime - 60;
     }
-
     // If we are going to remove time from the front of the buffer, make
     // sure we aren't discarding a partial segment to avoid throwing
     // PLAYER_ERR_TIMEOUT while trying to read a partially discarded segment
-    for (let i = 0; i <= segmentInfo.playlist.segments.length; i++) {
-      // Loop through the segments and calculate the duration to compare
-      // against the removeToTime
-      let removeDuration = duration(segmentInfo.playlist,
-                                    segmentInfo.playlist.mediaSequence + i,
-                                    this.expired_);
 
-      // If we are close to next segment begining, remove to end of previous
-      // segment instead
-      let previousDuration = duration(segmentInfo.playlist,
-                                    segmentInfo.playlist.mediaSequence + (i - 1),
-                                    this.expired_);
+    // Get the previous duration
+    let minIndex = 0;
+    let maxIndex = segmentInfo.playlist.segments.length;
+    let currentIndex;
+    let removeDuration;
 
-      if (removeDuration >= removeToTime) {
-        removeToTime = previousDuration;
+    // Execute Binary search to find what time to trim the buffer
+    while (minIndex <= maxIndex) {
+      currentIndex = (minIndex + maxIndex) / 2 | 0;
+      removeDuration = duration(segmentInfo.playlist,
+                                segmentInfo.playlist.mediaSequence + currentIndex,
+                                this.expired_);
+      if (removeDuration < removeToTime) {
+        minIndex = currentIndex + 1;
+      } else if (removeDuration > removeToTime) {
+        maxIndex = currentIndex - 1;
+        if (minIndex > maxIndex) {
+          currentIndex = currentIndex - 1;
+        }
+      } else {
+        currentIndex = currentIndex - 1;
         break;
       }
     }
+    removeToTime = duration(segmentInfo.playlist,
+                            segmentInfo.playlist.mediaSequence + currentIndex,
+                            this.expired_);
     return removeToTime;
   }
 

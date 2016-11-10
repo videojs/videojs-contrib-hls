@@ -2090,7 +2090,7 @@ QUnit.test('cleans up the buffer when loading VOD segments', function() {
   QUnit.strictEqual(this.requests[1].url, absoluteUrl('manifest/media3.m3u8'),
                     'media playlist requested');
   QUnit.equal(removes.length, 1, 'remove called');
-  QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
+  QUnit.deepEqual(removes[0], [0, 120 - 80], 'remove called with the right range which is the end of the playlist length');
 
   // verify stats
   QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
