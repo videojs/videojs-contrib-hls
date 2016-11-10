@@ -51,10 +51,18 @@ QUnit.module('ReloadSourceOnError', {
 
     this.player.reloadSourceOnError = reloadSourceOnError;
     this.clock.tick(60 * 1000);
+
+    this.oldLog = videojs.log.error;
+    this.errors = [];
+
+    videojs.log.error = (...args) => {
+      this.errors.push(...args);
+    };
   },
 
   afterEach() {
     this.clock.restore();
+    videojs.log.error = this.oldLog;
   }
 });
 
@@ -151,4 +159,15 @@ QUnit.test('allows you to provide a getSource function', function() {
 
   QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
   QUnit.deepEqual(this.player.src.calledWith[0], newSource, 'player.src was called with return value of options.getSource()');
+});
+
+QUnit.test('errors if getSource is not a function', function() {
+  this.player.reloadSourceOnError({
+    getSource: 'totally not a function'
+  });
+
+  this.player.trigger('error', -2);
+
+  QUnit.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
+  QUnit.equal(this.errors.length, 1, 'videojs.log.error was called once');
 });

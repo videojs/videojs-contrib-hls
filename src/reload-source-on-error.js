@@ -1,7 +1,13 @@
 import videojs from 'video.js';
 
 const defaultOptions = {
-  errorInterval: 30
+  errorInterval: 30,
+  getSource(next) {
+    let tech = this.tech({ IWillNotUseThisInPlugins: true });
+    let sourceObj = tech.currentSource_;
+
+    return next(sourceObj);
+  }
 };
 
 /**
@@ -26,19 +32,6 @@ const initPlugin = function(player, options) {
     if (seekTo) {
       player.currentTime(seekTo);
     }
-  };
-
-  /**
-   * Returns the currentSource_ for the current player
-   *
-   * @param {function} next a callback function to return the source object to
-   * @private
-   */
-  const getSource = function(next) {
-    let tech = this.tech({ IWillNotUseThisInPlugins: true });
-    let sourceObj = tech.currentSource_;
-
-    return next(sourceObj);
   };
 
   /**
@@ -68,14 +61,15 @@ const initPlugin = function(player, options) {
     if (Date.now() - lastCalled < localOptions.errorInterval * 1000) {
       return;
     }
+
+    if (!localOptions.getSource ||
+        typeof localOptions.getSource !== 'function') {
+      videojs.log.error('ERROR: reloadSourceOnError - The option getSource must be a function!');
+      return;
+    }
     lastCalled = Date.now();
 
-    if (localOptions.getSource &&
-        typeof localOptions.getSource === 'function') {
-      return localOptions.getSource.call(player, setSource);
-    }
-
-    return getSource.call(player, setSource);
+    return localOptions.getSource.call(player, setSource);
   };
 
   /**
