@@ -49,7 +49,7 @@ QUnit.module('ReloadSourceOnError', {
     };
     this.player.play.called = 0;
 
-    reloadSourceOnError.call(this.player);
+    this.player.reloadSourceOnError = reloadSourceOnError;
     this.clock.tick(60 * 1000);
   },
 
@@ -59,21 +59,24 @@ QUnit.module('ReloadSourceOnError', {
 });
 
 QUnit.test('triggers on player error', function() {
+  this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
 
-  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was called');
+  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
   QUnit.deepEqual(this.player.src.calledWith[0], this.tech.currentSource_, 'player.src was called with player.currentSource');
 });
 
 QUnit.test('seeks to currentTime in VOD', function() {
+  this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  QUnit.equal(this.player.currentTime.calledWith.length, 1, 'player.currentTime was called');
+  QUnit.equal(this.player.currentTime.calledWith.length, 1, 'player.currentTime was only called once');
   QUnit.deepEqual(this.player.currentTime.calledWith[0], 10, 'player.currentTime was called with the right value');
 });
 
 QUnit.test('doesn\'t seek to currentTime in live', function() {
+  this.player.reloadSourceOnError();
   this.player.currentValues.duration = Infinity;
 
   this.player.trigger('error', -2);
@@ -83,14 +86,15 @@ QUnit.test('doesn\'t seek to currentTime in live', function() {
   QUnit.deepEqual(this.player.currentTime(), 0, 'player.currentTime is still zero');
 });
 
-QUnit.test('only allows a retry once every 30 seconds', function() {
+QUnit.test('by default, only allows a retry once every 30 seconds', function() {
+  this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was called once');
+  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
 
-  // Advance 60 seconds
-  this.clock.tick(60 * 1000);
+  // Advance 59 seconds
+  this.clock.tick(59 * 1000);
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
@@ -102,4 +106,49 @@ QUnit.test('only allows a retry once every 30 seconds', function() {
   this.player.trigger('loadedmetadata');
 
   QUnit.equal(this.player.src.calledWith.length, 2, 'player.src was called twice');
+});
+
+QUnit.test('allows you to override the default retry interval', function() {
+  this.player.reloadSourceOnError({
+    errorInterval: 60
+  });
+
+  this.player.trigger('error', -2);
+  this.player.trigger('loadedmetadata');
+
+  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+
+  // Advance 59 seconds
+  this.clock.tick(59 * 1000);
+  this.player.trigger('error', -2);
+  this.player.trigger('loadedmetadata');
+
+  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+});
+
+QUnit.test('the plugin cleans up after it\'s previous incarnation when called again', function() {
+  this.player.reloadSourceOnError();
+  this.player.reloadSourceOnError();
+
+  this.player.trigger('error', -2);
+
+  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+});
+
+QUnit.test('allows you to provide a getSource function', function() {
+  const newSource = {
+    src: 'newsource.m3u8',
+    type: 'this/matters'
+  };
+
+  this.player.reloadSourceOnError({
+    getSource: (next) => {
+      return next(newSource);
+    }
+  });
+
+  this.player.trigger('error', -2);
+
+  QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
+  QUnit.deepEqual(this.player.src.calledWith[0], newSource, 'player.src was called with return value of options.getSource()');
 });
