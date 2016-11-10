@@ -166,6 +166,44 @@ QUnit.test('seek to live point if we fall off the end of a live playlist', funct
   QUnit.equal(seeks[0], 45, 'player seeked to live point');
 });
 
+QUnit.test('trigger error if we fall off front of playlist', function() {
+  // set an arbitrary live source
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // start playback normally
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  standardXHRResponse(this.requests.shift());
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.player.tech_.trigger('playing');
+  this.clock.tick(1);
+
+  this.player.currentTime(10);
+
+  this.player.tech_.hls.playbackWatcher_.seekable = () => {
+    return videojs.createTimeRanges([[2, 5]]);
+  };
+
+  this.player.tech_.hls.playbackWatcher_.buffered = () => {
+    return videojs.createTimeRanges([[3, 9]]);
+  };
+
+  let errors = [];
+
+  this.player.tech_.error = (error) => {
+    errors.push(error);
+  };
+
+  this.player.tech_.trigger('waiting');
+
+  QUnit.equal(errors.length, 1, 'one error');
+  QUnit.equal(errors[0], 'Fell past live window at time 10.', 'error message is set');
+});
+
 QUnit.module('PlaybackWatcher isolated functions', {
   beforeEach() {
     monitorCurrentTime_ = PlaybackWatcher.prototype.monitorCurrentTime_;
@@ -290,4 +328,10 @@ QUnit.test('detects past live window', function() {
   QUnit.ok(
     !pastLiveWindow_(videojs.createTimeRanges([[2, 4]]), 1, videojs.createTimeRanges([])),
     'false if before seekable');
+
+  QUnit.ok(
+    !pastLiveWindow_(videojs.createTimeRanges([[2, 4]]),
+                     4 + (1 / 30) - 0.0001,
+                     videojs.createTimeRanges([])),
+    'false if after seekable and buffered but within fudge factor');
 });
