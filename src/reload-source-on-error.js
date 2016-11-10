@@ -6,7 +6,8 @@ const reloadSourceOnError = function() {
   const player = this;
   let lastCalled = 0;
   const reloadSource = function() {
-    let sourceObj = player.currentSource();
+    let tech = player.tech({ IWillNotUseThisInPlugins: true });
+    let sourceObj = tech.currentSource_;
     let seekTo = (player.duration() !== Infinity && player.currentTime()) || 0;
 
     if (Date.now() - lastCalled < 30 * 1000) {

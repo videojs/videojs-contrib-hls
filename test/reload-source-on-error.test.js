@@ -14,11 +14,15 @@ QUnit.module('ReloadSourceOnError', {
       duration: 12
     };
 
-    this.player.currentSource = () => {
-      return {
+    this.tech = {
+      currentSource_: {
         src: 'thisisasource.m3u8',
         type: 'doesn\'t/matter'
-      };
+      }
+    };
+
+    this.player.tech = () => {
+      return this.tech;
     };
 
     this.player.duration = () => {
@@ -58,7 +62,7 @@ QUnit.test('triggers on player error', function() {
   this.player.trigger('error', -2);
 
   QUnit.equal(this.player.src.calledWith.length, 1, 'player.src was called');
-  QUnit.deepEqual(this.player.src.calledWith[0], this.player.currentSource(), 'player.src was called with player.currentSource');
+  QUnit.deepEqual(this.player.src.calledWith[0], this.tech.currentSource_, 'player.src was called with player.currentSource');
 });
 
 QUnit.test('seeks to currentTime in VOD', function() {
