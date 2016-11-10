@@ -1,5 +1,14 @@
 CHANGELOG
 =========
+
+--------------------
+## 3.6.10 (2016-11-10)
+* Updated the reloadSourceOnErrors plugin:
+  * Option to pass a `getSource` function that can be used to provide a new source to load on error
+  * Added the ability to override the default minimum time between errors in seconds
+  * Plugin now cleans up event bindings when initialized multiple times
+* Fix trimBuffer to compare correct segments and correctly trim in the live case
+
 --------------------
 ## 3.6.9 (2016-11-09)
 * Add a plugin that can be used to automatically reload a source if an
@@ -44,8 +53,8 @@ CHANGELOG
 
 --------------------
 ## 3.6.1 (2016-10-13)
-* Allow for initial bandwidth option of 0 
-* Added support for MAAT in Firefox 49 
+* Allow for initial bandwidth option of 0
+* Added support for MAAT in Firefox 49
 * Corrected deprecation warning for `player.hls`
 
 --------------------
