@@ -41,6 +41,9 @@ const initPlugin = function(player, options) {
    * @private
    */
   const setSource = function(sourceObj) {
+    if (sourceObj === null || sourceObj === undefined) {
+      return;
+    }
     seekTo = (player.duration() !== Infinity && player.currentTime()) || 0;
 
     player.one('loadedmetadata', loadedMetadataHandler);

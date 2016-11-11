@@ -171,3 +171,21 @@ QUnit.test('errors if getSource is not a function', function() {
   QUnit.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
   QUnit.equal(this.errors.length, 1, 'videojs.log.error was called once');
 });
+
+QUnit.test('should not set source if getSource returns null or undefined', function() {
+  this.player.reloadSourceOnError({
+    getSource: () => undefined
+  });
+
+  this.player.trigger('error', -2);
+
+  QUnit.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
+
+  this.player.reloadSourceOnError({
+    getSource: () => null
+  });
+
+  this.player.trigger('error', -2);
+
+  QUnit.equal(this.player.src.calledWith.length, 0, 'player.src was never called');
+});
