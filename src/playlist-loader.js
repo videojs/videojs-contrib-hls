@@ -5,7 +5,7 @@
  * M3U8 playlists.
  *
  */
-import resolveUrl from './resolve-url';
+import resolveUrlFactory from './resolve-url';
 import {mergeOptions} from 'video.js';
 import Stream from './stream';
 import m3u8 from 'm3u8-parser';
@@ -52,7 +52,7 @@ const updateSegments = function(original, update, offset) {
   * master playlist with the updated media playlist merged in, or
   * null if the merge produced no change.
   */
-const updateMaster = function(master, media) {
+const updateMaster = function(master, media, resolveUrl) {
   let changed = false;
   let result = mergeOptions(master, {});
   let i = master.playlists.length;
@@ -125,6 +125,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   let request;
   let playlistRequestError;
   let haveMetadata;
+  let resolveUrl = resolveUrlFactory();
 
   PlaylistLoader.prototype.constructor.call(this);
 
@@ -179,7 +180,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     parser.manifest.uri = url;
 
     // merge this playlist into the master
-    update = updateMaster(loader.master, parser.manifest);
+    update = updateMaster(loader.master, parser.manifest, resolveUrl);
     refreshDelay = (parser.manifest.targetDuration || 10) * 1000;
     loader.targetDuration = parser.manifest.targetDuration;
     if (update) {
