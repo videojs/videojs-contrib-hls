@@ -2,6 +2,12 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.11 (2016-11-11)
+* Updated the reloadSourceOnErrors plugin:
+  * Don't try to set the source if getSource returns undefined or null
+* resolve-url.js now uses an iframe to contain the base and anchor elements used to resolve relateive urls
+
+--------------------
 ## 3.6.10 (2016-11-10)
 * Updated the reloadSourceOnErrors plugin:
   * Option to pass a `getSource` function that can be used to provide a new source to load on error
