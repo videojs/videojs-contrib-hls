@@ -218,6 +218,94 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
 
   return durations;
 };
+
+/**
+ * Returns an array with two sync points. The first being an expired sync point, which is
+ * the most recent segment with timing sync data that has fallen off the playlist. The
+ * second is a segment sync point, which is the first segment that has timing sync data in
+ * the current playlist.
+ *
+ * @param {Object} playlist a media playlist object
+ * @returns {Array} an array of length two containing two sync points, an expired sync
+ *                  point and a segment sync point.
+ * @function getPlaylistSyncPoints
+ */
+const getPlaylistSyncPoints = function(playlist) {
+  if (!playlist || !playlist.segments) {
+    return [null, null];
+  }
+
+  let expiredSync = playlist.syncInfo || null;
+
+  let segmentSync = null;
+
+  // Find the first segment with timing information
+  for (let i = 0, l = playlist.segments.length; i < l; i++) {
+    let segment = playlist.segments[i];
+
+    if (typeof segment.start !== 'undefined') {
+      segmentSync = {
+        mediaSequence: playlist.mediaSequence + i,
+        time: segment.start
+      };
+      break;
+    }
+  }
+
+  return [expiredSync, segmentSync];
+};
+
+/**
+ * Calculates the amount of time expired from the playlist based on the provided
+ * sync points.
+ *
+ * @param {Object} playlist a media playlist object
+ * @param {Object|null} expiredSync sync point representing most recent segment with
+ *                                  timing sync data that has fallen off the playlist
+ * @param {Object|null} segmentSync sync point representing the first segment that has
+ *                                  timing sync data in the playlist
+ * @returns {Number} the amount of time expired from the playlist
+ * @function calculateExpiredTime
+ */
+const calculateExpiredTime = function(playlist, expiredSync, segmentSync) {
+  // If we have both an expired sync point and a segment sync point
+  // determine which sync point is closest to the start of the playlist
+  // so the minimal amount of timing estimation is done.
+  if (expiredSync && segmentSync) {
+    let expiredDiff = expiredSync.mediaSequence - playlist.mediaSequence;
+    let segmentDiff = segmentSync.mediaSequence - playlist.mediaSequence;
+    let syncIndex;
+    let syncTime;
+
+    if (Math.abs(expiredDiff) > Math.abs(segmentDiff)) {
+      syncIndex = segmentDiff;
+      syncTime = -segmentSync.time;
+    } else {
+      syncIndex = expiredDiff;
+      syncTime = expiredSync.time;
+    }
+
+    return Math.abs(syncTime + sumDurations(playlist, syncIndex, 0));
+  }
+
+  // We only have an expired sync point, so base expired time on the expired sync point
+  // and estimate the time from that sync point to the start of the playlist.
+  if (expiredSync) {
+    let syncIndex = expiredSync.mediaSequence - playlist.mediaSequence;
+
+    return expiredSync.time + sumDurations(playlist, syncIndex, 0);
+  }
+
+  // We only have a segment sync point, so base expired time on the first segment we have
+  // sync point data for and estimate the time from that media index to the start of the
+  // playlist.
+  if (segmentSync) {
+    let syncIndex = segmentSync.mediaSequence - playlist.mediaSequence;
+
+    return syncIndex.time - sumDurations(playlist, syncIndex, 0);
+  }
+};
+
 /**
   * Calculates the interval of time that is currently seekable in a
   * playlist. The returned time ranges are relative to the earliest
@@ -227,21 +315,11 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
   * stream.
   *
   * @param {Object} playlist a media playlist object
-  * @param {Number=} expired the amount of time that has
   * dropped off the front of the playlist in a live scenario
   * @return {TimeRanges} the periods of time that are valid targets
   * for seeking
   */
 export const seekable = function(playlist) {
-  let start;
-  let end;
-  let endSequence;
-  let expiredSyncPoint;
-  let firstSyncPoint;
-  let expired;
-  let expiredStart;
-  let segments;
-
   // without segments, there are no seekable ranges
   if (!playlist || !playlist.segments) {
     return createTimeRange();
@@ -251,59 +329,24 @@ export const seekable = function(playlist) {
     return createTimeRange(0, duration(playlist));
   }
 
-  segments = playlist.segments;
-  expiredSyncPoint = playlist.syncInfo;
-
-  // Find the first segment with timing information
-  for (let i = 0, l = segments.length; i < l; i++) {
-    let segment = segments[i];
-
-    if (typeof segment.start !== 'undefined') {
-      firstSyncPoint = {
-        mediaSequence: playlist.mediaSequence + i,
-        time: segment.start
-      };
-      break;
-    }
-  }
+  let [expiredSync, segmentSync] = getPlaylistSyncPoints(playlist);
 
   // We have no sync information for this playlist so we can't create a seekable range
-  if (!expiredSyncPoint && !firstSyncPoint) {
+  if (!expiredSync && !segmentSync) {
     return createTimeRange();
   }
 
-  // If we dont have an expired sync point, estimate expired time based on first sync,
-  // else if we dont have a first sync point, estimate based on expired sync,
-  // otherwise estimate based on whichever is nearest to the start of the playlist
-  if (!firstSyncPoint) {
-    expiredStart = expiredSyncPoint.mediaSequence - playlist.mediaSequence;
-    expired = expiredSyncPoint.time;
-  } else if (!expiredSyncPoint) {
-    expiredStart = firstSyncPoint.mediaSequence - playlist.mediaSequence;
-    expired = -firstSyncPoint.time;
-  } else {
-    let expiredDiff = expiredSyncPoint.mediaSequence - playlist.mediaSequence;
-    let firstDiff = firstSyncPoint.mediaSequence - playlist.mediaSequence;
-
-    if (Math.abs(expiredDiff) > Math.abs(firstDiff)) {
-      expiredStart = firstDiff;
-      expired = -firstSyncPoint.time;
-    } else {
-      expiredStart = expiredDiff;
-      expired = expiredSyncPoint.time;
-    }
-  }
-
-  expired = Math.abs(expired + sumDurations(playlist, expiredStart, 0));
+  let expired = calculateExpiredTime(playlist, expiredSync, segmentSync);
 
   // live playlists should not expose three segment durations worth
   // of content from the end of the playlist
   // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
-  start = intervalDuration(playlist, playlist.mediaSequence, expired);
-  endSequence = Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS);
-  end = intervalDuration(playlist,
-                         playlist.mediaSequence + endSequence,
-                         expired);
+  let start = intervalDuration(playlist, playlist.mediaSequence, expired);
+  let endSequence = Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS);
+  let end = intervalDuration(playlist,
+                             playlist.mediaSequence + endSequence,
+                             expired);
+
   return createTimeRange(start, end);
 };
 

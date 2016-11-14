@@ -213,7 +213,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // load the media source into the player
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
 
-    this.seekable_ = null;
+    this.seekable_ = videojs.createTimeRanges();
     this.hasPlayed_ = () => false;
 
     let segmentLoaderOptions = {
@@ -279,8 +279,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('loadedplaylist', () => {
       let updatedPlaylist = this.masterPlaylistLoader_.media();
-      let onDurationchange;
-      let addSeekableRange;
 
       if (!updatedPlaylist) {
         // select the initial variant
@@ -301,7 +299,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.updateDuration();
 
       if (!updatedPlaylist.endList) {
-        addSeekableRange = () => {
+        let addSeekableRange = () => {
           let seekable = this.seekable();
 
           if (seekable.length !== 0) {
@@ -310,7 +308,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         };
 
         if (this.duration() !== Infinity) {
-          onDurationchange = () => {
+          let onDurationchange = () => {
             if (this.duration() === Infinity) {
               addSeekableRange();
             } else {
@@ -866,10 +864,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {TimeRange} the seekable range
    */
   seekable() {
-    if (!this.seekable_) {
-      return videojs.createTimeRanges();
-    }
-
     return this.seekable_;
   }
 
