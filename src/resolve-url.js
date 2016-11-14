@@ -103,7 +103,7 @@ const resolveUrl = function(baseURL, relativeURL) {
   }
 
   // if the base URL is relative then combine with the current location
-  if (!(/^[a-z]+:/i).test(baseURL)) {
+  if (!(/\/\//i).test(baseURL)) {
     baseURL = buildAbsoluteURL(window.location.href, baseURL);
   }
 
