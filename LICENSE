@@ -12,6 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+src/resolve-url.js implementation in this project is derived from
+the HLS library hls.js (https://github.com/dailymotion/hls.js)
+
+That work is also covered by the Apache 2 License, following copyright:
+Copyright (c) 2015 Dailymotion (http://www.dailymotion.com)
+
 The AES decryption implementation in this project is derived from the
 Stanford Javascript Cryptography Library
 (http://bitwiseshiftleft.github.io/sjcl/). That work is covered by the
