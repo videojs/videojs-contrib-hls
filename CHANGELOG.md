@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.12 (2016-11-14)
+* Changed resolveUrl to use javascript only
+
+--------------------
 ## 3.6.11 (2016-11-11)
 * Updated the reloadSourceOnErrors plugin:
   * Don't try to set the source if getSource returns undefined or null
