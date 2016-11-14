@@ -2,6 +2,8 @@
  * @file resolve-url.js
  */
 
+import window from 'global/window';
+
 // From hls.js https://github.com/dailymotion/hls.js
 
 // build an absolute path using the provided basePath
@@ -25,14 +27,7 @@ const buildAbsolutePath = function(basePath, relativePath) {
 
 // build an absolute URL from a relative one using the provided baseURL
 // if relativeURL is an absolute URL it will be returned as is.
-const resolveUrl = function(baseURL, relativeURL) {
-  // remove any remaining space and CRLF
-  relativeURL = relativeURL.trim();
-  if ((/^[a-z]+:/i).test(relativeURL)) {
-    // complete url, not relative
-    return relativeURL;
-  }
-
+const buildAbsoluteURL = function(baseURL, relativeURL) {
   let relativeURLQuery = null;
   let relativeURLHash = null;
 
@@ -97,6 +92,22 @@ const resolveUrl = function(baseURL, relativeURL) {
   }
 
   return builtURL;
+};
+
+const resolveUrl = function(baseURL, relativeURL) {
+  // remove any remaining space and CRLF
+  relativeURL = relativeURL.trim();
+  if ((/^[a-z]+:/i).test(relativeURL)) {
+    // complete url, not relative
+    return relativeURL;
+  }
+
+  // if the base URL is relative then combine with the current location
+  if (!(/^[a-z]+:/i).test(baseURL)) {
+    baseURL = buildAbsoluteURL(window.location.href, baseURL);
+  }
+
+  return buildAbsoluteURL(baseURL, relativeURL);
 };
 
 export default resolveUrl;
