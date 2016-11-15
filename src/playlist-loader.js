@@ -363,6 +363,12 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         return;
       }
 
+      if(request.responseURL) {
+	      // if the playlist returns a 302 redirect for manifest,
+	      // build the segment list relative to the redirected URI
+	      playlist.resolvedUri = request.responseURL;
+      }
+
       if (error) {
         return playlistRequestError(request, playlist.uri, startingState);
       }
