@@ -89,13 +89,14 @@
     "test/"
   ],
   "dependencies": {
-    "m3u8-parser": "^1.0.2",
     "aes-decrypter": "^1.0.3",
+    "global": "^4.3.0",
+    "m3u8-parser": "^1.0.2",
     "mux.js": "^3.0.0",
+    "url-toolkit": "^1.0.4",
     "video.js": "^5.10.1",
     "videojs-contrib-media-sources": "^4.1.0",
-    "videojs-swf": "^5.0.2",
-    "global": "^4.3.0"
+    "videojs-swf": "^5.0.2"
   },
   "devDependencies": {
     "babel": "^5.8.0",
