@@ -913,7 +913,11 @@ QUnit.test('the key is saved to the segment in the correct format', function() {
   segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
   QUnit.deepEqual(segment.key.bytes,
-                  new Uint32Array([0, 0x01000000, 0x02000000, 0x03000000]),
+                  new Uint8Array([
+                    0x00, 0x00, 0x00, 0x00,
+                    0x01, 0x00, 0x00, 0x00,
+                    0x02, 0x00, 0x00, 0x00,
+                    0x03, 0x00, 0x00, 0x00]),
                   'passed the specified segment key');
 
   // verify stats
