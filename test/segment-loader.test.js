@@ -963,7 +963,7 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   let keyRequest;
   let segmentRequest;
 
-  var doneDecrypting = assert.async();
+  let doneDecrypting = assert.async();
 
   // stop processing so we can examine segment info
   loader.handleSegment_ = function() {
