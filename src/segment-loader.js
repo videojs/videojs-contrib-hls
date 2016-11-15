@@ -7,7 +7,6 @@ import SourceUpdater from './source-updater';
 import {Decrypter} from 'aes-decrypter';
 import Config from './config';
 import window from 'global/window';
-import SyncController from './sync-controller';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -148,7 +147,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Manages the tracking and generation of sync-points, mappings
     // between a time in the display time and a segment index within
     // a playlist
-    this.syncController_ = new SyncController();
+    this.syncController_ = settings.syncController;
     this.syncPoint_ = {
       segmentIndex: 0,
       time: 0

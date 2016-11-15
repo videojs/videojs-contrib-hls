@@ -10,10 +10,12 @@ import {
   useFakeMediaSource
 } from './test-helpers.js';
 import sinon from 'sinon';
+import SyncController from '../src/sync-controller';
 
 let currentTime;
 let mediaSource;
 let loader;
+let syncController;
 
 QUnit.module('Segment Loader', {
   beforeEach(assert) {
@@ -35,6 +37,7 @@ QUnit.module('Segment Loader', {
     currentTime = 0;
     mediaSource = new videojs.MediaSource();
     mediaSource.trigger('sourceopen');
+    syncController = new SyncController();
     loader = new SegmentLoader({
       hls: this.fakeHls,
       currentTime() {
@@ -43,7 +46,8 @@ QUnit.module('Segment Loader', {
       seekable: () => this.seekable,
       seeking: () => false,
       hasPlayed: () => true,
-      mediaSource
+      mediaSource,
+      syncController
     });
   },
   afterEach() {
@@ -989,12 +993,14 @@ QUnit.module('Segment Loading Calculation', {
     this.clock = this.env.clock;
 
     currentTime = 0;
+    syncController = new SyncController();
     loader = new SegmentLoader({
       currentTime() {
         return currentTime;
       },
       mediaSource: new videojs.MediaSource(),
-      hasPlayed: () => this.hasPlayed
+      hasPlayed: () => this.hasPlayed,
+      syncController
     });
   },
   afterEach() {

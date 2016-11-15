@@ -6,6 +6,7 @@ import SegmentLoader from './segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
+import SyncController from './sync-controller';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -216,6 +217,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.seekable_ = videojs.createTimeRanges();
     this.hasPlayed_ = () => false;
 
+    this.syncController_ = new SyncController();
+
     let segmentLoaderOptions = {
       hls: this.hls_,
       mediaSource: this.mediaSource,
@@ -224,7 +227,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       seeking: () => this.tech_.seeking(),
       setCurrentTime: (a) => this.tech_.setCurrentTime(a),
       hasPlayed: () => this.hasPlayed_(),
-      bandwidth
+      bandwidth,
+      syncController: this.syncController_
     };
 
     // setup playlist loaders
@@ -611,6 +615,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
           (audioPlaylist.endList && this.tech_.preload() !== 'none')) {
         this.audioSegmentLoader_.load();
       }
+
+      if (!audioPlaylist.endList) {
+        this.audioPlaylistLoader_.trigger('firstplay');
+      }
     });
 
     this.audioPlaylistLoader_.on('loadedplaylist', () => {
@@ -704,6 +712,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // when the video is a live stream
       if (!media.endList) {
         this.trigger('firstplay');
+
         // seek to the latest media position for live videos
         seekable = this.seekable();
         if (seekable.length) {
