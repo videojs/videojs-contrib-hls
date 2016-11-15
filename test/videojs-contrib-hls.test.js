@@ -1096,24 +1096,6 @@ QUnit.test('live playlist starts with correct currentTime value', function(asser
                     'currentTime is updated at playback');
 });
 
-QUnit.test('adjusts the seekable start based on the amount of expired live content', function(assert) {
-  this.player.src({
-    src: 'http://example.com/manifest/liveStart30sBefore.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  standardXHRResponse(this.requests.shift());
-
-  // add timeline info to the playlist
-  this.player.tech_.hls.playlists.media().segments[2].start = 29.5;
-  this.player.tech_.hls.masterPlaylistController_.onSyncInfoUpdate_();
-
-  assert.equal(this.player.seekable().start(0),
-              29.5 - 29,
-              'offset the seekable start');
-});
-
 QUnit.test('estimates seekable ranges for live streams that have been paused for a long time', function(assert) {
   this.player.src({
     src: 'http://example.com/manifest/liveStart30sBefore.m3u8',

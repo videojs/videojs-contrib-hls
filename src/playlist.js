@@ -303,7 +303,7 @@ const calculateExpiredTime = function(playlist, expiredSync, segmentSync) {
   if (segmentSync) {
     let syncIndex = segmentSync.mediaSequence - playlist.mediaSequence;
 
-    return syncIndex.time - sumDurations(playlist, syncIndex, 0);
+    return segmentSync.time - sumDurations(playlist, syncIndex, 0);
   }
 };
 
@@ -342,7 +342,7 @@ export const seekable = function(playlist) {
   // live playlists should not expose three segment durations worth
   // of content from the end of the playlist
   // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
-  let start = intervalDuration(playlist, playlist.mediaSequence, expired);
+  let start = expired;
   let endSequence = Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS);
   let end = intervalDuration(playlist,
                              playlist.mediaSequence + endSequence,

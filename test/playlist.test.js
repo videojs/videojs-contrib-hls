@@ -365,6 +365,175 @@ QUnit.test('seekable end accounts for non-standard target durations', function(a
               'allows seeking no further than three segments from the end');
 });
 
+QUnit.test('playlist with no sync points has empty seekable range', function(assert) {
+  let seekable = Playlist.seekable({
+    targetDuration: 10,
+    mediaSequence: 0,
+    segments: [{
+      duration: 7,
+      uri: '0.ts'
+    }, {
+      duration: 10,
+      uri: '1.ts'
+    }, {
+      duration: 10,
+      uri: '2.ts'
+    }, {
+      duration: 10,
+      uri: '3.ts'
+    }]
+  });
+
+  assert.equal(seekable.length, 0, 'no seekable range for playlist with no sync points');
+});
+
+QUnit.test('seekable uses available sync points for calculating seekable range',
+  function(assert) {
+    let seekable;
+
+    seekable = Playlist.seekable({
+      targetDuration: 10,
+      mediaSequence: 100,
+      syncInfo: {
+        time: 50,
+        mediaSequence: 95
+      },
+      segments: [
+        {
+          duration: 10,
+          uri: '0.ts'
+        },
+        {
+          duration: 10,
+          uri: '1.ts'
+        },
+        {
+          duration: 10,
+          uri: '2.ts'
+        },
+        {
+          duration: 10,
+          uri: '3.ts'
+        },
+        {
+          duration: 10,
+          uri: '4.ts'
+        }
+      ]
+    });
+
+    assert.ok(seekable.length, 'seekable range calculated');
+    assert.equal(seekable.start(0), 100, 'estimated start time based on expired sync point');
+    assert.equal(seekable.end(0), 120, 'allows seeking no further than three segments from the end');
+
+    seekable = Playlist.seekable({
+      targetDuration: 10,
+      mediaSequence: 100,
+      segments: [
+        {
+          duration: 10,
+          uri: '0.ts'
+        },
+        {
+          duration: 10,
+          uri: '1.ts',
+          start: 108.5,
+          end: 118.4
+        },
+        {
+          duration: 10,
+          uri: '2.ts'
+        },
+        {
+          duration: 10,
+          uri: '3.ts'
+        },
+        {
+          duration: 10,
+          uri: '4.ts'
+        }
+      ]
+    });
+
+    assert.ok(seekable.length, 'seekable range calculated');
+    assert.equal(seekable.start(0), 98.5, 'estimated start time using segmentSync');
+    assert.equal(seekable.end(0), 118.4, 'allows seeking no further than three segments from the end');
+
+    seekable = Playlist.seekable({
+      targetDuration: 10,
+      mediaSequence: 100,
+      syncInfo: {
+        time: 50,
+        mediaSequence: 95
+      },
+      segments: [
+        {
+          duration: 10,
+          uri: '0.ts'
+        },
+        {
+          duration: 10,
+          uri: '1.ts',
+          start: 108.5,
+          end: 118.5
+        },
+        {
+          duration: 10,
+          uri: '2.ts'
+        },
+        {
+          duration: 10,
+          uri: '3.ts'
+        },
+        {
+          duration: 10,
+          uri: '4.ts'
+        }
+      ]
+    });
+
+    assert.ok(seekable.length, 'seekable range calculated');
+    assert.equal(seekable.start(0), 98.5, 'estimated start time using nearest sync point (segmentSync in this case)');
+    assert.equal(seekable.end(0), 118.5, 'allows seeking no further than three segments from the end');
+
+    seekable = Playlist.seekable({
+      targetDuration: 10,
+      mediaSequence: 100,
+      syncInfo: {
+        time: 90.8,
+        mediaSequence: 99
+      },
+      segments: [
+        {
+          duration: 10,
+          uri: '0.ts'
+        },
+        {
+          duration: 10,
+          uri: '1.ts'
+        },
+        {
+          duration: 10,
+          uri: '2.ts',
+          start: 118.5,
+          end: 128.5
+        },
+        {
+          duration: 10,
+          uri: '3.ts'
+        },
+        {
+          duration: 10,
+          uri: '4.ts'
+        }
+      ]
+    });
+
+    assert.ok(seekable.length, 'seekable range calculated');
+    assert.equal(seekable.start(0), 100.8, 'estimated start time using nearest sync point (expiredSync in this case)');
+    assert.equal(seekable.end(0), 118.5, 'allows seeking no further than three segments from the end');
+  });
+
 QUnit.module('Playlist Media Index For Time', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
