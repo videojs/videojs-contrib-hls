@@ -2,10 +2,45 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.12 (2016-11-14)
+* Changed resolveUrl to use javascript only
+
+--------------------
+## 3.6.11 (2016-11-11)
+* Updated the reloadSourceOnErrors plugin:
+  * Don't try to set the source if getSource returns undefined or null
+* resolve-url.js now uses an iframe to contain the base and anchor elements used to resolve relateive urls
+
+--------------------
+## 3.6.10 (2016-11-10)
+* Updated the reloadSourceOnErrors plugin:
+  * Option to pass a `getSource` function that can be used to provide a new source to load on error
+  * Added the ability to override the default minimum time between errors in seconds
+  * Plugin now cleans up event bindings when initialized multiple times
+* Fix trimBuffer to compare correct segments and correctly trim in the live case
+
+--------------------
+## 3.6.9 (2016-11-09)
+* Add a plugin that can be used to automatically reload a source if an
+  error occurs
+* Fix an error when checking if the lowest quality level is currently
+  in use
+
+--------------------
+## 3.6.8 (2016-11-09)
+* Enhance gap skipper to seek back into the live window if playback
+  slips out of it. Renamed GapSkipper to PlaybackWatcher.
+
+--------------------
+## 3.6.7 (2016-11-03)
+* Update videojs-contrib-media-sources to 4.0.5
+  * Fix an issue with ID3 and 608 cue translation
+
+--------------------
 ## 3.6.6 (2016-10-21)
 * Use setTimeout in gap skipper instead of relying on timeupdate events
 * Updated videojs-contrib-media-sources to 4.0.4
-  * Append init segment to video buffer for every segment
+  * Append init segment to video buffer for every segmentw
 
 --------------------
 ## 3.6.4 (2016-10-18)
@@ -28,8 +63,8 @@ CHANGELOG
 
 --------------------
 ## 3.6.1 (2016-10-13)
-* Allow for initial bandwidth option of 0 
-* Added support for MAAT in Firefox 49 
+* Allow for initial bandwidth option of 0
+* Added support for MAAT in Firefox 49
 * Corrected deprecation warning for `player.hls`
 
 --------------------

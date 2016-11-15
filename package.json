@@ -1,6 +1,6 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "3.6.6",
+  "version": "3.6.12",
   "description": "Play back HLS with video.js, even where it's not natively supported",
   "main": "es5/videojs-contrib-hls.js",
   "engines": {
@@ -93,7 +93,7 @@
     "aes-decrypter": "^1.0.3",
     "mux.js": "^3.0.0",
     "video.js": "^5.10.1",
-    "videojs-contrib-media-sources": "^4.0.4",
+    "videojs-contrib-media-sources": "^4.1.0",
     "videojs-swf": "^5.0.2",
     "global": "^4.3.0"
   },
