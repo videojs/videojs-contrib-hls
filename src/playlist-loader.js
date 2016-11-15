@@ -181,6 +181,7 @@ export default class PlaylistLoader extends EventTarget {
   constructor(srcUrl, hls, withCredentials) {
     super();
 
+    this.isXhrRedirectSupportWarned = false;
     this.srcUrl = srcUrl;
     this.hls_ = hls;
     this.withCredentials = withCredentials;
@@ -360,7 +361,7 @@ export default class PlaylistLoader extends EventTarget {
 
     // there is already an outstanding playlist request
     if (this.request) {
-      if (resolveUrl(this.master.uri, playlist.uri) === this.request.url) {
+      if (playlist.resolvedUri === this.request.url) {
         // requesting to switch to the same playlist multiple times
         // has no effect after the first
         return;
@@ -376,12 +377,18 @@ export default class PlaylistLoader extends EventTarget {
     }
 
     this.request = this.hls_.xhr({
-      uri: resolveUrl(this.master.uri, playlist.uri),
+      uri: playlist.resolvedUri,
       withCredentials: this.withCredentials
     }, (error, req) => {
       // disposed
       if (!this.request) {
         return;
+      }
+
+      if (req.responseURL && playlist.resolvedUri !== req.responseURL) {
+        // if the playlist returns a 302 redirect for manifest,
+        // build the segment list relative to the redirected URI
+        playlist.resolvedUri = req.responseURL;
       }
 
       if (error) {
@@ -492,6 +499,18 @@ export default class PlaylistLoader extends EventTarget {
 
       this.state = 'HAVE_MASTER';
 
+      if (req.responseURL) {
+        // checking, whether manifest request ended with redirect
+        if (this.srcUrl !== req.responseURL) {
+          this.srcUrl = req.responseURL;
+        }
+      } else if (!this.isXhrRedirectSupportWarned) {
+        this.isXhrRedirectSupportWarned = true;
+        log.warn(
+          'Current browser does not support redirects for playlist requests.'
+        );
+      }
+
       parser.manifest.uri = this.srcUrl;
 
       // loaded a master playlist
@@ -521,14 +540,14 @@ export default class PlaylistLoader extends EventTarget {
         },
         uri: window.location.href,
         playlists: [{
-          uri: this.srcUrl
+          uri: this.srcUrl,
+          resolvedUri: this.srcUrl,
+          // m3u8-parser does not attach an attributes property to media playlists so make
+          // sure that the property is attached to avoid undefined reference errors
+          attributes: {}
         }]
       };
       this.master.playlists[this.srcUrl] = this.master.playlists[0];
-      this.master.playlists[0].resolvedUri = this.srcUrl;
-      // m3u8-parser does not attach an attributes property to media playlists so make
-      // sure that the property is attached to avoid undefined reference errors
-      this.master.playlists[0].attributes = this.master.playlists[0].attributes || {};
       this.haveMetadata(req, this.srcUrl);
       return this.trigger('loadedmetadata');
     });
