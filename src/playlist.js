@@ -226,8 +226,9 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
  * the current playlist.
  *
  * @param {Object} playlist a media playlist object
- * @returns {Array} an array of length two containing two sync points, an expired sync
- *                  point and a segment sync point.
+ * @returns {Object} an object containing the two sync points
+ * @returns {Object.expiredSync|null} sync point data from an expired segment
+ * @returns {Object.segmentSync|null} sync point data from a segment in the playlist
  * @function getPlaylistSyncPoints
  */
 const getPlaylistSyncPoints = function(playlist) {
@@ -252,7 +253,7 @@ const getPlaylistSyncPoints = function(playlist) {
     }
   }
 
-  return [expiredSync, segmentSync];
+  return { expiredSync, segmentSync };
 };
 
 /**
@@ -329,7 +330,7 @@ export const seekable = function(playlist) {
     return createTimeRange(0, duration(playlist));
   }
 
-  let [expiredSync, segmentSync] = getPlaylistSyncPoints(playlist);
+  let { expiredSync, segmentSync } = getPlaylistSyncPoints(playlist);
 
   // We have no sync information for this playlist so we can't create a seekable range
   if (!expiredSync && !segmentSync) {
