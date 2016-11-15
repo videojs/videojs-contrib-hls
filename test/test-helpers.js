@@ -1,7 +1,6 @@
 import document from 'global/document';
 import sinon from 'sinon';
 import videojs from 'video.js';
-import QUnit from 'qunit';
 /* eslint-disable no-unused-vars */
 // needed so MediaSource can be registered with videojs
 import MediaSource from 'videojs-contrib-media-sources';
@@ -109,7 +108,7 @@ export const useFakeMediaSource = function() {
   };
 };
 
-export const useFakeEnvironment = function() {
+export const useFakeEnvironment = function(assert) {
   let realXMLHttpRequest = videojs.xhr.XMLHttpRequest;
 
   let fakeEnvironment = {
@@ -120,12 +119,12 @@ export const useFakeEnvironment = function() {
       this.xhr.restore();
       ['warn', 'error'].forEach((level) => {
         if (this.log && this.log[level] && this.log[level].restore) {
-          if (QUnit) {
+          if (assert) {
             let calls = this.log[level].args.map((args) => {
               return args.join(', ');
             }).join('\n  ');
 
-            QUnit.equal(this.log[level].callCount,
+            assert.equal(this.log[level].callCount,
                         0,
                         'no unexpected logs at level "' + level + '":\n  ' + calls);
           }

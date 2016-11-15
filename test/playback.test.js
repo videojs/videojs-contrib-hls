@@ -19,30 +19,31 @@ let playFor = function(player, time, cb) {
 };
 
 QUnit.module('Playback', {
-  beforeEach() {
-    QUnit.stop();
+  beforeEach(assert) {
+    let done = assert.async();
     let video = document.createElement('video');
 
     video.width = 600;
     video.height = 300;
     document.querySelector('#qunit-fixture').appendChild(video);
     this.player = videojs(video);
-    this.player.ready(QUnit.start);
+    this.player.ready(done);
   }
 });
 
-QUnit.test('Advanced Bip Bop', function() {
-  QUnit.expect(2);
-  QUnit.stop();
+QUnit.test('Advanced Bip Bop', function(assert) {
+  let done = assert.async();
+
+  assert.expect(2);
   let player = this.player;
 
   player.autoplay(true);
 
   playFor(player, 2, function() {
-    QUnit.ok(true, 'played for at least two seconds');
-    QUnit.equal(player.error(), null, 'has no player errors');
+    assert.ok(true, 'played for at least two seconds');
+    assert.equal(player.error(), null, 'has no player errors');
 
-    QUnit.start();
+    done();
   });
 
   player.src({
@@ -51,19 +52,20 @@ QUnit.test('Advanced Bip Bop', function() {
   });
 });
 
-QUnit.test('Advanced Bip Bop preload=none', function() {
-  QUnit.expect(2);
-  QUnit.stop();
+QUnit.test('Advanced Bip Bop preload=none', function(assert) {
+  let done = assert.async();
+
+  assert.expect(2);
   let player = this.player;
 
   player.autoplay(true);
   player.preload('none');
 
   playFor(player, 2, function() {
-    QUnit.ok(true, 'played for at least two seconds');
-    QUnit.equal(player.error(), null, 'has no player errors');
+    assert.ok(true, 'played for at least two seconds');
+    assert.equal(player.error(), null, 'has no player errors');
 
-    QUnit.start();
+    done();
   });
 
   player.src({
