@@ -89,7 +89,7 @@
     "test/"
   ],
   "dependencies": {
-    "aes-decrypter": "^1.0.3",
+    "aes-decrypter": "^2.0.0",
     "global": "^4.3.0",
     "m3u8-parser": "^1.0.2",
     "mux.js": "^3.0.0",
