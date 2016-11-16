@@ -12,8 +12,8 @@ import GapSkipper from '../src/gap-skipper';
 let monitorCurrentTime_;
 
 QUnit.module('GapSkipper', {
-  beforeEach() {
-    this.env = useFakeEnvironment();
+  beforeEach(assert) {
+    this.env = useFakeEnvironment(assert);
     this.requests = this.env.requests;
     this.mse = useFakeMediaSource();
     this.clock = this.env.clock;
@@ -30,7 +30,7 @@ QUnit.module('GapSkipper', {
   }
 });
 
-QUnit.test('skips over gap in firefox with waiting event', function() {
+QUnit.test('skips over gap in firefox with waiting event', function(assert) {
 
   this.player.autoplay(true);
 
@@ -60,11 +60,11 @@ QUnit.test('skips over gap in firefox with waiting event', function() {
   this.clock.tick(12000);
 
   // check that player jumped the gap
-  QUnit.equal(Math.round(this.player.currentTime()),
+  assert.equal(Math.round(this.player.currentTime()),
     20, 'Player seeked over gap after timer');
 });
 
-QUnit.test('skips over gap in chrome without waiting event', function() {
+QUnit.test('skips over gap in chrome without waiting event', function(assert) {
   this.player.autoplay(true);
 
   // create a buffer with a gap between 10 & 20 seconds
@@ -93,16 +93,16 @@ QUnit.test('skips over gap in chrome without waiting event', function() {
   this.clock.tick(4000);
 
   // checks that player doesn't seek before timer expires
-  QUnit.equal(this.player.currentTime(), 10, 'Player doesnt seek over gap pre-timer');
+  assert.equal(this.player.currentTime(), 10, 'Player doesnt seek over gap pre-timer');
   this.clock.tick(10000);
 
   // check that player jumped the gap
-  QUnit.equal(Math.round(this.player.currentTime()),
+  assert.equal(Math.round(this.player.currentTime()),
     20, 'Player seeked over gap after timer');
 
 });
 
-QUnit.test('skips over gap in Chrome due to video underflow', function() {
+QUnit.test('skips over gap in Chrome due to video underflow', function(assert) {
   this.player.autoplay(true);
 
   this.player.tech_.buffered = () => {
@@ -134,8 +134,8 @@ QUnit.test('skips over gap in Chrome due to video underflow', function() {
 
   this.clock.tick(2000);
 
-  QUnit.equal(seeks.length, 1, 'one seek');
-  QUnit.equal(seeks[0], 13, 'player seeked to current time');
+  assert.equal(seeks.length, 1, 'one seek');
+  assert.equal(seeks[0], 13, 'player seeked to current time');
 });
 
 QUnit.module('GapSkipper isolated functions', {
@@ -155,53 +155,53 @@ QUnit.module('GapSkipper isolated functions', {
   }
 });
 
-QUnit.test('skips gap from video underflow', function() {
-  QUnit.equal(
+QUnit.test('skips gap from video underflow', function(assert) {
+  assert.equal(
     this.gapSkipper.gapFromVideoUnderflow_(videojs.createTimeRanges(), 0),
     null,
     'returns null when buffer is empty');
-  QUnit.equal(
+  assert.equal(
     this.gapSkipper.gapFromVideoUnderflow_(videojs.createTimeRanges([[0, 10]]), 13),
     null,
     'returns null when there is only a previous buffer');
-  QUnit.equal(
+  assert.equal(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 15),
     null,
     'returns null when gap is too far from current time');
-  QUnit.equal(
+  assert.equal(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 9.9),
     null,
     'returns null when gap is after current time');
-  QUnit.equal(
+  assert.equal(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10.1], [10.2, 20]]), 12.1),
     null,
     'returns null when time is less than or equal to 2 seconds ahead');
-  QUnit.equal(
+  assert.equal(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 14.1),
     null,
     'returns null when time is greater than or equal to 4 seconds ahead');
-  QUnit.deepEqual(
+  assert.deepEqual(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 12.2),
     {start: 10, end: 10.1},
     'returns gap when gap is small and time is greater than 2 seconds ahead in a buffer');
-  QUnit.deepEqual(
+  assert.deepEqual(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 13),
     {start: 10, end: 10.1},
     'returns gap when gap is small and time is 3 seconds ahead in a buffer');
-  QUnit.deepEqual(
+  assert.deepEqual(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 13.9),
     {start: 10, end: 10.1},
     'returns gap when gap is small and time is less than 4 seconds ahead in a buffer');
   // In a case where current time is outside of the buffered range, something odd must've
   // happened, but we should still allow the player to try to continue from that spot.
-  QUnit.deepEqual(
+  assert.deepEqual(
     this.gapSkipper.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 12.9]]), 13),
     {start: 10, end: 10.1},

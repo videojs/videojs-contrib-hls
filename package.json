@@ -89,13 +89,13 @@
     "test/"
   ],
   "dependencies": {
-    "m3u8-parser": "^1.0.2",
     "aes-decrypter": "^1.0.3",
+    "global": "^4.3.0",
+    "m3u8-parser": "^1.0.2",
     "mux.js": "^3.0.0",
     "video.js": "^5.10.1",
     "videojs-contrib-media-sources": "^4.0.1",
-    "videojs-swf": "^5.0.2",
-    "global": "^4.3.0"
+    "videojs-swf": "^5.0.2"
   },
   "devDependencies": {
     "babel": "^5.8.0",
@@ -120,14 +120,14 @@
     "karma-detect-browsers": "^2.0.0",
     "karma-firefox-launcher": "^0.1.0",
     "karma-ie-launcher": "^0.2.0",
-    "karma-qunit": "^0.1.9",
+    "karma-qunit": "^1.2.1",
     "karma-safari-launcher": "^0.1.0",
     "lodash-compat": "^3.10.0",
     "minimist": "^1.2.0",
     "nodemon": "^1.9.1",
     "npm-run-all": "^1.2.0",
     "portscanner": "^1.0.0",
-    "qunitjs": "^1.18.0",
+    "qunitjs": "^2.0.1",
     "serve-static": "^1.10.0",
     "shelljs": "^0.5.3",
     "sinon": "1.10.2",

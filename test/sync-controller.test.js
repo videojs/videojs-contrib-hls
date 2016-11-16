@@ -10,22 +10,22 @@ QUnit.module('SyncController', {
   }
 });
 
-QUnit.test('returns correct sync point for VOD strategy', function() {
+QUnit.test('returns correct sync point for VOD strategy', function(assert) {
   let playlist = playlistWithDuration(40);
   let duration = 40;
   let timeline = 0;
   let vodStrategy = strategies[0];
   let syncPoint = vodStrategy.run(this.syncController, playlist, duration, timeline);
 
-  QUnit.deepEqual(syncPoint, { time: 0, segmentIndex: 0 }, 'sync point found for vod');
+  assert.deepEqual(syncPoint, { time: 0, segmentIndex: 0 }, 'sync point found for vod');
 
   duration = Infinity;
   syncPoint = vodStrategy.run(this.syncController, playlist, duration, timeline);
 
-  QUnit.equal(syncPoint, null, 'no syncpoint found for non vod ');
+  assert.equal(syncPoint, null, 'no syncpoint found for non vod ');
 });
 
-QUnit.test('returns correct sync point for ProgramDateTime strategy', function() {
+QUnit.test('returns correct sync point for ProgramDateTime strategy', function(assert) {
   let strategy = strategies[1];
   let datetime = new Date(2012, 11, 12, 12, 12, 12);
   let playlist = playlistWithDuration(40);
@@ -35,7 +35,7 @@ QUnit.test('returns correct sync point for ProgramDateTime strategy', function()
 
   syncPoint = strategy.run(this.syncController, playlist, duration, timeline);
 
-  QUnit.equal(syncPoint, null, 'no syncpoint when datetimeToDisplayTime not set');
+  assert.equal(syncPoint, null, 'no syncpoint when datetimeToDisplayTime not set');
 
   playlist.dateTimeObject = datetime;
 
@@ -45,19 +45,19 @@ QUnit.test('returns correct sync point for ProgramDateTime strategy', function()
 
   syncPoint = strategy.run(this.syncController, newPlaylist, duration, timeline);
 
-  QUnit.equal(syncPoint, null, 'no syncpoint when datetimeObject not set on playlist');
+  assert.equal(syncPoint, null, 'no syncpoint when datetimeObject not set on playlist');
 
   newPlaylist.dateTimeObject = new Date(2012, 11, 12, 12, 12, 22);
 
   syncPoint = strategy.run(this.syncController, newPlaylist, duration, timeline);
 
-  QUnit.deepEqual(syncPoint, {
+  assert.deepEqual(syncPoint, {
     time: 10,
     segmentIndex: 0
   }, 'syncpoint found for ProgramDateTime set');
 });
 
-QUnit.test('returns correct sync point for Segment strategy', function() {
+QUnit.test('returns correct sync point for Segment strategy', function(assert) {
   let strategy = strategies[2];
   let playlist = {
     segments: [
@@ -76,15 +76,15 @@ QUnit.test('returns correct sync point for Segment strategy', function() {
 
   currentTimeline = 0;
   syncPoint = strategy.run(this.syncController, playlist, 80, currentTimeline);
-  QUnit.equal(syncPoint, null, 'no syncpoint for timeline 0');
+  assert.equal(syncPoint, null, 'no syncpoint for timeline 0');
 
   currentTimeline = 1;
   syncPoint = strategy.run(this.syncController, playlist, 80, currentTimeline);
-  QUnit.deepEqual(syncPoint, { time: 30, segmentIndex: 4 },
+  assert.deepEqual(syncPoint, { time: 30, segmentIndex: 4 },
     'sync point found');
 });
 
-QUnit.skip('returns correct sync point for Discontinuity strategy', function() {
+QUnit.skip('returns correct sync point for Discontinuity strategy', function(assert) {
   let strategy = strategies[3];
   let playlist = {
     targetDuration: 10,
@@ -109,12 +109,12 @@ QUnit.skip('returns correct sync point for Discontinuity strategy', function() {
   let syncPoint;
 
   syncPoint = strategy.run(this.syncController, playlist, 100, currentTimeline);
-  QUnit.equal(syncPoint, null, 'no sync point when no discontinuities saved');
+  assert.equal(syncPoint, null, 'no sync point when no discontinuities saved');
 
   this.syncController.saveDiscontinuitySyncInfo_(segmentInfo);
 
   syncPoint = strategy.run(this.syncController, playlist, 100, currentTimeline);
-  QUnit.deepEqual(syncPoint, { time: 40, segmentIndex: 2 },
+  assert.deepEqual(syncPoint, { time: 40, segmentIndex: 2 },
     'found sync point for timeline 3');
 
   segmentInfo.mediaIndex = 6;
@@ -123,26 +123,26 @@ QUnit.skip('returns correct sync point for Discontinuity strategy', function() {
   this.syncController.saveDiscontinuitySyncInfo_(segmentInfo);
 
   syncPoint = strategy.run(this.syncController, playlist, 100, currentTimeline);
-  QUnit.deepEqual(syncPoint, { time: 70, segmentIndex: 5 },
+  assert.deepEqual(syncPoint, { time: 70, segmentIndex: 5 },
     'found sync point for timeline 4');
 });
 
-QUnit.test('returns correct sync point for Playlist strategy', function() {
+QUnit.test('returns correct sync point for Playlist strategy', function(assert) {
   let strategy = strategies[4];
   let playlist = { mediaSequence: 100 };
   let syncPoint;
 
   syncPoint = strategy.run(this.syncController, playlist, 40, 0);
-  QUnit.equal(syncPoint, null, 'no sync point if no sync info');
+  assert.equal(syncPoint, null, 'no sync point if no sync info');
 
   playlist.mediaSequence = 102;
   playlist.syncInfo = { time: 10, mediaSequence: 100};
 
   syncPoint = strategy.run(this.syncController, playlist, 40, 0);
-  QUnit.deepEqual(syncPoint, { time: 10, segmentIndex: -2 }, 'found sync point in playlist');
+  assert.deepEqual(syncPoint, { time: 10, segmentIndex: -2 }, 'found sync point in playlist');
 });
 
-QUnit.test('saves expired info onto new playlist for possible sync point', function() {
+QUnit.test('saves expired info onto new playlist for possible sync point', function(assert) {
   let oldPlaylist = playlistWithDuration(50);
   let newPlaylist = playlistWithDuration(50);
 
@@ -154,12 +154,12 @@ QUnit.test('saves expired info onto new playlist for possible sync point', funct
 
   this.syncController.saveExpiredSegmentInfo(oldPlaylist, newPlaylist);
 
-  QUnit.deepEqual(newPlaylist.syncInfo, { mediaSequence: 101, time: 400 },
+  assert.deepEqual(newPlaylist.syncInfo, { mediaSequence: 101, time: 400 },
     'saved correct info for expired segment onto new playlist');
 });
 
 QUnit.test('Correctly updates time mapping and discontinuity info when probing segments',
-  function() {
+  function(assert) {
     let syncCon = this.syncController;
     let playlist = playlistWithDuration(60);
 
@@ -191,13 +191,13 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
     let segment = playlist.segments[0];
 
     syncCon.probeSegmentInfo(segmentInfo);
-    QUnit.ok(syncCon.timelines[0], 'created mapping object for timeline 0');
-    QUnit.deepEqual(syncCon.timelines[0], { time: 0, mapping: -5 },
+    assert.ok(syncCon.timelines[0], 'created mapping object for timeline 0');
+    assert.deepEqual(syncCon.timelines[0], { time: 0, mapping: -5 },
       'mapping object correct');
-    QUnit.equal(segment.start, 0, 'correctly calculated segment start');
-    QUnit.equal(segment.end, 10, 'correctly calculated segment end');
-    QUnit.ok(syncCon.discontinuities[1], 'created discontinuity info for timeline 1');
-    QUnit.deepEqual(syncCon.discontinuities[1], { time: 30, accuracy: 3 },
+    assert.equal(segment.start, 0, 'correctly calculated segment start');
+    assert.equal(segment.end, 10, 'correctly calculated segment end');
+    assert.ok(syncCon.discontinuities[1], 'created discontinuity info for timeline 1');
+    assert.deepEqual(syncCon.discontinuities[1], { time: 30, accuracy: 3 },
       'discontinuity sync info correct');
 
     segmentInfo.timestampOffset = null;
@@ -205,9 +205,9 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
     segment = playlist.segments[1];
 
     syncCon.probeSegmentInfo(segmentInfo);
-    QUnit.equal(segment.start, 10, 'correctly calculated segment start');
-    QUnit.equal(segment.end, 20, 'correctly calculated segment end');
-    QUnit.deepEqual(syncCon.discontinuities[1], { time: 30, accuracy: 2 },
+    assert.equal(segment.start, 10, 'correctly calculated segment start');
+    assert.equal(segment.end, 20, 'correctly calculated segment end');
+    assert.deepEqual(syncCon.discontinuities[1], { time: 30, accuracy: 2 },
       'discontinuity sync info correctly updated with new accuracy');
 
     segmentInfo.timestampOffset = 30;
@@ -216,11 +216,11 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
     segment = playlist.segments[3];
 
     syncCon.probeSegmentInfo(segmentInfo);
-    QUnit.ok(syncCon.timelines[1], 'created mapping object for timeline 1');
-    QUnit.deepEqual(syncCon.timelines[1], { time: 30, mapping: -11 },
+    assert.ok(syncCon.timelines[1], 'created mapping object for timeline 1');
+    assert.deepEqual(syncCon.timelines[1], { time: 30, mapping: -11 },
       'mapping object correct');
-    QUnit.equal(segment.start, 30, 'correctly calculated segment start');
-    QUnit.equal(segment.end, 40, 'correctly calculated segment end');
-    QUnit.deepEqual(syncCon.discontinuities[1], { time: 30, accuracy: 0 },
+    assert.equal(segment.start, 30, 'correctly calculated segment start');
+    assert.equal(segment.end, 40, 'correctly calculated segment end');
+    assert.deepEqual(syncCon.discontinuities[1], { time: 30, accuracy: 0 },
       'discontinuity sync info correctly updated with new accuracy');
   });

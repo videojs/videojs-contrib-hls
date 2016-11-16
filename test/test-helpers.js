@@ -1,7 +1,6 @@
 import document from 'global/document';
 import sinon from 'sinon';
 import videojs from 'video.js';
-import QUnit from 'qunit';
 /* eslint-disable no-unused-vars */
 // needed so MediaSource can be registered with videojs
 import MediaSource from 'videojs-contrib-media-sources';
@@ -90,7 +89,7 @@ class MockMediaSource extends videojs.EventTarget {
 
 export const useFakeMediaSource = function() {
   let RealMediaSource = videojs.MediaSource;
-  let realCreateObjectURL = window.URL.createObjectURL;
+  let realCreateObjectURL = videojs.URL.createObjectURL;
   let id = 0;
 
   videojs.MediaSource = MockMediaSource;
@@ -109,30 +108,32 @@ export const useFakeMediaSource = function() {
   };
 };
 
-let fakeEnvironment = {
-  requests: [],
-  restore() {
-    this.clock.restore();
-    videojs.xhr.XMLHttpRequest = window.XMLHttpRequest;
-    this.xhr.restore();
-    ['warn', 'error'].forEach((level) => {
-      if (this.log && this.log[level] && this.log[level].restore) {
-        if (QUnit) {
-          let calls = this.log[level].args.map((args) => {
-            return args.join(', ');
-          }).join('\n  ');
+export const useFakeEnvironment = function(assert) {
+  let realXMLHttpRequest = videojs.xhr.XMLHttpRequest;
 
-          QUnit.equal(this.log[level].callCount,
-                      0,
-                      'no unexpected logs at level "' + level + '":\n  ' + calls);
+  let fakeEnvironment = {
+    requests: [],
+    restore() {
+      this.clock.restore();
+      videojs.xhr.XMLHttpRequest = realXMLHttpRequest;
+      this.xhr.restore();
+      ['warn', 'error'].forEach((level) => {
+        if (this.log && this.log[level] && this.log[level].restore) {
+          if (assert) {
+            let calls = this.log[level].args.map((args) => {
+              return args.join(', ');
+            }).join('\n  ');
+
+            assert.equal(this.log[level].callCount,
+                        0,
+                        'no unexpected logs at level "' + level + '":\n  ' + calls);
+          }
+          this.log[level].restore();
         }
-        this.log[level].restore();
-      }
-    });
-  }
-};
+      });
+    }
+  };
 
-export const useFakeEnvironment = function() {
   fakeEnvironment.log = {};
   ['warn', 'error'].forEach((level) => {
     // you can use .log[level].args to get args
