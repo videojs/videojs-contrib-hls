@@ -175,7 +175,8 @@ QUnit.test('if buffered, will request second segment byte range', function() {
   this.masterPlaylistController.mainSegmentLoader_.sourceUpdater_.buffered = () => {
     return videojs.createTimeRanges([[0, 20]]);
   };
-
+  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  this.clock.tick(1);
   // segment
   standardXHRResponse(this.requests[1]);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
@@ -183,11 +184,11 @@ QUnit.test('if buffered, will request second segment byte range', function() {
   QUnit.equal(this.requests[2].headers.Range, 'bytes=1823412-2299991');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 8192000, 'Live stream');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
   QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
-              16,
-              '16 bytes downloaded');
+              1024,
+              '1024 bytes downloaded');
 });
 
 QUnit.test('re-initializes the combined playlist loader when switching sources',
@@ -262,18 +263,19 @@ function() {
   this.player.tech_.on('progress', function() {
     progressCount++;
   });
-
+  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  this.clock.tick(1);
   // segment
   standardXHRResponse(this.requests.shift());
   this.masterPlaylistController.mainSegmentLoader_.trigger('progress');
   QUnit.equal(progressCount, 1, 'fired a progress event');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 8192000, 'Live stream');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
   QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
-              16,
-              '16 bytes downloaded');
+              1024,
+              '1024 bytes downloaded');
 });
 
 QUnit.test('updates the enabled track when switching audio groups', function() {
@@ -470,6 +472,8 @@ QUnit.test('updates the combined segment loader on media changes', function() {
   this.masterPlaylistController.mainSegmentLoader_.playlist = function(update) {
     updates.push(update);
   };
+  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  this.clock.tick(1);
 
   // downloading the new segment will update bandwidth and cause a
   // playlist change
@@ -481,12 +485,12 @@ QUnit.test('updates the combined segment loader on media changes', function() {
   QUnit.ok(updates.length > 0, 'updated the segment list');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 8192000, 'Live stream');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
   QUnit.equal(
     this.player.tech_.hls.stats.mediaBytesTransferred,
-    16,
-    '16 bytes downloaded');
+    1024,
+    '1024 bytes downloaded');
 });
 
 QUnit.test('selects a playlist after main/combined segment downloads', function() {
@@ -535,7 +539,8 @@ QUnit.test('updates the duration after switching playlists', function() {
 
     return this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1];
   };
-
+  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  this.clock.tick(1);
   // segment 0
   standardXHRResponse(this.requests[2]);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
@@ -546,11 +551,46 @@ QUnit.test('updates the duration after switching playlists', function() {
            'updates the duration');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.bandwidth, Infinity, 'Live stream');
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 8192000, 'Live stream');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
   QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
-              16,
-              '16 bytes downloaded');
+              1024,
+              '1024 bytes downloaded');
+});
+
+QUnit.test('playlist selection uses systemBandwidth', function() {
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  this.player.width(1000);
+  this.player.height(900);
+
+  // master
+  standardXHRResponse(this.requests[0]);
+  // media
+  standardXHRResponse(this.requests[1]);
+  QUnit.ok(/media3\.m3u8/i.test(this.requests[1].url), 'Selected the highest rendition');
+
+  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  this.clock.tick(1);
+  // segment 0
+  standardXHRResponse(this.requests[2]);
+  // 20ms have passed to upload 1kb that gives us a throughput of 1024 / 20 * 8 * 1000 = 409600
+  this.clock.tick(20);
+  this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
+  // systemBandwidth is 1 / (1 / 8192000 + 1 / 409600) = ~390095
+
+  // media1
+  standardXHRResponse(this.requests[3]);
+  QUnit.ok(/media\.m3u8/i.test(this.requests[3].url), 'Selected the rendition < 390095');
+
+  QUnit.ok(this.masterPlaylistController.mediaSource.duration !== 0,
+           'updates the duration');
+
+  // verify stats
+  QUnit.equal(this.player.tech_.hls.stats.bandwidth, 8192000, 'Live stream');
+  QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 segment request');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred,
+              1024,
+              '1024 bytes downloaded');
 });
 
 QUnit.test('removes request timeout when segment timesout on lowest rendition',

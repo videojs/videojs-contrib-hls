@@ -1024,20 +1024,25 @@ export default class SegmentLoader extends videojs.EventTarget {
 
   /**
    * Records the current throughput of the decrypt, transmux, and append
-   * portion of the semgment pipeline. `throughput.rate` is an unweighted
-   * average of the throughput. `throughput.count` is the number of samples
-   * in the average.
+   * portion of the semgment pipeline. `throughput.rate` is a the cumulative
+   * moving average of the throughput. `throughput.count` is the number of
+   * data points in the average.
    *
    * @private
    * @param {Object} segmentInfo the object returned by loadSegment
    */
   recordThroughput_(segmentInfo) {
     let rate = this.throughput.rate;
+    // Add one to the time to ensure that we don't accidentally attempt to divide
+    // by zero in the case where the throughput is ridiculously high
     let segmentProcessingTime =
       1 + ((new Date()).getTime() - segmentInfo.startOfLoad_);
+    // Multiply by 8000 to convert from bytes/millisecond to bits/second
     let segmentProcessingThroughput =
       Math.floor((segmentInfo.byteLength / segmentProcessingTime) * 8 * 1000);
 
+    // This is just a cumulative moving average calculation:
+    //   newAvg = oldAvg + (sample - oldAvg) / (sampleCount + 1)
     this.throughput.rate +=
       (segmentProcessingThroughput - rate) / (++this.throughput.count);
   }
