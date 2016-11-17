@@ -122,7 +122,7 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
 
     effectiveBitrate = variant.attributes.BANDWIDTH * BANDWIDTH_VARIANCE;
 
-    if (effectiveBitrate < this.bandwidth) {
+    if (effectiveBitrate < this.systemBandwidth) {
       bandwidthPlaylists.push(variant);
 
       // since the playlists are sorted in ascending order by
@@ -399,12 +399,51 @@ class HlsHandler extends Component {
           this.masterPlaylistController_.selectPlaylist = selectPlaylist.bind(this);
         }
       },
+      throughput: {
+        get() {
+          return this.masterPlaylistController_.mainSegmentLoader_.throughput.rate;
+        },
+        set(throughput) {
+          this.masterPlaylistController_.mainSegmentLoader_.throughput.rate = throughput;
+          this.masterPlaylistController_.mainSegmentLoader_.throughput.count = 1;
+        }
+      },
       bandwidth: {
         get() {
           return this.masterPlaylistController_.mainSegmentLoader_.bandwidth;
         },
         set(bandwidth) {
           this.masterPlaylistController_.mainSegmentLoader_.bandwidth = bandwidth;
+          // setting the bandwidth manually resets the throughput counter
+          this.masterPlaylistController_.mainSegmentLoader_.throughput = {rate: 0, count: 0};
+        }
+      },
+      /**
+       * `systemBandwidth` is a combination of two serial processes bit-rates. The first
+       * is the network bitrate provided by `bandwidth` and the second is the bitrate of
+       * the entire process after that - decryption, transmuxing, and appending - provided
+       * by `throughput`.
+       *
+       * Since the two process are serial, the overall system bandwidth is given by:
+       *   sysBandwidth = 1 / (1 / bandwidth + 1 / throughput)
+       */
+      systemBandwidth: {
+        get() {
+          let invBandwidth = 1 / (this.bandwidth || 1);
+          let invThroughput;
+
+          if (this.throughput > 0) {
+            invThroughput = 1 / this.throughput;
+          } else {
+            invThroughput = 0;
+          }
+
+          let systemBitrate = Math.floor(1 / (invBandwidth + invThroughput));
+
+          return systemBitrate;
+        },
+        set() {
+          videojs.log.error('The "systemBandwidth" property is read-only');
         }
       }
     });
@@ -451,7 +490,6 @@ class HlsHandler extends Component {
     // the bandwidth of the primary segment loader is our best
     // estimate of overall bandwidth
     this.on(this.masterPlaylistController_, 'progress', function() {
-      this.bandwidth = this.masterPlaylistController_.mainSegmentLoader_.bandwidth;
       this.tech_.trigger('progress');
     });
 
