@@ -405,6 +405,8 @@ class HlsHandler extends Component {
         },
         set(throughput) {
           this.masterPlaylistController_.mainSegmentLoader_.throughput.rate = throughput;
+          // By setting `count` to 1 the throughput value becomes the starting value
+          // for the cumulative average
           this.masterPlaylistController_.mainSegmentLoader_.throughput.count = 1;
         }
       },
@@ -415,6 +417,8 @@ class HlsHandler extends Component {
         set(bandwidth) {
           this.masterPlaylistController_.mainSegmentLoader_.bandwidth = bandwidth;
           // setting the bandwidth manually resets the throughput counter
+          // `count` is set to zero that current value of `rate` isn't included
+          // in the cumulative average
           this.masterPlaylistController_.mainSegmentLoader_.throughput = {rate: 0, count: 0};
         }
       },

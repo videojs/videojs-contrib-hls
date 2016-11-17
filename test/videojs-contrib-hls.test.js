@@ -511,19 +511,6 @@ QUnit.test('systemBandwidth is a combination of thoughput and bandwidth', functi
                     'systemBandwidth is the combination of bandwidth and throughput');
 });
 
-QUnit.test('setting bandwidth resets throughput', function() {
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  this.player.tech_.hls.throughput = 1000;
-  this.player.tech_.hls.bandwidth = 20e10;
-
-  QUnit.strictEqual(this.player.tech_.hls.throughput,
-                    0,
-                    'throughput is reset when bandwidth is specified');
-});
-
 QUnit.test('upshifts if the initial bandwidth hint is high', function() {
   this.player.src({
     src: 'manifest/master.m3u8',
