@@ -755,7 +755,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (request === this.xhr_.segmentXhr) {
       // the segment request is no longer outstanding
       this.xhr_.segmentXhr = null;
-      segmentInfo.startOfLoad_ = (new Date()).getTime();
+      segmentInfo.startOfLoad_ = Date.now();
 
       // calculate the download bandwidth based on segment request
       this.roundTrip = request.roundTripTime;
@@ -1036,7 +1036,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Add one to the time to ensure that we don't accidentally attempt to divide
     // by zero in the case where the throughput is ridiculously high
     let segmentProcessingTime =
-      1 + ((new Date()).getTime() - segmentInfo.startOfLoad_);
+      Date.now() - segmentInfo.startOfLoad_ + 1;
     // Multiply by 8000 to convert from bytes/millisecond to bits/second
     let segmentProcessingThroughput =
       Math.floor((segmentInfo.byteLength / segmentProcessingTime) * 8 * 1000);

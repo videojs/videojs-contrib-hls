@@ -484,7 +484,7 @@ QUnit.test('setting bandwidth resets throughput', function() {
                     'throughput is reset when bandwidth is specified');
 });
 
-QUnit.test('setting thoughput of zero is ignored in systemBandwidth', function() {
+QUnit.test('a thoughput of zero is ignored in systemBandwidth', function() {
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
