@@ -354,8 +354,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     if (this.media_) {
       this.trigger('mediachanging');
     }
+
     request = this.hls_.xhr({
-      uri: resolveUrl(loader.master.uri, playlist.uri),
+      uri: playlist.resolvedUri,
       withCredentials
     }, function(error, req) {
       // disposed
@@ -367,6 +368,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 	      // if the playlist returns a 302 redirect for manifest,
 	      // build the segment list relative to the redirected URI
 	      playlist.resolvedUri = request.responseURL;
+	      loader.master.playlists[playlist.uri].resolvedUri = request.responseURL;
       }
 
       if (error) {
@@ -406,7 +408,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
     loader.state = 'HAVE_CURRENT_METADATA';
     request = this.hls_.xhr({
-      uri: resolveUrl(loader.master.uri, loader.media().uri),
+      uri: loader.media().resolvedUri,
       withCredentials
     }, function(error, req) {
       // disposed
