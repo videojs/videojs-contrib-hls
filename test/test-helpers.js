@@ -289,7 +289,7 @@ export const standardXHRResponse = function(request, data) {
     data = testDataManifests[manifestName];
   }
 
-  request.response = new Uint8Array(16).buffer;
+  request.response = new Uint8Array(1024).buffer;
   request.respond(200, {'Content-Type': contentType}, data);
 };
 

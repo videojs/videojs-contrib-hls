@@ -144,6 +144,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // public properties
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
+    this.throughput = {rate: 0, count: 0};
     this.roundTrip = NaN;
     this.resetStats_();
 
@@ -754,6 +755,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (request === this.xhr_.segmentXhr) {
       // the segment request is no longer outstanding
       this.xhr_.segmentXhr = null;
+      segmentInfo.startOfAppend = Date.now();
 
       // calculate the download bandwidth based on segment request
       this.roundTrip = request.roundTripTime;
@@ -903,6 +905,8 @@ export default class SegmentLoader extends videojs.EventTarget {
       }
     }
 
+    segmentInfo.byteLength = segmentInfo.bytes.byteLength;
+
     this.sourceUpdater_.appendBuffer(segmentInfo.bytes,
                                      this.handleUpdateEnd_.bind(this));
   }
@@ -919,6 +923,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     let currentTime = this.currentTime_();
 
     this.pendingSegment_ = null;
+    this.recordThroughput_(segmentInfo);
 
     // add segment metadata if it we have gained information during the
     // last append
@@ -1015,6 +1020,31 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     return timelineUpdated;
+  }
+
+  /**
+   * Records the current throughput of the decrypt, transmux, and append
+   * portion of the semgment pipeline. `throughput.rate` is a the cumulative
+   * moving average of the throughput. `throughput.count` is the number of
+   * data points in the average.
+   *
+   * @private
+   * @param {Object} segmentInfo the object returned by loadSegment
+   */
+  recordThroughput_(segmentInfo) {
+    let rate = this.throughput.rate;
+    // Add one to the time to ensure that we don't accidentally attempt to divide
+    // by zero in the case where the throughput is ridiculously high
+    let segmentProcessingTime =
+      Date.now() - segmentInfo.startOfAppend + 1;
+    // Multiply by 8000 to convert from bytes/millisecond to bits/second
+    let segmentProcessingThroughput =
+      Math.floor((segmentInfo.byteLength / segmentProcessingTime) * 8 * 1000);
+
+    // This is just a cumulative moving average calculation:
+    //   newAvg = oldAvg + (sample - oldAvg) / (sampleCount + 1)
+    this.throughput.rate +=
+      (segmentProcessingThroughput - rate) / (++this.throughput.count);
   }
 
   /**

@@ -157,7 +157,7 @@ QUnit.test('stats are reset on each new source', function() {
   standardXHRResponse(this.requests.shift());
   standardXHRResponse(this.requests.shift());
 
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, 'stat is set');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, 'stat is set');
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -387,7 +387,7 @@ QUnit.test('starts downloading a segment on loadedmetadata', function() {
                     'the first segment is requested');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -465,8 +465,50 @@ QUnit.test('downloads media playlists after loading the master', function() {
                     'first segment requested');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
+});
+
+QUnit.test('setting bandwidth resets throughput', function() {
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.tech_.hls.throughput = 1000;
+  QUnit.strictEqual(this.player.tech_.hls.throughput,
+                    1000,
+                    'throughput is set');
+  this.player.tech_.hls.bandwidth = 20e10;
+  QUnit.strictEqual(this.player.tech_.hls.throughput,
+                    0,
+                    'throughput is reset when bandwidth is specified');
+});
+
+QUnit.test('a thoughput of zero is ignored in systemBandwidth', function() {
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.tech_.hls.bandwidth = 20e10;
+  QUnit.strictEqual(this.player.tech_.hls.throughput,
+                    0,
+                    'throughput is reset when bandwidth is specified');
+  QUnit.strictEqual(this.player.tech_.hls.systemBandwidth,
+                    20e10,
+                    'systemBandwidth is the same as bandwidth');
+});
+
+QUnit.test('systemBandwidth is a combination of thoughput and bandwidth', function() {
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.tech_.hls.bandwidth = 20e10;
+  this.player.tech_.hls.throughput = 20e10;
+  // 1 / ( 1 / 20e10 + 1 / 20e10) = 10e10
+  QUnit.strictEqual(this.player.tech_.hls.systemBandwidth,
+                    10e10,
+                    'systemBandwidth is the combination of bandwidth and throughput');
 });
 
 QUnit.test('upshifts if the initial bandwidth hint is high', function() {
@@ -498,7 +540,7 @@ QUnit.test('upshifts if the initial bandwidth hint is high', function() {
   );
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -525,7 +567,7 @@ QUnit.test('downshifts if the initial bandwidth hint is low', function() {
                     'first segment requested');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -1543,7 +1585,7 @@ QUnit.test('calling play() at the end of a video replays', function() {
   QUnit.equal(seekTime, 0, 'seeked to the beginning');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -1626,7 +1668,7 @@ QUnit.test('seeking should abort an outstanding key request and create a new one
               'urls should match');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -1672,7 +1714,7 @@ QUnit.test('switching playlists with an outstanding key request aborts request a
               'http://media.example.com/fileSequence52-A.ts',
               'requested the segment');
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -2000,7 +2042,7 @@ QUnit.test('cleans up the buffer when loading live segments', function() {
                   'remove called with the right range');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -2053,7 +2095,7 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
   QUnit.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -2092,7 +2134,7 @@ QUnit.test('cleans up the buffer when loading VOD segments', function() {
   QUnit.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -2237,7 +2279,7 @@ QUnit.test('Allows overriding the global beforeRequest function', function() {
   delete videojs.Hls.xhr.beforeRequest;
 
   // verify stats
-  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 16, 'seen above');
+  QUnit.equal(this.player.tech_.hls.stats.mediaBytesTransferred, 1024, 'seen above');
   QUnit.equal(this.player.tech_.hls.stats.mediaRequests, 1, 'one segment request');
 });
 
@@ -2336,7 +2378,7 @@ QUnit.test('stats are reset on dispose', function() {
   // media
   standardXHRResponse(this.requests.shift());
 
-  QUnit.equal(hls.stats.mediaBytesTransferred, 16, 'stat is set');
+  QUnit.equal(hls.stats.mediaBytesTransferred, 1024, 'stat is set');
   hls.dispose();
   QUnit.equal(hls.stats.mediaBytesTransferred, 0, 'stat is reset');
 });
@@ -2408,7 +2450,7 @@ QUnit.test('downloads additional playlists if required', function() {
 
   // verify stats
   QUnit.equal(hls.stats.bandwidth, 3000000, 'default');
-  QUnit.equal(hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -2449,7 +2491,7 @@ QUnit.test('waits to download new segments until the media playlist is stable', 
 
   // verify stats
   QUnit.equal(hls.stats.bandwidth, Infinity, 'default');
-  QUnit.equal(hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
 
@@ -2566,7 +2608,11 @@ QUnit.test('blacklists playlist if key requests fail', function() {
              '#EXT-X-ENDLIST\n');
 
   // segment 1
-  standardXHRResponse(this.requests.shift());
+  if (/key\.php/i.test(this.requests[0].url)) {
+    standardXHRResponse(this.requests.pop());
+  } else {
+    standardXHRResponse(this.requests.shift());
+  }
   // fail key
   this.requests.shift().respond(404);
   QUnit.ok(hls.playlists.media().excludeUntil > 0,
@@ -2609,6 +2655,6 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
   QUnit.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 
   // verify stats
-  QUnit.equal(hls.stats.mediaBytesTransferred, 16, '16 bytes');
+  QUnit.equal(hls.stats.mediaBytesTransferred, 1024, '1024 bytes');
   QUnit.equal(hls.stats.mediaRequests, 1, '1 request');
 });
