@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 --------------------
+## 3.6.13 (2016-11-17)
+* Added the concept of systemBandwidth - a measure of the bandwidth (in mb/s) of the entire system from download through transmuxing and appending data to a flash or native media source
+  * Adaptive bitrate selection is now based on the performance of the entire system
+
+--------------------
 ## 3.6.12 (2016-11-14)
 * Changed resolveUrl to use javascript only
 
