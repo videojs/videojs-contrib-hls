@@ -913,7 +913,11 @@ QUnit.test('the key is saved to the segment in the correct format', function() {
   segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
   QUnit.deepEqual(segment.key.bytes,
-                  new Uint32Array([0, 0x01000000, 0x02000000, 0x03000000]),
+                  new Uint8Array([
+                    0x00, 0x00, 0x00, 0x00,
+                    0x01, 0x00, 0x00, 0x00,
+                    0x02, 0x00, 0x00, 0x00,
+                    0x03, 0x00, 0x00, 0x00]),
                   'passed the specified segment key');
 
   // verify stats
@@ -955,19 +959,25 @@ function() {
   QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
-QUnit.test('segment with key has decrypted bytes appended during processing', function() {
+QUnit.test('segment with key has decrypted bytes appended during processing', function(assert) {
   let keyRequest;
   let segmentRequest;
 
+  let doneDecrypting = assert.async();
+
   // stop processing so we can examine segment info
-  loader.handleSegment_ = function() {};
+  loader.handleSegment_ = function() {
+    QUnit.ok(loader.pendingSegment_.bytes, 'decrypted bytes in segment');
+    doneDecrypting();
+  };
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
 
   segmentRequest = this.requests.pop();
-  segmentRequest.response = new Uint8Array(8).buffer;
+  // this response is [0, 1, 2, 3, 4, 5, 6, 7] encrypted
+  segmentRequest.response = new Uint8Array([60, 15, 94, 17, 13, 247, 26, 97, 97, 236, 17, 188, 250, 16, 52, 39]).buffer;
   segmentRequest.respond(200, null, '');
   QUnit.ok(loader.pendingSegment_.encryptedBytes, 'encrypted bytes in segment');
   QUnit.ok(!loader.pendingSegment_.bytes, 'no decrypted bytes in segment');
@@ -980,10 +990,9 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   this.clock.tick(1);
   // Allow the decrypter's async stream to run the callback
   this.clock.tick(1);
-  QUnit.ok(loader.pendingSegment_.bytes, 'decrypted bytes in segment');
 
   // verify stats
-  QUnit.equal(loader.mediaBytesTransferred, 8, '8 bytes');
+  QUnit.equal(loader.mediaBytesTransferred, 16, '16 bytes');
   QUnit.equal(loader.mediaRequests, 1, '1 request');
 });
 
