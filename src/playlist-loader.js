@@ -363,6 +363,11 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         return;
       }
 
+      if (request.responseURL) {
+        playlist.resolvedUri = request.responseURL;
+        loader.master.playlists[playlist.uri].resolvedUri = request.responseURL;
+      }
+
       if (error) {
         return playlistRequestError(request, playlist.uri, startingState);
       }
@@ -478,7 +483,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
       loader.state = 'HAVE_MASTER';
 
-      parser.manifest.uri = srcUrl;
+      if (parser.manifest.uri != req.responseURL) {
+        parser.manifest.uri = req.responseURL;
+      }
 
       // loaded a master playlist
       if (parser.manifest.playlists) {
