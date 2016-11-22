@@ -36,3 +36,4 @@ es5/
 tmp
 test/test-manifests.js
 test/test-expected.js
+coverage/

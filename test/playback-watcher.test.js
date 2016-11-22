@@ -12,8 +12,8 @@ import PlaybackWatcher from '../src/playback-watcher';
 let monitorCurrentTime_;
 
 QUnit.module('PlaybackWatcher', {
-  beforeEach() {
-    this.env = useFakeEnvironment();
+  beforeEach(assert) {
+    this.env = useFakeEnvironment(assert);
     this.requests = this.env.requests;
     this.mse = useFakeMediaSource();
     this.clock = this.env.clock;
@@ -31,7 +31,10 @@ QUnit.module('PlaybackWatcher', {
   }
 });
 
-QUnit.test('skips over gap in firefox with waiting event', function() {
+QUnit.test('skips over gap in firefox with waiting event', function(assert) {
+
+  this.player.autoplay(true);
+
   // create a buffer with a gap between 10 & 20 seconds
   this.player.tech_.buffered = function() {
     return videojs.createTimeRanges([[0, 10], [20, 30]]);
@@ -58,11 +61,13 @@ QUnit.test('skips over gap in firefox with waiting event', function() {
   this.clock.tick(12000);
 
   // check that player jumped the gap
-  QUnit.equal(Math.round(this.player.currentTime()),
+  assert.equal(Math.round(this.player.currentTime()),
     20, 'Player seeked over gap after timer');
 });
 
-QUnit.test('skips over gap in chrome without waiting event', function() {
+QUnit.test('skips over gap in chrome without waiting event', function(assert) {
+  this.player.autoplay(true);
+
   // create a buffer with a gap between 10 & 20 seconds
   this.player.tech_.buffered = function() {
     return videojs.createTimeRanges([[0, 10], [20, 30]]);
@@ -89,16 +94,18 @@ QUnit.test('skips over gap in chrome without waiting event', function() {
   this.clock.tick(4000);
 
   // checks that player doesn't seek before timer expires
-  QUnit.equal(this.player.currentTime(), 10, 'Player doesnt seek over gap pre-timer');
+  assert.equal(this.player.currentTime(), 10, 'Player doesnt seek over gap pre-timer');
   this.clock.tick(10000);
 
   // check that player jumped the gap
-  QUnit.equal(Math.round(this.player.currentTime()),
+  assert.equal(Math.round(this.player.currentTime()),
     20, 'Player seeked over gap after timer');
 
 });
 
-QUnit.test('skips over gap in Chrome due to video underflow', function() {
+QUnit.test('skips over gap in Chrome due to video underflow', function(assert) {
+  this.player.autoplay(true);
+
   this.player.tech_.buffered = () => {
     return videojs.createTimeRanges([[0, 10], [10.1, 20]]);
   };
@@ -128,11 +135,11 @@ QUnit.test('skips over gap in Chrome due to video underflow', function() {
 
   this.player.tech_.trigger('waiting');
 
-  QUnit.equal(seeks.length, 1, 'one seek');
-  QUnit.equal(seeks[0], 13, 'player seeked to current time');
+  assert.equal(seeks.length, 1, 'one seek');
+  assert.equal(seeks[0], 13, 'player seeked to current time');
 });
 
-QUnit.test('seek to live point if we fall off the end of a live playlist', function() {
+QUnit.test('seek to live point if we fall off the end of a live playlist', function(assert) {
   // set an arbitrary live source
   this.player.src({
     src: 'liveStart30sBefore.m3u8',
@@ -162,8 +169,8 @@ QUnit.test('seek to live point if we fall off the end of a live playlist', funct
 
   this.player.tech_.trigger('waiting');
 
-  QUnit.equal(seeks.length, 1, 'one seek');
-  QUnit.equal(seeks[0], 45, 'player seeked to live point');
+  assert.equal(seeks.length, 1, 'one seek');
+  assert.equal(seeks[0], 45, 'player seeked to live point');
 });
 
 QUnit.module('PlaybackWatcher isolated functions', {
@@ -183,86 +190,86 @@ QUnit.module('PlaybackWatcher isolated functions', {
   }
 });
 
-QUnit.test('detects gap from video underflow', function() {
-  QUnit.equal(
+QUnit.test('skips gap from video underflow', function(assert) {
+  assert.equal(
     this.playbackWatcher.gapFromVideoUnderflow_(videojs.createTimeRanges(), 0),
     null,
     'returns null when buffer is empty');
-  QUnit.equal(
+  assert.equal(
     this.playbackWatcher.gapFromVideoUnderflow_(videojs.createTimeRanges([[0, 10]]), 13),
     null,
     'returns null when there is only a previous buffer');
-  QUnit.equal(
+  assert.equal(
     this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 15),
     null,
     'returns null when gap is too far from current time');
-  QUnit.equal(
+  assert.equal(
     this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 9.9),
     null,
     'returns null when gap is after current time');
-  QUnit.equal(
+  assert.equal(
     this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10.1], [10.2, 20]]), 12.1),
     null,
     'returns null when time is less than or equal to 2 seconds ahead');
-  QUnit.equal(
+  assert.equal(
     this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 14.1),
     null,
     'returns null when time is greater than or equal to 4 seconds ahead');
-  QUnit.deepEqual(
+  assert.deepEqual(
     this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 12.2),
     {start: 10, end: 10.1},
     'returns gap when gap is small and time is greater than 2 seconds ahead in a buffer');
-  QUnit.deepEqual(
+  assert.deepEqual(
     this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 13),
     {start: 10, end: 10.1},
     'returns gap when gap is small and time is 3 seconds ahead in a buffer');
-  QUnit.deepEqual(
+  assert.deepEqual(
     this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 20]]), 13.9),
     {start: 10, end: 10.1},
     'returns gap when gap is small and time is less than 4 seconds ahead in a buffer');
   // In a case where current time is outside of the buffered range, something odd must've
   // happened, but we should still allow the player to try to continue from that spot.
-  QUnit.deepEqual(
+  assert.deepEqual(
     this.playbackWatcher.gapFromVideoUnderflow_(
       videojs.createTimeRanges([[0, 10], [10.1, 12.9]]), 13),
     {start: 10, end: 10.1},
     'returns gap even when current time is not in buffered range');
 });
 
-QUnit.test('detects live window falloff', function() {
+QUnit.test('detects live window falloff', function(assert) {
   let fellOutOfLiveWindow_ =
     this.playbackWatcher.fellOutOfLiveWindow_.bind(this.playbackWatcher);
 
-  QUnit.ok(
+  assert.ok(
     fellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 10),
     'true if playlist live and current time before seekable');
 
-  QUnit.ok(
+  assert.ok(
     !fellOutOfLiveWindow_(videojs.createTimeRanges([]), 10),
     'false if no seekable range');
-  QUnit.ok(
+  assert.ok(
     !fellOutOfLiveWindow_(videojs.createTimeRanges([[0, 10]]), -1),
     'false if seekable range starts at 0');
-  QUnit.ok(
+  assert.ok(
     !fellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 11),
     'false if current time at seekable start');
-  QUnit.ok(
+  assert.ok(
     !fellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 20),
     'false if current time at seekable end');
-  QUnit.ok(
+  assert.ok(
     !fellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 15),
     'false if current time within seekable range');
-  QUnit.ok(
+  assert.ok(
     !fellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 21),
     'false if current time past seekable range');
-  QUnit.ok(
+  assert.ok(
     fellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 0),
     'true if current time is 0 and earlier than seekable range');
 });

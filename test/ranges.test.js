@@ -23,50 +23,50 @@ let rangesEqual = (rangeOne, rangeTwo) => {
 
 QUnit.module('TimeRanges Utilities');
 
-QUnit.test('finds the overlapping time range', function() {
+QUnit.test('finds the overlapping time range', function(assert) {
   let range = Ranges.findRange(createTimeRanges([[0, 5], [6, 12]]), 3);
 
-  QUnit.equal(range.length, 1, 'found one range');
-  QUnit.equal(range.end(0), 5, 'inside the first buffered region');
+  assert.equal(range.length, 1, 'found one range');
+  assert.equal(range.end(0), 5, 'inside the first buffered region');
 
   range = Ranges.findRange(createTimeRanges([[0, 5], [6, 12]]), 6);
-  QUnit.equal(range.length, 1, 'found one range');
-  QUnit.equal(range.end(0), 12, 'inside the second buffered region');
+  assert.equal(range.length, 1, 'found one range');
+  assert.equal(range.end(0), 12, 'inside the second buffered region');
 });
 
 QUnit.module('Buffer Inpsection');
 
-QUnit.test('detects time range end-point changed by updates', function() {
+QUnit.test('detects time range end-point changed by updates', function(assert) {
   let edge;
 
   // Single-range changes
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 10]]),
                                               createTimeRanges([[0, 11]]));
-  QUnit.strictEqual(edge, 11, 'detected a forward addition');
+  assert.strictEqual(edge, 11, 'detected a forward addition');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[5, 10]]),
                                               createTimeRanges([[0, 10]]));
-  QUnit.strictEqual(edge, null, 'ignores backward addition');
+  assert.strictEqual(edge, null, 'ignores backward addition');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[5, 10]]),
                                               createTimeRanges([[0, 11]]));
-  QUnit.strictEqual(edge, 11,
+  assert.strictEqual(edge, 11,
                     'detected a forward addition & ignores a backward addition');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 10]]),
                                               createTimeRanges([[0, 9]]));
-  QUnit.strictEqual(edge, null,
+  assert.strictEqual(edge, null,
                     'ignores a backwards addition resulting from a shrinking range');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 10]]),
                                               createTimeRanges([[2, 7]]));
-  QUnit.strictEqual(edge, null,
+  assert.strictEqual(edge, null,
                     'ignores a forward & backwards addition resulting from a shrinking ' +
                     'range');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[2, 10]]),
                                               createTimeRanges([[0, 7]]));
-  QUnit.strictEqual(
+  assert.strictEqual(
     edge,
     null,
     'ignores a forward & backwards addition resulting from a range shifted backward'
@@ -74,46 +74,46 @@ QUnit.test('detects time range end-point changed by updates', function() {
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[2, 10]]),
                                               createTimeRanges([[5, 15]]));
-  QUnit.strictEqual(edge, 15,
+  assert.strictEqual(edge, 15,
                     'detected a forwards addition resulting from a range shifted foward');
 
   // Multiple-range changes
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 10]]),
                                               createTimeRanges([[0, 11], [12, 15]]));
-  QUnit.strictEqual(edge, null, 'ignores multiple new forward additions');
+  assert.strictEqual(edge, null, 'ignores multiple new forward additions');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 10], [20, 40]]),
                                               createTimeRanges([[20, 50]]));
-  QUnit.strictEqual(edge, 50, 'detected a forward addition & ignores range removal');
+  assert.strictEqual(edge, 50, 'detected a forward addition & ignores range removal');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 10], [20, 40]]),
                                               createTimeRanges([[0, 50]]));
-  QUnit.strictEqual(edge, 50, 'detected a forward addition & ignores merges');
+  assert.strictEqual(edge, 50, 'detected a forward addition & ignores merges');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 10], [20, 40]]),
                                               createTimeRanges([[0, 40]]));
-  QUnit.strictEqual(edge, null, 'ignores merges');
+  assert.strictEqual(edge, null, 'ignores merges');
 
   // Empty input
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges(),
                                               createTimeRanges([[0, 11]]));
-  QUnit.strictEqual(edge, 11, 'handle an empty original TimeRanges object');
+  assert.strictEqual(edge, 11, 'handle an empty original TimeRanges object');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 11]]),
                                               createTimeRanges());
-  QUnit.strictEqual(edge, null, 'handle an empty update TimeRanges object');
+  assert.strictEqual(edge, null, 'handle an empty update TimeRanges object');
 
   // Null input
   edge = Ranges.findSoleUncommonTimeRangesEnd(null, createTimeRanges([[0, 11]]));
-  QUnit.strictEqual(edge, 11, 'treat null original buffer as an empty TimeRanges object');
+  assert.strictEqual(edge, 11, 'treat null original buffer as an empty TimeRanges object');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 11]]), null);
-  QUnit.strictEqual(edge, null, 'treat null update buffer as an empty TimeRanges object');
+  assert.strictEqual(edge, null, 'treat null update buffer as an empty TimeRanges object');
 });
 
 QUnit.module('Segment Percent Buffered Calculations');
 
-QUnit.test('calculates the percent buffered for segments in the simple case', function() {
+QUnit.test('calculates the percent buffered for segments in the simple case', function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 0;
@@ -124,11 +124,11 @@ QUnit.test('calculates the percent buffered for segments in the simple case', fu
     currentTime,
     buffered);
 
-  QUnit.equal(percentBuffered, 40, 'calculated the buffered amount correctly');
+  assert.equal(percentBuffered, 40, 'calculated the buffered amount correctly');
 });
 
 QUnit.test('consider the buffer before currentTime to be filled if the ' +
-           'segement begins at or before the currentTime', function() {
+           'segement begins at or before the currentTime', function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 15;
@@ -139,11 +139,11 @@ QUnit.test('consider the buffer before currentTime to be filled if the ' +
     currentTime,
     buffered);
 
-  QUnit.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
+  assert.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
 });
 
 QUnit.test('does not consider the buffer before currentTime as filled if the segment ' +
-           'begins after the currentTime', function() {
+           'begins after the currentTime', function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 18;
@@ -154,11 +154,11 @@ QUnit.test('does not consider the buffer before currentTime as filled if the seg
     currentTime,
     buffered);
 
-  QUnit.equal(percentBuffered, 10, 'calculated the buffered amount correctly');
+  assert.equal(percentBuffered, 10, 'calculated the buffered amount correctly');
 });
 
 QUnit.test('calculates the percent buffered for segments with multiple buffered ' +
-           'regions', function() {
+           'regions', function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 0;
@@ -169,11 +169,11 @@ QUnit.test('calculates the percent buffered for segments with multiple buffered 
     currentTime,
     buffered);
 
-  QUnit.equal(percentBuffered, 80, 'calculated the buffered amount correctly');
+  assert.equal(percentBuffered, 80, 'calculated the buffered amount correctly');
 });
 
 QUnit.test('calculates the percent buffered for segments with multiple buffered ' +
-           'regions taking into account currentTime', function() {
+           'regions taking into account currentTime', function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 12;
@@ -184,10 +184,10 @@ QUnit.test('calculates the percent buffered for segments with multiple buffered 
     currentTime,
     buffered);
 
-  QUnit.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
+  assert.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
 });
 
-QUnit.test('calculates the percent buffered as 0 for zero-length segments', function() {
+QUnit.test('calculates the percent buffered as 0 for zero-length segments', function(assert) {
   let segmentStart = 10;
   let segmentDuration = 0;
   let currentTime = 0;
@@ -198,11 +198,11 @@ QUnit.test('calculates the percent buffered as 0 for zero-length segments', func
     currentTime,
     buffered);
 
-  QUnit.equal(percentBuffered, 0, 'calculated the buffered amount correctly');
+  assert.equal(percentBuffered, 0, 'calculated the buffered amount correctly');
 });
 
 QUnit.test('calculates the percent buffered as 0 for segments that do not overlap ' +
-           'buffered regions taking into account currentTime', function() {
+           'buffered regions taking into account currentTime', function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 19;
@@ -213,11 +213,11 @@ QUnit.test('calculates the percent buffered as 0 for segments that do not overla
     currentTime,
     buffered);
 
-  QUnit.equal(percentBuffered, 0, 'calculated the buffered amount correctly');
+  assert.equal(percentBuffered, 0, 'calculated the buffered amount correctly');
 });
 
 QUnit.test('calculates the percent buffered for segments ' +
-           'that end before currentTime', function() {
+           'that end before currentTime', function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 19.6;
@@ -228,55 +228,55 @@ QUnit.test('calculates the percent buffered for segments ' +
     currentTime,
     buffered);
 
-  QUnit.equal(percentBuffered, 95, 'calculated the buffered amount correctly');
+  assert.equal(percentBuffered, 95, 'calculated the buffered amount correctly');
 });
 
-QUnit.test('finds next range', function() {
-  QUnit.equal(Ranges.findNextRange(createTimeRanges(), 10).length,
+QUnit.test('finds next range', function(assert) {
+  assert.equal(Ranges.findNextRange(createTimeRanges(), 10).length,
               0,
               'does not find next range in empty buffer');
-  QUnit.equal(Ranges.findNextRange(createTimeRanges([[0, 20]]), 10).length,
+  assert.equal(Ranges.findNextRange(createTimeRanges([[0, 20]]), 10).length,
               0,
               'does not find next range when no next ranges');
-  QUnit.equal(Ranges.findNextRange(createTimeRanges([[0, 20]]), 30).length,
+  assert.equal(Ranges.findNextRange(createTimeRanges([[0, 20]]), 30).length,
               0,
               'does not find next range when current time later than buffer');
-  QUnit.equal(Ranges.findNextRange(createTimeRanges([[10, 20]]), 10).length,
+  assert.equal(Ranges.findNextRange(createTimeRanges([[10, 20]]), 10).length,
               0,
               'does not find next range when current time is at beginning of buffer');
-  QUnit.equal(Ranges.findNextRange(createTimeRanges([[10, 20]]), 11).length,
+  assert.equal(Ranges.findNextRange(createTimeRanges([[10, 20]]), 11).length,
               0,
               'does not find next range when current time in middle of buffer');
-  QUnit.equal(Ranges.findNextRange(createTimeRanges([[10, 20]]), 20).length,
+  assert.equal(Ranges.findNextRange(createTimeRanges([[10, 20]]), 20).length,
               0,
               'does not find next range when current time is at end of buffer');
 
-  QUnit.ok(rangesEqual(Ranges.findNextRange(createTimeRanges([[10, 20]]), 0),
+  assert.ok(rangesEqual(Ranges.findNextRange(createTimeRanges([[10, 20]]), 0),
            createTimeRanges([[10, 20]])),
            'finds next range when buffer comes after time');
-  QUnit.ok(rangesEqual(Ranges.findNextRange(createTimeRanges([[10, 20], [25, 35]]), 22),
+  assert.ok(rangesEqual(Ranges.findNextRange(createTimeRanges([[10, 20], [25, 35]]), 22),
            createTimeRanges([[25, 35]])),
            'finds next range when time between buffers');
-  QUnit.ok(rangesEqual(Ranges.findNextRange(createTimeRanges([[10, 20], [25, 35]]), 15),
+  assert.ok(rangesEqual(Ranges.findNextRange(createTimeRanges([[10, 20], [25, 35]]), 15),
            createTimeRanges([[25, 35]])),
            'finds next range when time in previous buffer');
 });
 
-QUnit.test('finds gaps within ranges', function() {
-  QUnit.equal(Ranges.findGaps(createTimeRanges()).length,
+QUnit.test('finds gaps within ranges', function(assert) {
+  assert.equal(Ranges.findGaps(createTimeRanges()).length,
               0,
               'does not find gap in empty buffer');
-  QUnit.equal(Ranges.findGaps(createTimeRanges([[0, 10]])).length,
+  assert.equal(Ranges.findGaps(createTimeRanges([[0, 10]])).length,
               0,
               'does not find gap in single buffer');
-  QUnit.equal(Ranges.findGaps(createTimeRanges([[1, 10]])).length,
+  assert.equal(Ranges.findGaps(createTimeRanges([[1, 10]])).length,
               0,
               'does not find gap at start of buffer');
 
-  QUnit.ok(rangesEqual(Ranges.findGaps(createTimeRanges([[0, 10], [11, 20]])),
+  assert.ok(rangesEqual(Ranges.findGaps(createTimeRanges([[0, 10], [11, 20]])),
            createTimeRanges([[10, 11]])),
            'finds a single gap');
-  QUnit.ok(rangesEqual(Ranges.findGaps(createTimeRanges([[0, 10], [11, 20], [22, 30]])),
+  assert.ok(rangesEqual(Ranges.findGaps(createTimeRanges([[0, 10], [11, 20], [22, 30]])),
            createTimeRanges([[10, 11], [20, 22]])),
            'finds multiple gaps');
 });

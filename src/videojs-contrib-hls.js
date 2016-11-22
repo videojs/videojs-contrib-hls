@@ -299,6 +299,7 @@ class HlsHandler extends Component {
     this.tech_ = tech;
     this.source_ = source;
     this.stats = {};
+    this.ignoreNextSeekingEvent_ = false;
 
     // handle global & Source Handler level options
     this.options_ = videojs.mergeOptions(videojs.options.hls || {}, options.hls);
@@ -321,6 +322,11 @@ class HlsHandler extends Component {
     });
 
     this.on(this.tech_, 'seeking', function() {
+      if (this.ignoreNextSeekingEvent_) {
+        this.ignoreNextSeekingEvent_ = false;
+        return;
+      }
+
       this.setCurrentTime(this.tech_.currentTime());
     });
     this.on(this.tech_, 'error', function() {
@@ -468,6 +474,10 @@ class HlsHandler extends Component {
       mediaBytesTransferred: {
         get: () => this.masterPlaylistController_.mediaBytesTransferred_() || 0,
         enumerable: true
+      },
+      mediaSecondsLoaded: {
+        get: () => this.masterPlaylistController_.mediaSecondsLoaded_() || 0,
+        enumerable: true
       }
     });
 
@@ -495,6 +505,12 @@ class HlsHandler extends Component {
     // estimate of overall bandwidth
     this.on(this.masterPlaylistController_, 'progress', function() {
       this.tech_.trigger('progress');
+    });
+
+    // In the live case, we need to ignore the very first `seeking` event since
+    // that will be the result of the seek-to-live behavior
+    this.on(this.masterPlaylistController_, 'firstplay', function() {
+      this.ignoreNextSeekingEvent_ = true;
     });
 
     // do nothing if the tech has been disposed already
@@ -679,7 +695,7 @@ HlsSourceHandler.canPlayType = function(type) {
   let mpegurlRE = /^(audio|video|application)\/(x-|vnd\.apple\.)?mpegurl/i;
 
   // favor native HLS support if it's available
-  if (Hls.supportsNativeHls) {
+  if (!videojs.options.hls.overrideNative && Hls.supportsNativeHls) {
     return false;
   }
   return mpegurlRE.test(type);
@@ -693,7 +709,7 @@ if (typeof videojs.MediaSource === 'undefined' ||
 
 // register source handlers with the appropriate techs
 if (MediaSource.supportsNativeMediaSources()) {
-  videojs.getComponent('Html5').registerSourceHandler(HlsSourceHandler('html5'));
+  videojs.getComponent('Html5').registerSourceHandler(HlsSourceHandler('html5'), 0);
 }
 if (window.Uint8Array) {
   videojs.getComponent('Flash').registerSourceHandler(HlsSourceHandler('flash'));

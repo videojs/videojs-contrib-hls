@@ -1,4 +1,6 @@
 var merge = require('lodash-compat/object/merge');
+var istanbul = require('browserify-istanbul');
+var isparta = require('isparta');
 
 var DEFAULTS = {
   basePath: '../..',
@@ -19,6 +21,7 @@ var DEFAULTS = {
 
   plugins: [
     'karma-browserify',
+    'karma-coverage',
     'karma-qunit'
   ],
 
@@ -49,6 +52,16 @@ var DEFAULTS = {
     ]
   },
 
+  babelPreprocessor: {
+    options: {
+      presets: ['es2015'],
+      sourceMap: 'inline'
+    },
+    sourceFileName: function (file) {
+      return file.originalPath;
+    }
+  },
+
   customLaunchers: {
     travisChrome: {
       base: 'Chrome',
@@ -56,6 +69,20 @@ var DEFAULTS = {
     }
   }
 };
+
+// Coverage reporting
+// Coverage is enabled by passing the flag --coverage to npm test
+var coverageFlag = process.env.npm_config_coverage;
+var reportCoverage = process.env.TRAVIS || coverageFlag;
+
+if (reportCoverage) {
+  DEFAULTS.reporters.push('coverage');
+  DEFAULTS.browserify.transform.push(istanbul({
+    instrumenter: isparta,
+    ignore: ['**/node_modules/**', '**/test/**']
+  }));
+  DEFAULTS.preprocessors['src/**/*.js'] = ['browserify', 'coverage'];
+}
 
 /**
  * Customizes target/source merging with lodash merge.
