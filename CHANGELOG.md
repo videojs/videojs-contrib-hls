@@ -12,6 +12,8 @@ CHANGELOG
 * Updated mux.js to 3.0.3
   * Stop applying the compositionTimestamp of the first frame to the baseMediaDecodeTime for the fragment [#108](https://github.com/videojs/mux.js/pull/108)
   * Fix coalesce stream to account for missing audio data in pending tracks [#125](https://github.com/videojs/mux.js/pull/125)
+* Updated aes-decrypter to [2.0.0](https://github.com/videojs/aes-decrypter/blob/master/CHANGELOG.md#200-2016-11-15)
+  * Use webcrypto for aes-cbc segment decryption when supported [#4](https://github.com/videojs/aes-decrypter/pull/4)
 
 --------------------
 ## 3.6.13 (2016-11-17)
