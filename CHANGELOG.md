@@ -2,6 +2,18 @@ CHANGELOG
 =========
 
 --------------------
+## 4.0.0 (2016-11-21)
+* Simplified the algorithm at the heart of SegmentLoader as much as possible [#875](https://github.com/videojs/videojs-contrib-hls/pull/875)
+  * Introduced the concept of sync-points to help associate currentTime with segments across variants
+  * More information available at: https://www.brightcove.com/en/blog/2016/10/improving-hls-playback
+* Updated videojs-contrib-media-sources to 4.1.2
+  * Start using remote TextTracks because they can be properly removed [#118](https://github.com/videojs/videojs-contrib-media-sources/pull/118)
+  * Handle remove cues from track properly if cues is null [#112](https://github.com/videojs/videojs-contrib-media-sources/pull/112)
+* Updated mux.js to 3.0.3
+  * Stop applying the compositionTimestamp of the first frame to the baseMediaDecodeTime for the fragment [#108](https://github.com/videojs/mux.js/pull/108)
+  * Fix coalesce stream to account for missing audio data in pending tracks [#125](https://github.com/videojs/mux.js/pull/125)
+
+--------------------
 ## 3.6.13 (2016-11-17)
 * Added the concept of systemBandwidth - a measure of the bandwidth (in mb/s) of the entire system from download through transmuxing and appending data to a flash or native media source
   * Adaptive bitrate selection is now based on the performance of the entire system

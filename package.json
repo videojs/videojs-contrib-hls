@@ -95,7 +95,7 @@
     "mux.js": "^3.0.0",
     "url-toolkit": "^1.0.4",
     "video.js": "^5.10.1",
-    "videojs-contrib-media-sources": "^4.1.0",
+    "videojs-contrib-media-sources": "^4.1.2",
     "videojs-swf": "^5.0.2"
   },
   "devDependencies": {
