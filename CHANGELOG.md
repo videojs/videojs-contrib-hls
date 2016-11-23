@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 --------------------
+## 4.0.1 (2016-11-23)
+* Revert "Upgrade aes-decrypter to use webcrypto for HLSe decryption where available. (#777)" [#922](https://github.com/videojs/videojs-contrib-hls/pull/922)
+  * WebCrypto's subtle-crypto was failing to decrypt segments that worked previously with the JavaScript-only implementation
+
+--------------------
 ## 4.0.0 (2016-11-21)
 * Simplified the algorithm at the heart of SegmentLoader as much as possible [#875](https://github.com/videojs/videojs-contrib-hls/pull/875)
   * Introduced the concept of sync-points to help associate currentTime with segments across variants
