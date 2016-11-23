@@ -703,7 +703,13 @@ export default class MasterPlaylistController extends videojs.EventTarget {
     // if the codecs were explicitly specified, pass them along to the
     // source buffer
     if (media.attributes && media.attributes.CODECS) {
-      mimeType += '; codecs="' + media.attributes.CODECS + '"';
+
+      if (media.attributes.CODECS === 'avc1.77.30, mp4a.40.2') {
+        //Add support for a codec that isn't officially supported by chrome
+        mimeType += '; codecs="avc1.64001f,mp4a.40.5"';
+      } else {
+        mimeType += '; codecs="' + media.attributes.CODECS + '"';
+      }
     } else {
       mimeType += '; codecs="' + defaultCodecs + '"';
     }
