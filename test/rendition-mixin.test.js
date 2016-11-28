@@ -218,7 +218,7 @@ QUnit.test('changing the enabled state of a representation calls fastQualityChan
 
   renditions[0].enabled(true);
 
-  assert.equal(mpc.fastQualityChange_.calls, 1,'fastQualityChange_ was called once');
+  assert.equal(mpc.fastQualityChange_.calls, 1, 'fastQualityChange_ was called once');
 
   renditions[1].enabled(false);
 
@@ -226,7 +226,7 @@ QUnit.test('changing the enabled state of a representation calls fastQualityChan
 });
 
 QUnit.test('changing the enabled state of a blacklisted representation still (un)sets disabled',
-  function() {
+  function(assert) {
     let hlsHandler = makeMockHlsHandler([
       {
         bandwidth: 0,
@@ -249,6 +249,6 @@ QUnit.test('changing the enabled state of a blacklisted representation still (un
     renditions[0].enabled(false);
     renditions[1].enabled(true);
 
-    QUnit.equal(playlists[0].disabled, true, 'rendition has been disabled');
-    QUnit.equal(playlists[1].disabled, undefined, 'rendition has been enabled');
+    assert.equal(playlists[0].disabled, true, 'rendition has been disabled');
+    assert.equal(playlists[1].disabled, undefined, 'rendition has been enabled');
   });
