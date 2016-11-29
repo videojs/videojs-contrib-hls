@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 --------------------
+## 4.0.2 (2016-11-29)
+* Fix excessive segment loads on seeks [#925](https://github.com/videojs/videojs-contrib-hls/pull/925)
+  * Fixed a few cases where seeking caused the player to load too many segments
+
+--------------------
 ## 4.0.1 (2016-11-23)
 * Revert "Upgrade aes-decrypter to use webcrypto for HLSe decryption where available. (#777)" [#922](https://github.com/videojs/videojs-contrib-hls/pull/922)
   * WebCrypto's subtle-crypto was failing to decrypt segments that worked previously with the JavaScript-only implementation
