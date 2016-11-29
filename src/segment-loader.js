@@ -189,7 +189,11 @@ export default class SegmentLoader extends videojs.EventTarget {
    * and reset to a default state
    */
   abort() {
+
     if (this.state !== 'WAITING') {
+      if (this.pendingSegment_) {
+        this.pendingSegment_ = null;
+      }
       return;
     }
 
@@ -877,13 +881,15 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   processResponse_() {
-    let segmentInfo;
-    let segment;
+    if (!this.pendingSegment_) {
+      this.state = 'READY';
+      return;
+    }
 
     this.state = 'DECRYPTING';
 
-    segmentInfo = this.pendingSegment_;
-    segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+    let segmentInfo = this.pendingSegment_;
+    let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
     if (segment.key) {
       // this is an encrypted segment
@@ -909,6 +915,11 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   handleSegment_() {
+    if (!this.pendingSegment_) {
+      this.state = 'READY';
+      return;
+    }
+
     this.state = 'APPENDING';
 
     let segmentInfo = this.pendingSegment_;
@@ -961,6 +972,14 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   handleUpdateEnd_() {
+    if (!this.pendingSegment_) {
+      this.state = 'READY';
+      if (!this.paused()) {
+        this.fillBuffer_();
+      }
+      return;
+    }
+
     let segmentInfo = this.pendingSegment_;
 
     this.pendingSegment_ = null;
