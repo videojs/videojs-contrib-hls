@@ -835,11 +835,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // cancel outstanding requests so we begin buffering at the new
     // location
-    this.mainSegmentLoader_.abort();
     this.mainSegmentLoader_.resetEverything();
+    this.mainSegmentLoader_.abort();
     if (this.audioPlaylistLoader_) {
-      this.audioSegmentLoader_.abort();
       this.audioSegmentLoader_.resetEverything();
+      this.audioSegmentLoader_.abort();
     }
 
     if (!this.tech_.paused()) {

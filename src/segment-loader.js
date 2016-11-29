@@ -189,7 +189,11 @@ export default class SegmentLoader extends videojs.EventTarget {
    * and reset to a default state
    */
   abort() {
+
     if (this.state !== 'WAITING') {
+      if (this.pendingSegment_) {
+        this.pendingSegment_ = null;
+      }
       return;
     }
 
@@ -461,13 +465,19 @@ export default class SegmentLoader extends videojs.EventTarget {
     // fetch
     if (this.fetchAtBuffer_) {
       // Find the segment containing the end of the buffer
-      let mediaSourceInfo = getMediaInfoForTime(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
+      let mediaSourceInfo = getMediaInfoForTime(playlist,
+                                                lastBufferedEnd,
+                                                syncPoint.segmentIndex,
+                                                syncPoint.time);
 
       mediaIndex = mediaSourceInfo.mediaIndex;
       startOfSegment = mediaSourceInfo.startTime;
     } else {
       // Find the segment containing currentTime
-      let mediaSourceInfo = getMediaInfoForTime(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
+      let mediaSourceInfo = getMediaInfoForTime(playlist,
+                                                currentTime,
+                                                syncPoint.segmentIndex,
+                                                syncPoint.time);
 
       mediaIndex = mediaSourceInfo.mediaIndex;
       startOfSegment = mediaSourceInfo.startTime;
@@ -720,7 +730,6 @@ export default class SegmentLoader extends videojs.EventTarget {
   handleResponse_(error, request) {
     let segmentInfo;
     let segment;
-    let keyXhrRequest;
     let view;
 
     // timeout of previously aborted request
@@ -746,7 +755,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     // trigger an event for other errors
     if (!request.aborted && error) {
       // abort will clear xhr_
-      keyXhrRequest = this.xhr_.keyXhr;
+      let keyXhrRequest = this.xhr_.keyXhr;
+
       this.abort_();
       this.error({
         status: request.status,
@@ -787,7 +797,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     if (request === this.xhr_.keyXhr) {
-      keyXhrRequest = this.xhr_.segmentXhr;
       // the key request is no longer outstanding
       this.xhr_.keyXhr = null;
 
@@ -877,13 +886,15 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   processResponse_() {
-    let segmentInfo;
-    let segment;
+    if (!this.pendingSegment_) {
+      this.state = 'READY';
+      return;
+    }
 
     this.state = 'DECRYPTING';
 
-    segmentInfo = this.pendingSegment_;
-    segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+    let segmentInfo = this.pendingSegment_;
+    let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
 
     if (segment.key) {
       // this is an encrypted segment
@@ -909,6 +920,11 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   handleSegment_() {
+    if (!this.pendingSegment_) {
+      this.state = 'READY';
+      return;
+    }
+
     this.state = 'APPENDING';
 
     let segmentInfo = this.pendingSegment_;
@@ -961,6 +977,14 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   handleUpdateEnd_() {
+    if (!this.pendingSegment_) {
+      this.state = 'READY';
+      if (!this.paused()) {
+        this.fillBuffer_();
+      }
+      return;
+    }
+
     let segmentInfo = this.pendingSegment_;
 
     this.pendingSegment_ = null;
@@ -972,8 +996,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.mediaIndex = segmentInfo.mediaIndex;
       this.fetchAtBuffer_ = true;
     }
-
-    this.pendingSegment_ = null;
 
     let currentMediaIndex = segmentInfo.mediaIndex;
 
