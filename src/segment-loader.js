@@ -724,7 +724,6 @@ export default class SegmentLoader extends videojs.EventTarget {
   handleResponse_(error, request) {
     let segmentInfo;
     let segment;
-    let keyXhrRequest;
     let view;
 
     // timeout of previously aborted request
@@ -750,7 +749,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // trigger an event for other errors
     if (!request.aborted && error) {
       // abort will clear xhr_
-      keyXhrRequest = this.xhr_.keyXhr;
+      let keyXhrRequest = this.xhr_.keyXhr;
       this.abort_();
       this.error({
         status: request.status,
@@ -791,7 +790,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     if (request === this.xhr_.keyXhr) {
-      keyXhrRequest = this.xhr_.segmentXhr;
       // the key request is no longer outstanding
       this.xhr_.keyXhr = null;
 
@@ -991,8 +989,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.mediaIndex = segmentInfo.mediaIndex;
       this.fetchAtBuffer_ = true;
     }
-
-    this.pendingSegment_ = null;
 
     let currentMediaIndex = segmentInfo.mediaIndex;
 
