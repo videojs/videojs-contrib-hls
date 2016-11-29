@@ -465,13 +465,19 @@ export default class SegmentLoader extends videojs.EventTarget {
     // fetch
     if (this.fetchAtBuffer_) {
       // Find the segment containing the end of the buffer
-      let mediaSourceInfo = getMediaInfoForTime(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
+      let mediaSourceInfo = getMediaInfoForTime(playlist,
+                                                lastBufferedEnd,
+                                                syncPoint.segmentIndex,
+                                                syncPoint.time);
 
       mediaIndex = mediaSourceInfo.mediaIndex;
       startOfSegment = mediaSourceInfo.startTime;
     } else {
       // Find the segment containing currentTime
-      let mediaSourceInfo = getMediaInfoForTime(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
+      let mediaSourceInfo = getMediaInfoForTime(playlist,
+                                                currentTime,
+                                                syncPoint.segmentIndex,
+                                                syncPoint.time);
 
       mediaIndex = mediaSourceInfo.mediaIndex;
       startOfSegment = mediaSourceInfo.startTime;
@@ -750,6 +756,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (!request.aborted && error) {
       // abort will clear xhr_
       let keyXhrRequest = this.xhr_.keyXhr;
+
       this.abort_();
       this.error({
         status: request.status,
