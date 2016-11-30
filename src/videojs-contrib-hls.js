@@ -48,6 +48,24 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
   }
 });
 
+Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH_BEFORE_PLAYING', {
+  get() {
+    videojs.log.warn('using Hls.GOAL_BUFFER_LENGTH_BEFORE_PLAYING is UNSAFE be sure ' +
+                     'you know what you are doing');
+    return Config.GOAL_BUFFER_LENGTH_BEFORE_PLAYING;
+  },
+  set(v) {
+    videojs.log.warn('using Hls.GOAL_BUFFER_LENGTH_BEFORE_PLAYING is UNSAFE be sure ' +
+                     'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      videojs.log.warn('value passed to Hls.GOAL_BUFFER_LENGTH_BEFORE_PLAYING ' +
+                       'must be a number and greater than 0');
+      return;
+    }
+    Config.GOAL_BUFFER_LENGTH_BEFORE_PLAYING = v;
+  }
+});
+
 // A fudge factor to apply to advertised playlist bitrates to account for
 // temporary flucations in client bandwidth
 const BANDWIDTH_VARIANCE = 1.2;
