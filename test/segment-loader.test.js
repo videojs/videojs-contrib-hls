@@ -985,6 +985,35 @@ QUnit.test('checks the goal buffer configuration every loading opportunity', fun
   Config.GOAL_BUFFER_LENGTH = defaultGoal;
 });
 
+QUnit.test('does not skip over segment if live playlist update occurs while processing',
+function(assert) {
+  let playlist = playlistWithDuration(40);
+
+  playlist.endList = false;
+
+  loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
+  loader.load();
+
+  assert.equal(loader.pendingSegment_.uri, '0.ts', 'retrieving first segment');
+  assert.equal(loader.state, 'WAITING', 'waiting for response');
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  // playlist updated during append
+  let playlistUpdated = playlistWithDuration(40);
+
+  playlistUpdated.segments.shift();
+  playlistUpdated.mediaSequence++;
+  loader.playlist(playlistUpdated);
+  // finish append
+  mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
+  mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(loader.pendingSegment_.uri, '1.ts', 'retrieving second segment');
+  assert.equal(loader.state, 'WAITING', 'waiting for response');
+});
+
 QUnit.module('Segment Loading Calculation', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
