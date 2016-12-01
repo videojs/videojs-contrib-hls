@@ -96,6 +96,7 @@
     "url-toolkit": "^1.0.4",
     "video.js": "^5.15.1",
     "videojs-contrib-media-sources": "^4.1.3",
+    "videojs-contrib-quality-levels": "^1.0.0",
     "videojs-swf": "^5.0.2"
   },
   "devDependencies": {
