@@ -182,13 +182,14 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
       };
     };
 
+    let segment = playlist.segments[0];
     let segmentInfo = {
       mediaIndex: 0,
       playlist,
       timeline: 0,
-      timestampOffset: 0
+      timestampOffset: 0,
+      segment
     };
-    let segment = playlist.segments[0];
 
     syncCon.probeSegmentInfo(segmentInfo);
     assert.ok(syncCon.timelines[0], 'created mapping object for timeline 0');
@@ -203,6 +204,7 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
     segmentInfo.timestampOffset = null;
     segmentInfo.mediaIndex = 1;
     segment = playlist.segments[1];
+    segmentInfo.segment = segment;
 
     syncCon.probeSegmentInfo(segmentInfo);
     assert.equal(segment.start, 10, 'correctly calculated segment start');
@@ -214,6 +216,7 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
     segmentInfo.mediaIndex = 3;
     segmentInfo.timeline = 1;
     segment = playlist.segments[3];
+    segmentInfo.segment = segment;
 
     syncCon.probeSegmentInfo(segmentInfo);
     assert.ok(syncCon.timelines[1], 'created mapping object for timeline 1');

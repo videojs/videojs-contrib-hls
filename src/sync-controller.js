@@ -214,7 +214,7 @@ export default class SyncController extends videojs.EventTarget {
    * @param {SegmentInfo} segmentInfo - The current active request information
    */
   probeSegmentInfo(segmentInfo) {
-    let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+    let segment = segmentInfo.segment;
     let timingInfo;
 
     if (segment.map) {
@@ -239,7 +239,7 @@ export default class SyncController extends videojs.EventTarget {
    * @return {object} The start and end time of the current segment in "media time"
    */
   probeMp4Segment_(segmentInfo) {
-    let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+    let segment = segmentInfo.segment;
     let timescales = mp4probe.timescale(segment.map.bytes);
     let startTime = mp4probe.startTime(timescales, segmentInfo.bytes);
 
@@ -295,7 +295,7 @@ export default class SyncController extends videojs.EventTarget {
    * @param {object} timingInfo - The start and end time of the current segment in "media time"
    */
   calculateSegmentTimeMapping_(segmentInfo, timingInfo) {
-    let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+    let segment = segmentInfo.segment;
     let mappingObj = this.timelines[segmentInfo.timeline];
 
     if (segmentInfo.timestampOffset !== null) {
@@ -329,7 +329,7 @@ export default class SyncController extends videojs.EventTarget {
    */
   saveDiscontinuitySyncInfo_(segmentInfo) {
     let playlist = segmentInfo.playlist;
-    let segment = playlist.segments[segmentInfo.mediaIndex];
+    let segment = segmentInfo.segment;
 
     // If the current segment is a discontinuity then we know exactly where
     // the start of the range and it's accuracy is 0 (greater accuracy values

@@ -1082,6 +1082,48 @@ function(assert) {
   assert.equal(loader.state, 'WAITING', 'waiting for response');
 });
 
+QUnit.test('processing segment reachable even after playlist update removes it',
+function(assert) {
+  let playlist = playlistWithDuration(40);
+
+  playlist.endList = false;
+
+  loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
+  loader.load();
+
+  assert.equal(loader.state, 'WAITING', 'in waiting state');
+  assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
+
+  // wrap up the first request to set mediaIndex and start normal live streaming
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
+  mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(loader.state, 'WAITING', 'in waiting state');
+  assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
+
+  // playlist updated during waiting
+  let playlistUpdated = playlistWithDuration(40);
+
+  playlistUpdated.segments.shift();
+  playlistUpdated.segments.shift();
+  playlistUpdated.mediaSequence += 2;
+  loader.playlist(playlistUpdated);
+
+  assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment still pending');
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  // we need to check for the right state, as normally handleResponse would throw an
+  // error under failing cases, but sinon swallows it as part of fake XML HTTP request's
+  // response
+  assert.equal(loader.state, 'APPENDING', 'moved to appending state');
+  assert.equal(loader.pendingSegment_.uri, '1.ts', 'still using second segment');
+});
+
 QUnit.module('Segment Loading Calculation', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
