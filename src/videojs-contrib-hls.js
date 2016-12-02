@@ -19,6 +19,7 @@ import renditionSelectionMixin from './rendition-mixin';
 import window from 'global/window';
 import PlaybackWatcher from './playback-watcher';
 import reloadSourceOnError from './reload-source-on-error';
+import 'videojs-contrib-quality-levels';
 
 const Hls = {
   PlaylistLoader,
@@ -78,6 +79,57 @@ const safeGetComputedStyle = function(el, property) {
 };
 
 /**
+ * Finds the index of the HLS playlist in a give list of playlists.
+ *
+ * @param {Object} media Playlist object to search for.
+ * @param {Object[]} playlists List of playlist objects to search through.
+ * @returns {number} The index of the playlist or -1 if not found.
+ * @function getHlsPlaylistIndex
+ */
+const getHlsPlaylistIndex = function(media, playlists) {
+  for (let i = 0; i < playlists.length; i++) {
+    let playlist = playlists[i];
+
+    if (playlist.resolvedUri === media.resolvedUri) {
+      return i;
+    }
+  }
+  return -1;
+};
+
+/**
+ * Updates the selcetedIndex of the QualityLevelList when a mediachange happens in hls.
+ *
+ * @param {QualityLevelList} qualityLevels The QualityLevelList to update.
+ * @param {PlaylistLoader} playlistLoader PlaylistLoader containing the new media info.
+ * @function handleHlsMediaChange
+ */
+const handleHlsMediaChange = function(qualityLevels, playlistLoader) {
+  let newPlaylist = playlistLoader.media();
+  let selectedIndex = getHlsPlaylistIndex(newPlaylist, playlistLoader.master.playlists);
+
+  qualityLevels.selectedIndex_ = selectedIndex;
+  qualityLevels.trigger({
+    selectedIndex,
+    type: 'change'
+  });
+};
+
+/**
+ * Adds quality levels to list once playlist metadata is available
+ *
+ * @param {QualityLevelList} qualityLevels The QualityLevelList to attach events to.
+ * @param {Object} hls Hls object to listen to for media events.
+ * @function handleHlsLoadedMetadata
+ */
+const handleHlsLoadedMetadata = function(qualityLevels, hls) {
+  hls.representations().forEach((rep) => {
+    qualityLevels.addQualityLevel(rep);
+  });
+  handleHlsMediaChange(qualityLevels, hls.playlists);
+};
+
+/**
  * Chooses the appropriate media playlist based on the current
  * bandwidth estimate and the player size.
  *
@@ -103,10 +155,9 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
   sortedPlaylists = sortedPlaylists.filter((localVariant) => {
-    if (typeof localVariant.excludeUntil !== 'undefined') {
-      return now >= localVariant.excludeUntil;
-    }
-    return true;
+    let blacklisted = localVariant.excludeUntil && localVariant.excludeUntil > now;
+
+    return (!localVariant.disabled && !blacklisted);
   });
 
   // filter out any variant that has greater effective bitrate
@@ -377,6 +428,7 @@ class HlsHandler extends Component {
     this.options_.url = this.source_.src;
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
+
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
     this.playbackWatcher_ = new PlaybackWatcher(
       videojs.mergeOptions(this.options_, {
@@ -513,6 +565,8 @@ class HlsHandler extends Component {
       this.ignoreNextSeekingEvent_ = true;
     });
 
+    this.setupQualityLevels_();
+
     // do nothing if the tech has been disposed already
     // this can occur if someone sets the src in player.ready(), for instance
     if (!this.tech_.el()) {
@@ -521,6 +575,26 @@ class HlsHandler extends Component {
 
     this.tech_.src(videojs.URL.createObjectURL(
       this.masterPlaylistController_.mediaSource));
+  }
+
+  /**
+   * Initializes the quality levels and sets listeners to update them.
+   *
+   * @method setupQualityLevels_
+   * @private
+   */
+  setupQualityLevels_() {
+    let _player = videojs(this.tech_.options_.playerId);
+
+    this.qualityLevels_ = _player.qualityLevels();
+
+    this.masterPlaylistController_.on('selectedinitialmedia', () => {
+      handleHlsLoadedMetadata(this.qualityLevels_, this);
+    });
+
+    this.playlists.on('mediachange', () => {
+      handleHlsMediaChange(this.qualityLevels_, this.playlists);
+    });
   }
 
   /**
@@ -569,6 +643,9 @@ class HlsHandler extends Component {
     }
     if (this.masterPlaylistController_) {
       this.masterPlaylistController_.dispose();
+    }
+    if (this.qualityLevels_) {
+      this.qualityLevels_.dispose();
     }
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
     super.dispose();
