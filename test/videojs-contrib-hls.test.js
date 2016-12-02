@@ -21,6 +21,7 @@ import window from 'global/window';
 /* eslint-enable no-unused-vars */
 
 const Flash = videojs.getComponent('Flash');
+const ogHlsHandlerSetupQualityLevels = videojs.HlsHandler.setupQualityLevels_;
 let nextId = 0;
 
 // do a shallow copy of the properties of source onto the target object
@@ -1455,6 +1456,7 @@ QUnit.test('the source handler supports HLS mime types', function(assert) {
 });
 
 QUnit.test('fires loadstart manually if Flash is used', function(assert) {
+  videojs.HlsHandler.prototype.setupQualityLevels_ = () => {};
   let tech = new (videojs.getTech('Flash'))({});
   let loadstarts = 0;
 
@@ -1469,6 +1471,7 @@ QUnit.test('fires loadstart manually if Flash is used', function(assert) {
   assert.equal(loadstarts, 0, 'loadstart is not synchronous');
   this.clock.tick(1);
   assert.equal(loadstarts, 1, 'fired loadstart');
+  videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
 });
 
 QUnit.test('has no effect if native HLS is available', function(assert) {
@@ -2314,6 +2317,36 @@ QUnit.test('passes useCueTags hls option to master playlist controller', functio
   videojs.options.hls = origHlsOptions;
 });
 
+QUnit.test('populates quality levels list when available', function(assert) {
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels');
+
+  let qualityLevels = this.player.qualityLevels();
+  let addCount = 0;
+  let changeCount = 0;
+
+  qualityLevels.on('addqualitylevel', () => {
+    addCount++;
+  });
+
+  qualityLevels.on('change', () => {
+    changeCount++;
+  });
+
+  openMediaSource(this.player, this.clock);
+  // master
+  standardXHRResponse(this.requests.shift());
+  // media
+  standardXHRResponse(this.requests.shift());
+
+  assert.equal(addCount, 4, 'four levels added from master');
+  assert.equal(changeCount, 1, 'selected initial quality level');
+});
+
 QUnit.module('HLS Integration', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
@@ -2321,10 +2354,12 @@ QUnit.module('HLS Integration', {
     this.mse = useFakeMediaSource();
     this.tech = new (videojs.getTech('Html5'))({});
     this.clock = this.env.clock;
+    videojs.HlsHandler.prototype.setupQualityLevels_ = () => {};
   },
   afterEach() {
     this.env.restore();
     this.mse.restore();
+    videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
   }
 });
 
@@ -2585,10 +2620,12 @@ QUnit.module('HLS - Encryption', {
     this.requests = this.env.requests;
     this.mse = useFakeMediaSource();
     this.tech = new (videojs.getTech('Html5'))({});
+    videojs.HlsHandler.prototype.setupQualityLevels_ = () => {};
   },
   afterEach() {
     this.env.restore();
     this.mse.restore();
+    videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
   }
 });
 

@@ -429,10 +429,6 @@ class HlsHandler extends Component {
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
 
-    let _player = videojs(this.tech_.options_.playerId);
-
-    this.qualityLevels_ = _player.qualityLevels();
-
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
     this.playbackWatcher_ = new PlaybackWatcher(
       videojs.mergeOptions(this.options_, {
@@ -547,11 +543,6 @@ class HlsHandler extends Component {
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
       // Add the manual rendition mix-in to HlsHandler
       renditionSelectionMixin(this);
-      handleHlsLoadedMetadata(this.qualityLevels_, this);
-    });
-
-    this.playlists.on('mediachange', () => {
-      handleHlsMediaChange(this.qualityLevels_, this.playlists);
     });
 
     this.masterPlaylistController_.on('audioupdate', () => {
@@ -574,6 +565,8 @@ class HlsHandler extends Component {
       this.ignoreNextSeekingEvent_ = true;
     });
 
+    this.setupQualityLevels_();
+
     // do nothing if the tech has been disposed already
     // this can occur if someone sets the src in player.ready(), for instance
     if (!this.tech_.el()) {
@@ -582,6 +575,26 @@ class HlsHandler extends Component {
 
     this.tech_.src(videojs.URL.createObjectURL(
       this.masterPlaylistController_.mediaSource));
+  }
+
+  /**
+   * Initializes the quality levels and sets listeners to update them.
+   *
+   * @method setupQualityLevels_
+   * @private
+   */
+  setupQualityLevels_() {
+    let _player = videojs(this.tech_.options_.playerId);
+
+    this.qualityLevels_ = _player.qualityLevels();
+
+    this.masterPlaylistController_.on('selectedinitialmedia', () => {
+      handleHlsLoadedMetadata(this.qualityLevels_, this);
+    });
+
+    this.playlists.on('mediachange', () => {
+      handleHlsMediaChange(this.qualityLevels_, this.playlists);
+    });
   }
 
   /**
@@ -631,7 +644,9 @@ class HlsHandler extends Component {
     if (this.masterPlaylistController_) {
       this.masterPlaylistController_.dispose();
     }
-    this.qualityLevels_.dispose();
+    if (this.qualityLevels_) {
+      this.qualityLevels_.dispose();
+    }
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
     super.dispose();
   }
