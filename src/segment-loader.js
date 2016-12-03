@@ -5,10 +5,11 @@ import Ranges from './ranges';
 import {getMediaIndexForTime_ as getMediaIndexForTime, duration} from './playlist';
 import videojs from 'video.js';
 import SourceUpdater from './source-updater';
-import {Decrypter} from 'aes-decrypter';
 import mp4probe from 'mux.js/lib/mp4/probe';
 import Config from './config';
 import window from 'global/window';
+import work from 'webworkify';
+import Decrypter from './decrypter-worker.js';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -173,6 +174,21 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.activeInitSegmentId_ = null;
     this.initSegments_ = {};
+
+    this.decrypter_ = work(Decrypter);
+    this.decrypter_.onmessage = (event) => {
+      if (event.data.action === 'done') {
+        let segmentInfo = this.pendingSegment_;
+
+        if (segmentInfo) {
+          let bytes = new Uint8Array(event.data.bytes,
+                                     event.data.byteOffset,
+                                     event.data.byteLength);
+          segmentInfo.bytes = bytes;
+          this.handleSegment_();
+        }
+      }
+    };
   }
 
   /**
@@ -857,14 +873,27 @@ export default class SegmentLoader extends videojs.EventTarget {
       // this is an encrypted segment
       // incrementally decrypt the segment
       /* eslint-disable no-new, handle-callback-err */
-      new Decrypter(segmentInfo.encryptedBytes,
-                    segment.key.bytes,
-                    segment.key.iv,
-                    (function(err, bytes) {
-                      // err always null
-                      segmentInfo.bytes = bytes;
-                      this.handleSegment_();
-                    }).bind(this));
+      this.decrypter_.postMessage({
+        action: 'decrypt',
+        encrypted: {
+          bytes: segmentInfo.encryptedBytes.buffer,
+          byteOffset: segmentInfo.encryptedBytes.byteOffset,
+          byteLength: segmentInfo.encryptedBytes.byteLength
+        },
+        key: {
+          bytes: segment.key.bytes.buffer,
+          byteOffset: segment.key.bytes.byteOffset,
+          byteLength: segment.key.bytes.byteLength
+        },
+        iv: {
+          bytes: segment.key.iv.buffer,
+          byteOffset: segment.key.iv.byteOffset,
+          byteLength: segment.key.iv.byteLength
+        },
+      }, [
+        segmentInfo.encryptedBytes.buffer,
+        segment.key.bytes.buffer
+      ]);
       /* eslint-enable */
     } else {
       this.handleSegment_();
