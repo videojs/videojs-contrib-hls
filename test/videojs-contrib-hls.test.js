@@ -1501,6 +1501,21 @@ QUnit.test('has no effect if native HLS is available', function() {
   player.dispose();
 });
 
+QUnit.test('loads if native HLS is available and override is set', function() {
+  videojs.options.hls.overrideNative = true;
+  let player;
+
+  Hls.supportsNativeHls = true;
+  player = createPlayer();
+  player.src({
+    src: 'http://example.com/manifest/master.m3u8',
+    type: 'application/x-mpegURL'
+  });
+
+  QUnit.ok(player.tech_.hls, 'did load hls tech');
+  player.dispose();
+});
+
 // TODO: this test seems to be very old do we still need it?
 // it does not appear to test anything at all...
 QUnit.skip('is not supported on browsers without typed arrays', function() {

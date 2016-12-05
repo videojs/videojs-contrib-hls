@@ -679,7 +679,7 @@ HlsSourceHandler.canPlayType = function(type) {
   let mpegurlRE = /^(audio|video|application)\/(x-|vnd\.apple\.)?mpegurl/i;
 
   // favor native HLS support if it's available
-  if (Hls.supportsNativeHls) {
+  if (!videojs.options.hls.overrideNative && Hls.supportsNativeHls) {
     return false;
   }
   return mpegurlRE.test(type);
@@ -693,7 +693,7 @@ if (typeof videojs.MediaSource === 'undefined' ||
 
 // register source handlers with the appropriate techs
 if (MediaSource.supportsNativeMediaSources()) {
-  videojs.getComponent('Html5').registerSourceHandler(HlsSourceHandler('html5'));
+  videojs.getComponent('Html5').registerSourceHandler(HlsSourceHandler('html5'), 0);
 }
 if (window.Uint8Array) {
   videojs.getComponent('Flash').registerSourceHandler(HlsSourceHandler('flash'));
