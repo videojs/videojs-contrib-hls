@@ -184,6 +184,7 @@ export default class SegmentLoader extends videojs.EventTarget {
           let bytes = new Uint8Array(event.data.bytes,
                                      event.data.byteOffset,
                                      event.data.byteLength);
+
           segmentInfo.bytes = bytes;
           this.handleSegment_();
         }
@@ -889,7 +890,7 @@ export default class SegmentLoader extends videojs.EventTarget {
           bytes: segment.key.iv.buffer,
           byteOffset: segment.key.iv.byteOffset,
           byteLength: segment.key.iv.byteLength
-        },
+        }
       }, [
         segmentInfo.encryptedBytes.buffer,
         segment.key.bytes.buffer

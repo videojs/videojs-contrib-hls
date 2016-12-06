@@ -11,6 +11,7 @@ import {Decrypter} from 'aes-decrypter';
 const Worker = function(self) {
   self.onmessage = function(event) {
     let data = event.data;
+
     if (data.action === 'decrypt') {
       let encrypted = new Uint8Array(data.encrypted.bytes,
                                      data.encrypted.byteOffset,
@@ -21,17 +22,20 @@ const Worker = function(self) {
       let iv = new Uint32Array(data.iv.bytes,
                                data.iv.byteOffset,
                                data.iv.byteLength / 4);
-      new Decrypter(encrypted,
-                    key,
-                    iv,
-                    function(err, bytes) {
-                      window.postMessage({
-                        action: 'done',
-                        bytes: bytes.buffer,
-                        byteOffset: bytes.byteOffset,
-                        byteLength: bytes.byteLength
-                      }, [bytes.buffer]);
-                    });
+      let fn = function(err, bytes) {
+        if (err) {
+          return;
+        }
+
+        window.postMessage({
+          action: 'done',
+          bytes: bytes.buffer,
+          byteOffset: bytes.byteOffset,
+          byteLength: bytes.byteLength
+        }, [bytes.buffer]);
+      };
+
+      return new Decrypter(encrypted, key, iv, fn);
     }
   };
 };

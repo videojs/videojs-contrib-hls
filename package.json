@@ -39,7 +39,6 @@
     "test:firefox": "npm run pretest && karma start test/karma/firefox.js",
     "test:ie": "npm run pretest && karma start test/karma/ie.js",
     "test:safari": "npm run pretest && karma start test/karma/safari.js",
-    "preversion": "npm test",
     "version": "npm run build",
     "watch": "npm-run-all -p watch:*",
     "watch:docs": "nodemon --watch src/ --exec npm run docs",
