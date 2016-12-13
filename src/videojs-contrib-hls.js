@@ -86,17 +86,18 @@ const safeGetComputedStyle = function(el, property) {
  */
 const handleHlsMediaChange = function(qualityLevels, playlistLoader) {
   let newPlaylist = playlistLoader.media();
-  let i;
+  let selectedIndex = -1;
 
-  for (i = qualityLevels.length - 1; i >= 0; i--) {
+  for (let i = 0; i < qualityLevels.length; i++) {
     if (qualityLevels[i].id === newPlaylist.uri) {
+      selectedIndex = i;
       break;
     }
   }
 
-  qualityLevels.selectedIndex_ = i;
+  qualityLevels.selectedIndex_ = selectedIndex;
   qualityLevels.trigger({
-    selectedIndex: i,
+    selectedIndex,
     type: 'change'
   });
 };
