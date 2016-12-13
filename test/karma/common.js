@@ -45,7 +45,7 @@ var DEFAULTS = {
     debug: true,
     transform: [
       'babelify',
-      'browserify-shim'
+      ['browserify-shim', { global: true }]
     ],
     noParse: [
       'test/data/**',
