@@ -194,6 +194,8 @@ QUnit.test('setting a representation to disabled sets disabled to true', functio
 
   assert.equal(playlists[0].disabled, true, 'rendition has been disabled');
   assert.equal(playlists[1].disabled, undefined, 'rendition has not been disabled');
+  assert.equal(playlists[0].excludeUntil, 0, 'excludeUntil not touched when disabling a rendition');
+  assert.equal(playlists[1].excludeUntil, 0, 'excludeUntil not touched when disabling a rendition');
 });
 
 QUnit.test('changing the enabled state of a representation calls fastQualityChange_', function(assert) {

@@ -19,7 +19,6 @@ import renditionSelectionMixin from './rendition-mixin';
 import window from 'global/window';
 import PlaybackWatcher from './playback-watcher';
 import reloadSourceOnError from './reload-source-on-error';
-import 'videojs-contrib-quality-levels';
 
 const Hls = {
   PlaylistLoader,
@@ -79,25 +78,6 @@ const safeGetComputedStyle = function(el, property) {
 };
 
 /**
- * Finds the index of the HLS playlist in a give list of playlists.
- *
- * @param {Object} media Playlist object to search for.
- * @param {Object[]} playlists List of playlist objects to search through.
- * @returns {number} The index of the playlist or -1 if not found.
- * @function getHlsPlaylistIndex
- */
-const getHlsPlaylistIndex = function(media, playlists) {
-  for (let i = 0; i < playlists.length; i++) {
-    let playlist = playlists[i];
-
-    if (playlist.resolvedUri === media.resolvedUri) {
-      return i;
-    }
-  }
-  return -1;
-};
-
-/**
  * Updates the selcetedIndex of the QualityLevelList when a mediachange happens in hls.
  *
  * @param {QualityLevelList} qualityLevels The QualityLevelList to update.
@@ -106,11 +86,17 @@ const getHlsPlaylistIndex = function(media, playlists) {
  */
 const handleHlsMediaChange = function(qualityLevels, playlistLoader) {
   let newPlaylist = playlistLoader.media();
-  let selectedIndex = getHlsPlaylistIndex(newPlaylist, playlistLoader.master.playlists);
+  let i;
 
-  qualityLevels.selectedIndex_ = selectedIndex;
+  for (i = qualityLevels.length - 1; i >= 0; i--) {
+    if (qualityLevels[i].id === newPlaylist.uri) {
+      break;
+    }
+  }
+
+  qualityLevels.selectedIndex_ = i;
   qualityLevels.trigger({
-    selectedIndex,
+    selectedIndex: i,
     type: 'change'
   });
 };
@@ -584,17 +570,19 @@ class HlsHandler extends Component {
    * @private
    */
   setupQualityLevels_() {
-    let _player = videojs(this.tech_.options_.playerId);
+    let player = videojs.players[this.tech_.options_.playerId];
 
-    this.qualityLevels_ = _player.qualityLevels();
+    if (player && player.qualityLevels) {
+      this.qualityLevels_ = player.qualityLevels();
 
-    this.masterPlaylistController_.on('selectedinitialmedia', () => {
-      handleHlsLoadedMetadata(this.qualityLevels_, this);
-    });
+      this.masterPlaylistController_.on('selectedinitialmedia', () => {
+        handleHlsLoadedMetadata(this.qualityLevels_, this);
+      });
 
-    this.playlists.on('mediachange', () => {
-      handleHlsMediaChange(this.qualityLevels_, this.playlists);
-    });
+      this.playlists.on('mediachange', () => {
+        handleHlsMediaChange(this.qualityLevels_, this.playlists);
+      });
+    }
   }
 
   /**

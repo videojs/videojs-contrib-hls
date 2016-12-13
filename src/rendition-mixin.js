@@ -91,7 +91,7 @@ let renditionSelectionMixin = function(hlsHandler) {
     return playlists
       .master
       .playlists
-      .map((e, i) => new Representation(hlsHandler, e, i));
+      .map((e, i) => new Representation(hlsHandler, e, e.uri));
   };
 };
 

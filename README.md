@@ -338,6 +338,8 @@ player.hls.representations().forEach(function(rep) {
 });
 ```
 
+Alternatively, you can include [videojs-contrib-quality-levels](https://github.com/videojs/videojs-contrib-quality-levels) to your page and hls will automatically populate the QualityLevelList exposed on the player by the plugin. You can access this list by calling `player.qualityLevels()`. See the [videojs-contrib-quality-levels project page](https://github.com/videojs/videojs-contrib-quality-levels) for more information on how to use the api.
+
 #### hls.xhr
 Type: `function`
 

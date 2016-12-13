@@ -18,10 +18,12 @@ import {
 import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
 import HlsAudioTrack from '../src/hls-audio-track';
 import window from 'global/window';
+// we need this so the plugin registers itself
+import 'videojs-contrib-quality-levels';
 /* eslint-enable no-unused-vars */
 
 const Flash = videojs.getComponent('Flash');
-const ogHlsHandlerSetupQualityLevels = videojs.HlsHandler.setupQualityLevels_;
+const ogHlsHandlerSetupQualityLevels = videojs.HlsHandler.prototype.setupQualityLevels_;
 let nextId = 0;
 
 // do a shallow copy of the properties of source onto the target object
