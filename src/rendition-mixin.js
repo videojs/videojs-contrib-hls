@@ -1,3 +1,4 @@
+import { isBlacklisted, isEnabled } from './playlist.js';
 /**
  * Enable/disable playlist function. It is intended to have the first two
  * arguments partially-applied in order to create the final per-playlist
@@ -11,10 +12,10 @@
  * or if undefined returns the current enabled-state for the playlist
  * @return {Boolean} The current enabled-state of the playlist
  */
-let enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
-  let playlist = loader.master.playlists[playlistUri];
-  let blacklisted = playlist.excludeUntil && playlist.excludeUntil > Date.now();
-  let currentlyEnabled = (!playlist.disabled && !blacklisted);
+const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
+  const playlist = loader.master.playlists[playlistUri];
+  const blacklisted = isBlacklisted(playlist);
+  const currentlyEnabled = isEnabled(playlist);
 
   if (typeof enable === 'undefined') {
     return currentlyEnabled;
