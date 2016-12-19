@@ -127,7 +127,6 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   let effectiveBitrate;
   let sortedPlaylists = this.playlists.master.playlists.slice();
   let bandwidthPlaylists = [];
-  let now = +new Date();
   let i;
   let variant;
   let bandwidthBestVariant;
@@ -141,11 +140,7 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
-  sortedPlaylists = sortedPlaylists.filter((localVariant) => {
-    let blacklisted = localVariant.excludeUntil && localVariant.excludeUntil > now;
-
-    return (!localVariant.disabled && !blacklisted);
-  });
+  sortedPlaylists = sortedPlaylists.filter(Playlist.isEnabled);
 
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth

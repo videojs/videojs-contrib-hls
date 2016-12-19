@@ -7,6 +7,7 @@
  */
 import resolveUrl from './resolve-url';
 import {mergeOptions} from 'video.js';
+import { isEnabled } from './playlist.js';
 import Stream from './stream';
 import m3u8 from 'm3u8-parser';
 import window from 'global/window';
@@ -229,11 +230,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * @return {Number} number of eneabled playlists
    */
   loader.enabledPlaylists_ = function() {
-    return loader.master.playlists.filter((playlist) => {
-      let blacklisted = playlist.excludeUntil && playlist.excludeUntil > Date.now();
-
-      return (!playlist.disabled && !blacklisted);
-    }).length;
+    return loader.master.playlists.filter(isEnabled).length;
   };
 
   /**
@@ -251,8 +248,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     let currentBandwidth = loader.media().attributes.BANDWIDTH || 0;
 
     return !(loader.master.playlists.filter((playlist) => {
-      let blacklisted = playlist.excludeUntil && playlist.excludeUntil > Date.now();
-      let enabled = (!playlist.disabled && !blacklisted);
+      const enabled = isEnabled(playlist);
 
       if (!enabled) {
         return false;

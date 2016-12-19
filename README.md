@@ -318,7 +318,24 @@ adaptive streaming logic.
 #### hls.representations
 Type: `function`
 
-To get all of the available representations, call the `representations()` method on `player.hls`. This will return a list of plain objects, each with `width`, `height`, `bandwidth`, and `id` properties, and an `enabled()` method.
+It is recommended to include the [videojs-contrib-quality-levels](https://github.com/videojs/videojs-contrib-quality-levels) plugin to your page so that videojs-contrib-hls will automatically populate the QualityLevelList exposed on the player by the plugin. You can access this list by calling `player.qualityLevels()`. See the [videojs-contrib-quality-levels project page](https://github.com/videojs/videojs-contrib-quality-levels) for more information on how to use the api.
+
+Example, only enabling representations with a width greater than or equal to 720:
+
+```javascript
+var qualityLevels = player.qualityLevels();
+
+for (var i = 0; i < qualityLevels.length; i++) {
+  var quality = qualityLevels[i];
+  if (quality.width >= 720) {
+    quality.enabled = true;
+  } else {
+    quality.enabled = false;
+  }
+}
+```
+
+If including [videojs-contrib-quality-levels](https://github.com/videojs/videojs-contrib-quality-levels) is not an option, you can use the representations api. To get all of the available representations, call the `representations()` method on `player.hls`. This will return a list of plain objects, each with `width`, `height`, `bandwidth`, and `id` properties, and an `enabled()` method.
 
 ```javascript
 player.hls.representations();
@@ -337,8 +354,6 @@ player.hls.representations().forEach(function(rep) {
   }
 });
 ```
-
-Alternatively, you can include [videojs-contrib-quality-levels](https://github.com/videojs/videojs-contrib-quality-levels) to your page and hls will automatically populate the QualityLevelList exposed on the player by the plugin. You can access this list by calling `player.qualityLevels()`. See the [videojs-contrib-quality-levels project page](https://github.com/videojs/videojs-contrib-quality-levels) for more information on how to use the api.
 
 #### hls.xhr
 Type: `function`
