@@ -997,10 +997,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     currentMediaIndex +=
       segmentInfo.playlist.mediaSequence - this.playlist_.mediaSequence;
 
-    if (!segmentInfo.isSyncRequest) {
-      this.mediaIndex = currentMediaIndex;
-      this.fetchAtBuffer_ = true;
-    }
+    this.mediaIndex = currentMediaIndex;
+    this.fetchAtBuffer_ = true;
 
     // any time an update finishes and the last segment is in the
     // buffer, end the stream. this ensures the "ended" event will
