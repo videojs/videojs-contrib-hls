@@ -92,6 +92,7 @@ let renditionSelectionMixin = function(hlsHandler) {
     return playlists
       .master
       .playlists
+      .filter((media) => !isBlacklisted(media))
       .map((e, i) => new Representation(hlsHandler, e, e.uri));
   };
 };
