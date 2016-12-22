@@ -1070,7 +1070,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         if (window.MediaSource &&
             window.MediaSource.isTypeSupported &&
             !window.MediaSource.isTypeSupported(
-              'video/mp4; codecs="' + mapLegacyAvcCodecs(codecString) + '"')) {
+              'video/mp4; codecs="' + mapLegacyAvcCodecs_(codecString) + '"')) {
           variant.excludeUntil = Infinity;
         }
       }
