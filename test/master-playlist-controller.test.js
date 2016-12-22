@@ -10,7 +10,8 @@ import {
 import manifests from './test-manifests.js';
 import {
   MasterPlaylistController,
-  mimeTypesForPlaylist_
+  mimeTypesForPlaylist_,
+  mapLegacyAvcCodecs_
 } from '../src/master-playlist-controller';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
@@ -953,4 +954,46 @@ QUnit.test('recognizes unmuxed codec configurations', function(assert) {
     'video/mp2t; codecs="avc1.deadbeef"',
     'audio/mp2t; codecs="mp4a.40.E"'
   ], 'returned parsed unmuxed types');
+});
+
+QUnit.module('Map Legacy AVC Codec');
+
+QUnit.test('maps legacy AVC codecs', function(assert) {
+  assert.equal(mapLegacyAvcCodecs_('avc1.deadbeef'),
+               'avc1.deadbeef',
+               'does nothing for non legacy pattern');
+  assert.equal(mapLegacyAvcCodecs_('avc1.dead.beef, mp4a.something'),
+               'avc1.dead.beef, mp4a.something',
+               'does nothing for non legacy pattern');
+  assert.equal(mapLegacyAvcCodecs_('avc1.dead.beef,mp4a.something'),
+               'avc1.dead.beef,mp4a.something',
+               'does nothing for non legacy pattern');
+  assert.equal(mapLegacyAvcCodecs_('mp4a.something,avc1.dead.beef'),
+               'mp4a.something,avc1.dead.beef',
+               'does nothing for non legacy pattern');
+  assert.equal(mapLegacyAvcCodecs_('mp4a.something, avc1.dead.beef'),
+               'mp4a.something, avc1.dead.beef',
+               'does nothing for non legacy pattern');
+  assert.equal(mapLegacyAvcCodecs_('avc1.42001e'),
+               'avc1.42001e',
+               'does nothing for non legacy pattern');
+  assert.equal(mapLegacyAvcCodecs_('avc1.4d0020,mp4a.40.2'),
+               'avc1.4d0020,mp4a.40.2',
+               'does nothing for non legacy pattern');
+  assert.equal(mapLegacyAvcCodecs_('mp4a.40.2,avc1.4d0020'),
+               'mp4a.40.2,avc1.4d0020',
+               'does nothing for non legacy pattern');
+  assert.equal(mapLegacyAvcCodecs_('mp4a.40.40'),
+               'mp4a.40.40',
+               'does nothing for non video codecs');
+
+  assert.equal(mapLegacyAvcCodecs_('avc1.66.30'),
+               'avc1.42001e',
+               'translates legacy video codec alone');
+  assert.equal(mapLegacyAvcCodecs_('avc1.66.30, mp4a.40.2'),
+               'avc1.42001e, mp4a.40.2',
+               'translates legacy video codec when paired with audio');
+  assert.equal(mapLegacyAvcCodecs_('mp4a.40.2, avc1.66.30'),
+               'mp4a.40.2, avc1.42001e',
+               'translates video codec when specified second');
 });

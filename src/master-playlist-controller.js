@@ -7,6 +7,7 @@ import Ranges from './ranges';
 import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
 import SyncController from './sync-controller';
+import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -70,6 +71,21 @@ const parseCodecs = function(codecs) {
   result.audioProfile = result.audioProfile && result.audioProfile[2];
 
   return result;
+};
+
+/**
+ * Replace codecs in the codec string with the old apple-style `avc1.<dd>.<dd>` to the
+ * standard `avc1.<hhhhhh>`.
+ *
+ * @param codecString {String} the codec string
+ * @return {String} the codec string with old apple-style codecs replaced
+ *
+ * @private
+ */
+export const mapLegacyAvcCodecs_ = function(codecString) {
+  return codecString.replace(/avc1\.(\d+)\.(\d+)/i, (match) => {
+    return translateLegacyCodecs([match])[0];
+  });
 };
 
 /**
@@ -1050,9 +1066,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
         let codecString = variant.attributes.CODECS;
 
         variantCodecs = parseCodecs(codecString);
+
         if (window.MediaSource &&
             window.MediaSource.isTypeSupported &&
-            !window.MediaSource.isTypeSupported('video/mp4; codecs="' + codecString + '"')) {
+            !window.MediaSource.isTypeSupported(
+              'video/mp4; codecs="' + mapLegacyAvcCodecs_(codecString) + '"')) {
           variant.excludeUntil = Infinity;
         }
       }
