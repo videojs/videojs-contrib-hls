@@ -79,8 +79,10 @@ const parseCodecs = function(codecs) {
  *
  * @param codecString {String} the codec string
  * @return {String} the codec string with old apple-style codecs replaced
+ *
+ * @private
  */
-export const mapLegacyAvcCodecs = function(codecString) {
+export const mapLegacyAvcCodecs_ = function(codecString) {
   return codecString.replace(/avc1\.(\d+)\.(\d+)/i, (match) => {
     return translateLegacyCodecs([match])[0];
   });
