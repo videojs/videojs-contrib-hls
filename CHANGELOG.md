@@ -2,6 +2,12 @@ CHANGELOG
 =========
 
 --------------------
+## 4.0.3 (2016-12-23)
+* Fix a segment hop in live [#928](https://github.com/videojs/videojs-contrib-hls/pull/928)
+* Map legacy AVC codecs to their modern equivalents when excluding incompatible playlists [#940](https://github.com/videojs/videojs-contrib-hls/pull/940)
+* Update video.js to 5.15.1 [#941](https://github.com/videojs/videojs-contrib-hls/pull/941)
+
+--------------------
 ## 4.0.2 (2016-11-29)
 * Fix excessive segment loads on seeks [#925](https://github.com/videojs/videojs-contrib-hls/pull/925)
   * Fixed a few cases where seeking caused the player to load too many segments
