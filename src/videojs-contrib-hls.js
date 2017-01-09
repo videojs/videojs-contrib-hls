@@ -78,7 +78,7 @@ const safeGetComputedStyle = function(el, property) {
 };
 
 /**
- * Updates the selcetedIndex of the QualityLevelList when a mediachange happens in hls.
+ * Updates the selectedIndex of the QualityLevelList when a mediachange happens in hls.
  *
  * @param {QualityLevelList} qualityLevels The QualityLevelList to update.
  * @param {PlaylistLoader} playlistLoader PlaylistLoader containing the new media info.
