@@ -160,6 +160,11 @@ QUnit.test('blacklisted playlists are not included in the representations list',
       bandwidth: 0,
       excludeUntil: 0,
       uri: 'media1.m3u8'
+    },
+    {
+      bandwidth: 0,
+      excludeUntil: Date.now() + 999999,
+      uri: 'media1.m3u8'
     }
   ]);
 
@@ -167,7 +172,7 @@ QUnit.test('blacklisted playlists are not included in the representations list',
 
   let renditions = hlsHandler.representations();
 
-  assert.equal(renditions.length, 1, 'rblacklisted rendition not added');
+  assert.equal(renditions.length, 1, 'blacklisted rendition not added');
   assert.equal(renditions[0].id, 'media1.m3u8', 'rendition is enabled');
 });
 
