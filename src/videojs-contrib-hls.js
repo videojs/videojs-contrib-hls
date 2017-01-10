@@ -78,6 +78,45 @@ const safeGetComputedStyle = function(el, property) {
 };
 
 /**
+ * Updates the selectedIndex of the QualityLevelList when a mediachange happens in hls.
+ *
+ * @param {QualityLevelList} qualityLevels The QualityLevelList to update.
+ * @param {PlaylistLoader} playlistLoader PlaylistLoader containing the new media info.
+ * @function handleHlsMediaChange
+ */
+const handleHlsMediaChange = function(qualityLevels, playlistLoader) {
+  let newPlaylist = playlistLoader.media();
+  let selectedIndex = -1;
+
+  for (let i = 0; i < qualityLevels.length; i++) {
+    if (qualityLevels[i].id === newPlaylist.uri) {
+      selectedIndex = i;
+      break;
+    }
+  }
+
+  qualityLevels.selectedIndex_ = selectedIndex;
+  qualityLevels.trigger({
+    selectedIndex,
+    type: 'change'
+  });
+};
+
+/**
+ * Adds quality levels to list once playlist metadata is available
+ *
+ * @param {QualityLevelList} qualityLevels The QualityLevelList to attach events to.
+ * @param {Object} hls Hls object to listen to for media events.
+ * @function handleHlsLoadedMetadata
+ */
+const handleHlsLoadedMetadata = function(qualityLevels, hls) {
+  hls.representations().forEach((rep) => {
+    qualityLevels.addQualityLevel(rep);
+  });
+  handleHlsMediaChange(qualityLevels, hls.playlists);
+};
+
+/**
  * Chooses the appropriate media playlist based on the current
  * bandwidth estimate and the player size.
  *
@@ -88,7 +127,6 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   let effectiveBitrate;
   let sortedPlaylists = this.playlists.master.playlists.slice();
   let bandwidthPlaylists = [];
-  let now = +new Date();
   let i;
   let variant;
   let bandwidthBestVariant;
@@ -102,12 +140,7 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
-  sortedPlaylists = sortedPlaylists.filter((localVariant) => {
-    if (typeof localVariant.excludeUntil !== 'undefined') {
-      return now >= localVariant.excludeUntil;
-    }
-    return true;
-  });
+  sortedPlaylists = sortedPlaylists.filter(Playlist.isEnabled);
 
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
@@ -377,6 +410,7 @@ class HlsHandler extends Component {
     this.options_.url = this.source_.src;
     this.options_.tech = this.tech_;
     this.options_.externHls = Hls;
+
     this.masterPlaylistController_ = new MasterPlaylistController(this.options_);
     this.playbackWatcher_ = new PlaybackWatcher(
       videojs.mergeOptions(this.options_, {
@@ -513,6 +547,8 @@ class HlsHandler extends Component {
       this.ignoreNextSeekingEvent_ = true;
     });
 
+    this.setupQualityLevels_();
+
     // do nothing if the tech has been disposed already
     // this can occur if someone sets the src in player.ready(), for instance
     if (!this.tech_.el()) {
@@ -521,6 +557,28 @@ class HlsHandler extends Component {
 
     this.tech_.src(videojs.URL.createObjectURL(
       this.masterPlaylistController_.mediaSource));
+  }
+
+  /**
+   * Initializes the quality levels and sets listeners to update them.
+   *
+   * @method setupQualityLevels_
+   * @private
+   */
+  setupQualityLevels_() {
+    let player = videojs.players[this.tech_.options_.playerId];
+
+    if (player && player.qualityLevels) {
+      this.qualityLevels_ = player.qualityLevels();
+
+      this.masterPlaylistController_.on('selectedinitialmedia', () => {
+        handleHlsLoadedMetadata(this.qualityLevels_, this);
+      });
+
+      this.playlists.on('mediachange', () => {
+        handleHlsMediaChange(this.qualityLevels_, this.playlists);
+      });
+    }
   }
 
   /**
@@ -569,6 +627,9 @@ class HlsHandler extends Component {
     }
     if (this.masterPlaylistController_) {
       this.masterPlaylistController_.dispose();
+    }
+    if (this.qualityLevels_) {
+      this.qualityLevels_.dispose();
     }
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
     super.dispose();

@@ -454,9 +454,35 @@ export const getMediaInfoForTime_ = function(playlist, currentTime, startIndex, 
   };
 };
 
+/**
+ * Check whether the playlist is blacklisted or not.
+ *
+ * @param {Object} playlist the media playlist object
+ * @return {boolean} whether the playlist is blacklisted or not
+ * @function isBlacklisted
+ */
+export const isBlacklisted = function(playlist) {
+  return playlist.excludeUntil && playlist.excludeUntil > Date.now();
+};
+
+/**
+ * Check whether the playlist is enabled or not.
+ *
+ * @param {Object} playlist the media playlist object
+ * @return {boolean} whether the playlist is enabled or not
+ * @function isEnabled
+ */
+export const isEnabled = function(playlist) {
+  const blacklisted = isBlacklisted(playlist);
+
+  return (!playlist.disabled && !blacklisted);
+};
+
 Playlist.duration = duration;
 Playlist.seekable = seekable;
 Playlist.getMediaInfoForTime_ = getMediaInfoForTime_;
+Playlist.isEnabled = isEnabled;
+Playlist.isBlacklisted = isBlacklisted;
 
 // exports
 export default Playlist;

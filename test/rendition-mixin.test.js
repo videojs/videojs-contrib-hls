@@ -34,6 +34,14 @@ const makeMockPlaylist = function(options) {
     playlist.excludeUntil = options.excludeUntil;
   }
 
+  if ('uri' in options) {
+    playlist.uri = options.uri;
+  }
+
+  if ('disabled' in options) {
+    playlist.disabled = options.disabled;
+  }
+
   return playlist;
 };
 
@@ -55,7 +63,13 @@ const makeMockHlsHandler = function(playlistOptions) {
     }
   };
 
-  hlsHandler.playlists.master.playlists = playlistOptions.map(makeMockPlaylist);
+  playlistOptions.forEach((playlist, i) => {
+    hlsHandler.playlists.master.playlists[i] = makeMockPlaylist(playlist);
+
+    if (playlist.uri) {
+      hlsHandler.playlists.master.playlists[playlist.uri] = hlsHandler.playlists.master.playlists[i];
+    }
+  });
 
   return hlsHandler;
 };
@@ -135,15 +149,31 @@ QUnit.test('returns representations with width and height if present', function(
   assert.equal(renditions[2].height, undefined, 'rendition has a height of undefined');
 });
 
-QUnit.test('representations are disabled if their excludeUntil is after Date.now', function(assert) {
+QUnit.test('blacklisted playlists are not included in the representations list', function(assert) {
   let hlsHandler = makeMockHlsHandler([
     {
       bandwidth: 0,
-      excludeUntil: Infinity
+      excludeUntil: Infinity,
+      uri: 'media0.m3u8'
     },
     {
       bandwidth: 0,
-      excludeUntil: 0
+      excludeUntil: 0,
+      uri: 'media1.m3u8'
+    },
+    {
+      bandwidth: 0,
+      excludeUntil: Date.now() + 999999,
+      uri: 'media2.m3u8'
+    },
+    {
+      bandwidth: 0,
+      excludeUntil: 1,
+      uri: 'media3.m3u8'
+    },
+    {
+      bandwidth: 0,
+      uri: 'media4.m3u8'
     }
   ]);
 
@@ -151,19 +181,23 @@ QUnit.test('representations are disabled if their excludeUntil is after Date.now
 
   let renditions = hlsHandler.representations();
 
-  assert.equal(renditions[0].enabled(), false, 'rendition is not enabled');
-  assert.equal(renditions[1].enabled(), true, 'rendition is enabled');
+  assert.equal(renditions.length, 3, 'blacklisted rendition not added');
+  assert.equal(renditions[0].id, 'media1.m3u8', 'rendition is enabled');
+  assert.equal(renditions[1].id, 'media3.m3u8', 'rendition is enabled');
+  assert.equal(renditions[2].id, 'media4.m3u8', 'rendition is enabled');
 });
 
-QUnit.test('setting a representation to disabled sets excludeUntil to Infinity', function(assert) {
+QUnit.test('setting a representation to disabled sets disabled to true', function(assert) {
   let hlsHandler = makeMockHlsHandler([
     {
       bandwidth: 0,
-      excludeUntil: 0
+      excludeUntil: 0,
+      uri: 'media0.m3u8'
     },
     {
       bandwidth: 0,
-      excludeUntil: 0
+      excludeUntil: 0,
+      uri: 'media1.m3u8'
     }
   ]);
   let playlists = hlsHandler.playlists.master.playlists;
@@ -174,19 +208,22 @@ QUnit.test('setting a representation to disabled sets excludeUntil to Infinity',
 
   renditions[0].enabled(false);
 
-  assert.equal(playlists[0].excludeUntil, Infinity, 'rendition has an infinite excludeUntil');
-  assert.equal(playlists[1].excludeUntil, 0, 'rendition has an excludeUntil of zero');
+  assert.equal(playlists[0].disabled, true, 'rendition has been disabled');
+  assert.equal(playlists[1].disabled, undefined, 'rendition has not been disabled');
+  assert.equal(playlists[0].excludeUntil, 0, 'excludeUntil not touched when disabling a rendition');
+  assert.equal(playlists[1].excludeUntil, 0, 'excludeUntil not touched when disabling a rendition');
 });
 
 QUnit.test('changing the enabled state of a representation calls fastQualityChange_', function(assert) {
   let hlsHandler = makeMockHlsHandler([
     {
       bandwidth: 0,
-      excludeUntil: Infinity
+      disabled: true,
+      uri: 'media0.m3u8'
     },
     {
       bandwidth: 0,
-      excludeUntil: 0
+      uri: 'media1.m3u8'
     }
   ]);
   let mpc = hlsHandler.masterPlaylistController_;

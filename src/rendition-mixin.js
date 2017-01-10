@@ -1,3 +1,4 @@
+import { isBlacklisted, isEnabled } from './playlist.js';
 /**
  * Enable/disable playlist function. It is intended to have the first two
  * arguments partially-applied in order to create the final per-playlist
@@ -11,21 +12,22 @@
  * or if undefined returns the current enabled-state for the playlist
  * @return {Boolean} The current enabled-state of the playlist
  */
-let enableFunction = (playlist, changePlaylistFn, enable) => {
-  let currentlyEnabled = typeof playlist.excludeUntil === 'undefined' ||
-                         playlist.excludeUntil <= Date.now();
+const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
+  const playlist = loader.master.playlists[playlistUri];
+  const blacklisted = isBlacklisted(playlist);
+  const currentlyEnabled = isEnabled(playlist);
 
   if (typeof enable === 'undefined') {
     return currentlyEnabled;
   }
 
-  if (enable !== currentlyEnabled) {
-    if (enable) {
-      delete playlist.excludeUntil;
-    } else {
-      playlist.excludeUntil = Infinity;
-    }
+  if (enable) {
+    delete playlist.disabled;
+  } else {
+    playlist.disabled = true;
+  }
 
+  if (enable !== currentlyEnabled && !blacklisted) {
     // Ensure the outside world knows about our changes
     changePlaylistFn();
   }
@@ -69,7 +71,10 @@ class Representation {
 
     // Partially-apply the enableFunction to create a playlist-
     // specific variant
-    this.enabled = enableFunction.bind(this, playlist, fastChangeFunction);
+    this.enabled = enableFunction.bind(this,
+                                       hlsHandler.playlists,
+                                       playlist.uri,
+                                       fastChangeFunction);
   }
 }
 
@@ -87,7 +92,8 @@ let renditionSelectionMixin = function(hlsHandler) {
     return playlists
       .master
       .playlists
-      .map((e, i) => new Representation(hlsHandler, e, i));
+      .filter((media) => !isBlacklisted(media))
+      .map((e, i) => new Representation(hlsHandler, e, e.uri));
   };
 };
 
