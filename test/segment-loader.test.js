@@ -1124,6 +1124,111 @@ function(assert) {
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'still using second segment');
 });
 
+QUnit.test('saves segment info to new segment after playlist refresh',
+function(assert) {
+  let playlist = playlistWithDuration(40);
+
+  playlist.endList = false;
+
+  loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
+  loader.load();
+
+  assert.equal(loader.state, 'WAITING', 'in waiting state');
+  assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
+
+  // wrap up the first request to set mediaIndex and start normal live streaming
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
+  mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(loader.state, 'WAITING', 'in waiting state');
+  assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
+
+  // playlist updated during waiting
+  let playlistUpdated = playlistWithDuration(40);
+
+  playlistUpdated.segments.shift();
+  playlistUpdated.mediaSequence++;
+  loader.playlist(playlistUpdated);
+
+  assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment still pending');
+
+  // mock probeSegmentInfo as the response bytes aren't parsable (and won't provide
+  // time info)
+  loader.syncController_.probeSegmentInfo = (segmentInfo) => {
+    segmentInfo.segment.start = 10;
+    segmentInfo.segment.end = 20;
+  };
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  assert.equal(playlistUpdated.segments[0].start,
+               10,
+               'set start on segment of new playlist');
+  assert.equal(playlistUpdated.segments[0].end,
+               20,
+               'set end on segment of new playlist');
+  assert.ok(!playlist.segments[1].start, 'did not set start on segment of old playlist');
+  assert.ok(!playlist.segments[1].end, 'did not set end on segment of old playlist');
+});
+
+QUnit.test('saves segment info to old segment after playlist refresh if segment fell off',
+function(assert) {
+  let playlist = playlistWithDuration(40);
+
+  playlist.endList = false;
+
+  loader.playlist(playlist);
+  loader.mimeType(this.mimeType);
+  loader.load();
+
+  assert.equal(loader.state, 'WAITING', 'in waiting state');
+  assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
+
+  // wrap up the first request to set mediaIndex and start normal live streaming
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
+  mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(loader.state, 'WAITING', 'in waiting state');
+  assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
+
+  // playlist updated during waiting
+  let playlistUpdated = playlistWithDuration(40);
+
+  playlistUpdated.segments.shift();
+  playlistUpdated.segments.shift();
+  playlistUpdated.mediaSequence += 2;
+  loader.playlist(playlistUpdated);
+
+  assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment still pending');
+
+  // mock probeSegmentInfo as the response bytes aren't parsable (and won't provide
+  // time info)
+  loader.syncController_.probeSegmentInfo = (segmentInfo) => {
+    segmentInfo.segment.start = 10;
+    segmentInfo.segment.end = 20;
+  };
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  assert.equal(playlist.segments[1].start,
+               10,
+               'set start on segment of old playlist');
+  assert.equal(playlist.segments[1].end,
+               20,
+               'set end on segment of old playlist');
+  assert.ok(!playlistUpdated.segments[0].start,
+            'no start info for first segment of new playlist');
+  assert.ok(!playlistUpdated.segments[0].end,
+            'no end info for first segment of new playlist');
+});
+
 QUnit.module('Segment Loading Calculation', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
