@@ -203,7 +203,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // next segment
     if (!this.paused()) {
       this.state = 'READY';
-      this.fillBuffer_();
+      this.monitorBuffer_();
     }
   }
 
@@ -252,7 +252,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     this.state = 'READY';
-    this.fillBuffer_();
   }
 
   /**
@@ -349,12 +348,25 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
+   * (re-)schedule monitorBufferTick_ to run as soon as possible
+   *
+   * @private
+   */
+  monitorBuffer_() {
+    if (this.checkBufferTimeout_) {
+      window.clearTimeout(this.checkBufferTimeout_);
+    }
+
+    this.checkBufferTimeout_ = window.setTimeout(this.monitorBufferTick_.bind(this), 1);
+  }
+
+  /**
    * As long as the SegmentLoader is in the READY state, periodically
    * invoke fillBuffer_().
    *
    * @private
    */
-  monitorBuffer_() {
+  monitorBufferTick_() {
     if (this.state === 'READY') {
       this.fillBuffer_();
     }
@@ -363,7 +375,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       window.clearTimeout(this.checkBufferTimeout_);
     }
 
-    this.checkBufferTimeout_ = window.setTimeout(this.monitorBuffer_.bind(this),
+    this.checkBufferTimeout_ = window.setTimeout(this.monitorBufferTick_.bind(this),
                                                  CHECK_BUFFER_DELAY);
   }
 
@@ -543,12 +555,15 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.state = 'READY';
     this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, this.mimeType_);
     this.resetEverything();
-    return this.fillBuffer_();
+    return this.monitorBuffer_();
   }
 
   /**
-   * fill the buffer with segements unless the
-   * sourceBuffers are currently updating
+   * fill the buffer with segements unless the sourceBuffers are
+   * currently updating
+   *
+   * Note: this function should only ever be called by monitorBuffer_
+   * and never directly
    *
    * @private
    */
@@ -980,7 +995,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (!this.pendingSegment_) {
       this.state = 'READY';
       if (!this.paused()) {
-        this.fillBuffer_();
+        this.monitorBuffer_();
       }
       return;
     }
@@ -1015,7 +1030,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.trigger('progress');
 
     if (!this.paused()) {
-      this.fillBuffer_();
+      this.monitorBuffer_();
     }
   }
 

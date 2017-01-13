@@ -263,6 +263,7 @@ export const openMediaSource = function(player, clock) {
     type: 'sourceopen',
     swfId: player.tech_.el().id
   });
+  clock.tick(1);
 };
 
 export const standardXHRResponse = function(request, data) {
