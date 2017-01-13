@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 --------------------
+## 4.1.0 (2017-01-13)
+* Representations and Quality Levels [#929](https://github.com/videojs/videojs-contrib-hls/pull/929)
+* Update m3u8-parser to 2.0.0 and videojs-contrib-media-sources to 4.1.4 [#958](https://github.com/videojs/videojs-contrib-hls/pull/958)
+
+--------------------
 ## 4.0.3 (2016-12-23)
 * Fix a segment hop in live [#928](https://github.com/videojs/videojs-contrib-hls/pull/928)
 * Map legacy AVC codecs to their modern equivalents when excluding incompatible playlists [#940](https://github.com/videojs/videojs-contrib-hls/pull/940)
