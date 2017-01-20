@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 4.1.1 (2017-01-20)
+* Fixed the m3u8-parser to support ES3 [#965](https://github.com/videojs/videojs-contrib-hls/pull/965)
+
+--------------------
 ## 4.1.0 (2017-01-13)
 * Representations and Quality Levels [#929](https://github.com/videojs/videojs-contrib-hls/pull/929)
 * Update m3u8-parser to 2.0.0 and videojs-contrib-media-sources to 4.1.4 [#958](https://github.com/videojs/videojs-contrib-hls/pull/958)
