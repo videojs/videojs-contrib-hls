@@ -1,6 +1,6 @@
 ## Description
 Briefly describe the issue.
-Include a [reduced test case](https://css-tricks.com/reduced-test-cases/), we have a [starter template](http://jsbin.com/vokipos/edit?html,output) on JSBin you can use.
+Include a [reduced test case](https://css-tricks.com/reduced-test-cases/), we have a [starter template](http://jsbin.com/vokipos/8/edit?html,output) on JSBin you can use.
 
 ## Sources
 Is a certain source or a certain segment affected? please provide a public (accesible over the internet) link to it below.
