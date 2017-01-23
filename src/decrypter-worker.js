@@ -2,25 +2,6 @@ import window from 'global/window';
 import {Decrypter} from 'aes-decrypter';
 
 /**
- * Callback method to send the decrypted segment bytes back to the main thread
- *
- * @param {Object} err
- *        Decryption error. Will always be null with aes-decrypter ^1.0.3
- * @param {Uint8Array} bytes
- *        Decrypted byte array
- * @function postDecrypted
- */
-const postDecrypted = function(err, bytes) {
-  window.postMessage({
-    action: 'done',
-    source: this.source,
-    bytes: bytes.buffer,
-    byteOffset: bytes.byteOffset,
-    byteLength: bytes.byteLength
-  }, [bytes.buffer]);
-};
-
-/**
  * Our web wroker interface so that things can talk to aes-decrypter
  * that will be running in a web worker. the scope is passed to this by
  * webworkify.
@@ -31,6 +12,7 @@ const postDecrypted = function(err, bytes) {
 const Worker = function(self) {
   self.onmessage = function(event) {
     const data = event.data;
+
     if (data.action === 'decrypt') {
       const encrypted = new Uint8Array(data.encrypted.bytes,
                                      data.encrypted.byteOffset,
@@ -41,14 +23,21 @@ const Worker = function(self) {
       const iv = new Uint32Array(data.iv.bytes,
                                data.iv.byteOffset,
                                data.iv.byteLength / 4);
-      const context = {
-        source: data.source
-      };
 
+      /* eslint-disable no-new, handle-callback-err */
       new Decrypter(encrypted,
                     key,
                     iv,
-                    postDecrypted.bind(context));
+                    function(err, bytes) {
+                      window.postMessage({
+                        action: 'done',
+                        source: data.source,
+                        bytes: bytes.buffer,
+                        byteOffset: bytes.byteOffset,
+                        byteLength: bytes.byteLength
+                      }, [bytes.buffer]);
+                    });
+      /* eslint-enable */
     }
   };
 };

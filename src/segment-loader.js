@@ -942,9 +942,8 @@ export default class SegmentLoader extends videojs.EventTarget {
           bytes: segment.key.iv.buffer,
           byteOffset: segment.key.iv.byteOffset,
           byteLength: segment.key.iv.byteLength
-        },
-      },
-      [
+        }
+      }, [
         segmentInfo.encryptedBytes.buffer,
         segment.key.bytes.buffer
       ]);
