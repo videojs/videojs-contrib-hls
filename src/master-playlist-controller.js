@@ -8,6 +8,8 @@ import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
 import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
+import work from 'webworkify';
+import Decrypter from './decrypter-worker';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -235,6 +237,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.syncController_ = new SyncController();
 
+    this.decrypter_ = work(Decrypter);
+
     let segmentLoaderOptions = {
       hls: this.hls_,
       mediaSource: this.mediaSource,
@@ -244,7 +248,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       setCurrentTime: (a) => this.tech_.setCurrentTime(a),
       hasPlayed: () => this.hasPlayed_(),
       bandwidth,
-      syncController: this.syncController_
+      syncController: this.syncController_,
+      decrypter: this.decrypter_,
+      loaderType: 'main'
     };
 
     // setup playlist loaders
@@ -256,7 +262,22 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // combined audio/video or just video when alternate audio track is selected
     this.mainSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
     // alternate audio track
+    segmentLoaderOptions.loaderType = 'audio';
     this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
+
+    this.decrypter_.onmessage = (event) => {
+      switch (event.data.source) {
+        case 'main':
+          this.mainSegmentLoader_.handleDecrypted_(event.data);
+          break;
+        case 'audio':
+          this.audiosegmentloader_.handleDecrypted_(event.data);
+          break;
+        default:
+          break;
+      }
+    };
+
     this.setupSegmentLoaderListeners_();
 
     this.masterPlaylistLoader_.start();
@@ -968,6 +989,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * that it controls
    */
   dispose() {
+    this.decrypter_.terminate();
     this.masterPlaylistLoader_.dispose();
     this.mainSegmentLoader_.dispose();
 

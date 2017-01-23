@@ -4,7 +4,6 @@
 import {getMediaInfoForTime_ as getMediaInfoForTime} from './playlist';
 import videojs from 'video.js';
 import SourceUpdater from './source-updater';
-import {Decrypter} from 'aes-decrypter';
 import Config from './config';
 import window from 'global/window';
 
@@ -130,6 +129,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.setCurrentTime_ = settings.setCurrentTime;
     this.mediaSource_ = settings.mediaSource;
     this.hls_ = settings.hls;
+    this.loaderType_ = settings.loaderType;
 
     // private instance variables
     this.checkBufferTimeout_ = null;
@@ -144,6 +144,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Fragmented mp4 playback
     this.activeInitSegmentId_ = null;
     this.initSegments_ = {};
+
+    this.decrypter_ = settings.decrypter;
 
     // Manages the tracking and generation of sync-points, mappings
     // between a time in the display time and a segment index within
@@ -923,19 +925,51 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (segment.key) {
       // this is an encrypted segment
       // incrementally decrypt the segment
-      /* eslint-disable no-new, handle-callback-err */
-      new Decrypter(segmentInfo.encryptedBytes,
-                    segment.key.bytes,
-                    segment.key.iv,
-                    (function(err, bytes) {
-                      // err always null
-                      segmentInfo.bytes = bytes;
-                      this.handleSegment_();
-                    }).bind(this));
-      /* eslint-enable */
+      this.decrypter_.postMessage({
+        action: 'decrypt',
+        source: this.loaderType_,
+        encrypted: {
+          bytes: segmentInfo.encryptedBytes.buffer,
+          byteOffset: segmentInfo.encryptedBytes.byteOffset,
+          byteLength: segmentInfo.encryptedBytes.byteLength
+        },
+        key: {
+          bytes: segment.key.bytes.buffer,
+          byteOffset: segment.key.bytes.byteOffset,
+          byteLength: segment.key.bytes.byteLength
+        },
+        iv: {
+          bytes: segment.key.iv.buffer,
+          byteOffset: segment.key.iv.byteOffset,
+          byteLength: segment.key.iv.byteLength
+        },
+      },
+      [
+        segmentInfo.encryptedBytes.buffer,
+        segment.key.bytes.buffer
+      ]);
     } else {
       this.handleSegment_();
     }
+  }
+
+  /**
+   * Handles response from the decrypter and attaches the decrypted bytes to the pending
+   * segment
+   *
+   * @param {Object} data
+   *        Response from decrypter
+   * @method handleDecrypted_
+   */
+  handleDecrypted_(data) {
+    if (data.action === 'done') {
+      const segmentInfo = this.pendingSegment_;
+
+      if (segmentInfo) {
+        segmentInfo.bytes = new Uint8Array(data.bytes, data.byteOffset, data.byteLength);
+      }
+    }
+    this.handleSegment_();
   }
 
   /**
