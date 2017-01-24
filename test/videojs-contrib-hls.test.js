@@ -2576,6 +2576,9 @@ QUnit.test('downloads additional playlists if required', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   }, this.tech);
 
+  // Make segment metadata noop since most test segments dont have real data
+  hls.masterPlaylistController_.mainSegmentLoader_.addSegmentMetadataCue_ = () => {};
+
   hls.mediaSource.trigger('sourceopen');
   hls.bandwidth = 1;
   // master
@@ -2613,6 +2616,8 @@ QUnit.test('waits to download new segments until the media playlist is stable', 
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   }, this.tech);
+
+  hls.masterPlaylistController_.mainSegmentLoader_.addSegmentMetadataCue_ = () => {};
 
   hls.mediaSource.trigger('sourceopen');
 

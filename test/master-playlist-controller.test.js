@@ -46,6 +46,9 @@ QUnit.module('MasterPlaylistController', {
     };
 
     this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+    // Make segment metadata noop since most test segments dont have real data
+    this.masterPlaylistController.mainSegmentLoader_.addSegmentMetadataCue_ = () => {};
   },
   afterEach() {
     this.env.restore();
@@ -218,6 +221,8 @@ QUnit.test('if buffered, will request second segment byte range', function(asser
     type: 'application/vnd.apple.mpegurl'
   });
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  // Make segment metadata noop since most test segments dont have real data
+  this.masterPlaylistController.mainSegmentLoader_.addSegmentMetadataCue_ = () => {};
 
   // mock that the user has played the video before
   this.player.tech_.triggerReady();
@@ -240,6 +245,7 @@ QUnit.test('if buffered, will request second segment byte range', function(asser
   this.masterPlaylistController.mainSegmentLoader_.fetchAtBuffer_ = true;
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   this.clock.tick(10 * 1000);
+  this.clock.tick(1);
   assert.equal(this.requests[2].headers.Range, 'bytes=522828-1110327');
 
   // verify stats
@@ -265,6 +271,9 @@ function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  // Make segment metadata noop since most test segments dont have real data
+  this.masterPlaylistController.mainSegmentLoader_.addSegmentMetadataCue_ = () => {};
+
   // maybe not needed if https://github.com/videojs/video.js/issues/2326 gets fixed
   this.clock.tick(1);
   assert.ok(!this.masterPlaylistController.masterPlaylistLoader_.media(),

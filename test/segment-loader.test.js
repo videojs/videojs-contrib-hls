@@ -14,11 +14,29 @@ import SyncController from '../src/sync-controller';
 import Decrypter from '../src/decrypter-worker';
 import worker from 'webworkify';
 
+class MockTextTrack {
+  constructor() {
+    this.cues = [];
+  }
+  addCue(cue) {
+    this.cues.push(cue);
+  }
+  removeCue(cue) {
+    for (let i = 0; i < this.cues.length; i++) {
+      if (this.cues[i] === cue) {
+        this.cues.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+
 let currentTime;
 let mediaSource;
 let loader;
 let syncController;
 let decrypter;
+let segmentMetadataTrack;
 
 QUnit.module('Segment Loader', {
   beforeEach(assert) {
@@ -42,6 +60,7 @@ QUnit.module('Segment Loader', {
     mediaSource.trigger('sourceopen');
     syncController = new SyncController();
     decrypter = worker(Decrypter);
+    segmentMetadataTrack = new MockTextTrack();
     loader = new SegmentLoader({
       hls: this.fakeHls,
       currentTime() {
@@ -53,7 +72,8 @@ QUnit.module('Segment Loader', {
       mediaSource,
       syncController,
       decrypter,
-      loaderType: 'main'
+      loaderType: 'main',
+      segmentMetadataTrack
     });
     decrypter.onmessage = (event) => {
       loader.handleDecrypted_(event.data);
@@ -793,6 +813,81 @@ QUnit.test('tracks segment end times as they are buffered', function(assert) {
   assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
   assert.equal(loader.mediaRequests, 1, '1 request');
 });
+
+QUnit.test('adds cues with segment information to the segment-metadata track as they are buffered',
+  function(assert) {
+    const track = loader.segmentMetadataTrack_;
+    let playlist = playlistWithDuration(40);
+    let probeResponse;
+    let expectedCue;
+
+    loader.syncController_.probeTsSegment_ = function(segmentInfo) {
+      return probeResponse;
+    };
+
+    loader.playlist(playlist);
+    loader.mimeType(this.mimeType);
+    loader.load();
+    this.clock.tick(1);
+
+    assert.ok(!track.cues.length, 'segment-metadata track empty when no segments appended');
+
+    // Start appending some segments
+    probeResponse = { start: 0, end: 9.5 };
+    this.requests[0].response = new Uint8Array(10).buffer;
+    this.requests.shift().respond(200, null, '');
+    mediaSource.sourceBuffers[0].trigger('updateend');
+    this.clock.tick(1);
+    expectedCue = {
+      uri: '0.ts',
+      timeline: 0,
+      playlist: 'playlist.m3u8',
+      start: 0,
+      end: 9.5
+    };
+
+    assert.equal(track.cues.length, 1, 'one cue added for segment');
+    assert.deepEqual(JSON.parse(track.cues[0].value.data), expectedCue,
+      'added correct segment info to cue');
+
+    probeResponse = { start: 9.56, end: 19.2 };
+    this.requests[0].response = new Uint8Array(10).buffer;
+    this.requests.shift().respond(200, null, '');
+    mediaSource.sourceBuffers[0].trigger('updateend');
+    this.clock.tick(1);
+    expectedCue = {
+      uri: '1.ts',
+      timeline: 0,
+      playlist: 'playlist.m3u8',
+      start: 9.56,
+      end: 19.2
+    };
+
+    assert.equal(track.cues.length, 2, 'one cue added for segment');
+    assert.deepEqual(JSON.parse(track.cues[1].value.data), expectedCue,
+      'added correct segment info to cue');
+
+    probeResponse = { start: 19.24, end: 28.99 };
+    this.requests[0].response = new Uint8Array(10).buffer;
+    this.requests.shift().respond(200, null, '');
+    mediaSource.sourceBuffers[0].trigger('updateend');
+    this.clock.tick(1);
+    expectedCue = {
+      uri: '2.ts',
+      timeline: 0,
+      playlist: 'playlist.m3u8',
+      start: 19.24,
+      end: 28.99
+    };
+
+    assert.equal(track.cues.length, 3, 'one cue added for segment');
+    assert.deepEqual(JSON.parse(track.cues[2].value.data), expectedCue,
+      'added correct segment info to cue');
+
+    // verify stats
+    assert.equal(loader.mediaBytesTransferred, 30, '10 bytes');
+    assert.equal(loader.mediaRequests, 3, '1 request');
+  });
 
 QUnit.test('segment 404s should trigger an error', function(assert) {
   let errors = [];
