@@ -18,7 +18,7 @@
     "build:js:bannerize": "bannerize dist/videojs-contrib-hls.js --banner=scripts/banner.ejs",
     "build:js:browserify": "browserify . -s videojs-contrib-hls -g browserify-shim -o dist/videojs-contrib-hls.js",
     "build:js:collapse": "bundle-collapser dist/videojs-contrib-hls.js -o dist/videojs-contrib-hls.min.js",
-    "build:js:uglify": "uglifyjs dist/videojs-contrib-hls.min.js --comments -m -c -o dist/videojs-contrib-hls.min.js",
+    "build:js:uglify": "uglifyjs dist/videojs-contrib-hls.min.js --support-ie8 --comments -m -c -o dist/videojs-contrib-hls.min.js",
     "build:test:browserify": "browserify test/browserify-test.js -o dist-test/browserify-test.js",
     "build:test:webpack": "webpack test/webpack-test.js dist-test/webpack-test.js",
     "build:test": "npm-run-all build:test:manifest build:test:js build:test:browserify build:test:webpack",
