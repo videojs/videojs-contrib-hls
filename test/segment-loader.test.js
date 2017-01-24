@@ -1063,6 +1063,7 @@ function(assert) {
   this.clock.tick(1);
 
   assert.equal(loader.pendingSegment_.uri, '0.ts', 'retrieving first segment');
+  assert.equal(loader.pendingSegment_.segment.uri, '0.ts', 'correct segment reference');
   assert.equal(loader.state, 'WAITING', 'waiting for response');
 
   this.requests[0].response = new Uint8Array(10).buffer;
@@ -1079,6 +1080,7 @@ function(assert) {
   this.clock.tick(1);
 
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'retrieving second segment');
+  assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
   assert.equal(loader.state, 'WAITING', 'waiting for response');
 });
 
@@ -1094,6 +1096,7 @@ function(assert) {
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
+  assert.equal(loader.pendingSegment_.segment.uri, '0.ts', 'correct segment reference');
 
   // wrap up the first request to set mediaIndex and start normal live streaming
   this.requests[0].response = new Uint8Array(10).buffer;
@@ -1103,6 +1106,7 @@ function(assert) {
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
+  assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
 
   // playlist updated during waiting
   let playlistUpdated = playlistWithDuration(40);
@@ -1113,6 +1117,7 @@ function(assert) {
   loader.playlist(playlistUpdated);
 
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment still pending');
+  assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
@@ -1122,6 +1127,7 @@ function(assert) {
   // response
   assert.equal(loader.state, 'APPENDING', 'moved to appending state');
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'still using second segment');
+  assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
 });
 
 QUnit.test('saves segment info to new segment after playlist refresh',
@@ -1136,6 +1142,7 @@ function(assert) {
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
+  assert.equal(loader.pendingSegment_.segment.uri, '0.ts', 'correct segment reference');
 
   // wrap up the first request to set mediaIndex and start normal live streaming
   this.requests[0].response = new Uint8Array(10).buffer;
@@ -1145,6 +1152,7 @@ function(assert) {
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
+  assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
 
   // playlist updated during waiting
   let playlistUpdated = playlistWithDuration(40);
@@ -1154,6 +1162,7 @@ function(assert) {
   loader.playlist(playlistUpdated);
 
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment still pending');
+  assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
 
   // mock probeSegmentInfo as the response bytes aren't parsable (and won't provide
   // time info)
@@ -1187,6 +1196,7 @@ function(assert) {
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
+  assert.equal(loader.pendingSegment_.segment.uri, '0.ts', 'correct segment reference');
 
   // wrap up the first request to set mediaIndex and start normal live streaming
   this.requests[0].response = new Uint8Array(10).buffer;
@@ -1196,6 +1206,7 @@ function(assert) {
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
+  assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
 
   // playlist updated during waiting
   let playlistUpdated = playlistWithDuration(40);
@@ -1206,6 +1217,7 @@ function(assert) {
   loader.playlist(playlistUpdated);
 
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment still pending');
+  assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
 
   // mock probeSegmentInfo as the response bytes aren't parsable (and won't provide
   // time info)
