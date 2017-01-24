@@ -77,12 +77,14 @@ QUnit.test('fails without required initialization options', function(assert) {
 QUnit.test('load waits until a playlist and mime type are specified to proceed',
 function(assert) {
   loader.load();
+
   assert.equal(loader.state, 'INIT', 'waiting in init');
   assert.equal(loader.paused(), false, 'not paused');
 
   loader.playlist(playlistWithDuration(10));
   assert.equal(this.requests.length, 0, 'have not made a request yet');
   loader.mimeType(this.mimeType);
+  this.clock.tick(1);
 
   assert.equal(this.requests.length, 1, 'made a request');
   assert.equal(loader.state, 'WAITING', 'transitioned states');
@@ -97,6 +99,7 @@ QUnit.test('calling mime type and load begins buffering', function(assert) {
   loader.mimeType(this.mimeType);
   assert.equal(loader.state, 'INIT', 'still in the init state');
   loader.load();
+  this.clock.tick(1);
 
   assert.equal(loader.state, 'WAITING', 'moves to the ready state');
   assert.ok(!loader.paused(), 'loading is not paused');
@@ -107,6 +110,8 @@ QUnit.test('calling load is idempotent', function(assert) {
   loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   assert.equal(loader.state, 'WAITING', 'moves to the ready state');
   assert.equal(this.requests.length, 1, 'made one request');
 
@@ -136,6 +141,7 @@ QUnit.test('calling load should unpause', function(assert) {
   loader.mimeType(this.mimeType);
 
   loader.load();
+  this.clock.tick(1);
   assert.equal(loader.paused(), false, 'loading unpauses');
 
   loader.pause();
@@ -168,6 +174,8 @@ QUnit.test('regularly checks the buffer while unpaused', function(assert) {
   loader.playlist(playlistWithDuration(90));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   sourceBuffer = mediaSource.sourceBuffers[0];
 
   // fill the buffer
@@ -197,6 +205,7 @@ QUnit.test('does not check the buffer while paused', function(assert) {
   loader.playlist(playlistWithDuration(90));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
   sourceBuffer = mediaSource.sourceBuffers[0];
 
   loader.pause();
@@ -218,6 +227,7 @@ QUnit.test('calculates bandwidth after downloading a segment', function(assert) 
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   // some time passes and a response is received
   this.clock.tick(100);
@@ -238,6 +248,7 @@ QUnit.test('segment request timeouts reset bandwidth', function(assert) {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   // a lot of time passes so the request times out
   this.requests[0].timedout = true;
@@ -282,6 +293,7 @@ QUnit.test('appending a segment triggers progress', function(assert) {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   // some time passes and a response is received
   this.requests[0].response = new Uint8Array(10).buffer;
@@ -299,6 +311,7 @@ QUnit.test('only requests one segment at a time', function(assert) {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   // a bunch of time passes without recieving a response
   this.clock.tick(20 * 1000);
@@ -309,6 +322,7 @@ QUnit.test('only appends one segment at a time', function(assert) {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   // some time passes and a segment is received
   this.clock.tick(100);
@@ -337,10 +351,11 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   sourceBuffer = mediaSource.sourceBuffers[0];
 
   // buffer some content and switch playlists on progress
-  this.clock.tick(1);
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
   loader.on('progress', function f() {
@@ -350,9 +365,11 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
     playlist.uri = 'alternate.m3u8';
     playlist.endList = false;
     loader.playlist(playlist);
-  });
+    this.clock.tick(1);
+  }.bind(this));
   sourceBuffer.buffered = videojs.createTimeRanges([[0, 5]]);
   sourceBuffer.trigger('updateend');
+  this.clock.tick(1);
 
   // the next segment doesn't increase the buffer at all
   assert.equal(this.requests[0].url, '0.ts', 'requested the same segment');
@@ -360,13 +377,14 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
   sourceBuffer.trigger('updateend');
+  this.clock.tick(1);
 
   // so the loader should try the next segment
   assert.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
 
   // verify stats
   assert.equal(loader.mediaBytesTransferred, 20, '20 bytes');
-  assert.equal(loader.mediaTransferDuration, 2, '2 ms (clocks above)');
+  assert.equal(loader.mediaTransferDuration, 1, '1 ms (clocks above)');
   assert.equal(loader.mediaRequests, 2, '2 requests');
 });
 
@@ -464,6 +482,7 @@ QUnit.test('downloads init segments if specified', function(assert) {
   loader.mimeType(this.mimeType);
 
   loader.load();
+  this.clock.tick(1);
   let sourceBuffer = mediaSource.sourceBuffers[0];
 
   assert.equal(this.requests.length, 2, 'made requests');
@@ -486,6 +505,7 @@ QUnit.test('downloads init segments if specified', function(assert) {
   // append the segment
   sourceBuffer.buffered = videojs.createTimeRanges([[0, 10]]);
   sourceBuffer.trigger('updateend');
+  this.clock.tick(1);
 
   assert.equal(this.requests.length, 1, 'made a request');
   assert.equal(this.requests[0].url, '1.ts',
@@ -513,6 +533,8 @@ QUnit.test('detects init segment changes and downloads it', function(assert) {
   loader.mimeType(this.mimeType);
 
   loader.load();
+  this.clock.tick(1);
+
   let sourceBuffer = mediaSource.sourceBuffers[0];
 
   assert.equal(this.requests.length, 2, 'made requests');
@@ -537,6 +559,7 @@ QUnit.test('detects init segment changes and downloads it', function(assert) {
   // append the segment
   sourceBuffer.buffered = videojs.createTimeRanges([[0, 10]]);
   sourceBuffer.trigger('updateend');
+  this.clock.tick(1);
 
   assert.equal(this.requests.length, 2, 'made requests');
   assert.equal(this.requests[0].url, 'init0.mp4', 'requested the init segment');
@@ -550,11 +573,15 @@ QUnit.test('cancels outstanding requests on abort', function(assert) {
   loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   loader.xhr_.segmentXhr.onreadystatechange = function() {
     throw new Error('onreadystatechange should not be called');
   };
 
   loader.abort();
+  this.clock.tick(1);
+
   assert.ok(this.requests[0].aborted, 'aborted the first request');
   assert.equal(this.requests.length, 2, 'started a new request');
   assert.equal(loader.state, 'WAITING', 'back to the waiting state');
@@ -564,11 +591,14 @@ QUnit.test('abort does not cancel segment processing in progress', function(asse
   loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
 
   loader.abort();
+  this.clock.tick(1);
+
   assert.equal(loader.state, 'APPENDING', 'still appending');
 
   // verify stats
@@ -584,12 +614,14 @@ QUnit.test('sets the timestampOffset on timeline change', function(assert) {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   // segment 0
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
   mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
 
   // segment 1, discontinuity
   this.requests[0].response = new Uint8Array(10).buffer;
@@ -611,11 +643,14 @@ QUnit.test('tracks segment end times as they are buffered', function(assert) {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
 
   mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+
   assert.equal(playlist.segments[0].end, 9.5, 'updated duration');
 
   // verify stats
@@ -629,6 +664,8 @@ QUnit.test('segment 404s should trigger an error', function(assert) {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   loader.on('error', function(error) {
     errors.push(error);
   });
@@ -647,6 +684,8 @@ QUnit.test('segment 5xx status codes trigger an error', function(assert) {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   loader.on('error', function(error) {
     errors.push(error);
   });
@@ -665,6 +704,8 @@ QUnit.test('fires ended at the end of a playlist', function(assert) {
   loader.playlist(playlistWithDuration(10));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   loader.mediaSource_ = {
     readyState: 'open',
     sourceBuffers: mediaSource.sourceBuffers,
@@ -678,6 +719,8 @@ QUnit.test('fires ended at the end of a playlist', function(assert) {
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
   mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+
   assert.equal(endOfStreams, 1, 'triggered ended');
 
   // verify stats
@@ -694,6 +737,8 @@ QUnit.test('live playlists do not trigger ended', function(assert) {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   loader.mediaSource_ = {
     readyState: 'open',
     sourceBuffers: mediaSource.sourceBuffers,
@@ -706,6 +751,8 @@ QUnit.test('live playlists do not trigger ended', function(assert) {
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
   mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+
   assert.equal(endOfStreams, 0, 'did not trigger ended');
 
   // verify stats
@@ -717,6 +764,8 @@ QUnit.test('remains ready if there are no segments', function(assert) {
   loader.playlist(playlistWithDuration(0));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   assert.equal(loader.state, 'READY', 'in the ready state');
 });
 
@@ -724,6 +773,7 @@ QUnit.test('dispose cleans up outstanding work', function(assert) {
   loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   loader.dispose();
   assert.ok(this.requests[0].aborted, 'aborted segment request');
@@ -747,6 +797,8 @@ QUnit.test('calling load with an encrypted segment requests key and segment', fu
 
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   assert.equal(loader.state, 'WAITING', 'moves to the ready state');
   assert.ok(!loader.paused(), 'loading is not paused');
   assert.equal(this.requests.length, 2, 'requested a segment and key');
@@ -758,12 +810,16 @@ QUnit.test('cancels outstanding key request on abort', function(assert) {
   loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   loader.xhr_.keyXhr.onreadystatechange = function() {
     throw new Error('onreadystatechange should not be called');
   };
 
   assert.equal(this.requests.length, 2, 'requested a segment and key');
   loader.abort();
+  this.clock.tick(1);
+
   assert.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
   assert.ok(this.requests[0].aborted, 'aborted the first key request');
   assert.equal(this.requests.length, 4, 'started a new request');
@@ -774,6 +830,7 @@ QUnit.test('dispose cleans up key requests for encrypted segments', function(ass
   loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   loader.dispose();
   assert.equal(this.requests.length, 2, 'requested a segment and key');
@@ -788,6 +845,8 @@ QUnit.test('key 404s should trigger an error', function(assert) {
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   loader.on('error', function(error) {
     errors.push(error);
   });
@@ -808,6 +867,8 @@ QUnit.test('key 5xx status codes trigger an error', function(assert) {
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
+
   loader.on('error', function(error) {
     errors.push(error);
   });
@@ -831,6 +892,7 @@ QUnit.test('the key is saved to the segment in the correct format', function(ass
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   // stop processing so we can examine segment info
   loader.processResponse_ = function() {};
@@ -866,6 +928,7 @@ function(assert) {
   loader.playlist(playlistWithDuration(10, {isEncrypted: true, mediaSequence: 5}));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   // stop processing so we can examine segment info
   loader.processResponse_ = function() {};
@@ -899,6 +962,7 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   segmentRequest = this.requests.pop();
   segmentRequest.response = new Uint8Array(8).buffer;
@@ -929,6 +993,7 @@ QUnit.test('calling load with an encrypted segment waits for both key and segmen
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   assert.equal(loader.state, 'WAITING', 'moves to waiting state');
   assert.equal(this.requests.length, 2, 'requested a segment and key');
@@ -954,6 +1019,7 @@ QUnit.test('key request timeouts reset bandwidth', function(assert) {
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   assert.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
   assert.equal(this.requests[1].url, '0.ts', 'requested the first segment');
@@ -994,6 +1060,7 @@ function(assert) {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   assert.equal(loader.pendingSegment_.uri, '0.ts', 'retrieving first segment');
   assert.equal(loader.state, 'WAITING', 'waiting for response');
@@ -1009,6 +1076,7 @@ function(assert) {
   // finish append
   mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
   mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
 
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'retrieving second segment');
   assert.equal(loader.state, 'WAITING', 'waiting for response');

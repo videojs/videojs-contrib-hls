@@ -35,6 +35,16 @@ QUnit.module('MasterPlaylistController', {
       src: 'manifest/master.m3u8',
       type: 'application/vnd.apple.mpegurl'
     });
+
+    this.standardXHRResponse = (request, data) => {
+      standardXHRResponse(request, data);
+
+      // Because SegmentLoader#fillBuffer_ is now scheduled asynchronously
+      // we have to use clock.tick to get the expected side effects of
+      // SegmentLoader#handleUpdateEnd_
+      this.clock.tick(1);
+    };
+
     this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
   },
   afterEach() {
@@ -63,9 +73,9 @@ QUnit.test('throws error when given an empty URL', function(assert) {
 QUnit.test('obeys none preload option', function(assert) {
   this.player.preload('none');
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // playlist
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   openMediaSource(this.player, this.clock);
 
@@ -78,9 +88,9 @@ QUnit.test('obeys none preload option', function(assert) {
 QUnit.test('obeys auto preload option', function(assert) {
   this.player.preload('auto');
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // playlist
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   openMediaSource(this.player, this.clock);
 
@@ -93,9 +103,9 @@ QUnit.test('obeys auto preload option', function(assert) {
 QUnit.test('obeys metadata preload option', function(assert) {
   this.player.preload('metadata');
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // playlist
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   openMediaSource(this.player, this.clock);
 
@@ -109,9 +119,9 @@ QUnit.test('resyncs SegmentLoader for a fast quality change', function(assert) {
   let resyncs = 0;
 
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
@@ -137,9 +147,9 @@ QUnit.test('does not resync the segmentLoader when no fast quality change occurs
     let resyncs = 0;
 
     // master
-    standardXHRResponse(this.requests.shift());
+    this.standardXHRResponse(this.requests.shift());
     // media
-    standardXHRResponse(this.requests.shift());
+    this.standardXHRResponse(this.requests.shift());
     this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
     let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
@@ -172,7 +182,7 @@ QUnit.test('if buffered, will request second segment byte range', function(asser
 
   openMediaSource(this.player, this.clock);
   // playlist
-  standardXHRResponse(this.requests[0]);
+  this.standardXHRResponse(this.requests[0]);
 
   this.masterPlaylistController.mainSegmentLoader_.sourceUpdater_.buffered = () => {
     return videojs.createTimeRanges([[0, 20]]);
@@ -180,7 +190,7 @@ QUnit.test('if buffered, will request second segment byte range', function(asser
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   // segment
-  standardXHRResponse(this.requests[1]);
+  this.standardXHRResponse(this.requests[1]);
   this.masterPlaylistController.mainSegmentLoader_.fetchAtBuffer_ = true;
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   this.clock.tick(10 * 1000);
@@ -198,11 +208,11 @@ QUnit.test('re-initializes the combined playlist loader when switching sources',
 function(assert) {
   openMediaSource(this.player, this.clock);
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // playlist
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // segment
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // change the source
   this.player.src({
     src: 'manifest/master.m3u8',
@@ -237,9 +247,9 @@ QUnit.test('updates the combined segment loader on live playlist refreshes', fun
 
   openMediaSource(this.player, this.clock);
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   this.masterPlaylistController.mainSegmentLoader_.playlist = function(update) {
     updates.push(update);
@@ -259,9 +269,9 @@ function(assert) {
   openMediaSource(this.player, this.clock);
 
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   this.player.tech_.on('progress', function() {
     progressCount++;
@@ -269,7 +279,7 @@ function(assert) {
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   // segment
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   this.masterPlaylistController.mainSegmentLoader_.trigger('progress');
   assert.equal(progressCount, 1, 'fired a progress event');
 
@@ -287,13 +297,13 @@ QUnit.test('updates the enabled track when switching audio groups', function(ass
   this.requests.shift().respond(200, null,
                                 manifests.multipleAudioGroupsCombinedMain);
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // init segment
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // video segment
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // audio media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // ignore audio segment requests
   this.requests.length = 0;
 
@@ -327,7 +337,7 @@ QUnit.test('blacklists switching from video+audio playlists to audio only', func
                                 '#EXT-X-STREAM-INF:BANDWIDTH=10,RESOLUTION=1x1\n' +
                                 'media1.m3u8\n');
   // media1
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   assert.equal(this.masterPlaylistController.masterPlaylistLoader_.media(),
               this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1],
@@ -354,7 +364,7 @@ QUnit.test('blacklists switching from audio-only playlists to video+audio', func
                                 'media1.m3u8\n');
 
   // media1
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   assert.equal(this.masterPlaylistController.masterPlaylistLoader_.media(),
               this.masterPlaylistController.masterPlaylistLoader_.master.playlists[0],
               'selected audio only');
@@ -384,7 +394,7 @@ QUnit.test('blacklists switching from video-only playlists to video+audio', func
              'media1.m3u8\n');
 
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   assert.equal(this.masterPlaylistController.masterPlaylistLoader_.media(),
               this.masterPlaylistController.masterPlaylistLoader_.master.playlists[0],
               'selected video only');
@@ -415,7 +425,7 @@ function(assert) {
              'media1.m3u8\n');
 
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   assert.equal(this.masterPlaylistController.masterPlaylistLoader_.media(),
               this.masterPlaylistController.masterPlaylistLoader_.master.playlists[0],
               'selected HE-AAC stream');
@@ -435,9 +445,9 @@ QUnit.test('blacklists the current playlist when audio changes in Firefox 48 & b
     videojs.Hls.supportsAudioInfoChange_ = () => false;
 
     // master
-    standardXHRResponse(this.requests.shift());
+    this.standardXHRResponse(this.requests.shift());
     // media
-    standardXHRResponse(this.requests.shift());
+    this.standardXHRResponse(this.requests.shift());
 
     let media = this.masterPlaylistController.media();
 
@@ -468,9 +478,9 @@ QUnit.test('updates the combined segment loader on media changes', function(asse
   this.masterPlaylistController.mainSegmentLoader_.bandwidth = 1;
 
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   this.masterPlaylistController.mainSegmentLoader_.playlist = function(update) {
     updates.push(update);
@@ -481,10 +491,10 @@ QUnit.test('updates the combined segment loader on media changes', function(asse
   // downloading the new segment will update bandwidth and cause a
   // playlist change
   // segment 0
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   assert.ok(updates.length > 0, 'updated the segment list');
 
   // verify stats
@@ -505,9 +515,9 @@ QUnit.test('selects a playlist after main/combined segment downloads', function(
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   // "downloaded" a segment
   this.masterPlaylistController.mainSegmentLoader_.trigger('progress');
@@ -528,9 +538,9 @@ QUnit.test('updates the duration after switching playlists', function(assert) {
   this.masterPlaylistController.bandwidth = 1e20;
 
   // master
-  standardXHRResponse(this.requests[0]);
+  this.standardXHRResponse(this.requests[0]);
   // media
-  standardXHRResponse(this.requests[1]);
+  this.standardXHRResponse(this.requests[1]);
 
   this.masterPlaylistController.selectPlaylist = () => {
     selectedPlaylist = true;
@@ -544,10 +554,10 @@ QUnit.test('updates the duration after switching playlists', function(assert) {
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   // segment 0
-  standardXHRResponse(this.requests[2]);
+  this.standardXHRResponse(this.requests[2]);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // media1
-  standardXHRResponse(this.requests[3]);
+  this.standardXHRResponse(this.requests[3]);
   assert.ok(selectedPlaylist, 'selected playlist');
   assert.ok(this.masterPlaylistController.mediaSource.duration !== 0,
            'updates the duration');
@@ -566,22 +576,22 @@ QUnit.test('playlist selection uses systemBandwidth', function(assert) {
   this.player.height(900);
 
   // master
-  standardXHRResponse(this.requests[0]);
+  this.standardXHRResponse(this.requests[0]);
   // media
-  standardXHRResponse(this.requests[1]);
+  this.standardXHRResponse(this.requests[1]);
   assert.ok(/media3\.m3u8/i.test(this.requests[1].url), 'Selected the highest rendition');
 
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   // segment 0
-  standardXHRResponse(this.requests[2]);
+  this.standardXHRResponse(this.requests[2]);
   // 20ms have passed to upload 1kb that gives us a throughput of 1024 / 20 * 8 * 1000 = 409600
   this.clock.tick(20);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // systemBandwidth is 1 / (1 / 8192000 + 1 / 409600) = ~390095
 
   // media1
-  standardXHRResponse(this.requests[3]);
+  this.standardXHRResponse(this.requests[3]);
   assert.ok(/media\.m3u8/i.test(this.requests[3].url), 'Selected the rendition < 390095');
 
   assert.ok(this.masterPlaylistController.mediaSource.duration !== 0,
@@ -600,9 +610,9 @@ function(assert) {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   // master
-  standardXHRResponse(this.requests[0]);
+  this.standardXHRResponse(this.requests[0]);
   // media
-  standardXHRResponse(this.requests[1]);
+  this.standardXHRResponse(this.requests[1]);
 
   assert.equal(this.masterPlaylistController.requestOptions_.timeout,
               this.masterPlaylistController.masterPlaylistLoader_.targetDuration * 1.5 *
@@ -618,9 +628,9 @@ function(assert) {
 
   // Downloading segment should cause media change and timeout removal
   // segment 0
-  standardXHRResponse(this.requests[2]);
+  this.standardXHRResponse(this.requests[2]);
   // Download new segment after media change
-  standardXHRResponse(this.requests[3]);
+  this.standardXHRResponse(this.requests[3]);
 
   assert.ok(this.masterPlaylistController
             .masterPlaylistLoader_.isLowestEnabledRendition_(), 'On lowest rendition');
@@ -777,12 +787,12 @@ QUnit.test('calls to update cues on new media', function(assert) {
   this.masterPlaylistController.updateAdCues_ = (media) => callCount++;
 
   // master
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   assert.equal(callCount, 0, 'no call to update cues on master');
 
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   assert.equal(callCount, 1, 'calls to update cues on first media');
 
@@ -809,7 +819,7 @@ QUnit.test('calls to update cues on media when no master', function(assert) {
   this.masterPlaylistController.updateAdCues_ = (media) => callCount++;
 
   // media
-  standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   assert.equal(callCount, 1, 'calls to update cues on first media');
 
