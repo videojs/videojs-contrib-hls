@@ -276,7 +276,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
         this.mediaIndex -= mediaSequenceDiff;
 
-        if (segmentInfo && !segmentInfo.isSyncRequest) {
+        if (segmentInfo) {
           segmentInfo.mediaIndex -= mediaSequenceDiff;
 
           // we need to update the referenced segment so that timing information is
