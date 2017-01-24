@@ -267,32 +267,12 @@ export default class SegmentLoader extends videojs.EventTarget {
     let oldPlaylist = this.playlist_;
     let segmentInfo = this.pendingSegment_;
 
-    if (this.mediaIndex !== null) {
-      // We reloaded the same playlist so we are in a live scenario
-      // and we will likely need to adjust the mediaIndex
-      if (oldPlaylist &&
-          oldPlaylist.uri === newPlaylist.uri) {
-        let mediaSequenceDiff = newPlaylist.mediaSequence - oldPlaylist.mediaSequence;
+    this.playlist_ = newPlaylist;
+    this.xhrOptions_ = options;
 
-        this.mediaIndex -= mediaSequenceDiff;
-
-        if (segmentInfo) {
-          segmentInfo.mediaIndex -= mediaSequenceDiff;
-
-          // we need to update the referenced segment so that timing information is
-          // saved for the new playlist's segment, however, if the segment fell off the
-          // playlist, we can leave the old reference and just lose the timing info
-          if (segmentInfo.mediaIndex >= 0) {
-            segmentInfo.segment = newPlaylist.segments[segmentInfo.mediaIndex];
-          }
-        }
-
-        this.syncController_.saveExpiredSegmentInfo(oldPlaylist, newPlaylist);
-      } else {
-        // We must "resync" the fetcher when we switch renditions
-        this.resyncLoader();
-      }
-    } else if (!this.hasPlayed_()) {
+    // when we haven't started playing yet, the start of the playlist is always
+    // our zero-time so force a sync update each time we get a new playlist
+    if (!this.hasPlayed_()) {
       newPlaylist.syncInfo = {
         mediaSequence: newPlaylist.mediaSequence,
         time: 0
@@ -300,14 +280,51 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.trigger('syncinfoupdate');
     }
 
-    this.playlist_ = newPlaylist;
-    this.xhrOptions_ = options;
-
     // if we were unpaused but waiting for a playlist, start
     // buffering now
     if (this.mimeType_ && this.state === 'INIT' && !this.paused()) {
       return this.init_();
     }
+
+    if (!oldPlaylist || oldPlaylist.uri !== newPlaylist.uri) {
+      if (this.mediaIndex !== null) {
+        // we must "resync" the segment loader when we switch renditions and
+        // the segment loader is already synced to the previous rendition
+        this.resyncLoader();
+      }
+
+      // the rest of this function depends on `oldPlaylist` being defined
+      return;
+    }
+
+    // we reloaded the same playlist so we are in a live scenario
+    // and we will likely need to adjust the mediaIndex
+    let mediaSequenceDiff = newPlaylist.mediaSequence - oldPlaylist.mediaSequence;
+
+    log('mediaSequenceDiff', mediaSequenceDiff);
+
+    // update the mediaIndex on the SegmentLoader
+    // this is important because we can abort a request and this value must be
+    // equal to the last appended mediaIndex
+    if (this.mediaIndex !== null) {
+      this.mediaIndex -= mediaSequenceDiff;
+    }
+
+    // update the mediaIndex on the SegmentInfo object
+    // this is important because we will update this.mediaIndex with this value
+    // in `handleUpdateEnd_` after the segment has been successfully appended
+    if (segmentInfo) {
+      segmentInfo.mediaIndex -= mediaSequenceDiff;
+
+      // we need to update the referenced segment so that timing information is
+      // saved for the new playlist's segment, however, if the segment fell off the
+      // playlist, we can leave the old reference and just lose the timing info
+      if (segmentInfo.mediaIndex >= 0) {
+        segmentInfo.segment = newPlaylist.segments[segmentInfo.mediaIndex];
+      }
+    }
+
+    this.syncController_.saveExpiredSegmentInfo(oldPlaylist, newPlaylist);
   }
 
   /**
@@ -1013,23 +1030,17 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.pendingSegment_ = null;
     this.recordThroughput_(segmentInfo);
-
-    log('handleUpdateEnd_');
-
-    let currentMediaIndex = segmentInfo.mediaIndex;
-
-    currentMediaIndex +=
-      segmentInfo.playlist.mediaSequence - this.playlist_.mediaSequence;
-
-    this.mediaIndex = currentMediaIndex;
+    this.mediaIndex = segmentInfo.mediaIndex;
     this.fetchAtBuffer_ = true;
+
+    log('handleUpdateEnd_', this.mediaIndex);
 
     // any time an update finishes and the last segment is in the
     // buffer, end the stream. this ensures the "ended" event will
     // fire if playback reaches that point.
     let isEndOfStream = detectEndOfStream(segmentInfo.playlist,
                                           this.mediaSource_,
-                                          currentMediaIndex + 1);
+                                          this.mediaIndex + 1);
 
     if (isEndOfStream) {
       this.mediaSource_.endOfStream();
