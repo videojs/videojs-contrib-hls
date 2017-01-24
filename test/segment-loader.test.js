@@ -31,6 +31,12 @@ class MockTextTrack {
   }
 }
 
+// noop addSegmentMetadataCue_ since most test segments dont have real timing information
+// save the original function to a variable to patch it back in for the metadata cue
+// specific tests
+const ogAddSegmentMetadataCue_ = SegmentLoader.prototype.addSegmentMetadataCue_;
+SegmentLoader.prototype.addSegmentMetadataCue_ = function() {};
+
 let currentTime;
 let mediaSource;
 let loader;
@@ -821,6 +827,7 @@ QUnit.test('adds cues with segment information to the segment-metadata track as 
     let probeResponse;
     let expectedCue;
 
+    loader.addSegmentMetadataCue_ = ogAddSegmentMetadataCue_;
     loader.syncController_.probeTsSegment_ = function(segmentInfo) {
       return probeResponse;
     };

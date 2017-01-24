@@ -1155,7 +1155,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     const playlist = segmentInfo.playlist;
-    const segment = playlist.segments[segmentInfo.mediaIndex];
+    const segment = segmentInfo.segment;
     const start = segment.start;
     const end = segment.end;
 
