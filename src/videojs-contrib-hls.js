@@ -244,7 +244,7 @@ Hls.supportsNativeHls = (function() {
   let video = document.createElement('video');
 
   // native HLS is definitely not supported if HTML5 video isn't
-  if (!videojs.getComponent('Html5').isSupported()) {
+  if (!videojs.getTech('Html5').isSupported()) {
     return false;
   }
 
@@ -768,12 +768,14 @@ if (typeof videojs.MediaSource === 'undefined' ||
   videojs.URL = URL;
 }
 
+const flashTech = videojs.getTech('Flash');
+
 // register source handlers with the appropriate techs
 if (MediaSource.supportsNativeMediaSources()) {
-  videojs.getComponent('Html5').registerSourceHandler(HlsSourceHandler('html5'), 0);
+  videojs.getTech('Html5').registerSourceHandler(HlsSourceHandler('html5'), 0);
 }
-if (window.Uint8Array) {
-  videojs.getComponent('Flash').registerSourceHandler(HlsSourceHandler('flash'));
+if (window.Uint8Array && flashTech) {
+  flashTech.registerSourceHandler(HlsSourceHandler('flash'));
 }
 
 videojs.HlsHandler = HlsHandler;
