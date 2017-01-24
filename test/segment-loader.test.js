@@ -1093,6 +1093,7 @@ function(assert) {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
@@ -1103,6 +1104,7 @@ function(assert) {
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
   mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
@@ -1139,6 +1141,7 @@ function(assert) {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
@@ -1149,6 +1152,7 @@ function(assert) {
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
   mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
@@ -1193,6 +1197,7 @@ function(assert) {
   loader.playlist(playlist);
   loader.mimeType(this.mimeType);
   loader.load();
+  this.clock.tick(1);
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
@@ -1203,6 +1208,7 @@ function(assert) {
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].buffered = videojs.createTimeRanges([[0, 10]]);
   mediaSource.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
 
   assert.equal(loader.state, 'WAITING', 'in waiting state');
   assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
