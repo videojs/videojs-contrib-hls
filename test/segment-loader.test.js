@@ -631,6 +631,105 @@ QUnit.test('abort does not cancel segment processing in progress', function(asse
   assert.equal(loader.mediaRequests, 1, '1 request');
 });
 
+QUnit.test('SegmentLoader.mediaIndex is adjusted when live playlist is updated', function(assert) {
+  loader.playlist(playlistWithDuration(50, {
+    mediaSequence: 0,
+    endList: false
+  }));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  // Start at mediaIndex 2 which means that the next segment we request
+  // should mediaIndex 3
+  loader.mediaIndex = 2;
+  this.clock.tick(1);
+
+  assert.equal(loader.mediaIndex, 2, 'SegmentLoader.mediaIndex starts at 2');
+  assert.equal(this.requests[0].url, '3.ts', 'requesting the segment at mediaIndex 3');
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  this.clock.tick(1);
+  mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(loader.mediaIndex, 3, 'mediaIndex ends at 3');
+
+  this.clock.tick(1);
+
+  assert.equal(loader.mediaIndex, 3, 'SegmentLoader.mediaIndex starts at 3');
+  assert.equal(this.requests[0].url, '4.ts', 'requesting the segment at mediaIndex 4');
+
+  // Update the playlist shifting the mediaSequence by 2 which will result
+  // in a decrement of the mediaIndex by 2 to 1
+  loader.playlist(playlistWithDuration(50, {
+    mediaSequence: 2,
+    endList: false
+  }));
+
+  assert.equal(loader.mediaIndex, 1, 'SegmentLoader.mediaIndex is updated to 1');
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  this.clock.tick(1);
+  mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(loader.mediaIndex, 2, 'SegmentLoader.mediaIndex ends at 2');
+});
+
+QUnit.test('segmentInfo.mediaIndex is adjusted when live playlist is updated', function(assert) {
+  // Setting currentTime to 31 so that we start requesting at segment #3
+  currentTime = 31;
+  loader.playlist(playlistWithDuration(50, {
+    mediaSequence: 0,
+    endList: false
+  }));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  // Start at mediaIndex null which means that the next segment we request
+  // should be based on currentTime (mediaIndex 3)
+  loader.mediaIndex = null;
+  loader.syncPoint_ = {
+    segmentIndex: 0,
+    time: 0
+  };
+  this.clock.tick(1);
+
+  let segmentInfo = loader.pendingSegment_;
+
+  assert.equal(segmentInfo.mediaIndex, 3, 'segmentInfo.mediaIndex starts at 3');
+  assert.equal(this.requests[0].url, '3.ts', 'requesting the segment at mediaIndex 3');
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  this.clock.tick(1);
+  mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(loader.mediaIndex, 3, 'SegmentLoader.mediaIndex ends at 3');
+
+  loader.mediaIndex = null;
+  loader.fetchAtBuffer_ = false;
+  this.clock.tick(1);
+  segmentInfo = loader.pendingSegment_;
+
+  assert.equal(segmentInfo.mediaIndex, 3, 'segmentInfo.mediaIndex starts at 3');
+  assert.equal(this.requests[0].url, '3.ts', 'requesting the segment at mediaIndex 3');
+
+  // Update the playlist shifting the mediaSequence by 2 which will result
+  // in a decrement of the mediaIndex by 2 to 1
+  loader.playlist(playlistWithDuration(50, {
+    mediaSequence: 2,
+    endList: false
+  }));
+
+  assert.equal(segmentInfo.mediaIndex, 1, 'segmentInfo.mediaIndex is updated to 1');
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  this.clock.tick(1);
+  mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(loader.mediaIndex, 1, 'SegmentLoader.mediaIndex ends at 1');
+});
+
 QUnit.test('sets the timestampOffset on timeline change', function(assert) {
   let playlist = playlistWithDuration(40);
 
