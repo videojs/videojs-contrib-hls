@@ -8,7 +8,7 @@ import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
 import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
-import work from 'webworkify';
+import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
 
 // 5 minute blacklist
@@ -237,7 +237,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.syncController_ = new SyncController();
 
-    this.decrypter_ = work(Decrypter);
+    this.decrypter_ = worker(Decrypter);
 
     let segmentLoaderOptions = {
       hls: this.hls_,
@@ -266,15 +266,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
 
     this.decrypter_.onmessage = (event) => {
-      switch (event.data.source) {
-      case 'main':
+      if (event.data.source === 'main') {
         this.mainSegmentLoader_.handleDecrypted_(event.data);
-        break;
-      case 'audio':
+      } else {
         this.audiosegmentloader_.handleDecrypted_(event.data);
-        break;
-      default:
-        break;
       }
     };
 

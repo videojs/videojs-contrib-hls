@@ -6,6 +6,7 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
+import { transferableMessage } from './bin-utils';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -925,25 +926,12 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (segment.key) {
       // this is an encrypted segment
       // incrementally decrypt the segment
-      this.decrypter_.postMessage({
-        action: 'decrypt',
+      this.decrypter_.postMessage(transferableMessage({
         source: this.loaderType_,
-        encrypted: {
-          bytes: segmentInfo.encryptedBytes.buffer,
-          byteOffset: segmentInfo.encryptedBytes.byteOffset,
-          byteLength: segmentInfo.encryptedBytes.byteLength
-        },
-        key: {
-          bytes: segment.key.bytes.buffer,
-          byteOffset: segment.key.bytes.byteOffset,
-          byteLength: segment.key.bytes.byteLength
-        },
-        iv: {
-          bytes: segment.key.iv.buffer,
-          byteOffset: segment.key.iv.byteOffset,
-          byteLength: segment.key.iv.byteLength
-        }
-      }, [
+        encrypted: segmentInfo.encryptedBytes,
+        key: segment.key.bytes,
+        iv: segment.key.iv
+      }), [
         segmentInfo.encryptedBytes.buffer,
         segment.key.bytes.buffer
       ]);
@@ -961,12 +949,13 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @method handleDecrypted_
    */
   handleDecrypted_(data) {
-    if (data.action === 'done') {
-      const segmentInfo = this.pendingSegment_;
+    const segmentInfo = this.pendingSegment_;
+    const decrypted = data.decrypted;
 
-      if (segmentInfo) {
-        segmentInfo.bytes = new Uint8Array(data.bytes, data.byteOffset, data.byteLength);
-      }
+    if (segmentInfo) {
+      segmentInfo.bytes = new Uint8Array(decrypted.bytes,
+                                         decrypted.byteOffset,
+                                         decrypted.byteLength);
     }
     this.handleSegment_();
   }

@@ -42,6 +42,7 @@ Maintenance Status: Stable
   - [In-Band Metadata](#in-band-metadata)
 - [Hosting Considerations](#hosting-considerations)
 - [Known Issues](#known-issues)
+  - [IE10 and Below](#ie10-and-below)
   - [IE11](#ie11)
   - [Fragmented MP4 Support](#fragmented-mp4-support)
   - [Testing](#testing)

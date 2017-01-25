@@ -1473,11 +1473,9 @@ QUnit.test('source handler does not support sources when IE 10 or below', functi
 
   ['html5', 'flash'].forEach(function(techName) {
     assert.ok(!HlsSourceHandler(techName).canHandleSource({
-      type: 'aPplicatiOn/x-MPegUrl'
+      type: 'application/x-mpegURL'
     }), 'does not support when browser is IE10');
   });
-
-  videojs.browser.IE_VERSION = this.old.IE_VERSION;
 });
 
 QUnit.test('fires loadstart manually if Flash is used', function(assert) {

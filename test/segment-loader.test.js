@@ -12,7 +12,7 @@ import {
 import sinon from 'sinon';
 import SyncController from '../src/sync-controller';
 import Decrypter from '../src/decrypter-worker';
-import work from 'webworkify';
+import worker from 'webworkify';
 
 let currentTime;
 let mediaSource;
@@ -41,7 +41,7 @@ QUnit.module('Segment Loader', {
     mediaSource = new videojs.MediaSource();
     mediaSource.trigger('sourceopen');
     syncController = new SyncController();
-    decrypter = work(Decrypter);
+    decrypter = worker(Decrypter);
     loader = new SegmentLoader({
       hls: this.fakeHls,
       currentTime() {

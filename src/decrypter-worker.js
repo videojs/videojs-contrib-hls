@@ -1,5 +1,6 @@
 import window from 'global/window';
 import {Decrypter} from 'aes-decrypter';
+import { transferableMessage } from './bin-utils';
 
 /**
  * Our web worker interface so that things can talk to aes-decrypter
@@ -12,33 +13,27 @@ import {Decrypter} from 'aes-decrypter';
 const Worker = function(self) {
   self.onmessage = function(event) {
     const data = event.data;
-
-    if (data.action === 'decrypt') {
-      const encrypted = new Uint8Array(data.encrypted.bytes,
+    const encrypted = new Uint8Array(data.encrypted.bytes,
                                      data.encrypted.byteOffset,
                                      data.encrypted.byteLength);
-      const key = new Uint32Array(data.key.bytes,
+    const key = new Uint32Array(data.key.bytes,
                                 data.key.byteOffset,
                                 data.key.byteLength / 4);
-      const iv = new Uint32Array(data.iv.bytes,
+    const iv = new Uint32Array(data.iv.bytes,
                                data.iv.byteOffset,
                                data.iv.byteLength / 4);
 
-      /* eslint-disable no-new, handle-callback-err */
-      new Decrypter(encrypted,
-                    key,
-                    iv,
-                    function(err, bytes) {
-                      window.postMessage({
-                        action: 'done',
-                        source: data.source,
-                        bytes: bytes.buffer,
-                        byteOffset: bytes.byteOffset,
-                        byteLength: bytes.byteLength
-                      }, [bytes.buffer]);
-                    });
-      /* eslint-enable */
-    }
+    /* eslint-disable no-new, handle-callback-err */
+    new Decrypter(encrypted,
+                  key,
+                  iv,
+                  function(err, bytes) {
+                    window.postMessage(transferableMessage({
+                      source: data.source,
+                      decrypted: bytes
+                    }), [bytes.buffer]);
+                  });
+    /* eslint-enable */
   };
 };
 
