@@ -258,6 +258,21 @@ QUnit.test('segment request timeouts reset bandwidth', function(assert) {
   assert.ok(isNaN(loader.roundTrip), 'reset round trip time');
 });
 
+QUnit.test('progress on segment requests are redispatched', function(assert) {
+  let progressEvents = 0;
+
+  loader.on('progress', function() {
+    progressEvents++;
+  });
+  loader.playlist(playlistWithDuration(10));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  this.clock.tick(1);
+
+  this.requests[0].dispatchEvent({ type: 'progress' });
+  assert.equal(progressEvents, 1, 'triggered progress');
+});
+
 QUnit.test('updates timestamps when segments do not start at zero', function(assert) {
   let playlist = playlistWithDuration(10);
 
