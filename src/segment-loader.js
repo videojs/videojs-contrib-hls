@@ -716,6 +716,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     });
 
     segmentXhr = this.hls_.xhr(segmentRequestOptions, this.handleResponse_.bind(this));
+    segmentXhr.addEventListener('progress', (event) => {
+      this.trigger(event);
+    });
 
     this.xhr_ = {
       keyXhr,
