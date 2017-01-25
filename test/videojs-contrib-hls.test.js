@@ -2373,6 +2373,14 @@ QUnit.test('populates quality levels list when available', function(assert) {
 
   assert.equal(addCount, 4, 'four levels added from master');
   assert.equal(changeCount, 1, 'selected initial quality level');
+
+  this.player.dispose();
+  this.player = createPlayer({}, {
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels from video with source');
 });
 
 QUnit.module('HLS Integration', {
