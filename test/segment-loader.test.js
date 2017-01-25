@@ -651,6 +651,7 @@ QUnit.test('SegmentLoader.mediaIndex is adjusted when live playlist is updated',
 });
 
 QUnit.test('segmentInfo.mediaIndex is adjusted when live playlist is updated', function(assert) {
+  // Setting currentTime to 31 so that we start requesting at segment #3
   currentTime = 31;
   loader.playlist(playlistWithDuration(50, {
     mediaSequence: 0,
@@ -658,8 +659,8 @@ QUnit.test('segmentInfo.mediaIndex is adjusted when live playlist is updated', f
   }));
   loader.mimeType(this.mimeType);
   loader.load();
-  // Start at mediaIndex 2 which means that the next segment we request
-  // should mediaIndex 3
+  // Start at mediaIndex null which means that the next segment we request
+  // should be based on currentTime (mediaIndex 3)
   loader.mediaIndex = null;
   loader.syncPoint_ = {
     segmentIndex: 0,
