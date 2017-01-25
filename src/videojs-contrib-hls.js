@@ -753,6 +753,11 @@ Hls.comparePlaylistResolution = function(left, right) {
 };
 
 HlsSourceHandler.canPlayType = function(type) {
+  // No support for IE 10 or below
+  if (videojs.browser.IE_VERSION && videojs.browser.IE_VERSION <= 10) {
+    return false;
+  }
+
   let mpegurlRE = /^(audio|video|application)\/(x-|vnd\.apple\.)?mpegurl/i;
 
   // favor native HLS support if it's available

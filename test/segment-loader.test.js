@@ -11,11 +11,14 @@ import {
 } from './test-helpers.js';
 import sinon from 'sinon';
 import SyncController from '../src/sync-controller';
+import Decrypter from '../src/decrypter-worker';
+import worker from 'webworkify';
 
 let currentTime;
 let mediaSource;
 let loader;
 let syncController;
+let decrypter;
 
 QUnit.module('Segment Loader', {
   beforeEach(assert) {
@@ -38,6 +41,7 @@ QUnit.module('Segment Loader', {
     mediaSource = new videojs.MediaSource();
     mediaSource.trigger('sourceopen');
     syncController = new SyncController();
+    decrypter = worker(Decrypter);
     loader = new SegmentLoader({
       hls: this.fakeHls,
       currentTime() {
@@ -47,14 +51,20 @@ QUnit.module('Segment Loader', {
       seeking: () => false,
       hasPlayed: () => true,
       mediaSource,
-      syncController
+      syncController,
+      decrypter,
+      loaderType: 'main'
     });
+    decrypter.onmessage = (event) => {
+      loader.handleDecrypted_(event.data);
+    };
   },
   afterEach() {
     this.env.restore();
     this.mse.restore();
     this.timescale.restore();
     this.startTime.restore();
+    decrypter.terminate();
   }
 });
 
@@ -970,9 +980,13 @@ function(assert) {
 QUnit.test('segment with key has decrypted bytes appended during processing', function(assert) {
   let keyRequest;
   let segmentRequest;
+  let done = assert.async();
 
   // stop processing so we can examine segment info
-  loader.handleSegment_ = function() {};
+  loader.handleSegment_ = function() {
+    assert.ok(loader.pendingSegment_.bytes, 'decrypted bytes in segment');
+    done();
+  };
 
   loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
@@ -993,7 +1007,6 @@ QUnit.test('segment with key has decrypted bytes appended during processing', fu
   this.clock.tick(1);
   // Allow the decrypter's async stream to run the callback
   this.clock.tick(1);
-  assert.ok(loader.pendingSegment_.bytes, 'decrypted bytes in segment');
 
   // verify stats
   assert.equal(loader.mediaBytesTransferred, 8, '8 bytes');

@@ -95,6 +95,7 @@ QUnit.module('HLS', {
 
     // save and restore browser detection for the Firefox-specific tests
     this.old.IS_FIREFOX = videojs.browser.IS_FIREFOX;
+    this.old.IE_VERSION = videojs.browser.IE_VERSION;
 
     this.standardXHRResponse = (request, data) => {
       standardXHRResponse(request, data);
@@ -120,6 +121,7 @@ QUnit.module('HLS', {
     videojs.Hls.supportsNativeHls = this.old.NativeHlsSupport;
     videojs.Hls.Decrypter = this.old.Decrypt;
     videojs.browser.IS_FIREFOX = this.old.IS_FIREFOX;
+    videojs.browser.IE_VERSION = this.old.IE_VERSION;
 
     this.player.dispose();
   }
@@ -1463,6 +1465,16 @@ QUnit.test('the source handler supports HLS mime types', function(assert) {
              'does not support mp4');
     assert.ok(!(HlsSourceHandler(techName).canPlayType('video/x-flv')),
              'does not support flv');
+  });
+});
+
+QUnit.test('source handler does not support sources when IE 10 or below', function(assert) {
+  videojs.browser.IE_VERSION = 10;
+
+  ['html5', 'flash'].forEach(function(techName) {
+    assert.ok(!HlsSourceHandler(techName).canHandleSource({
+      type: 'application/x-mpegURL'
+    }), 'does not support when browser is IE10');
   });
 });
 
