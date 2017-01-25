@@ -32,19 +32,18 @@ const formatAsciiString = function(e) {
 
 /**
  * Creates an object for sending to a web worker modifying properties that are TypedArrays
- * into seperated properties for the buffer, byteOffset, and byteLength.
+ * into a new object with seperated properties for the buffer, byteOffset, and byteLength.
  *
  * @param {Object} message
  *        Object of properties and values to send to the web worker
  * @return {Object}
  *         Modified message with TypedArray values expanded
- * @function transferableMessage
+ * @function createTransferableMessage
  */
-const transferableMessage = function(message) {
+const createTransferableMessage = function(message) {
   const transferable = {};
-  const keys = Object.keys(message);
 
-  keys.forEach((key) => {
+  Object.keys(message).forEach((key) => {
     const value = message[key];
 
     if (ArrayBuffer.isView(value)) {
@@ -91,7 +90,7 @@ const utils = {
     }
     return result;
   },
-  transferableMessage
+  createTransferableMessage
 };
 
 export default utils;

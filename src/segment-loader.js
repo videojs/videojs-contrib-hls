@@ -6,7 +6,7 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
-import { transferableMessage } from './bin-utils';
+import { createTransferableMessage } from './bin-utils';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -926,7 +926,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (segment.key) {
       // this is an encrypted segment
       // incrementally decrypt the segment
-      this.decrypter_.postMessage(transferableMessage({
+      this.decrypter_.postMessage(createTransferableMessage({
         source: this.loaderType_,
         encrypted: segmentInfo.encryptedBytes,
         key: segment.key.bytes,

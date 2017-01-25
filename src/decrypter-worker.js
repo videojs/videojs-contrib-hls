@@ -1,6 +1,6 @@
 import window from 'global/window';
 import {Decrypter} from 'aes-decrypter';
-import { transferableMessage } from './bin-utils';
+import { createTransferableMessage } from './bin-utils';
 
 /**
  * Our web worker interface so that things can talk to aes-decrypter
@@ -28,7 +28,7 @@ const Worker = function(self) {
                   key,
                   iv,
                   function(err, bytes) {
-                    window.postMessage(transferableMessage({
+                    window.postMessage(createTransferableMessage({
                       source: data.source,
                       decrypted: bytes
                     }), [bytes.buffer]);
