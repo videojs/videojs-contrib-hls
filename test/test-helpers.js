@@ -313,7 +313,7 @@ export const playlistWithDuration = function(time, conf) {
     mediaSequence: conf && conf.mediaSequence ? conf.mediaSequence : 0,
     discontinuityStarts: [],
     segments: [],
-    endList: true
+    endList: conf && typeof conf.endList !== 'undefined' ? !!conf.endList : true
   };
   let count = Math.floor(time / 10);
   let remainder = time % 10;
