@@ -1046,20 +1046,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let master = this.masterPlaylistLoader_.master;
     let codecCount = 2;
     let videoCodec = null;
-    let audioProfile = null;
     let codecs;
 
     if (media.attributes && media.attributes.CODECS) {
       codecs = parseCodecs(media.attributes.CODECS);
       videoCodec = codecs.videoCodec;
-      audioProfile = codecs.audioProfile;
       codecCount = codecs.codecCount;
     }
     master.playlists.forEach(function(variant) {
       let variantCodecs = {
         codecCount: 2,
-        videoCodec: null,
-        audioProfile: null
+        videoCodec: null
       };
 
       if (variant.attributes && variant.attributes.CODECS) {
@@ -1084,12 +1081,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // if h.264 is specified on the current playlist, some flavor of
       // it must be specified on all compatible variants
       if (variantCodecs.videoCodec !== videoCodec) {
-        variant.excludeUntil = Infinity;
-      }
-      // HE-AAC ("mp4a.40.5") is incompatible with all other versions of
-      // AAC audio in Chrome 46. Don't mix the two.
-      if ((variantCodecs.audioProfile === '5' && audioProfile !== '5') ||
-          (audioProfile === '5' && variantCodecs.audioProfile !== '5')) {
         variant.excludeUntil = Infinity;
       }
 

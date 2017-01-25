@@ -421,7 +421,7 @@ function(assert) {
               'selected HE-AAC stream');
   alternatePlaylist =
     this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1];
-  assert.equal(alternatePlaylist.excludeUntil, Infinity, 'excluded incompatible playlist');
+  assert.equal(alternatePlaylist.excludeUntil, undefined, 'not excluded incompatible playlist');
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
