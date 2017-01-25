@@ -270,8 +270,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.playlist_ = newPlaylist;
     this.xhrOptions_ = options;
 
-    // when we haven't started playing yet, the start of the playlist is always
-    // our zero-time so force a sync update each time we get a new playlist
+    // when we haven't started playing yet, the start of a live playlist
+    // is always our zero-time so force a sync update each time the playlist
+    // is refreshed from the server
     if (!this.hasPlayed_()) {
       newPlaylist.syncInfo = {
         mediaSequence: newPlaylist.mediaSequence,
