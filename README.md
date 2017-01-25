@@ -452,6 +452,9 @@ and most CDNs should have no trouble turning CORS on for your account.
 Issues that are currenty know about with workarounds. If you want to
 help find a solution that would be appreciated!
 
+### IE10 and Below
+As of version 5.0.0, IE10 and below are no longer supported.
+
 ### IE11
 In some IE11 setups there are issues working with its native HTML
 SourceBuffers functionality. This leads to various issues, such as

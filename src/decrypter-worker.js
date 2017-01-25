@@ -2,7 +2,7 @@ import window from 'global/window';
 import {Decrypter} from 'aes-decrypter';
 
 /**
- * Our web wroker interface so that things can talk to aes-decrypter
+ * Our web worker interface so that things can talk to aes-decrypter
  * that will be running in a web worker. the scope is passed to this by
  * webworkify.
  *
