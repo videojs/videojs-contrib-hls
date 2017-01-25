@@ -95,7 +95,7 @@ QUnit.module('HLS', {
 
     // save and restore browser detection for the Firefox-specific tests
     this.old.IS_FIREFOX = videojs.browser.IS_FIREFOX;
-    this.old.IE_VERSION = videojs.browser.IE_VERSION
+    this.old.IE_VERSION = videojs.browser.IE_VERSION;
 
     this.standardXHRResponse = (request, data) => {
       standardXHRResponse(request, data);
