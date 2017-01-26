@@ -1,5 +1,27 @@
 CHANGELOG
 =========
+## 5.0.0 (2017-01-25)
+* Update issue template to use unpkg for latest versions [#967](https://github.com/videojs/videojs-contrib-hls/pull/967)
+* Use a snapshot of the issue template JSBin to protect from changes by owner [#969](https://github.com/videojs/videojs-contrib-hls/pull/969)
+* Fix any possible fillBuffer_ race conditions by debouncing all fillBuffers_ [#959](https://github.com/videojs/videojs-contrib-hls/pull/959)
+  * Convert all calls to fillBuffer_ to calls to monitorBuffer_
+  * Rename monitorBuffer_ to monitorBufferTick_ which becomes the 500ms buffer check timer loop
+  * Make monitorBuffer_ schedule an immediate timer for monitorBufferTick_
+* Processing segment reachable even after playlist update removes it [#939](https://github.com/videojs/videojs-contrib-hls/pull/939)
+  * Change processing segment reference on playlist refresh
+  * Test for correct segment references on pending segments
+  * Fix unreachable segment tests after rebase on async monitor buffer change
+  * Update media index on playlist refreshes for all requests (including syncs)
+* Bubble progress events [#978](https://github.com/videojs/videojs-contrib-hls/pull/978)
+  * If the segment request triggers progress events (that is, XHR2 is supported), bubble those up to the tech. This makes it clearer that buffering is happening even on very slow connections.
+* run decryption in a webworker [#972](https://github.com/videojs/videojs-contrib-hls/pull/972)
+  * drop support for IE10
+* Fixed mediaIndex tracking so that it is consistent when the playlist updates during a live stream [#977](https://github.com/videojs/videojs-contrib-hls/pull/977)
+  * Fixed mediaIndex tracking so that it is consistent when the playlist updates during a live stream
+  * Removed any code in SegmentLoader#handleUpdateEnd_ that changed the mediaIndex
+  * Reordered SegmentLoader#playlist to make it easier to follow
+  * All changes to both mediaIndexes (SegmentLoader's and segmentInfo's) now happen in SegmentLoader#playlist
+  * Added tests for proper mediaIndex tracking with live playlists
 
 --------------------
 ## 4.1.1 (2017-01-20)
