@@ -26,6 +26,7 @@ Maintenance Status: Stable
     - [List](#list)
       - [withCredentials](#withcredentials)
       - [useCueTags](#usecuetags)
+      - [overrideNative](#overridenative)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -241,6 +242,25 @@ cuesTrack.addEventListener('cuechange', function() {
   }
 });
 ```
+
+##### overrideNative
+* Type: `boolean`
+* can be used as an initialization option
+
+Try to use videojs-contrib-hls even on platforms that provide some
+level of HLS support natively. There are a number of platforms that
+*technically* play back HLS content but aren't very reliable or are
+missing features like CEA-608 captions support. When `overrideNative`
+is true, if the platform supports Media Source Extensions
+videojs-contrib-hls will take over HLS playback to provide a more
+consistent experience.
+
+__NOTE__: If you use this option, you must also set
+`videojs.options.html5.nativeAudioTracks` and
+`videojs.options.html5.nativeVideoTracks` to
+`false`. videojs-contrib-hls relies on audio and video tracks to play
+streams with alternate audio and requires additional capabilities only
+supported by non-native tracks in video.js.
 
 ### Runtime Properties
 Runtime properties are attached to the tech object when HLS is in

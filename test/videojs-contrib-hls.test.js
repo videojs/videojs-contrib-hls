@@ -1517,6 +1517,18 @@ QUnit.test('loads if native HLS is available and override is set', function(asse
 
   Hls.supportsNativeHls = true;
   player = createPlayer();
+  player.tech_.featuresNativeVideoTracks = true;
+  assert.throws(function() {
+    player.src({
+      src: 'http://example.com/manifest/master.m3u8',
+      type: 'application/x-mpegURL'
+    });
+  }, 'errors if native tracks are enabled');
+  player.dispose();
+
+  player = createPlayer();
+  player.tech_.featuresNativeVideoTracks = false;
+  player.tech_.featuresNativeAudioTracks = false;
   player.src({
     src: 'http://example.com/manifest/master.m3u8',
     type: 'application/x-mpegURL'
