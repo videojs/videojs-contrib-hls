@@ -547,7 +547,7 @@ class HlsHandler extends Component {
       this.ignoreNextSeekingEvent_ = true;
     });
 
-    this.tech_.ready(this.setupQualityLevels_.bind(this));
+    this.tech_.ready(() => this.setupQualityLevels_());
 
     // do nothing if the tech has been disposed already
     // this can occur if someone sets the src in player.ready(), for instance
