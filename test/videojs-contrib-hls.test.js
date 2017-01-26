@@ -2350,6 +2350,7 @@ QUnit.test('populates quality levels list when available', function(assert) {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  openMediaSource(this.player, this.clock);
 
   assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels');
 
@@ -2365,7 +2366,6 @@ QUnit.test('populates quality levels list when available', function(assert) {
     changeCount++;
   });
 
-  openMediaSource(this.player, this.clock);
   // master
   this.standardXHRResponse(this.requests.shift());
   // media
@@ -2379,6 +2379,7 @@ QUnit.test('populates quality levels list when available', function(assert) {
     src: 'http://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  openMediaSource(this.player, this.clock);
 
   assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels from video with source');
 });
