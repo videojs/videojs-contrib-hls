@@ -566,7 +566,7 @@ class HlsHandler extends Component {
    * @private
    */
   setupQualityLevels_() {
-    let player = videojs(this.tech_.options_.playerId);
+    let player = videojs.players[this.tech_.options_.playerId];
 
     if (player && player.qualityLevels) {
       this.qualityLevels_ = player.qualityLevels();
