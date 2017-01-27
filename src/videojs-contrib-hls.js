@@ -781,8 +781,10 @@ if (window.Uint8Array && flashTech) {
 videojs.HlsHandler = HlsHandler;
 videojs.HlsSourceHandler = HlsSourceHandler;
 videojs.Hls = Hls;
+if (!videojs.use) {
+  videojs.registerComponent('Hls', Hls);
+}
 videojs.m3u8 = m3u8;
-videojs.registerComponent('Hls', Hls);
 videojs.options.hls = videojs.options.hls || {};
 videojs.plugin('reloadSourceOnError', reloadSourceOnError);
 
