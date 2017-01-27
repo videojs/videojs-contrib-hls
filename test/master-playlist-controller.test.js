@@ -36,6 +36,8 @@ QUnit.module('MasterPlaylistController', {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    this.clock.tick(1);
+
     this.standardXHRResponse = (request, data) => {
       standardXHRResponse(request, data);
 
@@ -171,6 +173,9 @@ QUnit.test('if buffered, will request second segment byte range', function(asser
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+
+  this.clock.tick(1);
+
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   // mock that the user has played the video before
@@ -218,6 +223,9 @@ function(assert) {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+
+  this.clock.tick(1);
+
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
   // maybe not needed if https://github.com/videojs/video.js/issues/2326 gets fixed
   this.clock.tick(1);
@@ -780,6 +788,9 @@ QUnit.test('calls to update cues on new media', function(assert) {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+
+  this.clock.tick(1);
+
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   let callCount = 0;
@@ -811,6 +822,8 @@ QUnit.test('calls to update cues on media when no master', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
+
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
   this.masterPlaylistController.useCueTags_ = true;
 
@@ -840,6 +853,9 @@ QUnit.test('respects useCueTags option', function(assert) {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+
+  this.clock.tick(1);
+
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   assert.ok(this.masterPlaylistController.cueTagsTrack_,

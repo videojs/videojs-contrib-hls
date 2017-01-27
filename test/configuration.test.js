@@ -110,6 +110,8 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    this.clock.tick(1);
+
     let hls = this.player.tech_.hls;
 
     openMediaSource(this.player, this.clock);
@@ -125,6 +127,8 @@ options.forEach((opt) => {
       src: 'http://example.com/media.m3u8',
       type: 'application/vnd.apple.mpegurl'
     });
+
+    this.clock.tick(1);
 
     let hls = this.player.tech_.hls;
 
@@ -144,6 +148,8 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    this.clock.tick(1);
+
     let hls = this.player.tech_.hls;
 
     openMediaSource(this.player, this.clock);
@@ -161,6 +167,8 @@ options.forEach((opt) => {
     srcOptions[opt.name] = opt.test;
     this.player = createPlayer();
     this.player.src(srcOptions);
+
+    this.clock.tick(1);
 
     let hls = this.player.tech_.hls;
 
@@ -181,6 +189,8 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    this.clock.tick(1);
+
     let hls = this.player.tech_.hls;
 
     openMediaSource(this.player, this.clock);
@@ -200,6 +210,8 @@ options.forEach((opt) => {
     srcOptions[opt.name] = opt.test;
     this.player = createPlayer(sourceHandlerOptions);
     this.player.src(srcOptions);
+
+    this.clock.tick(1);
 
     let hls = this.player.tech_.hls;
 

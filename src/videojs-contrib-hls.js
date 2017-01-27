@@ -666,6 +666,7 @@ const HlsSourceHandler = function(mode) {
 
       let settings = videojs.mergeOptions(options, {hls: {mode}});
 
+      console.log('foo');
       tech.hls = new HlsHandler(source, tech, settings);
 
       tech.hls.xhr = xhrFactory();
