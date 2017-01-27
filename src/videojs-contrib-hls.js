@@ -786,7 +786,12 @@ if (!videojs.use) {
 }
 videojs.m3u8 = m3u8;
 videojs.options.hls = videojs.options.hls || {};
-videojs.plugin('reloadSourceOnError', reloadSourceOnError);
+
+if (videojs.registerPlugin) {
+  videojs.registerPlugin('reloadSourceOnError', reloadSourceOnError);
+} else {
+  videojs.plugin('reloadSourceOnError', reloadSourceOnError);
+}
 
 module.exports = {
   Hls,
