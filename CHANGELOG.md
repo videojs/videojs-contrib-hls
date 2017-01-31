@@ -1,5 +1,14 @@
 CHANGELOG
 =========
+
+## 5.1.0 (2017-01-31)
+* Updated videojs-contrib-media-sources to v4.2.0
+  * Added support for inserting silence when appending a new segment will introduce a gap in the audio SourceBuffer
+* Remove hls-audio-track.js as this file was no longer being used [#985](https://github.com/videojs/videojs-contrib-hls/pull/985)
+* Stop blacklisting audio codecs as there is now wide support for switching between audio codecs on-the-fly among all modern browsers [#981](https://github.com/videojs/videojs-contrib-hls/pull/981)
+* Fix qualityLevels setup for videos with a source element [#979](https://github.com/videojs/videojs-contrib-hls/pull/979)
+* Error early for misconfigured overrideNative [#980](https://github.com/videojs/videojs-contrib-hls/pull/980)
+
 ## 5.0.0 (2017-01-25)
 * Update issue template to use unpkg for latest versions [#967](https://github.com/videojs/videojs-contrib-hls/pull/967)
 * Use a snapshot of the issue template JSBin to protect from changes by owner [#969](https://github.com/videojs/videojs-contrib-hls/pull/969)
