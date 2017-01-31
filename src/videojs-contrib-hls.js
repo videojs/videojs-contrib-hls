@@ -691,7 +691,7 @@ const HlsSourceHandler = function(mode) {
 
       let previousBeforeRequest;
 
-      if (tech.hls && tech.hls.xhr && tech.hls.xhr.beforeRequest) {
+      if (tech.hls && tech.hls.xhr) {
         previousBeforeRequest = tech.hls.xhr.beforeRequest;
       }
 
