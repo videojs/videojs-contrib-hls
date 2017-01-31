@@ -35,6 +35,7 @@ class MockTextTrack {
 // save the original function to a variable to patch it back in for the metadata cue
 // specific tests
 const ogAddSegmentMetadataCue_ = SegmentLoader.prototype.addSegmentMetadataCue_;
+
 SegmentLoader.prototype.addSegmentMetadataCue_ = function() {};
 
 let currentTime;
