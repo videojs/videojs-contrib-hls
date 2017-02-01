@@ -136,6 +136,12 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   let width;
   let height;
 
+  // In Chrome, the Array#sort function is not stable so add a
+  // presortIndex that we can use to ensure we get a stable-sort
+  sortedPlaylists.forEach(function(elem, idx) {
+    elem.presortIndex = idx;
+  });
+
   sortedPlaylists.sort(Hls.comparePlaylistBandwidth);
 
   // filter out any playlists that have been excluded due to
@@ -161,6 +167,10 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
       // since the playlists are sorted in ascending order by
       // bandwidth, the first viable variant is the best
       if (!bandwidthBestVariant) {
+        if (i !== 0 &&
+            sortedPlaylists[i - 1].attributes.BANDWIDTH === variant.attributes.BANDWIDTH) {
+          continue;
+        }
         bandwidthBestVariant = variant;
       }
     }
@@ -710,6 +720,9 @@ Hls.comparePlaylistBandwidth = function(left, right) {
   }
   rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
 
+  if (leftBandwidth === rightBandwidth) {
+    return left.presortIndex - right.presortIndex;
+  }
   return leftBandwidth - rightBandwidth;
 };
 
@@ -747,6 +760,9 @@ Hls.comparePlaylistResolution = function(left, right) {
   if (leftWidth === rightWidth &&
       left.attributes.BANDWIDTH &&
       right.attributes.BANDWIDTH) {
+    if (left.attributes.BANDWIDTH === right.attributes.BANDWIDTH) {
+      return right.presortIndex - left.presortIndex;
+    }
     return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
   }
   return leftWidth - rightWidth;
