@@ -173,6 +173,62 @@ QUnit.test('seek to live point if we fall off the end of a live playlist', funct
   assert.equal(seeks[0], 45, 'player seeked to live point');
 });
 
+QUnit.test('fires notifications when activated', function(assert) {
+  let buffered = [[]];
+  let seekable = [[]];
+  let currentTime = 0;
+  let liveresync = 0;
+  let videounderflow = 0;
+  let playbackWatcher;
+
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  this.player.tech_.currentTime = function() {
+    return currentTime;
+  };
+  this.player.tech_.buffered = function() {
+    return {
+      length: buffered.length,
+      start(i) {
+        return buffered[i][0];
+      },
+      end(i) {
+        return buffered[i][1];
+      }
+    };
+  };
+  playbackWatcher = this.player.tech_.hls.playbackWatcher_;
+  playbackWatcher.seekable = function() {
+    return {
+      length: seekable.length,
+      start(i) {
+        return seekable[i][0];
+      },
+      end(i) {
+        return seekable[i][1];
+      }
+    };
+  };
+  this.player.tech_.on('liveresync', () => liveresync++);
+  this.player.tech_.on('videounderflow', () => videounderflow++);
+
+  currentTime = 19;
+  seekable[0] = [20, 30];
+  playbackWatcher.waiting_();
+  assert.equal(liveresync, 1, 'triggered a liveresync event');
+
+  currentTime = 12;
+  seekable[0] = [0, 100];
+  buffered[0] = [0, 9];
+  buffered.push([10, 20]);
+  playbackWatcher.waiting_();
+  assert.equal(videounderflow, 1, 'triggered a videounderflow event');
+});
+
 QUnit.module('PlaybackWatcher isolated functions', {
   beforeEach() {
     monitorCurrentTime_ = PlaybackWatcher.prototype.monitorCurrentTime_;

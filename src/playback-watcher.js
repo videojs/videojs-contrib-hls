@@ -135,6 +135,8 @@ export default class PlaybackWatcher {
       this.cancelTimer_();
       this.tech_.setCurrentTime(livePoint);
 
+      // live window resyncs may be useful for monitoring QoS
+      this.tech_.trigger('liveresync');
       return;
     }
 
@@ -148,6 +150,9 @@ export default class PlaybackWatcher {
       // (only suffering ~3 seconds of frozen video and a pause in audio playback).
       this.cancelTimer_();
       this.tech_.setCurrentTime(currentTime);
+
+      // video underflow may be useful for monitoring QoS
+      this.tech_.trigger('videounderflow');
       return;
     }
 
