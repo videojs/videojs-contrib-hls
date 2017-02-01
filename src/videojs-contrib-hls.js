@@ -167,6 +167,7 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
       // since the playlists are sorted in ascending order by
       // bandwidth, the first viable variant is the best
       if (!bandwidthBestVariant) {
+        // make sure the first playlist is chosen
         if (i !== 0 &&
             sortedPlaylists[i - 1].attributes.BANDWIDTH === variant.attributes.BANDWIDTH) {
           continue;
