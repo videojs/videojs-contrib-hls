@@ -448,6 +448,50 @@ cue.value.data
 There are lots of guides and references to using text tracks [around
 the web](http://www.html5rocks.com/en/tutorials/track/basics/).
 
+### Segment Metadata
+You can get metadata about the segments currently in the buffer by using the `segment-metadata`
+text track. You can get the metadata of the currently rendered segment by looking at the
+tracks `activeCues` array. The metadata will be attached to the `cue.value` property and
+will have this structure
+
+```javascript
+cue.value = {
+  uri: The Segment uri,
+  timeline: Timeline of the segment,
+  playlist: The Playlist uri,
+  start: Segment start time,
+  end: Segment end time
+};
+```
+
+Example:
+Detect when a change in quality is rendered on screen
+```javascript
+let tracks = player.textTracks();
+let segmentMetadataTrack;
+
+for (let i = 0; i < tracks.length; i++) {
+  if (tracks[i].label === 'segment-metadata') {
+    segmentMetadataTrack = tracks[i];
+  }
+}
+
+let previousPlaylist;
+
+if (segmentMetadataTrack) {
+  segmentMetadataTrack.on('cuechange', function() {
+    let activeCue = segmentMetadataTrack.activeCues[0];
+
+    if (activeCue) {
+      if (previousPlaylist !== activeCue.playlist) {
+        console.log('Switched from rendition' + previousPlaylist + 'to rendition' + activeCue.playlist);
+      }
+      previousPlaylist = activeCue.playlist;
+    }
+  });
+}
+```
+
 ## Hosting Considerations
 Unlike a native HLS implementation, the HLS tech has to comply with
 the browser's security policies. That means that all the files that
