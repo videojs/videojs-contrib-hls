@@ -1150,7 +1150,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @method addSegmentMetadataCue_
    */
   addSegmentMetadataCue_(segmentInfo) {
-    if (!this.segmentMetadataTrack_ || !segmentInfo) {
+    if (!this.segmentMetadataTrack_) {
       return;
     }
 
@@ -1161,6 +1161,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
 
+    const Cue = window.WebKitDataCue || window.VTTCue;
     const value = {
       uri: segmentInfo.uri,
       timeline: segmentInfo.timeline,
@@ -1168,11 +1169,11 @@ export default class SegmentLoader extends videojs.EventTarget {
       start,
       end
     };
-    const Cue = window.WebKitDataCue || window.VTTCue;
     const data = JSON.stringify(value);
     const cue = new Cue(start, end, data);
 
-    value.data = data;
+    // Attach the metadata to the value property of the cue to keep consistency between
+    // the differences of WebKitDataCue in safari and VTTCue in other browsers
     cue.value = value;
 
     this.segmentMetadataTrack_.addCue(cue);

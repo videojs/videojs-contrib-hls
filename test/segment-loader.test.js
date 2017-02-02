@@ -855,7 +855,7 @@ QUnit.test('adds cues with segment information to the segment-metadata track as 
     };
 
     assert.equal(track.cues.length, 1, 'one cue added for segment');
-    assert.deepEqual(JSON.parse(track.cues[0].value.data), expectedCue,
+    assert.deepEqual(track.cues[0].value, expectedCue,
       'added correct segment info to cue');
 
     probeResponse = { start: 9.56, end: 19.2 };
@@ -872,7 +872,7 @@ QUnit.test('adds cues with segment information to the segment-metadata track as 
     };
 
     assert.equal(track.cues.length, 2, 'one cue added for segment');
-    assert.deepEqual(JSON.parse(track.cues[1].value.data), expectedCue,
+    assert.deepEqual(track.cues[1].value, expectedCue,
       'added correct segment info to cue');
 
     probeResponse = { start: 19.24, end: 28.99 };
@@ -889,12 +889,30 @@ QUnit.test('adds cues with segment information to the segment-metadata track as 
     };
 
     assert.equal(track.cues.length, 3, 'one cue added for segment');
-    assert.deepEqual(JSON.parse(track.cues[2].value.data), expectedCue,
+    assert.deepEqual(track.cues[2].value, expectedCue,
+      'added correct segment info to cue');
+
+    // append overlapping segment, emmulating segment-loader fetching behavior on
+    // rendtion switch
+    probeResponse = { start: 19.21, end: 28.98 };
+    this.requests[0].response = new Uint8Array(10).buffer;
+    this.requests.shift().respond(200, null, '');
+    mediaSource.sourceBuffers[0].trigger('updateend');
+    expectedCue = {
+      uri: '3.ts',
+      timeline: 0,
+      playlist: 'playlist.m3u8',
+      start: 19.21,
+      end: 28.98
+    };
+
+    assert.equal(track.cues.length, 3, 'overlapped cue removed, new one added');
+    assert.deepEqual(track.cues[2].value, expectedCue,
       'added correct segment info to cue');
 
     // verify stats
-    assert.equal(loader.mediaBytesTransferred, 30, '10 bytes');
-    assert.equal(loader.mediaRequests, 3, '1 request');
+    assert.equal(loader.mediaBytesTransferred, 40, '40 bytes');
+    assert.equal(loader.mediaRequests, 4, '4 requests');
   });
 
 QUnit.test('segment 404s should trigger an error', function(assert) {
