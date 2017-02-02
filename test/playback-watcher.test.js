@@ -223,10 +223,10 @@ QUnit.test('fires notifications when activated', function(assert) {
 
   currentTime = 12;
   seekable[0] = [0, 100];
-  buffered[0] = [0, 9];
-  buffered.push([10, 20]);
+  buffered = [[0, 9], [10, 20]];
   playbackWatcher.waiting_();
   assert.equal(videounderflow, 1, 'triggered a videounderflow event');
+  assert.equal(liveresync, 1, 'did not trigger an additional liveresync event');
 });
 
 QUnit.module('PlaybackWatcher isolated functions', {
