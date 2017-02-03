@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+## 5.1.1 (2017-02-03)
+* fix: introduce videojs 6 forward compatibility while maintaining backward compatibilty [#975](https://github.com/videojs/videojs-contrib-hls/pull/975)
+  * fix: swap to use getTech and null-check flash tech
+  * Fix #968
+  * only registerComponent Hls in older vjs
+  * use registerPlugin if it exists
+  * addTrack cross-compat
+* Add events for underflow and live resync [#989](https://github.com/videojs/videojs-contrib-hls/pull/989)
+  * For QoS measurement purposes, it may be useful to know how often the playback watcher is activating. Add new events for when the player falls off the back of the live window or stalls due to a video buffer gap.
+
+--------------------
 ## 5.1.0 (2017-01-31)
 * Updated videojs-contrib-media-sources to v4.2.0
   * Added support for inserting silence when appending a new segment will introduce a gap in the audio SourceBuffer
@@ -9,6 +20,7 @@ CHANGELOG
 * Fix qualityLevels setup for videos with a source element [#979](https://github.com/videojs/videojs-contrib-hls/pull/979)
 * Error early for misconfigured overrideNative [#980](https://github.com/videojs/videojs-contrib-hls/pull/980)
 
+--------------------
 ## 5.0.0 (2017-01-25)
 * Update issue template to use unpkg for latest versions [#967](https://github.com/videojs/videojs-contrib-hls/pull/967)
 * Use a snapshot of the issue template JSBin to protect from changes by owner [#969](https://github.com/videojs/videojs-contrib-hls/pull/969)
