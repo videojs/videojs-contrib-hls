@@ -38,8 +38,6 @@ Maintenance Status: Stable
     - [hls.xhr](#hlsxhr)
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
-    - [loadedplaylist](#loadedplaylist)
-    - [mediachange](#mediachange)
   - [In-Band Metadata](#in-band-metadata)
 - [Hosting Considerations](#hosting-considerations)
 - [Known Issues](#known-issues)
@@ -415,27 +413,12 @@ documentation at [https://github.com/Raynos/xhr](https://github.com/Raynos/xhr).
 
 ### Events
 Standard HTML video events are handled by video.js automatically and
-are triggered on the player object. In addition, there are a couple
-specialized events you can listen to on the HLS object during
-playback:
+are triggered on the player object.
 
 #### loadedmetadata
 
 Fired after the first segment is downloaded for a playlist. This will not happen
 until playback if video.js's `metadata` setting is `none`
-
-#### loadedplaylist
-
-Fired immediately after a new master or media playlist has been
-downloaded. By default, the tech only downloads playlists as they
-are needed.
-
-#### mediachange
-
-Fired when a new playlist becomes the active media playlist. Note that
-the actual rendering quality change does not occur simultaneously with
-this event; a new segment must be requested and the existing buffer
-depleted first.
 
 ### In-Band Metadata
 The HLS tech supports [timed
