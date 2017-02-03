@@ -244,7 +244,7 @@ Hls.supportsNativeHls = (function() {
   let video = document.createElement('video');
 
   // native HLS is definitely not supported if HTML5 video isn't
-  if (!videojs.getComponent('Html5').isSupported()) {
+  if (!videojs.getTech('Html5').isSupported()) {
     return false;
   }
 
@@ -781,21 +781,30 @@ if (typeof videojs.MediaSource === 'undefined' ||
   videojs.URL = URL;
 }
 
+const flashTech = videojs.getTech('Flash');
+
 // register source handlers with the appropriate techs
 if (MediaSource.supportsNativeMediaSources()) {
-  videojs.getComponent('Html5').registerSourceHandler(HlsSourceHandler('html5'), 0);
+  videojs.getTech('Html5').registerSourceHandler(HlsSourceHandler('html5'), 0);
 }
-if (window.Uint8Array) {
-  videojs.getComponent('Flash').registerSourceHandler(HlsSourceHandler('flash'));
+if (window.Uint8Array && flashTech) {
+  flashTech.registerSourceHandler(HlsSourceHandler('flash'));
 }
 
 videojs.HlsHandler = HlsHandler;
 videojs.HlsSourceHandler = HlsSourceHandler;
 videojs.Hls = Hls;
+if (!videojs.use) {
+  videojs.registerComponent('Hls', Hls);
+}
 videojs.m3u8 = m3u8;
-videojs.registerComponent('Hls', Hls);
 videojs.options.hls = videojs.options.hls || {};
-videojs.plugin('reloadSourceOnError', reloadSourceOnError);
+
+if (videojs.registerPlugin) {
+  videojs.registerPlugin('reloadSourceOnError', reloadSourceOnError);
+} else {
+  videojs.plugin('reloadSourceOnError', reloadSourceOnError);
+}
 
 module.exports = {
   Hls,

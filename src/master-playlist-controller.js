@@ -214,7 +214,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
       this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
-      this.tech_.textTracks().addTrack_(this.cueTagsTrack_);
     }
 
     this.audioTracks_ = [];
