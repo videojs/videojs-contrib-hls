@@ -333,6 +333,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // on `mediachange`
       this.mainSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
       this.updateDuration();
+      // although we may have already updated due to sync info via the segment loader,
+      // it isn't always fired (cases where we've fallen far enough off the back of the
+      // live playlist while paused)
+      if (!updatedPlaylist.endList && this.tech_.paused()) {
+        this.onSyncInfoUpdate_();
+      }
 
       if (!updatedPlaylist.endList) {
         let addSeekableRange = () => {
@@ -715,11 +721,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.load();
     }
 
+    let seekable = this.tech_.seekable();
+
     // if the viewer has paused and we fell out of the live window,
-    // seek forward to the earliest available position
+    // seek forward to the live point
     if (this.tech_.duration() === Infinity) {
-      if (this.tech_.currentTime() < this.tech_.seekable().start(0)) {
-        return this.tech_.setCurrentTime(this.tech_.seekable().start(0));
+      if (this.tech_.currentTime() < seekable.start(0)) {
+        return this.tech_.setCurrentTime(seekable.end(seekable.length - 1));
       }
     }
   }
