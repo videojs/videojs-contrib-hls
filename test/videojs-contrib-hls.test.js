@@ -2,6 +2,7 @@
 
 import document from 'global/document';
 import videojs from 'video.js';
+import 'videojs-flash';
 import Events from 'video.js';
 import QUnit from 'qunit';
 import testDataManifests from './test-manifests.js';
@@ -2049,37 +2050,39 @@ QUnit.test('adds 1 default audio track if we have not parsed any and the playlis
   assert.equal(this.player.audioTracks()[0].label, 'default', 'set the label');
 });
 
-QUnit.test('adds 1 default audio track if in flash mode', function(assert) {
-  let hlsOptions = videojs.options.hls;
+if (Flash) {
+  QUnit.test('adds 1 default audio track if in flash mode', function(assert) {
+    let hlsOptions = videojs.options.hls;
 
-  this.player.dispose();
-  videojs.options.hls = {
-    mode: 'flash'
-  };
+    this.player.dispose();
+    videojs.options.hls = {
+      mode: 'flash'
+    };
 
-  this.player = createPlayer();
+    this.player = createPlayer();
 
-  this.player.src({
-    src: 'manifest/multipleAudioGroups.m3u8',
-    type: 'application/vnd.apple.mpegurl'
+    this.player.src({
+      src: 'manifest/multipleAudioGroups.m3u8',
+      type: 'application/vnd.apple.mpegurl'
+    });
+
+    this.clock.tick(1);
+
+    assert.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
+
+    openMediaSource(this.player, this.clock);
+
+    // master
+    this.standardXHRResponse(this.requests.shift());
+    // media
+    this.standardXHRResponse(this.requests.shift());
+
+    assert.equal(this.player.audioTracks().length, 1, 'one audio track after load');
+    assert.equal(this.player.audioTracks()[0].label, 'default', 'set the label');
+
+    videojs.options.hls = hlsOptions;
   });
-
-  this.clock.tick(1);
-
-  assert.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
-
-  openMediaSource(this.player, this.clock);
-
-  // master
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-
-  assert.equal(this.player.audioTracks().length, 1, 'one audio track after load');
-  assert.equal(this.player.audioTracks()[0].label, 'default', 'set the label');
-
-  videojs.options.hls = hlsOptions;
-});
+}
 
 QUnit.test('adds audio tracks if we have parsed some from a playlist', function(assert) {
   this.player.src({
