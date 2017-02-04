@@ -1742,6 +1742,7 @@ QUnit.test('can be disposed before finishing initialization', function(assert) {
   });
 
   this.clock.tick(1);
+  readyHandlers.shift().call(this.player);
 
   this.player.src({
     src: 'http://example.com/media.mp4',
