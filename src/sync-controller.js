@@ -217,7 +217,8 @@ export default class SyncController extends videojs.EventTarget {
     let segment = segmentInfo.segment;
     let timingInfo;
 
-    if (segment.map) {
+    // Assume fragmented mp4 if map exists and segment uri doesn't end in .ts
+    if (segment.map && !segment.uri.endsWith('.ts')) {
       timingInfo = this.probeMp4Segment_(segmentInfo);
     } else {
       timingInfo = this.probeTsSegment_(segmentInfo);
