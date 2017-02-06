@@ -1011,8 +1011,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     // if the media initialization segment is changing, append it
-    // before the content segment
-    if (segment.map) {
+    // before the content segment.  only append to media source buffer
+    // if the segment is part of a fragmented mp4
+    if (segment.map && !segment.uri.endsWith('.ts')) {
       let initId = initSegmentId(segment.map);
 
       if (!this.activeInitSegmentId_ ||
