@@ -122,10 +122,9 @@ export const mimeTypesForPlaylist_ = function(master, media) {
   // An initialization segment means the media playlists is an iframe
   // playlist or is using the mp4 container. We don't currently
   // support iframe playlists, so assume this is signalling mp4
-  // fragments.
-  // the existence check for segments can be removed once
-  // https://github.com/videojs/m3u8-parser/issues/8 is closed
-  if (media.segments && media.segments.length && media.segments[0].map) {
+  // fragments if the uri doesn't end in .ts (which indicates mpeg2ts 
+  // segments).
+  if (media.segments.length && media.segments[0].map && !media.segments[0].uri.endsWith('.ts')) {
     container = 'mp4';
   }
 
