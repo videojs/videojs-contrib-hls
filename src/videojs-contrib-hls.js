@@ -119,18 +119,18 @@ const handleHlsLoadedMetadata = function(qualityLevels, hls) {
 /**
  * Resuable stable sort function
  *
- * @param {Playlists} playlists
- * @param {Function} different comparators
+ * @param {Playlists} array
+ * @param {Function} sortFn Different comparators
  * @function stableSort
  */
 const stableSort = function(array, sortFn) {
-  let cmp;
+  let newArray = array.slice();
 
   array.sort(function(left, right) {
-    cmp = sortFn(left, right);
+    let cmp = sortFn(left, right);
 
     if (cmp === 0) {
-      return array.indexOf(left) - array.indexOf(right);
+      return newArray.indexOf(left) - newArray.indexOf(right);
     }
     return cmp;
   });
@@ -198,7 +198,7 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   });
   // ensure that we pick the highest bandwidth variant that have exact resolution
   resolutionBestVariant = resolutionBestVariantList.filter(function(elem) {
-    return elem.attributes.BANDWIDTH === resolutionBestVariantList.slice(-1)[0].attributes.BANDWIDTH;
+    return elem.attributes.BANDWIDTH === resolutionBestVariantList[resolutionBestVariantList.length - 1].attributes.BANDWIDTH;
   })[0];
 
   // find the smallest variant that is larger than the player
@@ -216,7 +216,7 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
     // ensure that we also pick the highest bandwidth variant that
     // is just-larger-than the video player
     resolutionPlusOne = resolutionPlusOneSmallest.filter(function(elem) {
-      return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest.slice(-1)[0].attributes.BANDWIDTH;
+      return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1].attributes.BANDWIDTH;
     })[0];
   }
 

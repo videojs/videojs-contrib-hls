@@ -662,6 +662,7 @@ QUnit.test('selects a primary rendtion when there are multiple rendtions share s
   openMediaSource(this.player, this.clock);
   standardXHRResponse(this.requests[0]);
 
+  // covers playlists with same bandwidth but different resolution and different bandwidth but same resolution
   this.player.tech_.hls.playlists.master.playlists[0].attributes.BANDWIDTH = 528;
   this.player.tech_.hls.playlists.master.playlists[1].attributes.BANDWIDTH = 528;
   this.player.tech_.hls.playlists.master.playlists[2].attributes.BANDWIDTH = 728;
@@ -672,10 +673,27 @@ QUnit.test('selects a primary rendtion when there are multiple rendtions share s
   playlist = this.player.tech_.hls.selectPlaylist();
   assert.strictEqual(playlist,
                      this.player.tech_.hls.playlists.master.playlists[2],
-                     'the primary rendition is selected');
+                     'select the rendition with largest bandwidth and just-larger-than video player');
 
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1000, 'bandwidth set above');
+
+  // covers playlists share same bandwidth and resolutions
+  this.player.tech_.hls.playlists.master.playlists[0].attributes.BANDWIDTH = 728;
+  this.player.tech_.hls.playlists.master.playlists[0].attributes.RESOLUTION.width = 960;
+  this.player.tech_.hls.playlists.master.playlists[0].attributes.RESOLUTION.height = 540;
+  this.player.tech_.hls.playlists.master.playlists[1].attributes.BANDWIDTH = 728;
+  this.player.tech_.hls.playlists.master.playlists[2].attributes.BANDWIDTH = 728;
+  this.player.tech_.hls.playlists.master.playlists[2].attributes.RESOLUTION.width = 960;
+  this.player.tech_.hls.playlists.master.playlists[2].attributes.RESOLUTION.height = 540;
+  this.player.tech_.hls.playlists.master.playlists[3].attributes.BANDWIDTH = 728;
+
+  this.player.tech_.hls.bandwidth = 1000;
+
+  playlist = this.player.tech_.hls.selectPlaylist();
+  assert.strictEqual(playlist,
+                     this.player.tech_.hls.playlists.master.playlists[0],
+                     'the primary rendition is selected');
 });
 
 QUnit.test('allows initial bandwidth to be provided', function(assert) {
