@@ -329,6 +329,14 @@ class HlsHandler extends Component {
       }
     }
 
+    // overriding native HLS only works if audio tracks have been emulated
+    // error early if we're misconfigured:
+    if (videojs.options.hls.overrideNative &&
+        (tech.featuresNativeVideoTracks || tech.featuresNativeAudioTracks)) {
+      throw new Error('Overriding native HLS requires emulated tracks. ' +
+                      'See https://git.io/vMpjB');
+    }
+
     this.tech_ = tech;
     this.source_ = source;
     this.stats = {};
@@ -547,7 +555,7 @@ class HlsHandler extends Component {
       this.ignoreNextSeekingEvent_ = true;
     });
 
-    this.setupQualityLevels_();
+    this.tech_.ready(() => this.setupQualityLevels_());
 
     // do nothing if the tech has been disposed already
     // this can occur if someone sets the src in player.ready(), for instance
@@ -753,6 +761,11 @@ Hls.comparePlaylistResolution = function(left, right) {
 };
 
 HlsSourceHandler.canPlayType = function(type) {
+  // No support for IE 10 or below
+  if (videojs.browser.IE_VERSION && videojs.browser.IE_VERSION <= 10) {
+    return false;
+  }
+
   let mpegurlRE = /^(audio|video|application)\/(x-|vnd\.apple\.)?mpegurl/i;
 
   // favor native HLS support if it's available

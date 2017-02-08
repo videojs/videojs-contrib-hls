@@ -17,7 +17,6 @@ import {
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
 import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
-import HlsAudioTrack from '../src/hls-audio-track';
 import window from 'global/window';
 // we need this so the plugin registers itself
 import 'videojs-contrib-quality-levels';
@@ -98,6 +97,7 @@ QUnit.module('HLS', {
 
     // save and restore browser detection for the Firefox-specific tests
     this.old.IS_FIREFOX = videojs.browser.IS_FIREFOX;
+    this.old.IE_VERSION = videojs.browser.IE_VERSION;
 
     this.standardXHRResponse = (request, data) => {
       standardXHRResponse(request, data);
@@ -126,6 +126,7 @@ QUnit.module('HLS', {
     videojs.Hls.supportsNativeHls = this.old.NativeHlsSupport;
     videojs.Hls.Decrypter = this.old.Decrypt;
     videojs.browser.IS_FIREFOX = this.old.IS_FIREFOX;
+    videojs.browser.IE_VERSION = this.old.IE_VERSION;
 
     this.player.dispose();
   }
@@ -1670,6 +1671,26 @@ if (Flash) {
     assert.equal(loadstarts, 1, 'fired loadstart');
     videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
   });
+  
+  QUnit.test('source handler does not support sources when IE 10 or below', function(assert) {
+    videojs.browser.IE_VERSION = 10;
+
+    ['html5', 'flash'].forEach(function(techName) {
+      assert.ok(!HlsSourceHandler(techName).canHandleSource({
+        type: 'application/x-mpegURL'
+      }), 'does not support when browser is IE10');
+    });
+  });
+
+  QUnit.test('fires loadstart manually if Flash is used', function(assert) {
+    videojs.HlsHandler.prototype.setupQualityLevels_ = () => {};
+    let tech = new (videojs.getTech('Flash'))({});
+    let loadstarts = 0;
+
+    tech.on('loadstart', function() {
+      loadstarts++;
+    });
+  });
 }
 
 QUnit.test('has no effect if native HLS is available', function(assert) {
@@ -1698,6 +1719,18 @@ QUnit.test('loads if native HLS is available and override is set', function(asse
 
   Hls.supportsNativeHls = true;
   player = createPlayer();
+  player.tech_.featuresNativeVideoTracks = true;
+  assert.throws(function() {
+    player.src({
+      src: 'http://example.com/manifest/master.m3u8',
+      type: 'application/x-mpegURL'
+    });
+  }, 'errors if native tracks are enabled');
+  player.dispose();
+
+  player = createPlayer();
+  player.tech_.featuresNativeVideoTracks = false;
+  player.tech_.featuresNativeAudioTracks = false;
   player.src({
     src: 'http://example.com/manifest/master.m3u8',
     type: 'application/x-mpegURL'
@@ -2613,6 +2646,7 @@ QUnit.test('populates quality levels list when available', function(assert) {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  openMediaSource(this.player, this.clock);
 
   this.clock.tick(1);
 
@@ -2630,7 +2664,6 @@ QUnit.test('populates quality levels list when available', function(assert) {
     changeCount++;
   });
 
-  openMediaSource(this.player, this.clock);
   // master
   this.standardXHRResponse(this.requests.shift());
   // media
@@ -2638,6 +2671,15 @@ QUnit.test('populates quality levels list when available', function(assert) {
 
   assert.equal(addCount, 4, 'four levels added from master');
   assert.equal(changeCount, 1, 'selected initial quality level');
+
+  this.player.dispose();
+  this.player = createPlayer({}, {
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels from video with source');
 });
 
 QUnit.module('HLS Integration', {

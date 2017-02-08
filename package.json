@@ -1,6 +1,6 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "4.1.1",
+  "version": "5.2.0",
   "description": "Play back HLS with video.js, even where it's not natively supported",
   "main": "es5/videojs-contrib-hls.js",
   "engines": {
@@ -89,14 +89,14 @@
     "test/"
   ],
   "dependencies": {
-    "aes-decrypter": "^1.0.3",
+    "aes-decrypter": "1.0.3",
     "global": "^4.3.0",
-    "m3u8-parser": "^2.0.1",
-    "mux.js": "^3.0.0",
+    "m3u8-parser": "2.0.1",
+    "mux.js": "4.0.1",
     "url-toolkit": "^1.0.4",
-    "video.js": "^5.15.1",
-    "videojs-contrib-media-sources": "^4.1.4",
-    "videojs-swf": "^5.0.2"
+    "video.js": "^5.17.0",
+    "videojs-contrib-media-sources": "4.3.0",
+    "webworkify": "1.0.2"
   },
   "devDependencies": {
     "babel": "^5.8.0",
@@ -137,6 +137,7 @@
     "videojs-flash": "^1.0.0-RC.0",
     "videojs-standard": "^4.0.3",
     "watchify": "^3.6.0",
-    "webpack": "^1.13.2"
+    "webpack": "^1.13.2",
+    "videojs-swf": "^5.2.0"
   }
 }

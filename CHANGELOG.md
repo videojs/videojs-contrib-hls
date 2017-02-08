@@ -2,6 +2,55 @@ CHANGELOG
 =========
 
 --------------------
+## 5.2.0 (2017-02-08)
+* update deps for 4.3.0 mediasources [#998](https://github.com/videojs/videojs-contrib-hls/pull/998)
+* Remove HLS object events from README [#992](https://github.com/videojs/videojs-contrib-hls/pull/992)
+
+--------------------
+## 5.1.1 (2017-02-03)
+* fix: introduce videojs 6 forward compatibility while maintaining backward compatibilty [#975](https://github.com/videojs/videojs-contrib-hls/pull/975)
+  * fix: swap to use getTech and null-check flash tech
+  * Fix #968
+  * only registerComponent Hls in older vjs
+  * use registerPlugin if it exists
+  * addTrack cross-compat
+* Add events for underflow and live resync [#989](https://github.com/videojs/videojs-contrib-hls/pull/989)
+  * For QoS measurement purposes, it may be useful to know how often the playback watcher is activating. Add new events for when the player falls off the back of the live window or stalls due to a video buffer gap.
+
+--------------------
+## 5.1.0 (2017-01-31)
+* Updated videojs-contrib-media-sources to v4.2.0
+  * Added support for inserting silence when appending a new segment will introduce a gap in the audio SourceBuffer
+* Remove hls-audio-track.js as this file was no longer being used [#985](https://github.com/videojs/videojs-contrib-hls/pull/985)
+* Stop blacklisting audio codecs as there is now wide support for switching between audio codecs on-the-fly among all modern browsers [#981](https://github.com/videojs/videojs-contrib-hls/pull/981)
+* Fix qualityLevels setup for videos with a source element [#979](https://github.com/videojs/videojs-contrib-hls/pull/979)
+* Error early for misconfigured overrideNative [#980](https://github.com/videojs/videojs-contrib-hls/pull/980)
+
+--------------------
+## 5.0.0 (2017-01-25)
+* Update issue template to use unpkg for latest versions [#967](https://github.com/videojs/videojs-contrib-hls/pull/967)
+* Use a snapshot of the issue template JSBin to protect from changes by owner [#969](https://github.com/videojs/videojs-contrib-hls/pull/969)
+* Fix any possible fillBuffer_ race conditions by debouncing all fillBuffers_ [#959](https://github.com/videojs/videojs-contrib-hls/pull/959)
+  * Convert all calls to fillBuffer_ to calls to monitorBuffer_
+  * Rename monitorBuffer_ to monitorBufferTick_ which becomes the 500ms buffer check timer loop
+  * Make monitorBuffer_ schedule an immediate timer for monitorBufferTick_
+* Processing segment reachable even after playlist update removes it [#939](https://github.com/videojs/videojs-contrib-hls/pull/939)
+  * Change processing segment reference on playlist refresh
+  * Test for correct segment references on pending segments
+  * Fix unreachable segment tests after rebase on async monitor buffer change
+  * Update media index on playlist refreshes for all requests (including syncs)
+* Bubble progress events [#978](https://github.com/videojs/videojs-contrib-hls/pull/978)
+  * If the segment request triggers progress events (that is, XHR2 is supported), bubble those up to the tech. This makes it clearer that buffering is happening even on very slow connections.
+* run decryption in a webworker [#972](https://github.com/videojs/videojs-contrib-hls/pull/972)
+  * drop support for IE10
+* Fixed mediaIndex tracking so that it is consistent when the playlist updates during a live stream [#977](https://github.com/videojs/videojs-contrib-hls/pull/977)
+  * Fixed mediaIndex tracking so that it is consistent when the playlist updates during a live stream
+  * Removed any code in SegmentLoader#handleUpdateEnd_ that changed the mediaIndex
+  * Reordered SegmentLoader#playlist to make it easier to follow
+  * All changes to both mediaIndexes (SegmentLoader's and segmentInfo's) now happen in SegmentLoader#playlist
+  * Added tests for proper mediaIndex tracking with live playlists
+
+--------------------
 ## 4.1.1 (2017-01-20)
 * Fixed the m3u8-parser to support ES3 [#965](https://github.com/videojs/videojs-contrib-hls/pull/965)
 

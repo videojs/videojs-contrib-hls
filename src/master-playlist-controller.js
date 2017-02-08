@@ -8,6 +8,8 @@ import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
 import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
+import worker from 'webworkify';
+import Decrypter from './decrypter-worker';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -234,6 +236,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.syncController_ = new SyncController();
 
+    this.decrypter_ = worker(Decrypter);
+
     let segmentLoaderOptions = {
       hls: this.hls_,
       mediaSource: this.mediaSource,
@@ -243,7 +247,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       setCurrentTime: (a) => this.tech_.setCurrentTime(a),
       hasPlayed: () => this.hasPlayed_(),
       bandwidth,
-      syncController: this.syncController_
+      syncController: this.syncController_,
+      decrypter: this.decrypter_,
+      loaderType: 'main'
     };
 
     // setup playlist loaders
@@ -255,7 +261,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // combined audio/video or just video when alternate audio track is selected
     this.mainSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
     // alternate audio track
+    segmentLoaderOptions.loaderType = 'audio';
     this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
+
+    this.decrypter_.onmessage = (event) => {
+      if (event.data.source === 'main') {
+        this.mainSegmentLoader_.handleDecrypted_(event.data);
+      } else if (event.data.source === 'audio') {
+        this.audiosegmentloader_.handleDecrypted_(event.data);
+      }
+    };
+
     this.setupSegmentLoaderListeners_();
 
     this.masterPlaylistLoader_.start();
@@ -967,6 +983,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * that it controls
    */
   dispose() {
+    this.decrypter_.terminate();
     this.masterPlaylistLoader_.dispose();
     this.mainSegmentLoader_.dispose();
 
@@ -1045,20 +1062,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let master = this.masterPlaylistLoader_.master;
     let codecCount = 2;
     let videoCodec = null;
-    let audioProfile = null;
     let codecs;
 
     if (media.attributes && media.attributes.CODECS) {
       codecs = parseCodecs(media.attributes.CODECS);
       videoCodec = codecs.videoCodec;
-      audioProfile = codecs.audioProfile;
       codecCount = codecs.codecCount;
     }
     master.playlists.forEach(function(variant) {
       let variantCodecs = {
         codecCount: 2,
-        videoCodec: null,
-        audioProfile: null
+        videoCodec: null
       };
 
       if (variant.attributes && variant.attributes.CODECS) {
@@ -1083,12 +1097,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // if h.264 is specified on the current playlist, some flavor of
       // it must be specified on all compatible variants
       if (variantCodecs.videoCodec !== videoCodec) {
-        variant.excludeUntil = Infinity;
-      }
-      // HE-AAC ("mp4a.40.5") is incompatible with all other versions of
-      // AAC audio in Chrome 46. Don't mix the two.
-      if ((variantCodecs.audioProfile === '5' && audioProfile !== '5') ||
-          (audioProfile === '5' && variantCodecs.audioProfile !== '5')) {
         variant.excludeUntil = Infinity;
       }
 

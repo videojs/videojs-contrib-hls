@@ -227,12 +227,25 @@ export const mockTech = function(tech) {
   };
 };
 
-export const createPlayer = function(options) {
+export const createPlayer = function(options, src) {
   let video;
   let player;
 
   video = document.createElement('video');
   video.className = 'video-js';
+  if (src) {
+    if (typeof src === 'string') {
+      video.src = src;
+    } else if (src.src) {
+      let source = document.createElement('source');
+
+      source.src = src.src;
+      if (src.type) {
+        source.type = src.type;
+      }
+      video.appendChild(source);
+    }
+  }
   document.querySelector('#qunit-fixture').appendChild(video);
   player = videojs(video, options || {
     flash: {
@@ -313,7 +326,7 @@ export const playlistWithDuration = function(time, conf) {
     mediaSequence: conf && conf.mediaSequence ? conf.mediaSequence : 0,
     discontinuityStarts: [],
     segments: [],
-    endList: true
+    endList: conf && typeof conf.endList !== 'undefined' ? !!conf.endList : true
   };
   let count = Math.floor(time / 10);
   let remainder = time % 10;
