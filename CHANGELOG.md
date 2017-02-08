@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+--------------------
+## 5.2.0 (2017-02-08)
+* update deps for 4.3.0 mediasources [#998](https://github.com/videojs/videojs-contrib-hls/pull/998)
+* Remove HLS object events from README [#992](https://github.com/videojs/videojs-contrib-hls/pull/992)
+
+--------------------
 ## 5.1.1 (2017-02-03)
 * fix: introduce videojs 6 forward compatibility while maintaining backward compatibilty [#975](https://github.com/videojs/videojs-contrib-hls/pull/975)
   * fix: swap to use getTech and null-check flash tech
