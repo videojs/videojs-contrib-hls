@@ -20,6 +20,7 @@ Maintenance Status: Stable
   - [Releases](#releases)
   - [Manual Build](#manual-build)
 - [Contributing](#contributing)
+- [Talk to us](#talk-to-us)
 - [Getting Started](#getting-started)
 - [Documentation](#documentation)
   - [Options](#options)
