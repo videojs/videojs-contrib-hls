@@ -1671,7 +1671,7 @@ if (Flash) {
     assert.equal(loadstarts, 1, 'fired loadstart');
     videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
   });
-  
+
   QUnit.test('source handler does not support sources when IE 10 or below', function(assert) {
     videojs.browser.IE_VERSION = 10;
 
