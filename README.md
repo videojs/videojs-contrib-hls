@@ -1,4 +1,7 @@
-# video.js HLS Source Handler [![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
+# video.js HLS Source Handler
+
+[![Build Status][travis-icon]][travis-link]
+[![Slack Status][slack-icon]][slack-link]
 
 
 Play back HLS with video.js, even where it's not natively supported.
@@ -72,6 +75,9 @@ Download a copy of this git repository and then follow the steps in [Building](#
 
 ## Contributing
 See [CONTRIBUTING.md](/CONTRIBUTING.md)
+
+## Talk to us
+Drop by our slack channel (#playback) on the [Video.js slack][slack-link].
 
 ## Getting Started
 Get a copy of [videojs-contrib-hls](#installation) and include it in your page along with video.js:
@@ -502,3 +508,8 @@ All commands for development are listed in the `package.json` file and are run u
 ```bash
 npm run <command>
 ```
+
+[slack-icon]: http://slack.videojs.com/badge.svg
+[slack-link]: http://slack.videojs.com
+[travis-icon]: https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master
+[travis-link]: https://travis-ci.org/videojs/videojs-contrib-hls
