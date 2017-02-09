@@ -482,6 +482,18 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
+    let buffer = this.sourceUpdater_.buffered();
+
+    // If we have a buffer but it ends more than 3 targetDurations before the currentTime_
+    // that means that our conservative guess was too conservative. In that case, reset the
+    // loader state so that we try to use any information gained from the previous request
+    // to create a new, more accurate, sync-point.
+    if (buffer &&
+        buffer.length &&
+        this.currentTime_() - buffer.end(buffer.length - 1) > this.playlist_.targetDuration * 3) {
+      this.resetLoader();
+    }
+
     if (!this.syncPoint_) {
       this.syncPoint_ = this.syncController_.getSyncPoint(this.playlist_,
                                                           this.mediaSource_.duration,
