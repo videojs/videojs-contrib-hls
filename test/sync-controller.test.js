@@ -4,6 +4,15 @@ import {
   syncPointStrategies as strategies } from '../src/sync-controller.js';
 import { playlistWithDuration } from './test-helpers.js';
 
+function getStrategy(name) {
+  for (let i = 0; i < strategies.length; i++) {
+    if (strategies[i].name === name) {
+      return strategies[i];
+    }
+  }
+  throw new Error('No sync-strategy named "${name}" was found!');
+}
+
 QUnit.module('SyncController', {
   beforeEach() {
     this.syncController = new SyncController();
@@ -14,7 +23,7 @@ QUnit.test('returns correct sync point for VOD strategy', function(assert) {
   let playlist = playlistWithDuration(40);
   let duration = 40;
   let timeline = 0;
-  let vodStrategy = strategies[0];
+  let vodStrategy = getStrategy('VOD');
   let syncPoint = vodStrategy.run(this.syncController, playlist, duration, timeline);
 
   assert.deepEqual(syncPoint, { time: 0, segmentIndex: 0 }, 'sync point found for vod');
@@ -26,7 +35,7 @@ QUnit.test('returns correct sync point for VOD strategy', function(assert) {
 });
 
 QUnit.test('returns correct sync point for ProgramDateTime strategy', function(assert) {
-  let strategy = strategies[1];
+  let strategy = getStrategy('ProgramDateTime');
   let datetime = new Date(2012, 11, 12, 12, 12, 12);
   let playlist = playlistWithDuration(40);
   let timeline = 0;
@@ -58,7 +67,7 @@ QUnit.test('returns correct sync point for ProgramDateTime strategy', function(a
 });
 
 QUnit.test('returns correct sync point for Segment strategy', function(assert) {
-  let strategy = strategies[2];
+  let strategy = getStrategy('Segment');
   let playlist = {
     segments: [
       { timeline: 0 },
@@ -84,8 +93,8 @@ QUnit.test('returns correct sync point for Segment strategy', function(assert) {
     'sync point found');
 });
 
-QUnit.skip('returns correct sync point for Discontinuity strategy', function(assert) {
-  let strategy = strategies[3];
+QUnit.test('returns correct sync point for Discontinuity strategy', function(assert) {
+  let strategy = getStrategy('Discontinuity');
   let playlist = {
     targetDuration: 10,
     discontinuitySequence: 2,
@@ -103,32 +112,34 @@ QUnit.skip('returns correct sync point for Discontinuity strategy', function(ass
   };
   let segmentInfo = {
     playlist,
+    segment: playlist.segments[2],
     mediaIndex: 2
   };
   let currentTimeline = 3;
   let syncPoint;
 
-  syncPoint = strategy.run(this.syncController, playlist, 100, currentTimeline);
+  syncPoint = strategy.run(this.syncController, playlist, 100, currentTimeline, 0);
   assert.equal(syncPoint, null, 'no sync point when no discontinuities saved');
 
   this.syncController.saveDiscontinuitySyncInfo_(segmentInfo);
 
-  syncPoint = strategy.run(this.syncController, playlist, 100, currentTimeline);
+  syncPoint = strategy.run(this.syncController, playlist, 100, currentTimeline, 55);
   assert.deepEqual(syncPoint, { time: 40, segmentIndex: 2 },
     'found sync point for timeline 3');
 
   segmentInfo.mediaIndex = 6;
+  segmentInfo.segment = playlist.segments[6];
   currentTimeline = 4;
 
   this.syncController.saveDiscontinuitySyncInfo_(segmentInfo);
 
-  syncPoint = strategy.run(this.syncController, playlist, 100, currentTimeline);
+  syncPoint = strategy.run(this.syncController, playlist, 100, currentTimeline, 90);
   assert.deepEqual(syncPoint, { time: 70, segmentIndex: 5 },
     'found sync point for timeline 4');
 });
 
 QUnit.test('returns correct sync point for Playlist strategy', function(assert) {
-  let strategy = strategies[4];
+  let strategy = getStrategy('Playlist');
   let playlist = { mediaSequence: 100 };
   let syncPoint;
 
