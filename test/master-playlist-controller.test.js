@@ -853,6 +853,39 @@ QUnit.test('respects useCueTags option', function(assert) {
   videojs.options.hls = origHlsOptions;
 });
 
+QUnit.test('sends decrypter messages to correct segment loader', function(assert) {
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  let masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  let mainHandleDecryptedCalls = [];
+  let audioHandleDecryptedCalls = [];
+
+  masterPlaylistController.mainSegmentLoader_ = {
+    handleDecrypted_: (data) => {
+      mainHandleDecryptedCalls.push(data);
+    }
+  };
+  masterPlaylistController.audioSegmentLoader_ = {
+    handleDecrypted_: (data) => {
+      audioHandleDecryptedCalls.push(data);
+    }
+  };
+
+  masterPlaylistController.decrypter_.onmessage({ data: { source: 'audio' } });
+  assert.equal(mainHandleDecryptedCalls.length, 0, 'one call to main loader');
+  assert.equal(audioHandleDecryptedCalls.length, 1, 'one call to audio loader');
+  assert.deepEqual(audioHandleDecryptedCalls[0], { source: 'audio' }, 'sent data');
+
+  masterPlaylistController.decrypter_.onmessage({ data: { source: 'main' } });
+  assert.equal(mainHandleDecryptedCalls.length, 1, 'one call to main loader');
+  assert.equal(audioHandleDecryptedCalls.length, 1, 'one call to audio loader');
+  assert.deepEqual(mainHandleDecryptedCalls[0], { source: 'main' }, 'sent data');
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
