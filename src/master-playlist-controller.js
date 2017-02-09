@@ -268,7 +268,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       if (event.data.source === 'main') {
         this.mainSegmentLoader_.handleDecrypted_(event.data);
       } else if (event.data.source === 'audio') {
-        this.audiosegmentloader_.handleDecrypted_(event.data);
+        this.audioSegmentLoader_.handleDecrypted_(event.data);
       }
     };
 
