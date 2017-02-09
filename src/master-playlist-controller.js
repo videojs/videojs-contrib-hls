@@ -333,12 +333,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // on `mediachange`
       this.mainSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
       this.updateDuration();
-      // although we may have already updated due to sync info via the segment loader,
-      // it isn't always fired (cases where we've fallen far enough off the back of the
-      // live playlist while paused)
-      if (!updatedPlaylist.endList && this.tech_.paused()) {
-        this.onSyncInfoUpdate_();
-      }
 
       if (!updatedPlaylist.endList) {
         let addSeekableRange = () => {
