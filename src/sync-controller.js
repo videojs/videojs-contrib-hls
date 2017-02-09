@@ -69,23 +69,39 @@ export const syncPointStrategies = [
   //                          display-time
   {
     name: 'Discontinuity',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
+      let syncPoint = null;
+
+      currentTime = currentTime || 0;
+
       if (playlist.discontinuityStarts.length) {
+        let lastDistance = null;
+
         for (let i = 0; i < playlist.discontinuityStarts.length; i++) {
           let segmentIndex = playlist.discontinuityStarts[i];
           let discontinuity = playlist.discontinuitySequence + i + 1;
+          let discontinuitySync = syncController.discontinuities[discontinuity];
 
-          if (syncController.discontinuities[discontinuity]) {
-            let syncPoint = {
-              time: syncController.discontinuities[discontinuity].time,
-              segmentIndex
-            };
+          if (discontinuitySync) {
+            let distance = Math.abs(currentTime - discontinuitySync.time);
 
-            return syncPoint;
+            // Once the distance begins to increase, we have passed
+            // currentTime and can stop looking for better candidates
+            if (lastDistance && lastDistance < distance) {
+              break;
+            }
+
+            if (!syncPoint || !lastDistance || lastDistance >= distance) {
+              lastDistance = distance;
+              syncPoint = {
+                time: discontinuitySync.time,
+                segmentIndex
+              };
+            }
           }
         }
       }
-      return null;
+      return syncPoint;
     }
   },
   // Stategy "Playlist": We have a playlist with a known mapping of
@@ -343,16 +359,22 @@ export default class SyncController extends videojs.EventTarget {
       for (let i = 0; i < playlist.discontinuityStarts.length; i++) {
         let segmentIndex = playlist.discontinuityStarts[i];
         let discontinuity = playlist.discontinuitySequence + i + 1;
-        let accuracy = segmentIndex - segmentInfo.mediaIndex;
+        let mediaIndexDiff = segmentIndex - segmentInfo.mediaIndex;
+        let accuracy = Math.abs(mediaIndexDiff);
 
-        if (accuracy > 0 &&
-            (!this.discontinuities[discontinuity] ||
-             this.discontinuities[discontinuity].accuracy > accuracy)) {
-
-          this.discontinuities[discontinuity] = {
-            time: segment.end + sumDurations(playlist, segmentInfo.mediaIndex + 1, segmentIndex),
-            accuracy
-          };
+        if (!this.discontinuities[discontinuity] ||
+             this.discontinuities[discontinuity].accuracy > accuracy) {
+          if (mediaIndexDiff < 0) {
+            this.discontinuities[discontinuity] = {
+              time: segment.start - sumDurations(playlist, segmentInfo.mediaIndex, segmentIndex),
+              accuracy
+            };
+          } else {
+            this.discontinuities[discontinuity] = {
+              time: segment.end + sumDurations(playlist, segmentInfo.mediaIndex + 1, segmentIndex),
+              accuracy
+            };
+          }
         }
       }
     }
