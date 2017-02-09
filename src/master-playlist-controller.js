@@ -947,6 +947,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // seekable has been calculated based on buffering video data so it
       // can be returned directly
       this.seekable_ = mainSeekable;
+    } else if (audioSeekable.start(0) > mainSeekable.end(0) ||
+               mainSeekable.start(0) > audioSeekable.end(0)) {
+      // seekables are pretty far off, rely on main
+      this.seekable_ = mainSeekable;
     } else {
       this.seekable_ = videojs.createTimeRanges([[
         (audioSeekable.start(0) > mainSeekable.start(0)) ? audioSeekable.start(0) :
