@@ -10,14 +10,6 @@ import { createTransferableMessage } from './bin-utils';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
-const c = 'console';
-
-// temporary, switchable debug logging
-const log = function() {
-  if (window.logit) {
-    window[c].log.apply(window[c], arguments);
-  }
-};
 
 /**
  * Determines if we should call endOfStream on the media source based
@@ -100,8 +92,6 @@ const initSegmentId = function(initSegment) {
 export default class SegmentLoader extends videojs.EventTarget {
   constructor(options) {
     super();
-    let settings;
-
     // check pre-conditions
     if (!options) {
       throw new TypeError('Initialization options are required');
@@ -112,7 +102,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (!options.mediaSource) {
       throw new TypeError('No MediaSource specified');
     }
-    settings = videojs.mergeOptions(videojs.options.hls, options);
+    let settings = videojs.mergeOptions(videojs.options.hls, options);
 
     // public properties
     this.state = 'INIT';
@@ -161,6 +151,10 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
+
+    if (settings.debug) {
+      this.logger_ = videojs.log.bind(videojs, 'segment-loader', this.loaderType_, '->');
+    }
   }
 
   /**
@@ -305,7 +299,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // and we will likely need to adjust the mediaIndex
     let mediaSequenceDiff = newPlaylist.mediaSequence - oldPlaylist.mediaSequence;
 
-    log('mediaSequenceDiff', mediaSequenceDiff);
+    this.logger_('mediaSequenceDiff', mediaSequenceDiff);
 
     // update the mediaIndex on the SegmentLoader
     // this is important because we can abort a request and this value must be
@@ -462,9 +456,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       return null;
     }
 
-    log('cB_', 'mediaIndex:', mediaIndex, 'hasPlayed:', hasPlayed, 'currentTime:', currentTime, 'syncPoint:', syncPoint, 'fetchAtBuffer:', this.fetchAtBuffer_);
-    log('cB_ 2', 'bufferedTime:', bufferedTime);
-
     // if there is plenty of content buffered, and the video has
     // been played before relax for awhile
     if (bufferedTime >= Config.GOAL_BUFFER_LENGTH) {
@@ -477,19 +468,21 @@ export default class SegmentLoader extends videojs.EventTarget {
       return null;
     }
 
+    this.logger_('cB_', 'mediaIndex:', mediaIndex, 'hasPlayed:', hasPlayed, 'currentTime:', currentTime, 'syncPoint:', syncPoint, 'fetchAtBuffer:', this.fetchAtBuffer_, 'bufferedTime:', bufferedTime);
+
     // When the syncPoint is null, there is no way of determining a good
     // conservative segment index to fetch from
     // The best thing to do here is to get the kind of sync-point data by
     // making a request
     if (syncPoint === null) {
       mediaIndex = this.getSyncSegmentCandidate_(playlist);
-      log('getSync', mediaIndex);
+      this.logger_('getSync', mediaIndex);
       return this.generateSegmentInfo_(playlist, mediaIndex, null, true);
     }
 
     // Under normal playback conditions fetching is a simple walk forward
     if (mediaIndex !== null) {
-      log('++', mediaIndex + 1);
+      this.logger_('++', mediaIndex + 1);
       let segment = playlist.segments[mediaIndex];
 
       if (segment && segment.end) {
@@ -522,7 +515,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       mediaIndex = mediaSourceInfo.mediaIndex;
       startOfSegment = mediaSourceInfo.startTime;
     }
-    log('gMIFT', mediaIndex, 'sos', startOfSegment);
+    this.logger_('gMIFT', mediaIndex, 'sos', startOfSegment);
     return this.generateSegmentInfo_(playlist, mediaIndex, startOfSegment, false);
   }
 
@@ -1059,7 +1052,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mediaIndex = segmentInfo.mediaIndex;
     this.fetchAtBuffer_ = true;
 
-    log('handleUpdateEnd_', this.mediaIndex);
+    this.logger_('handleUpdateEnd_', this.mediaIndex);
 
     // any time an update finishes and the last segment is in the
     // buffer, end the stream. this ensures the "ended" event will
@@ -1104,4 +1097,12 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.throughput.rate +=
       (segmentProcessingThroughput - rate) / (++this.throughput.count);
   }
+
+  /**
+   * A debugging logger noop that is set to console.log only if debugging
+   * is enabled globally
+   *
+   * @private
+   */
+  logger_() {}
 }
