@@ -2,6 +2,12 @@ CHANGELOG
 =========
 
 --------------------
+## 5.2.1 (2017-02-09)
+* feature: Support for Akamai-style Redundant HLS [#990](https://github.com/videojs/videojs-contrib-hls/pull/990)
+  * stable sorting and always pick primary first
+* Fix routing of decrypter messages intended for audio segment loader [#1001](https://github.com/videojs/videojs-contrib-hls/pull/1001)
+
+--------------------
 ## 5.2.0 (2017-02-08)
 * update deps for 4.3.0 mediasources [#998](https://github.com/videojs/videojs-contrib-hls/pull/998)
 * Remove HLS object events from README [#992](https://github.com/videojs/videojs-contrib-hls/pull/992)
