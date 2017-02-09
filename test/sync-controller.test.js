@@ -72,25 +72,29 @@ QUnit.test('returns correct sync point for Segment strategy', function(assert) {
     segments: [
       { timeline: 0 },
       { timeline: 0 },
+      { timeline: 1, start: 10 },
+      { timeline: 1, start: 20 },
       { timeline: 1 },
       { timeline: 1 },
-      { timeline: 1, start: 30 },
-      { timeline: 1 },
-      { timeline: 2 },
-      { timeline: 2 }
+      { timeline: 1, start: 50 },
+      { timeline: 1, start: 60 }
     ]
   };
   let currentTimeline;
   let syncPoint;
 
   currentTimeline = 0;
-  syncPoint = strategy.run(this.syncController, playlist, 80, currentTimeline);
+  syncPoint = strategy.run(this.syncController, playlist, 80, currentTimeline, 0);
   assert.equal(syncPoint, null, 'no syncpoint for timeline 0');
 
   currentTimeline = 1;
-  syncPoint = strategy.run(this.syncController, playlist, 80, currentTimeline);
-  assert.deepEqual(syncPoint, { time: 30, segmentIndex: 4 },
-    'sync point found');
+  syncPoint = strategy.run(this.syncController, playlist, 80, currentTimeline, 30);
+  assert.deepEqual(syncPoint, { time: 20, segmentIndex: 3 },
+    'closest sync point found');
+
+  syncPoint = strategy.run(this.syncController, playlist, 80, currentTimeline, 40);
+  assert.deepEqual(syncPoint, { time: 50, segmentIndex: 6 },
+    'closest sync point found');
 });
 
 QUnit.test('returns correct sync point for Discontinuity strategy', function(assert) {

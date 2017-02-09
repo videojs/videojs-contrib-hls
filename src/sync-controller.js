@@ -12,7 +12,7 @@ export const syncPointStrategies = [
   //                the equivalence display-time 0 === segment-index 0
   {
     name: 'VOD',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
       if (duration !== Infinity) {
         let syncPoint = {
           time: 0,
@@ -27,7 +27,7 @@ export const syncPointStrategies = [
   // Stategy "ProgramDateTime": We have a program-date-time tag in this playlist
   {
     name: 'ProgramDateTime',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
       if (syncController.datetimeToDisplayTime && playlist.dateTimeObject) {
         let playlistTime = playlist.dateTimeObject.getTime() / 1000;
         let playlistStart = playlistTime + syncController.datetimeToDisplayTime;
@@ -45,26 +45,39 @@ export const syncPointStrategies = [
   //                    segment in the current timeline with timing data
   {
     name: 'Segment',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
       let segments = playlist.segments;
+      let syncPoint = null;
+      let lastDistance = null;
 
-      for (let i = segments.length - 1; i >= 0; i--) {
+      currentTime = currentTime || 0;
+
+      for (let i = 0; i < segments.length; i++) {
         let segment = segments[i];
 
         if (segment.timeline === currentTimeline &&
             typeof segment.start !== 'undefined') {
-          let syncPoint = {
-            time: segment.start,
-            segmentIndex: i
-          };
+          let distance = Math.abs(currentTime - segment.start);
 
-          return syncPoint;
+          // Once the distance begins to increase, we have passed
+          // currentTime and can stop looking for better candidates
+          if (lastDistance && lastDistance < distance) {
+            break;
+          }
+
+          if (!syncPoint || !lastDistance || lastDistance >= distance) {
+            lastDistance = distance;
+            syncPoint = {
+              time: segment.start,
+              segmentIndex: i
+            };
+          }
+
         }
       }
-      return null;
+      return syncPoint;
     }
   },
-
   // Stategy "Discontinuity": We have a discontinuity with a known
   //                          display-time
   {
@@ -108,7 +121,7 @@ export const syncPointStrategies = [
   //                     segment index to display time
   {
     name: 'Playlist',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
       if (playlist.syncInfo) {
         let syncPoint = {
           time: playlist.syncInfo.time,
@@ -150,11 +163,11 @@ export default class SyncController extends videojs.EventTarget {
    * @param {Number} currentTimeline - The last timeline from which a segment was loaded
    * @returns {Object} - A sync-point object
    */
-  getSyncPoint(playlist, duration, currentTimeline) {
+  getSyncPoint(playlist, duration, currentTimeline, currentTime) {
     // Try to find a sync-point in by utilizing various strategies...
     for (let i = 0; i < syncPointStrategies.length; i++) {
       let strategy = syncPointStrategies[i];
-      let syncPoint = strategy.run(this, playlist, duration, currentTimeline);
+      let syncPoint = strategy.run(this, playlist, duration, currentTimeline, currentTime);
 
       if (syncPoint) {
         this.logger_(`syncPoint found via <${strategy.name}>:`, syncPoint);
