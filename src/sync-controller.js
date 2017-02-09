@@ -164,20 +164,48 @@ export default class SyncController extends videojs.EventTarget {
    * @returns {Object} - A sync-point object
    */
   getSyncPoint(playlist, duration, currentTimeline, currentTime) {
+    let syncPoints = [];
+
     // Try to find a sync-point in by utilizing various strategies...
     for (let i = 0; i < syncPointStrategies.length; i++) {
       let strategy = syncPointStrategies[i];
       let syncPoint = strategy.run(this, playlist, duration, currentTimeline, currentTime);
 
       if (syncPoint) {
+        syncPoint.strategy = strategy.name;
+        syncPoints.push({
+          strategy: strategy.name,
+          syncPoint
+        });
         this.logger_(`syncPoint found via <${strategy.name}>:`, syncPoint);
-        return syncPoint;
       }
     }
-    // Otherwise, signal that we need to attempt to get a sync-point
-    // manually by fetching a segment in the playlist and constructing
-    // a sync-point from that information
-    return null;
+
+    if (!syncPoints.length) {
+      // Signal that we need to attempt to get a sync-point manually
+      // by fetching a segment in the playlist and constructing
+      // a sync-point from that information
+      return null;
+    }
+
+    // Now find the sync-point that is closest to the currentTime because
+    // that should result in the most accurate guess about which segment
+    // to fetch
+    let bestSyncPoint = syncPoints[0].syncPoint;
+    let bestDistance = Math.abs(syncPoints[0].syncPoint.time - currentTime);
+    let bestStrategy = syncPoints[0].strategy;
+
+    for (let i = 1; i < syncPoints.length; i++) {
+      let newDistance = Math.abs(syncPoints[i].syncPoint.time - currentTime);
+
+      if (newDistance < bestDistance) {
+        bestDistance = newDistance;
+        bestSyncPoint = syncPoints[i].syncPoint;
+        bestStrategy = syncPoints[i].strategy;
+      }
+    }
+    this.logger_(`syncPoint with strategy <${bestStrategy}> chosen: `, bestSyncPoint);
+    return bestSyncPoint;
   }
 
   /**
