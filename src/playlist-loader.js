@@ -247,7 +247,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
     let currentBandwidth = media.attributes.BANDWIDTH || 0;
 
-    return !(loader.master.playlists.filter((playlist) => {
+    return (loader.master.playlists.filter((playlist) => {
       const enabled = isEnabled(playlist);
 
       if (!enabled) {
@@ -261,7 +261,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       }
       return bandwidth < currentBandwidth;
 
-    }).length >= 1);
+    }).length === 0);
   };
 
    /**
