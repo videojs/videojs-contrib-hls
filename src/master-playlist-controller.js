@@ -953,23 +953,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
                                                        mainSeekable.end(0)
       ]]);
     }
-
-    // now that seekable is updated, handle any cases where we've fallen off, but only
-    // in the case where we are seeking (let fall off be handled by playback watcher)
-    if (!this.tech_.seeking()) {
-      return;
-    }
-
-    let currentTime = this.tech_.currentTime();
-    let seekableEnd = this.seekable_.end(this.seekable_.length - 1);
-
-    if (currentTime < this.seekable_.start(0) ||
-        // provide a buffer of 1 second to handle rounding/imprecise numbers (prevent us
-        // from seeking too many times)
-        currentTime > seekableEnd + 1) {
-      // sync to live point (if VOD, our seekable was updated and we're simply adjusting)
-      this.tech_.setCurrentTime(seekableEnd);
-    }
   }
 
   /**

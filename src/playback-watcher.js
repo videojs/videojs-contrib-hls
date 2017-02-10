@@ -79,7 +79,32 @@ export default class PlaybackWatcher {
    * @private
    */
   checkCurrentTime_() {
-    if (this.tech_.paused() || this.tech_.seeking()) {
+    if (this.tech_.seeking()) {
+      let seekable = this.seekable();
+
+      if (!seekable.length) {
+        return;
+      }
+
+      let seekableEnd = seekable.end(seekable.length - 1);
+      let currentTime = this.tech_.currentTime();
+
+      // handle any cases where we're trying to seek outside of the seekable range
+      // provide a buffer of .1 seconds to handle rounding/imprecise numbers
+      if (currentTime < seekable.start(0) - .1 ||
+          currentTime > seekableEnd + .1) {
+        // sync to live point (if VOD, our seekable was updated and we're
+        // simply adjusting)
+        this.logger_(`Trying to seek outside of seekable at time ${currentTime} with ` +
+                     `seekable range ${Ranges.printableRange(seekable)}. Seeking to ` +
+                     `${seekableEnd}.`);
+        this.tech_.setCurrentTime(seekableEnd);
+      }
+
+      return;
+    }
+
+    if (this.tech_.paused()) {
       return;
     }
 

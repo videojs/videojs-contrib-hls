@@ -318,11 +318,35 @@ const getSegmentBufferedPercent = function(startOfSegment,
   return percent;
 };
 
+/**
+ * Gets a human readable string for a TimeRange
+ *
+ * @param {TimeRange} range
+ * @returns {String} a human readable string
+ */
+const printableRange = (range) => {
+  let str = '';
+
+  if (!range || !range.length) {
+    return str;
+  }
+
+  for (let i = 0; i < range.length; i++) {
+    if (i > 0) {
+      str += ', ';
+    }
+    str += range.start(i) + ' => ' + range.end(i);
+  }
+
+  return str;
+};
+
 export default {
   findRange,
   findNextRange,
   findGaps,
   findSoleUncommonTimeRangesEnd,
   getSegmentBufferedPercent,
-  TIME_FUDGE_FACTOR
+  TIME_FUDGE_FACTOR,
+  printableRange
 };
