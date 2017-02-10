@@ -1170,8 +1170,8 @@ QUnit.test('estimates seekable ranges for live streams that have been paused for
                'offset the seekable start');
 });
 
-QUnit.test('resets the time to a seekable position when resuming a live stream ' +
-           'after a long break', function(assert) {
+QUnit.test('resets the time to the live point when resuming a live stream after a ' +
+           'long break', function(assert) {
   let seekTarget;
 
   this.player.src({
@@ -1199,10 +1199,10 @@ QUnit.test('resets the time to a seekable position when resuming a live stream '
   };
   this.player.tech_.trigger('playing');
 
+  let seekable = this.player.seekable();
+
   this.player.tech_.trigger('play');
-  assert.equal(seekTarget,
-              this.player.seekable().start(0),
-              'seeked to the start of seekable');
+  assert.equal(seekTarget, seekable.end(seekable.length - 1), 'seeked to live point');
   this.player.tech_.trigger('seeked');
 });
 
