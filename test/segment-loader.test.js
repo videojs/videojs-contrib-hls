@@ -1374,6 +1374,30 @@ function(assert) {
             'no end info for first segment of new playlist');
 });
 
+QUnit.test('new playlist always triggers syncinfoupdate', function(assert) {
+  let playlist = playlistWithDuration(100, { endList: false });
+  let syncInfoUpdates = 0;
+
+  loader.on('syncinfoupdate', () => syncInfoUpdates++);
+
+  loader.playlist(playlist);
+  loader.mimeType('video/mp4');
+  loader.load();
+
+  assert.equal(syncInfoUpdates, 1, 'first playlist triggers an update');
+  loader.playlist(playlist);
+  assert.equal(syncInfoUpdates, 2, 'same playlist triggers an update');
+  playlist = playlistWithDuration(100, { endList: false });
+  loader.playlist(playlist);
+  assert.equal(syncInfoUpdates, 3, 'new playlist with same info triggers an update');
+  playlist.segments[0].start = 10;
+  playlist = playlistWithDuration(100, { endList: false, mediaSequence: 1 });
+  loader.playlist(playlist);
+  assert.equal(syncInfoUpdates,
+               5,
+               'new playlist after expiring segment triggers two updates');
+});
+
 QUnit.module('Segment Loading Calculation', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
