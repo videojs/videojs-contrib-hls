@@ -91,8 +91,8 @@ export default class PlaybackWatcher {
 
       // handle any cases where we're trying to seek outside of the seekable range
       // provide a buffer of .1 seconds to handle rounding/imprecise numbers
-      if (currentTime < seekable.start(0) - .1 ||
-          currentTime > seekableEnd + .1) {
+      if (currentTime < seekable.start(0) - 0.1 ||
+          currentTime > seekableEnd + 0.1) {
         // sync to live point (if VOD, our seekable was updated and we're
         // simply adjusting)
         this.logger_(`Trying to seek outside of seekable at time ${currentTime} with ` +
