@@ -2583,6 +2583,7 @@ QUnit.test('downloads additional playlists if required', function(assert) {
   // media
   this.standardXHRResponse(this.requests[1]);
   originalPlaylist = hls.playlists.media();
+  hls.masterPlaylistController_.mainSegmentLoader_.mediaIndex = 0;
 
   // the playlist selection is revisited after a new segment is downloaded
   this.requests[2].bandwidth = 3000000;
@@ -2625,6 +2626,7 @@ QUnit.test('waits to download new segments until the media playlist is stable', 
 
   // source buffer created after media source is open and first media playlist is selected
   sourceBuffer = hls.mediaSource.sourceBuffers[0];
+  hls.masterPlaylistController_.mainSegmentLoader_.mediaIndex = 0;
 
   // segment 0
   this.standardXHRResponse(this.requests.shift());

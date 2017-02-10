@@ -488,6 +488,7 @@ QUnit.test('updates the combined segment loader on media changes', function(asse
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
 
+  this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // downloading the new segment will update bandwidth and cause a
   // playlist change
   // segment 0
@@ -553,6 +554,7 @@ QUnit.test('updates the duration after switching playlists', function(assert) {
   };
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
+  this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // segment 0
   this.standardXHRResponse(this.requests[2]);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
@@ -583,6 +585,7 @@ QUnit.test('playlist selection uses systemBandwidth', function(assert) {
 
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
+  this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // segment 0
   this.standardXHRResponse(this.requests[2]);
   // 20ms have passed to upload 1kb that gives us a throughput of 1024 / 20 * 8 * 1000 = 409600

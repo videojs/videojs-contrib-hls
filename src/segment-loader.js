@@ -482,22 +482,11 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    let buffer = this.sourceUpdater_.buffered();
-
-    // If we have a buffer but it ends more than 3 targetDurations before the currentTime_
-    // that means that our conservative guess was too conservative. In that case, reset the
-    // loader state so that we try to use any information gained from the previous request
-    // to create a new, more accurate, sync-point.
-    if (buffer &&
-        buffer.length &&
-        this.currentTime_() - buffer.end(buffer.length - 1) > this.playlist_.targetDuration * 3) {
-      this.resetLoader();
-    }
-
     if (!this.syncPoint_) {
       this.syncPoint_ = this.syncController_.getSyncPoint(this.playlist_,
                                                           this.mediaSource_.duration,
-                                                          this.currentTimeline_);
+                                                          this.currentTimeline_,
+                                                          this.currentTime_());
     }
 
     // see if we need to begin loading immediately
@@ -1069,11 +1058,31 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     let segmentInfo = this.pendingSegment_;
+    let segment = segmentInfo.segment;
+    let isWalkingForward = this.mediaIndex !== null;
 
     this.pendingSegment_ = null;
     this.recordThroughput_(segmentInfo);
-    this.mediaIndex = segmentInfo.mediaIndex;
-    this.fetchAtBuffer_ = true;
+
+    this.state = 'READY';
+
+    // If we previously appended a segment that ends more than 3 targetDurations before
+    // the currentTime_ that means that our conservative guess was too conservative.
+    // In that case, reset the loader state so that we try to use any information gained
+    // from the previous request to create a new, more accurate, sync-point.
+    if (segment &&
+        segment.end &&
+        this.currentTime_() - segment.end > segmentInfo.playlist.targetDuration * 3) {
+      this.resetLoader();
+    } else {
+      this.mediaIndex = segmentInfo.mediaIndex;
+      this.fetchAtBuffer_ = true;
+    }
+
+    // Don't do a rendition switch unless the SegmentLoader is already walking forward
+    if (isWalkingForward) {
+      this.trigger('progress');
+    }
 
     // any time an update finishes and the last segment is in the
     // buffer, end the stream. this ensures the "ended" event will
@@ -1085,9 +1094,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (isEndOfStream) {
       this.mediaSource_.endOfStream();
     }
-
-    this.state = 'READY';
-    this.trigger('progress');
 
     if (!this.paused()) {
       this.monitorBuffer_();
