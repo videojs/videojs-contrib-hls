@@ -245,7 +245,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       return false;
     }
 
-    let currentBandwidth = loader.media().attributes.BANDWIDTH || 0;
+    let currentBandwidth = media.attributes.BANDWIDTH || 0;
 
     return !(loader.master.playlists.filter((playlist) => {
       const enabled = isEnabled(playlist);
@@ -259,9 +259,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       if (playlist && playlist.attributes) {
         bandwidth = playlist.attributes.BANDWIDTH;
       }
-      return bandwidth <= currentBandwidth;
+      return bandwidth < currentBandwidth;
 
-    }).length > 1);
+    }).length >= 1);
   };
 
    /**
