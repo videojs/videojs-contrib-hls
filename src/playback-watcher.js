@@ -79,28 +79,9 @@ export default class PlaybackWatcher {
    * @private
    */
   checkCurrentTime_() {
-    if (this.tech_.seeking()) {
-      let seekable = this.seekable();
-
-      if (!seekable.length) {
-        return;
-      }
-
-      let seekableEnd = seekable.end(seekable.length - 1);
-      let currentTime = this.tech_.currentTime();
-
-      // handle any cases where we're trying to seek outside of the seekable range
-      // provide a buffer of .1 seconds to handle rounding/imprecise numbers
-      if (currentTime < seekable.start(0) - 0.1 ||
-          currentTime > seekableEnd + 0.1) {
-        // sync to live point (if VOD, our seekable was updated and we're
-        // simply adjusting)
-        this.logger_(`Trying to seek outside of seekable at time ${currentTime} with ` +
-                     `seekable range ${Ranges.printableRange(seekable)}. Seeking to ` +
-                     `${seekableEnd}.`);
-        this.tech_.setCurrentTime(seekableEnd);
-      }
-
+    if (this.tech_.seeking() && this.fixBadSeeks_()) {
+      this.consecutiveUpdates = 0;
+      this.lastRecordedTime = this.tech_.currentTime();
       return;
     }
 
@@ -140,6 +121,31 @@ export default class PlaybackWatcher {
   }
 
   /**
+   * Fixes situations where there's a bad seek
+   *
+   * @return {Boolean} whether an action was taken to fix the seek
+   * @private
+   */
+  fixBadSeeks_() {
+    let seekable = this.seekable();
+    let currentTime = this.tech_.currentTime();
+
+    if (this.tech_.seeking() &&
+        this.outsideOfSeekableWindow_(seekable, currentTime)) {
+      let seekableEnd = seekable.end(seekable.length - 1);
+
+      // sync to live point (if VOD, our seekable was updated and we're simply adjusting)
+      this.logger_(`Trying to seek outside of seekable at time ${currentTime} with ` +
+                   `seekable range ${Ranges.printableRange(seekable)}. Seeking to ` +
+                   `${seekableEnd}.`);
+      this.tech_.setCurrentTime(seekableEnd);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Handler for situations when we determine the player is waiting
    *
    * @private
@@ -147,6 +153,10 @@ export default class PlaybackWatcher {
   waiting_() {
     let seekable = this.seekable();
     let currentTime = this.tech_.currentTime();
+
+    if (this.tech_.seeking() && this.fixBadSeeks_()) {
+      return;
+    }
 
     if (this.tech_.seeking() || this.timer_ !== null) {
       return;
@@ -192,6 +202,21 @@ export default class PlaybackWatcher {
                                difference * 1000,
                                currentTime);
     }
+  }
+
+  outsideOfSeekableWindow_(seekable, currentTime) {
+    if (!seekable.length) {
+      // we can't make a solid case if there's no seekable, default to false
+      return false;
+    }
+
+    // provide a buffer of .1 seconds to handle rounding/imprecise numbers
+    if (currentTime < seekable.start(0) - 0.1 ||
+        currentTime > seekable.end(seekable.length - 1) + 0.1) {
+      return true;
+    }
+
+    return false;
   }
 
   fellOutOfLiveWindow_(seekable, currentTime) {
