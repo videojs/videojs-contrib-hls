@@ -861,7 +861,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // In flash playback, the segment loaders should be reset on every seek, even
     // in buffer seeks
     const isFlash = (this.mode_ === 'flash') ||
-                    (this.mode_ === 'auto' && !Hls.supportsNativeHls);
+                    (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
 
     // if the seek location is already buffered, continue buffering as
     // usual
