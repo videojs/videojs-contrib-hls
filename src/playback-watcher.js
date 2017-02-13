@@ -85,7 +85,7 @@ export default class PlaybackWatcher {
       return;
     }
 
-    if (this.tech_.paused()) {
+    if (this.tech_.paused() || this.tech_.seeking()) {
       return;
     }
 
