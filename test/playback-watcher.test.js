@@ -340,7 +340,7 @@ QUnit.test('seeks to live point if we try to seek outside of seekable', function
   this.player.tech_.trigger('waiting');
   assert.equal(seeks.length, 2, 'did not seek');
 
-  // no check for 0 with seekable false because that should be handled by live falloff
+  // no check for 0 with seeking false because that should be handled by live falloff
 
   // checkCurrentTime
 

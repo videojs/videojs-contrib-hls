@@ -325,20 +325,17 @@ const getSegmentBufferedPercent = function(startOfSegment,
  * @returns {String} a human readable string
  */
 const printableRange = (range) => {
-  let str = '';
+  let strArr = [];
 
   if (!range || !range.length) {
-    return str;
+    return '';
   }
 
   for (let i = 0; i < range.length; i++) {
-    if (i > 0) {
-      str += ', ';
-    }
-    str += range.start(i) + ' => ' + range.end(i);
+    strArr.push(range.start(i) + ' => ' + range.end(i));
   }
 
-  return str;
+  return strArr.join(', ');
 };
 
 export default {
