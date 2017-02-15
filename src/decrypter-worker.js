@@ -10,7 +10,7 @@ import { createTransferableMessage } from './bin-utils';
  * @param {Object} self
  *        the scope for the web worker
  */
-const Worker = function(self) {
+const DecrypterWorker = function(self) {
   self.onmessage = function(event) {
     const data = event.data;
     const encrypted = new Uint8Array(data.encrypted.bytes,
@@ -38,5 +38,5 @@ const Worker = function(self) {
 };
 
 export default (self) => {
-  return new Worker(self);
+  return new DecrypterWorker(self);
 };
