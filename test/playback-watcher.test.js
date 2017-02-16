@@ -263,21 +263,21 @@ QUnit.test('fixes bad seeks', function(assert) {
   currentTime = 50;
   seekable = videojs.createTimeRanges([[1, 45]]);
   seeking = false;
-  assert.ok(!playbackWatcher.fixBadSeeks_(), 'does nothing when not seeking');
+  assert.ok(!playbackWatcher.fixesBadSeeks_(), 'does nothing when not seeking');
   assert.equal(seeks.length, 0, 'did not seek');
 
   seeking = true;
-  assert.ok(playbackWatcher.fixBadSeeks_(), 'acts when seek past seekable range');
+  assert.ok(playbackWatcher.fixesBadSeeks_(), 'acts when seek past seekable range');
   assert.equal(seeks.length, 1, 'seeked');
   assert.equal(seeks[0], 45, 'player seeked to live point');
 
   currentTime = 0;
-  assert.ok(playbackWatcher.fixBadSeeks_(), 'acts when seek before seekable range');
+  assert.ok(playbackWatcher.fixesBadSeeks_(), 'acts when seek before seekable range');
   assert.equal(seeks.length, 2, 'seeked');
   assert.equal(seeks[1], 45, 'player seeked to live point');
 
   currentTime = 30;
-  assert.ok(!playbackWatcher.fixBadSeeks_(), 'does nothing when time within range');
+  assert.ok(!playbackWatcher.fixesBadSeeks_(), 'does nothing when time within range');
   assert.equal(seeks.length, 2, 'did not seek');
 });
 

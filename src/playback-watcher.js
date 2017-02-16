@@ -79,7 +79,7 @@ export default class PlaybackWatcher {
    * @private
    */
   checkCurrentTime_() {
-    if (this.tech_.seeking() && this.fixBadSeeks_()) {
+    if (this.tech_.seeking() && this.fixesBadSeeks_()) {
       this.consecutiveUpdates = 0;
       this.lastRecordedTime = this.tech_.currentTime();
       return;
@@ -126,7 +126,7 @@ export default class PlaybackWatcher {
    * @return {Boolean} whether an action was taken to fix the seek
    * @private
    */
-  fixBadSeeks_() {
+  fixesBadSeeks_() {
     let seekable = this.seekable();
     let currentTime = this.tech_.currentTime();
 
@@ -154,7 +154,7 @@ export default class PlaybackWatcher {
     let seekable = this.seekable();
     let currentTime = this.tech_.currentTime();
 
-    if (this.tech_.seeking() && this.fixBadSeeks_()) {
+    if (this.tech_.seeking() && this.fixesBadSeeks_()) {
       return;
     }
 
