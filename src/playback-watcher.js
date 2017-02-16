@@ -122,9 +122,21 @@ export default class PlaybackWatcher {
   waiting_() {
     let seekable = this.seekable();
     let currentTime = this.tech_.currentTime();
+    let buffered = this.tech_.buffered();
 
     if (this.tech_.seeking() || this.timer_ !== null) {
       return;
+    }
+
+    if (this.pastLiveWindow_(seekable, currentTime, buffered)) {
+      let errorMessage = `Fell past live window at time ${currentTime}.`;
+
+      // Through slow playlist requests or some other means, we managed to find ourselves
+      // off the front of the live window. It doesn't matter how we got here, but we know
+      // it's a bad state.
+      this.logger_(errorMessage);
+      this.cancelTimer_();
+      this.tech_.error(errorMessage);
     }
 
     if (this.fellOutOfLiveWindow_(seekable, currentTime)) {
@@ -140,7 +152,6 @@ export default class PlaybackWatcher {
       return;
     }
 
-    let buffered = this.tech_.buffered();
     let nextRange = Ranges.findNextRange(buffered, currentTime);
 
     if (this.videoUnderflow_(nextRange, buffered, currentTime)) {
@@ -160,13 +171,24 @@ export default class PlaybackWatcher {
     if (nextRange.length > 0) {
       let difference = nextRange.start(0) - currentTime;
 
-      this.logger_(`Stopped at ${currentTime}, setting timer for ${difference}, seeking ` +
-                   `to ${nextRange.start(0)}`);
+      this.logger_(`Stopped at ${currentTime}, setting timer for ${difference}, ` +
+                   `seeking to ${nextRange.start(0)}`);
 
       this.timer_ = setTimeout(this.skipTheGap_.bind(this),
                                difference * 1000,
                                currentTime);
     }
+  }
+
+  pastLiveWindow_(seekable, currentTime, buffered) {
+    if (seekable.length &&
+        currentTime >= seekable.end(seekable.length - 1) + Ranges.TIME_FUDGE_FACTOR &&
+        (!buffered.length ||
+         currentTime >= buffered.end(buffered.length - 1) + Ranges.TIME_FUDGE_FACTOR)) {
+      return true;
+    }
+
+    return false;
   }
 
   fellOutOfLiveWindow_(seekable, currentTime) {
