@@ -7,14 +7,6 @@ import {inspect as tsprobe} from 'mux.js/lib/tools/ts-inspector.js';
 import {sumDurations} from './playlist';
 import videojs from 'video.js';
 
-const c = 'console';
-// temporary, switchable debug logging
-const log = function() {
-  if (window.logit) {
-    window[c].log.apply(window[c], arguments);
-  }
-};
-
 export const syncPointStrategies = [
   // Stategy "VOD": Handle the VOD-case where the sync-point is *always*
   //                the equivalence display-time 0 === segment-index 0
@@ -125,6 +117,10 @@ export default class SyncController extends videojs.EventTarget {
     this.timelines = [];
     this.discontinuities = [];
     this.datetimeToDisplayTime = null;
+
+    if (videojs.options.hls && videojs.options.hls.debug) {
+      this.logger_ = videojs.log.bind(videojs, 'sync-controller ->');
+    }
   }
 
   /**
@@ -145,7 +141,7 @@ export default class SyncController extends videojs.EventTarget {
       let syncPoint = strategy.run(this, playlist, duration, currentTimeline);
 
       if (syncPoint) {
-        log(`syncPoint found via <${strategy.name}>:`, syncPoint);
+        this.logger_(`syncPoint found via <${strategy.name}>:`, syncPoint);
         return syncPoint;
       }
     }
@@ -176,7 +172,7 @@ export default class SyncController extends videojs.EventTarget {
           mediaSequence: oldPlaylist.mediaSequence + i,
           time: lastRemovedSegment.start
         };
-        log('playlist sync:', newPlaylist.syncInfo);
+        this.logger_('playlist sync:', newPlaylist.syncInfo);
         this.trigger('syncinfoupdate');
         break;
       }
@@ -299,7 +295,7 @@ export default class SyncController extends videojs.EventTarget {
     let mappingObj = this.timelines[segmentInfo.timeline];
 
     if (segmentInfo.timestampOffset !== null) {
-      log('tsO:', segmentInfo.timestampOffset);
+      this.logger_('tsO:', segmentInfo.timestampOffset);
 
       mappingObj = {
         time: segmentInfo.timestampOffset,
@@ -359,4 +355,12 @@ export default class SyncController extends videojs.EventTarget {
       }
     }
   }
+
+  /**
+   * A debugging logger noop that is set to console.log only if debugging
+   * is enabled globally
+   *
+   * @private
+   */
+  logger_() {}
 }
