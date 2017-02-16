@@ -2,6 +2,15 @@ CHANGELOG
 =========
 
 --------------------
+## 5.3.0 (2017-02-16)
+* reset segment loaders on all flash seeks [#1008](https://github.com/videojs/videojs-contrib-hls/pull/1008)
+  * update mux.js to 4.1.0 update videojs-contrib-media-sources to 4.4.0
+* Reorganized the functions in SegmentLoader to better follow the flow of execution from top-down [#1015](https://github.com/videojs/videojs-contrib-hls/pull/1015)
+* Remove ad-hoc logging in favor of a config-enabled logging like playback-watcher [#1014](https://github.com/videojs/videojs-contrib-hls/pull/1014)
+* isLowestEnabledRendition worked with redundant streams [#1004](https://github.com/videojs/videojs-contrib-hls/pull/1004)
+* Rename Worker to DecrypterWorker [#1003](https://github.com/videojs/videojs-contrib-hls/pull/1003)
+
+--------------------
 ## 5.2.1 (2017-02-09)
 * feature: Support for Akamai-style Redundant HLS [#990](https://github.com/videojs/videojs-contrib-hls/pull/990)
   * stable sorting and always pick primary first
