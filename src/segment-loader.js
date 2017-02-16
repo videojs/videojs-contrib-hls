@@ -485,8 +485,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (!this.syncPoint_) {
       this.syncPoint_ = this.syncController_.getSyncPoint(this.playlist_,
                                                           this.mediaSource_.duration,
-                                                          this.currentTimeline_,
-                                                          this.currentTime_());
+                                                          this.currentTimeline_);
     }
 
     // see if we need to begin loading immediately
