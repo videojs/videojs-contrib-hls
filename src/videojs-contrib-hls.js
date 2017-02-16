@@ -703,10 +703,6 @@ const HlsSourceHandler = function(mode) {
         // The player had a beforeRequest set prior to the source change.
         // Use it for the new source.
         tech.hls.xhr.beforeRequest = previousBeforeRequest;
-      } else if (videojs.Hls.xhr.beforeRequest) {
-        // Use a global `before` function if specified on videojs.Hls.xhr
-        // but still allow for a per-player override
-        tech.hls.xhr.beforeRequest = videojs.Hls.xhr.beforeRequest;
       }
 
       tech.hls.src(source.src);
