@@ -115,6 +115,52 @@ QUnit.test('obeys metadata preload option', function(assert) {
   assert.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
+QUnit.test('resets SegmentLoader when seeking in flash for both in and out of buffer',
+  function(assert) {
+    let resets = 0;
+
+    // master
+    this.standardXHRResponse(this.requests.shift());
+    // media
+    this.standardXHRResponse(this.requests.shift());
+    this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+    let mpc = this.masterPlaylistController;
+    let segmentLoader = mpc.mainSegmentLoader_;
+
+    segmentLoader.resetEverything = function() {
+      resets++;
+    };
+
+    let buffered;
+
+    mpc.tech_.buffered = function() {
+      return buffered;
+    };
+
+    buffered = videojs.createTimeRanges([[0, 20]]);
+    mpc.mode_ = 'html5';
+
+    mpc.setCurrentTime(10);
+    assert.equal(resets, 0,
+      'does not reset loader when seeking into a buffered region in html5');
+
+    mpc.setCurrentTime(21);
+    assert.equal(resets, 1,
+      'does reset loader when seeking outside of the buffered region in html5');
+
+    mpc.mode_ = 'flash';
+
+    mpc.setCurrentTime(10);
+    assert.equal(resets, 2,
+      'does reset loader when seeking into a buffered region in flash');
+
+    mpc.setCurrentTime(21);
+    assert.equal(resets, 3,
+      'does reset loader when seeking outside of the buffered region in flash');
+
+  });
+
 QUnit.test('resyncs SegmentLoader for a fast quality change', function(assert) {
   let resyncs = 0;
 
