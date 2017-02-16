@@ -1070,8 +1070,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // the currentTime_ that means that our conservative guess was too conservative.
     // In that case, reset the loader state so that we try to use any information gained
     // from the previous request to create a new, more accurate, sync-point.
-    if (segment &&
-        segment.end &&
+    if (segment.end &&
         this.currentTime_() - segment.end > segmentInfo.playlist.targetDuration * 3) {
       this.resetLoader();
     } else {

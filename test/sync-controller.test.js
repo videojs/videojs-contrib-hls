@@ -95,6 +95,10 @@ QUnit.test('returns correct sync point for Segment strategy', function(assert) {
   syncPoint = strategy.run(this.syncController, playlist, 80, currentTimeline, 40);
   assert.deepEqual(syncPoint, { time: 50, segmentIndex: 6 },
     'closest sync point found');
+
+  syncPoint = strategy.run(this.syncController, playlist, 80, currentTimeline, 50);
+  assert.deepEqual(syncPoint, { time: 50, segmentIndex: 6 },
+    'exact sync point found');
 });
 
 QUnit.test('returns correct sync point for Discontinuity strategy', function(assert) {

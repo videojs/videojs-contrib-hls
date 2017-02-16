@@ -61,11 +61,11 @@ export const syncPointStrategies = [
 
           // Once the distance begins to increase, we have passed
           // currentTime and can stop looking for better candidates
-          if (lastDistance && lastDistance < distance) {
+          if (lastDistance !== null && lastDistance < distance) {
             break;
           }
 
-          if (!syncPoint || !lastDistance || lastDistance >= distance) {
+          if (!syncPoint || lastDistance === null || lastDistance >= distance) {
             lastDistance = distance;
             syncPoint = {
               time: segment.start,
@@ -100,11 +100,11 @@ export const syncPointStrategies = [
 
             // Once the distance begins to increase, we have passed
             // currentTime and can stop looking for better candidates
-            if (lastDistance && lastDistance < distance) {
+            if (lastDistance !== null && lastDistance < distance) {
               break;
             }
 
-            if (!syncPoint || !lastDistance || lastDistance >= distance) {
+            if (!syncPoint || lastDistance === null || lastDistance >= distance) {
               lastDistance = distance;
               syncPoint = {
                 time: discontinuitySync.time,
