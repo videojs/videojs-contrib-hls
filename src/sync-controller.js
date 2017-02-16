@@ -107,8 +107,8 @@ export const syncPointStrategies = [
 ];
 
 export default class SyncController extends videojs.EventTarget {
-  constructor(options) {
-    super(options);
+  constructor() {
+    super();
     // Segment Loader state variables...
     // ...for synching across variants
     this.inspectCache_ = undefined;
@@ -118,9 +118,7 @@ export default class SyncController extends videojs.EventTarget {
     this.discontinuities = [];
     this.datetimeToDisplayTime = null;
 
-    let settings = videojs.mergeOptions(videojs.options.hls, options);
-
-    if (settings.debug) {
+    if (videojs.options.hls && videojs.options.hls.debug) {
       this.logger_ = videojs.log.bind(videojs, 'sync-controller ->');
     }
   }
