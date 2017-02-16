@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="favicon.ico">
+
+    <title>VideoJS HLS</title>
+
+    <!-- Bootstrap core CSS. This is just to make the demo look
+    nice. It's not required for videojs-contrib-hls to work. -->
+    <link href="../node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+
+      <link href="https://npmcdn.com/video.js@^5.0.0/dist/video-js.css" rel="stylesheet">
+
+  <!-- video.js -->
+  <script src="https://npmcdn.com/video.js@^5.0.0/dist/video.min.js"></script>
+
+  <!-- HLS plugin -->
+  <script src="https://npmcdn.com/videojs-contrib-hls@^3.0.0/dist/videojs-contrib-hls.min.js"></script>
+
+
+  <!-- player stats visualization -->
+  <link href="stats.css" rel="stylesheet">
+  <script src="d3.min.js"></script>
+
+
+    <!-- Some custom styles for the demo page -->
+    <style>
+      body {
+        padding-top: 50px;
+        color: #868688;
+        background-color: #FAFCFF;
+      }
+      nav {
+        background-color: #e7e7e7
+      }
+      nav a {
+        color: #868688;
+      }
+      nav a:hover {
+        color: #606062;
+        text-decoration: none;
+      }
+      .navbar-toggle .icon-bar {
+        background-color: #868688;
+      }
+      .starter-template, .stats {
+        padding: 40px 15px;
+        text-align: center;
+      }
+      .video-js {
+        margin: 0 auto;
+      }
+    </style>
+
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+        <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+        <![endif]-->
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">videojs-contrib-hls</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="https://github.com/videojs/videojs-contrib-hls/blob/master/README.md">Docs</a></li>
+            <li><a href="debug">Source</a></li>
+            <li><a href="https://github.com/videojs/videojs-contrib-hls/issues">Issues</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+
+      <section class="starter-template">
+        <h1>VideoJS HLS Debugger</h1>
+        <p class="lead">
+          Use this page to debug VideoJS HLS issues
+        </p>
+
+      </section>
+
+    </div><!-- /.container -->
+
+
+    <!-- Bootstrap stuff. These three scripts aren't necessary for you
+         to use videojs-contrib-hls -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script src="../node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="../js/ie10-viewport-bug-workaround.js"></script>
+
+ <form id="load-url" class="stats">
+    <label>
+      URL to Load:
+      <input id="url-to-load" type="url" value="https://s3.amazonaws.com/_bc_dml/example-content/bipbop-advanced/bipbop_16x9_variant.m3u8">
+    </label>
+    <br>
+    <label>
+      Player Options:
+      <input id="player-options" type="text" value='{}'>
+    </label>
+    <br>
+    <label>
+      URL Content Type:
+      <input id="url-content-type" type="text" value="application/x-mpegURL">
+    </label>
+    <br>
+    <label>
+      Default Caption Track Label (blank for none):
+      <input id="caption-track" type="text" value="">
+    </label>
+    <br>
+    <label>
+      Technology Mode:
+      <input type="radio" name="technology-mode" value="auto" checked> Auto
+      <input type="radio" name="technology-mode" value="html"> HTML
+      <input type="radio" name="technology-mode" value="flash"> Flash
+    </label>
+    <br>
+    <label>
+      Autoplay:
+      <input type="radio" name="autoplay" value="on"> On
+      <input type="radio" name="autoplay" value="off" checked> Off
+    </label>
+
+    <br>
+    <br>
+    <button type="submit">Load</button>
+  </form>
+  <div id="fixture">
+  </div>
+
+
+
+  <section class="stats">
+
+  <br>
+    <div class="player-log" style=" height: 600px; overflow-y: scroll;padding: 40px 15px;text-align: center;">
+      <h2>Player Log</h2>
+      <p id="the-log">
+      </p>
+    </div>
+    <div class="player-stats">
+      <h2>Player Stats</h2>
+      <dl>
+        <dt>Current Time:</dt>
+        <dd class="current-time-stat">0</dd>
+        <dt>Buffered:</dt>
+        <dd class="buffered-stat">-</dd>
+        <dt>Seekable:</dt>
+        <dd><span class="seekable-start-stat">-</span> - <span class="seekable-end-stat">-</span></dd>
+        <dt>Video Bitrate:</dt>
+        <dd class="video-bitrate-stat">0 kbps</dd>
+        <dt>Measured Bitrate:</dt>
+        <dd class="measured-bitrate-stat">0 kbps</dd>
+      </dl>
+    </div>
+    <div class="event-counts">
+      <h2>Event Counts</h2>
+      <dl>
+        <dt>Play:</dt>
+        <dd class="play-count">0</dd>
+        <dt>Playing:</dt>
+        <dd class="playing-count">0</dd>
+        <dt>Seeking:</dt>
+        <dd class="seeking-count">0</dd>
+        <dt>Seeked:</dt>
+        <dd class="seeked-count">0</dd>
+        <dt>Pause:</dt>
+        <dd class="pause-count">0</dd>
+        <dt>Waiting:</dt>
+        <dd class="waiting-count">0</dd>
+      </dl>
+    </div>
+    <h3 class="bitrate-switching">Bitrate Switching</h3>
+    <div class="switching-stats">
+      Once the player begins loading, you'll see information about the
+      operation of the adaptive quality switching here.
+    </div>
+    <h3>Timed Metadata</h3>
+    <div class="segment-timeline"></div>
+  </section>
+    <script src="stats.js"></script>
+    <script>
+    function getCheckedValue(name) {
+      var radios = document.getElementsByName(name);
+      var value;
+      for (var i = 0, length = radios.length; i < length; i++) {
+        if (radios[i].checked) {
+          value = radios[i].value;
+          break;
+        }
+      }
+      return value;
+    }
+
+    function createPlayer(cb) {
+      if (window.stats_timer) {
+        clearInterval(window.stats_timer);
+      }
+      // dispose of existing player
+      if(window.player) {
+        window.player.dispose();
+      }
+
+      // create video element in the dom
+      var video = document.createElement('video');
+      video.id = 'videojs-contrib-hls-player';
+      video.className = 'video-js vjs-default-skin';
+      video.setAttribute('controls', true);
+      video.setAttribute('height', 540);
+      video.setAttribute('width', 960);
+      document.querySelector('#fixture').appendChild(video);
+      var techRadios = document.getElementsByName('technology-mode');
+      var techMode = getCheckedValue('technology-mode') || 'auto';
+      var autoplay = getCheckedValue('autoplay') || 'off';
+      var captionTrack = document.getElementById('caption-track').value || "";
+      var url = document.getElementById('url-to-load').value || "";
+      var options = {};
+      // try to parse options from the form
+      try {
+        options = JSON.parse(document.getElementById('player-options').value);
+      } catch(err) {
+        console.log("Reseting options to {}, JSON Parse Error:", err);
+      }
+      if(typeof options.techOrder === 'undefined') {
+        if (techMode === 'html') {
+          options.techOrder = ['html5'];
+        } else if (techMode === 'flash') {
+          options.techOrder = ['flash'];
+        }
+      }
+      if(typeof options.autoplay === 'undefined') {
+        if (autoplay === 'on') {
+          options.autoplay = true;
+        } else if (techMode === 'off') {
+          options.autoplay = false;
+        }
+      }
+      var type = document.getElementById('url-content-type').value;
+      // use the form data to add a src to the player
+      try {
+        window.player = videojs(video.id, options);
+        if(captionTrack) {
+          // hackey way to show captions
+          window.player.on('loadeddata', function(event) {
+            textTracks = this.textTracks().tracks_;
+            for(var i = 0; i < textTracks.length; i++) {
+              if(textTracks[i].label === captionTrack) {
+                console.log("Found matching track, going to show " + captionTrack);
+                textTracks[i].mode = "showing";
+                break;
+              }
+            }
+          });
+        }
+        window.player.src({
+          src: url,
+          type: type
+        });
+
+        cb(player);
+      } catch(err) {
+        console.log("caught an error trying to create and add src to player:", err);
+      }
+    }
+
+    function setup(player) {
+      player.ready(function() {
+
+        // ------------
+        // Audio Track Switcher
+        // ------------
+
+        player.controlBar.addChild('AudioTrackButton', {}, 13);
+
+        // ------------
+        // Player Stats
+        // ------------
+
+        var currentTimeStat = document.querySelector('.current-time-stat');
+        var bufferedStat = document.querySelector('.buffered-stat');
+        var seekableStartStat = document.querySelector('.seekable-start-stat');
+        var seekableEndStat = document.querySelector('.seekable-end-stat');
+        var videoBitrateState = document.querySelector('.video-bitrate-stat');
+        var measuredBitrateStat = document.querySelector('.measured-bitrate-stat');
+
+        player.on('timeupdate', function() {
+          currentTimeStat.textContent = player.currentTime().toFixed(1);
+        });
+
+        window.stats_timer = window.setInterval(function() {
+          var bufferedText = '', oldStart, oldEnd, i;
+
+          // buffered
+          var buffered = player.buffered();
+          if (buffered.length) {
+            bufferedText += buffered.start(0) + ' - ' + buffered.end(0);
+          }
+          for (i = 1; i < buffered.length; i++) {
+            bufferedText += ', ' + buffered.start(i) + ' - ' + buffered.end(i);
+          }
+          bufferedStat.textContent = bufferedText;
+
+          // seekable
+          var seekable = player.seekable();
+          if (seekable && seekable.length) {
+
+            oldStart = seekableStartStat.textContent;
+            if (seekable.start(0).toFixed(1) !== oldStart) {
+              seekableStartStat.textContent = seekable.start(0).toFixed(1);
+            }
+            oldEnd = seekableEndStat.textContent;
+            if (seekable.end(0).toFixed(1) !== oldEnd) {
+              seekableEndStat.textContent = seekable.end(0).toFixed(1);
+            }
+          }
+
+          // bitrates
+          var playlist = player.tech_.hls.playlists.media();
+          if (playlist && playlist.attributes && playlist.attributes.BANDWIDTH) {
+            videoBitrateState.textContent = (playlist.attributes.BANDWIDTH / 1024).toLocaleString(undefined, {
+              maximumFractionDigits: 1
+            }) + ' kbps';
+          }
+          if (player.tech_.hls.bandwidth) {
+            measuredBitrateStat.textContent = (player.tech_.hls.bandwidth / 1024).toLocaleString(undefined, {
+              maximumFractionDigits: 1
+            }) + ' kbps';
+          }
+        }, 1000);
+
+        var trackEventCount = function(eventName, selector) {
+          var count = 0, element = document.querySelector(selector);
+          player.on(eventName, function() {
+            count++;
+            element.innerHTML = count;
+          });
+
+          var theLog = document.getElementById("the-log");
+
+          player.on(eventName, function() {
+            var d = new Date();
+            var hours = d.getHours();
+            var minutes = d.getMinutes();
+            var seconds = d.getSeconds();
+            var milliseconds = d.getMilliseconds();
+            var time = hours + ':' + minutes + ':' + seconds + ':' + milliseconds;
+            var logText = time + "----" + eventName;
+            theLog.appendChild(document.createTextNode(logText));
+            theLog.appendChild(document.createElement("br"));
+          });
+
+        };
+        var eventsToTrack = ['play', 'playing', 'seeking', 'seeked', 'pause', 'waiting'];
+        eventsToTrack.map((event) => {
+          trackEventCount(event, '.' + event + '-count')
+        });
+
+        videojs.Hls.displayStats(document.querySelector('.switching-stats'), player);
+        videojs.Hls.displayCues(document.querySelector('.segment-timeline'), player);
+
+      });
+    }
+
+    (function(window, videojs) {
+      createPlayer(setup);
+      // hook up the video switcher
+      document.getElementById('load-url').addEventListener('submit', function(event) {
+        event.preventDefault();
+        createPlayer(setup);
+        return false;
+      });
+    }(window, window.videojs));
+  </script>
+
+  </body>
+</html>
