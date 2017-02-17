@@ -551,7 +551,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         let properties = mediaGroups.AUDIO[mediaGroup][label];
         let track = new videojs.AudioTrack({
           id: label,
-          kind: properties.default ? 'main' : 'alternative',
+          kind: this.audioTrackKind_(properties),
           enabled: false,
           language: properties.language,
           label
@@ -566,6 +566,23 @@ export class MasterPlaylistController extends videojs.EventTarget {
     (this.activeAudioGroup().filter((audioTrack) => {
       return audioTrack.properties_.default;
     })[0] || this.activeAudioGroup()[0]).enabled = true;
+  }
+
+  /**
+   * Convert the properties of an HLS track into an audioTrackKind.
+   *
+   * @private
+   */
+  audioTrackKind_(properties) {
+    let kind = properties.default ? 'main' : 'alternative';
+
+    if (properties.characteristics) {
+      if (properties.characteristics.indexOf('public.accessibility.describes-video') >= 0) {
+        kind = 'main-desc';
+      }
+    }
+
+    return kind;
   }
 
   /**
