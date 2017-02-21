@@ -810,6 +810,20 @@ function(assert) {
   assertTimeRangesEqual(mpc.seekable(),
                         videojs.createTimeRanges([[2, 9]]),
                         'audio later start, audio earlier end');
+  mainTimeRanges = [[1, 10]];
+  audioTimeRanges = [[11, 20]];
+  mpc.seekable_ = videojs.createTimeRanges();
+  mpc.onSyncInfoUpdate_();
+  assertTimeRangesEqual(mpc.seekable(),
+                        videojs.createTimeRanges([[1, 10]]),
+                        'no intersection, audio later');
+  mainTimeRanges = [[11, 20]];
+  audioTimeRanges = [[1, 10]];
+  mpc.seekable_ = videojs.createTimeRanges();
+  mpc.onSyncInfoUpdate_();
+  assertTimeRangesEqual(mpc.seekable(),
+                        videojs.createTimeRanges([[11, 20]]),
+                        'no intersection, main later');
 
   Playlist.seekable = origSeekable;
 });

@@ -303,8 +303,11 @@ export default class SegmentLoader extends videojs.EventTarget {
         mediaSequence: newPlaylist.mediaSequence,
         time: 0
       };
-      this.trigger('syncinfoupdate');
     }
+
+    // in VOD, this is always a rendition switch (or we updated our syncInfo above)
+    // in LIVE, we always want to update with new playlists (including refreshes)
+    this.trigger('syncinfoupdate');
 
     // if we were unpaused but waiting for a playlist, start
     // buffering now
