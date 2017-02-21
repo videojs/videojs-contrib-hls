@@ -1090,7 +1090,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.trigger('progress');
     }
 
-
     // any time an update finishes and the last segment is in the
     // buffer, end the stream. this ensures the "ended" event will
     // fire if playback reaches that point.
@@ -1154,7 +1153,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    const playlist = segmentInfo.playlist;
     const segment = segmentInfo.segment;
     const start = segment.start;
     const end = segment.end;
@@ -1165,7 +1163,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     const value = {
       uri: segmentInfo.uri,
       timeline: segmentInfo.timeline,
-      playlist: playlist.uri,
+      playlist: segmentInfo.playlist.uri,
       start,
       end
     };

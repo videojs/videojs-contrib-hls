@@ -451,16 +451,16 @@ the web](http://www.html5rocks.com/en/tutorials/track/basics/).
 ### Segment Metadata
 You can get metadata about the segments currently in the buffer by using the `segment-metadata`
 text track. You can get the metadata of the currently rendered segment by looking at the
-tracks `activeCues` array. The metadata will be attached to the `cue.value` property and
+track's `activeCues` array. The metadata will be attached to the `cue.value` property and
 will have this structure
 
 ```javascript
 cue.value = {
-  uri: The Segment uri,
-  timeline: Timeline of the segment,
-  playlist: The Playlist uri,
-  start: Segment start time,
-  end: Segment end time
+  uri, // The Segment uri
+  timeline, // Timeline of the segment for detecting discontinuities
+  playlist, // The Playlist uri
+  start, // Segment start time
+  end // Segment end time
 };
 ```
 
