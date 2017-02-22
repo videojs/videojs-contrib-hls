@@ -2,6 +2,12 @@ CHANGELOG
 =========
 
 --------------------
+## 5.3.1 (2017-02-22)
+* Locking url-toolkit to 1.0.9 to support relative urls [#1027](https://github.com/videojs/videojs-contrib-hls/pull/1027)
+* Resync on poor initial segment choice [#1016](https://github.com/videojs/videojs-contrib-hls/pull/1016)
+* Fix resuming live playback after long pauses [#1006](https://github.com/videojs/videojs-contrib-hls/pull/1006)
+
+--------------------
 ## 5.3.0 (2017-02-16)
 * reset segment loaders on all flash seeks [#1008](https://github.com/videojs/videojs-contrib-hls/pull/1008)
   * update mux.js to 4.1.0 update videojs-contrib-media-sources to 4.4.0
