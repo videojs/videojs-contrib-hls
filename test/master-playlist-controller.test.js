@@ -831,6 +831,29 @@ function(assert) {
   Playlist.seekable = origSeekable;
 });
 
+QUnit.test('syncInfoUpdate triggers seekablechanged when seekable is updated',
+function(assert) {
+  let origSeekable = Playlist.seekable;
+  let mpc = this.masterPlaylistController;
+  let tech = this.player.tech_;
+  let mainTimeRanges = [];
+  let media = {};
+  let seekablechanged = 0;
+  tech.on('seekablechanged', () => seekablechanged++);
+
+  Playlist.seekable = (media) => {
+    return videojs.createTimeRanges(mainTimeRanges);
+  };
+  this.masterPlaylistController.masterPlaylistLoader_.media = () => media;
+
+  mainTimeRanges = [[0, 10]];
+  mpc.seekable_ = videojs.createTimeRanges();
+  mpc.onSyncInfoUpdate_();
+  assert.equal(seekablechanged, 1, 'seekablechanged triggered');
+
+  Playlist.seekable = origSeekable;
+});
+
 QUnit.test('calls to update cues on new media', function(assert) {
   let origHlsOptions = videojs.options.hls;
 

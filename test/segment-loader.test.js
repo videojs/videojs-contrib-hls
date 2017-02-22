@@ -26,6 +26,7 @@ QUnit.module('Segment Loader', {
     this.clock = this.env.clock;
     this.requests = this.env.requests;
     this.mse = useFakeMediaSource();
+    this.currentTime = 0;
     this.seekable = {
       length: 0
     };
@@ -37,21 +38,18 @@ QUnit.module('Segment Loader', {
     this.timescale = sinon.stub(mp4probe, 'timescale');
     this.startTime = sinon.stub(mp4probe, 'startTime');
 
-    currentTime = 0;
     mediaSource = new videojs.MediaSource();
     mediaSource.trigger('sourceopen');
-    syncController = new SyncController();
+    this.syncController = new SyncController();
     decrypter = worker(Decrypter);
     loader = new SegmentLoader({
       hls: this.fakeHls,
-      currentTime() {
-        return currentTime;
-      },
+      currentTime: () => this.currentTime,
       seekable: () => this.seekable,
       seeking: () => false,
       hasPlayed: () => true,
       mediaSource,
-      syncController,
+      syncController: this.syncController,
       decrypter,
       loaderType: 'main'
     });
@@ -199,7 +197,7 @@ QUnit.test('regularly checks the buffer while unpaused', function(assert) {
   assert.equal(this.requests.length, 0, 'no outstanding requests');
 
   // play some video to drain the buffer
-  currentTime = Config.GOAL_BUFFER_LENGTH;
+  this.currentTime = Config.GOAL_BUFFER_LENGTH;
   this.clock.tick(10 * 1000);
   assert.equal(this.requests.length, 1, 'requested another segment');
 
@@ -606,6 +604,39 @@ QUnit.test('detects init segment changes and downloads it', function(assert) {
               'did not re-request the init segment');
 });
 
+QUnit.test('triggers syncinfoupdate before attempting a resync', function(assert) {
+  let syncInfoUpdates = 0;
+
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  this.clock.tick(1);
+
+  let sourceBuffer = mediaSource.sourceBuffers[0];
+
+  this.seekable = videojs.createTimeRanges([[0, 10]]);
+  this.syncController.probeSegmentInfo = (segmentInfo) => {
+    let segment = segmentInfo.segment;
+
+    segment.end = 10;
+  };
+  loader.on('syncinfoupdate', () => {
+    syncInfoUpdates++;
+    // Simulate the seekable window updating
+    this.seekable = videojs.createTimeRanges([[200, 210]]);
+    // Simulate the seek to live that should happen in playback-watcher
+    this.currentTime = 210;
+  });
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  sourceBuffer.trigger('updateend');
+  this.clock.tick(1);
+
+  assert.equal(loader.mediaIndex, null, 'mediaIndex reset by seek to seekable');
+  assert.equal(syncInfoUpdates, 1, 'syncinfoupdate was triggered');
+});
+
 QUnit.test('cancels outstanding requests on abort', function(assert) {
   loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
@@ -689,7 +720,7 @@ QUnit.test('SegmentLoader.mediaIndex is adjusted when live playlist is updated',
 
 QUnit.test('segmentInfo.mediaIndex is adjusted when live playlist is updated', function(assert) {
   // Setting currentTime to 31 so that we start requesting at segment #3
-  currentTime = 31;
+  this.currentTime = 31;
   loader.playlist(playlistWithDuration(50, {
     mediaSequence: 0,
     endList: false
@@ -1417,7 +1448,7 @@ QUnit.module('Segment Loading Calculation', {
     this.hasPlayed = true;
     this.clock = this.env.clock;
 
-    currentTime = 0;
+    this.currentTime = 0;
     syncController = new SyncController();
     loader = new SegmentLoader({
       currentTime() {

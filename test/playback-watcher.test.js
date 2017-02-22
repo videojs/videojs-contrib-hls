@@ -369,6 +369,32 @@ QUnit.test('seeks to live point if we try to seek outside of seekable', function
   assert.equal(seeks.length, 4, 'did not seek');
 });
 
+QUnit.test('calls fixesBadSeeks_ on seekablechanged', function(assert) {
+  // set an arbitrary live source
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // start playback normally
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  standardXHRResponse(this.requests.shift());
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.player.tech_.trigger('playing');
+  this.clock.tick(1);
+
+  let playbackWatcher = this.player.tech_.hls.playbackWatcher_;
+  let fixesBadSeeks_ = 0;
+
+  playbackWatcher.fixesBadSeeks_ = () => fixesBadSeeks_++;
+
+  this.player.tech_.trigger('seekablechanged');
+
+  assert.equal(fixesBadSeeks_, 1, 'fixesBadSeeks_ was called');
+});
+
 QUnit.module('PlaybackWatcher isolated functions', {
   beforeEach() {
     monitorCurrentTime_ = PlaybackWatcher.prototype.monitorCurrentTime_;
