@@ -957,6 +957,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
                                                        mainSeekable.end(0)
       ]]);
     }
+
+    this.tech_.trigger('seekablechanged');
   }
 
   /**

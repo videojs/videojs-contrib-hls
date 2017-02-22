@@ -38,7 +38,9 @@ export default class PlaybackWatcher {
 
     let waitingHandler = () => this.waiting_();
     let cancelTimerHandler = () => this.cancelTimer_();
+    let fixesBadSeeksHandler = () => this.fixesBadSeeks_();
 
+    this.tech_.on('seekablechanged', fixesBadSeeksHandler);
     this.tech_.on('waiting', waitingHandler);
     this.tech_.on(timerCancelEvents, cancelTimerHandler);
     this.monitorCurrentTime_();

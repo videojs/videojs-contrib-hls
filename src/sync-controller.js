@@ -368,7 +368,7 @@ export default class SyncController extends videojs.EventTarget {
     } else {
       return false;
     }
-    this.trigger('syncinfoupdate');
+
     return true;
   }
 

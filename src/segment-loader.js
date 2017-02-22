@@ -186,7 +186,6 @@ export default class SegmentLoader extends videojs.EventTarget {
    * and reset to a default state
    */
   abort() {
-
     if (this.state !== 'WAITING') {
       if (this.pendingSegment_) {
         this.pendingSegment_ = null;
@@ -532,7 +531,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       segmentInfo.timestampOffset = segmentInfo.startOfSegment;
     }
 
-    this.currentTimeline_ = segmentInfo.timeline;
     this.loadSegment_(segmentInfo);
   }
 
@@ -878,6 +876,8 @@ export default class SegmentLoader extends videojs.EventTarget {
       // calculate the download bandwidth based on segment request
       this.roundTrip = request.roundTripTime;
       this.bandwidth = request.bandwidth;
+
+      // update analytics stats
       this.mediaBytesTransferred += request.bytesReceived || 0;
       this.mediaRequests += 1;
       this.mediaTransferDuration += request.roundTripTime || 0;
@@ -1006,6 +1006,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.syncController_.probeSegmentInfo(segmentInfo);
 
     if (segmentInfo.isSyncRequest) {
+      this.trigger('syncinfoupdate');
       this.pendingSegment_ = null;
       this.state = 'READY';
       return;
@@ -1069,16 +1070,24 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.state = 'READY';
 
+    this.mediaIndex = segmentInfo.mediaIndex;
+    this.fetchAtBuffer_ = true;
+    this.currentTimeline_ = segmentInfo.timeline;
+
+    // We must update the syncinfo to recalculate the seekable range before
+    // the following conditional otherwise it may consider this a bad "guess"
+    // and attempt to resync when the post-update seekable window and live
+    // point would mean that this was the perfect segment to fetch
+    this.trigger('syncinfoupdate');
+
     // If we previously appended a segment that ends more than 3 targetDurations before
     // the currentTime_ that means that our conservative guess was too conservative.
     // In that case, reset the loader state so that we try to use any information gained
     // from the previous request to create a new, more accurate, sync-point.
     if (segment.end &&
         this.currentTime_() - segment.end > segmentInfo.playlist.targetDuration * 3) {
-      this.resetLoader();
-    } else {
-      this.mediaIndex = segmentInfo.mediaIndex;
-      this.fetchAtBuffer_ = true;
+      this.resetEverything();
+      return;
     }
 
     // Don't do a rendition switch unless the SegmentLoader is already walking forward
