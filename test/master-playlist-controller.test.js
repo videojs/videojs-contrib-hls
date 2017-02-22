@@ -839,9 +839,10 @@ function(assert) {
   let mainTimeRanges = [];
   let media = {};
   let seekablechanged = 0;
+
   tech.on('seekablechanged', () => seekablechanged++);
 
-  Playlist.seekable = (media) => {
+  Playlist.seekable = () => {
     return videojs.createTimeRanges(mainTimeRanges);
   };
   this.masterPlaylistController.masterPlaylistLoader_.media = () => media;

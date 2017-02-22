@@ -48,6 +48,7 @@ export default class PlaybackWatcher {
     // Define the dispose function to clean up our events
     this.dispose = () => {
       this.logger_('dispose');
+      this.tech_.off('seekablechanged', fixesBadSeeksHandler);
       this.tech_.off('waiting', waitingHandler);
       this.tech_.off(timerCancelEvents, cancelTimerHandler);
       if (this.checkCurrentTimeTimeout_) {
