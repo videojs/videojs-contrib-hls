@@ -1084,13 +1084,18 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
 
   // media
   this.requests[1].respond(400);
-
   url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
   media = this.player.tech_.hls.playlists.master.playlists[url];
-
   assert.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
 
+  // request for the final available media
+  this.requests[2].respond(400);
+  url = this.requests[2].url.slice(this.requests[2].url.lastIndexOf('/') + 1);
+  media = this.player.tech_.hls.playlists.master.playlists[url];
+
+  assert.ok(!media.excludeUntil, 'dont blacklist the second media because its final media');
+  assert.equal(this.env.log.warn.calls, 0, 'warning logged for blacklist');
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');
 });
@@ -2769,6 +2774,13 @@ QUnit.test('blacklists playlist if key requests fail', function(assert) {
   hls.mediaSource.trigger('sourceopen');
   this.requests.shift()
     .respond(200, null,
+              '#EXTM3U\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+              'media.m3u8\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+              'media1.m3u8\n');
+  this.requests.shift()
+    .respond(200, null,
              '#EXTM3U\n' +
              '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
              '#EXTINF:2.833,\n' +
@@ -2800,6 +2812,13 @@ QUnit.test('treats invalid keys as a key request failure and blacklists playlist
   }, this.tech);
 
   hls.mediaSource.trigger('sourceopen');
+  this.requests.shift()
+    .respond(200, null,
+              '#EXTM3U\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+              'media.m3u8\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+              'media1.m3u8\n');
   this.requests.shift()
     .respond(200, null,
              '#EXTM3U\n' +

@@ -264,6 +264,17 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     }).length === 0);
   };
 
+  /**
+   * Returns whether the current playlist is the final available rendition
+   *
+   * @return {Boolean} true if on final rendition
+   */
+  loader.isFinalRendition_ = function() {
+    return (loader.master.playlists.filter((playlist) => {
+      return isEnabled(playlist);
+    }).length === 1);
+  };
+
    /**
     * When called without any arguments, returns the currently
     * active media playlist. When called with a single argument,

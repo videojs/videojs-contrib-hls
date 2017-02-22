@@ -820,23 +820,20 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.mediaSource.endOfStream('network');
     }
 
-    // Blacklist this playlist
-    currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
+    if (!this.masterPlaylistLoader_.isFinalRendition_()) {
+      // Blacklist this playlist
+      currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
 
-    // Select a new playlist
-    nextPlaylist = this.selectPlaylist();
+      // Select a new playlist
+      nextPlaylist = this.selectPlaylist();
 
-    if (nextPlaylist) {
       videojs.log.warn('Problem encountered with the current ' +
                        'HLS playlist. Switching to another playlist.');
 
       return this.masterPlaylistLoader_.media(nextPlaylist);
     }
-    videojs.log.warn('Problem encountered with the current ' +
-                     'HLS playlist. No suitable alternatives found.');
-    // We have no more playlists we can select so we must fail
-    this.error = error;
-    return this.mediaSource.endOfStream('network');
+    // Never blacklisting this playlist because it's final rendition
+    return this.masterPlaylistLoader_.media(currentPlaylist);
   }
 
   /**
