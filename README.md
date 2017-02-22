@@ -195,7 +195,7 @@ Some options, such as `withCredentials` can be passed in to hls during
 var player = videojs('some-video-id');
 
 player.src({
-  src: "http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8",
+  src: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8',
   type: 'application/x-mpegURL',
   withCredentials: true
 });
