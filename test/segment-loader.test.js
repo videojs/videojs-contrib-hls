@@ -309,13 +309,13 @@ QUnit.test('updates timestamps when segments do not start at zero', function(ass
   assert.equal(loader.sourceUpdater_.timestampOffset(), -11, 'set timestampOffset');
 });
 
-QUnit.test('appending a segment triggers progress', function(assert) {
+QUnit.test('appending a segment when loader is in walk-forward mode triggers progress', function(assert) {
   let progresses = 0;
 
   loader.on('progress', function() {
     progresses++;
   });
-  loader.playlist(playlistWithDuration(10));
+  loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
   loader.load();
   this.clock.tick(1);
@@ -325,11 +325,22 @@ QUnit.test('appending a segment triggers progress', function(assert) {
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].trigger('updateend');
 
+  assert.equal(progresses, 0, 'no progress fired');
+
+  this.clock.tick(2);
+  // if mediaIndex is set, then the SegmentLoader is in walk-forward mode
+  loader.mediaIndex = 1;
+
+  // some time passes and a response is received
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  mediaSource.sourceBuffers[0].trigger('updateend');
+
   assert.equal(progresses, 1, 'fired progress');
 
   // verify stats
-  assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
-  assert.equal(loader.mediaRequests, 1, '1 request');
+  assert.equal(loader.mediaBytesTransferred, 20, '20 bytes');
+  assert.equal(loader.mediaRequests, 2, '2 request');
 });
 
 QUnit.test('only requests one segment at a time', function(assert) {
@@ -380,6 +391,7 @@ QUnit.test('adjusts the playlist offset if no buffering progress is made', funct
 
   sourceBuffer = mediaSource.sourceBuffers[0];
 
+  loader.mediaIndex = 0;
   // buffer some content and switch playlists on progress
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
