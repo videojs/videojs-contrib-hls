@@ -216,13 +216,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
     }
 
-    this.audioTracks_ = [];
     this.requestOptions_ = {
       withCredentials: this.withCredentials,
       timeout: null
     };
 
     this.audioGroups_ = {};
+    this.subtitleGroups_ = { groups: {}, tracks: {} };
 
     this.mediaSource = new videojs.MediaSource({ mode });
     this.audioinfo_ = null;
@@ -256,6 +256,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_ = new PlaylistLoader(url, this.hls_, this.withCredentials);
     this.setupMasterPlaylistLoaderListeners_();
     this.audioPlaylistLoader_ = null;
+    this.subtitlePlaylistLoader_ = null;
 
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
@@ -274,7 +275,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.setupSegmentLoaderListeners_();
 
-    this.masterPlaylistLoader_.start();
+    this.masterPlaylistLoader_.load();
   }
 
   /**
@@ -306,6 +307,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.fillAudioTracks_();
       this.setupAudio();
 
+      this.fillSubtitleTracks_();
+      this.setupSubtitles();
+
       try {
         this.setupSourceBuffers_();
       } catch (e) {
@@ -315,6 +319,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.setupFirstPlay();
 
       this.trigger('audioupdate');
+      this.trigger('subtitleupdate');
       this.trigger('selectedinitialmedia');
     });
 
@@ -575,6 +580,112 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * fill our internal list of Subtitle Tracks with data from
+   * the master playlist or use a default
+   *
+   * @private
+   */
+  fillSubtitleTracks_() {
+    let master = this.master();
+    let mediaGroups = master.mediaGroups || {};
+
+    // force a default if we have none
+    // TODO: Determine if this needs to be done
+    if (!mediaGroups ||
+        !mediaGroups.SUBTITLES ||
+        Object.keys(mediaGroups.SUBTITLES).length === 0) {
+      // "main" subtitle group, track name "default"
+      mediaGroups.SUBTITLES = { main: { default: { default: true } } };
+    }
+
+    for (let mediaGroup in mediaGroups.SUBTITLES) {
+      if (!this.subtitleGroups_.groups[mediaGroup]) {
+        // this.subtitleGroups_.groups[mediaGroup] = { unforced: [], forced: {} };
+        this.subtitleGroups_.groups[mediaGroup] = [];
+      }
+
+      for (let label in mediaGroups.SUBTITLES[mediaGroup]) {
+        let properties = mediaGroups.SUBTITLES[mediaGroup][label];
+
+        // if (properties.forced) {
+        //   if (!this.subtitleGroups_.groups[mediaGroup].forced[properties.language]) {
+        //     this.subtitleGroups_[mediaGroup].forced[properties.language] = [];
+        //   }
+
+        //   this.subtitleGroups_[mediaGroup].forced[properties.language].push({
+        //     id: label,
+        //     properties
+        //   });
+        // } else {
+        //   this.subtitleGroups_.groups[mediaGroup].unforced.push({
+        //     id: label,
+        //     properties
+        //   });
+
+        //   if (typeof this.subtitleGroups_.tracks[label] === 'undefined') {
+        //     let track = this.tech_.addRemoteTextTrack({
+        //       id: label,
+        //       kind: 'subtitles',
+        //       enabled: false,
+        //       language: properties.language,
+        //       label
+        //     }, true).track;
+
+        //     track.properties_ = properties;
+        //     this.subtitleGroups_.tracks[label] = track;
+        //   }
+        // }
+        if (!properties.forced) {
+          this.subtitleGroups_.groups[mediaGroup].push(
+            videojs.mergeOptions({ id: label }, properties));
+
+          if (typeof this.subtitleGroups_.tracks[label] === 'undefined') {
+            let track = this.tech_.addRemoteTextTrack({
+              id: label,
+              kind: 'subtitles',
+              enabled: false,
+              language: properties.language,
+              label
+            }, true).track;
+
+            this.subtitleGroups_.tracks[label] = track;
+          }
+        }
+      }
+    }
+
+    // for (let mediaGroup in this.subtitleGroups_) {
+    //   for (let lang in this.subtitleGroups_[mediaGroup].forced) {
+    //     let foundLang = this.subtitleGroups_[mediaGroup].tracks.find((track) => {
+    //       return track.language === lang;
+    //     });
+
+    //     if (typeof foundLang === 'undefined') {
+    //       let forcedLang = this.subtitleGroups_[mediaGroup].forced[lang].shift();
+
+    //       let track = this.tech_.addRemoteTextTrack({
+    //         id: forcedLang.id,
+    //         kind: 'subtitles',
+    //         enabled: false,
+    //         language: lang,
+    //         label: forcedLang.id
+    //       }, true).track;
+
+    //       track.properties_ = forcedLang.properties;
+    //       this.subtitleGroups_[mediaGroup].tracks.push(track);
+    //     }
+    //   }
+    // }
+
+    // Do not enable a default subtitle track. Wait for user interaction instead.
+
+    // enable the default active track
+    // let activeName = (this.activeSubtitleGroup().unforced.filter((subtitleTrack) => {
+    //   return subtitleTrack.properties.default;
+    // })[0] || this.activeSubtitleGroup().unforced[0]).id;
+  }
+
+  /**
    * Call load on our SegmentLoaders
    */
   load() {
@@ -597,6 +708,21 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     return result || this.audioGroups_.main;
+  }
+
+  /**
+   * Returns the subtitle group for the currently active primary
+   * media playlist.
+   */
+  activeSubtitleGroup() {
+    let videoPlaylist = this.masterPlaylistLoader_.media();
+    let result;
+
+    if (videoPlaylist.attributes && videoPlaylist.attributes.SUBTITLES) {
+      result = this.subtitleGroups_.groups[videoPlaylist.attributes.SUBTITLES];
+    }
+
+    return result || this.subtitleGroups_.groups.main;
   }
 
   /**
@@ -639,7 +765,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.audioPlaylistLoader_ = new PlaylistLoader(track.properties_.resolvedUri,
                                                    this.hls_,
                                                    this.withCredentials);
-    this.audioPlaylistLoader_.start();
+    this.audioPlaylistLoader_.load();
 
     this.audioPlaylistLoader_.on('loadedmetadata', () => {
       let audioPlaylist = this.audioPlaylistLoader_.media();
@@ -681,6 +807,97 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.audioSegmentLoader_.abort();
       this.setupAudio();
     });
+  }
+
+  /**
+   * Determine the correct subtitle playlist based on the active
+   * SubtitleTrack and initialize a PlaylistLoader and SegmentLoader if
+   * necessary. This method is called once automatically before
+   * playback begins to enable the default subtitle track and should be
+   * invoked again if the track is changed.
+   */
+  setupSubtitles() {
+    // determine whether seperate loaders are required for the audio
+    // rendition
+    let subtitleGroup = this.activeSubtitleGroup();
+    let track;
+    for (let trackName in this.subtitleGroups_.tracks) {
+      if (this.subtitleGroups_.tracks[trackName].mode === 'showing') {
+        track = this.subtitleGroups_.tracks[trackName];
+        break;
+      }
+    }
+
+    if (!track) {
+      // stop playlist and segment loading for subtitles
+      if (this.subtitlePlaylistLoader_) {
+        this.subtitlePlaylistLoader_.pause();
+      }
+      return;
+    }
+
+    let properties = subtitleGroup.filter((subtitleProperties) => {
+      return subtitleProperties.id === track.id;
+    })[0];
+
+    // this.subtitleSegmentLoader_.resetEverything();
+
+    // startup playlist and segment loaders for the enabled subtitle track
+    if (!this.subtitlePlaylistLoader_ || this.subtitlePlaylistLoader_.state === 'HAVE_NOTHING') {
+      if (this.subtitlePlaylistLoader_) {
+        this.subtitlePlaylistLoader_.dispose();
+      }
+
+      this.subtitlePlaylistLoader_ = new PlaylistLoader(properties.resolvedUri,
+                                                        this.hls_,
+                                                        this.withCredentials);
+
+      this.subtitlePlaylistLoader_.on('loadedmetadata', () => {
+        let subtitlePlaylist = this.subtitlePlaylistLoader_.media();
+
+        // this.subtitleSegmentLoader_.playlist(subtitlePlaylist, this.requestOptions_);
+
+        // if the video is already playing, or if this isn't a live video and preload
+        // permits, start downloading segments
+        if (!this.tech_.paused() ||
+            (subtitlePlaylist.endList && this.tech_.preload() !== 'none')) {
+          // this.subtitleSegmentLoader_.load();
+        }
+
+        if (!subtitlePlaylist.endList) {
+          this.subtitlePlaylistLoader_.trigger('firstplay');
+        }
+      });
+
+      this.subtitlePlaylistLoader_.on('loadedplaylist', () => {
+        let updatedPlaylist;
+
+        if (this.subtitlePlaylistLoader_) {
+          updatedPlaylist = this.subtitlePlaylistLoader_.media();
+        }
+
+        if (!updatedPlaylist) {
+          return;
+        }
+
+        // this.subtitleSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
+      });
+
+      this.subtitlePlaylistLoader_.on('error', () => {
+        videojs.log.warn('Problem encountered loading the alternate audio track' +
+                         '. Switching back to default.');
+        this.subtitlePlaylistLoader_.abort();
+        this.setupSubtiles();
+      });
+    }
+
+    let media = this.subtitlePlaylistLoader_.media();
+
+    if (media && properties.resolvedUri !== media.resolvedUri) {
+      this.subtitlePlaylistLoader_.media(properties.resolvedUri);
+    }
+
+    this.subtitlePlaylistLoader_.load();
   }
 
   /**
