@@ -416,20 +416,32 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   loader.pause = () => {
     loader.stopRequest();
     window.clearTimeout(mediaUpdateTimeout);
+    if (loader.state === 'HAVE_NOTHING') {
+      // If we pause the loader before any data has been retrieved, its as if we never
+      // started, so reset to an unstarted state.
+      loader.started = false;
+    }
   };
 
   /**
    * start loading of the playlist
    */
   loader.load = () => {
-    if (loader.started) {
-      if (!loader.media().endList) {
-        loader.trigger('mediaupdatetimeout');
-      } else {
-        loader.trigger('loadedplaylist');
-      }
-    } else {
+    if (!loader.started) {
       loader.start();
+      return;
+    }
+
+    let media = loader.media();
+
+    if (!media) {
+      return;
+    }
+
+    if (!media.endList) {
+      loader.trigger('mediaupdatetimeout');
+    } else {
+      loader.trigger('loadedplaylist');
     }
   };
 
@@ -488,16 +500,18 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         }
 
         // resolve any media group URIs
-        for (let groupKey in loader.master.mediaGroups.AUDIO) {
-          for (let labelKey in loader.master.mediaGroups.AUDIO[groupKey]) {
-            let alternateAudio = loader.master.mediaGroups.AUDIO[groupKey][labelKey];
+        ['AUDIO', 'SUBTITLES'].forEach((mediaType) => {
+          for (let groupKey in loader.master.mediaGroups[mediaType]) {
+            for (let labelKey in loader.master.mediaGroups[mediaType][groupKey]) {
+              let mediaProperties = loader.master.mediaGroups[mediaType][groupKey][labelKey];
 
-            if (alternateAudio.uri) {
-              alternateAudio.resolvedUri =
-                resolveUrl(loader.master.uri, alternateAudio.uri);
+              if (mediaProperties.uri) {
+                mediaProperties.resolvedUri =
+                  resolveUrl(loader.master.uri, mediaProperties.uri);
+              }
             }
           }
-        }
+        });
 
         loader.trigger('loadedplaylist');
         if (!request) {
