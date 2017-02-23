@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 5.3.2 (2017-02-23)
+* fix: Fix a bug with the combination of seek-to-live and resync-on-a-poor-guess behaviors [#1023](https://github.com/videojs/videojs-contrib-hls/pull/1023)
+
+--------------------
 ## 5.3.1 (2017-02-22)
 * Locking url-toolkit to 1.0.9 to support relative urls [#1027](https://github.com/videojs/videojs-contrib-hls/pull/1027)
 * Resync on poor initial segment choice [#1016](https://github.com/videojs/videojs-contrib-hls/pull/1016)
