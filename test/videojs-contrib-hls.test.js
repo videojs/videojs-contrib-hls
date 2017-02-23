@@ -1094,7 +1094,8 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   url = this.requests[2].url.slice(this.requests[2].url.lastIndexOf('/') + 1);
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
-  assert.ok(!media.excludeUntil, 'dont blacklist the second media because its final media');
+  // media didn't be blacklisted because it's fianl rendition
+  assert.ok(!media.excludeUntil, 'media not blacklisted after playlist 404');
   assert.equal(this.env.log.warn.calls, 0, 'warning logged for blacklist');
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');

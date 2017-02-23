@@ -270,9 +270,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * @return {Boolean} true if on final rendition
    */
   loader.isFinalRendition_ = function() {
-    return (loader.master.playlists.filter((playlist) => {
-      return isEnabled(playlist);
-    }).length === 1);
+    return (loader.master.playlists.filter(isEnabled).length === 1);
   };
 
    /**
