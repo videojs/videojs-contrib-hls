@@ -916,6 +916,30 @@ QUnit.test('respects useCueTags option', function(assert) {
   videojs.options.hls = origHlsOptions;
 });
 
+QUnit.test('respects useCueTags and uses existing cue tags track', function(assert) {
+  let origHlsOptions = videojs.options.hls;
+
+  videojs.options.hls = {
+    useCueTags: true
+  };
+
+  this.player = createPlayer();
+  const track = this.player.addTextTrack('metadata', 'ad-cues');
+
+  track.inBandMetadataTrackDispatchType = '';
+
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  assert.ok(this.masterPlaylistController.cueTagsTrack_, 'creates cueTagsTrack_ if useCueTags is truthy');
+  assert.equal(this.masterPlaylistController.cueTagsTrack_.id, track.id, 'uses existing track');
+
+  videojs.options.hls = origHlsOptions;
+});
+
 QUnit.test('sends decrypter messages to correct segment loader', function(assert) {
   this.player = createPlayer();
   this.player.src({

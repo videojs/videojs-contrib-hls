@@ -211,9 +211,23 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mode_ = mode;
     this.useCueTags_ = useCueTags;
     if (this.useCueTags_) {
-      this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
-        'ad-cues');
-      this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
+      let track;
+      const tracks = this.tech_.textTracks();
+      let i = tracks.length;
+
+      // check if an track already exists for id3 cue tags
+      while (i-- && !track) {
+        if (typeof tracks[i].inBandMetadataTrackDispatchType !== 'undefined') {
+          track = tracks[i];
+        }
+      }
+
+      if (!track) {
+        track = this.tech_.addTextTrack('metadata', 'ad-cues');
+        track.inBandMetadataTrackDispatchType = '';
+      }
+
+      this.cueTagsTrack_ = track;
     }
 
     this.audioTracks_ = [];
