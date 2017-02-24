@@ -289,6 +289,10 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     return this.monitorBuffer_();
   }
 
+  track(track) {
+    this.subtitlesTrack_ = track;
+  }
+
   /**
    * set a playlist on the segment loader
    *
@@ -717,8 +721,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     let segmentRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
       uri: segmentInfo.uri,
-      headers: segmentXhrHeaders(segment),
-      responseType: 'arraybuffer'
+      headers: segmentXhrHeaders(segment)
     });
 
     segmentXhr = this.hls_.xhr(segmentRequestOptions, this.handleResponse_.bind(this));
@@ -861,7 +864,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       if (segment.key) {
         segmentInfo.encryptedBytes = new Uint8Array(request.response);
       } else {
-        segmentInfo.bytes = new Uint8Array(request.response);
+        segmentInfo.bytes = request.response;
       }
     }
 
@@ -921,8 +924,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    debugger;
-
     let segmentInfo = this.pendingSegment_;
     let segment = segmentInfo.segment;
 
@@ -931,7 +932,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     // Make sure that vttjs has loaded, otherwise, wait till it finished loading
     if (typeof window.WebVTT !== 'function') {
         const loadHandler = () => {
-          this.parseVTTCues_(segmentInfo, this.subtitleTrack_);
+          this.parseVTTCues_(segmentInfo);
           this.handleSegment_();
         };
 
@@ -943,11 +944,11 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
         return;
     }
 
-    this.parseVTTCues_(segmentInfo, this.subtitleTrack_);
+    this.parseVTTCues_(segmentInfo);
     this.handleSegment_();
   }
 
-  parseVTTCues_(segmentInfo, track) {
+  parseVTTCues_(segmentInfo) {
     const parser = new window.WebVTT.Parser(window,
                                             window.vttjs,
                                             window.WebVTT.StringDecoder());
@@ -955,8 +956,8 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     const cues = [];
     let timestampmap = { MPEGTS: 0, LOCAL: 0 };
 
-    parser.oncue = cues.push;
-    parser.onparsingerror = errors.push;
+    parser.oncue = cues.push.bind(cues);
+    parser.onparsingerror = errors.push.bind(errors);
     parser.ontimestampmap = (map) => timestampmap = map;
 
     parser.onflush = () => {
@@ -1013,15 +1014,19 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       }
     }
 
-    segmentInfo.byteLength = segmentInfo.bytes.byteLength;
+    segmentInfo.byteLength = segmentInfo.bytes.length;
+
     if (typeof segment.start === 'number' && typeof segment.end === 'number') {
       this.mediaSecondsLoaded += segment.end - segment.start;
     } else {
       this.mediaSecondsLoaded += segment.duration;
     }
 
-    this.sourceUpdater_.appendBuffer(segmentInfo.bytes,
-                                     this.handleUpdateEnd_.bind(this));
+    segmentInfo.cues.forEach((cue) => {
+      this.subtitlesTrack_.addCue(cue);
+    });
+
+    this.handleUpdateEnd_();
   }
 
   updateTimeMapping_(segmentInfo) {
