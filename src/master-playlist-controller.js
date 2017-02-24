@@ -434,6 +434,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.setupAudio();
         this.trigger('audioupdate');
       }
+      this.setupSubtitles();
 
       this.tech_.trigger({
         type: 'mediachange',
@@ -708,6 +709,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_.load();
     if (this.audioPlaylistLoader_) {
       this.audioSegmentLoader_.load();
+    }
+    if (this.subtitlePlaylistLoader_) {
+      this.subtitleSegmentLoader_.load();
     }
   }
 
@@ -1081,6 +1085,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     if (this.audioPlaylistLoader_) {
       this.audioSegmentLoader_.pause();
     }
+    if (this.subtitlePlaylistLoader_) {
+      this.subtitlePlaylistLoader_.pause();
+    }
   }
 
   /**
@@ -1122,11 +1129,18 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.audioSegmentLoader_.resetEverything();
       this.audioSegmentLoader_.abort();
     }
+    if (this.subtitlePlaylistLoader_) {
+      this.subtitleSegmentLoader_.resetEverything();
+      this.subtitleSegmentLoader_.abort();
+    }
 
     if (!this.tech_.paused()) {
       this.mainSegmentLoader_.load();
       if (this.audioPlaylistLoader_) {
         this.audioSegmentLoader_.load();
+      }
+      if (this.subtitlePlaylistLoader_) {
+        this.subtitleSegmentLoader_.load();
       }
     }
   }
@@ -1244,6 +1258,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     if (this.audioPlaylistLoader_) {
       this.audioPlaylistLoader_.dispose();
+    }
+    if (this.subtitlePlaylistLoader_) {
+      this.subtitlePlaylistLoader_.dispose();
     }
     this.audioSegmentLoader_.dispose();
   }
