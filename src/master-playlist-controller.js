@@ -856,12 +856,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return subtitleProperties.id === track.id;
     })[0];
 
-    this.subtitleSegmentLoader_.resetEverything();
-
     // startup playlist and segment loaders for the enabled subtitle track
     if (!this.subtitlePlaylistLoader_ ||
         this.subtitlePlaylistLoader_.state === 'HAVE_NOTHING' ||
         this.subtitlePlaylistLoader_.media().resolvedUri !== properties.resolvedUri) {
+      this.subtitleSegmentLoader_.resetEverything();
+
       if (this.subtitlePlaylistLoader_) {
         this.subtitlePlaylistLoader_.dispose();
       }
