@@ -3,6 +3,7 @@
  */
 import PlaylistLoader from './playlist-loader';
 import SegmentLoader from './segment-loader';
+import VTTSegmentLoader from './vtt-segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
@@ -265,6 +266,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     segmentLoaderOptions.loaderType = 'audio';
     this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
 
+    segmentLoaderOptions.loaderType = 'vtt';
+    this.subtitleSegmentLoader_ = new VTTSegmentLoader(segmentLoaderOptions);
+
     this.decrypter_.onmessage = (event) => {
       if (event.data.source === 'main') {
         this.mainSegmentLoader_.handleDecrypted_(event.data);
@@ -449,6 +453,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.audioPlaylistLoader_ = null;
       this.setupAudio();
     });
+
+    this.subtitleSegmentLoader_.on('error', () => {
+      videojs.log.warn('Problem encountered with the current subtitle track. Switching' +
+                       ' back to default.');
+      this.subtitleSegmentLoader_.abort();
+      this.setupSubtitles();
+    })
   }
 
   handleAudioinfoUpdate_(event) {
@@ -840,7 +851,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return subtitleProperties.id === track.id;
     })[0];
 
-    // this.subtitleSegmentLoader_.resetEverything();
+    this.subtitleSegmentLoader_.resetEverything();
 
     // startup playlist and segment loaders for the enabled subtitle track
     if (!this.subtitlePlaylistLoader_ || this.subtitlePlaylistLoader_.state === 'HAVE_NOTHING') {
@@ -855,13 +866,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.subtitlePlaylistLoader_.on('loadedmetadata', () => {
         let subtitlePlaylist = this.subtitlePlaylistLoader_.media();
 
-        // this.subtitleSegmentLoader_.playlist(subtitlePlaylist, this.requestOptions_);
+        this.subtitleSegmentLoader_.playlist(subtitlePlaylist, this.requestOptions_);
 
         // if the video is already playing, or if this isn't a live video and preload
         // permits, start downloading segments
         if (!this.tech_.paused() ||
             (subtitlePlaylist.endList && this.tech_.preload() !== 'none')) {
-          // this.subtitleSegmentLoader_.load();
+          this.subtitleSegmentLoader_.load();
         }
 
         if (!subtitlePlaylist.endList) {
@@ -880,11 +891,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
           return;
         }
 
-        // this.subtitleSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
+        this.subtitleSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
       });
 
       this.subtitlePlaylistLoader_.on('error', () => {
-        videojs.log.warn('Problem encountered loading the alternate audio track' +
+        videojs.log.warn('Problem encountered loading the subtitle track' +
                          '. Switching back to default.');
         this.subtitlePlaylistLoader_.abort();
         this.setupSubtiles();
