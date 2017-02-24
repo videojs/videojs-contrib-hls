@@ -1,5 +1,5 @@
 /**
- * @file segment-loader.js
+ * @file vtt-segment-loader.js
  */
 import {getMediaInfoForTime_ as getMediaInfoForTime} from './playlist';
 import videojs from 'video.js';
@@ -59,11 +59,11 @@ const initSegmentId = function(initSegment) {
 /**
  * An object that manages segment loading and appending.
  *
- * @class SegmentLoader
+ * @class VTTSegmentLoader
  * @param {Object} options required and optional options
  * @extends videojs.EventTarget
  */
-export default class SegmentLoader extends videojs.EventTarget {
+export default class VTTSegmentLoader extends videojs.EventTarget {
   constructor(options) {
     super();
     // check pre-conditions
@@ -95,7 +95,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mediaSource_ = settings.mediaSource;
     this.hls_ = settings.hls;
     this.loaderType_ = settings.loaderType;
-    this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
 
     // private instance variables
     this.checkBufferTimeout_ = null;
@@ -105,6 +104,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mimeType_ = null;
     this.sourceUpdater_ = null;
     this.xhrOptions_ = null;
+    this.timestampOffset_ = 0;
 
     // Fragmented mp4 playback
     this.activeInitSegmentId_ = null;
@@ -210,6 +210,19 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
+   * Indicates which time ranges are buffered
+   */
+  buffered() {
+    // TODO
+    return videojs.createTimeRanges();
+  }
+
+  timestampOffset() {
+    // TODO
+    return this.timestampOffset_;
+  }
+
+  /**
    * load a playlist and start to fill the buffer
    */
   load() {
@@ -226,15 +239,14 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.syncController_.setDateTimeMapping(this.playlist_);
 
     // if all the configuration is ready, initialize and begin loading
-    if (this.state === 'INIT' && this.mimeType_) {
+    if (this.state === 'INIT') {
       return this.init_();
     }
 
     // if we're in the middle of processing a segment already, don't
     // kick off an additional segment request
-    if (!this.sourceUpdater_ ||
-        (this.state !== 'READY' &&
-        this.state !== 'INIT')) {
+    if (this.state !== 'READY' &&
+        this.state !== 'INIT') {
       return;
     }
 
@@ -250,7 +262,6 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   init_() {
     this.state = 'READY';
-    this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, this.mimeType_);
     this.resetEverything();
     return this.monitorBuffer_();
   }
@@ -287,7 +298,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // if we were unpaused but waiting for a playlist, start
     // buffering now
-    if (this.mimeType_ && this.state === 'INIT' && !this.paused()) {
+    if (this.state === 'INIT' && !this.paused()) {
       return this.init_();
     }
 
@@ -356,27 +367,6 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
-   * create/set the following mimetype on the SourceBuffer through a
-   * SourceUpdater
-   *
-   * @param {String} mimeType the mime type string to use
-   */
-  mimeType(mimeType) {
-    if (this.mimeType_) {
-      return;
-    }
-
-    this.mimeType_ = mimeType;
-    // if we were unpaused but waiting for a sourceUpdater, start
-    // buffering now
-    if (this.playlist_ &&
-        this.state === 'INIT' &&
-        !this.paused()) {
-      this.init_();
-    }
-  }
-
-  /**
    * Delete all the buffered data and reset the SegmentLoader
    */
   resetEverything() {
@@ -413,7 +403,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.sourceUpdater_) {
       this.sourceUpdater_.remove(start, end);
     }
-    removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
   }
 
   /**
@@ -458,10 +447,6 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   fillBuffer_() {
-    if (this.sourceUpdater_.updating()) {
-      return;
-    }
-
     if (!this.syncPoint_) {
       this.syncPoint_ = this.syncController_.getSyncPoint(this.playlist_,
                                                           this.mediaSource_.duration,
@@ -470,7 +455,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     // see if we need to begin loading immediately
-    let segmentInfo = this.checkBuffer_(this.sourceUpdater_.buffered(),
+    let segmentInfo = this.checkBuffer_(this.buffered(),
                                         this.playlist_,
                                         this.mediaIndex,
                                         this.hasPlayed_(),
@@ -478,15 +463,6 @@ export default class SegmentLoader extends videojs.EventTarget {
                                         this.syncPoint_);
 
     if (!segmentInfo) {
-      return;
-    }
-
-    let isEndOfStream = detectEndOfStream(this.playlist_,
-                                          this.mediaSource_,
-                                          segmentInfo.mediaIndex);
-
-    if (isEndOfStream) {
-      this.mediaSource_.endOfStream();
       return;
     }
 
@@ -504,8 +480,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     //   the currently set timestampOffset
     if (segmentInfo.timeline !== this.currentTimeline_ ||
         ((segmentInfo.startOfSegment !== null) &&
-        segmentInfo.startOfSegment < this.sourceUpdater_.timestampOffset())) {
-      this.syncController_.reset();
+        segmentInfo.startOfSegment < this.timestampOffset())) {
       segmentInfo.timestampOffset = segmentInfo.startOfSegment;
     }
 
@@ -723,6 +698,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (seekable.length &&
         seekable.start(0) > 0 &&
         seekable.start(0) < currentTime) {
+<<<<<<< HEAD
       removeToTime = seekable.start(0);
     } else {
       removeToTime = currentTime - 60;
@@ -872,7 +848,49 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     segmentInfo.endOfAllRequests = simpleSegment.endOfAllRequests;
+
+    let segment = segmentInfo.segment;
+
+    segment.requested = true;
+
+    // Make sure that vttjs has loaded, otherwise, wait till it finished loading
+    if (typeof window.WebVTT !== 'function') {
+        const loadHandler = () => {
+          this.parseVTTCues_(segmentInfo, this.subtitleTrack_);
+          this.handleSegment_();
+        };
+
+        this.tech_.on('vttjsloaded', loadHandler);
+        this.tech_.on('vttjserror', () => {
+          this.tech_.off('vttjsloaded', loadHandler);
+        });
+
+        return;
+    }
+
+    this.parseVTTCues_(segmentInfo, this.subtitleTrack_);
     this.handleSegment_();
+  }
+
+  parseVTTCues_(segmentInfo, track) {
+    const parser = new window.WebVTT.Parser(window,
+                                            window.vttjs,
+                                            window.WebVTT.StringDecoder());
+    const errors = [];
+    const cues = [];
+    let timestampmap = { MPEGTS: 0, LOCAL: 0 };
+
+    parser.oncue = cues.push;
+    parser.onparsingerror = errors.push;
+    parser.ontimestampmap = (map) => timestampmap = map;
+
+    parser.onflush = () => {
+      segmentInfo.cues = cues;
+      segmentInfo.timestampMap = timestampmap;
+    }
+
+    parser.parse(segmentInfo.bytes);
+    parser.flush();
   }
 
   /**
@@ -888,10 +906,10 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.state = 'APPENDING';
 
-    const segmentInfo = this.pendingSegment_;
-    const segment = segmentInfo.segment;
+    let segmentInfo = this.pendingSegment_;
+    let segment = segmentInfo.segment;
 
-    this.syncController_.probeSegmentInfo(segmentInfo);
+    this.updateTimeMapping_(segmentInfo);
 
     if (segmentInfo.isSyncRequest) {
       this.trigger('syncinfoupdate');
@@ -901,8 +919,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     if (segmentInfo.timestampOffset !== null &&
-        segmentInfo.timestampOffset !== this.sourceUpdater_.timestampOffset()) {
-      this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
+        segmentInfo.timestampOffset !== this.timestampOffset()) {
+      this.timestampOffset_ = segmentInfo.timestampOffset;
     }
 
     // if the media initialization segment is changing, append it
@@ -931,6 +949,37 @@ export default class SegmentLoader extends videojs.EventTarget {
                                      this.handleUpdateEnd_.bind(this));
   }
 
+  updateTimeMapping_(segmentInfo) {
+    let segment = segmentInfo.segment;
+
+    let mappingObj = this.syncController_.timelines[segmentInfo.timeline];
+    let timestampMap = segmentInfo.timestampMap;
+
+    if (!mappingObj || !segmentInfo.cues.length) {
+      // If the sync controller does not have a mapping of TS to Media Time for the
+      // timeline, then we don't have enough information to update the segment and cue
+      // start/end times
+      // If there are no cues, we also do not have enough information to figure out
+      // segment timing
+      return;
+    }
+
+    const diff = (timestampMap.MPEGTS / 90000) - timestampMap.LOCAL + mappingObj.mapping;
+
+    segmentInfo.cues.forEach((cue) => {
+      // First convert cue time to TS time using the timestamp-map provided within the vtt
+      cue.startTime += diff;
+      cue.endTime += diff;
+    });
+
+    const firstStart = segmentInfo.cues[0].startTime;
+    const lastStart = segmentInfo.cues[segmentInfo.cues.length - 1].startTime;
+    const midPoint = (firstStart + lastStart) / 2;
+
+    segment.start = midPoint - (segment.duration / 2);
+    segment.end = midPoint + (segment.duration / 2);
+  }
+
   /**
    * callback to run when appendBuffer is finished. detects if we are
    * in a good state to do things with the data we got, or if we need
@@ -955,7 +1004,6 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.pendingSegment_ = null;
     this.recordThroughput_(segmentInfo);
-    this.addSegmentMetadataCue_(segmentInfo);
 
     this.state = 'READY';
 
