@@ -241,8 +241,16 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   loader.isLowestEnabledRendition_ = function() {
     let media = loader.media();
 
-    if (!media || !media.attributes) {
+    if (!media) {
       return false;
+    }
+
+    if (!media.attributes) {
+      // The spec says that every rendition MUST have a BANDWITH attribute. If our media
+      // object does not have an attributes field, that means we loaded this media as our
+      // source, not from a master playlist. This means it is our only rendition, so it
+      // must be the lowest enabled rendition
+      return true;
     }
 
     let currentBandwidth = media.attributes.BANDWIDTH || 0;
