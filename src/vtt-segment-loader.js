@@ -1112,17 +1112,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       this.trigger('progress');
     }
 
-    // any time an update finishes and the last segment is in the
-    // buffer, end the stream. this ensures the "ended" event will
-    // fire if playback reaches that point.
-    let isEndOfStream = detectEndOfStream(segmentInfo.playlist,
-                                          this.mediaSource_,
-                                          this.mediaIndex + 1);
-
-    if (isEndOfStream) {
-      this.mediaSource_.endOfStream();
-    }
-
     if (!this.paused()) {
       this.monitorBuffer_();
     }
