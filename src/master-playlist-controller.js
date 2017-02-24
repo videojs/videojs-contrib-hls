@@ -857,11 +857,19 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // startup playlist and segment loaders for the enabled subtitle track
     if (!this.subtitlePlaylistLoader_ ||
-        this.subtitlePlaylistLoader_.state === 'HAVE_NOTHING') {
+        this.subtitlePlaylistLoader_.state === 'HAVE_NOTHING' ||
+        this.subtitlePlaylistLoader_.media().resolvedUri !== properties.resolvedUri) {
       if (this.subtitlePlaylistLoader_) {
         this.subtitlePlaylistLoader_.dispose();
       }
 
+      // clear out any current cues so we won't double up later
+      for (let trackKey in this.subtitleGroups_.tracks) {
+        removeCuesFromTrack(0, Infinity, this.subtitleGroups_.tracks[trackKey]);
+      }
+
+      // can't reuse playlistloader because we're only using single renditions and not a
+      // proper master
       this.subtitlePlaylistLoader_ = new PlaylistLoader(properties.resolvedUri,
                                                         this.hls_,
                                                         this.withCredentials);
@@ -904,20 +912,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.subtitlePlaylistLoader_.abort();
         this.setupSubtiles();
       });
-    }
-
-    let media = this.subtitlePlaylistLoader_.media();
-
-    if (media && properties.resolvedUri !== media.resolvedUri) {
-      // clear out any current cues so we won't double up later
-      for (let trackKey in this.subtitleGroups_.tracks) {
-        removeCuesFromTrack(0, Infinity, this.subtitleGroups_.tracks[trackKey]);
-      }
-      // can't reuse playlistloader because we're only using single renditions and not a
-      // proper master
-      this.subtitlePlaylistLoader_ = new PlaylistLoader(properties.resolvedUri,
-                                                        this.hls_,
-                                                        this.withCredentials);
     }
 
     this.subtitlePlaylistLoader_.load();
