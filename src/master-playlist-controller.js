@@ -11,6 +11,8 @@ import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
 import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
+import removeCuesFromTrack from
+  'videojs-contrib-media-sources/es5/remove-cues-from-track';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -728,7 +730,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * Returns the subtitle group for the currently active primary
    * media playlist.
    */
-  activeSubtitleGroup() {
+  activeSubtitleGroup_() {
     let videoPlaylist = this.masterPlaylistLoader_.media();
     let result;
 
@@ -737,6 +739,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     return result || this.subtitleGroups_.groups.main;
+  }
+
+  activeSubtitleTrack_() {
+    for (let trackName in this.subtitleGroups_.tracks) {
+      if (this.subtitleGroups_.tracks[trackName].mode === 'showing') {
+        return this.subtitleGroups_.tracks[trackName];
+      }
+    }
   }
 
   /**
@@ -831,16 +841,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * invoked again if the track is changed.
    */
   setupSubtitles() {
-    // determine whether seperate loaders are required for the audio
-    // rendition
-    let subtitleGroup = this.activeSubtitleGroup();
-    let track;
-    for (let trackName in this.subtitleGroups_.tracks) {
-      if (this.subtitleGroups_.tracks[trackName].mode === 'showing') {
-        track = this.subtitleGroups_.tracks[trackName];
-        break;
-      }
-    }
+    let subtitleGroup = this.activeSubtitleGroup_();
+    let track = this.activeSubtitleTrack_();
 
     if (!track) {
       // stop playlist and segment loading for subtitles
@@ -857,7 +859,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.subtitleSegmentLoader_.resetEverything();
 
     // startup playlist and segment loaders for the enabled subtitle track
-    if (!this.subtitlePlaylistLoader_ || this.subtitlePlaylistLoader_.state === 'HAVE_NOTHING') {
+    if (!this.subtitlePlaylistLoader_ ||
+        this.subtitlePlaylistLoader_.state === 'HAVE_NOTHING') {
       if (this.subtitlePlaylistLoader_) {
         this.subtitlePlaylistLoader_.dispose();
       }
@@ -870,6 +873,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         let subtitlePlaylist = this.subtitlePlaylistLoader_.media();
 
         this.subtitleSegmentLoader_.playlist(subtitlePlaylist, this.requestOptions_);
+        this.subtitleSegmentLoader_.track(this.activeSubtitleTrack_());
 
         // if the video is already playing, or if this isn't a live video and preload
         // permits, start downloading segments
@@ -908,7 +912,15 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let media = this.subtitlePlaylistLoader_.media();
 
     if (media && properties.resolvedUri !== media.resolvedUri) {
-      this.subtitlePlaylistLoader_.media(properties.resolvedUri);
+      // clear out any current cues so we won't double up later
+      for (let trackKey in this.subtitleGroups_.tracks) {
+        removeCuesFromTrack(0, Infinity, this.subtitleGroups_.tracks[trackKey]);
+      }
+      // can't reuse playlistloader because we're only using single renditions and not a
+      // proper master
+      this.subtitlePlaylistLoader_ = new PlaylistLoader(properties.resolvedUri,
+                                                        this.hls_,
+                                                        this.withCredentials);
     }
 
     this.subtitlePlaylistLoader_.load();
