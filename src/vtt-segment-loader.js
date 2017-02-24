@@ -236,8 +236,16 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
    * Indicates which time ranges are buffered
    */
   buffered() {
-    // TODO
-    return videojs.createTimeRanges();
+    const cues = this.subtitlesTrack_.cues;
+
+    if (!cues.length) {
+      return videojs.createTimeRanges();
+    }
+
+    let start = cues[0].start;
+    let end = cues[cues.length - 1].start;
+
+    return videojs.createTimeRanges([[start, end]]);
   }
 
   timestampOffset() {
@@ -1058,6 +1066,8 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     segment.start = midPoint - (segment.duration / 2);
     segment.end = midPoint + (segment.duration / 2);
+
+    // TODO - adjust other segments with new info
   }
 
   /**
