@@ -249,8 +249,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
   }
 
   timestampOffset() {
-    // TODO
-    return this.timestampOffset_;
+    return this.syncController_.timestampOffsetForTimeline(this.currentTimeline_);
   }
 
   /**
@@ -507,16 +506,16 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    // We will need to change timestampOffset of the sourceBuffer if either of
-    // the following conditions are true:
-    // - The segment.timeline !== this.currentTimeline
-    //   (we are crossing a discontinuity somehow)
-    // - The "timestampOffset" for the start of this segment is less than
-    //   the currently set timestampOffset
-    if (segmentInfo.timeline !== this.currentTimeline_ ||
-        ((segmentInfo.startOfSegment !== null) &&
-        segmentInfo.startOfSegment < this.timestampOffset())) {
-      segmentInfo.timestampOffset = segmentInfo.startOfSegment;
+    if (this.syncController_.timestampOffsetForTimeline(segmentInfo.timeline) === null) {
+      // We don't have the timestamp offset that we need to sync subtitles.
+      // Rerun on a timestamp offset or user interaction.
+      let checkTimestampOffset = () => {
+        this.syncController_.off('timestampoffset', checkTimestampOffset);
+        this.load();
+      };
+      this.syncController_.on('timestampoffset', checkTimestampOffset);
+      this.pause();
+      return;
     }
 
     this.loadSegment_(segmentInfo);
