@@ -606,15 +606,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let master = this.master();
     let mediaGroups = master.mediaGroups || {};
 
-    // force a default if we have none
-    // TODO: Determine if this needs to be done
-    if (!mediaGroups ||
-        !mediaGroups.SUBTITLES ||
-        Object.keys(mediaGroups.SUBTITLES).length === 0) {
-      // "main" subtitle group, track name "default"
-      mediaGroups.SUBTITLES = { main: { default: { default: true } } };
-    }
-
     for (let mediaGroup in mediaGroups.SUBTITLES) {
       if (!this.subtitleGroups_.groups[mediaGroup]) {
         // this.subtitleGroups_.groups[mediaGroup] = { unforced: [], forced: {} };
