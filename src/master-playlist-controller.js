@@ -576,10 +576,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
   audioTrackKind_(properties) {
     let kind = properties.default ? 'main' : 'alternative';
 
-    if (properties.characteristics) {
-      if (properties.characteristics.indexOf('public.accessibility.describes-video') >= 0) {
-        kind = 'main-desc';
-      }
+    if (properties.characteristics &&
+        properties.characteristics.indexOf('public.accessibility.describes-video') >= 0) {
+      kind = 'main-desc';
     }
 
     return kind;
