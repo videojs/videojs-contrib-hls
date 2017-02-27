@@ -422,6 +422,12 @@ class HlsHandler extends Component {
         seekable: () => this.seekable()
       }));
 
+    this.masterPlaylistController_.on('error', () => {
+      let player = videojs.players[this.tech_.options_.playerId];
+
+      player.error(this.masterPlaylistController_.error);
+    });
+
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
     this.masterPlaylistController_.selectPlaylist =
