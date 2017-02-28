@@ -411,9 +411,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
    * @param {Number} end - the end time of the region to remove from the buffer
    */
   remove(start, end) {
-    if (this.sourceUpdater_) {
-      this.sourceUpdater_.remove(start, end);
-    }
+    removeCuesFromTrack(start, end, this.subtitlesTrack_);
   }
 
   /**
@@ -1050,20 +1048,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     }
     this.trigger('progress');
 
-<<<<<<< HEAD
-    // any time an update finishes and the last segment is in the
-    // buffer, end the stream. this ensures the "ended" event will
-    // fire if playback reaches that point.
-    const isEndOfStream = detectEndOfStream(segmentInfo.playlist,
-                                            this.mediaSource_,
-                                            this.mediaIndex + 1);
-
-    if (isEndOfStream) {
-      this.mediaSource_.endOfStream();
-    }
-
-=======
->>>>>>> Don't call endOfStream from vtt segment loader
     if (!this.paused()) {
       this.monitorBuffer_();
     }
