@@ -95,7 +95,7 @@
     "mux.js": "4.1.0",
     "url-toolkit": "1.0.9",
     "video.js": "^5.17.0",
-    "videojs-contrib-media-sources": "4.4.0",
+    "videojs-contrib-media-sources": "4.4.1",
     "webworkify": "1.0.2"
   },
   "devDependencies": {
