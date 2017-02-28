@@ -7,6 +7,8 @@ import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
 import { createTransferableMessage } from './bin-utils';
+import removeCuesFromTrack from
+  'videojs-contrib-media-sources/es5/remove-cues-from-track';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -434,9 +436,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
    * @param {Number} end - the end time of the region to remove from the buffer
    */
   remove(start, end) {
-    if (this.sourceUpdater_) {
-      this.sourceUpdater_.remove(start, end);
-    }
+    removeCuesFromTrack(start, end, this.subtitlesTrack_);
   }
 
   /**
