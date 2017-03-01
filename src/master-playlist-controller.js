@@ -457,11 +457,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.setupAudio();
     });
 
-    this.subtitleSegmentLoader_.on('error', () => {
-      videojs.log.warn('Problem encountered with the current subtitle track. Switching' +
-                       ' back to default.');
-      this.handleSubtitleError_();
-    })
+    this.subtitleSegmentLoader_.on('error', this.handleSubtitleError_.bind(this));
   }
 
   handleAudioinfoUpdate_(event) {
@@ -685,6 +681,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   handleSubtitleError_() {
+    videojs.log.warn('Problem encountered loading the subtitle track' +
+                     '. Switching back to default.');
+
     this.subtitleSegmentLoader_.abort();
 
     let track = this.activeSubtitleTrack_();
@@ -854,11 +853,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.subtitleSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
       });
 
-      this.subtitlePlaylistLoader_.on('error', () => {
-        videojs.log.warn('Problem encountered loading the subtitle track' +
-                         '. Switching back to default.');
-        this.handleSubtitleError_();
-      });
+      this.subtitlePlaylistLoader_.on('error', this.handleSubtitleError_.bind(this));
     }
 
     if (this.subtitlePlaylistLoader_.media() &&
@@ -1208,6 +1203,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.subtitlePlaylistLoader_.dispose();
     }
     this.audioSegmentLoader_.dispose();
+    this.subtitleSegmentLoader_.dispose();
   }
 
   /**
