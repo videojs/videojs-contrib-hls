@@ -614,34 +614,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       for (let label in mediaGroups.SUBTITLES[mediaGroup]) {
         let properties = mediaGroups.SUBTITLES[mediaGroup][label];
 
-        // if (properties.forced) {
-        //   if (!this.subtitleGroups_.groups[mediaGroup].forced[properties.language]) {
-        //     this.subtitleGroups_[mediaGroup].forced[properties.language] = [];
-        //   }
-
-        //   this.subtitleGroups_[mediaGroup].forced[properties.language].push({
-        //     id: label,
-        //     properties
-        //   });
-        // } else {
-        //   this.subtitleGroups_.groups[mediaGroup].unforced.push({
-        //     id: label,
-        //     properties
-        //   });
-
-        //   if (typeof this.subtitleGroups_.tracks[label] === 'undefined') {
-        //     let track = this.tech_.addRemoteTextTrack({
-        //       id: label,
-        //       kind: 'subtitles',
-        //       enabled: false,
-        //       language: properties.language,
-        //       label
-        //     }, true).track;
-
-        //     track.properties_ = properties;
-        //     this.subtitleGroups_.tracks[label] = track;
-        //   }
-        // }
         if (!properties.forced) {
           this.subtitleGroups_.groups[mediaGroup].push(
             videojs.mergeOptions({ id: label }, properties));
@@ -661,35 +633,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
     }
 
-    // for (let mediaGroup in this.subtitleGroups_) {
-    //   for (let lang in this.subtitleGroups_[mediaGroup].forced) {
-    //     let foundLang = this.subtitleGroups_[mediaGroup].tracks.find((track) => {
-    //       return track.language === lang;
-    //     });
-
-    //     if (typeof foundLang === 'undefined') {
-    //       let forcedLang = this.subtitleGroups_[mediaGroup].forced[lang].shift();
-
-    //       let track = this.tech_.addRemoteTextTrack({
-    //         id: forcedLang.id,
-    //         kind: 'subtitles',
-    //         enabled: false,
-    //         language: lang,
-    //         label: forcedLang.id
-    //       }, true).track;
-
-    //       track.properties_ = forcedLang.properties;
-    //       this.subtitleGroups_[mediaGroup].tracks.push(track);
-    //     }
-    //   }
-    // }
-
     // Do not enable a default subtitle track. Wait for user interaction instead.
-
-    // enable the default active track
-    // let activeName = (this.activeSubtitleGroup().unforced.filter((subtitleTrack) => {
-    //   return subtitleTrack.properties.default;
-    // })[0] || this.activeSubtitleGroup().unforced[0]).id;
   }
 
   /**
