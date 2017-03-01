@@ -244,8 +244,8 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       return videojs.createTimeRanges();
     }
 
-    let start = cues[0].start;
-    let end = cues[cues.length - 1].start;
+    let start = cues[0].startTime;
+    let end = cues[cues.length - 1].startTime;
 
     return videojs.createTimeRanges([[start, end]]);
   }
