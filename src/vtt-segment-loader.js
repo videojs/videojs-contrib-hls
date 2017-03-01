@@ -154,7 +154,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
-    if (settings.debug) {
+    if (settings.debug || true) {
       this.logger_ = videojs.log.bind(videojs, 'segment-loader', this.loaderType_, '->');
     }
   }
@@ -1065,6 +1065,13 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     segment.start = midPoint - (segment.duration / 2);
     segment.end = midPoint + (segment.duration / 2);
+
+    if (!this.playlist_.syncInfo) {
+      this.playlist_.syncInfo = {
+        mediaSequence: this.playlist_.mediaSequence + segmentInfo.mediaIndex,
+        time: segment.start
+      };
+    }
 
     // TODO - adjust other segments with new info
   }

@@ -837,6 +837,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let track = this.activeSubtitleTrack_();
 
     this.subtitleSegmentLoader_.pause();
+    this.subtitleSegmentLoader_.resetEverything();
 
     if (!track) {
       // stop playlist and segment loading for subtitles
@@ -855,7 +856,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     if (!this.subtitlePlaylistLoader_ ||
         this.subtitlePlaylistLoader_.state === 'HAVE_NOTHING' ||
         this.subtitlePlaylistLoader_.media().resolvedUri !== properties.resolvedUri) {
-      this.subtitleSegmentLoader_.resetEverything();
 
       if (this.subtitlePlaylistLoader_) {
         this.subtitlePlaylistLoader_.dispose();
@@ -885,9 +885,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
           this.subtitleSegmentLoader_.load();
         }
 
-        if (!subtitlePlaylist.endList) {
-          this.subtitlePlaylistLoader_.trigger('firstplay');
-        }
+        // if (!subtitlePlaylist.endList) {
+        //   this.subtitlePlaylistLoader_.trigger('firstplay');
+        // }
       });
 
       this.subtitlePlaylistLoader_.on('loadedplaylist', () => {
