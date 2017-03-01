@@ -931,49 +931,46 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       return;
     }
 
+    this.state = 'DECRYPTING';
+
     let segmentInfo = this.pendingSegment_;
     let segment = segmentInfo.segment;
 
-    segment.requested = true;
-
-    // Make sure that vttjs has loaded, otherwise, wait till it finished loading
-    if (typeof window.WebVTT !== 'function') {
-        const loadHandler = () => {
-          this.parseVTTCues_(segmentInfo);
-          this.handleSegment_();
-        };
-
-        this.tech_.on('vttjsloaded', loadHandler);
-        this.tech_.on('vttjserror', () => {
-          this.tech_.off('vttjsloaded', loadHandler);
-        });
-
-        return;
+    if (segment.key) {
+      // this is an encrypted segment
+      // incrementally decrypt the segment
+      this.decrypter_.postMessage(createTransferableMessage({
+        source: this.loaderType_,
+        encrypted: segmentInfo.encryptedBytes,
+        key: segment.key.bytes,
+        iv: segment.key.iv
+      }), [
+        segmentInfo.encryptedBytes.buffer,
+        segment.key.bytes.buffer
+      ]);
+    } else {
+      this.handleSegment_();
     }
-
-    this.parseVTTCues_(segmentInfo);
-    this.handleSegment_();
   }
 
-  parseVTTCues_(segmentInfo) {
-    const parser = new window.WebVTT.Parser(window,
-                                            window.vttjs,
-                                            window.WebVTT.StringDecoder());
-    const errors = [];
-    const cues = [];
-    let timestampmap = { MPEGTS: 0, LOCAL: 0 };
+  /**
+   * Handles response from the decrypter and attaches the decrypted bytes to the pending
+   * segment
+   *
+   * @param {Object} data
+   *        Response from decrypter
+   * @method handleDecrypted_
+   */
+  handleDecrypted_(data) {
+    const segmentInfo = this.pendingSegment_;
+    const decrypted = data.decrypted;
 
-    parser.oncue = cues.push.bind(cues);
-    parser.onparsingerror = errors.push.bind(errors);
-    parser.ontimestampmap = (map) => timestampmap = map;
-
-    parser.onflush = () => {
-      segmentInfo.cues = cues;
-      segmentInfo.timestampMap = timestampmap;
+    if (segmentInfo) {
+      segmentInfo.bytes = new Uint8Array(decrypted.bytes,
+                                         decrypted.byteOffset,
+                                         decrypted.byteLength);
     }
-
-    parser.parse(segmentInfo.bytes);
-    parser.flush();
+    this.handleSegment_();
   }
 
   /**
@@ -991,6 +988,24 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     let segmentInfo = this.pendingSegment_;
     let segment = segmentInfo.segment;
+
+    // Make sure that vttjs has loaded, otherwise, wait till it finished loading
+    if (typeof window.WebVTT !== 'function') {
+        const loadHandler = () => {
+          this.handleSegment_();
+        };
+
+        this.tech_.on('vttjsloaded', loadHandler);
+        this.tech_.on('vttjserror', () => {
+          this.tech_.off('vttjsloaded', loadHandler);
+        });
+
+        return;
+    }
+
+    segment.requested = true;
+
+    this.parseVTTCues_(segmentInfo);
 
     this.updateTimeMapping_(segmentInfo);
 
@@ -1034,6 +1049,27 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     });
 
     this.handleUpdateEnd_();
+  }
+
+  parseVTTCues_(segmentInfo) {
+    const parser = new window.WebVTT.Parser(window,
+                                            window.vttjs,
+                                            window.WebVTT.StringDecoder());
+    const errors = [];
+    const cues = [];
+    let timestampmap = { MPEGTS: 0, LOCAL: 0 };
+
+    parser.oncue = cues.push.bind(cues);
+    parser.onparsingerror = errors.push.bind(errors);
+    parser.ontimestampmap = (map) => timestampmap = map;
+
+    parser.onflush = () => {
+      segmentInfo.cues = cues;
+      segmentInfo.timestampMap = timestampmap;
+    }
+
+    parser.parse(segmentInfo.bytes);
+    parser.flush();
   }
 
   updateTimeMapping_(segmentInfo) {
