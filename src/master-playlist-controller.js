@@ -461,6 +461,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       videojs.log.warn('Problem encountered with the current subtitle track. Switching' +
                        ' back to default.');
       this.subtitleSegmentLoader_.abort();
+      this.subtitlePlaylistLoader_ = null;
       this.setupSubtitles();
     })
   }
@@ -853,7 +854,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // startup playlist and segment loaders for the enabled subtitle track
     if (!this.subtitlePlaylistLoader_ ||
-        this.subtitlePlaylistLoader_.state === 'HAVE_NOTHING' ||
+        // if the media hasn't loaded yet, we don't have the URI to check, so it is
+        // easiest to simply recreate the playlist loader
+        !this.subtitlePlaylistLoader_.media() ||
         this.subtitlePlaylistLoader_.media().resolvedUri !== properties.resolvedUri) {
 
       if (this.subtitlePlaylistLoader_) {
@@ -881,10 +884,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
             (subtitlePlaylist.endList && this.tech_.preload() !== 'none')) {
           this.subtitleSegmentLoader_.load();
         }
-
-        // if (!subtitlePlaylist.endList) {
-        //   this.subtitlePlaylistLoader_.trigger('firstplay');
-        // }
       });
 
       this.subtitlePlaylistLoader_.on('loadedplaylist', () => {
@@ -904,8 +903,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.subtitlePlaylistLoader_.on('error', () => {
         videojs.log.warn('Problem encountered loading the subtitle track' +
                          '. Switching back to default.');
-        this.subtitlePlaylistLoader_.abort();
-        this.setupSubtiles();
+        this.subtitleSegmentLoader_.abort();
+        track.mode = 'disabled';
+        this.setupSubtitles();
       });
     }
 
