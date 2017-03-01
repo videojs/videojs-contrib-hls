@@ -461,7 +461,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       videojs.log.warn('Problem encountered with the current subtitle track. Switching' +
                        ' back to default.');
       this.subtitleSegmentLoader_.abort();
-      this.subtitlePlaylistLoader_ = null;
       this.setupSubtitles();
     })
   }
