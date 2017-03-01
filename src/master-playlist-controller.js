@@ -482,8 +482,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.subtitleSegmentLoader_.on('error', () => {
       videojs.log.warn('Problem encountered with the current subtitle track. Switching' +
                        ' back to default.');
-      this.subtitleSegmentLoader_.abort();
-      this.setupSubtitles();
+      this.handleSubtitleError_();
     })
   }
 
@@ -744,6 +743,18 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
+  handleSubtitleError_() {
+    this.subtitleSegmentLoader_.abort();
+
+    let track = this.activeSubtitleTrack_();
+
+    if (track) {
+      track.mode = 'disabled';
+    }
+
+    this.setupSubtitles();
+  }
+
   /**
    * Determine the correct audio rendition based on the active
    * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
@@ -905,9 +916,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.subtitlePlaylistLoader_.on('error', () => {
         videojs.log.warn('Problem encountered loading the subtitle track' +
                          '. Switching back to default.');
-        this.subtitleSegmentLoader_.abort();
-        track.mode = 'disabled';
-        this.setupSubtitles();
+        this.handleSubtitleError_();
       });
     }
 
