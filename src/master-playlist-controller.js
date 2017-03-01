@@ -837,7 +837,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let track = this.activeSubtitleTrack_();
 
     this.subtitleSegmentLoader_.pause();
-    this.subtitleSegmentLoader_.resetEverything();
 
     if (!track) {
       // stop playlist and segment loading for subtitles
@@ -861,10 +860,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.subtitlePlaylistLoader_.dispose();
       }
 
-      // clear out any current cues so we won't double up later
-      for (let trackKey in this.subtitleGroups_.tracks) {
-        removeCuesFromTrack(0, Infinity, this.subtitleGroups_.tracks[trackKey]);
-      }
+      // reset the segment loader
+      this.subtitleSegmentLoader_.resetEverything();
 
       // can't reuse playlistloader because we're only using single renditions and not a
       // proper master
@@ -912,7 +909,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
       });
     }
 
-    this.subtitlePlaylistLoader_.load();
+    if (this.subtitlePlaylistLoader_.media() &&
+        this.subtitlePlaylistLoader_.media().resolvedUri === properties.resolvedUri) {
+      this.subtitleSegmentLoader_.load();
+    } else {
+      this.subtitlePlaylistLoader_.load();
+    }
   }
 
   /**
