@@ -27,7 +27,7 @@ const initSegmentId = function(initSegment) {
 };
 
 const uintToString = function(uintArray) {
-    return String.fromCharCode.apply(null, uintArray);
+  return String.fromCharCode.apply(null, uintArray);
 }
 
 /**
@@ -902,20 +902,21 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     segment.requested = true;
 
-    // prepend the media initialization segment if it exists
+
     if (segment.map) {
+      // append WebVTT line terminators to the media initialization segment if it exists
+      // to follow the WebVTT spec (https://w3c.github.io/webvtt/#file-structure) that
+      // requires two or more WebVTT line terminators between the WebVTT header and the rest
+      // of the file
       const initId = initSegmentId(segment.map);
       const initSegment = this.initSegments_[initId];
-
-      segment.map.bytes = initSegment.bytes;
-
-      const vttHeader = new Uint8Array('WEBVTT\n\n'.split('').map(char => char.charCodeAt(0)));
-      const combinedByteLength = vttHeader.byteLength + segmentInfo.bytes.byteLength;
+      const vttLineTerminators = new Uint8Array('\n\n'.split('').map(char => char.charCodeAt(0)));
+      const combinedByteLength = vttLineTerminators.byteLength + initSegment.bytes.byteLength;
       const combinedSegment = new Uint8Array(combinedByteLength);
 
-      combinedSegment.set(vttHeader);
-      combinedSegment.set(segmentInfo.bytes, vttHeader.byteLength);
-      segmentInfo.bytes = combinedSegment;
+      combinedSegment.set(initSegment.bytes);
+      combinedSegment.set(vttLineTerminators, initSegment.bytes.byteLength);
+      segment.map.bytes = combinedSegment;
     }
 
     this.parseVTTCues_(segmentInfo);
@@ -966,13 +967,13 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
   parseVTTCues_(segmentInfo) {
     let decoder;
-    let convertData = false;
+    let decodeBytesToString = false;
 
     if (typeof window.TextDecoder === 'function') {
       decoder = new window.TextDecoder('utf8');
     } else {
       decoder = window.WebVTT.StringDecoder();
-      convertData = true;
+      decodeBytesToString = true;
     }
 
     const parser = new window.WebVTT.Parser(window,
@@ -995,7 +996,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     if (segmentInfo.segment.map) {
       let mapData = segmentInfo.segment.map.bytes;
 
-      if (convertData) {
+      if (decodeBytesToString) {
         mapData = uintToString(mapData);
       }
 
@@ -1004,7 +1005,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     let segmentData = segmentInfo.bytes;
 
-    if (convertData) {
+    if (decodeBytesToString) {
       segmentData = uintToString(segmentData);
     }
 
