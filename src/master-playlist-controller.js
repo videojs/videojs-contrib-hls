@@ -11,8 +11,6 @@ import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
 import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
-import removeCuesFromTrack from
-  'videojs-contrib-media-sources/es5/remove-cues-from-track';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
