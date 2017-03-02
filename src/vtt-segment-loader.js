@@ -3,7 +3,6 @@
  */
 import {getMediaInfoForTime_ as getMediaInfoForTime} from './playlist';
 import videojs from 'video.js';
-import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
 import { createTransferableMessage } from './bin-utils';
@@ -12,35 +11,6 @@ import removeCuesFromTrack from
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
-
-/**
- * Determines if we should call endOfStream on the media source based
- * on the state of the buffer or if appened segment was the final
- * segment in the playlist.
- *
- * @param {Object} playlist a media playlist object
- * @param {Object} mediaSource the MediaSource object
- * @param {Number} segmentIndex the index of segment we last appended
- * @returns {Boolean} do we need to call endOfStream on the MediaSource
- */
-const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
-  if (!playlist) {
-    return false;
-  }
-
-  let segments = playlist.segments;
-
-  // determine a few boolean values to help make the branch below easier
-  // to read
-  let appendedLastSegment = segmentIndex === segments.length;
-
-  // if we've buffered to the end of the video, we need to call endOfStream
-  // so that MediaSources can trigger the `ended` event when it runs out of
-  // buffered data instead of waiting for me
-  return playlist.endList &&
-    mediaSource.readyState === 'open' &&
-    appendedLastSegment;
-};
 
 /**
  * Turns segment byterange into a string suitable for use in
@@ -513,6 +483,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
         this.syncController_.off('timestampoffset', checkTimestampOffset);
         this.load();
       };
+
       this.syncController_.on('timestampoffset', checkTimestampOffset);
       this.pause();
       return;
@@ -991,16 +962,16 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     // Make sure that vttjs has loaded, otherwise, wait till it finished loading
     if (typeof window.WebVTT !== 'function') {
-        const loadHandler = () => {
-          this.handleSegment_();
-        };
+      const loadHandler = () => {
+        this.handleSegment_();
+      };
 
-        this.tech_.on('vttjsloaded', loadHandler);
-        this.tech_.on('vttjserror', () => {
-          this.tech_.off('vttjsloaded', loadHandler);
-        });
+      this.tech_.on('vttjsloaded', loadHandler);
+      this.tech_.on('vttjserror', () => {
+        this.tech_.off('vttjsloaded', loadHandler);
+      });
 
-        return;
+      return;
     }
 
     segment.requested = true;
@@ -1066,7 +1037,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     parser.onflush = () => {
       segmentInfo.cues = cues;
       segmentInfo.timestampMap = timestampmap;
-    }
+    };
 
     parser.parse(segmentInfo.bytes);
     parser.flush();

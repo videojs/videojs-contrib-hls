@@ -379,7 +379,7 @@ class HlsHandler extends Component {
 
     this.textTrackChange_ = () => {
       this.masterPlaylistController_.setupSubtitles();
-    }
+    };
 
     this.on(this.tech_, 'play', this.play);
   }
