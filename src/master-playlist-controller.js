@@ -325,7 +325,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.setupFirstPlay();
 
       this.trigger('audioupdate');
-      this.trigger('subtitleupdate');
       this.trigger('selectedinitialmedia');
     });
 
