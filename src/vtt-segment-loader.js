@@ -54,6 +54,10 @@ const initSegmentId = function(initSegment) {
   ].join(',');
 };
 
+const uintToString = function(uintArray) {
+    return String.fromCharCode.apply(null, uintArray);
+}
+
 /**
  * An object that manages segment loading and appending.
  *
@@ -107,7 +111,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     this.timestampOffset_ = 0;
 
     // Fragmented mp4 playback
-    this.activeInitSegmentId_ = null;
     this.initSegments_ = {};
 
     // Manages the tracking and generation of sync-points, mappings
@@ -688,8 +691,8 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
         !this.initSegments_[initSegmentId(segment.map)]) {
       let initSegmentOptions = videojs.mergeOptions(this.xhrOptions_, {
         uri: segment.map.resolvedUri,
-        headers: segmentXhrHeaders(segment.map),
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        headers: segmentXhrHeaders(segment.map)
       });
 
       initSegmentXhr = this.hls_.xhr(initSegmentOptions,
@@ -699,6 +702,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     let segmentRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
       uri: segmentInfo.uri,
+      responseType: 'arraybuffer',
       headers: segmentXhrHeaders(segment)
     });
 
@@ -842,7 +846,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       if (segment.key) {
         segmentInfo.encryptedBytes = new Uint8Array(request.response);
       } else {
-        segmentInfo.bytes = request.response;
+        segmentInfo.bytes = new Uint8Array(request.response);
       }
     }
 
@@ -976,6 +980,22 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     segment.requested = true;
 
+    // prepend the media initialization segment if it exists
+    if (segment.map) {
+      const initId = initSegmentId(segment.map);
+      const initSegment = this.initSegments_[initId];
+
+      segment.map.bytes = initSegment.bytes;
+
+      const vttHeader = new Uint8Array('WEBVTT\n\n'.split('').map(char => char.charCodeAt(0)));
+      const combinedByteLength = vttHeader.byteLength + segmentInfo.bytes.byteLength;
+      const combinedSegment = new Uint8Array(combinedByteLength);
+
+      combinedSegment.set(vttHeader);
+      combinedSegment.set(segmentInfo.bytes, vttHeader.byteLength);
+      segmentInfo.bytes = combinedSegment;
+    }
+
     this.parseVTTCues_(segmentInfo);
 
     this.updateTimeMapping_(segmentInfo);
@@ -992,22 +1012,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       this.timestampOffset_ = segmentInfo.timestampOffset;
     }
 
-    // if the media initialization segment is changing, append it
-    // before the content segment
-    if (segment.map) {
-      let initId = initSegmentId(segment.map);
-
-      if (!this.activeInitSegmentId_ ||
-          this.activeInitSegmentId_ !== initId) {
-        let initSegment = this.initSegments_[initId];
-
-        this.sourceUpdater_.appendBuffer(initSegment.bytes, () => {
-          this.activeInitSegmentId_ = initId;
-        });
-      }
-    }
-
-    segmentInfo.byteLength = segmentInfo.bytes.length;
+    segmentInfo.byteLength = segmentInfo.bytes.byteLength;
 
     if (typeof segment.start === 'number' && typeof segment.end === 'number') {
       this.mediaSecondsLoaded += segment.end - segment.start;
@@ -1023,9 +1028,20 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
   }
 
   parseVTTCues_(segmentInfo) {
+    let decoder;
+    let convertData = false;
+
+    if (typeof window.TextDecoder === 'function') {
+      decoder = new window.TextDecoder('utf8');
+    } else {
+      decoder = window.WebVTT.StringDecoder();
+      convertData = true;
+    }
+
     const parser = new window.WebVTT.Parser(window,
                                             window.vttjs,
-                                            window.WebVTT.StringDecoder());
+                                            decoder);
+    // TODO: Do something with errors
     const errors = [];
     const cues = [];
     let timestampmap = { MPEGTS: 0, LOCAL: 0 };
@@ -1039,7 +1055,23 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       segmentInfo.timestampMap = timestampmap;
     };
 
-    parser.parse(segmentInfo.bytes);
+    if (segmentInfo.segment.map) {
+      let mapData = segmentInfo.segment.map.bytes;
+
+      if (convertData) {
+        mapData = uintToString(mapData);
+      }
+
+      parser.parse(mapData);
+    }
+
+    let segmentData = segmentInfo.bytes;
+
+    if (convertData) {
+      segmentData = uintToString(segmentData);
+    }
+
+    parser.parse(segmentData);
     parser.flush();
   }
 
