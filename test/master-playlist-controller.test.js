@@ -1000,6 +1000,43 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
                'spanish track\'s kind is "alternative"');
 });
 
+QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  assert.equal(this.player.textTracks().length, 0, 'no text tracks to start');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+
+  // we wait for loadedmetadata before setting subtitle tracks, so we need to wait for a
+  // media playlist
+  assert.equal(this.player.textTracks().length, 0, 'no text tracks after master load');
+
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const master = masterPlaylistController.masterPlaylistLoader_.master;
+  const subs = master.mediaGroups.SUBTITLES.subs;
+  const subsArr = Object.keys(subs).map(key => subs[key]);
+
+  assert.equal(subsArr.length, 4, 'got 4 subtitles');
+  assert.equal(subsArr.filter(sub => sub.forced === false).length, 2, '2 forced');
+  assert.equal(subsArr.filter(sub => sub.forced === true).length, 2, '2 non-forced');
+
+  const textTracks = this.player.textTracks();
+
+  assert.equal(textTracks.length, 2, 'non-forced text tracks were added');
+  assert.equal(textTracks[0].mode, 'disabled', 'track starts disabled');
+  assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
