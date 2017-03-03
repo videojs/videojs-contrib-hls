@@ -333,11 +333,12 @@ export const playlistWithDuration = function(time, conf) {
   let remainder = time % 10;
   let i;
   let isEncrypted = conf && conf.isEncrypted;
+  let extension = conf && conf.extension ? conf.extension : '.ts';
 
   for (i = 0; i < count; i++) {
     result.segments.push({
-      uri: i + '.ts',
-      resolvedUri: i + '.ts',
+      uri: i + extension,
+      resolvedUri: i + extension,
       duration: 10,
       timeline: 0
     });
@@ -350,7 +351,7 @@ export const playlistWithDuration = function(time, conf) {
   }
   if (remainder) {
     result.segments.push({
-      uri: i + '.ts',
+      uri: i + extension,
       duration: remainder,
       timeline: 0
     });

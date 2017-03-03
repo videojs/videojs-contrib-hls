@@ -43,7 +43,6 @@ let mediaSource;
 let loader;
 let syncController;
 let decrypter;
-let segmentMetadataTrack;
 
 QUnit.module('Segment Loader', {
   beforeEach(assert) {
@@ -67,7 +66,6 @@ QUnit.module('Segment Loader', {
     mediaSource.trigger('sourceopen');
     this.syncController = new SyncController();
     decrypter = worker(Decrypter);
-    segmentMetadataTrack = new MockTextTrack();
     loader = new SegmentLoader({
       hls: this.fakeHls,
       currentTime: () => this.currentTime,
@@ -77,8 +75,7 @@ QUnit.module('Segment Loader', {
       mediaSource,
       syncController: this.syncController,
       decrypter,
-      loaderType: 'main',
-      segmentMetadataTrack
+      loaderType: 'main'
     });
     decrypter.onmessage = (event) => {
       loader.handleDecrypted_(event.data);

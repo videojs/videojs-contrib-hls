@@ -679,6 +679,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
         return this.subtitleGroups_.tracks[trackName];
       }
     }
+
+    return null;
   }
 
   handleSubtitleError_() {

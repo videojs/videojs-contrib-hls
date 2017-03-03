@@ -78,6 +78,9 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     this.mimeType_ = null;
     this.sourceUpdater_ = null;
     this.xhrOptions_ = null;
+
+    this.subtitlesTrack_ = null;
+
     this.timestampOffset_ = 0;
 
     // Fragmented mp4 playback
@@ -186,12 +189,11 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
    * Indicates which time ranges are buffered
    */
   buffered() {
-    const cues = this.subtitlesTrack_.cues;
-
-    if (!cues.length) {
+    if (!this.subtitlesTrack_ || !this.subtitlesTrack_.cues.length) {
       return videojs.createTimeRanges();
     }
 
+    const cues = this.subtitlesTrack_.cues;
     let start = cues[0].startTime;
     let end = cues[cues.length - 1].startTime;
 
@@ -219,7 +221,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     this.syncController_.setDateTimeMapping(this.playlist_);
 
     // if all the configuration is ready, initialize and begin loading
-    if (this.state === 'INIT') {
+    if (this.state === 'INIT' && this.subtitlesTrack_) {
       return this.init_();
     }
 
@@ -248,6 +250,15 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
   track(track) {
     this.subtitlesTrack_ = track;
+
+    // if we were unpaused but waiting for a sourceUpdater, start
+    // buffering now
+    if (this.playlist_ &&
+        this.state === 'INIT' &&
+        !this.paused() &&
+        this.subtitlesTrack_) {
+      this.init_();
+    }
   }
 
   /**
@@ -282,7 +293,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     // if we were unpaused but waiting for a playlist, start
     // buffering now
-    if (this.state === 'INIT' && !this.paused()) {
+    if (this.subtitlesTrack_ && this.state === 'INIT' && !this.paused()) {
       return this.init_();
     }
 
