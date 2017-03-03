@@ -63,6 +63,7 @@ const xhrFactory = function() {
       callback(error, request);
     });
 
+    request.uri = options.uri;
     request.requestTime = Date.now();
     return request;
   };
