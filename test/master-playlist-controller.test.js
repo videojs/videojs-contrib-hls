@@ -688,6 +688,23 @@ function(assert) {
               'request timeout 0');
 });
 
+QUnit.test('removes request timeout when the source is a media playlist and not master',
+  function(assert) {
+    this.requests.length = 0;
+
+    this.player.src({
+      src: 'manifest/media.m3u8',
+      type: 'application/vnd.apple.mpegurl'
+    });
+    this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+    // media
+    this.standardXHRResponse(this.requests.shift());
+
+    assert.equal(this.masterPlaylistController.requestOptions_.timeout, 0,
+              'request timeout set to 0 when loading a non master playlist');
+  });
+
 QUnit.test('seekable uses the intersection of alternate audio and combined tracks',
 function(assert) {
   let origSeekable = Playlist.seekable;
@@ -827,6 +844,30 @@ function(assert) {
   assertTimeRangesEqual(mpc.seekable(),
                         videojs.createTimeRanges([[11, 20]]),
                         'no intersection, main later');
+
+  Playlist.seekable = origSeekable;
+});
+
+QUnit.test('syncInfoUpdate triggers seekablechanged when seekable is updated',
+function(assert) {
+  let origSeekable = Playlist.seekable;
+  let mpc = this.masterPlaylistController;
+  let tech = this.player.tech_;
+  let mainTimeRanges = [];
+  let media = {};
+  let seekablechanged = 0;
+
+  tech.on('seekablechanged', () => seekablechanged++);
+
+  Playlist.seekable = () => {
+    return videojs.createTimeRanges(mainTimeRanges);
+  };
+  this.masterPlaylistController.masterPlaylistLoader_.media = () => media;
+
+  mainTimeRanges = [[0, 10]];
+  mpc.seekable_ = videojs.createTimeRanges();
+  mpc.onSyncInfoUpdate_();
+  assert.equal(seekablechanged, 1, 'seekablechanged triggered');
 
   Playlist.seekable = origSeekable;
 });

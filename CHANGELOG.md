@@ -2,6 +2,21 @@ CHANGELOG
 =========
 
 --------------------
+## 5.3.3 (2017-03-03)
+* update videojs-contrib-media-sources to v4.4.2 and mux.js to 4.1.1 [#1037](https://github.com/videojs/videojs-contrib-hls/pull/1037)
+  * Fix silence insertion to not insert extra frames when audio is offset [#143](https://github.com/videojs/mux.js/pull/143)
+  * Fixed metadata cue mapping so that it considers groups cues with the same startTime and remaps them collectively to the same endTime [#121](https://github.com/videojs/videojs-contrib-media-sources/pull/121)
+  * add fudge factor to flash tag trim target [#137](https://github.com/videojs/videojs-contrib-media-sources/pull/137)
+  * Feat/vjs6 compat [#130](https://github.com/videojs/videojs-contrib-media-sources/pull/130)
+  * Fix flash tag trimming for misaligned audio and video [#136](https://github.com/videojs/videojs-contrib-media-sources/pull/136)
+  * Revert "Revert flash transmuxing in a web worker (#133)" [#135](https://github.com/videojs/videojs-contrib-media-sources/pull/135)
+* fix: do not timeout segment requests for non-master playlist source [#1032](https://github.com/videojs/videojs-contrib-hls/pull/1032)
+
+--------------------
+## 5.3.2 (2017-02-23)
+* fix: Fix a bug with the combination of seek-to-live and resync-on-a-poor-guess behaviors [#1023](https://github.com/videojs/videojs-contrib-hls/pull/1023)
+
+--------------------
 ## 5.3.1 (2017-02-22)
 * Locking url-toolkit to 1.0.9 to support relative urls [#1027](https://github.com/videojs/videojs-contrib-hls/pull/1027)
 * Resync on poor initial segment choice [#1016](https://github.com/videojs/videojs-contrib-hls/pull/1016)
