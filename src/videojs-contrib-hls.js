@@ -117,6 +117,26 @@ const handleHlsLoadedMetadata = function(qualityLevels, hls) {
 };
 
 /**
+ * Resuable stable sort function
+ *
+ * @param {Playlists} array
+ * @param {Function} sortFn Different comparators
+ * @function stableSort
+ */
+const stableSort = function(array, sortFn) {
+  let newArray = array.slice();
+
+  array.sort(function(left, right) {
+    let cmp = sortFn(left, right);
+
+    if (cmp === 0) {
+      return newArray.indexOf(left) - newArray.indexOf(right);
+    }
+    return cmp;
+  });
+};
+
+/**
  * Chooses the appropriate media playlist based on the current
  * bandwidth estimate and the player size.
  *
@@ -124,103 +144,80 @@ const handleHlsLoadedMetadata = function(qualityLevels, hls) {
  * bandwidth, accounting for some amount of bandwidth variance
  */
 Hls.STANDARD_PLAYLIST_SELECTOR = function() {
-  let effectiveBitrate;
   let sortedPlaylists = this.playlists.master.playlists.slice();
   let bandwidthPlaylists = [];
-  let i;
-  let variant;
   let bandwidthBestVariant;
   let resolutionPlusOne;
-  let resolutionPlusOneAttribute;
   let resolutionBestVariant;
   let width;
   let height;
+  let systemBandwidth;
+  let haveResolution;
+  let resolutionPlusOneList = [];
+  let resolutionPlusOneSmallest = [];
+  let resolutionBestVariantList = [];
 
-  sortedPlaylists.sort(Hls.comparePlaylistBandwidth);
+  stableSort(sortedPlaylists, Hls.comparePlaylistBandwidth);
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
   sortedPlaylists = sortedPlaylists.filter(Playlist.isEnabled);
-
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
-  i = sortedPlaylists.length;
-  while (i--) {
-    variant = sortedPlaylists[i];
+  systemBandwidth = this.systemBandwidth;
+  bandwidthPlaylists = sortedPlaylists.filter(function(elem) {
+    return elem.attributes &&
+           elem.attributes.BANDWIDTH &&
+           elem.attributes.BANDWIDTH * BANDWIDTH_VARIANCE < systemBandwidth;
+  });
 
-    // ignore playlists without bandwidth information
-    if (!variant.attributes || !variant.attributes.BANDWIDTH) {
-      continue;
-    }
-
-    effectiveBitrate = variant.attributes.BANDWIDTH * BANDWIDTH_VARIANCE;
-
-    if (effectiveBitrate < this.systemBandwidth) {
-      bandwidthPlaylists.push(variant);
-
-      // since the playlists are sorted in ascending order by
-      // bandwidth, the first viable variant is the best
-      if (!bandwidthBestVariant) {
-        bandwidthBestVariant = variant;
-      }
-    }
-  }
-
-  i = bandwidthPlaylists.length;
+  // get all of the renditions with the same (highest) bandwidth
+  // and then taking the very first element
+  bandwidthBestVariant = bandwidthPlaylists.filter(function(elem) {
+    return elem.attributes.BANDWIDTH === bandwidthPlaylists[bandwidthPlaylists.length - 1].attributes.BANDWIDTH;
+  })[0];
 
   // sort variants by resolution
-  bandwidthPlaylists.sort(Hls.comparePlaylistResolution);
-
-  // forget our old variant from above,
-  // or we might choose that in high-bandwidth scenarios
-  // (this could be the lowest bitrate rendition as  we go through all of them above)
-  variant = null;
+  stableSort(bandwidthPlaylists, Hls.comparePlaylistResolution);
 
   width = parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10);
   height = parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10);
 
-  // iterate through the bandwidth-filtered playlists and find
-  // best rendition by player dimension
-  while (i--) {
-    variant = bandwidthPlaylists[i];
+  // filter out playlists without resolution information
+  haveResolution = bandwidthPlaylists.filter(function(elem) {
+    return elem.attributes &&
+           elem.attributes.RESOLUTION &&
+           elem.attributes.RESOLUTION.width &&
+           elem.attributes.RESOLUTION.height;
+  });
 
-    // ignore playlists without resolution information
-    if (!variant.attributes ||
-        !variant.attributes.RESOLUTION ||
-        !variant.attributes.RESOLUTION.width ||
-        !variant.attributes.RESOLUTION.height) {
-      continue;
-    }
+  // if we have the exact resolution as the player use it
+  resolutionBestVariantList = haveResolution.filter(function(elem) {
+    return elem.attributes.RESOLUTION.width === width &&
+           elem.attributes.RESOLUTION.height === height;
+  });
+  // ensure that we pick the highest bandwidth variant that have exact resolution
+  resolutionBestVariant = resolutionBestVariantList.filter(function(elem) {
+    return elem.attributes.BANDWIDTH === resolutionBestVariantList[resolutionBestVariantList.length - 1].attributes.BANDWIDTH;
+  })[0];
 
-    // since the playlists are sorted, the first variant that has
-    // dimensions less than or equal to the player size is the best
-    let variantResolution = variant.attributes.RESOLUTION;
-
-    if (variantResolution.width === width &&
-        variantResolution.height === height) {
-      // if we have the exact resolution as the player use it
-      resolutionPlusOne = null;
-      resolutionBestVariant = variant;
-      break;
-    } else if (variantResolution.width < width &&
-               variantResolution.height < height) {
-      // if both dimensions are less than the player use the
-      // previous (next-largest) variant
-      break;
-    } else if (!resolutionPlusOne ||
-               (variantResolution.width < resolutionPlusOneAttribute.width &&
-                variantResolution.height < resolutionPlusOneAttribute.height)) {
-      // If we still haven't found a good match keep a
-      // reference to the previous variant for the next loop
-      // iteration
-
-      // By only saving variants if they are smaller than the
-      // previously saved variant, we ensure that we also pick
-      // the highest bandwidth variant that is just-larger-than
-      // the video player
-      resolutionPlusOne = variant;
-      resolutionPlusOneAttribute = resolutionPlusOne.attributes.RESOLUTION;
-    }
+  // find the smallest variant that is larger than the player
+  // if there is no match of exact resolution
+  if (!resolutionBestVariant) {
+    resolutionPlusOneList = haveResolution.filter(function(elem) {
+      return elem.attributes.RESOLUTION.width > width ||
+             elem.attributes.RESOLUTION.height > height;
+    });
+    // find all the variants have the same smallest resolution
+    resolutionPlusOneSmallest = resolutionPlusOneList.filter(function(elem) {
+      return elem.attributes.RESOLUTION.width === resolutionPlusOneList[0].attributes.RESOLUTION.width &&
+             elem.attributes.RESOLUTION.height === resolutionPlusOneList[0].attributes.RESOLUTION.height;
+    });
+    // ensure that we also pick the highest bandwidth variant that
+    // is just-larger-than the video player
+    resolutionPlusOne = resolutionPlusOneSmallest.filter(function(elem) {
+      return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1].attributes.BANDWIDTH;
+    })[0];
   }
 
   // fallback chain of variants
@@ -244,7 +241,7 @@ Hls.supportsNativeHls = (function() {
   let video = document.createElement('video');
 
   // native HLS is definitely not supported if HTML5 video isn't
-  if (!videojs.getComponent('Html5').isSupported()) {
+  if (!videojs.getTech('Html5').isSupported()) {
     return false;
   }
 
@@ -327,6 +324,14 @@ class HlsHandler extends Component {
           }
         });
       }
+    }
+
+    // overriding native HLS only works if audio tracks have been emulated
+    // error early if we're misconfigured:
+    if (videojs.options.hls.overrideNative &&
+        (tech.featuresNativeVideoTracks || tech.featuresNativeAudioTracks)) {
+      throw new Error('Overriding native HLS requires emulated tracks. ' +
+                      'See https://git.io/vMpjB');
     }
 
     this.tech_ = tech;
@@ -547,7 +552,7 @@ class HlsHandler extends Component {
       this.ignoreNextSeekingEvent_ = true;
     });
 
-    this.setupQualityLevels_();
+    this.tech_.ready(() => this.setupQualityLevels_());
 
     // do nothing if the tech has been disposed already
     // this can occur if someone sets the src in player.ready(), for instance
@@ -753,6 +758,11 @@ Hls.comparePlaylistResolution = function(left, right) {
 };
 
 HlsSourceHandler.canPlayType = function(type) {
+  // No support for IE 10 or below
+  if (videojs.browser.IE_VERSION && videojs.browser.IE_VERSION <= 10) {
+    return false;
+  }
+
   let mpegurlRE = /^(audio|video|application)\/(x-|vnd\.apple\.)?mpegurl/i;
 
   // favor native HLS support if it's available
@@ -768,21 +778,30 @@ if (typeof videojs.MediaSource === 'undefined' ||
   videojs.URL = URL;
 }
 
+const flashTech = videojs.getTech('Flash');
+
 // register source handlers with the appropriate techs
 if (MediaSource.supportsNativeMediaSources()) {
-  videojs.getComponent('Html5').registerSourceHandler(HlsSourceHandler('html5'), 0);
+  videojs.getTech('Html5').registerSourceHandler(HlsSourceHandler('html5'), 0);
 }
-if (window.Uint8Array) {
-  videojs.getComponent('Flash').registerSourceHandler(HlsSourceHandler('flash'));
+if (window.Uint8Array && flashTech) {
+  flashTech.registerSourceHandler(HlsSourceHandler('flash'));
 }
 
 videojs.HlsHandler = HlsHandler;
 videojs.HlsSourceHandler = HlsSourceHandler;
 videojs.Hls = Hls;
+if (!videojs.use) {
+  videojs.registerComponent('Hls', Hls);
+}
 videojs.m3u8 = m3u8;
-videojs.registerComponent('Hls', Hls);
 videojs.options.hls = videojs.options.hls || {};
-videojs.plugin('reloadSourceOnError', reloadSourceOnError);
+
+if (videojs.registerPlugin) {
+  videojs.registerPlugin('reloadSourceOnError', reloadSourceOnError);
+} else {
+  videojs.plugin('reloadSourceOnError', reloadSourceOnError);
+}
 
 module.exports = {
   Hls,

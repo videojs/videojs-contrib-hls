@@ -9,6 +9,9 @@ import AdCueTags from './ad-cue-tags';
 import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
 import { playlistEnd } from './playlist';
+import worker from 'webworkify';
+import Decrypter from './decrypter-worker';
+
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -213,7 +216,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
       this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
-      this.tech_.textTracks().addTrack_(this.cueTagsTrack_);
     }
 
     this.audioTracks_ = [];
@@ -236,6 +238,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.syncController_ = new SyncController();
 
+    this.decrypter_ = worker(Decrypter);
+
     let segmentLoaderOptions = {
       hls: this.hls_,
       mediaSource: this.mediaSource,
@@ -245,7 +249,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       setCurrentTime: (a) => this.tech_.setCurrentTime(a),
       hasPlayed: () => this.hasPlayed_(),
       bandwidth,
-      syncController: this.syncController_
+      syncController: this.syncController_,
+      decrypter: this.decrypter_,
+      loaderType: 'main'
     };
 
     // setup playlist loaders
@@ -257,7 +263,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // combined audio/video or just video when alternate audio track is selected
     this.mainSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
     // alternate audio track
+    segmentLoaderOptions.loaderType = 'audio';
     this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
+
+    this.decrypter_.onmessage = (event) => {
+      if (event.data.source === 'main') {
+        this.mainSegmentLoader_.handleDecrypted_(event.data);
+      } else if (event.data.source === 'audio') {
+        this.audioSegmentLoader_.handleDecrypted_(event.data);
+      }
+    };
+
     this.setupSegmentLoaderListeners_();
 
     this.masterPlaylistLoader_.start();
@@ -274,7 +290,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       let media = this.masterPlaylistLoader_.media();
       let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
 
-      this.requestOptions_.timeout = requestTimeout;
+      // If we don't have any more available playlists, we don't want to
+      // timeout the request.
+      if (this.masterPlaylistLoader_.isLowestEnabledRendition_()) {
+        this.requestOptions_.timeout = 0;
+      } else {
+        this.requestOptions_.timeout = requestTimeout;
+      }
 
       // if this isn't a live video and preload permits, start
       // downloading segments
@@ -734,11 +756,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.load();
     }
 
+    let seekable = this.tech_.seekable();
+
     // if the viewer has paused and we fell out of the live window,
-    // seek forward to the earliest available position
+    // seek forward to the live point
     if (this.tech_.duration() === Infinity) {
-      if (this.tech_.currentTime() < this.tech_.seekable().start(0)) {
-        return this.tech_.setCurrentTime(this.tech_.seekable().start(0));
+      if (this.tech_.currentTime() < seekable.start(0)) {
+        return this.tech_.setCurrentTime(seekable.end(seekable.length - 1));
       }
     }
   }
@@ -878,9 +902,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return 0;
     }
 
+    // In flash playback, the segment loaders should be reset on every seek, even
+    // in buffer seeks
+    const isFlash = (this.mode_ === 'flash') ||
+                    (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
+
     // if the seek location is already buffered, continue buffering as
     // usual
-    if (buffered && buffered.length) {
+    if (buffered && buffered.length && !isFlash) {
       return currentTime;
     }
 
@@ -958,15 +987,20 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // seekable has been calculated based on buffering video data so it
       // can be returned directly
       this.seekable_ = mainSeekable;
-      return;
+    } else if (audioSeekable.start(0) > mainSeekable.end(0) ||
+               mainSeekable.start(0) > audioSeekable.end(0)) {
+      // seekables are pretty far off, rely on main
+      this.seekable_ = mainSeekable;
+    } else {
+      this.seekable_ = videojs.createTimeRanges([[
+        (audioSeekable.start(0) > mainSeekable.start(0)) ? audioSeekable.start(0) :
+                                                           mainSeekable.start(0),
+        (audioSeekable.end(0) < mainSeekable.end(0)) ? audioSeekable.end(0) :
+                                                       mainSeekable.end(0)
+      ]]);
     }
 
-    this.seekable_ = videojs.createTimeRanges([[
-      (audioSeekable.start(0) > mainSeekable.start(0)) ? audioSeekable.start(0) :
-                                                         mainSeekable.start(0),
-      (audioSeekable.end(0) < mainSeekable.end(0)) ? audioSeekable.end(0) :
-                                                     mainSeekable.end(0)
-    ]]);
+    this.tech_.trigger('seekablechanged');
   }
 
   /**
@@ -1003,6 +1037,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * that it controls
    */
   dispose() {
+    this.decrypter_.terminate();
     this.masterPlaylistLoader_.dispose();
     this.mainSegmentLoader_.dispose();
 
@@ -1081,20 +1116,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let master = this.masterPlaylistLoader_.master;
     let codecCount = 2;
     let videoCodec = null;
-    let audioProfile = null;
     let codecs;
 
     if (media.attributes && media.attributes.CODECS) {
       codecs = parseCodecs(media.attributes.CODECS);
       videoCodec = codecs.videoCodec;
-      audioProfile = codecs.audioProfile;
       codecCount = codecs.codecCount;
     }
     master.playlists.forEach(function(variant) {
       let variantCodecs = {
         codecCount: 2,
-        videoCodec: null,
-        audioProfile: null
+        videoCodec: null
       };
 
       if (variant.attributes && variant.attributes.CODECS) {
@@ -1119,12 +1151,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // if h.264 is specified on the current playlist, some flavor of
       // it must be specified on all compatible variants
       if (variantCodecs.videoCodec !== videoCodec) {
-        variant.excludeUntil = Infinity;
-      }
-      // HE-AAC ("mp4a.40.5") is incompatible with all other versions of
-      // AAC audio in Chrome 46. Don't mix the two.
-      if ((variantCodecs.audioProfile === '5' && audioProfile !== '5') ||
-          (audioProfile === '5' && variantCodecs.audioProfile !== '5')) {
         variant.excludeUntil = Infinity;
       }
 

@@ -143,10 +143,18 @@ QUnit.test('playlist loader detects if we are on lowest rendition', function(ass
                               {attributes: {BANDWIDTH: 20}}];
   assert.ok(loader.isLowestEnabledRendition_(), 'Detected on lowest rendition');
 
+  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
+                              {attributes: {BANDWIDTH: 10}},
+                              {attributes: {BANDWIDTH: 10}},
+                              {attributes: {BANDWIDTH: 20}}];
+  assert.ok(loader.isLowestEnabledRendition_(), 'Detected on lowest rendition');
+
   loader.media = function() {
     return {attributes: {BANDWIDTH: 20}};
   };
 
+  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
+                              {attributes: {BANDWIDTH: 20}}];
   assert.ok(!loader.isLowestEnabledRendition_(), 'Detected not on lowest rendition');
 });
 

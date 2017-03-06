@@ -2,6 +2,91 @@ CHANGELOG
 =========
 
 --------------------
+## 5.3.3 (2017-03-03)
+* update videojs-contrib-media-sources to v4.4.2 and mux.js to 4.1.1 [#1037](https://github.com/videojs/videojs-contrib-hls/pull/1037)
+  * Fix silence insertion to not insert extra frames when audio is offset [#143](https://github.com/videojs/mux.js/pull/143)
+  * Fixed metadata cue mapping so that it considers groups cues with the same startTime and remaps them collectively to the same endTime [#121](https://github.com/videojs/videojs-contrib-media-sources/pull/121)
+  * add fudge factor to flash tag trim target [#137](https://github.com/videojs/videojs-contrib-media-sources/pull/137)
+  * Feat/vjs6 compat [#130](https://github.com/videojs/videojs-contrib-media-sources/pull/130)
+  * Fix flash tag trimming for misaligned audio and video [#136](https://github.com/videojs/videojs-contrib-media-sources/pull/136)
+  * Revert "Revert flash transmuxing in a web worker (#133)" [#135](https://github.com/videojs/videojs-contrib-media-sources/pull/135)
+* fix: do not timeout segment requests for non-master playlist source [#1032](https://github.com/videojs/videojs-contrib-hls/pull/1032)
+
+--------------------
+## 5.3.2 (2017-02-23)
+* fix: Fix a bug with the combination of seek-to-live and resync-on-a-poor-guess behaviors [#1023](https://github.com/videojs/videojs-contrib-hls/pull/1023)
+
+--------------------
+## 5.3.1 (2017-02-22)
+* Locking url-toolkit to 1.0.9 to support relative urls [#1027](https://github.com/videojs/videojs-contrib-hls/pull/1027)
+* Resync on poor initial segment choice [#1016](https://github.com/videojs/videojs-contrib-hls/pull/1016)
+* Fix resuming live playback after long pauses [#1006](https://github.com/videojs/videojs-contrib-hls/pull/1006)
+
+--------------------
+## 5.3.0 (2017-02-16)
+* reset segment loaders on all flash seeks [#1008](https://github.com/videojs/videojs-contrib-hls/pull/1008)
+  * update mux.js to 4.1.0 update videojs-contrib-media-sources to 4.4.0
+* Reorganized the functions in SegmentLoader to better follow the flow of execution from top-down [#1015](https://github.com/videojs/videojs-contrib-hls/pull/1015)
+* Remove ad-hoc logging in favor of a config-enabled logging like playback-watcher [#1014](https://github.com/videojs/videojs-contrib-hls/pull/1014)
+* isLowestEnabledRendition worked with redundant streams [#1004](https://github.com/videojs/videojs-contrib-hls/pull/1004)
+* Rename Worker to DecrypterWorker [#1003](https://github.com/videojs/videojs-contrib-hls/pull/1003)
+
+--------------------
+## 5.2.1 (2017-02-09)
+* feature: Support for Akamai-style Redundant HLS [#990](https://github.com/videojs/videojs-contrib-hls/pull/990)
+  * stable sorting and always pick primary first
+* Fix routing of decrypter messages intended for audio segment loader [#1001](https://github.com/videojs/videojs-contrib-hls/pull/1001)
+
+--------------------
+## 5.2.0 (2017-02-08)
+* update deps for 4.3.0 mediasources [#998](https://github.com/videojs/videojs-contrib-hls/pull/998)
+* Remove HLS object events from README [#992](https://github.com/videojs/videojs-contrib-hls/pull/992)
+
+--------------------
+## 5.1.1 (2017-02-03)
+* fix: introduce videojs 6 forward compatibility while maintaining backward compatibilty [#975](https://github.com/videojs/videojs-contrib-hls/pull/975)
+  * fix: swap to use getTech and null-check flash tech
+  * Fix #968
+  * only registerComponent Hls in older vjs
+  * use registerPlugin if it exists
+  * addTrack cross-compat
+* Add events for underflow and live resync [#989](https://github.com/videojs/videojs-contrib-hls/pull/989)
+  * For QoS measurement purposes, it may be useful to know how often the playback watcher is activating. Add new events for when the player falls off the back of the live window or stalls due to a video buffer gap.
+
+--------------------
+## 5.1.0 (2017-01-31)
+* Updated videojs-contrib-media-sources to v4.2.0
+  * Added support for inserting silence when appending a new segment will introduce a gap in the audio SourceBuffer
+* Remove hls-audio-track.js as this file was no longer being used [#985](https://github.com/videojs/videojs-contrib-hls/pull/985)
+* Stop blacklisting audio codecs as there is now wide support for switching between audio codecs on-the-fly among all modern browsers [#981](https://github.com/videojs/videojs-contrib-hls/pull/981)
+* Fix qualityLevels setup for videos with a source element [#979](https://github.com/videojs/videojs-contrib-hls/pull/979)
+* Error early for misconfigured overrideNative [#980](https://github.com/videojs/videojs-contrib-hls/pull/980)
+
+--------------------
+## 5.0.0 (2017-01-25)
+* Update issue template to use unpkg for latest versions [#967](https://github.com/videojs/videojs-contrib-hls/pull/967)
+* Use a snapshot of the issue template JSBin to protect from changes by owner [#969](https://github.com/videojs/videojs-contrib-hls/pull/969)
+* Fix any possible fillBuffer_ race conditions by debouncing all fillBuffers_ [#959](https://github.com/videojs/videojs-contrib-hls/pull/959)
+  * Convert all calls to fillBuffer_ to calls to monitorBuffer_
+  * Rename monitorBuffer_ to monitorBufferTick_ which becomes the 500ms buffer check timer loop
+  * Make monitorBuffer_ schedule an immediate timer for monitorBufferTick_
+* Processing segment reachable even after playlist update removes it [#939](https://github.com/videojs/videojs-contrib-hls/pull/939)
+  * Change processing segment reference on playlist refresh
+  * Test for correct segment references on pending segments
+  * Fix unreachable segment tests after rebase on async monitor buffer change
+  * Update media index on playlist refreshes for all requests (including syncs)
+* Bubble progress events [#978](https://github.com/videojs/videojs-contrib-hls/pull/978)
+  * If the segment request triggers progress events (that is, XHR2 is supported), bubble those up to the tech. This makes it clearer that buffering is happening even on very slow connections.
+* run decryption in a webworker [#972](https://github.com/videojs/videojs-contrib-hls/pull/972)
+  * drop support for IE10
+* Fixed mediaIndex tracking so that it is consistent when the playlist updates during a live stream [#977](https://github.com/videojs/videojs-contrib-hls/pull/977)
+  * Fixed mediaIndex tracking so that it is consistent when the playlist updates during a live stream
+  * Removed any code in SegmentLoader#handleUpdateEnd_ that changed the mediaIndex
+  * Reordered SegmentLoader#playlist to make it easier to follow
+  * All changes to both mediaIndexes (SegmentLoader's and segmentInfo's) now happen in SegmentLoader#playlist
+  * Added tests for proper mediaIndex tracking with live playlists
+
+--------------------
 ## 4.1.1 (2017-01-20)
 * Fixed the m3u8-parser to support ES3 [#965](https://github.com/videojs/videojs-contrib-hls/pull/965)
 

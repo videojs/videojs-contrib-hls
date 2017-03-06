@@ -1,4 +1,7 @@
-# video.js HLS Source Handler [![Build Status](https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master)](https://travis-ci.org/videojs/videojs-contrib-hls)
+# video.js HLS Source Handler
+
+[![Build Status][travis-icon]][travis-link]
+[![Slack Status][slack-icon]][slack-link]
 
 
 Play back HLS with video.js, even where it's not natively supported.
@@ -17,6 +20,7 @@ Maintenance Status: Stable
   - [Releases](#releases)
   - [Manual Build](#manual-build)
 - [Contributing](#contributing)
+- [Talk to us](#talk-to-us)
 - [Getting Started](#getting-started)
 - [Documentation](#documentation)
   - [Options](#options)
@@ -26,6 +30,7 @@ Maintenance Status: Stable
     - [List](#list)
       - [withCredentials](#withcredentials)
       - [useCueTags](#usecuetags)
+      - [overrideNative](#overridenative)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -37,11 +42,10 @@ Maintenance Status: Stable
     - [hls.xhr](#hlsxhr)
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
-    - [loadedplaylist](#loadedplaylist)
-    - [mediachange](#mediachange)
   - [In-Band Metadata](#in-band-metadata)
 - [Hosting Considerations](#hosting-considerations)
 - [Known Issues](#known-issues)
+  - [IE10 and Below](#ie10-and-below)
   - [IE11](#ie11)
   - [Fragmented MP4 Support](#fragmented-mp4-support)
   - [Testing](#testing)
@@ -72,6 +76,9 @@ Download a copy of this git repository and then follow the steps in [Building](#
 
 ## Contributing
 See [CONTRIBUTING.md](/CONTRIBUTING.md)
+
+## Talk to us
+Drop by our slack channel (#playback) on the [Video.js slack][slack-link].
 
 ## Getting Started
 Get a copy of [videojs-contrib-hls](#installation) and include it in your page along with video.js:
@@ -241,6 +248,25 @@ cuesTrack.addEventListener('cuechange', function() {
 });
 ```
 
+##### overrideNative
+* Type: `boolean`
+* can be used as an initialization option
+
+Try to use videojs-contrib-hls even on platforms that provide some
+level of HLS support natively. There are a number of platforms that
+*technically* play back HLS content but aren't very reliable or are
+missing features like CEA-608 captions support. When `overrideNative`
+is true, if the platform supports Media Source Extensions
+videojs-contrib-hls will take over HLS playback to provide a more
+consistent experience.
+
+__NOTE__: If you use this option, you must also set
+`videojs.options.html5.nativeAudioTracks` and
+`videojs.options.html5.nativeVideoTracks` to
+`false`. videojs-contrib-hls relies on audio and video tracks to play
+streams with alternate audio and requires additional capabilities only
+supported by non-native tracks in video.js.
+
 ### Runtime Properties
 Runtime properties are attached to the tech object when HLS is in
 use. You can get a reference to the HLS source handler like this:
@@ -394,27 +420,12 @@ documentation at [https://github.com/Raynos/xhr](https://github.com/Raynos/xhr).
 
 ### Events
 Standard HTML video events are handled by video.js automatically and
-are triggered on the player object. In addition, there are a couple
-specialized events you can listen to on the HLS object during
-playback:
+are triggered on the player object.
 
 #### loadedmetadata
 
 Fired after the first segment is downloaded for a playlist. This will not happen
 until playback if video.js's `metadata` setting is `none`
-
-#### loadedplaylist
-
-Fired immediately after a new master or media playlist has been
-downloaded. By default, the tech only downloads playlists as they
-are needed.
-
-#### mediachange
-
-Fired when a new playlist becomes the active media playlist. Note that
-the actual rendering quality change does not occur simultaneously with
-this event; a new segment must be requested and the existing buffer
-depleted first.
 
 ### In-Band Metadata
 The HLS tech supports [timed
@@ -451,6 +462,9 @@ and most CDNs should have no trouble turning CORS on for your account.
 ## Known Issues
 Issues that are currenty know about with workarounds. If you want to
 help find a solution that would be appreciated!
+
+### IE10 and Below
+As of version 5.0.0, IE10 and below are no longer supported.
 
 ### IE11
 In some IE11 setups there are issues working with its native HTML
@@ -495,3 +509,8 @@ All commands for development are listed in the `package.json` file and are run u
 ```bash
 npm run <command>
 ```
+
+[slack-icon]: http://slack.videojs.com/badge.svg
+[slack-link]: http://slack.videojs.com
+[travis-icon]: https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master
+[travis-link]: https://travis-ci.org/videojs/videojs-contrib-hls

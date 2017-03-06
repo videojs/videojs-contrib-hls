@@ -7,20 +7,12 @@ import {inspect as tsprobe} from 'mux.js/lib/tools/ts-inspector.js';
 import {sumDurations} from './playlist';
 import videojs from 'video.js';
 
-const c = 'console';
-// temporary, switchable debug logging
-const log = function() {
-  if (window.logit) {
-    window[c].log.apply(window[c], arguments);
-  }
-};
-
 export const syncPointStrategies = [
   // Stategy "VOD": Handle the VOD-case where the sync-point is *always*
   //                the equivalence display-time 0 === segment-index 0
   {
     name: 'VOD',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
       if (duration !== Infinity) {
         let syncPoint = {
           time: 0,
@@ -35,7 +27,7 @@ export const syncPointStrategies = [
   // Stategy "ProgramDateTime": We have a program-date-time tag in this playlist
   {
     name: 'ProgramDateTime',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
       if (syncController.datetimeToDisplayTime && playlist.dateTimeObject) {
         let playlistTime = playlist.dateTimeObject.getTime() / 1000;
         let playlistStart = playlistTime + syncController.datetimeToDisplayTime;
@@ -53,54 +45,83 @@ export const syncPointStrategies = [
   //                    segment in the current timeline with timing data
   {
     name: 'Segment',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
       let segments = playlist.segments;
+      let syncPoint = null;
+      let lastDistance = null;
 
-      for (let i = segments.length - 1; i >= 0; i--) {
+      currentTime = currentTime || 0;
+
+      for (let i = 0; i < segments.length; i++) {
         let segment = segments[i];
 
         if (segment.timeline === currentTimeline &&
             typeof segment.start !== 'undefined') {
-          let syncPoint = {
-            time: segment.start,
-            segmentIndex: i
-          };
+          let distance = Math.abs(currentTime - segment.start);
 
-          return syncPoint;
+          // Once the distance begins to increase, we have passed
+          // currentTime and can stop looking for better candidates
+          if (lastDistance !== null && lastDistance < distance) {
+            break;
+          }
+
+          if (!syncPoint || lastDistance === null || lastDistance >= distance) {
+            lastDistance = distance;
+            syncPoint = {
+              time: segment.start,
+              segmentIndex: i
+            };
+          }
+
         }
       }
-      return null;
+      return syncPoint;
     }
   },
-
   // Stategy "Discontinuity": We have a discontinuity with a known
   //                          display-time
   {
     name: 'Discontinuity',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
+      let syncPoint = null;
+
+      currentTime = currentTime || 0;
+
       if (playlist.discontinuityStarts.length) {
+        let lastDistance = null;
+
         for (let i = 0; i < playlist.discontinuityStarts.length; i++) {
           let segmentIndex = playlist.discontinuityStarts[i];
           let discontinuity = playlist.discontinuitySequence + i + 1;
+          let discontinuitySync = syncController.discontinuities[discontinuity];
 
-          if (syncController.discontinuities[discontinuity]) {
-            let syncPoint = {
-              time: syncController.discontinuities[discontinuity].time,
-              segmentIndex
-            };
+          if (discontinuitySync) {
+            let distance = Math.abs(currentTime - discontinuitySync.time);
 
-            return syncPoint;
+            // Once the distance begins to increase, we have passed
+            // currentTime and can stop looking for better candidates
+            if (lastDistance !== null && lastDistance < distance) {
+              break;
+            }
+
+            if (!syncPoint || lastDistance === null || lastDistance >= distance) {
+              lastDistance = distance;
+              syncPoint = {
+                time: discontinuitySync.time,
+                segmentIndex
+              };
+            }
           }
         }
       }
-      return null;
+      return syncPoint;
     }
   },
   // Stategy "Playlist": We have a playlist with a known mapping of
   //                     segment index to display time
   {
     name: 'Playlist',
-    run: (syncController, playlist, duration, currentTimeline) => {
+    run: (syncController, playlist, duration, currentTimeline, currentTime) => {
       if (playlist.syncInfo) {
         let syncPoint = {
           time: playlist.syncInfo.time,
@@ -125,6 +146,10 @@ export default class SyncController extends videojs.EventTarget {
     this.timelines = [];
     this.discontinuities = [];
     this.datetimeToDisplayTime = null;
+
+    if (videojs.options.hls && videojs.options.hls.debug) {
+      this.logger_ = videojs.log.bind(videojs, 'sync-controller ->');
+    }
   }
 
   /**
@@ -138,21 +163,49 @@ export default class SyncController extends videojs.EventTarget {
    * @param {Number} currentTimeline - The last timeline from which a segment was loaded
    * @returns {Object} - A sync-point object
    */
-  getSyncPoint(playlist, duration, currentTimeline) {
+  getSyncPoint(playlist, duration, currentTimeline, currentTime) {
+    let syncPoints = [];
+
     // Try to find a sync-point in by utilizing various strategies...
     for (let i = 0; i < syncPointStrategies.length; i++) {
       let strategy = syncPointStrategies[i];
-      let syncPoint = strategy.run(this, playlist, duration, currentTimeline);
+      let syncPoint = strategy.run(this, playlist, duration, currentTimeline, currentTime);
 
       if (syncPoint) {
-        log(`syncPoint found via <${strategy.name}>:`, syncPoint);
-        return syncPoint;
+        syncPoint.strategy = strategy.name;
+        syncPoints.push({
+          strategy: strategy.name,
+          syncPoint
+        });
+        this.logger_(`syncPoint found via <${strategy.name}>:`, syncPoint);
       }
     }
-    // Otherwise, signal that we need to attempt to get a sync-point
-    // manually by fetching a segment in the playlist and constructing
-    // a sync-point from that information
-    return null;
+
+    if (!syncPoints.length) {
+      // Signal that we need to attempt to get a sync-point manually
+      // by fetching a segment in the playlist and constructing
+      // a sync-point from that information
+      return null;
+    }
+
+    // Now find the sync-point that is closest to the currentTime because
+    // that should result in the most accurate guess about which segment
+    // to fetch
+    let bestSyncPoint = syncPoints[0].syncPoint;
+    let bestDistance = Math.abs(syncPoints[0].syncPoint.time - currentTime);
+    let bestStrategy = syncPoints[0].strategy;
+
+    for (let i = 1; i < syncPoints.length; i++) {
+      let newDistance = Math.abs(syncPoints[i].syncPoint.time - currentTime);
+
+      if (newDistance < bestDistance) {
+        bestDistance = newDistance;
+        bestSyncPoint = syncPoints[i].syncPoint;
+        bestStrategy = syncPoints[i].strategy;
+      }
+    }
+    this.logger_(`syncPoint with strategy <${bestStrategy}> chosen: `, bestSyncPoint);
+    return bestSyncPoint;
   }
 
   /**
@@ -176,7 +229,7 @@ export default class SyncController extends videojs.EventTarget {
           mediaSequence: oldPlaylist.mediaSequence + i,
           time: lastRemovedSegment.start
         };
-        log('playlist sync:', newPlaylist.syncInfo);
+        this.logger_('playlist sync:', newPlaylist.syncInfo);
         this.trigger('syncinfoupdate');
         break;
       }
@@ -214,7 +267,7 @@ export default class SyncController extends videojs.EventTarget {
    * @param {SegmentInfo} segmentInfo - The current active request information
    */
   probeSegmentInfo(segmentInfo) {
-    let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+    let segment = segmentInfo.segment;
     let timingInfo;
 
     if (segment.map) {
@@ -239,7 +292,7 @@ export default class SyncController extends videojs.EventTarget {
    * @return {object} The start and end time of the current segment in "media time"
    */
   probeMp4Segment_(segmentInfo) {
-    let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+    let segment = segmentInfo.segment;
     let timescales = mp4probe.timescale(segment.map.bytes);
     let startTime = mp4probe.startTime(timescales, segmentInfo.bytes);
 
@@ -295,11 +348,11 @@ export default class SyncController extends videojs.EventTarget {
    * @param {object} timingInfo - The start and end time of the current segment in "media time"
    */
   calculateSegmentTimeMapping_(segmentInfo, timingInfo) {
-    let segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
+    let segment = segmentInfo.segment;
     let mappingObj = this.timelines[segmentInfo.timeline];
 
     if (segmentInfo.timestampOffset !== null) {
-      log('tsO:', segmentInfo.timestampOffset);
+      this.logger_('tsO:', segmentInfo.timestampOffset);
 
       mappingObj = {
         time: segmentInfo.timestampOffset,
@@ -315,7 +368,7 @@ export default class SyncController extends videojs.EventTarget {
     } else {
       return false;
     }
-    this.trigger('syncinfoupdate');
+
     return true;
   }
 
@@ -329,7 +382,7 @@ export default class SyncController extends videojs.EventTarget {
    */
   saveDiscontinuitySyncInfo_(segmentInfo) {
     let playlist = segmentInfo.playlist;
-    let segment = playlist.segments[segmentInfo.mediaIndex];
+    let segment = segmentInfo.segment;
 
     // If the current segment is a discontinuity then we know exactly where
     // the start of the range and it's accuracy is 0 (greater accuracy values
@@ -345,18 +398,32 @@ export default class SyncController extends videojs.EventTarget {
       for (let i = 0; i < playlist.discontinuityStarts.length; i++) {
         let segmentIndex = playlist.discontinuityStarts[i];
         let discontinuity = playlist.discontinuitySequence + i + 1;
-        let accuracy = segmentIndex - segmentInfo.mediaIndex;
+        let mediaIndexDiff = segmentIndex - segmentInfo.mediaIndex;
+        let accuracy = Math.abs(mediaIndexDiff);
 
-        if (accuracy > 0 &&
-            (!this.discontinuities[discontinuity] ||
-             this.discontinuities[discontinuity].accuracy > accuracy)) {
-
-          this.discontinuities[discontinuity] = {
-            time: segment.end + sumDurations(playlist, segmentInfo.mediaIndex + 1, segmentIndex),
-            accuracy
-          };
+        if (!this.discontinuities[discontinuity] ||
+             this.discontinuities[discontinuity].accuracy > accuracy) {
+          if (mediaIndexDiff < 0) {
+            this.discontinuities[discontinuity] = {
+              time: segment.start - sumDurations(playlist, segmentInfo.mediaIndex, segmentIndex),
+              accuracy
+            };
+          } else {
+            this.discontinuities[discontinuity] = {
+              time: segment.end + sumDurations(playlist, segmentInfo.mediaIndex + 1, segmentIndex),
+              accuracy
+            };
+          }
         }
       }
     }
   }
+
+  /**
+   * A debugging logger noop that is set to console.log only if debugging
+   * is enabled globally
+   *
+   * @private
+   */
+  logger_() {}
 }

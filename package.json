@@ -1,6 +1,6 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "4.1.1",
+  "version": "5.3.3",
   "description": "Play back HLS with video.js, even where it's not natively supported",
   "main": "es5/videojs-contrib-hls.js",
   "engines": {
@@ -18,7 +18,7 @@
     "build:js:bannerize": "bannerize dist/videojs-contrib-hls.js --banner=scripts/banner.ejs",
     "build:js:browserify": "browserify . -s videojs-contrib-hls -g browserify-shim -o dist/videojs-contrib-hls.js",
     "build:js:collapse": "bundle-collapser dist/videojs-contrib-hls.js -o dist/videojs-contrib-hls.min.js",
-    "build:js:uglify": "uglifyjs dist/videojs-contrib-hls.min.js --comments -m -c -o dist/videojs-contrib-hls.min.js",
+    "build:js:uglify": "uglifyjs dist/videojs-contrib-hls.min.js --support-ie8 --comments -m -c -o dist/videojs-contrib-hls.min.js",
     "build:test:browserify": "browserify test/browserify-test.js -o dist-test/browserify-test.js",
     "build:test:webpack": "webpack test/webpack-test.js dist-test/webpack-test.js",
     "build:test": "npm-run-all build:test:manifest build:test:js build:test:browserify build:test:webpack",
@@ -89,14 +89,14 @@
     "test/"
   ],
   "dependencies": {
-    "aes-decrypter": "^1.0.3",
+    "aes-decrypter": "1.0.3",
     "global": "^4.3.0",
-    "m3u8-parser": "^2.0.1",
-    "mux.js": "^3.0.0",
-    "url-toolkit": "^1.0.4",
-    "video.js": "^5.15.1",
-    "videojs-contrib-media-sources": "^4.1.4",
-    "videojs-swf": "^5.0.2"
+    "m3u8-parser": "2.0.1",
+    "mux.js": "4.1.1",
+    "url-toolkit": "1.0.9",
+    "video.js": "^5.17.0",
+    "videojs-contrib-media-sources": "4.4.2",
+    "webworkify": "1.0.2"
   },
   "devDependencies": {
     "babel": "^5.8.0",
@@ -136,6 +136,7 @@
     "videojs-standard": "^4.0.3",
     "videojs-contrib-quality-levels": "^2.0.2",
     "watchify": "^3.6.0",
-    "webpack": "^1.13.2"
+    "webpack": "^1.13.2",
+    "videojs-swf": "^5.2.0"
   }
 }
