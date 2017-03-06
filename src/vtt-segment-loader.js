@@ -56,7 +56,7 @@ const initSegmentId = function(initSegment) {
 
 const uintToString = function(uintArray) {
   return String.fromCharCode.apply(null, uintArray);
-}
+};
 
 /**
  * An object that manages segment loading and appending.
@@ -114,6 +114,8 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     // Fragmented mp4 playback
     this.initSegments_ = {};
+
+    this.decrypter_ = settings.decrypter;
 
     // Manages the tracking and generation of sync-points, mappings
     // between a time in the display time and a segment index within
@@ -990,7 +992,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     segment.requested = true;
 
-
     if (segment.map) {
       // append WebVTT line terminators to the media initialization segment if it exists
       // to follow the WebVTT spec (https://w3c.github.io/webvtt/#file-structure) that
@@ -1054,17 +1055,13 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
                                             decoder);
     // TODO: Do something with errors
     const errors = [];
-    const cues = [];
-    let timestampmap = { MPEGTS: 0, LOCAL: 0 };
 
-    parser.oncue = cues.push.bind(cues);
+    segmentInfo.cues = [];
+    segmentInfo.timestampmap = { MPEGTS: 0, LOCAL: 0 };
+
+    parser.oncue = segmentInfo.cues.push.bind(segmentInfo.cues);
     parser.onparsingerror = errors.push.bind(errors);
-    parser.ontimestampmap = (map) => timestampmap = map;
-
-    parser.onflush = () => {
-      segmentInfo.cues = cues;
-      segmentInfo.timestampMap = timestampmap;
-    };
+    parser.ontimestampmap = (map) => segmentInfo.timestampmap = map;
 
     if (segmentInfo.segment.map) {
       let mapData = segmentInfo.segment.map.bytes;
@@ -1090,7 +1087,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     let segment = segmentInfo.segment;
 
     let mappingObj = this.syncController_.timelines[segmentInfo.timeline];
-    let timestampMap = segmentInfo.timestampMap;
+    let timestampmap = segmentInfo.timestampmap;
 
     if (!mappingObj || !segmentInfo.cues.length) {
       // If the sync controller does not have a mapping of TS to Media Time for the
@@ -1101,7 +1098,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    const diff = (timestampMap.MPEGTS / 90000) - timestampMap.LOCAL + mappingObj.mapping;
+    const diff = (timestampmap.MPEGTS / 90000) - timestampmap.LOCAL + mappingObj.mapping;
 
     segmentInfo.cues.forEach((cue) => {
       // First convert cue time to TS time using the timestamp-map provided within the vtt

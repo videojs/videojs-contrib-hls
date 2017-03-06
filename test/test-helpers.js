@@ -326,7 +326,8 @@ export const playlistWithDuration = function(time, conf) {
     mediaSequence: conf && conf.mediaSequence ? conf.mediaSequence : 0,
     discontinuityStarts: [],
     segments: [],
-    endList: conf && typeof conf.endList !== 'undefined' ? !!conf.endList : true
+    endList: conf && typeof conf.endList !== 'undefined' ? !!conf.endList : true,
+    discontinuitySequence: conf && conf.discontinuitySequence ? conf.discontinuitySequence : 0
   };
   let count = Math.floor(time / 10);
   let remainder = time % 10;
@@ -338,7 +339,8 @@ export const playlistWithDuration = function(time, conf) {
     result.segments.push({
       uri: i + extension,
       resolvedUri: i + extension,
-      duration: 10
+      duration: 10,
+      timeline: result.discontinuitySequence
     });
     if (isEncrypted) {
       result.segments[i].key = {
@@ -350,7 +352,8 @@ export const playlistWithDuration = function(time, conf) {
   if (remainder) {
     result.segments.push({
       uri: i + extension,
-      duration: remainder
+      duration: remainder,
+      timeline: result.discontinuitySequence
     });
   }
   return result;

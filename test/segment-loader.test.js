@@ -376,7 +376,7 @@ QUnit.test('only appends one segment at a time', function(assert) {
   assert.equal(loader.mediaRequests, 1, '1 request');
 });
 
-QUnit.test('adjusts the playlist offset if no buffering progress is made', function(assert) {
+QUnit.skip('adjusts the playlist offset if no buffering progress is made', function(assert) {
   let sourceBuffer;
   let playlist;
 
