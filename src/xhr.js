@@ -13,6 +13,10 @@ import {xhr as videojsXHR, mergeOptions} from 'video.js';
 
 const xhrFactory = function() {
   const xhr = function XhrFunction(options, callback) {
+    
+    // allow use cookie
+    options.withCredentials = true;
+    
     // Add a default timeout for all hls requests
     options = mergeOptions({
       timeout: 45e3
