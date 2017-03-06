@@ -1037,6 +1037,78 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
   assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
 });
 
+QUnit.test('switches off subtitles on subtitle errors', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  // sets up listener for text track changes
+  masterPlaylistController.trigger('sourceopen');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  assert.equal(this.requests.length, 0, 'no outstanding requests');
+
+  // enable first text track
+  textTracks[0].mode = 'showing';
+
+  assert.equal(this.requests.length, 1, 'made a request');
+  assert.equal(textTracks[0].mode, 'showing', 'text track still showing');
+
+  // request failed
+  this.requests.shift().respond(404, null, '');
+
+  assert.equal(textTracks[0].mode, 'disabled', 'disabled text track');
+
+  assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
+  this.env.log.warn.callCount = 0;
+
+  assert.equal(this.requests.length, 0, 'no outstanding requests');
+
+  // re-enable first text track
+  textTracks[0].mode = 'showing';
+
+  assert.equal(this.requests.length, 1, 'made a request');
+  assert.equal(textTracks[0].mode, 'showing', 'text track still showing');
+
+  this.requests.shift().respond(200, null, `
+		#EXTM3U
+		#EXT-X-TARGETDURATION:10
+		#EXT-X-MEDIA-SEQUENCE:0
+		#EXTINF:10
+		0.webvtt
+		#EXT-X-ENDLIST
+  `);
+
+  const syncController = masterPlaylistController.subtitleSegmentLoader_.syncController_;
+
+  // required for the vtt request to be made
+  syncController.timestampOffsetForTimeline = () => 0;
+
+  this.clock.tick(1);
+
+  assert.equal(this.requests.length, 1, 'made a request');
+  assert.ok(this.requests[0].url.endsWith('0.webvtt'), 'made a webvtt request');
+  assert.equal(textTracks[0].mode, 'showing', 'text track still showing');
+
+  this.requests.shift().respond(404, null, '');
+
+  assert.equal(textTracks[0].mode, 'disabled', 'disabled text track');
+
+  assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
+  this.env.log.warn.callCount = 0;
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
