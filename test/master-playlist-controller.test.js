@@ -1207,6 +1207,55 @@ QUnit.test('disposes subtitle loaders on dispose', function(assert) {
   assert.equal(segmentLoaderDisposeCount, 1, 'disposed the subtitle segment loader');
 });
 
+QUnit.test('subtitle segment loader resets on seeks', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  // sets up listener for text track changes
+  masterPlaylistController.trigger('sourceopen');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  // enable first text track
+  textTracks[0].mode = 'showing';
+
+  let resetCount = 0;
+  let abortCount = 0;
+  let loadCount = 0;
+
+  masterPlaylistController.subtitleSegmentLoader_.resetEverything = () => resetCount++;
+  masterPlaylistController.subtitleSegmentLoader_.abort = () => abortCount++;
+  masterPlaylistController.subtitleSegmentLoader_.load = () => loadCount++;
+
+  this.player.pause();
+  masterPlaylistController.setCurrentTime(5);
+
+  assert.equal(resetCount, 1, 'reset subtitle segment loader');
+  assert.equal(abortCount, 1, 'aborted subtitle segment loader');
+  assert.equal(loadCount, 0, 'did not call load on subtitle segment loader');
+
+  this.player.play();
+  resetCount = 0;
+  abortCount = 0;
+  loadCount = 0;
+  masterPlaylistController.setCurrentTime(10);
+
+  assert.equal(resetCount, 1, 'reset subtitle segment loader');
+  assert.equal(abortCount, 1, 'aborted subtitle segment loader');
+  assert.equal(loadCount, 1, 'called load on subtitle segment loader');
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
