@@ -1109,6 +1109,38 @@ QUnit.test('switches off subtitles on subtitle errors', function(assert) {
   this.env.log.warn.callCount = 0;
 });
 
+QUnit.test('pauses subtitle segment loader on tech errors', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  // sets up listener for text track changes
+  masterPlaylistController.trigger('sourceopen');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  // enable first text track
+  textTracks[0].mode = 'showing';
+
+  let pauseCount = 0;
+
+  masterPlaylistController.subtitleSegmentLoader_.pause = () => pauseCount++;
+
+  this.player.tech_.trigger('error');
+
+  assert.equal(pauseCount, 1, 'paused subtitle segment loader');
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
