@@ -1141,6 +1141,72 @@ QUnit.test('pauses subtitle segment loader on tech errors', function(assert) {
   assert.equal(pauseCount, 1, 'paused subtitle segment loader');
 });
 
+QUnit.test('disposes subtitle loaders on dispose', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  let masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
+               'does not start with a subtitle playlist loader');
+  assert.ok(masterPlaylistController.subtitleSegmentLoader_,
+            'starts with a subtitle segment loader');
+
+  let segmentLoaderDisposeCount = 0;
+
+  masterPlaylistController.subtitleSegmentLoader_.dispose =
+    () => segmentLoaderDisposeCount++;
+
+  masterPlaylistController.dispose();
+
+  assert.equal(segmentLoaderDisposeCount, 1, 'disposed the subtitle segment loader');
+
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  // sets up listener for text track changes
+  masterPlaylistController.trigger('sourceopen');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  // enable first text track
+  textTracks[0].mode = 'showing';
+
+  assert.ok(masterPlaylistController.subtitlePlaylistLoader_,
+            'has a subtitle playlist loader');
+  assert.ok(masterPlaylistController.subtitleSegmentLoader_,
+            'has a subtitle segment loader');
+
+  let playlistLoaderDisposeCount = 0;
+
+  segmentLoaderDisposeCount = 0;
+
+  masterPlaylistController.subtitlePlaylistLoader_.dispose =
+    () => playlistLoaderDisposeCount++;
+  masterPlaylistController.subtitleSegmentLoader_.dispose =
+    () => segmentLoaderDisposeCount++;
+
+  masterPlaylistController.dispose();
+
+  assert.equal(playlistLoaderDisposeCount, 1, 'disposed the subtitle playlist loader');
+  assert.equal(segmentLoaderDisposeCount, 1, 'disposed the subtitle segment loader');
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
