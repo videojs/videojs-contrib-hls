@@ -1096,6 +1096,50 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');
 });
 
+QUnit.test('blacklists playlist if it has stopped being updated', function(assert) {
+  let media;
+  let url;
+
+  this.player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.triggerReady();
+
+  this.requests[0].respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'media1.m3u8\n');
+
+  this.player.tech_.hls.masterPlaylistController_.seekable = function() {
+    return videojs.createTimeRange(90, 130);
+  };
+  this.player.tech_.setCurrentTime(170);
+  this.player.tech_.buffered = function() {
+    return videojs.createTimeRange(0, 170);
+  };
+  this.player.tech_.hls.masterPlaylistController_.playlistEnd = function() {
+    return 170;
+  };
+  this.requests[1].respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:16\n' +
+                           '#EXTINF:10,\n' +
+                           '16.ts\n');
+
+  this.player.tech_.trigger('play');
+  this.player.tech_.trigger('playing');
+
+  url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
+  media = this.player.tech_.hls.playlists.master.playlists[url];
+
+  assert.ok(media.excludeUntil > 0, 'playlist blacklisted for some time');
+  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+});
+
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function(assert) {
   let requestsLength;
 

@@ -10,6 +10,7 @@ import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
 import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
+import { playlistEnd } from './playlist';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -233,6 +234,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.seekable_ = videojs.createTimeRanges();
     this.hasPlayed_ = () => false;
+    this.playlistEnd = playlistEnd;
 
     this.syncController_ = new SyncController();
 
@@ -320,6 +322,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.masterPlaylistLoader_.on('loadedplaylist', () => {
       let updatedPlaylist = this.masterPlaylistLoader_.media();
+      let buffered;
+      let lastBufferedEnd;
+      let bufferedTime;
+      let seekable;
+      let seekableEnd;
+      let currentTime;
+      let playEnd;
+      let endTime;
 
       if (!updatedPlaylist) {
         // select the initial variant
@@ -341,8 +351,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       if (!updatedPlaylist.endList) {
         let addSeekableRange = () => {
-          let seekable = this.seekable();
-
+          seekable = this.seekable();
           if (seekable.length !== 0) {
             this.mediaSource.addSeekableRange_(seekable.start(0), seekable.end(0));
           }
@@ -360,6 +369,32 @@ export class MasterPlaylistController extends videojs.EventTarget {
           this.tech_.one('durationchange', onDurationchange);
         } else {
           addSeekableRange();
+        }
+
+        buffered = this.tech_.buffered();
+        currentTime = this.tech_.currentTime();
+
+        if (buffered.length) {
+          lastBufferedEnd = buffered.end(buffered.length - 1);
+        }
+        bufferedTime = lastBufferedEnd - currentTime;
+
+        // the end of the current playlist
+        playEnd = this.playlistEnd(updatedPlaylist);
+
+        // the time between end of the playlist and the end of the buffered
+        endTime = playEnd - lastBufferedEnd;
+
+        if (this.seekable().length) {
+          seekableEnd = this.seekable().end(0);
+        }
+
+        // blacklist this playlist if the playhead is at the end of the buffer
+        // and the buffered data ends at the end of the last segment in the playlist
+        if (bufferedTime <= Ranges.TIME_FUDGE_FACTOR &&
+            endTime <= Ranges.TIME_FUDGE_FACTOR &&
+            currentTime > seekableEnd) {
+          this.blacklistCurrentPlaylist();
         }
       }
     });
