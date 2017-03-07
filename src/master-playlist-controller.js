@@ -325,7 +325,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.setupFirstPlay();
 
       this.trigger('audioupdate');
-      this.trigger('subtitleupdate');
       this.trigger('selectedinitialmedia');
     });
 
@@ -664,6 +663,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
   activeSubtitleGroup_() {
     let videoPlaylist = this.masterPlaylistLoader_.media();
     let result;
+
+    if (!videoPlaylist) {
+      return null;
+    }
 
     if (videoPlaylist.attributes && videoPlaylist.attributes.SUBTITLES) {
       result = this.subtitleGroups_.groups[videoPlaylist.attributes.SUBTITLES];
