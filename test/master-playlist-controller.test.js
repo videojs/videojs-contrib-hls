@@ -1246,6 +1246,31 @@ QUnit.test('subtitle segment loader resets on seeks', function(assert) {
   assert.equal(loadCount, 1, 'called load on subtitle segment loader');
 });
 
+QUnit.test('can get active subtitle group', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  assert.notOk(masterPlaylistController.activeSubtitleGroup_(),
+               'no active subtitle group');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.notOk(masterPlaylistController.activeSubtitleGroup_(),
+               'no active subtitle group');
+
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.ok(masterPlaylistController.activeSubtitleGroup_(), 'active subtitle group');
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
