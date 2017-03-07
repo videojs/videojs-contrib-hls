@@ -1,6 +1,12 @@
 import videojs from 'video.js';
 import { createTransferableMessage } from './bin-utils';
 
+export const REQUEST_ERRORS = {
+  ABORTED: -101,
+  TIMEOUT: -102,
+  FAILURE: 2
+};
+
 /**
  * Turns segment byterange into a string suitable for use in
  * HTTP Range requests
@@ -32,9 +38,13 @@ const aborter = (activeXhrs) => () => {
   Object.keys(activeXhrs).forEach((xhrKey) => {
     const xhr = activeXhrs[xhrKey];
 
-    // Prevent error handler from running.
-    xhr.onreadystatechange = null;
-    xhr.abort();
+    // only abort xhrs that haven't had a response
+    if (!xhr.responseTime) {
+      // set an aborted property so that we can correctly
+      // track the request and not treat it as an error
+      xhr.aborted = true;
+      xhr.abort();
+    }
   });
 };
 
@@ -65,24 +75,11 @@ const getProgressStats = (progressEvent) => {
 const handleErrors = (callback) => (error, request) => {
   const response = request.response;
 
-  if (error) {
-    return callback(error, request);
-  }
-
-  if (!response) {
-    return callback({
-      status: request.status,
-      message: 'HLS request abort at URL: ' + request.uri,
-      code: 2,
-      xhr: request
-    }, request);
-  }
-
   if (!request.aborted && error) {
     return callback({
       status: request.status,
-      message: 'HLS request error at URL: ' + request.uri,
-      code: 2,
+      message: 'HLS request errored at URL: ' + request.uri,
+      code: REQUEST_ERRORS.FAILURE,
       xhr: request
     }, request);
   }
@@ -91,12 +88,21 @@ const handleErrors = (callback) => (error, request) => {
     return callback({
       status: request.status,
       message: 'HLS request timed-out at URL: ' + request.uri,
-      code: 2,
+      code: REQUEST_ERRORS.TIMEOUT,
       xhr: request
     }, request);
   }
 
-  return callback(null, request);
+  if (!response) {
+    return callback({
+      status: request.status,
+      message: 'HLS request aborted at URL: ' + request.uri,
+      code: REQUEST_ERRORS.ABORTED,
+      xhr: request
+    }, request);
+  }
+
+  return callback(error, request);
 };
 
 const handleKeyResponse = (segment, callback) => (error, request) => {
@@ -110,7 +116,7 @@ const handleKeyResponse = (segment, callback) => (error, request) => {
     return callback({
       status: request.status,
       message: 'Invalid HLS key at URL: ' + request.uri,
-      code: 2,
+      code: REQUEST_ERRORS.FAILURE,
       xhr: request
     }, segment);
   }
@@ -168,8 +174,11 @@ const waitForCompletion = (abortAll, callback) => {
   let count = 0;
 
   return (error, segment) => {
+    // errors have to be unshifted to make sure the original error - the one
+    // that resulted in several aborts - ends up at the start of the array for
+    // ease of use downstream
     if (error) {
-      errors.push(error);
+      errors.unshift(error);
     }
     count += 1;
 
@@ -233,7 +242,7 @@ const handleProgress = (segment, callback) => (event) => {
  *
  * @private
  */
-const segmentRequest = (xhr, xhrOptions, decryptionWorker, segment, progressFn, nextFn) => {
+export const segmentRequest = (xhr, xhrOptions, decryptionWorker, segment, progressFn, nextFn) => {
   const activeXhrs = {};
   const abortAll = aborter(activeXhrs);
   const processSegmentCallback = waitForCompletion(activeXhrs,
@@ -279,5 +288,3 @@ const segmentRequest = (xhr, xhrOptions, decryptionWorker, segment, progressFn, 
 
   return abortAll;
 };
-
-export default segmentRequest;

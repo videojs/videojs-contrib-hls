@@ -596,7 +596,6 @@ QUnit.test('buffer checks are noops until a media playlist is ready', function(a
   assert.strictEqual(this.requests[0].url,
                     'manifest/media.m3u8',
                     'media playlist requested');
-
 });
 
 QUnit.test('buffer checks are noops when only the master is ready', function(assert) {

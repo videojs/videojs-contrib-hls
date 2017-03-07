@@ -7,7 +7,7 @@ import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
 import removeCuesFromTrack from 'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
-import segmentRequest from './segment-request';
+import {segmentRequest, REQUEST_ERRORS} from './segment-request';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -139,6 +139,9 @@ export default class SegmentLoader extends videojs.EventTarget {
   resetStats_() {
     this.mediaBytesTransferred = 0;
     this.mediaRequests = 0;
+    this.mediaRequestsAborted = 0;
+    this.mediaRequestsTimedout = 0;
+    this.mediaRequestsErrored = 0;
     this.mediaTransferDuration = 0;
     this.mediaSecondsLoaded = 0;
   }
@@ -677,6 +680,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   loadSegment_(segmentInfo) {
+    this.state = 'WAITING';
     this.pendingSegment_ = segmentInfo;
     this.trimBackBuffer_(segmentInfo);
 
@@ -694,33 +698,67 @@ export default class SegmentLoader extends videojs.EventTarget {
       },
       // done callback
       (errors, simpleSegment) => {
+        // every request counts as a media request even if it has been aborted
+        // or canceled due to a timeout
+        this.mediaRequests += 1;
+
         if (simpleSegment.stats) {
           this.mediaBytesTransferred += simpleSegment.stats.bytesReceived;
           this.mediaTransferDuration += simpleSegment.stats.roundTripTime;
         }
 
-        // The request was aborted
+        // The request was aborted and the SegmentLoader has already been reset
         if (!this.pendingSegment_) {
-          this.state = 'READY';
+          this.mediaRequestsAborted += 1;
           return;
         }
 
-        // the request was aborted and the SegmentLoader has already been reset
-        // this usually only happens when the timeout for an aborted request triggers
+        // the request was aborted and the SegmentLoader has already started
+        // another request. this can happen when the timeout for an aborted
+        // request triggers due to a limitation in the XHR library
+        // do not count this as any sort of request or we risk double-counting
         if (simpleSegment.requestId !== this.pendingSegment_.requestId) {
           return;
         }
 
-        // an error occurred so reset everything and emit an error event to blacklist
-        // the current playlist
+        // an error occurred from the active pendingSegment_ so reset everything
         if (errors) {
-          this.error(errors[0]);
+          let error = errors[0];
+
+          this.pendingSegment_ = null;
+
+          // the requests were aborted just record the aborted stat and exit
+          // this is not a true error condition and nothing corrective needs
+          // to be done
+          if (error.code === REQUEST_ERRORS.ABORTED) {
+            this.mediaRequestsAborted += 1;
+            return;
+          }
+
           this.state = 'READY';
           this.pause();
+
+          // the error is really just that at least one of the requests timed-out
+          // set the bandwidth to a very low value and trigger an ABR switch to
+          // take emergency action
+          if (error.code === REQUEST_ERRORS.TIMEOUT) {
+            this.mediaRequestsTimedout += 1;
+            this.bandwidth = 1;
+            this.roundTrip = NaN;
+            this.trigger('processingcomplete');
+            return;
+          }
+
+          // if control-flow has arrived here, then the error is real
+          // emit an error event to blacklist the current playlist
+          this.mediaRequestsErrored += 1;
+          this.error(errors[0]);
           this.trigger('error');
           return;
         }
 
+        // the response was a success so set any bandwidth stats the request
+        // generated for ABR purposes
         this.bandwidth = simpleSegment.stats.bandwidth;
         this.roundTrip = simpleSegment.stats.roundTripTime;
 
@@ -730,10 +768,8 @@ export default class SegmentLoader extends videojs.EventTarget {
           this.initSegments_[initSegmentId(simpleSegment.map)] = simpleSegment.map;
         }
 
-        this.processResponse_(simpleSegment);
+        this.processSegmentResponse_(simpleSegment);
       });
-
-    this.state = 'WAITING';
   }
 
   /**

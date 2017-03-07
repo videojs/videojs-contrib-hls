@@ -15,6 +15,21 @@ import Decrypter from './decrypter-worker';
 const BLACKLIST_DURATION = 5 * 60 * 1000;
 let Hls;
 
+// SegmentLoader stats that need to have each loader's
+// values summed to calculate the final value
+const loaderStats = [
+  'mediaRequests',
+  'mediaRequestsAborted',
+  'mediaRequestsTimedout',
+  'mediaRequestsErrored',
+  'mediaTransferDuration',
+  'mediaBytesTransferred'
+];
+const sumLoaderStat = function(stat) {
+  return this.audioSegmentLoader_[stat] +
+         this.mainSegmentLoader_[stat];
+};
+
 /**
  * determine if an object a is differnt from
  * and object b. both only having one dimensional
@@ -275,6 +290,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.setupSegmentLoaderListeners_();
 
     this.masterPlaylistLoader_.start();
+
+    // Create SegmentLoader stat-getters
+    loaderStats.forEach((stat) => {
+      this[stat + '_'] = sumLoaderStat.bind(this, stat);
+    });
   }
 
   /**
@@ -487,40 +507,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     videojs.log.warn(error);
     this.setupAudio();
-  }
-
-  /**
-   * get the total number of media requests from the `audiosegmentloader_`
-   * and the `mainSegmentLoader_`
-   *
-   * @private
-   */
-  mediaRequests_() {
-    return this.audioSegmentLoader_.mediaRequests +
-           this.mainSegmentLoader_.mediaRequests;
-  }
-
-  /**
-   * get the total time that media requests have spent trnasfering
-   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
-   *
-   * @private
-   */
-  mediaTransferDuration_() {
-    return this.audioSegmentLoader_.mediaTransferDuration +
-           this.mainSegmentLoader_.mediaTransferDuration;
-
-  }
-
-  /**
-   * get the total number of bytes transfered during media requests
-   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
-   *
-   * @private
-   */
-  mediaBytesTransferred_() {
-    return this.audioSegmentLoader_.mediaBytesTransferred +
-           this.mainSegmentLoader_.mediaBytesTransferred;
   }
 
   mediaSecondsLoaded_() {
