@@ -47,9 +47,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     if (typeof options.currentTime !== 'function') {
       throw new TypeError('No currentTime getter specified');
     }
-    if (!options.mediaSource) {
-      throw new TypeError('No MediaSource specified');
-    }
     let settings = videojs.mergeOptions(videojs.options.hls, options);
 
     // public properties
@@ -75,13 +72,10 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     this.error_ = void 0;
     this.currentTimeline_ = -1;
     this.pendingSegment_ = null;
-    this.mimeType_ = null;
     this.sourceUpdater_ = null;
     this.xhrOptions_ = null;
 
     this.subtitlesTrack_ = null;
-
-    this.timestampOffset_ = 0;
 
     // Fragmented mp4 playback
     this.initSegments_ = {};
@@ -128,9 +122,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
   dispose() {
     this.state = 'DISPOSED';
     this.abort_();
-    if (this.sourceUpdater_) {
-      this.sourceUpdater_.dispose();
-    }
     this.resetStats_();
   }
 
@@ -459,11 +450,12 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    if (segmentInfo.mediaIndex === this.playlist_.segments.length - 1 &&
-        this.mediaSource_.readyState === 'ended' &&
-        !this.seeking_()) {
-      return;
-    }
+    // TODO is this check important
+    // if (segmentInfo.mediaIndex === this.playlist_.segments.length - 1 &&
+    //     this.mediaSource_.readyState === 'ended' &&
+    //     !this.seeking_()) {
+    //   return;
+    // }
 
     if (this.syncController_.timestampOffsetForTimeline(segmentInfo.timeline) === null) {
       // We don't have the timestamp offset that we need to sync subtitles.
@@ -845,43 +837,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     }
 
     segmentInfo.endOfAllRequests = simpleSegment.endOfAllRequests;
-
-    let segment = segmentInfo.segment;
-
-    if (segment.key) {
-      // this is an encrypted segment
-      // incrementally decrypt the segment
-      this.decrypter_.postMessage(createTransferableMessage({
-        source: this.loaderType_,
-        encrypted: segmentInfo.encryptedBytes,
-        key: segment.key.bytes,
-        iv: segment.key.iv
-      }), [
-        segmentInfo.encryptedBytes.buffer,
-        segment.key.bytes.buffer
-      ]);
-    } else {
-      this.handleSegment_();
-    }
-  }
-
-  /**
-   * Handles response from the decrypter and attaches the decrypted bytes to the pending
-   * segment
-   *
-   * @param {Object} data
-   *        Response from decrypter
-   * @method handleDecrypted_
-   */
-  handleDecrypted_(data) {
-    const segmentInfo = this.pendingSegment_;
-    const decrypted = data.decrypted;
-
-    if (segmentInfo) {
-      segmentInfo.bytes = new Uint8Array(decrypted.bytes,
-                                         decrypted.byteOffset,
-                                         decrypted.byteLength);
-    }
     this.handleSegment_();
   }
 
@@ -915,6 +870,12 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       this.subtitlesTrack_.tech_.on('vttjsloaded', loadHandler);
       this.subtitlesTrack_.tech_.on('vttjserror', () => {
         this.subtitlesTrack_.tech_.off('vttjsloaded', loadHandler);
+        this.error({
+          message: 'Error loading vtt.js'
+        });
+        this.state = 'READY';
+        this.pause();
+        this.trigger('error');
       });
 
       return;
@@ -938,7 +899,16 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       segment.map.bytes = combinedSegment;
     }
 
-    this.parseVTTCues_(segmentInfo);
+    try {
+      this.parseVTTCues_(segmentInfo);
+    } catch (e) {
+      this.error({
+        message: e.message
+      });
+      this.state = 'READY';
+      this.pause();
+      return this.trigger('error');
+    }
 
     this.updateTimeMapping_(segmentInfo,
                             this.syncController_.timelines[segmentInfo.timeline],
@@ -951,27 +921,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    if (segmentInfo.timestampOffset !== null &&
-        segmentInfo.timestampOffset !== this.timestampOffset()) {
-      this.timestampOffset_ = segmentInfo.timestampOffset;
-    }
-
-    // if the media initialization segment is changing, append it
-    // before the content segment
-    if (segment.map) {
-      const initId = initSegmentId(segment.map);
-
-      if (!this.activeInitSegmentId_ ||
-          this.activeInitSegmentId_ !== initId) {
-        const initSegment = this.initSegments_[initId];
-
-        this.sourceUpdater_.appendBuffer(initSegment.bytes, () => {
-          this.activeInitSegmentId_ = initId;
-        });
-      }
-    }
-
-    segmentInfo.byteLength = segmentInfo.bytes.length;
+    segmentInfo.byteLength = segmentInfo.bytes.byteLength;
 
     if (typeof segment.start === 'number' && typeof segment.end === 'number') {
       this.mediaSecondsLoaded += segment.end - segment.start;
@@ -1000,15 +950,15 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     const parser = new window.WebVTT.Parser(window,
                                             window.vttjs,
                                             decoder);
-    // TODO: Do something with errors
-    const errors = [];
 
     segmentInfo.cues = [];
     segmentInfo.timestampmap = { MPEGTS: 0, LOCAL: 0 };
 
     parser.oncue = segmentInfo.cues.push.bind(segmentInfo.cues);
-    parser.onparsingerror = errors.push.bind(errors);
     parser.ontimestampmap = (map) => segmentInfo.timestampmap = map;
+    parser.onparsingerror = (error) => {
+      videojs.log.warn('Error encountered when parsing cues: ' + error.message);
+    };
 
     if (segmentInfo.segment.map) {
       let mapData = segmentInfo.segment.map.bytes;
