@@ -1619,6 +1619,133 @@ QUnit.test('uses timestampmap from vtt header to set cue and segment timing', fu
   assert.deepEqual(playlist, expectedPlaylist, 'set syncInfo for playlist based on learned segment start');
 });
 
+QUnit.test('loader logs vtt.js ParsingErrors and does not trigger an error event', function(assert) {
+  let playlist = playlistWithDuration(40);
+
+  window.WebVTT.Parser = () => {
+    this.parserCreated = true;
+    return {
+      oncue() {},
+      onparsingerror() {},
+      onflush() {},
+      parse() {
+        // MOCK parsing the cues below
+        this.onparsingerror({ message: 'BAD CUE'});
+        this.oncue({ startTime: 5, endTime: 6});
+        this.onparsingerror({ message: 'BAD --> CUE' });
+      },
+      flush() {}
+    };
+  };
+
+  loader.playlist(playlist);
+  loader.track(this.track);
+  loader.load();
+
+  this.clock.tick(1);
+
+  const vttString = `
+    WEBVTT
+
+    00:00:03.000 -> 00:00:05.000
+    <i>BAD CUE</i>
+
+    00:00:05.000 --> 00:00:06.000
+    <b>GOOD CUE</b>
+
+    00:00:07.000 --> 00:00:10.000
+    <i>BAD --> CUE</i>
+  `;
+
+  // state WAITING for segment response
+  this.requests[0].response = new Uint8Array(vttString.split('').map(char => char.charCodeAt(0)));
+  this.requests.shift().respond(200, null, '');
+
+  this.clock.tick(1);
+
+  assert.equal(this.track.cues.length, 1, 'only appended the one good cue');
+  assert.equal(this.env.log.warn.callCount, 2, 'logged two warnings, one for each invalid cue');
+  this.env.log.warn.callCount = 0;
+});
+
+QUnit.test('loader triggers error event on fatal vtt.js errors', function(assert) {
+  let playlist = playlistWithDuration(40);
+  let errors = 0;
+
+  loader.parseVTTCues_ = () => {
+    throw new Error('fatal error');
+  };
+  loader.on('error', () => errors++);
+
+  loader.playlist(playlist);
+  loader.track(this.track);
+  loader.load();
+
+  assert.equal(errors, 0, 'no error at loader start');
+
+  this.clock.tick(1);
+
+  // state WAITING for segment response
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  this.clock.tick(1);
+
+  assert.equal(errors, 1, 'triggered error when parser emmitts fatal error');
+  assert.ok(loader.paused(), 'loader paused when encountering fatal error');
+  assert.equal(loader.state, 'READY', 'loader reset after error');
+});
+
+QUnit.test('loader triggers error event when vtt.js fails to load', function(assert) {
+  let playlist = playlistWithDuration(40);
+  let errors = 0;
+
+  delete window.WebVTT;
+  let vttjsCallback = () => {};
+
+  this.track.tech_ = {
+    on(event, callback) {
+      if (event === 'vttjserror') {
+        vttjsCallback = callback;
+      }
+    },
+    trigger(event) {
+      if (event === 'vttjserror') {
+        vttjsCallback();
+      }
+    },
+    off() {}
+  };
+
+  loader.on('error', () => errors++);
+
+  loader.playlist(playlist);
+  loader.track(this.track);
+  loader.load();
+
+  assert.equal(loader.state, 'READY', 'loader is ready at start');
+  assert.equal(errors, 0, 'no errors yet');
+
+  this.clock.tick(1);
+
+  assert.equal(loader.state, 'WAITING', 'loader is waiting on segment request');
+  assert.equal(errors, 0, 'no errors yet');
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  this.clock.tick(1);
+
+  assert.equal(loader.state, 'WAITING_ON_VTTJS', 'loader is waiting for vttjs to be loaded');
+  assert.equal(errors, 0, 'no errors yet');
+
+  loader.subtitlesTrack_.tech_.trigger('vttjserror');
+
+  assert.equal(loader.state, 'READY', 'loader is reset to ready');
+  assert.ok(loader.paused(), 'loader is paused after error');
+  assert.equal(errors, 1, 'loader triggered error when vtt.js load triggers error');
+});
+
 QUnit.module('VTT Segment Loading Calculation', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
