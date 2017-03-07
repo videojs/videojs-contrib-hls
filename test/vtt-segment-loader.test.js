@@ -1452,6 +1452,100 @@ QUnit.test('new playlist always triggers syncinfoupdate', function(assert) {
                'new playlist after expiring segment triggers two updates');
 });
 
+QUnit.test('waits for syncController to have sync info for the timeline of the vtt' +
+  'segment being requested before loading', function(assert) {
+  let playlist = playlistWithDuration(40);
+  let loadedSegment = false;
+
+  loader.loadSegment_ = () => {
+    loader.state = 'WAITING';
+    loadedSegment = true;
+  };
+  loader.checkBuffer_ = () => {
+    return { mediaIndex: 2, timeline: 2 };
+  };
+
+  loader.playlist(playlist);
+  loader.track(this.track);
+  loader.load();
+
+  assert.equal(loader.state, 'READY', 'loader is ready at start');
+  assert.ok(!loadedSegment, 'no segment requests made yet');
+
+  this.clock.tick(1);
+
+  assert.equal(loader.state, 'WAITING_ON_TIMELINE', 'loader waiting for timeline info');
+  assert.ok(!loadedSegment, 'no segment requests made yet');
+
+  // simulate the main segment loader finding timeline info for the new timeline
+  loader.syncController_.timelines[2] = { time: 20, mapping: -10 };
+  loader.syncController_.trigger('timestampoffset');
+
+  assert.equal(loader.state, 'READY', 'ready after sync controller reports timeline info');
+  assert.ok(!loadedSegment, 'no segment requests made yet');
+
+  this.clock.tick(1);
+
+  assert.equal(loader.state, 'WAITING', 'loader waiting on segment request');
+  assert.ok(loadedSegment, 'made call to load segment on new timeline');
+});
+
+QUnit.test('waits for vtt.js to be loaded before attempting to parse cues', function(assert) {
+  const vttjs = window.WebVTT;
+  let playlist = playlistWithDuration(40);
+  let parsedCues = false;
+
+  delete window.WebVTT;
+
+  loader.handleUpdateEnd_ = () => {
+    parsedCues = true;
+    loader.state = 'READY';
+  };
+
+  let vttjsCallback = () => {};
+
+  this.track.tech_ = {
+    on: function(event, callback) {
+      if (event === 'vttjsloaded') {
+        vttjsCallback = callback;
+      }
+    },
+    trigger: function(event) {
+      if (event === 'vttjsloaded') {
+        vttjsCallback();
+      }
+    },
+    off: function() {}
+  };
+
+  loader.playlist(playlist);
+  loader.track(this.track);
+  loader.load();
+
+  assert.equal(loader.state, 'READY', 'loader is ready at start');
+  assert.ok(!parsedCues, 'no cues parsed yet');
+
+  this.clock.tick(1);
+
+  assert.equal(loader.state, 'WAITING', 'loader is waiting on segment request');
+  assert.ok(!parsedCues, 'no cues parsed yet');
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  this.clock.tick(1);
+
+  assert.equal(loader.state, 'WAITING_ON_VTTJS', 'loader is waiting for vttjs to be loaded');
+  assert.ok(!parsedCues, 'no cues parsed yet');
+
+  window.WebVTT = vttjs;
+
+  loader.subtitlesTrack_.tech_.trigger('vttjsloaded');
+
+  assert.equal(loader.state, 'READY', 'loader is ready to load next segment');
+  assert.ok(parsedCues, 'parsed cues');
+});
+
 QUnit.module('VTT Segment Loading Calculation', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);

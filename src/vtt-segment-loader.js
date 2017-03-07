@@ -470,11 +470,15 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       // Rerun on a timestamp offset or user interaction.
       let checkTimestampOffset = () => {
         this.syncController_.off('timestampoffset', checkTimestampOffset);
-        this.load();
+        this.state = 'READY';
+        if (!this.paused()) {
+          // if not paused, queue a buffer check as soon as possible
+          this.monitorBuffer_();
+        }
       };
 
       this.syncController_.on('timestampoffset', checkTimestampOffset);
-      this.pause();
+      this.state = 'WAITING_ON_TIMELINE';
       return;
     }
 
@@ -898,14 +902,19 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     let segment = segmentInfo.segment;
 
     // Make sure that vttjs has loaded, otherwise, wait till it finished loading
-    if (typeof window.WebVTT !== 'function') {
+    if (typeof window.WebVTT !== 'function' &&
+        this.subtitlesTrack_ &&
+        this.subtitlesTrack_.tech_) {
+
       const loadHandler = () => {
+        this.subtitlesTrack_.tech_.off('vttjsloaded', loadHandler);
         this.handleSegment_();
       };
 
-      this.tech_.on('vttjsloaded', loadHandler);
-      this.tech_.on('vttjserror', () => {
-        this.tech_.off('vttjsloaded', loadHandler);
+      this.state = 'WAITING_ON_VTTJS';
+      this.subtitlesTrack_.tech_.on('vttjsloaded', loadHandler);
+      this.subtitlesTrack_.tech_.on('vttjserror', () => {
+        this.subtitlesTrack_.tech_.off('vttjsloaded', loadHandler);
       });
 
       return;
