@@ -426,7 +426,24 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.mainSegmentLoader_.on('error', () => {
-      this.blacklistCurrentPlaylist(this.mainSegmentLoader_.error());
+      var segmentLoader = this;
+      var error = this.mainSegmentLoader_.error();
+      if(error.code == 2){//If lost connection, try again later
+          //pause the media
+          segmentLoader.mainSegmentLoader_.pause();
+          if (segmentLoader.audioPlaylistLoader_) {
+              segmentLoader.audioSegmentLoader_.pause();
+          }
+          //setTimeout to try again in 5 seconds
+          setTimeout(function(){
+              segmentLoader.mainSegmentLoader_.load();
+              if (segmentLoader.audioPlaylistLoader_) {
+                  segmentLoader.audioSegmentLoader_.load();
+              }
+          }, 5000);
+      }else{
+          segmentLoader.blacklistCurrentPlaylist(error);
+      }
     });
 
     this.mainSegmentLoader_.on('syncinfoupdate', () => {
