@@ -696,80 +696,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         // TODO: Use progress-based bandwidth to early abort low-bandwidth situations
         this.trigger('progress');
       },
-      // done callback
-      (errors, simpleSegment) => {
-        // every request counts as a media request even if it has been aborted
-        // or canceled due to a timeout
-        this.mediaRequests += 1;
-
-        if (simpleSegment.stats) {
-          this.mediaBytesTransferred += simpleSegment.stats.bytesReceived;
-          this.mediaTransferDuration += simpleSegment.stats.roundTripTime;
-        }
-
-        // The request was aborted and the SegmentLoader has already been reset
-        if (!this.pendingSegment_) {
-          this.mediaRequestsAborted += 1;
-          return;
-        }
-
-        // the request was aborted and the SegmentLoader has already started
-        // another request. this can happen when the timeout for an aborted
-        // request triggers due to a limitation in the XHR library
-        // do not count this as any sort of request or we risk double-counting
-        if (simpleSegment.requestId !== this.pendingSegment_.requestId) {
-          return;
-        }
-
-        // an error occurred from the active pendingSegment_ so reset everything
-        if (errors) {
-          let error = errors[0];
-
-          this.pendingSegment_ = null;
-
-          // the requests were aborted just record the aborted stat and exit
-          // this is not a true error condition and nothing corrective needs
-          // to be done
-          if (error.code === REQUEST_ERRORS.ABORTED) {
-            this.mediaRequestsAborted += 1;
-            return;
-          }
-
-          this.state = 'READY';
-          this.pause();
-
-          // the error is really just that at least one of the requests timed-out
-          // set the bandwidth to a very low value and trigger an ABR switch to
-          // take emergency action
-          if (error.code === REQUEST_ERRORS.TIMEOUT) {
-            this.mediaRequestsTimedout += 1;
-            this.bandwidth = 1;
-            this.roundTrip = NaN;
-            this.trigger('processingcomplete');
-            return;
-          }
-
-          // if control-flow has arrived here, then the error is real
-          // emit an error event to blacklist the current playlist
-          this.mediaRequestsErrored += 1;
-          this.error(errors[0]);
-          this.trigger('error');
-          return;
-        }
-
-        // the response was a success so set any bandwidth stats the request
-        // generated for ABR purposes
-        this.bandwidth = simpleSegment.stats.bandwidth;
-        this.roundTrip = simpleSegment.stats.roundTripTime;
-
-        // if this request included an initialization segment, save that data
-        // to the initSegment cache
-        if (simpleSegment.map) {
-          this.initSegments_[initSegmentId(simpleSegment.map)] = simpleSegment.map;
-        }
-
-        this.processSegmentResponse_(simpleSegment);
-      });
+      this.segmentRequestFinished_.bind(this));
   }
 
   /**
@@ -850,6 +777,86 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     return simpleSegment;
+  }
+
+  /**
+   * Handle the callback from the segmentRequest function and set the
+   * associated SegmentLoader state and errors if necessary
+   *
+   * @private
+   */
+  segmentRequestFinished_(errors, simpleSegment) {
+    // every request counts as a media request even if it has been aborted
+    // or canceled due to a timeout
+    this.mediaRequests += 1;
+
+    if (simpleSegment.stats) {
+      this.mediaBytesTransferred += simpleSegment.stats.bytesReceived;
+      this.mediaTransferDuration += simpleSegment.stats.roundTripTime;
+    }
+
+    // The request was aborted and the SegmentLoader has already been reset
+    if (!this.pendingSegment_) {
+      this.mediaRequestsAborted += 1;
+      return;
+    }
+
+    // the request was aborted and the SegmentLoader has already started
+    // another request. this can happen when the timeout for an aborted
+    // request triggers due to a limitation in the XHR library
+    // do not count this as any sort of request or we risk double-counting
+    if (simpleSegment.requestId !== this.pendingSegment_.requestId) {
+      return;
+    }
+
+    // an error occurred from the active pendingSegment_ so reset everything
+    if (errors) {
+      let error = errors[0];
+
+      this.pendingSegment_ = null;
+
+      // the requests were aborted just record the aborted stat and exit
+      // this is not a true error condition and nothing corrective needs
+      // to be done
+      if (error.code === REQUEST_ERRORS.ABORTED) {
+        this.mediaRequestsAborted += 1;
+        return;
+      }
+
+      this.state = 'READY';
+      this.pause();
+
+      // the error is really just that at least one of the requests timed-out
+      // set the bandwidth to a very low value and trigger an ABR switch to
+      // take emergency action
+      if (error.code === REQUEST_ERRORS.TIMEOUT) {
+        this.mediaRequestsTimedout += 1;
+        this.bandwidth = 1;
+        this.roundTrip = NaN;
+        this.trigger('processingcomplete');
+        return;
+      }
+
+      // if control-flow has arrived here, then the error is real
+      // emit an error event to blacklist the current playlist
+      this.mediaRequestsErrored += 1;
+      this.error(errors[0]);
+      this.trigger('error');
+      return;
+    }
+
+    // the response was a success so set any bandwidth stats the request
+    // generated for ABR purposes
+    this.bandwidth = simpleSegment.stats.bandwidth;
+    this.roundTrip = simpleSegment.stats.roundTripTime;
+
+    // if this request included an initialization segment, save that data
+    // to the initSegment cache
+    if (simpleSegment.map) {
+      this.initSegments_[initSegmentId(simpleSegment.map)] = simpleSegment.map;
+    }
+
+    this.processSegmentResponse_(simpleSegment);
   }
 
   /**
