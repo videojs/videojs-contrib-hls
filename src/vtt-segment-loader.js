@@ -1019,7 +1019,9 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     this.parseVTTCues_(segmentInfo);
 
-    this.updateTimeMapping_(segmentInfo);
+    this.updateTimeMapping_(segmentInfo,
+                            this.syncController_.timelines[segmentInfo.timeline],
+                            this.playlist_);
 
     if (segmentInfo.isSyncRequest) {
       this.trigger('syncinfoupdate');
@@ -1092,10 +1094,8 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     parser.flush();
   }
 
-  updateTimeMapping_(segmentInfo) {
+  updateTimeMapping_(segmentInfo, mappingObj, playlist) {
     let segment = segmentInfo.segment;
-
-    let mappingObj = this.syncController_.timelines[segmentInfo.timeline];
     let timestampmap = segmentInfo.timestampmap;
 
     if (!mappingObj || !segmentInfo.cues.length) {
@@ -1122,9 +1122,9 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     segment.start = midPoint - (segment.duration / 2);
     segment.end = midPoint + (segment.duration / 2);
 
-    if (!this.playlist_.syncInfo) {
-      this.playlist_.syncInfo = {
-        mediaSequence: this.playlist_.mediaSequence + segmentInfo.mediaIndex,
+    if (!playlist.syncInfo) {
+      playlist.syncInfo = {
+        mediaSequence: playlist.mediaSequence + segmentInfo.mediaIndex,
         time: segment.start
       };
     }

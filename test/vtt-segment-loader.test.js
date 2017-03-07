@@ -1538,17 +1538,17 @@ QUnit.test('waits for vtt.js to be loaded before attempting to parse cues', func
   let vttjsCallback = () => {};
 
   this.track.tech_ = {
-    on: function(event, callback) {
+    on(event, callback) {
       if (event === 'vttjsloaded') {
         vttjsCallback = callback;
       }
     },
-    trigger: function(event) {
+    trigger(event) {
       if (event === 'vttjsloaded') {
         vttjsCallback();
       }
     },
-    off: function() {}
+    off() {}
   };
 
   loader.playlist(playlist);
@@ -1577,6 +1577,46 @@ QUnit.test('waits for vtt.js to be loaded before attempting to parse cues', func
 
   assert.equal(loader.state, 'READY', 'loader is ready to load next segment');
   assert.ok(parsedCues, 'parsed cues');
+});
+
+QUnit.test('uses timestampmap from vtt header to set cue and segment timing', function(assert) {
+  const cues = [
+    { startTime: 10, endTime: 12 },
+    { startTime: 14, endTime: 16 },
+    { startTime: 15, endTime: 19 }
+  ];
+  const expectedCueTimes = [
+    { startTime: 14, endTime: 16 },
+    { startTime: 18, endTime: 20 },
+    { startTime: 19, endTime: 23 }
+  ];
+  const expectedSegment = {
+    duration: 10,
+    start: 11.5,
+    end: 21.5
+  };
+  const expectedPlaylist = {
+    mediaSequence: 100,
+    syncInfo: { mediaSequence: 102, time: 11.5 }
+  };
+  const mappingObj = {
+    time: 0,
+    mapping: -10
+  };
+  const playlist = { mediaSequence: 100 };
+  const segment = { duration: 10 };
+  const segmentInfo = {
+    timestampmap: { MPEGTS: 1260000, LOCAL: 0 },
+    mediaIndex: 2,
+    cues,
+    segment
+  };
+
+  loader.updateTimeMapping_(segmentInfo, mappingObj, playlist);
+
+  assert.deepEqual(cues, expectedCueTimes, 'adjusted cue timing based on timestampmap');
+  assert.deepEqual(segment, expectedSegment, 'set segment start and end based on cue content');
+  assert.deepEqual(playlist, expectedPlaylist, 'set syncInfo for playlist based on learned segment start');
 });
 
 QUnit.module('VTT Segment Loading Calculation', {
