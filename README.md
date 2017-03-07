@@ -146,6 +146,8 @@ are some highlights:
 - AES-128 segment encryption
 - CEA-608 captions are automatically translated into standard HTML5
   [caption text tracks][0]
+- In-Manifest WebVTT subtitles are automatically translated into standard HTML5
+  subtitle tracks
 - Timed ID3 Metadata is automatically translated into HTML5 metedata
   text tracks
 - Highly customizable adaptive bitrate selection
