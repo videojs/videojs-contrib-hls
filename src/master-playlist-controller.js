@@ -665,6 +665,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let videoPlaylist = this.masterPlaylistLoader_.media();
     let result;
 
+    if (!videoPlaylist) {
+      return null;
+    }
+
     if (videoPlaylist.attributes && videoPlaylist.attributes.SUBTITLES) {
       result = this.subtitleGroups_.groups[videoPlaylist.attributes.SUBTITLES];
     }
