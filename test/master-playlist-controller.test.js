@@ -1307,6 +1307,41 @@ QUnit.test('can get active subtitle track', function(assert) {
   assert.ok(masterPlaylistController.activeSubtitleTrack_(), 'active subtitle track');
 });
 
+QUnit.test('handles subtitle errors appropriately', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  // enable first text track
+  textTracks[0].mode = 'showing';
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  let abortCalls = 0;
+  let setupSubtitlesCalls = 0;
+
+  masterPlaylistController.subtitleSegmentLoader_.abort = () => abortCalls++;
+  masterPlaylistController.setupSubtitles = () => setupSubtitlesCalls++;
+
+  masterPlaylistController.handleSubtitleError_();
+
+  assert.equal(textTracks[0].mode, 'disabled', 'set text track to disabled');
+  assert.equal(abortCalls, 1, 'aborted subtitle segment loader');
+  assert.equal(setupSubtitlesCalls, 1, 'setup subtitles');
+  assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
+
+  this.env.log.warn.callCount = 0;
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
