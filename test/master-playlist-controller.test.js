@@ -932,6 +932,40 @@ QUnit.test('sends decrypter messages to correct segment loader', function(assert
   assert.deepEqual(mainHandleDecryptedCalls[0], { source: 'main' }, 'sent data');
 });
 
+QUnit.test('correctly sets alternate audio track kinds', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/alternate-audio-accessibility.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media - required for loadedmetadata
+  this.standardXHRResponse(this.requests.shift());
+
+  const audioTracks = this.player.tech_.audioTracks();
+
+  assert.equal(audioTracks.length, 4, 'added 4 audio tracks');
+  assert.equal(audioTracks[0].id, 'English', 'contains english track');
+  assert.equal(audioTracks[0].kind, 'main', 'english track\'s kind is "main"');
+  assert.equal(audioTracks[1].id,
+               'English Descriptions',
+               'contains english descriptions track');
+  assert.equal(audioTracks[1].kind,
+               'main-desc',
+               'english descriptions track\'s kind is "main-desc"');
+  assert.equal(audioTracks[2].id, 'Français', 'contains french track');
+  assert.equal(audioTracks[2].kind,
+               'alternative',
+               'french track\'s kind is "alternative"');
+  assert.equal(audioTracks[3].id, 'Espanol', 'contains spanish track');
+  assert.equal(audioTracks[3].kind,
+               'alternative',
+               'spanish track\'s kind is "alternative"');
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
