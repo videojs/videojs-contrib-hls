@@ -833,7 +833,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.masterPlaylistLoader_.media(nextPlaylist);
     }
     // Never blacklisting this playlist because it's final rendition
-    return this.masterPlaylistLoader_.media(currentPlaylist);
+    return this.masterPlaylistLoader_.load();
   }
 
   /**

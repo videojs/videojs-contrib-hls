@@ -401,7 +401,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       }
 
       if (error) {
-        return playlistRequestError(request, loader.media().uri);
+        let startingState = 'HAVE_METADATA';
+
+        return playlistRequestError(request, loader.media().uri, startingState);
       }
       haveMetadata(request, loader.media().uri);
     });
@@ -447,6 +449,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    */
   loader.start = () => {
     loader.started = true;
+    let startingState = loader.state;
 
     // request the specified URL
     request = this.hls_.xhr({
@@ -473,6 +476,11 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
           // MEDIA_ERR_NETWORK
           code: 2
         };
+        if (loader.state === 'HAVE_NOTHING') {
+          loader.started = false;
+        } else {
+          loader.state = startingState;
+        }
         return loader.trigger('error');
       }
 
