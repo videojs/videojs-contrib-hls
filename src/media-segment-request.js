@@ -242,7 +242,7 @@ const handleProgress = (segment, callback) => (event) => {
  *
  * @private
  */
-export const segmentRequest = (xhr, xhrOptions, decryptionWorker, segment, progressFn, nextFn) => {
+export const mediaSegmentRequest = (xhr, xhrOptions, decryptionWorker, segment, progressFn, nextFn) => {
   const activeXhrs = {};
   const abortAll = aborter(activeXhrs);
   const processSegmentCallback = waitForCompletion(activeXhrs,

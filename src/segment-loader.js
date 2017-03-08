@@ -7,7 +7,7 @@ import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
 import removeCuesFromTrack from 'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
-import {segmentRequest, REQUEST_ERRORS} from './segment-request';
+import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -684,7 +684,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.pendingSegment_ = segmentInfo;
     this.trimBackBuffer_(segmentInfo);
 
-    segmentInfo.abortRequests = segmentRequest(this.hls_.xhr,
+    segmentInfo.abortRequests = mediaSegmentRequest(this.hls_.xhr,
       this.xhrOptions_,
       this.decrypter_,
       this.createSimplifiedSegmentObj_(segmentInfo),

@@ -1,11 +1,11 @@
 import QUnit from 'qunit';
-import {segmentRequest, REQUEST_ERRORS} from '../src/segment-request';
+import {mediaSegmentRequest, REQUEST_ERRORS} from '../src/media-segment-request';
 import xhrFactory from '../src/xhr';
 import {useFakeEnvironment} from './test-helpers';
 import Decrypter from '../src/decrypter-worker';
 import worker from 'webworkify';
 
-QUnit.module('Segment Request', {
+QUnit.module('Media Segment Request', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
     this.clock = this.env.clock;
@@ -45,7 +45,7 @@ QUnit.test('cancels outstanding segment request on abort', function(assert) {
 
   assert.expect(7);
 
-  const abort = segmentRequest(
+  const abort = mediaSegmentRequest(
     this.xhr,
     this.xhrOptions,
     this.noop,
@@ -70,7 +70,7 @@ QUnit.test('cancels outstanding key requests on abort', function(assert) {
 
   assert.expect(8);
 
-  const abort = segmentRequest(
+  const abort = mediaSegmentRequest(
     this.xhr,
     this.xhrOptions,
     this.noop,
@@ -109,7 +109,7 @@ QUnit.test('cancels outstanding key requests on failure', function(assert) {
   const done = assert.async();
 
   assert.expect(9);
-  segmentRequest(
+  mediaSegmentRequest(
     this.xhr,
     this.xhrOptions,
     this.noop,
@@ -146,7 +146,7 @@ QUnit.test('cancels outstanding key requests on timeout', function(assert) {
   const done = assert.async();
 
   assert.expect(9);
-  segmentRequest(
+  mediaSegmentRequest(
     this.xhr,
     this.xhrOptions,
     this.noop,
@@ -195,7 +195,7 @@ QUnit.test('the key response is converted to the correct format', function(asser
     postMessage.call(this.mockDecrypter, message);
   };
 
-  segmentRequest(
+  mediaSegmentRequest(
     this.xhr,
     this.xhrOptions,
     this.mockDecrypter,
@@ -233,7 +233,7 @@ QUnit.test('segment with key has bytes decrypted', function(assert) {
   const done = assert.async();
 
   assert.expect(8);
-  segmentRequest(
+  mediaSegmentRequest(
     this.xhr,
     this.xhrOptions,
     this.realDecrypter,
