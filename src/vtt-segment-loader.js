@@ -96,7 +96,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
-    if (settings.debug || true) {
+    if (settings.debug) {
       this.logger_ = videojs.log.bind(videojs, 'segment-loader', this.loaderType_, '->');
     }
   }
