@@ -334,10 +334,10 @@ QUnit.test('updates timestamps when segments do not start at zero', function(ass
   assert.equal(loader.sourceUpdater_.timestampOffset(), -11, 'set timestampOffset');
 });
 
-QUnit.test('appending a segment when loader is in walk-forward mode triggers processingcomplete', function(assert) {
+QUnit.test('appending a segment when loader is in walk-forward mode triggers bandwidthupdate', function(assert) {
   let progresses = 0;
 
-  loader.on('processingcomplete', function() {
+  loader.on('bandwidthupdate', function() {
     progresses++;
   });
   loader.playlist(playlistWithDuration(20));
@@ -350,7 +350,7 @@ QUnit.test('appending a segment when loader is in walk-forward mode triggers pro
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].trigger('updateend');
 
-  assert.equal(progresses, 0, 'no processingcomplete fired');
+  assert.equal(progresses, 0, 'no bandwidthupdate fired');
 
   this.clock.tick(2);
   // if mediaIndex is set, then the SegmentLoader is in walk-forward mode
@@ -361,7 +361,7 @@ QUnit.test('appending a segment when loader is in walk-forward mode triggers pro
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].trigger('updateend');
 
-  assert.equal(progresses, 1, 'fired processingcomplete');
+  assert.equal(progresses, 1, 'fired bandwidthupdate');
 
   // verify stats
   assert.equal(loader.mediaBytesTransferred, 20, '20 bytes');

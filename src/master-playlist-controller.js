@@ -437,7 +437,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @private
    */
   setupSegmentLoaderListeners_() {
-    this.mainSegmentLoader_.on('processingcomplete', () => {
+    this.mainSegmentLoader_.on('bandwidthupdate', () => {
       // figure out what stream the next segment should be downloaded from
       // with the updated bandwidth information
       this.masterPlaylistLoader_.media(this.selectPlaylist());

@@ -833,7 +833,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         this.mediaRequestsTimedout += 1;
         this.bandwidth = 1;
         this.roundTrip = NaN;
-        this.trigger('processingcomplete');
+        this.trigger('bandwidthupdate');
         return;
       }
 
@@ -984,7 +984,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Don't do a rendition switch unless we have enough time to get a sync segment
     // and conservatively guess
     if (isWalkingForward) {
-      this.trigger('processingcomplete');
+      this.trigger('bandwidthupdate');
     }
     this.trigger('progress');
 
