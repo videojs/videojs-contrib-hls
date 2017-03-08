@@ -211,6 +211,37 @@ QUnit.test('does not resync the segmentLoader when no fast quality change occurs
     assert.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
   });
 
+QUnit.test('fast quality change resyncs audio segment loader', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/alternateAudio.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  let resets = 0;
+
+  masterPlaylistController.audioSegmentLoader_.resetLoader = () => resets++;
+
+  // force different media
+  masterPlaylistController.selectPlaylist = () => {
+    return masterPlaylistController.master().playlists[0];
+  };
+
+  masterPlaylistController.fastQualityChange_();
+
+  assert.equal(resets, 1, 'reset the audio segment loader');
+});
+
 QUnit.test('if buffered, will request second segment byte range', function(assert) {
   this.requests.length = 0;
   this.player.src({
