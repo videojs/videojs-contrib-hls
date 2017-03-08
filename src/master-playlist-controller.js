@@ -426,23 +426,26 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.mainSegmentLoader_.on('error', () => {
-      var segmentLoader = this;
-      var error = this.mainSegmentLoader_.error();
-      if(error.code == 2){//If lost connection, try again later
-          //pause the media
-          segmentLoader.mainSegmentLoader_.pause();
+      let segmentLoader = this;
+      let error = this.mainSegmentLoader_.error();
+
+      // If lost connection (status = 0) , try again later
+      if (error.status === 0) {
+        // pause the media
+        segmentLoader.mainSegmentLoader_.pause();
+        if (segmentLoader.audioPlaylistLoader_) {
+          segmentLoader.audioSegmentLoader_.pause();
+        }
+        videojs.log.warn('Connection lost. Trying again in 5 seconds.');
+        // setTimeout to try again in 5 seconds
+        setTimeout(function() {
+          segmentLoader.mainSegmentLoader_.load();
           if (segmentLoader.audioPlaylistLoader_) {
-              segmentLoader.audioSegmentLoader_.pause();
+            segmentLoader.audioSegmentLoader_.load();
           }
-          //setTimeout to try again in 5 seconds
-          setTimeout(function(){
-              segmentLoader.mainSegmentLoader_.load();
-              if (segmentLoader.audioPlaylistLoader_) {
-                  segmentLoader.audioSegmentLoader_.load();
-              }
-          }, 5000);
-      }else{
-          segmentLoader.blacklistCurrentPlaylist(error);
+        }, 5000);
+      } else {
+        segmentLoader.blacklistCurrentPlaylist(error);
       }
     });
 
