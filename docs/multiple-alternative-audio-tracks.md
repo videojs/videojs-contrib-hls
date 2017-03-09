@@ -15,7 +15,7 @@ The mapping between `AudioTrack` and the parsed m3u8  file is fairly straight fo
 
 As you can see m3u8's do not have a property for `AudioTrack.id`, which means that we let `video.js` randomly generate the id for `AudioTrack`s. This will have no real impact on any part of the system as we do not use the `id` anywhere.
 
-The other property that does not have a mapping in the m3u8 is `AudioTrack.kind`. It was decided that we would set the `kind` to `main` when `default` is set to `true` and in all other cases we set it to `alternative`
+The other property that does not have a mapping in the m3u8 is `AudioTrack.kind`. It was decided that we would set the `kind` to `main` when `default` is set to `true` and in other cases we set it to `alternative` unless the track has `characteristics` which include `public.accessibility.describes-video`, in which case we set it to `main-desc` (note that this `kind` indicates that the track is a mix of the main track and description, so it can be played *instead* of the main track; a track with kind `description` *only* has the description, not the main track).
 
 Below is a basic example of a mapping
 m3u8 layout
@@ -27,8 +27,13 @@ m3u8 layout
 			lang: 'eng'
 		},
 		'audio-track-2': {
-			default: true,
+			default: false,
 			lang: 'fr'
+    },
+		'audio-track-3': {
+			default: false,
+			lang: 'eng',
+      characteristics: 'public.accessibility.describes-video'
 		}
 	}]
 }
@@ -47,6 +52,12 @@ Corresponding AudioTrackList when media-group-1 is used (before any tracks have 
 	enabled: false,
 	language: 'fr',
 	kind: 'alternative',
+	id: 'random'
+}, {
+	label: 'audio-tracks-3',
+	enabled: false,
+	language: 'eng',
+	kind: 'main-desc',
 	id: 'random'
 }]
 ```
@@ -83,4 +94,3 @@ Corresponding AudioTrackList when media-group-1 is used (before any tracks have 
 1. `MasterPlaylistController` maps the `label` to the `PlaylistLoader` containing the audio
 1. `MasterPlaylistController` turns on that `PlaylistLoader` and the Corresponding `SegmentLoader` (master or audio only)
 1. `MediaSource`/`mux.js` determine how to mux
-
