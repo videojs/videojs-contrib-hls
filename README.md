@@ -99,6 +99,15 @@ player.play();
 
 Check out our [live example](http://jsbin.com/liwecukasi/edit?html,output) if you're having trouble.
 
+### Video.js 6
+If you are trying to use video.js version 6, you must include [videojs-flash](https://github.com/videojs/videojs-flash)
+on your page before including videojs-contrib-hls
+
+```html
+<script src="https://unpkg.com/videojs-flash/dist/videojs-flash.js"></script>
+<script src="https://unpkg.com/videojs-contrib-hls/dist/videojs-contrib-hls.js"></script>
+```
+
 ## Documentation
 [HTTP Live Streaming](https://developer.apple.com/streaming/) (HLS) has
 become a de-facto standard for streaming video on mobile devices
