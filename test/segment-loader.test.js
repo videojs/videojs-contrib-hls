@@ -276,7 +276,6 @@ QUnit.test('calculates bandwidth after downloading a segment', function(assert) 
   // verify stats
   assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
   assert.equal(loader.mediaTransferDuration, 100, '100 ms (clock above)');
-  assert.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('segment request timeouts reset bandwidth', function(assert) {
@@ -681,6 +680,46 @@ QUnit.test('abort does not cancel segment processing in progress', function(asse
   // verify stats
   assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
   assert.equal(loader.mediaRequests, 1, '1 request');
+});
+
+QUnit.test('request error increments mediaRequestsErrored stat', function(assert) {
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  this.clock.tick(1);
+
+  this.requests.shift().respond(404, null, '');
+
+  // verify stats
+  assert.equal(loader.mediaRequests, 1, '1 request');
+  assert.equal(loader.mediaRequestsErrored, 1, '1 errored request');
+});
+
+QUnit.test('request timeout increments mediaRequestsTimedout stat', function(assert) {
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  this.clock.tick(1);
+  this.requests[0].timedout = true;
+  this.clock.tick(100 * 1000);
+
+  // verify stats
+  assert.equal(loader.mediaRequests, 1, '1 request');
+  assert.equal(loader.mediaRequestsTimedout, 1, '1 timed-out request');
+});
+
+QUnit.test('request abort increments mediaRequestsAborted stat', function(assert) {
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  this.clock.tick(1);
+
+  loader.abort();
+  this.clock.tick(1);
+
+  // verify stats
+  assert.equal(loader.mediaRequests, 1, '1 request');
+  assert.equal(loader.mediaRequestsAborted, 1, '1 aborted request');
 });
 
 QUnit.test('SegmentLoader.mediaIndex is adjusted when live playlist is updated', function(assert) {

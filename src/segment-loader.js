@@ -785,7 +785,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    *
    * @private
    */
-  segmentRequestFinished_(errors, simpleSegment) {
+  segmentRequestFinished_(error, simpleSegment) {
     // every request counts as a media request even if it has been aborted
     // or canceled due to a timeout
     this.mediaRequests += 1;
@@ -810,9 +810,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     // an error occurred from the active pendingSegment_ so reset everything
-    if (errors) {
-      let error = errors[0];
-
+    if (error) {
       this.pendingSegment_ = null;
 
       // the requests were aborted just record the aborted stat and exit
@@ -840,7 +838,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       // if control-flow has arrived here, then the error is real
       // emit an error event to blacklist the current playlist
       this.mediaRequestsErrored += 1;
-      this.error(errors[0]);
+      this.error(error);
       this.trigger('error');
       return;
     }

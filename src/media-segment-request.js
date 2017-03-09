@@ -2,9 +2,9 @@ import videojs from 'video.js';
 import { createTransferableMessage } from './bin-utils';
 
 export const REQUEST_ERRORS = {
-  ABORTED: -101,
-  TIMEOUT: -102,
-  FAILURE: 2
+  FAILURE: 2,
+  TIMEOUT: -101,
+  ABORTED: -102
 };
 
 /**
@@ -250,6 +250,18 @@ const decryptSegment = (decrypter, segment, doneFn) => {
 };
 
 /**
+ * The purpose of this function is to get the most pertinent error from the
+ * array of errors.
+ * For instance if a timeout and two aborts occur, then the aborts were
+ * likely triggered by the timeout so return that error object.
+ */
+const getMostImportantError = (errors) => {
+  return errors.reduce((prev, err) => {
+    return err.code > prev.code ? err : prev;
+  });
+};
+
+/**
  * This function waits for all XHRs to finish (with either success or failure)
  * before continueing processing via it's callback. The function gathers errors
  * from each request into a single errors array so that the error status for
@@ -265,13 +277,10 @@ const waitForCompletion = (activeXhrs, decrypter, doneFn) => {
   let count = 0;
 
   return (error, segment) => {
-    // errors have to be unshifted to make sure the original error - the one
-    // that resulted in several aborts - ends up at the start of the array for
-    // ease of use downstream
     if (error) {
       // If there are errors, we have to abort any outstanding requests
       abortAll(activeXhrs);
-      errors.unshift(error);
+      errors.push(error);
     }
     count += 1;
 
@@ -280,7 +289,9 @@ const waitForCompletion = (activeXhrs, decrypter, doneFn) => {
       segment.endOfAllRequests = Date.now();
 
       if (errors.length > 0) {
-        return doneFn(errors, segment);
+        const worstError = getMostImportantError(errors);
+
+        return doneFn(worstError, segment);
       }
       if (segment.encryptedBytes) {
         return decryptSegment(decrypter, segment, doneFn);
