@@ -22,6 +22,7 @@ Maintenance Status: Stable
 - [Contributing](#contributing)
 - [Talk to us](#talk-to-us)
 - [Getting Started](#getting-started)
+  - [Video.js 6](#videojs-6)
 - [Documentation](#documentation)
   - [Options](#options)
     - [How to use](#how-to-use)
