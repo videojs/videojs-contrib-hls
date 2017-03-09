@@ -1214,8 +1214,8 @@ QUnit.test('estimates seekable ranges for live streams that have been paused for
                'offset the seekable start');
 });
 
-QUnit.test('resets the time to a seekable position when resuming a live stream ' +
-           'after a long break', function(assert) {
+QUnit.test('resets the time to the live point when resuming a live stream after a ' +
+           'long break', function(assert) {
   let seekTarget;
 
   this.player.src({
@@ -1243,10 +1243,10 @@ QUnit.test('resets the time to a seekable position when resuming a live stream '
   };
   this.player.tech_.trigger('playing');
 
+  let seekable = this.player.seekable();
+
   this.player.tech_.trigger('play');
-  assert.equal(seekTarget,
-              this.player.seekable().start(0),
-              'seeked to the start of seekable');
+  assert.equal(seekTarget, seekable.end(seekable.length - 1), 'seeked to live point');
   this.player.tech_.trigger('seeked');
 });
 
@@ -2583,6 +2583,7 @@ QUnit.test('downloads additional playlists if required', function(assert) {
   // media
   this.standardXHRResponse(this.requests[1]);
   originalPlaylist = hls.playlists.media();
+  hls.masterPlaylistController_.mainSegmentLoader_.mediaIndex = 0;
 
   // the playlist selection is revisited after a new segment is downloaded
   this.requests[2].bandwidth = 3000000;
@@ -2625,6 +2626,7 @@ QUnit.test('waits to download new segments until the media playlist is stable', 
 
   // source buffer created after media source is open and first media playlist is selected
   sourceBuffer = hls.mediaSource.sourceBuffers[0];
+  hls.masterPlaylistController_.mainSegmentLoader_.mediaIndex = 0;
 
   // segment 0
   this.standardXHRResponse(this.requests.shift());

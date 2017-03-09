@@ -280,3 +280,25 @@ QUnit.test('finds gaps within ranges', function(assert) {
            createTimeRanges([[10, 11], [20, 22]])),
            'finds multiple gaps');
 });
+
+QUnit.test('creates printable ranges', function(assert) {
+  assert.equal(Ranges.printableRange(createTimeRanges()), '', 'empty range empty string');
+  assert.equal(Ranges.printableRange(createTimeRanges([[0, 0]])),
+               '0 => 0',
+               'formats range correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[0, 1]])),
+               '0 => 1',
+               'formats range correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[1, -1]])),
+               '1 => -1',
+               'formats range correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[10.2, 25.2]])),
+               '10.2 => 25.2',
+               'formats range correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[10, 20], [30, 40]])),
+               '10 => 20, 30 => 40',
+               'formats ranges correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[10, 25], [20, 40], [-1, -2]])),
+               '10 => 25, 20 => 40, -1 => -2',
+               'formats ranges correctly');
+});

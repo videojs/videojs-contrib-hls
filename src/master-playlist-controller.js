@@ -288,7 +288,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       let media = this.masterPlaylistLoader_.media();
       let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
 
-      this.requestOptions_.timeout = requestTimeout;
+      // If we don't have any more available playlists, we don't want to
+      // timeout the request.
+      if (this.masterPlaylistLoader_.isLowestEnabledRendition_()) {
+        this.requestOptions_.timeout = 0;
+      } else {
+        this.requestOptions_.timeout = requestTimeout;
+      }
 
       // if this isn't a live video and preload permits, start
       // downloading segments
@@ -730,11 +736,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.load();
     }
 
+    let seekable = this.tech_.seekable();
+
     // if the viewer has paused and we fell out of the live window,
-    // seek forward to the earliest available position
+    // seek forward to the live point
     if (this.tech_.duration() === Infinity) {
-      if (this.tech_.currentTime() < this.tech_.seekable().start(0)) {
-        return this.tech_.setCurrentTime(this.tech_.seekable().start(0));
+      if (this.tech_.currentTime() < seekable.start(0)) {
+        return this.tech_.setCurrentTime(seekable.end(seekable.length - 1));
       }
     }
   }
@@ -959,15 +967,20 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // seekable has been calculated based on buffering video data so it
       // can be returned directly
       this.seekable_ = mainSeekable;
-      return;
+    } else if (audioSeekable.start(0) > mainSeekable.end(0) ||
+               mainSeekable.start(0) > audioSeekable.end(0)) {
+      // seekables are pretty far off, rely on main
+      this.seekable_ = mainSeekable;
+    } else {
+      this.seekable_ = videojs.createTimeRanges([[
+        (audioSeekable.start(0) > mainSeekable.start(0)) ? audioSeekable.start(0) :
+                                                           mainSeekable.start(0),
+        (audioSeekable.end(0) < mainSeekable.end(0)) ? audioSeekable.end(0) :
+                                                       mainSeekable.end(0)
+      ]]);
     }
 
-    this.seekable_ = videojs.createTimeRanges([[
-      (audioSeekable.start(0) > mainSeekable.start(0)) ? audioSeekable.start(0) :
-                                                         mainSeekable.start(0),
-      (audioSeekable.end(0) < mainSeekable.end(0)) ? audioSeekable.end(0) :
-                                                     mainSeekable.end(0)
-    ]]);
+    this.tech_.trigger('seekablechanged');
   }
 
   /**

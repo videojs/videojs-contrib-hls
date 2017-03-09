@@ -534,6 +534,7 @@ QUnit.test('updates the combined segment loader on media changes', function(asse
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
 
+  this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // downloading the new segment will update bandwidth and cause a
   // playlist change
   // segment 0
@@ -599,6 +600,7 @@ QUnit.test('updates the duration after switching playlists', function(assert) {
   };
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
+  this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // segment 0
   this.standardXHRResponse(this.requests[2]);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
@@ -629,6 +631,7 @@ QUnit.test('playlist selection uses systemBandwidth', function(assert) {
 
   // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
+  this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // segment 0
   this.standardXHRResponse(this.requests[2]);
   // 20ms have passed to upload 1kb that gives us a throughput of 1024 / 20 * 8 * 1000 = 409600
@@ -684,6 +687,23 @@ function(assert) {
   assert.equal(this.masterPlaylistController.requestOptions_.timeout, 0,
               'request timeout 0');
 });
+
+QUnit.test('removes request timeout when the source is a media playlist and not master',
+  function(assert) {
+    this.requests.length = 0;
+
+    this.player.src({
+      src: 'manifest/media.m3u8',
+      type: 'application/vnd.apple.mpegurl'
+    });
+    this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+    // media
+    this.standardXHRResponse(this.requests.shift());
+
+    assert.equal(this.masterPlaylistController.requestOptions_.timeout, 0,
+              'request timeout set to 0 when loading a non master playlist');
+  });
 
 QUnit.test('seekable uses the intersection of alternate audio and combined tracks',
 function(assert) {
@@ -810,6 +830,44 @@ function(assert) {
   assertTimeRangesEqual(mpc.seekable(),
                         videojs.createTimeRanges([[2, 9]]),
                         'audio later start, audio earlier end');
+  mainTimeRanges = [[1, 10]];
+  audioTimeRanges = [[11, 20]];
+  mpc.seekable_ = videojs.createTimeRanges();
+  mpc.onSyncInfoUpdate_();
+  assertTimeRangesEqual(mpc.seekable(),
+                        videojs.createTimeRanges([[1, 10]]),
+                        'no intersection, audio later');
+  mainTimeRanges = [[11, 20]];
+  audioTimeRanges = [[1, 10]];
+  mpc.seekable_ = videojs.createTimeRanges();
+  mpc.onSyncInfoUpdate_();
+  assertTimeRangesEqual(mpc.seekable(),
+                        videojs.createTimeRanges([[11, 20]]),
+                        'no intersection, main later');
+
+  Playlist.seekable = origSeekable;
+});
+
+QUnit.test('syncInfoUpdate triggers seekablechanged when seekable is updated',
+function(assert) {
+  let origSeekable = Playlist.seekable;
+  let mpc = this.masterPlaylistController;
+  let tech = this.player.tech_;
+  let mainTimeRanges = [];
+  let media = {};
+  let seekablechanged = 0;
+
+  tech.on('seekablechanged', () => seekablechanged++);
+
+  Playlist.seekable = () => {
+    return videojs.createTimeRanges(mainTimeRanges);
+  };
+  this.masterPlaylistController.masterPlaylistLoader_.media = () => media;
+
+  mainTimeRanges = [[0, 10]];
+  mpc.seekable_ = videojs.createTimeRanges();
+  mpc.onSyncInfoUpdate_();
+  assert.equal(seekablechanged, 1, 'seekablechanged triggered');
 
   Playlist.seekable = origSeekable;
 });
