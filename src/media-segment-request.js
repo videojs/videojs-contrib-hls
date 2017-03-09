@@ -81,12 +81,15 @@ const getProgressStats = (progressEvent) => {
   const stats = {
     bandwidth: Infinity,
     bytesReceived: 0,
-    roundTripTime: Math.max(roundTripTime, 1)
+    roundTripTime: roundTripTime || 0
   };
 
   if (progressEvent.lengthComputable) {
     stats.bytesReceived = progressEvent.loaded;
-    stats.bandwidth = (stats.bytesReceived / roundTripTime) * 8 * 1000;
+    // This can result in Infinity if stats.roundTripTime is 0 but that is ok
+    // because we should only use bandwidth stats on progress to determine when
+    // abort a request early due to insufficient bandwidth
+    stats.bandwidth = Math.floor((stats.bytesReceived / stats.roundTripTime) * 8 * 1000);
   }
   return stats;
 };
@@ -95,7 +98,7 @@ const getProgressStats = (progressEvent) => {
  * Handle all error conditions in one place and return an object
  * with all the information
  *
- * @param {Anything} error - if non-null signals an error occured with the XHR
+ * @param {Error|null} error - if non-null signals an error occured with the XHR
  * @param {Object} request -  the XHR request that possibly generated the error
  */
 const handleErrors = (error, request) => {
@@ -289,7 +292,7 @@ const waitForCompletion = (activeXhrs, decrypter, doneFn) => {
 };
 
 /**
- * Simple progress event callback handler that gathers some states before
+ * Simple progress event callback handler that gathers some stats before
  * executing a provided callback with the `segment` object
  *
  * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
