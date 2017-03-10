@@ -109,7 +109,7 @@ const updateMaster = function(master, media) {
 };
 
 /**
- * Load a playlist from a remote loacation
+ * Load a playlist from a remote location
  *
  * @class PlaylistLoader
  * @extends Stream

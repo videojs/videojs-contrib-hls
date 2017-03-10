@@ -1121,7 +1121,7 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
   this.player.tech_.buffered = function() {
     return videojs.createTimeRange(0, 170);
   };
-  this.player.tech_.hls.masterPlaylistController_.playlistEnd = function() {
+  Hls.Playlist.playlistEnd = function() {
     return 170;
   };
   this.requests[1].respond(200, null,
