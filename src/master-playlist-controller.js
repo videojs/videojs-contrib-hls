@@ -361,9 +361,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
         } else {
           addSeekableRange();
         }
-        let stopCheck = this.stopUpdateCheck(updatedPlaylist);
+        let playlistOutdated = this.isPlaylistOutdated_(updatedPlaylist);
 
-        if (stopCheck) {
+        if (playlistOutdated) {
           this.blacklistCurrentPlaylist();
         }
       }
@@ -802,7 +802,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @param {Object} playlist the media playlist object
    * @return {boolean} whether the playlist has stopped being updated or not
    */
-  stopUpdateCheck(playlist) {
+  isPlaylistOutdated_(playlist) {
     let buffered;
     let lastBufferedEnd;
     let bufferedTime;

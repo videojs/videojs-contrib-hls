@@ -235,9 +235,7 @@ const getPlaylistSyncPoints = function(playlist) {
   if (!playlist || !playlist.segments) {
     return [null, null];
   }
-
-  let expiredSync = playlist.syncInfo || null;
-
+  let expiredSync = playlist.endList ? { time: 0, mediaSequence: 0} : playlist.syncInfo || null;
   let segmentSync = null;
 
   // Find the first segment with timing information
@@ -307,7 +305,7 @@ const calculateExpiredTime = function(playlist) {
 
     return segmentSync.time - sumDurations(playlist, syncIndex, 0);
   }
-  return 0;
+  return null;
 };
 
 const calculatePlaylistEnd_ = function(playlist, useSafeLiveEnd) {
@@ -317,15 +315,12 @@ const calculatePlaylistEnd_ = function(playlist, useSafeLiveEnd) {
   if (playlist.endList) {
     return duration(playlist);
   }
-  let { expiredSync, segmentSync } = getPlaylistSyncPoints(playlist);
-
-  if (!expiredSync && !segmentSync) {
-    return null;
-  }
-
   let expired = calculateExpiredTime(playlist);
   let endSequence;
 
+  if (expired === null) {
+    return null;
+  }
   endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) : Math.max(0, playlist.segments.length);
   let end = intervalDuration(playlist,
                              playlist.mediaSequence + endSequence,
