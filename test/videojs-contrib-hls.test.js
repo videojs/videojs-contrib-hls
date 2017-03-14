@@ -2794,6 +2794,38 @@ QUnit.test('blacklists playlist if key requests fail', function(assert) {
   assert.equal(this.env.log.warn.calls, 1, 'logged warning for blacklist');
 });
 
+QUnit.test('does not blacklist playlist if connection is lost', function(assert) {
+  let hls = HlsSourceHandler('html5').handleSource({
+    src: 'manifest/encrypted-media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  }, this.tech);
+
+  hls.mediaSource.trigger('sourceopen');
+  this.requests.shift()
+    .respond(200, null,
+      '#EXTM3U\n' +
+      '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=52"\n' +
+      '#EXTINF:2.833,\n' +
+      'http://media.example.com/fileSequence52-A.ts\n' +
+      '#EXT-X-KEY:METHOD=AES-128,URI="htts://priv.example.com/key.php?r=53"\n' +
+      '#EXTINF:15.0,\n' +
+      'http://media.example.com/fileSequence53-A.ts\n' +
+      '#EXT-X-ENDLIST\n');
+  this.clock.tick(1);
+
+  // segment 1
+  if (/key\.php/i.test(this.requests[0].url)) {
+    this.standardXHRResponse(this.requests.pop());
+  } else {
+    this.standardXHRResponse(this.requests.shift());
+  }
+  // Lost connection
+  this.requests.shift().respond(0);
+  assert.notOk(hls.playlists.media().excludeUntil,
+    'playlist was not blacklisted');
+  assert.equal(this.env.log.warn.calls, 1, 'logged warning for connection loss');
+});
+
 QUnit.test('treats invalid keys as a key request failure and blacklists playlist', function(assert) {
   let hls = HlsSourceHandler('html5').handleSource({
     src: 'manifest/encrypted-media.m3u8',
