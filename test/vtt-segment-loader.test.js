@@ -805,7 +805,6 @@ QUnit.test('segmentInfo.mediaIndex is adjusted when live playlist is updated', f
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
   this.clock.tick(1);
-
   this.clock.tick(1);
   segmentInfo = loader.pendingSegment_;
 

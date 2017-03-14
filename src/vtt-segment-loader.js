@@ -251,7 +251,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       this.init_();
     }
   }
-
   /**
    * set a playlist on the segment loader
    *
@@ -473,7 +472,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       this.state = 'WAITING_ON_TIMELINE';
       return;
     }
-
     this.loadSegment_(segmentInfo);
   }
 
@@ -1014,8 +1012,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
         time: segment.start
       };
     }
-
-    // TODO - adjust other segments with new info
   }
 
   /**
