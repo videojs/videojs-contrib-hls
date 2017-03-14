@@ -281,7 +281,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     * loader is in the HAVE_NOTHING causes an error to be emitted
     * but otherwise has no effect.
     *
-    * @param {Object=} playlis tthe parsed media playlist
+    * @param {Object=} playlist the parsed media playlist
     * object to switch to
     * @return {Playlist} the current loaded media
     */
@@ -432,7 +432,14 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   /**
    * start loading of the playlist
    */
-  loader.load = () => {
+  loader.load = (isFinalRendition) => {
+    let refreshDelay;
+
+    if (isFinalRendition) {
+      refreshDelay = loader.media() ? loader.media().targetDuration * 1000 : 10 * 1000;
+      window.clearTimeout(mediaUpdateTimeout);
+      mediaUpdateTimeout = window.setTimeout(loader.load(false), refreshDelay);
+    }
     if (loader.started) {
       if (!loader.media().endList) {
         loader.trigger('mediaupdatetimeout');
@@ -443,7 +450,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       loader.start();
     }
   };
-
   /**
    * start loading of the playlist
    */
