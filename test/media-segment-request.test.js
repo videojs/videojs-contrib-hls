@@ -43,7 +43,7 @@ QUnit.module('Media Segment Request', {
 QUnit.test('cancels outstanding segment request on abort', function(assert) {
   const done = assert.async();
 
-  assert.expect(6);
+  assert.expect(7);
 
   const abort = mediaSegmentRequest(
     this.xhr,
@@ -55,10 +55,16 @@ QUnit.test('cancels outstanding segment request on abort', function(assert) {
       assert.equal(this.requests.length, 1, 'there is only one request');
       assert.equal(this.requests[0].uri, '0-test.ts', 'the request is for a segment');
       assert.ok(this.requests[0].aborted, 'aborted the first request');
+      assert.ok(error, 'an error object was generated');
       assert.equal(error.code, REQUEST_ERRORS.ABORTED, 'request was aborted');
 
       done();
     });
+
+  // Simulate Firefox's handling of aborted segments -
+  // Firefox sets the response to an empty array buffer if the xhr type is 'arraybuffer'
+  // and no data was received
+  this.requests[0].response = new ArrayBuffer();
 
   abort();
 });

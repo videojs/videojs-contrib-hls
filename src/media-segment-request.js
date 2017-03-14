@@ -122,7 +122,7 @@ const handleErrors = (error, request) => {
     };
   }
 
-  if (!response) {
+  if (request.aborted || !response || response.byteLength === 0) {
     return {
       status: request.status,
       message: 'HLS request aborted at URL: ' + request.uri,
