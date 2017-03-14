@@ -235,6 +235,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.hasPlayed_ = () => false;
 
     this.syncController_ = new SyncController();
+    this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
+      kind: 'metadata',
+      label: 'segment-metadata'
+    }, true).track;
 
     this.decrypter_ = worker(Decrypter);
 
@@ -248,8 +252,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       hasPlayed: () => this.hasPlayed_(),
       bandwidth,
       syncController: this.syncController_,
-      decrypter: this.decrypter_,
-      loaderType: 'main'
+      decrypter: this.decrypter_
     };
 
     // setup playlist loaders
@@ -259,10 +262,15 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
-    this.mainSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
+    this.mainSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      segmentMetadataTrack: this.segmentMetadataTrack_,
+      loaderType: 'main'
+    }));
+
     // alternate audio track
-    segmentLoaderOptions.loaderType = 'audio';
-    this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
+    this.audioSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      loaderType: 'audio'
+    }));
 
     this.decrypter_.onmessage = (event) => {
       if (event.data.source === 'main') {

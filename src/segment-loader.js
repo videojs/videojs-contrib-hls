@@ -7,6 +7,7 @@ import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
 import { createTransferableMessage } from './bin-utils';
+import removeCuesFromTrack from 'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -121,6 +122,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mediaSource_ = settings.mediaSource;
     this.hls_ = settings.hls;
     this.loaderType_ = settings.loaderType;
+    this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
 
     // private instance variables
     this.checkBufferTimeout_ = null;
@@ -436,6 +438,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.sourceUpdater_) {
       this.sourceUpdater_.remove(start, end);
     }
+    removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
   }
 
   /**
@@ -710,7 +713,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     removeToTime = this.trimBuffer_(segmentInfo);
 
     if (removeToTime > 0) {
-      this.sourceUpdater_.remove(0, removeToTime);
+      this.remove(0, removeToTime);
     }
 
     segment = segmentInfo.segment;
@@ -1067,6 +1070,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.pendingSegment_ = null;
     this.recordThroughput_(segmentInfo);
+    this.addSegmentMetadataCue_(segmentInfo);
 
     this.state = 'READY';
 
@@ -1143,4 +1147,42 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   logger_() {}
+
+  /**
+   * Adds a cue to the segment-metadata track with some metadata information about the
+   * segment
+   *
+   * @private
+   * @param {Object} segmentInfo
+   *        the object returned by loadSegment
+   * @method addSegmentMetadataCue_
+   */
+  addSegmentMetadataCue_(segmentInfo) {
+    if (!this.segmentMetadataTrack_) {
+      return;
+    }
+
+    const segment = segmentInfo.segment;
+    const start = segment.start;
+    const end = segment.end;
+
+    removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
+
+    const Cue = window.WebKitDataCue || window.VTTCue;
+    const value = {
+      uri: segmentInfo.uri,
+      timeline: segmentInfo.timeline,
+      playlist: segmentInfo.playlist.uri,
+      start,
+      end
+    };
+    const data = JSON.stringify(value);
+    const cue = new Cue(start, end, data);
+
+    // Attach the metadata to the value property of the cue to keep consistency between
+    // the differences of WebKitDataCue in safari and VTTCue in other browsers
+    cue.value = value;
+
+    this.segmentMetadataTrack_.addCue(cue);
+  }
 }
