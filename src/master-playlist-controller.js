@@ -600,7 +600,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     for (let mediaGroup in mediaGroups.SUBTITLES) {
       if (!this.subtitleGroups_.groups[mediaGroup]) {
-        // this.subtitleGroups_.groups[mediaGroup] = { unforced: [], forced: {} };
         this.subtitleGroups_.groups[mediaGroup] = [];
       }
 
