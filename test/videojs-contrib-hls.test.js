@@ -1129,6 +1129,14 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
                            '#EXT-X-MEDIA-SEQUENCE:16\n' +
                            '#EXTINF:10,\n' +
                            '16.ts\n');
+  // trigger a refresh
+  this.clock.tick(10 * 1000);
+
+  this.requests[2].respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:16\n' +
+                           '#EXTINF:10,\n' +
+                           '16.ts\n');
 
   this.player.tech_.trigger('play');
   this.player.tech_.trigger('playing');

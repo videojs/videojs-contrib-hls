@@ -361,11 +361,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
         } else {
           addSeekableRange();
         }
-        let playlistOutdated = this.isPlaylistOutdated_(updatedPlaylist);
-
-        if (playlistOutdated) {
-          this.blacklistCurrentPlaylist();
-        }
       }
     });
 
@@ -412,6 +407,15 @@ export class MasterPlaylistController extends videojs.EventTarget {
         type: 'mediachange',
         bubbles: true
       });
+    });
+
+    this.masterPlaylistLoader_.on('playlistnotupdate', () => {
+      let updatedPlaylist = this.masterPlaylistLoader_.media();
+      let playlistOutdated = this.isPlaylistOutdated_(updatedPlaylist);
+
+      if (playlistOutdated) {
+        this.blacklistCurrentPlaylist();
+      }
     });
   }
 
