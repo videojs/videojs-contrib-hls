@@ -221,9 +221,8 @@ const handleSegmentResponse = (segment, finishProcessingFn) => (error, request) 
  * @param {Function} doneFn - a callback that is executed after decryption has completed
  */
 const decryptSegment = (decrypter, segment, doneFn) => {
-  const decryptionId = 'segment-request-' + Math.random().toString(36);
   const decryptionHandler = (event) => {
-    if (event.data.source === decryptionId) {
+    if (event.data.source === segment.requestId) {
       decrypter.removeEventListener('message', decryptionHandler);
       const decrypted = event.data.decrypted;
 
@@ -239,7 +238,7 @@ const decryptSegment = (decrypter, segment, doneFn) => {
   // this is an encrypted segment
   // incrementally decrypt the segment
   decrypter.postMessage(createTransferableMessage({
-    source: decryptionId,
+    source: segment.requestId,
     encrypted: segment.encryptedBytes,
     key: segment.key.bytes,
     iv: segment.key.iv
