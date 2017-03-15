@@ -276,7 +276,6 @@ QUnit.test('calculates bandwidth after downloading a segment', function(assert) 
   // verify stats
   assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
   assert.equal(loader.mediaTransferDuration, 100, '100 ms (clock above)');
-  assert.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('segment request timeouts reset bandwidth', function(assert) {
@@ -304,7 +303,7 @@ QUnit.test('progress on segment requests are redispatched', function(assert) {
   loader.load();
   this.clock.tick(1);
 
-  this.requests[0].dispatchEvent({ type: 'progress' });
+  this.requests[0].dispatchEvent({ type: 'progress', target: this.requests[0] });
   assert.equal(progressEvents, 1, 'triggered progress');
 });
 
@@ -334,10 +333,10 @@ QUnit.test('updates timestamps when segments do not start at zero', function(ass
   assert.equal(loader.sourceUpdater_.timestampOffset(), -11, 'set timestampOffset');
 });
 
-QUnit.test('appending a segment when loader is in walk-forward mode triggers progress', function(assert) {
+QUnit.test('appending a segment when loader is in walk-forward mode triggers bandwidthupdate', function(assert) {
   let progresses = 0;
 
-  loader.on('progress', function() {
+  loader.on('bandwidthupdate', function() {
     progresses++;
   });
   loader.playlist(playlistWithDuration(20));
@@ -350,7 +349,7 @@ QUnit.test('appending a segment when loader is in walk-forward mode triggers pro
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].trigger('updateend');
 
-  assert.equal(progresses, 0, 'no progress fired');
+  assert.equal(progresses, 0, 'no bandwidthupdate fired');
 
   this.clock.tick(2);
   // if mediaIndex is set, then the SegmentLoader is in walk-forward mode
@@ -361,7 +360,7 @@ QUnit.test('appending a segment when loader is in walk-forward mode triggers pro
   this.requests.shift().respond(200, null, '');
   mediaSource.sourceBuffers[0].trigger('updateend');
 
-  assert.equal(progresses, 1, 'fired progress');
+  assert.equal(progresses, 1, 'fired bandwidthupdate');
 
   // verify stats
   assert.equal(loader.mediaBytesTransferred, 20, '20 bytes');
@@ -664,24 +663,6 @@ QUnit.test('triggers syncinfoupdate before attempting a resync', function(assert
   assert.equal(syncInfoUpdates, 1, 'syncinfoupdate was triggered');
 });
 
-QUnit.test('cancels outstanding requests on abort', function(assert) {
-  loader.playlist(playlistWithDuration(20));
-  loader.mimeType(this.mimeType);
-  loader.load();
-  this.clock.tick(1);
-
-  loader.xhr_.segmentXhr.onreadystatechange = function() {
-    throw new Error('onreadystatechange should not be called');
-  };
-
-  loader.abort();
-  this.clock.tick(1);
-
-  assert.ok(this.requests[0].aborted, 'aborted the first request');
-  assert.equal(this.requests.length, 2, 'started a new request');
-  assert.equal(loader.state, 'WAITING', 'back to the waiting state');
-});
-
 QUnit.test('abort does not cancel segment processing in progress', function(assert) {
   loader.playlist(playlistWithDuration(20));
   loader.mimeType(this.mimeType);
@@ -699,6 +680,46 @@ QUnit.test('abort does not cancel segment processing in progress', function(asse
   // verify stats
   assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
   assert.equal(loader.mediaRequests, 1, '1 request');
+});
+
+QUnit.test('request error increments mediaRequestsErrored stat', function(assert) {
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  this.clock.tick(1);
+
+  this.requests.shift().respond(404, null, '');
+
+  // verify stats
+  assert.equal(loader.mediaRequests, 1, '1 request');
+  assert.equal(loader.mediaRequestsErrored, 1, '1 errored request');
+});
+
+QUnit.test('request timeout increments mediaRequestsTimedout stat', function(assert) {
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  this.clock.tick(1);
+  this.requests[0].timedout = true;
+  this.clock.tick(100 * 1000);
+
+  // verify stats
+  assert.equal(loader.mediaRequests, 1, '1 request');
+  assert.equal(loader.mediaRequestsTimedout, 1, '1 timed-out request');
+});
+
+QUnit.test('request abort increments mediaRequestsAborted stat', function(assert) {
+  loader.playlist(playlistWithDuration(20));
+  loader.mimeType(this.mimeType);
+  loader.load();
+  this.clock.tick(1);
+
+  loader.abort();
+  this.clock.tick(1);
+
+  // verify stats
+  assert.equal(loader.mediaRequests, 1, '1 request');
+  assert.equal(loader.mediaRequestsAborted, 1, '1 aborted request');
 });
 
 QUnit.test('SegmentLoader.mediaIndex is adjusted when live playlist is updated', function(assert) {
@@ -1094,26 +1115,6 @@ QUnit.test('calling load with an encrypted segment requests key and segment', fu
   assert.equal(this.requests[1].url, '0.ts', 'requested the first segment');
 });
 
-QUnit.test('cancels outstanding key request on abort', function(assert) {
-  loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
-  loader.mimeType(this.mimeType);
-  loader.load();
-  this.clock.tick(1);
-
-  loader.xhr_.keyXhr.onreadystatechange = function() {
-    throw new Error('onreadystatechange should not be called');
-  };
-
-  assert.equal(this.requests.length, 2, 'requested a segment and key');
-  loader.abort();
-  this.clock.tick(1);
-
-  assert.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
-  assert.ok(this.requests[0].aborted, 'aborted the first key request');
-  assert.equal(this.requests.length, 4, 'started a new request');
-  assert.equal(loader.state, 'WAITING', 'back to the waiting state');
-});
-
 QUnit.test('dispose cleans up key requests for encrypted segments', function(assert) {
   loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
   loader.mimeType(this.mimeType);
@@ -1139,10 +1140,11 @@ QUnit.test('key 404s should trigger an error', function(assert) {
     errors.push(error);
   });
   this.requests.shift().respond(404, null, '');
+  this.clock.tick(1);
 
   assert.equal(errors.length, 1, 'triggered an error');
   assert.equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
-  assert.equal(loader.error().message, 'HLS key request error at URL: 0-key.php',
+  assert.equal(loader.error().message, 'HLS request errored at URL: 0-key.php',
         'receieved a key error message');
   assert.ok(loader.error().xhr, 'included the request object');
   assert.ok(loader.paused(), 'paused the loader');
@@ -1164,146 +1166,11 @@ QUnit.test('key 5xx status codes trigger an error', function(assert) {
 
   assert.equal(errors.length, 1, 'triggered an error');
   assert.equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
-  assert.equal(loader.error().message, 'HLS key request error at URL: 0-key.php',
+  assert.equal(loader.error().message, 'HLS request errored at URL: 0-key.php',
         'receieved a key error message');
   assert.ok(loader.error().xhr, 'included the request object');
   assert.ok(loader.paused(), 'paused the loader');
   assert.equal(loader.state, 'READY', 'returned to the ready state');
-});
-
-QUnit.test('the key is saved to the segment in the correct format', function(assert) {
-  let keyRequest;
-  let segmentRequest;
-  let segment;
-  let segmentInfo;
-
-  loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
-  loader.mimeType(this.mimeType);
-  loader.load();
-  this.clock.tick(1);
-
-  // stop processing so we can examine segment info
-  loader.processResponse_ = function() {};
-
-  keyRequest = this.requests.shift();
-  keyRequest.response = new Uint32Array([0, 1, 2, 3]).buffer;
-  keyRequest.respond(200, null, '');
-
-  segmentRequest = this.requests.shift();
-  segmentRequest.response = new Uint8Array(10).buffer;
-  segmentRequest.respond(200, null, '');
-
-  segmentInfo = loader.pendingSegment_;
-  segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
-
-  assert.deepEqual(segment.key.bytes,
-                  new Uint32Array([0, 0x01000000, 0x02000000, 0x03000000]),
-                  'passed the specified segment key');
-
-  // verify stats
-  assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
-  assert.equal(loader.mediaRequests, 1, '1 request was completed');
-});
-
-QUnit.test('supplies media sequence of current segment as the IV by default, if no IV ' +
-           'is specified',
-function(assert) {
-  let keyRequest;
-  let segmentRequest;
-  let segment;
-  let segmentInfo;
-
-  loader.playlist(playlistWithDuration(10, {isEncrypted: true, mediaSequence: 5}));
-  loader.mimeType(this.mimeType);
-  loader.load();
-  this.clock.tick(1);
-
-  // stop processing so we can examine segment info
-  loader.processResponse_ = function() {};
-
-  keyRequest = this.requests.shift();
-  keyRequest.response = new Uint32Array([0, 0, 0, 0]).buffer;
-  keyRequest.respond(200, null, '');
-
-  segmentRequest = this.requests.shift();
-  segmentRequest.response = new Uint8Array(10).buffer;
-  segmentRequest.respond(200, null, '');
-
-  segmentInfo = loader.pendingSegment_;
-  segment = segmentInfo.playlist.segments[segmentInfo.mediaIndex];
-
-  assert.deepEqual(segment.key.iv, new Uint32Array([0, 0, 0, 5]),
-                  'the IV for the segment is the media sequence');
-
-  // verify stats
-  assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
-  assert.equal(loader.mediaRequests, 1, '1 request');
-});
-
-QUnit.test('segment with key has decrypted bytes appended during processing', function(assert) {
-  let keyRequest;
-  let segmentRequest;
-  let done = assert.async();
-
-  // stop processing so we can examine segment info
-  loader.handleSegment_ = function() {
-    assert.ok(loader.pendingSegment_.bytes, 'decrypted bytes in segment');
-    done();
-  };
-
-  loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
-  loader.mimeType(this.mimeType);
-  loader.load();
-  this.clock.tick(1);
-
-  segmentRequest = this.requests.pop();
-  segmentRequest.response = new Uint8Array(8).buffer;
-  segmentRequest.respond(200, null, '');
-  assert.ok(loader.pendingSegment_.encryptedBytes, 'encrypted bytes in segment');
-  assert.ok(!loader.pendingSegment_.bytes, 'no decrypted bytes in segment');
-
-  keyRequest = this.requests.shift();
-  keyRequest.response = new Uint32Array([0, 0, 0, 0]).buffer;
-  keyRequest.respond(200, null, '');
-
-  // Allow the decrypter to decrypt
-  this.clock.tick(1);
-  // Allow the decrypter's async stream to run the callback
-  this.clock.tick(1);
-
-  // verify stats
-  assert.equal(loader.mediaBytesTransferred, 8, '8 bytes');
-  assert.equal(loader.mediaRequests, 1, '1 request');
-});
-
-QUnit.test('calling load with an encrypted segment waits for both key and segment ' +
-           'before processing', function(assert) {
-  let keyRequest;
-  let segmentRequest;
-
-  loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
-  loader.mimeType(this.mimeType);
-  loader.load();
-  this.clock.tick(1);
-
-  assert.equal(loader.state, 'WAITING', 'moves to waiting state');
-  assert.equal(this.requests.length, 2, 'requested a segment and key');
-  assert.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
-  assert.equal(this.requests[1].url, '0.ts', 'requested the first segment');
-  // respond to the segment first
-  segmentRequest = this.requests.pop();
-  segmentRequest.response = new Uint8Array(10).buffer;
-  segmentRequest.respond(200, null, '');
-  assert.equal(loader.state, 'WAITING', 'still in waiting state');
-  // then respond to the key
-  keyRequest = this.requests.shift();
-  keyRequest.response = new Uint32Array([0, 0, 0, 0]).buffer;
-  keyRequest.respond(200, null, '');
-  assert.equal(loader.state, 'DECRYPTING', 'moves to decrypting state');
-
-  // verify stats
-  assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
-  assert.equal(loader.mediaRequests, 1, '1 request');
 });
 
 QUnit.test('key request timeouts reset bandwidth', function(assert) {

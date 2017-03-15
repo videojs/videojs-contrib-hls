@@ -576,11 +576,11 @@ QUnit.test('selects a playlist after main/combined segment downloads', function(
   this.standardXHRResponse(this.requests.shift());
 
   // "downloaded" a segment
-  this.masterPlaylistController.mainSegmentLoader_.trigger('progress');
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.strictEqual(calls, 2, 'selects after the initial segment');
 
   // and another
-  this.masterPlaylistController.mainSegmentLoader_.trigger('progress');
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.strictEqual(calls, 3, 'selects after additional segments');
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
@@ -964,39 +964,6 @@ QUnit.test('respects useCueTags option', function(assert) {
            'adds cueTagsTrack as a text track if useCueTags is truthy');
 
   videojs.options.hls = origHlsOptions;
-});
-
-QUnit.test('sends decrypter messages to correct segment loader', function(assert) {
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  let masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-  let mainHandleDecryptedCalls = [];
-  let audioHandleDecryptedCalls = [];
-
-  masterPlaylistController.mainSegmentLoader_ = {
-    handleDecrypted_: (data) => {
-      mainHandleDecryptedCalls.push(data);
-    }
-  };
-  masterPlaylistController.audioSegmentLoader_ = {
-    handleDecrypted_: (data) => {
-      audioHandleDecryptedCalls.push(data);
-    }
-  };
-
-  masterPlaylistController.decrypter_.onmessage({ data: { source: 'audio' } });
-  assert.equal(mainHandleDecryptedCalls.length, 0, 'one call to main loader');
-  assert.equal(audioHandleDecryptedCalls.length, 1, 'one call to audio loader');
-  assert.deepEqual(audioHandleDecryptedCalls[0], { source: 'audio' }, 'sent data');
-
-  masterPlaylistController.decrypter_.onmessage({ data: { source: 'main' } });
-  assert.equal(mainHandleDecryptedCalls.length, 1, 'one call to main loader');
-  assert.equal(audioHandleDecryptedCalls.length, 1, 'one call to audio loader');
-  assert.deepEqual(mainHandleDecryptedCalls[0], { source: 'main' }, 'sent data');
 });
 
 QUnit.test('correctly sets alternate audio track kinds', function(assert) {

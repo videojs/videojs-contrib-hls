@@ -506,6 +506,18 @@ class HlsHandler extends Component {
         get: () => this.masterPlaylistController_.mediaRequests_() || 0,
         enumerable: true
       },
+      mediaRequestsAborted: {
+        get: () => this.masterPlaylistController_.mediaRequestsAborted_() || 0,
+        enumerable: true
+      },
+      mediaRequestsTimedout: {
+        get: () => this.masterPlaylistController_.mediaRequestsTimedout_() || 0,
+        enumerable: true
+      },
+      mediaRequestsErrored: {
+        get: () => this.masterPlaylistController_.mediaRequestsErrored_() || 0,
+        enumerable: true
+      },
       mediaTransferDuration: {
         get: () => this.masterPlaylistController_.mediaTransferDuration_() || 0,
         enumerable: true
