@@ -409,9 +409,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       });
     });
 
-    this.masterPlaylistLoader_.on('playlistnotupdate', () => {
+    this.masterPlaylistLoader_.on('playlistunchanged', () => {
       let updatedPlaylist = this.masterPlaylistLoader_.media();
-      let playlistOutdated = this.isPlaylistOutdated_(updatedPlaylist);
+      let playlistOutdated = this.stuckAtPlaylistEnd_(updatedPlaylist);
 
       if (playlistOutdated) {
         this.blacklistCurrentPlaylist();
@@ -806,7 +806,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @param {Object} playlist the media playlist object
    * @return {boolean} whether the playlist has stopped being updated or not
    */
-  isPlaylistOutdated_(playlist) {
+  stuckAtPlaylistEnd_(playlist) {
     let buffered;
     let lastBufferedEnd;
     let bufferedTime;

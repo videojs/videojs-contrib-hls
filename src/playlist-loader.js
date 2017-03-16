@@ -186,7 +186,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       // if the playlist is unchanged since the last reload,
       // try again after half the target duration
       refreshDelay /= 2;
-      loader.trigger('playlistnotupdate');
+      loader.trigger('playlistunchanged');
     }
 
     // refresh live playlists after a target duration passes
