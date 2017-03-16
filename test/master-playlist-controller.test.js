@@ -1010,14 +1010,17 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
 
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
-  assert.equal(this.player.textTracks().length, 0, 'no text tracks to start');
+  assert.equal(this.player.textTracks().length, 1, 'one text track to start');
+  assert.equal(this.player.textTracks()[0].label,
+               'segment-metadata',
+               'only segment-metadata text track');
 
   // master, contains media groups for subtitles
   this.standardXHRResponse(this.requests.shift());
 
   // we wait for loadedmetadata before setting subtitle tracks, so we need to wait for a
   // media playlist
-  assert.equal(this.player.textTracks().length, 0, 'no text tracks after master load');
+  assert.equal(this.player.textTracks().length, 1, 'only one text track after master');
 
   // media
   this.standardXHRResponse(this.requests.shift());
@@ -1032,9 +1035,9 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
 
   const textTracks = this.player.textTracks();
 
-  assert.equal(textTracks.length, 2, 'non-forced text tracks were added');
-  assert.equal(textTracks[0].mode, 'disabled', 'track starts disabled');
+  assert.equal(textTracks.length, 3, 'non-forced text tracks were added');
   assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
+  assert.equal(textTracks[2].mode, 'disabled', 'track starts disabled');
 });
 
 QUnit.test('switches off subtitles on subtitle errors', function(assert) {
@@ -1059,16 +1062,18 @@ QUnit.test('switches off subtitles on subtitle errors', function(assert) {
 
   assert.equal(this.requests.length, 0, 'no outstanding requests');
 
-  // enable first text track
-  textTracks[0].mode = 'showing';
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
 
   assert.equal(this.requests.length, 1, 'made a request');
-  assert.equal(textTracks[0].mode, 'showing', 'text track still showing');
+  assert.equal(textTracks[1].mode, 'showing', 'text track still showing');
 
   // request failed
   this.requests.shift().respond(404, null, '');
 
-  assert.equal(textTracks[0].mode, 'disabled', 'disabled text track');
+  assert.equal(textTracks[1].mode, 'disabled', 'disabled text track');
 
   assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
   this.env.log.warn.callCount = 0;
@@ -1076,10 +1081,10 @@ QUnit.test('switches off subtitles on subtitle errors', function(assert) {
   assert.equal(this.requests.length, 0, 'no outstanding requests');
 
   // re-enable first text track
-  textTracks[0].mode = 'showing';
+  textTracks[1].mode = 'showing';
 
   assert.equal(this.requests.length, 1, 'made a request');
-  assert.equal(textTracks[0].mode, 'showing', 'text track still showing');
+  assert.equal(textTracks[1].mode, 'showing', 'text track still showing');
 
   this.requests.shift().respond(200, null, `
 		#EXTM3U
@@ -1099,11 +1104,11 @@ QUnit.test('switches off subtitles on subtitle errors', function(assert) {
 
   assert.equal(this.requests.length, 1, 'made a request');
   assert.ok(this.requests[0].url.endsWith('0.webvtt'), 'made a webvtt request');
-  assert.equal(textTracks[0].mode, 'showing', 'text track still showing');
+  assert.equal(textTracks[1].mode, 'showing', 'text track still showing');
 
   this.requests.shift().respond(404, null, '');
 
-  assert.equal(textTracks[0].mode, 'disabled', 'disabled text track');
+  assert.equal(textTracks[1].mode, 'disabled', 'disabled text track');
 
   assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
   this.env.log.warn.callCount = 0;
@@ -1129,8 +1134,10 @@ QUnit.test('pauses subtitle segment loader on tech errors', function(assert) {
 
   const textTracks = this.player.textTracks();
 
-  // enable first text track
-  textTracks[0].mode = 'showing';
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
 
   let pauseCount = 0;
 
@@ -1184,8 +1191,10 @@ QUnit.test('disposes subtitle loaders on dispose', function(assert) {
 
   const textTracks = this.player.textTracks();
 
-  // enable first text track
-  textTracks[0].mode = 'showing';
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
 
   assert.ok(masterPlaylistController.subtitlePlaylistLoader_,
             'has a subtitle playlist loader');
@@ -1227,8 +1236,10 @@ QUnit.test('subtitle segment loader resets on seeks', function(assert) {
 
   const textTracks = this.player.textTracks();
 
-  // enable first text track
-  textTracks[0].mode = 'showing';
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
 
   let resetCount = 0;
   let abortCount = 0;
@@ -1301,8 +1312,10 @@ QUnit.test('can get active subtitle track', function(assert) {
 
   const textTracks = this.player.textTracks();
 
-  // enable first text track
-  textTracks[0].mode = 'showing';
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
 
   assert.ok(masterPlaylistController.activeSubtitleTrack_(), 'active subtitle track');
 });
@@ -1322,8 +1335,10 @@ QUnit.test('handles subtitle errors appropriately', function(assert) {
 
   const textTracks = this.player.textTracks();
 
-  // enable first text track
-  textTracks[0].mode = 'showing';
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
 
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
   let abortCalls = 0;
@@ -1334,7 +1349,7 @@ QUnit.test('handles subtitle errors appropriately', function(assert) {
 
   masterPlaylistController.handleSubtitleError_();
 
-  assert.equal(textTracks[0].mode, 'disabled', 'set text track to disabled');
+  assert.equal(textTracks[1].mode, 'disabled', 'set text track to disabled');
   assert.equal(abortCalls, 1, 'aborted subtitle segment loader');
   assert.equal(setupSubtitlesCalls, 1, 'setup subtitles');
   assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
@@ -1389,8 +1404,10 @@ QUnit.test('sets up subtitles', function(assert) {
 
   const textTracks = this.player.textTracks();
 
-  // enable first text track
-  textTracks[0].mode = 'showing';
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
 
   assert.ok(masterPlaylistController.subtitlePlaylistLoader_,
             'added a new subtitle playlist loader');
@@ -1457,8 +1474,8 @@ QUnit.test('sets up subtitles', function(assert) {
   segmentPauseCalls = 0;
   segmentResetCalls = 0;
 
-  // turn off active text track
-  textTracks[0].mode = 'disabled';
+  // turn off active subtitle text track
+  textTracks[1].mode = 'disabled';
 
   assert.equal(playlistDisposeCalls, 1, 'disposed subtitles playlist loader');
   assert.equal(segmentDisposeCalls, 0, 'did not dispose subtitles segment loader');
