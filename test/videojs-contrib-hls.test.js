@@ -1129,6 +1129,15 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
                            '#EXT-X-MEDIA-SEQUENCE:16\n' +
                            '#EXTINF:10,\n' +
                            '16.ts\n');
+
+  url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
+  media = this.player.tech_.hls.playlists.master.playlists[url];
+
+  assert.ok(!media.excludeUntil, 'playlist didnt be blacklisted');
+  assert.equal(this.env.log.warn.calls, 0, 'no warning logged for blacklist');
+
+  this.player.tech_.trigger('play');
+  this.player.tech_.trigger('playing');
   // trigger a refresh
   this.clock.tick(10 * 1000);
 
@@ -1138,10 +1147,7 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
                            '#EXTINF:10,\n' +
                            '16.ts\n');
 
-  this.player.tech_.trigger('play');
-  this.player.tech_.trigger('playing');
-
-  url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
+  url = this.requests[2].url.slice(this.requests[2].url.lastIndexOf('/') + 1);
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
   assert.ok(media.excludeUntil > 0, 'playlist blacklisted for some time');
