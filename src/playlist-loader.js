@@ -440,6 +440,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       window.clearTimeout(mediaUpdateTimeout);
       mediaUpdateTimeout = window.setTimeout(loader.load(false), refreshDelay);
     }
+    window.clearTimeout(mediaUpdateTimeout);
     if (loader.started) {
       if (!loader.media().endList) {
         loader.trigger('mediaupdatetimeout');
