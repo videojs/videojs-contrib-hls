@@ -1632,7 +1632,7 @@ QUnit.test('loader does not re-request segments that contain no subtitles', func
 
   loader.currentTime_ = () => {
     return 30;
-  }
+  };
 
   loader.playlist(playlist);
   loader.track(this.track);
