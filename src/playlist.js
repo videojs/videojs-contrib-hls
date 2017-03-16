@@ -308,6 +308,40 @@ const calculateExpiredTime = function(playlist, expiredSync, segmentSync) {
 };
 
 /**
+ * Returns the end point the the playlist
+ *
+ * @param {Object} playlist a media playlist object
+ * @returns {Object} an object containing the two sync points
+ * @function playlistEnd
+ */
+
+export const playlistEnd = function(playlist) {
+  // without playlist or segments
+  if (!playlist || !playlist.segments) {
+    return null;
+  }
+
+  // when the playlist is complete, the entire duration end is playlist end
+  if (playlist.endList) {
+    return duration(playlist);
+  }
+
+  let { expiredSync, segmentSync } = getPlaylistSyncPoints(playlist);
+
+  if (!expiredSync && !segmentSync) {
+    return null;
+  }
+
+  let expired = calculateExpiredTime(playlist, expiredSync, segmentSync);
+  let endSequence = Math.max(0, playlist.segments.length);
+  let playEnd = intervalDuration(playlist,
+                             playlist.mediaSequence + endSequence,
+                             expired);
+
+  return playEnd;
+};
+
+/**
   * Calculates the interval of time that is currently seekable in a
   * playlist. The returned time ranges are relative to the earliest
   * moment in the specified playlist that is still available. A full
