@@ -191,6 +191,11 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     return videojs.createTimeRanges([[start, end]]);
   }
 
+  /**
+   * Returns the timestamp offset for the current timeline stored in the sync controller
+   *
+   * @return {Number} timestamp offset for the current timeline
+   */
   timestampOffset() {
     return this.syncController_.timestampOffsetForTimeline(this.currentTimeline_);
   }
@@ -445,22 +450,16 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
                                         this.currentTime_(),
                                         this.syncPoint_);
 
+    segmentInfo = this.skipEmptySegments_(segmentInfo);
+
     if (!segmentInfo) {
       return;
     }
-
-    // TODO is this check important
-    // if (segmentInfo.mediaIndex === this.playlist_.segments.length - 1 &&
-    //     this.mediaSource_.readyState === 'ended' &&
-    //     !this.seeking_()) {
-    //   return;
-    // }
 
     if (this.syncController_.timestampOffsetForTimeline(segmentInfo.timeline) === null) {
       // We don't have the timestamp offset that we need to sync subtitles.
       // Rerun on a timestamp offset or user interaction.
       let checkTimestampOffset = () => {
-        this.syncController_.off('timestampoffset', checkTimestampOffset);
         this.state = 'READY';
         if (!this.paused()) {
           // if not paused, queue a buffer check as soon as possible
@@ -468,7 +467,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
         }
       };
 
-      this.syncController_.on('timestampoffset', checkTimestampOffset);
+      this.syncController_.one('timestampoffset', checkTimestampOffset);
       this.state = 'WAITING_ON_TIMELINE';
       return;
     }
@@ -635,6 +634,26 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       // retain the segment in case the playlist updates while doing an async process
       segment
     };
+  }
+
+  /**
+   * Prevents the segment loader from requesting segments we know contain no subtitles
+   * by walking forward until we find the next segment that we don't know whether it is
+   * empty or not.
+   *
+   * @param {Object} segmentInfo
+   *        a segment request object that describes the segment to load
+   * @return {Object}
+   *         a segment request object that describes the segment to load
+   */
+  skipEmptySegments_(segmentInfo) {
+    while (segmentInfo && segmentInfo.segment.empty) {
+      segmentInfo = this.generateSegmentInfo_(segmentInfo.playlist,
+                                              segmentInfo.mediaIndex + 1,
+                                              segmentInfo.startOfSegment + segmentInfo.duration,
+                                              segmentInfo.isSyncRequest);
+    }
+    return segmentInfo;
   }
 
   /**
@@ -860,13 +879,12 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
         this.subtitlesTrack_.tech_) {
 
       const loadHandler = () => {
-        this.subtitlesTrack_.tech_.off('vttjsloaded', loadHandler);
         this.handleSegment_();
       };
 
       this.state = 'WAITING_ON_VTTJS';
-      this.subtitlesTrack_.tech_.on('vttjsloaded', loadHandler);
-      this.subtitlesTrack_.tech_.on('vttjserror', () => {
+      this.subtitlesTrack_.tech_.one('vttjsloaded', loadHandler);
+      this.subtitlesTrack_.tech_.one('vttjserror', () => {
         this.subtitlesTrack_.tech_.off('vttjsloaded', loadHandler);
         this.error({
           message: 'Error loading vtt.js'
@@ -979,18 +997,24 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
   }
 
   updateTimeMapping_(segmentInfo, mappingObj, playlist) {
-    let segment = segmentInfo.segment;
-    let timestampmap = segmentInfo.timestampmap;
+    const segment = segmentInfo.segment;
 
-    if (!mappingObj || !segmentInfo.cues.length) {
+    if (!mappingObj) {
       // If the sync controller does not have a mapping of TS to Media Time for the
-      // timeline, then we don't have enough information to update the segment and cue
+      // timeline, then we don't have enough information to update the cue
       // start/end times
-      // If there are no cues, we also do not have enough information to figure out
-      // segment timing
       return;
     }
 
+    if (!segmentInfo.cues.length) {
+      // If there are no cues, we also do not have enough information to figure out
+      // segment timing. Mark that the segment contains no cues so we don't re-request
+      // an empty segment.
+      segment.empty = true;
+      return;
+    }
+
+    const timestampmap = segmentInfo.timestampmap;
     const diff = (timestampmap.MPEGTS / 90000) - timestampmap.LOCAL + mappingObj.mapping;
 
     segmentInfo.cues.forEach((cue) => {
@@ -999,17 +1023,13 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       cue.endTime += diff;
     });
 
-    const firstStart = segmentInfo.cues[0].startTime;
-    const lastStart = segmentInfo.cues[segmentInfo.cues.length - 1].startTime;
-    const midPoint = (firstStart + lastStart) / 2;
-
-    segment.start = midPoint - (segment.duration / 2);
-    segment.end = midPoint + (segment.duration / 2);
-
     if (!playlist.syncInfo) {
+      const firstStart = segmentInfo.cues[0].startTime;
+      const lastStart = segmentInfo.cues[segmentInfo.cues.length - 1].startTime;
+
       playlist.syncInfo = {
         mediaSequence: playlist.mediaSequence + segmentInfo.mediaIndex,
-        time: segment.start
+        time: Math.min(firstStart, lastStart - segment.duration)
       };
     }
   }

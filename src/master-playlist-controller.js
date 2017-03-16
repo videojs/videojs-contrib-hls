@@ -821,7 +821,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.subtitlePlaylistLoader_.dispose();
       }
 
-      // reset the segment loader
+      // reset the segment loader only when the subtitle playlist is changed instead of
+      // every time setupSubtitles is called since switching subtitle tracks fires
+      // multiple `change` events on the TextTrackList
       this.subtitleSegmentLoader_.resetEverything();
 
       // can't reuse playlistloader because we're only using single renditions and not a

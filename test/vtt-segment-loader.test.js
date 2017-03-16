@@ -808,19 +808,21 @@ QUnit.test('segmentInfo.mediaIndex is adjusted when live playlist is updated', f
   this.clock.tick(1);
   segmentInfo = loader.pendingSegment_;
 
-  assert.equal(segmentInfo.mediaIndex, 3, 'segmentInfo.mediaIndex starts at 3');
-  assert.equal(this.requests[0].url, '3.vtt', 'requesting the segment at mediaIndex 3');
+  // segment 3 had no cue data (because we didn't mock any) so next request should be
+  // segment 4 because of skipping empty segments
+  assert.equal(segmentInfo.mediaIndex, 4, 'segmentInfo.mediaIndex starts at 4');
+  assert.equal(this.requests[0].url, '4.vtt', 'requesting the segment at mediaIndex 4');
 
   // Update the playlist shifting the mediaSequence by 2 which will result
-  // in a decrement of the mediaIndex by 2 to 1
+  // in a decrement of the mediaIndex by 4 to 2
   loader.playlist(playlistWithDuration(50, {
     mediaSequence: 2,
     endList: false
   }));
 
-  assert.equal(segmentInfo.mediaIndex, 1, 'segmentInfo.mediaIndex is updated to 1');
+  assert.equal(segmentInfo.mediaIndex, 2, 'segmentInfo.mediaIndex is updated to 2');
 
-  expectedLoaderIndex = 1;
+  expectedLoaderIndex = 2;
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
   this.clock.tick(1);
@@ -853,7 +855,7 @@ QUnit.skip('sets the timestampOffset on timeline change', function(assert) {
   assert.equal(loader.mediaRequests, 2, '2 requests');
 });
 
-QUnit.test('tracks segment end times as they are buffered', function(assert) {
+QUnit.skip('tracks segment end times as they are buffered', function(assert) {
   let playlist = playlistWithDuration(20);
 
   loader.parseVTTCues_ = function(segmentInfo) {
@@ -1346,24 +1348,17 @@ function(assert) {
   assert.equal(loader.pendingSegment_.uri, '1.vtt', 'second segment still pending');
   assert.equal(loader.pendingSegment_.segment.uri, '1.vtt', 'correct segment reference');
 
-  // mock probeSegmentInfo as the response bytes aren't parsable (and won't provide
-  // time info)
+  // mock parseVttCues_ to respond empty cue array
   loader.parseVTTCues_ = (segmentInfo) => {
-    segmentInfo.cues = [{ startTime: 10, endTime: 11 }, { startTime: 20, endTime: 21 }];
+    segmentInfo.cues = [];
     segmentInfo.timestampmap = { MPEGTS: 0, LOCAL: 0 };
   };
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
 
-  assert.equal(playlistUpdated.segments[0].start,
-               10,
-               'set start on segment of new playlist');
-  assert.equal(playlistUpdated.segments[0].end,
-               20,
-               'set end on segment of new playlist');
-  assert.ok(!playlist.segments[1].start, 'did not set start on segment of old playlist');
-  assert.ok(!playlist.segments[1].end, 'did not set end on segment of old playlist');
+  assert.ok(playlistUpdated.segments[0].empty, 'set empty on segment of new playlist');
+  assert.ok(!playlist.segments[1].empty, 'did not set empty on segment of old playlist');
 });
 
 QUnit.test('saves segment info to old segment after playlist refresh if segment fell off',
@@ -1405,26 +1400,19 @@ function(assert) {
   assert.equal(loader.pendingSegment_.uri, '1.vtt', 'second segment still pending');
   assert.equal(loader.pendingSegment_.segment.uri, '1.vtt', 'correct segment reference');
 
-  // mock probeSegmentInfo as the response bytes aren't parsable (and won't provide
-  // time info)
+  // mock parseVttCues_ to respond empty cue array
   loader.parseVTTCues_ = (segmentInfo) => {
-    segmentInfo.cues = [{ startTime: 10, endTime: 11 }, { startTime: 20, endTime: 21 }];
+    segmentInfo.cues = [];
     segmentInfo.timestampmap = { MPEGTS: 0, LOCAL: 0 };
   };
 
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
 
-  assert.equal(playlist.segments[1].start,
-               10,
-               'set start on segment of old playlist');
-  assert.equal(playlist.segments[1].end,
-               20,
-               'set end on segment of old playlist');
-  assert.ok(!playlistUpdated.segments[0].start,
-            'no start info for first segment of new playlist');
-  assert.ok(!playlistUpdated.segments[0].end,
-            'no end info for first segment of new playlist');
+  assert.ok(playlist.segments[1].empty,
+            'set empty on segment of old playlist');
+  assert.ok(!playlistUpdated.segments[0].empty,
+            'no empty info for first segment of new playlist');
 });
 
 QUnit.test('new playlist always triggers syncinfoupdate', function(assert) {
@@ -1461,7 +1449,7 @@ QUnit.test('waits for syncController to have sync info for the timeline of the v
     loadedSegment = true;
   };
   loader.checkBuffer_ = () => {
-    return { mediaIndex: 2, timeline: 2 };
+    return { mediaIndex: 2, timeline: 2, segment: { } };
   };
 
   loader.playlist(playlist);
@@ -1504,7 +1492,7 @@ QUnit.test('waits for vtt.js to be loaded before attempting to parse cues', func
   let vttjsCallback = () => {};
 
   this.track.tech_ = {
-    on(event, callback) {
+    one(event, callback) {
       if (event === 'vttjsloaded') {
         vttjsCallback = callback;
       }
@@ -1557,13 +1545,11 @@ QUnit.test('uses timestampmap from vtt header to set cue and segment timing', fu
     { startTime: 19, endTime: 23 }
   ];
   const expectedSegment = {
-    duration: 10,
-    start: 11.5,
-    end: 21.5
+    duration: 10
   };
   const expectedPlaylist = {
     mediaSequence: 100,
-    syncInfo: { mediaSequence: 102, time: 11.5 }
+    syncInfo: { mediaSequence: 102, time: 9 }
   };
   const mappingObj = {
     time: 0,
@@ -1634,6 +1620,37 @@ QUnit.test('loader logs vtt.js ParsingErrors and does not trigger an error event
   this.env.log.warn.callCount = 0;
 });
 
+QUnit.test('loader does not re-request segments that contain no subtitles', function(assert) {
+  let playlist = playlistWithDuration(60);
+
+  playlist.endList = false;
+
+  loader.parseVTTCues_ = (segmentInfo) => {
+    // mock empty segment
+    segmentInfo.cues = [];
+  };
+
+  loader.currentTime_ = () => {
+    return 30;
+  }
+
+  loader.playlist(playlist);
+  loader.track(this.track);
+  loader.load();
+
+  this.clock.tick(1);
+
+  assert.equal(loader.pendingSegment_.mediaIndex, 2, 'requesting initial segment guess');
+
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  this.clock.tick(1);
+
+  assert.ok(playlist.segments[2].empty, 'marked empty segment as empty');
+  assert.equal(loader.pendingSegment_.mediaIndex, 3, 'walked forward skipping requesting empty segment');
+});
+
 QUnit.test('loader triggers error event on fatal vtt.js errors', function(assert) {
   let playlist = playlistWithDuration(40);
   let errors = 0;
@@ -1670,7 +1687,7 @@ QUnit.test('loader triggers error event when vtt.js fails to load', function(ass
   let vttjsCallback = () => {};
 
   this.track.tech_ = {
-    on(event, callback) {
+    one(event, callback) {
       if (event === 'vttjserror') {
         vttjsCallback = callback;
       }

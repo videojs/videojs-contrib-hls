@@ -44,6 +44,7 @@ Maintenance Status: Stable
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
   - [In-Band Metadata](#in-band-metadata)
+  - [Segment Metadata](#segment-metadata)
 - [Hosting Considerations](#hosting-considerations)
 - [Known Issues](#known-issues)
   - [IE10 and Below](#ie10-and-below)
