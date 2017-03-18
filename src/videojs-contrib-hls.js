@@ -50,7 +50,7 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
 
 // A fudge factor to apply to advertised playlist bitrates to account for
 // temporary flucations in client bandwidth
-const BANDWIDTH_VARIANCE = 1.2;
+const BANDWIDTH_VARIANCE = 1;
 
 /**
  * Returns the CSS value for the specified property on an element
@@ -143,7 +143,7 @@ const stableSort = function(array, sortFn) {
  * @return {Playlist} the highest bitrate playlist less than the currently detected
  * bandwidth, accounting for some amount of bandwidth variance
  */
-Hls.STANDARD_PLAYLIST_SELECTOR = function() {
+Hls.STANDARD_PLAYLIST_SELECTOR = function(bandwidthTracker) {
   let sortedPlaylists = this.playlists.master.playlists.slice();
   let bandwidthPlaylists = [];
   let bandwidthBestVariant;
@@ -164,7 +164,9 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   sortedPlaylists = sortedPlaylists.filter(Playlist.isEnabled);
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
+//  systemBandwidth = Math.min(this.systemBandwidth, bandwidthTracker.hMean());
   systemBandwidth = this.systemBandwidth;
+
   bandwidthPlaylists = sortedPlaylists.filter(function(elem) {
     return elem.attributes &&
            elem.attributes.BANDWIDTH &&

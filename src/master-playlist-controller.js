@@ -10,6 +10,7 @@ import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
 import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
+import BandwidthTracker from './bandwidth';
 
 // 5 minute blacklist
 const BLACKLIST_DURATION = 5 * 60 * 1000;
@@ -220,6 +221,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     Hls = externHls;
 
+    this.bandwidthTracker_ = new BandwidthTracker(10);
     this.withCredentials = withCredentials;
     this.tech_ = tech;
     this.hls_ = tech.hls;
@@ -343,7 +345,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       if (!updatedPlaylist) {
         // select the initial variant
-        this.initialMedia_ = this.selectPlaylist();
+        this.initialMedia_ = this.selectPlaylist(this.bandwidthTracker_);
         this.masterPlaylistLoader_.media(this.initialMedia_);
         return;
       }
@@ -437,10 +439,22 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @private
    */
   setupSegmentLoaderListeners_() {
-    this.mainSegmentLoader_.on('bandwidthupdate', () => {
+    this.mainSegmentLoader_.on('bandwidthupdate', (event) => {
+      if (event.ignore) {
+        if (this.mainSegmentLoader_.bytesReceived > 1) {
+          this.bandwidthTracker_.push({
+            bandwidth: this.mainSegmentLoader_.bandwidth,
+            bytes: this.mainSegmentLoader_.bytesReceived,
+            roundTrip: this.mainSegmentLoader_.roundTrip
+          });
+        }
+        console.log('>>', this.mainSegmentLoader_.mediaIndex, this.bandwidthTracker_.current(), this.bandwidthTracker_.hMean());
+      }
       // figure out what stream the next segment should be downloaded from
       // with the updated bandwidth information
-      this.masterPlaylistLoader_.media(this.selectPlaylist());
+      if (!event.ignore) {
+        this.masterPlaylistLoader_.media(this.selectPlaylist(this.bandwidthTracker_));
+      }
     });
     this.mainSegmentLoader_.on('progress', () => {
       this.trigger('progress');
@@ -695,7 +709,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @private
    */
   fastQualityChange_() {
-    let media = this.selectPlaylist();
+    let media = this.selectPlaylist(this.bandwidthTracker_);
 
     if (media !== this.masterPlaylistLoader_.media()) {
       this.masterPlaylistLoader_.media(media);
@@ -824,7 +838,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
 
     // Select a new playlist
-    nextPlaylist = this.selectPlaylist();
+    nextPlaylist = this.selectPlaylist(this.bandwidthTracker_);
 
     if (nextPlaylist) {
       videojs.log.warn('Problem encountered with the current ' +

@@ -1,3 +1,3 @@
 export default {
-  GOAL_BUFFER_LENGTH: 30
+  GOAL_BUFFER_LENGTH: 60
 };

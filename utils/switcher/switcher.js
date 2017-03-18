@@ -5,18 +5,6 @@ import displayTimeline from './display-timeline';
 
 // a dynamic number of time-bandwidth pairs may be defined to drive the simulation
 let networkTimeline = document.querySelector('.network-timeline');
-let timePeriod = networkTimeline.querySelector('li:last-child').cloneNode(true);
-const appendTimePeriod = function() {
-  let clone = timePeriod.cloneNode(true);
-  let count = networkTimeline.querySelectorAll('input.bandwidth').length;
-  let time = clone.querySelector('.time');
-  let bandwidth = clone.querySelector('input.bandwidth');
-
-  time.name = 'time' + count;
-  bandwidth.name = 'bandwidth' + count;
-  networkTimeline.appendChild(clone);
-};
-document.querySelector('.add-time-period').addEventListener('click', appendTimePeriod);
 
 // apply any simulation parameters that were set in the fragment identifier
 if (window.location.hash) {
@@ -32,29 +20,18 @@ if (window.location.hash) {
     });
 
   networkTimeline.innerHTML = '';
-  params.forEach(function(param) {
-    appendTimePeriod();
-    networkTimeline.querySelector('li:last-child .time').value = param[0];
-    networkTimeline.querySelector('li:last-child input.bandwidth').value = param[1];
-  });
 }
 
 // collect the simulation parameters
 const parameters = function() {
-  let times = Array.prototype.slice.call(document.querySelectorAll('.time'));
-  let bandwidths = document.querySelectorAll('input.bandwidth');
+  let networkTrace = document.querySelector('#network-trace').value;
   let playlists = Array.prototype.slice.call(document.querySelectorAll('input.bitrate'));
 
   return {
     playlists: playlists.map(function(input) {
       return +input.value;
     }),
-    bandwidths: times.reduce(function(conditions, time, i) {
-      return conditions.concat({
-        time: +time.value,
-        bandwidth: +bandwidths[i].value
-      });
-    }, [])
+    networkTrace
   };
 };
 

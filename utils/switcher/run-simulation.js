@@ -6,41 +6,47 @@ import {
   standardXHRResponse,
 } from '../../test/test-helpers.js';
 
-// the number of seconds of video in each segment
-const segmentDuration = 9; // seconds
-
-// the number of segments in the video
-const segmentCount = 100;
-
-// the length of the simulation
-const duration = segmentDuration * segmentCount;
+let simulationParams = {
+  // the number of seconds of video in each segment
+  segmentDuration: 10 // seconds
+};
 
 // the number of seconds it takes for a single bit to be
 // transmitted from the client to the server, or vice-versa
 const propagationDelay = 0.5;
 
 // send a mock playlist response
-const playlistResponse = function(request) {
+const playlistResponse = (request) => {
   let match = request.url.match(/\d+/);
   let bitrate = match[0];
 
-  let i = segmentCount;
+  let i = simulationParams.segmentCount;
   let response =
     '#EXTM3U\n' +
     '#EXT-X-PLAYLIST-TYPE:VOD\n' +
-    '#EXT-X-TARGETDURATION:' + segmentDuration + '\n';
+    '#EXT-X-TARGETDURATION:' + simulationParams.segmentDuration + '\n';
 
   while (i--) {
-    response += '#EXTINF:' + segmentDuration + ',\n';
-    response += bitrate + '-' + (segmentCount - i) + '.ts\n';
+    response += '#EXTINF:' + simulationParams.segmentDuration + ',\n';
+    response += bitrate + '-' + (simulationParams.segmentCount - i) + '.ts\n';
   }
   response += '#EXT-X-ENDLIST\n';
 
   return response;
 };
 
+const processBandwidthTrace = (traceText) => {
+  return traceText.split('\n').map((line) => line.split(' ').slice(-2).map(Number));
+}
+
 // run the simulation
 const runSimulation = function(options, done) {
+  let networkTrace = processBandwidthTrace(options.networkTrace);
+  let traceDurationInMs = networkTrace.reduce((acc, t) => acc + t[1], 0);
+  simulationParams.segmentCount = Math.floor(traceDurationInMs / 1000 / simulationParams.segmentDuration);
+  simulationParams.duration = simulationParams.segmentCount * simulationParams.segmentDuration;
+  simulationParams.durationInMs = simulationParams.duration * 1000;
+
   // SETUP
   let results = {
     bandwidth: [],
@@ -58,7 +64,9 @@ const runSimulation = function(options, done) {
   let buffered = 0;
   let currentTime = 0;
   let player = window.player = createPlayer();
-
+  let poptions = player.options();
+  poptions.hls.debug = true;
+  player.options(poptions);
   document.querySelector('#qunit-fixture').style = 'display: none;';
   player.src({
     src: 'http://example.com/master.m3u8',
@@ -83,22 +91,16 @@ const runSimulation = function(options, done) {
     get: () => currentTime
   });
 
-  options.bandwidths.sort(function(left, right) {
-    return left.time - right.time;
-  });
-
   // respond to the playlist requests
   let masterRequest = requests.shift();
-  masterRequest.bandwidth = options.bandwidths[0].bandwidth;
   masterRequest.respond(200, null, master);
 
   let playlistRequest = requests.shift();
-  playlistRequest.bandwidth = options.bandwidths[0].bandwidth;
   playlistRequest.respond(200, null, playlistResponse(playlistRequest));
 
   let sourceBuffer = player.tech_.hls.mediaSource.sourceBuffers[0];
   Object.defineProperty(sourceBuffer, 'buffered', {
-    get: () => buffered
+    get: getBuffer
   });
 
   // record the measured bandwidth for the playlist requests
@@ -107,21 +109,27 @@ const runSimulation = function(options, done) {
     bandwidth: player.tech_.hls.bandwidth
   });
 
+  player.play();
+  let tInSeconds = 0;
+  let segmentRequest = null;
+
   // advance time and collect simulation results
-  for (t = i = 0; t < duration; clock.tick(1000), t++) {
-    while (options.bandwidths[i + 1] && options.bandwidths[i + 1].time <= t) {
-      i++;
-    }
-    let bandwidth = options.bandwidths[i].bandwidth;
+  while (t < simulationParams.durationInMs && i < networkTrace.length) {
+    let bytesTransferred = networkTrace[i][0];
+    let period = networkTrace[i][1];
+    let bandwidth = (bytesTransferred / period) * 8 * 1000;
+    tInSeconds = t / 1000;
+    let periodInSeconds = period / 1000;
+
     results.bandwidth.push({
-      time: t,
+      time: tInSeconds,
       bandwidth: bandwidth
     });
-
+    let requestsCopy = requests.slice();
+    requests.length = 0;
     // schedule response deliveries
-    while (requests.length) {
-      let request = requests.shift();
-      request.bandwidth = bandwidth;
+    while (requestsCopy.length) {
+      let request = requestsCopy.shift();
 
       // playlist responses
       if (/\.m3u8$/.test(request.url)) {
@@ -131,54 +139,81 @@ const runSimulation = function(options, done) {
       }
 
       // segment responses
-      let segmentSize = request.url.match(/(\d+)-\d+/)[1] * segmentDuration;
+      if ()
+      segmentRequest = request;
+      break;
+      let segmentSize = Math.ceil((request.url.match(/(\d+)-\d+/)[1] * simulationParams.segmentDuration) / 8);
 
       //console.log(segmentSize);
       //console.log(bandwidth);
       console.log(request.url);
-      let timeToTake = segmentSize/bandwidth + (propagationDelay * 1);
 
-      setTimeout(() => {
+      let segmentProcessor = (localIndex, segmentDownloaded, segmentSize, start) => {
         if (request.aborted) {
           console.error("Request for segment aborted, download timedout")
           return;
         }
 
-        request.response = new Uint8Array(segmentSize * 0.125);
+        segmentDownloaded += networkTrace[localIndex][0];
+
+        if (segmentDownloaded < segmentSize) {
+          request.dispatchEvent({
+            type: 'progress',
+            lengthComputable: true,
+            target: request,
+            loaded: segmentDownloaded,
+            total: segmentSize
+          });
+          setTimeout(segmentProcessor, networkTrace[localIndex + 1][1], localIndex + 1, segmentDownloaded, segmentSize, start);
+          return;
+        }
+
+        if (!player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.hasPlayed_() ||
+             player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.mediaIndex !== null) {
+          buffered += simulationParams.segmentDuration;
+        }
+
+        request.response = new Uint8Array(segmentSize);
         request.respond(200, null, '');
         sourceBuffer.trigger('updateend');
 
         results.playlists.push({
-          time: t,
+          start: start,
+          end: tInSeconds,
           bitrate: +request.url.match(/(\d+)-\d+/)[1]
         });
-
-        buffered += segmentDuration;
         results.effectiveBandwidth.push({
-          time: t,
+          time: tInSeconds,
           bandwidth: player.tech_.hls.bandwidth
         });
-      }, timeToTake * 1000);
+      };
+      setTimeout(segmentProcessor, 0, i, 0, segmentSize, tInSeconds);
       // console.log(`taking ${timeToTake}s for response`);
     }
+    clock.tick(1);
+    period -= 1;
 
     results.buffered.push({
-      time: t,
+      time: tInSeconds,
       buffered: buffered
     });
 
     // simulate playback
     if (buffered > 0) {
-      buffered--;
-      currentTime++;
+      if (buffered < periodInSeconds) {
+        currentTime += buffered;
+        buffered = 0;
+      } else {
+        buffered -= periodInSeconds;
+        currentTime +=  periodInSeconds;
+      }
     }
+    i += 1;
+    t += period;
+    clock.tick(period);
+
     player.trigger('timeupdate');
   }
-
-  // update the fragment identifier so this scenario can be re-run easily
-  window.location.hash = '#' + options.bandwidths.map(function(interval) {
-    return 't' + interval.time + '=' + interval.bandwidth;
-  }).join('&');
 
   player.dispose();
   mse.restore();

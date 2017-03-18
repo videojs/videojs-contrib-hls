@@ -432,6 +432,10 @@ form label {
   stroke-dasharray: 5, 5;
 }
 
+.line.buffered {
+  stroke: #FF0000;
+}
+
 .buffer-empty {
   fill: #e44d26;
   opacity: 0.4;
@@ -444,7 +448,9 @@ form label {
   text-align: center;
   width: 960px;
 }
-
+.segment-bitrate {
+  opacity: 0.5;
+}
 /* ==========================================================================
    Simulation Parameters
    ========================================================================== */

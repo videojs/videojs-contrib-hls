@@ -8,7 +8,7 @@ let margin = {
   bottom: 30,
   left: 50
 };
-let width = 960 - margin.left - margin.right;
+let width = 1960 - margin.left - margin.right;
 let height = 500 - margin.top - margin.bottom;
 let svg = d3.select('.timeline').append('svg')
   .attr('width', width + margin.left + margin.right)
@@ -45,16 +45,24 @@ const displayTimeline = function(error, data) {
         })
         .y(function(data) {
           return y(data.bandwidth);
+        }),
+      bufferedLine = d3.svg.line()
+        .interpolate('basis')
+        .x(function(data) {
+          return x(data.time);
+        })
+        .y(function(data) {
+          return y(data.buffered * 10000);
         });
 
   x.domain(d3.extent(data.bandwidth, function(data) {
     return data.time;
   }));
-  y.domain([0, Math.max(d3.max(data.bandwidth, function(data) {
+  y.domain([0, Math.min(5000000, Math.max(d3.max(data.bandwidth, function(data) {
     return data.bandwidth;
   }), d3.max(data.options.playlists), d3.max(data.playlists, function(data) {
     return data.bitrate;
-  }))]);
+  })))]);
 
   // time axis
   svg.selectAll('.axis').remove();
@@ -111,6 +119,19 @@ const displayTimeline = function(error, data) {
   svg.selectAll('.segment-bitrate').remove();
   svg.selectAll('.segment-bitrate')
     .data(data.playlists)
+    .enter().append('rect')
+    .attr('class', 'dot segment-bitrate')
+    .attr('x', function(data) {
+      return x(data.start);
+    })
+    .attr('width', function(data) {
+      return x(1 + data.end - data.start);
+    })
+    .attr('y', function(playlist) {
+      return y(playlist.bitrate);
+    })
+    .attr('height', 4);
+/*
   .enter().append('circle')
     .attr('class', 'dot segment-bitrate')
     .attr('r', 3.5)
@@ -119,9 +140,15 @@ const displayTimeline = function(error, data) {
     })
     .attr('cy', function(playlist) {
       return y(playlist.bitrate);
-    });
+    });*/
 
   // highlight intervals when the buffer is empty
+  svg.selectAll('.buffered').remove();
+  svg.append('path')
+    .datum(data.buffered)
+    .attr('class', 'line buffered')
+    .attr('d', bufferedLine);
+
   svg.selectAll('.buffer-empty').remove();
   svg.selectAll('.buffer-empty')
     .data(data.buffered.reduce(function(result, sample) {

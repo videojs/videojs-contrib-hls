@@ -689,10 +689,28 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.decrypter_,
       this.createSimplifiedSegmentObj_(segmentInfo),
       // progress callback
-      (event, segment) => {
-        if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
+      (event, simpleSegment) => {
+        if (!this.pendingSegment_ || simpleSegment.requestId !== this.pendingSegment_.requestId) {
           return;
         }
+     /*   let buffered = this.sourceUpdater_.buffered();
+        if (simpleSegment.stats.roundTripTime > 2500) {
+          if (simpleSegment.stats.bandwidth * 1.5 < this.pendingSegment_.playlist.attributes.BANDWIDTH) {
+
+            if (buffered.length &&
+                buffered.end(buffered.length - 1) - this.currentTime_() > 30) {
+              this.bandwidth = simpleSegment.stats.bandwidth;
+            } else {
+              this.bandwidth = simpleSegment.stats.bandwidth / 2;
+            }
+
+            this.roundTrip = simpleSegment.stats.roundTripTime;
+            this.bytesReceived = simpleSegment.stats.bytesReceived;
+            this.abort();
+            this.trigger({ type: 'bandwidthupdate', ignore: true});
+            this.trigger('bandwidthupdate');
+          }
+        }*/
         // TODO: Use progress-based bandwidth to early abort low-bandwidth situations
         this.trigger('progress');
       },
@@ -812,6 +830,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // an error occurred from the active pendingSegment_ so reset everything
     if (error) {
       this.pendingSegment_ = null;
+      this.state = 'READY';
 
       // the requests were aborted just record the aborted stat and exit
       // this is not a true error condition and nothing corrective needs
@@ -821,7 +840,6 @@ export default class SegmentLoader extends videojs.EventTarget {
         return;
       }
 
-      this.state = 'READY';
       this.pause();
 
       // the error is really just that at least one of the requests timed-out
@@ -830,6 +848,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       if (error.code === REQUEST_ERRORS.TIMEOUT) {
         this.mediaRequestsTimedout += 1;
         this.bandwidth = 1;
+        this.bytesReceived = 1;
         this.roundTrip = NaN;
         this.trigger('bandwidthupdate');
         return;
@@ -847,6 +866,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     // generated for ABR purposes
     this.bandwidth = simpleSegment.stats.bandwidth;
     this.roundTrip = simpleSegment.stats.roundTripTime;
+    this.bytesReceived = simpleSegment.stats.bytesReceived;
+    this.trigger({ type: 'bandwidthupdate', ignore: true});
 
     // if this request included an initialization segment, save that data
     // to the initSegment cache
@@ -978,9 +999,14 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.resetEverything();
       return;
     }
-
+    let buffered = this.sourceUpdater_.buffered();
     // Don't do a rendition switch unless we have enough time to get a sync segment
     // and conservatively guess
+    // if (segmentInfo.playlist.attributes.BANDWIDTH > this.bandwidth ||
+        // (buffered.length &&
+        // buffered.end(buffered.length - 1) - this.currentTime_() > 30)) {
+      // this.trigger('bandwidthupdate');
+    // }
     if (isWalkingForward) {
       this.trigger('bandwidthupdate');
     }

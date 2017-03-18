@@ -104,14 +104,6 @@ const getProgressStats = (progressEvent) => {
 const handleErrors = (error, request) => {
   const response = request.response;
 
-  if (!request.aborted && error) {
-    return {
-      status: request.status,
-      message: 'HLS request errored at URL: ' + request.uri,
-      code: REQUEST_ERRORS.FAILURE,
-      xhr: request
-    };
-  }
 
   if (request.timedout) {
     return {
@@ -127,6 +119,15 @@ const handleErrors = (error, request) => {
       status: request.status,
       message: 'HLS request aborted at URL: ' + request.uri,
       code: REQUEST_ERRORS.ABORTED,
+      xhr: request
+    };
+  }
+
+  if (error) {
+    return {
+      status: request.status,
+      message: 'HLS request errored at URL: ' + request.uri,
+      code: REQUEST_ERRORS.FAILURE,
       xhr: request
     };
   }
