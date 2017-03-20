@@ -1077,28 +1077,52 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
                            'media.m3u8\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                            'media1.m3u8\n');
-
   assert.equal(typeof this.player.tech_.hls.playlists.media_,
               'undefined',
               'no media is initially set');
-
   // media
-  this.requests[1].respond(400);
+  this.requests[1].respond(404);
   url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
   media = this.player.tech_.hls.playlists.master.playlists[url];
   assert.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
 
   // request for the final available media
-  this.requests[2].respond(400);
+  this.requests[2].respond(404);
   url = this.requests[2].url.slice(this.requests[2].url.lastIndexOf('/') + 1);
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
-  // media didn't be blacklisted because it's fianl rendition
+  // media wasn't blacklisted because it's final rendition
   assert.ok(!media.excludeUntil, 'media not blacklisted after playlist 404');
-  assert.equal(this.env.log.warn.calls, 0, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.calls, 0, 'no warning logged for blacklist');
+
+  this.clock.tick(10 * 1000);
+
+  // continue loading the final remaining playlist after it wasn't blacklisted
+  assert.strictEqual(4, this.requests.length, 'one more request was made');
+  assert.strictEqual(this.requests[3].url,
+                     absoluteUrl('manifest/media1.m3u8'),
+                     'media playlist requested');
+
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');
+});
+
+QUnit.test('never blacklist the playlist if its the only playlist', function(assert) {
+  let media;
+
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  this.requests[0].respond(404);
+  media = this.player.tech_.hls.mediaSource;
+
+  // media wasn't blacklisted because it's fianl rendition
+  assert.ok(!media.excludeUntil, 'media not blacklisted after playlist 404');
+  assert.equal(this.env.log.warn.calls, 0, 'no warning logged for blacklist');
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function(assert) {
@@ -2768,7 +2792,7 @@ QUnit.module('HLS - Encryption', {
 
 QUnit.test('blacklists playlist if key requests fail', function(assert) {
   let hls = HlsSourceHandler('html5').handleSource({
-    src: 'manifest/encrypted-media.m3u8',
+    src: 'manifest/encrypted-master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   }, this.tech);
 
@@ -2808,7 +2832,7 @@ QUnit.test('blacklists playlist if key requests fail', function(assert) {
 
 QUnit.test('treats invalid keys as a key request failure and blacklists playlist', function(assert) {
   let hls = HlsSourceHandler('html5').handleSource({
-    src: 'manifest/encrypted-media.m3u8',
+    src: 'manifest/encrypted-master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   }, this.tech);
 

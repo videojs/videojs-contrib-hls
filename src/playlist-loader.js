@@ -270,7 +270,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * @return {Boolean} true if on final rendition
    */
   loader.isFinalRendition_ = function() {
-    return (loader.master.playlists.filter(isEnabled).length === 1);
+    return (loader.master && loader.master.playlists.filter(isEnabled).length === 1);
   };
 
    /**
@@ -401,9 +401,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       }
 
       if (error) {
-        let startingState = 'HAVE_METADATA';
-
-        return playlistRequestError(request, loader.media().uri, startingState);
+        return playlistRequestError(request, loader.media().uri, 'HAVE_METADATA');
       }
       haveMetadata(request, loader.media().uri);
     });
@@ -433,17 +431,15 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * start loading of the playlist
    */
   loader.load = (isFinalRendition) => {
-    let refreshDelay;
-
+    window.clearTimeout(mediaUpdateTimeout);
     if (isFinalRendition) {
-      refreshDelay = loader.media() ? loader.media().targetDuration * 1000 : 10 * 1000;
-      window.clearTimeout(mediaUpdateTimeout);
+      let refreshDelay = loader.media() ? (loader.media().targetDuration / 2) * 1000 : 5 * 1000;
+
       mediaUpdateTimeout = window.setTimeout(loader.load.bind(null, false), refreshDelay);
       return;
     }
-    window.clearTimeout(mediaUpdateTimeout);
     if (loader.started) {
-      if (!loader.media().endList) {
+      if (loader.media() && !loader.media().endList) {
         loader.trigger('mediaupdatetimeout');
       } else {
         loader.trigger('loadedplaylist');
@@ -452,12 +448,12 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       loader.start();
     }
   };
+
   /**
    * start loading of the playlist
    */
   loader.start = () => {
     loader.started = true;
-    let startingState = loader.state;
 
     // request the specified URL
     request = this.hls_.xhr({
@@ -486,8 +482,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         };
         if (loader.state === 'HAVE_NOTHING') {
           loader.started = false;
-        } else {
-          loader.state = startingState;
         }
         return loader.trigger('error');
       }
