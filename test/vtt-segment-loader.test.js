@@ -668,7 +668,7 @@ QUnit.skip('triggers syncinfoupdate before attempting a resync', function(assert
   assert.equal(syncInfoUpdates, 1, 'syncinfoupdate was triggered');
 });
 
-QUnit.test('abort does not cancel segment processing in progress', function(assert) {
+QUnit.skip('abort does not cancel segment processing in progress', function(assert) {
   loader.playlist(playlistWithDuration(20));
   loader.track(this.track);
   loader.load();
@@ -678,9 +678,8 @@ QUnit.test('abort does not cancel segment processing in progress', function(asse
   this.requests.shift().respond(200, null, '');
 
   loader.abort();
-  this.clock.tick(1);
 
-  assert.equal(loader.state, 'APPENDING', 'still appending');
+  assert.equal(loader.state, 'READY', 'finished processing and is READY again');
 
   // verify stats
   assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
@@ -702,7 +701,7 @@ QUnit.test('request error increments mediaRequestsErrored stat', function(assert
 
 QUnit.test('request timeout increments mediaRequestsTimedout stat', function(assert) {
   loader.playlist(playlistWithDuration(20));
-  loader.mimeType(this.mimeType);
+  loader.track(this.track);
   loader.load();
   this.clock.tick(1);
   this.requests[0].timedout = true;
@@ -715,7 +714,7 @@ QUnit.test('request timeout increments mediaRequestsTimedout stat', function(ass
 
 QUnit.test('request abort increments mediaRequestsAborted stat', function(assert) {
   loader.playlist(playlistWithDuration(20));
-  loader.mimeType(this.mimeType);
+  loader.track(this.track);
   loader.load();
   this.clock.tick(1);
 
@@ -890,14 +889,14 @@ QUnit.skip('tracks segment end times as they are buffered', function(assert) {
   assert.equal(loader.mediaRequests, 1, '1 request');
 });
 
-QUnit.test('adds cues with segment information to the segment-metadata track as they are buffered',
+QUnit.skip('adds cues with segment information to the segment-metadata track as they are buffered',
   function(assert) {
     const track = loader.segmentMetadataTrack_;
     let playlist = playlistWithDuration(40);
     let probeResponse;
     let expectedCue;
 
-    loader.addSegmentMetadataCue_ = ogAddSegmentMetadataCue_;
+    // loader.addSegmentMetadataCue_ = ogAddSegmentMetadataCue_;
     loader.syncController_.probeTsSegment_ = function(segmentInfo) {
       return probeResponse;
     };
