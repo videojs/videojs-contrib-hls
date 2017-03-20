@@ -143,7 +143,7 @@ const stableSort = function(array, sortFn) {
  * @return {Playlist} the highest bitrate playlist less than the currently detected
  * bandwidth, accounting for some amount of bandwidth variance
  */
-Hls.STANDARD_PLAYLIST_SELECTOR = function(bandwidthTracker) {
+Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   let sortedPlaylists = this.playlists.master.playlists.slice();
   let bandwidthPlaylists = [];
   let bandwidthBestVariant;
@@ -165,7 +165,6 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function(bandwidthTracker) {
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
   systemBandwidth = this.systemBandwidth;
-
   bandwidthPlaylists = sortedPlaylists.filter(function(elem) {
     return elem.attributes &&
            elem.attributes.BANDWIDTH &&

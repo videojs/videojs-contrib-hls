@@ -56,6 +56,26 @@ const runSimulation = function(options, done) {
     options: options
   };
   let env = useFakeEnvironment();
+
+  // Sinon 1.10.2 handles abort incorrectly (triggering the error event)
+  // Later versions fixed this but broke the ability to set the response
+  // to an arbitrary object (in our case, a typed array).
+  XMLHttpRequest.prototype = Object.create(XMLHttpRequest.prototype);
+  XMLHttpRequest.prototype.abort = function abort() {
+    this.aborted = true;
+    this.response = this.responseText = '';
+    this.errorFlag = true;
+    this.requestHeaders = {};
+    this.responseHeaders = {};
+
+    if (this.readyState > 0 /*FakeXMLHttpRequest.UNSENT*/ && this.sendFlag) {
+        this.readyStateChange(4); /*FakeXMLHttpRequest.DONE*/
+        this.sendFlag = false;
+    }
+
+    this.readyState = 0; /*FakeXMLHttpRequest.UNSENT;*/
+  };
+
   let clock = env.clock;
   let requests = env.requests;
   let mse = useFakeMediaSource();
@@ -106,7 +126,7 @@ const runSimulation = function(options, done) {
     time: 0,
     bandwidth: player.tech_.hls.bandwidth
   });
-
+  player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.segmentMetadataTrack_ = null;
   player.play();
 
   let t = 0;
@@ -156,8 +176,6 @@ const runSimulation = function(options, done) {
         intervalParams.timeRemaining -= j;
       }
 
-    // schedule response deliveries
-//    while (intervalParams.bytesRemaining > 0 && (segmentRequest || requests.length)) {
       if (!segmentRequest && requests.length) {
         let request = requests.shift();
 
@@ -267,9 +285,6 @@ const runSimulation = function(options, done) {
       }
     }
     i += 1;
-//    t += period;
-//    clock.tick(period);
-
     player.trigger('timeupdate');
   }
   console.timeEnd('Simulation Ended');
