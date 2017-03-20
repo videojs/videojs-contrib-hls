@@ -31,7 +31,7 @@ const displayTimeline = function(error, data) {
         .orient('left'),
 
       bandwidthLine = d3.svg.line()
-        .interpolate('basis')
+        .interpolate('linear')
         .x(function(data) {
           return x(data.time);
         })
@@ -39,7 +39,7 @@ const displayTimeline = function(error, data) {
           return y(data.bandwidth);
         }),
       effectiveBandwidthLine = d3.svg.line()
-        .interpolate('basis')
+        .interpolate('monotone')
         .x(function(data) {
           return x(data.time);
         })
@@ -47,7 +47,7 @@ const displayTimeline = function(error, data) {
           return y(data.bandwidth);
         }),
       bufferedLine = d3.svg.line()
-        .interpolate('basis')
+        .interpolate('linear')
         .x(function(data) {
           return x(data.time);
         })
@@ -127,10 +127,19 @@ const displayTimeline = function(error, data) {
     .attr('width', function(data) {
       return x(1 + data.end - data.start);
     })
-    .attr('y', function(playlist) {
-      return y(playlist.bitrate);
+    .attr('y', function(data) {
+      return y(data.bitrate) - 3;
     })
-    .attr('height', 4);
+    .attr('height', 6)
+    .classed('timedout', function(data) {
+      return data.timedout;
+    })
+    .classed('aborted', function(data) {
+      return data.aborted;
+    })
+    .classed('long', function(data) {
+      return data.end - data.start > data.duration;
+    });
 /*
   .enter().append('circle')
     .attr('class', 'dot segment-bitrate')
@@ -140,7 +149,8 @@ const displayTimeline = function(error, data) {
     })
     .attr('cy', function(playlist) {
       return y(playlist.bitrate);
-    });*/
+    });
+*/
 
   // highlight intervals when the buffer is empty
   svg.selectAll('.buffered').remove();
@@ -151,20 +161,20 @@ const displayTimeline = function(error, data) {
 
   svg.selectAll('.buffer-empty').remove();
   svg.selectAll('.buffer-empty')
-    .data(data.buffered.reduce(function(result, sample) {
+    .data(data.buffered.reduce(function(result, sample, index) {
       var last = result[result.length - 1];
+
       if (sample.buffered === 0) {
-        if (last && sample.time === last.end + 1) {
+        if (last && last.index === index - 1) {
           // add this sample to the interval we're accumulating
-          return result.slice(0, result.length - 1).concat({
-            start: last.start,
-            end: sample.time
-          });
+          last.end = sample.time;
+          last.index = index;
         } else {
           // this sample starts a new interval
-          return result.concat({
+          result.push({
             start: sample.time,
-            end: sample.time
+            end: sample.time,
+            index: index
           });
         }
       }

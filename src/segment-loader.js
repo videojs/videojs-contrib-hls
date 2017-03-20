@@ -1002,14 +1002,9 @@ export default class SegmentLoader extends videojs.EventTarget {
     let buffered = this.sourceUpdater_.buffered();
     // Don't do a rendition switch unless we have enough time to get a sync segment
     // and conservatively guess
-    // if (segmentInfo.playlist.attributes.BANDWIDTH > this.bandwidth ||
-        // (buffered.length &&
-        // buffered.end(buffered.length - 1) - this.currentTime_() > 30)) {
-      // this.trigger('bandwidthupdate');
-    // }
-    if (isWalkingForward) {
+//    if (isWalkingForward) {
       this.trigger('bandwidthupdate');
-    }
+//    }
     this.trigger('progress');
 
     // any time an update finishes and the last segment is in the

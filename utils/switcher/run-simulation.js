@@ -55,8 +55,6 @@ const runSimulation = function(options, done) {
     buffered: [],
     options: options
   };
-  let t = 0;
-  let i = 0;
   let env = useFakeEnvironment();
   let clock = env.clock;
   let requests = env.requests;
@@ -110,97 +108,157 @@ const runSimulation = function(options, done) {
   });
 
   player.play();
+
+  let t = 0;
+  let i = 0;
   let tInSeconds = 0;
   let segmentRequest = null;
+  let segmentSize = null;
+  let segmentDownloaded = 0;
+  let segmentStartTime;
+
+  console.log('Simulation Started for', simulationParams.duration, 'seconds');
+  console.time('Simulation Ended');
 
   // advance time and collect simulation results
   while (t < simulationParams.durationInMs && i < networkTrace.length) {
-    let bytesTransferred = networkTrace[i][0];
-    let period = networkTrace[i][1];
-    let bandwidth = (bytesTransferred / period) * 8 * 1000;
-    tInSeconds = t / 1000;
-    let periodInSeconds = period / 1000;
+    let intervalParams = {
+      bytesTotal: networkTrace[i][0],
+      bytesRemaining: networkTrace[i][0],
+      // in milliseconds
+      timeTotal: networkTrace[i][1],
+      timeRemaining: networkTrace[i][1],
+      // in bits per second
+      bandwidth: Math.round((networkTrace[i][0] * 8) / (networkTrace[i][1] / 1000)),
+      bytesPerMs: networkTrace[i][0] / networkTrace[i][1]
+    };
 
     results.bandwidth.push({
       time: tInSeconds,
-      bandwidth: bandwidth
+      bandwidth: intervalParams.bandwidth
     });
-    let requestsCopy = requests.slice();
-    requests.length = 0;
-    // schedule response deliveries
-    while (requestsCopy.length) {
-      let request = requestsCopy.shift();
 
-      // playlist responses
-      if (/\.m3u8$/.test(request.url)) {
-        // for simplicity, playlist responses have zero trasmission time
-        request.respond(200, null, playlistResponse(request));
-        continue;
+    for (let j = 1; j <= intervalParams.timeTotal; j++) {
+      clock.tick(1);
+      t += 1;
+      tInSeconds = t / 1000;
+
+      // simulate playback
+      if (!player.paused() && buffered > 0 && buffered < j / 1000) {
+        // Then buffered becomes zero and current time can only advance by
+        // the buffer duration
+        currentTime += buffered;
+        buffered = 0;
+        results.buffered.push({
+          time: tInSeconds,
+          buffered: buffered
+        });
+        intervalParams.timeRemaining -= j;
       }
 
-      // segment responses
-      if ()
-      segmentRequest = request;
-      break;
-      let segmentSize = Math.ceil((request.url.match(/(\d+)-\d+/)[1] * simulationParams.segmentDuration) / 8);
+    // schedule response deliveries
+//    while (intervalParams.bytesRemaining > 0 && (segmentRequest || requests.length)) {
+      if (!segmentRequest && requests.length) {
+        let request = requests.shift();
 
-      //console.log(segmentSize);
-      //console.log(bandwidth);
-      console.log(request.url);
-
-      let segmentProcessor = (localIndex, segmentDownloaded, segmentSize, start) => {
-        if (request.aborted) {
-          console.error("Request for segment aborted, download timedout")
-          return;
+        // playlist responses
+        if (/\.m3u8$/.test(request.url)) {
+          // for simplicity, playlist responses have zero trasmission time
+          request.respond(200, null, playlistResponse(request));
+          continue;
         }
 
-        segmentDownloaded += networkTrace[localIndex][0];
+        segmentRequest = request;
+        segmentSize = Math.ceil((segmentRequest.url.match(/(\d+)-\d+/)[1] * simulationParams.segmentDuration) / 8);
+        segmentDownloaded = 0;
+        segmentStartTime = tInSeconds;
+      }
 
-        if (segmentDownloaded < segmentSize) {
-          request.dispatchEvent({
+      if (segmentRequest) {
+        segmentDownloaded += intervalParams.bytesPerMs;
+
+        if (segmentRequest.timedout) {
+          results.playlists.push({
+            start: segmentStartTime,
+            end: tInSeconds,
+            duration: simulationParams.segmentDuration,
+            bitrate: +segmentRequest.url.match(/(\d+)-\d+/)[1],
+            timedout: true
+          });
+          results.effectiveBandwidth.push({
+            time: (segmentStartTime + tInSeconds) / 2,
+            bandwidth: player.tech_.hls.bandwidth
+          });
+          segmentRequest = null;
+          segmentSize = null;
+          console.error("Request for segment timedout");
+          continue;
+        }
+
+        if (segmentRequest.aborted) {
+          results.playlists.push({
+            start: segmentStartTime,
+            end: tInSeconds,
+            duration: simulationParams.segmentDuration,
+            bitrate: +segmentRequest.url.match(/(\d+)-\d+/)[1],
+            aborted: true
+          });
+          results.effectiveBandwidth.push({
+            time: (segmentStartTime + tInSeconds) / 2,
+            bandwidth: player.tech_.hls.bandwidth
+          });
+          segmentRequest = null;
+          segmentSize = null;
+          console.error("Request for segment aborted");
+          continue;
+        }
+
+        if (segmentDownloaded >= segmentSize) {
+          if (!currentTime ||
+               player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.mediaIndex !== null) {
+            buffered += simulationParams.segmentDuration;
+          }
+          segmentRequest.response = new Uint8Array(segmentSize);
+          segmentRequest.respond(200, null, '');
+          sourceBuffer.trigger('updateend');
+
+          results.playlists.push({
+            start: segmentStartTime,
+            end: tInSeconds,
+            duration: simulationParams.segmentDuration,
+            bitrate: +segmentRequest.url.match(/(\d+)-\d+/)[1]
+          });
+          results.effectiveBandwidth.push({
+            time: (segmentStartTime + tInSeconds) / 2,
+            bandwidth: player.tech_.hls.bandwidth
+          });
+
+          segmentRequest = null;
+          segmentSize = null;
+        } else if (t % 250 === 0) {
+          segmentRequest.dispatchEvent({
             type: 'progress',
             lengthComputable: true,
-            target: request,
+            target: segmentRequest,
             loaded: segmentDownloaded,
             total: segmentSize
           });
-          setTimeout(segmentProcessor, networkTrace[localIndex + 1][1], localIndex + 1, segmentDownloaded, segmentSize, start);
-          return;
         }
-
-        if (!player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.hasPlayed_() ||
-             player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.mediaIndex !== null) {
-          buffered += simulationParams.segmentDuration;
-        }
-
-        request.response = new Uint8Array(segmentSize);
-        request.respond(200, null, '');
-        sourceBuffer.trigger('updateend');
-
-        results.playlists.push({
-          start: start,
-          end: tInSeconds,
-          bitrate: +request.url.match(/(\d+)-\d+/)[1]
-        });
-        results.effectiveBandwidth.push({
-          time: tInSeconds,
-          bandwidth: player.tech_.hls.bandwidth
-        });
-      };
-      setTimeout(segmentProcessor, 0, i, 0, segmentSize, tInSeconds);
-      // console.log(`taking ${timeToTake}s for response`);
+      }
     }
-    clock.tick(1);
-    period -= 1;
 
     results.buffered.push({
       time: tInSeconds,
       buffered: buffered
     });
 
+    let periodInSeconds = intervalParams.timeRemaining / 1000;
+
     // simulate playback
-    if (buffered > 0) {
+    if (!player.paused() && buffered > 0) {
       if (buffered < periodInSeconds) {
+        // Then buffered becomes zero and current time can only advance by
+        // the buffer duration
         currentTime += buffered;
         buffered = 0;
       } else {
@@ -209,11 +267,12 @@ const runSimulation = function(options, done) {
       }
     }
     i += 1;
-    t += period;
-    clock.tick(period);
+//    t += period;
+//    clock.tick(period);
 
     player.trigger('timeupdate');
   }
+  console.timeEnd('Simulation Ended');
 
   player.dispose();
   mse.restore();

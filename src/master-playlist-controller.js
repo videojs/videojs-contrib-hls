@@ -221,7 +221,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     Hls = externHls;
 
-    this.bandwidthTracker_ = new BandwidthTracker(10);
+    this.bandwidthTracker_ = new BandwidthTracker(20);
     this.withCredentials = withCredentials;
     this.tech_ = tech;
     this.hls_ = tech.hls;
