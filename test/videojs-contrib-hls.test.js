@@ -1096,10 +1096,78 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');
 });
 
-QUnit.test('blacklists playlist if it has stopped being updated', function(assert) {
-  let media;
-  let url;
+QUnit.test('detect if the playlist stuck at the end', function(assert) {
+  let playlist;
 
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  this.standardXHRResponse(this.requests.shift());
+  let hls = this.player.tech_.hls;
+
+  playlist = hls.selectPlaylist();
+  // not stuck at playlist end when no seekable, even if empty buffer
+  // and positive currentTime
+  hls.masterPlaylistController_.seekable = function() {
+    return videojs.createTimeRange();
+  };
+  this.player.tech_.buffered = function() {
+    return videojs.createTimeRange();
+  };
+  this.player.tech_.setCurrentTime(170);
+  assert.ok(!hls.masterPlaylistController_.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+
+  // not stuck at playlist end when no seekable, even if empty buffer
+  // and currentTime 0
+  this.player.tech_.setCurrentTime(0);
+  assert.ok(!hls.masterPlaylistController_.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+
+  // not stuck at playlist end when no seekable but more buffer
+  this.player.tech_.buffered = function() {
+    return videojs.createTimeRange(0, 170);
+  };
+  assert.ok(!hls.masterPlaylistController_.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+
+  // not stuck at playlist end when currentTime not at seekable end
+  // even if the buffer is empty
+  hls.masterPlaylistController_.seekable = function() {
+    return videojs.createTimeRange(0, 130);
+  };
+  this.player.tech_.setCurrentTime(50);
+  this.player.tech_.buffered = function() {
+    return videojs.createTimeRange();
+  };
+  Hls.Playlist.playlistEnd = function() {
+    return 130;
+  };
+  assert.ok(!hls.masterPlaylistController_.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+
+  // stuck at playlist end when there is no buffer and playhead
+  // reached absolute end of playlist
+  this.player.tech_.setCurrentTime(160);
+  Hls.Playlist.playlistEnd = function() {
+    return 160;
+  };
+  assert.ok(hls.masterPlaylistController_.stuckAtPlaylistEnd_(playlist), 'stuck at playlist end');
+
+  // stuck at playlist end when current time reach to the buffer end
+  // and buffer has reached absolute end of playlist
+  hls.masterPlaylistController_.seekable = function() {
+    return videojs.createTimeRange(90, 130);
+  };
+  this.player.tech_.buffered = function() {
+    return videojs.createTimeRange(0, 170);
+  };
+  this.player.tech_.setCurrentTime(170);
+  Hls.Playlist.playlistEnd = function() {
+    return 170;
+  };
+  assert.ok(hls.masterPlaylistController_.stuckAtPlaylistEnd_(playlist), 'stuck at playlist end');
+});
+
+QUnit.test('blacklists playlist if it has stopped being updated', function(assert) {
   this.player.src({
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1107,12 +1175,7 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
   openMediaSource(this.player, this.clock);
   this.player.tech_.triggerReady();
 
-  this.requests[0].respond(200, null,
-                           '#EXTM3U\n' +
-                           '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
-                           'media.m3u8\n' +
-                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
-                           'media1.m3u8\n');
+  this.standardXHRResponse(this.requests.shift());
 
   this.player.tech_.hls.masterPlaylistController_.seekable = function() {
     return videojs.createTimeRange(90, 130);
@@ -1124,16 +1187,13 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
   Hls.Playlist.playlistEnd = function() {
     return 170;
   };
-  this.requests[1].respond(200, null,
+  this.requests.shift().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:16\n' +
                            '#EXTINF:10,\n' +
                            '16.ts\n');
 
-  url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
-  media = this.player.tech_.hls.playlists.master.playlists[url];
-
-  assert.ok(!media.excludeUntil, 'playlist didnt be blacklisted');
+  assert.ok(!this.player.tech_.hls.playlists.media().excludeUntil, 'playlist was not blacklisted');
   assert.equal(this.env.log.warn.calls, 0, 'no warning logged for blacklist');
 
   this.player.tech_.trigger('play');
@@ -1141,16 +1201,13 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
   // trigger a refresh
   this.clock.tick(10 * 1000);
 
-  this.requests[2].respond(200, null,
+  this.requests.shift().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:16\n' +
                            '#EXTINF:10,\n' +
                            '16.ts\n');
 
-  url = this.requests[2].url.slice(this.requests[2].url.lastIndexOf('/') + 1);
-  media = this.player.tech_.hls.playlists.master.playlists[url];
-
-  assert.ok(media.excludeUntil > 0, 'playlist blacklisted for some time');
+  assert.ok(this.player.tech_.hls.playlists.media().excludeUntil > 0, 'playlist blacklisted for some time');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
 });
 

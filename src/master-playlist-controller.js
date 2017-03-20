@@ -413,6 +413,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
       let updatedPlaylist = this.masterPlaylistLoader_.media();
       let playlistOutdated = this.stuckAtPlaylistEnd_(updatedPlaylist);
 
+      // when the playlist is unchanged and the playhead is stuck at the edge
+      // of playlist, we will blacklist the outdated playlist if it's not the final
+      // rendition to give the player a chance to re-adjust to the proper live point
+      // on a different playlist
       if (playlistOutdated) {
         this.blacklistCurrentPlaylist();
       }
@@ -807,38 +811,29 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {boolean} whether the playlist has stopped being updated or not
    */
   stuckAtPlaylistEnd_(playlist) {
-    let buffered;
-    let lastBufferedEnd;
-    let bufferedTime;
-    let seekableEnd;
-    let currentTime;
-    let playEnd;
-    let endTime;
+    let seekable = this.seekable();
 
-    buffered = this.tech_.buffered();
-    currentTime = this.tech_.currentTime();
-
-    if (buffered.length) {
-      lastBufferedEnd = buffered.end(buffered.length - 1);
-    }
-    bufferedTime = lastBufferedEnd - currentTime;
-
-    // the end of the current playlist
-    // playEnd = this.playlistEnd(playlist);
-    playEnd = Hls.Playlist.playlistEnd(playlist);
-
-    // the time between end of the playlist and the end of the buffered
-    endTime = playEnd - lastBufferedEnd;
-
-    if (this.seekable().length) {
-      seekableEnd = this.seekable().end(0);
+    if (!seekable.length) {
+      // playlist doesn't have enough information to determine whether we are stuck
+      return false;
     }
 
-    // return true if the playhead is at the end of the buffer
-    // and the buffered data ends at the end of the last segment in the playlist
-    return bufferedTime <= Ranges.TIME_FUDGE_FACTOR &&
-           endTime <= Ranges.TIME_FUDGE_FACTOR &&
-           currentTime > seekableEnd;
+    // does not use the safe live end to calculate playlist end, since we
+    // don't want to say we are stuck while there is still content
+    let absolutePlaylistEnd = Hls.Playlist.playlistEnd(playlist);
+    let currentTime = this.tech_.currentTime();
+    let buffered = this.tech_.buffered();
+
+    if (!buffered.length) {
+      // playhead reached absolute end of playlist
+      return absolutePlaylistEnd - currentTime <= Ranges.TIME_FUDGE_FACTOR;
+    }
+    let bufferedEnd = buffered.end(buffered.length - 1);
+
+    // return true if there is too little buffer left and
+    // buffer has reached absolute end of playlist
+    return bufferedEnd - currentTime <= Ranges.TIME_FUDGE_FACTOR &&
+           absolutePlaylistEnd - bufferedEnd <= Ranges.TIME_FUDGE_FACTOR;
   }
 
   /**

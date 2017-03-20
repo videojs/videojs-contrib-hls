@@ -308,7 +308,18 @@ const calculateExpiredTime = function(playlist) {
   return null;
 };
 
-const calculatePlaylistEnd_ = function(playlist, useSafeLiveEnd) {
+/**
+ * Calculates the playlist end time or seekable end time depends on using
+ * safe live end or not
+ *
+ * @param {Object} playlist a media playlist object
+ * @param {Object|null} useSafeLiveEnd a boolean value if true then live playlists
+ *                      should not expose three segment durations worth of content
+ *                      from the end of the playlist
+ * @returns {Number} the end time of playlist or the end point of seekable range
+ * @function calculatePlaylistEnd
+ */
+export const playlistEnd = function(playlist, useSafeLiveEnd) {
   if (!playlist || !playlist.segments) {
     return null;
   }
@@ -321,24 +332,12 @@ const calculatePlaylistEnd_ = function(playlist, useSafeLiveEnd) {
   if (expired === null) {
     return null;
   }
-  endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) : Math.max(0, playlist.segments.length);
-  let end = intervalDuration(playlist,
-                             playlist.mediaSequence + endSequence,
-                             expired);
+  endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
+                                 Math.max(0, playlist.segments.length);
 
-  return end;
-};
-
-/**
- * Returns the end point the the playlist
- *
- * @param {Object} playlist a media playlist object
- * @returns {Object} an object containing the time length of the playlist
- * @function playlistEnd
- */
-
-export const playlistEnd = function(playlist) {
-  return calculatePlaylistEnd_(playlist);
+  return intervalDuration(playlist,
+                          playlist.mediaSequence + endSequence,
+                          expired);
 };
 
 /**
@@ -357,7 +356,7 @@ export const playlistEnd = function(playlist) {
 export const seekable = function(playlist) {
   let useSafeLiveEnd = true;
   let seekableStart = calculateExpiredTime(playlist);
-  let seekableEnd = calculatePlaylistEnd_(playlist, useSafeLiveEnd);
+  let seekableEnd = playlistEnd(playlist, useSafeLiveEnd);
 
   if (seekableEnd === null) {
     return createTimeRange();
