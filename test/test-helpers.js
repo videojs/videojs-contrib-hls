@@ -327,19 +327,21 @@ export const playlistWithDuration = function(time, conf) {
     discontinuityStarts: [],
     segments: [],
     endList: conf && typeof conf.endList !== 'undefined' ? !!conf.endList : true,
-    uri: conf && typeof conf.uri !== 'undefined' ? conf.uri : 'playlist.m3u8'
+    uri: conf && typeof conf.uri !== 'undefined' ? conf.uri : 'playlist.m3u8',
+    discontinuitySequence: conf && conf.discontinuitySequence ? conf.discontinuitySequence : 0
   };
   let count = Math.floor(time / 10);
   let remainder = time % 10;
   let i;
   let isEncrypted = conf && conf.isEncrypted;
+  let extension = conf && conf.extension ? conf.extension : '.ts';
 
   for (i = 0; i < count; i++) {
     result.segments.push({
-      uri: i + '.ts',
-      resolvedUri: i + '.ts',
+      uri: i + extension,
+      resolvedUri: i + extension,
       duration: 10,
-      timeline: 0
+      timeline: result.discontinuitySequence
     });
     if (isEncrypted) {
       result.segments[i].key = {
@@ -350,9 +352,9 @@ export const playlistWithDuration = function(time, conf) {
   }
   if (remainder) {
     result.segments.push({
-      uri: i + '.ts',
+      uri: i + extension,
       duration: remainder,
-      timeline: 0
+      timeline: result.discontinuitySequence
     });
   }
   return result;

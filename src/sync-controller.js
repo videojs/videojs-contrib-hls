@@ -339,6 +339,13 @@ export default class SyncController extends videojs.EventTarget {
     };
   }
 
+  timestampOffsetForTimeline(timeline) {
+    if (typeof this.timelines[timeline] === 'undefined') {
+      return null;
+    }
+    return this.timelines[timeline].time;
+  }
+
   /**
    * Use the "media time" for a segment to generate a mapping to "display time" and
    * save that display time to the segment.
@@ -359,6 +366,7 @@ export default class SyncController extends videojs.EventTarget {
         mapping: segmentInfo.timestampOffset - timingInfo.start
       };
       this.timelines[segmentInfo.timeline] = mappingObj;
+      this.trigger('timestampoffset');
 
       segment.start = segmentInfo.timestampOffset;
       segment.end = timingInfo.end + mappingObj.mapping;
