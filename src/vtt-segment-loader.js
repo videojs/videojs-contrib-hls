@@ -10,6 +10,7 @@ import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
+const VTT_LINE_TERMINATORS = new Uint8Array('\n\n'.split('').map(char => char.charCodeAt(0)));
 
 /**
  * Returns a unique string identifier for a media initialization
@@ -192,12 +193,42 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
   }
 
   /**
-   * Returns the timestamp offset for the current timeline stored in the sync controller
+   * Gets and sets init segment for the provided map
    *
-   * @return {Number} timestamp offset for the current timeline
+   * @param {Object} map
+   *        The map object representing the init segment to get or set
+   * @param {Boolean=} set
+   *        If true, the init segment for the provided map should be saved
+   * @return {Object}
+   *         map object for desired init segment
    */
-  timestampOffset() {
-    return this.syncController_.timestampOffsetForTimeline(this.currentTimeline_);
+  initSegment(map, set = false) {
+    if (!map) {
+      return null;
+    }
+
+    const id = initSegmentId(map);
+    let storedMap = this.initSegments_[id];
+
+    if (set && !storedMap && map.bytes) {
+      // append WebVTT line terminators to the media initialization segment if it exists
+      // to follow the WebVTT spec (https://w3c.github.io/webvtt/#file-structure) that
+      // requires two or more WebVTT line terminators between the WebVTT header and the rest
+      // of the file
+      const combinedByteLength = VTT_LINE_TERMINATORS.byteLength + map.bytes.byteLength;
+      const combinedSegment = new Uint8Array(combinedByteLength);
+
+      combinedSegment.set(map.bytes);
+      combinedSegment.set(VTT_LINE_TERMINATORS, map.bytes.byteLength);
+
+      this.initSegments_[id] = storedMap = {
+        resolvedUri: map.resolvedUri,
+        byterange: map.byterange,
+        bytes: combinedSegment
+      };
+    }
+
+    return storedMap || map;
   }
 
   /**
@@ -244,6 +275,12 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     return this.monitorBuffer_();
   }
 
+  /**
+   * Set a subtitle track on the segment loader to add subtitles to
+   *
+   * @param {TextTrack} track
+   *        The text track to add loaded subtitles to
+   */
   track(track) {
     this.subtitlesTrack_ = track;
 
@@ -256,6 +293,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
       this.init_();
     }
   }
+
   /**
    * set a playlist on the segment loader
    *
@@ -746,16 +784,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     }
 
     if (segment.map) {
-      const map = this.initSegments_[initSegmentId(segment.map)];
-
-      if (map) {
-        simpleSegment.map = map;
-      } else {
-        simpleSegment.map = {
-          resolvedUri: segment.map.resolvedUri,
-          byterange: segment.map.byterange
-        };
-      }
+      simpleSegment.map = this.initSegment(segment.map);
     }
 
     return simpleSegment;
@@ -833,7 +862,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
     // if this request included an initialization segment, save that data
     // to the initSegment cache
     if (simpleSegment.map) {
-      this.initSegments_[initSegmentId(simpleSegment.map)] = simpleSegment.map;
+      simpleSegment.map = this.initSegment(simpleSegment.map, true);
     }
 
     this.processSegmentResponse_(simpleSegment);
@@ -899,22 +928,6 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     segment.requested = true;
 
-    if (segment.map) {
-      // append WebVTT line terminators to the media initialization segment if it exists
-      // to follow the WebVTT spec (https://w3c.github.io/webvtt/#file-structure) that
-      // requires two or more WebVTT line terminators between the WebVTT header and the rest
-      // of the file
-      const initId = initSegmentId(segment.map);
-      const initSegment = this.initSegments_[initId];
-      const vttLineTerminators = new Uint8Array('\n\n'.split('').map(char => char.charCodeAt(0)));
-      const combinedByteLength = vttLineTerminators.byteLength + initSegment.bytes.byteLength;
-      const combinedSegment = new Uint8Array(combinedByteLength);
-
-      combinedSegment.set(initSegment.bytes);
-      combinedSegment.set(vttLineTerminators, initSegment.bytes.byteLength);
-      segment.map.bytes = combinedSegment;
-    }
-
     try {
       this.parseVTTCues_(segmentInfo);
     } catch (e) {
@@ -939,11 +952,7 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
 
     segmentInfo.byteLength = segmentInfo.bytes.byteLength;
 
-    if (typeof segment.start === 'number' && typeof segment.end === 'number') {
-      this.mediaSecondsLoaded += segment.end - segment.start;
-    } else {
-      this.mediaSecondsLoaded += segment.duration;
-    }
+    this.mediaSecondsLoaded += segment.duration;
 
     segmentInfo.cues.forEach((cue) => {
       this.subtitlesTrack_.addCue(cue);
@@ -1125,42 +1134,4 @@ export default class VTTSegmentLoader extends videojs.EventTarget {
    * @private
    */
   logger_() {}
-
-  /**
-   * Adds a cue to the segment-metadata track with some metadata information about the
-   * segment
-   *
-   * @private
-   * @param {Object} segmentInfo
-   *        the object returned by loadSegment
-   * @method addSegmentMetadataCue_
-   */
-  addSegmentMetadataCue_(segmentInfo) {
-    if (!this.segmentMetadataTrack_) {
-      return;
-    }
-
-    const segment = segmentInfo.segment;
-    const start = segment.start;
-    const end = segment.end;
-
-    removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
-
-    const Cue = window.WebKitDataCue || window.VTTCue;
-    const value = {
-      uri: segmentInfo.uri,
-      timeline: segmentInfo.timeline,
-      playlist: segmentInfo.playlist.uri,
-      start,
-      end
-    };
-    const data = JSON.stringify(value);
-    const cue = new Cue(start, end, data);
-
-    // Attach the metadata to the value property of the cue to keep consistency between
-    // the differences of WebKitDataCue in safari and VTTCue in other browsers
-    cue.value = value;
-
-    this.segmentMetadataTrack_.addCue(cue);
-  }
 }
