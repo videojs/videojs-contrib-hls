@@ -7,29 +7,13 @@ import Config from '../src/config';
 import {
   playlistWithDuration,
   useFakeEnvironment,
-  useFakeMediaSource
+  useFakeMediaSource,
+  MockTextTrack
 } from './test-helpers.js';
 import sinon from 'sinon';
 import SyncController from '../src/sync-controller';
 import Decrypter from '../src/decrypter-worker';
 import worker from 'webworkify';
-
-class MockTextTrack {
-  constructor() {
-    this.cues = [];
-  }
-  addCue(cue) {
-    this.cues.push(cue);
-  }
-  removeCue(cue) {
-    for (let i = 0; i < this.cues.length; i++) {
-      if (this.cues[i] === cue) {
-        this.cues.splice(i, 1);
-        break;
-      }
-    }
-  }
-}
 
 // noop addSegmentMetadataCue_ since most test segments dont have real timing information
 // save the original function to a variable to patch it back in for the metadata cue
@@ -74,6 +58,7 @@ QUnit.module('Segment Loader', {
       seekable: () => this.seekable,
       seeking: () => false,
       hasPlayed: () => true,
+      duration: () => mediaSource.duration,
       mediaSource,
       syncController: this.syncController,
       decrypter,
@@ -313,7 +298,7 @@ QUnit.test('updates timestamps when segments do not start at zero', function(ass
   playlist.segments.forEach((segment) => {
     segment.map = {
       resolvedUri: 'init.mp4',
-      bytes: new Uint8Array(10)
+      byterange: { length: Infinity, offset: 0 }
     };
   });
   loader.playlist(playlist);
@@ -400,131 +385,6 @@ QUnit.test('only appends one segment at a time', function(assert) {
   assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
   assert.equal(loader.mediaTransferDuration, 100, '100 ms (clock above)');
   assert.equal(loader.mediaRequests, 1, '1 request');
-});
-
-QUnit.skip('adjusts the playlist offset if no buffering progress is made', function(assert) {
-  let sourceBuffer;
-  let playlist;
-
-  playlist = playlistWithDuration(40);
-  playlist.endList = false;
-  loader.playlist(playlist);
-  loader.mimeType(this.mimeType);
-  loader.load();
-  this.clock.tick(1);
-
-  sourceBuffer = mediaSource.sourceBuffers[0];
-
-  loader.mediaIndex = 0;
-  // buffer some content and switch playlists on progress
-  this.requests[0].response = new Uint8Array(10).buffer;
-  this.requests.shift().respond(200, null, '');
-  loader.on('progress', function f() {
-    loader.off('progress', f);
-    // switch playlists
-    playlist = playlistWithDuration(40);
-    playlist.uri = 'alternate.m3u8';
-    playlist.endList = false;
-    loader.playlist(playlist);
-    this.clock.tick(1);
-  }.bind(this));
-  sourceBuffer.buffered = videojs.createTimeRanges([[0, 5]]);
-  sourceBuffer.trigger('updateend');
-  this.clock.tick(1);
-
-  // the next segment doesn't increase the buffer at all
-  assert.equal(this.requests[0].url, '0.ts', 'requested the same segment');
-  this.clock.tick(1);
-  this.requests[0].response = new Uint8Array(10).buffer;
-  this.requests.shift().respond(200, null, '');
-  sourceBuffer.trigger('updateend');
-  this.clock.tick(1);
-
-  // so the loader should try the next segment
-  assert.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
-
-  // verify stats
-  assert.equal(loader.mediaBytesTransferred, 20, '20 bytes');
-  assert.equal(loader.mediaTransferDuration, 1, '1 ms (clocks above)');
-  assert.equal(loader.mediaRequests, 2, '2 requests');
-});
-
-QUnit.skip('adjusts the playlist offset even when segment.end is set if no' +
-           ' buffering progress is made', function(assert) {
-  let sourceBuffer;
-  let playlist;
-
-  let inspectTs = loader.syncController_.probeTsSegment_;
-
-  loader.syncController_.probeTsSegment_ = function() {
-    return { start: 0, end: 5 };
-  };
-
-  playlist = playlistWithDuration(40);
-  playlist.endList = false;
-  loader.playlist(playlist);
-  loader.mimeType(this.mimeType);
-  loader.load();
-  sourceBuffer = mediaSource.sourceBuffers[0];
-
-  // buffer some content and switch playlists on progress
-  this.clock.tick(1);
-  this.requests[0].response = new Uint8Array(10).buffer;
-  this.requests.shift().respond(200, null, '');
-  sourceBuffer.buffered = videojs.createTimeRanges([[0, 5]]);
-  loader.one('progress', function f() {
-    assert.equal(playlist.segments[0].end, 5, 'segment.end was set based on the buffer');
-    playlist.segments[0].end = 10;
-    loader.syncController_.probeTsSegment_ = inspectTs;
-  });
-
-  sourceBuffer.trigger('updateend');
-
-  // the next segment doesn't increase the buffer at all
-  assert.equal(this.requests[0].url, '0.ts', 'requested the same segment');
-  this.clock.tick(1);
-  this.requests[0].response = new Uint8Array(10).buffer;
-  this.requests.shift().respond(200, null, '');
-  sourceBuffer.trigger('updateend');
-
-  // so the loader should try the next segment
-  assert.equal(this.requests[0].url, '1.ts', 'moved ahead a segment');
-});
-
-QUnit.skip('adjusts the playlist offset if no buffering progress is made after ' +
-           'several consecutive attempts', function(assert) {
-  let sourceBuffer;
-  let playlist;
-  let errors = 0;
-
-  loader.on('error', () => {
-    errors++;
-  });
-
-  playlist = playlistWithDuration(120);
-  playlist.endList = false;
-  loader.playlist(playlist);
-  loader.mimeType(this.mimeType);
-  loader.load();
-  sourceBuffer = mediaSource.sourceBuffers[0];
-
-  // buffer some content
-  this.clock.tick(1);
-  this.requests[0].response = new Uint8Array(10).buffer;
-  this.requests.shift().respond(200, null, '');
-  sourceBuffer.buffered = videojs.createTimeRanges([[0, 10]]);
-  sourceBuffer.trigger('updateend');
-
-  for (let i = 1; i <= 5; i++) {
-    // the next segment doesn't increase the buffer at all
-    assert.equal(this.requests[0].url, (i + '.ts'), 'requested the next segment');
-    this.clock.tick(1);
-    this.requests[0].response = new Uint8Array(10).buffer;
-    this.requests.shift().respond(200, null, '');
-    sourceBuffer.trigger('updateend');
-  }
-  this.clock.tick(1);
-  assert.equal(this.requests.length, 0, 'no more requests are made');
 });
 
 QUnit.test('downloads init segments if specified', function(assert) {
@@ -1521,33 +1381,6 @@ QUnit.test('downloads the next segment if the buffer is getting low', function(a
   assert.equal(segmentInfo.uri, '2.ts', 'requested the third segment');
 });
 
-QUnit.skip('buffers based on the correct TimeRange if multiple ranges exist', function(assert) {
-  let buffered;
-  let segmentInfo;
-
-  loader.mimeType(this.mimeType);
-
-  buffered = videojs.createTimeRanges([[0, 10], [20, 30]]);
-  segmentInfo = loader.checkBuffer_(buffered,
-                                    playlistWithDuration(40),
-                                    0,
-                                    true,
-                                    8,
-                                    { segmentIndex: 0, time: 0 });
-
-  assert.ok(segmentInfo, 'made a request');
-  assert.equal(segmentInfo.uri, '1.ts', 'requested the second segment');
-
-  segmentInfo = loader.checkBuffer_(buffered,
-                                    playlistWithDuration(40),
-                                    null,
-                                    true,
-                                    20,
-                                    { segmentIndex: 0, time: 0 });
-  assert.ok(segmentInfo, 'made a request');
-  assert.equal(segmentInfo.uri, '3.ts', 'requested the fourth segment');
-});
-
 QUnit.test('stops downloading segments at the end of the playlist', function(assert) {
   let buffered;
   let segmentInfo;
@@ -1584,31 +1417,6 @@ function(assert) {
                                     { segmentIndex: 0, time: 0 });
 
   assert.ok(!segmentInfo, 'no request was made');
-});
-
-QUnit.skip('adjusts calculations based on expired time', function(assert) {
-  let buffered;
-  let playlist;
-  let segmentInfo;
-  let segmentIndex;
-
-  loader.mimeType(this.mimeType);
-
-  buffered = videojs.createTimeRanges([[0, 30]]);
-  playlist = playlistWithDuration(50);
-
-  loader.expired(10);
-
-  segmentIndex = loader.checkBuffer_(buffered,
-                                    playlist,
-                                    40 - Config.GOAL_BUFFER_LENGTH,
-                                    true,
-                                    loader.expired_,
-                                    0);
-  segmentInfo = playlist.segments[segmentIndex];
-
-  assert.ok(segmentInfo, 'fetched a segment');
-  assert.equal(segmentInfo.uri, '2.ts', 'accounted for expired time');
 });
 
 QUnit.test('doesn\'t allow more than one monitor buffer timer to be set', function(assert) {

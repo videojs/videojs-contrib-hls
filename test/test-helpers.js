@@ -87,6 +87,23 @@ class MockMediaSource extends videojs.EventTarget {
   }
 }
 
+export class MockTextTrack {
+  constructor() {
+    this.cues = [];
+  }
+  addCue(cue) {
+    this.cues.push(cue);
+  }
+  removeCue(cue) {
+    for (let i = 0; i < this.cues.length; i++) {
+      if (this.cues[i] === cue) {
+        this.cues.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+
 export const useFakeMediaSource = function() {
   let RealMediaSource = videojs.MediaSource;
   let realCreateObjectURL = videojs.URL.createObjectURL;

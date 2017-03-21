@@ -7,29 +7,13 @@ import Config from '../src/config';
 import {
   playlistWithDuration as oldPlaylistWithDuration,
   useFakeEnvironment,
-  useFakeMediaSource
+  useFakeMediaSource,
+  MockTextTrack
 } from './test-helpers.js';
 import sinon from 'sinon';
 import SyncController from '../src/sync-controller';
 import Decrypter from '../src/decrypter-worker';
 import worker from 'webworkify';
-
-class MockTextTrack {
-  constructor() {
-    this.cues = [];
-  }
-  addCue(cue) {
-    this.cues.push(cue);
-  }
-  removeCue(cue) {
-    for (let i = 0; i < this.cues.length; i++) {
-      if (this.cues[i] === cue) {
-        this.cues.splice(i, 1);
-        break;
-      }
-    }
-  }
-}
 
 const oldVTT = window.WebVTT;
 
@@ -86,6 +70,7 @@ QUnit.module('VTT Segment Loader', {
       currentTime: () => this.currentTime,
       seekable: () => this.seekable,
       seeking: () => false,
+      duration: () => mediaSource.duration,
       hasPlayed: () => true,
       mediaSource,
       syncController: this.syncController,
