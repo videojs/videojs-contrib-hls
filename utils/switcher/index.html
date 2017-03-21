@@ -31,6 +31,12 @@
         <section>
           <h2>Parameters</h2>
           <form id=parameters>
+          <fieldset>
+            <legend>Goal Buffer Length</legend>
+            <input type="number", id="goal-buffer-length" value="30">
+            <legend>Bandwidth Variance</legend>
+            <input type="number", id="bandwidth-variance" value="1.2">
+            <legend>Network Trace</legend>
             <textarea rows="25" cols="120" id="network-trace">1297715985 5276720 59.894124 10.629597 254601 1010
 1297715986 5277740 59.894132 10.629601 314236 1020
 1297715987 5278770 59.894135 10.629618 104796 1030
@@ -421,27 +427,18 @@
 1297716407 5699136 59.93651 10.68031 31910 1069
 1297716408 5700156 59.936528 10.680335 43776 1020
 1297716409 5700522 59.936536 10.680338 10773 366</textarea>
-            <p>
-              Enter a network trace in the box above.
-            </p>
-            <p>
-              If you've created a complex scenario you'd like to retry
-              later, run the simulation and then save the URL of this
-              page. All of the network conditions you specify are
-              saved into the URL fragment after the results of a
-              simulation run are displayed.
-            </p>
-            The video is available at
-            <ul>
-              <li><input class=bitrate type=number min=1 value=355846> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=677251> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=988278> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=1162739> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=2237501> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=3016122> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=3816122> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=4616122> bits per second</li>
-            </ul>
+            <legend>Video Bitrates (one per line)</legend>
+            <textarea rows="15" cols="120" id="bitrates">
+355846
+677251
+988278
+1162739
+2237501
+3016122
+3816122
+4616122
+            </textarea>
+          </fieldset>
           </form>
         </section>
       </article>
@@ -457,7 +454,6 @@
   <div id="qunit-fixture"></div>
   <script src="/node_modules/sinon/pkg/sinon.js"></script>
   <script src="/node_modules/video.js/dist/video.js"></script>
-  <script src="/dist/videojs-contrib-hls.js"></script>
   <script src="/node_modules/d3/d3.min.js"></script>
   <script src="/dist/switcher.js"></script>
 </body>

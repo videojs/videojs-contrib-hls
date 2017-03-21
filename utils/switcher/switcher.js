@@ -1,10 +1,10 @@
 import runSimulation from './run-simulation';
 import displayTimeline from './display-timeline';
-
-
+import Config from '../../src/config';
 
 // a dynamic number of time-bandwidth pairs may be defined to drive the simulation
 let networkTimeline = document.querySelector('.network-timeline');
+let $ = document.querySelector.bind(document);
 
 // apply any simulation parameters that were set in the fragment identifier
 if (window.location.hash) {
@@ -24,13 +24,22 @@ if (window.location.hash) {
 
 // collect the simulation parameters
 const parameters = function() {
-  let networkTrace = document.querySelector('#network-trace').value;
-  let playlists = Array.prototype.slice.call(document.querySelectorAll('input.bitrate'));
+  let networkTrace = $('#network-trace').value
+    .trim()
+    .split('\n')
+    .map((line) => line.split(' ').slice(-2).map(Number));
+  let playlists = $('#bitrates').value
+    .trim()
+    .split('\n')
+    .map(Number);
+
+  let goalBufferLength = Math.max(1, Number($('#goal-buffer-length').value));
+  let bandwidthVariance = Math.max(0.1, Number($('#bandwidth-variance').value));
 
   return {
-    playlists: playlists.map(function(input) {
-      return +input.value;
-    }),
+    goalBufferLength,
+    bandwidthVariance,
+    playlists,
     networkTrace
   };
 };

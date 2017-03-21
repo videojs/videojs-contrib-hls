@@ -4,7 +4,8 @@ import {
   createPlayer,
   openMediaSource,
   standardXHRResponse,
-} from '../../test/test-helpers.js';
+} from '../../test/test-helpers';
+import {Hls} from '../../';
 
 let simulationParams = {
   // the number of seconds of video in each segment
@@ -35,17 +36,16 @@ const playlistResponse = (request) => {
   return response;
 };
 
-const processBandwidthTrace = (traceText) => {
-  return traceText.split('\n').map((line) => line.split(' ').slice(-2).map(Number));
-}
-
 // run the simulation
 const runSimulation = function(options, done) {
-  let networkTrace = processBandwidthTrace(options.networkTrace);
+  let networkTrace = options.networkTrace;
   let traceDurationInMs = networkTrace.reduce((acc, t) => acc + t[1], 0);
   simulationParams.segmentCount = Math.floor(traceDurationInMs / 1000 / simulationParams.segmentDuration);
   simulationParams.duration = simulationParams.segmentCount * simulationParams.segmentDuration;
   simulationParams.durationInMs = simulationParams.duration * 1000;
+
+  Hls.GOAL_BUFFER_LENGTH = options.goalBufferLength;
+  Hls.BANDWIDTH_VARIANCE = options.bandwidthVariance;
 
   // SETUP
   let results = {
