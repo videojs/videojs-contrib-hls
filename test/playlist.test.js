@@ -271,7 +271,7 @@ QUnit.test('a non-positive length interval has zero duration', function(assert) 
   assert.equal(Playlist.duration(playlist, -1), 0, 'negative length duration is zero');
 });
 
-QUnit.module('Playlist Seekable and PlaylistEnd');
+QUnit.module('Playlist Seekable');
 
 QUnit.test('calculates seekable time ranges from available segments', function(assert) {
   let playlist = {
@@ -352,7 +352,7 @@ function(assert) {
   assert.equal(seekable.end(0), 7, 'ends three target durations from the last segment');
 });
 
-QUnit.test('seekable end and playlist end accounts for non-standard target durations', function(assert) {
+QUnit.test('seekable end and playlist end account for non-standard target durations', function(assert) {
   let playlist = {
     targetDuration: 2,
     mediaSequence: 0,
@@ -412,7 +412,7 @@ QUnit.test('playlist with no sync points has empty seekable range and empty play
   assert.equal(playlistEnd, null, 'no playlist end for playlist with no sync points');
 });
 
-QUnit.test('seekable and playlistEnd uses available sync points for calculating',
+QUnit.test('seekable and playlistEnd use available sync points for calculating',
   function(assert) {
     let playlist = {
       targetDuration: 10,

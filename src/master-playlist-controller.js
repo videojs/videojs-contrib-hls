@@ -413,11 +413,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
       let updatedPlaylist = this.masterPlaylistLoader_.media();
       let playlistOutdated = this.stuckAtPlaylistEnd_(updatedPlaylist);
 
-      // when the playlist is unchanged and the playhead is stuck at the edge
-      // of playlist, we will blacklist the outdated playlist if it's not the final
-      // rendition to give the player a chance to re-adjust to the proper live point
-      // on a different playlist
       if (playlistOutdated) {
+        // Playlist has stopped updating and we're stuck at its end. Try to
+        // blacklist it and switch to another playlist in the hope that that
+        // one is updating (and give the player a chance to re-adjust to the
+        // safe live point).
         this.blacklistCurrentPlaylist();
       }
     });
@@ -825,7 +825,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let buffered = this.tech_.buffered();
 
     if (!buffered.length) {
-      // playhead reached absolute end of playlist
+      // return true if the playhead reached the absolute end of the playlist
       return absolutePlaylistEnd - currentTime <= Ranges.TIME_FUDGE_FACTOR;
     }
     let bufferedEnd = buffered.end(buffered.length - 1);

@@ -309,15 +309,15 @@ const calculateExpiredTime = function(playlist) {
 };
 
 /**
- * Calculates the playlist end time or seekable end time depends on using
- * safe live end or not
+ * Calculates the playlist end time
  *
  * @param {Object} playlist a media playlist object
- * @param {Object|null} useSafeLiveEnd a boolean value if true then live playlists
- *                      should not expose three segment durations worth of content
- *                      from the end of the playlist
- * @returns {Number} the end time of playlist or the end point of seekable range
- * @function calculatePlaylistEnd
+ * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the playlist
+ *                        end calculation should consider the safe live end (truncate the playlist
+ *                        end by three segments). This is normally used for calculating the end of
+ *                        the playlist's seekable range.
+ * @returns {Number} the end time of playlist
+ * @function playlistEnd
  */
 export const playlistEnd = function(playlist, useSafeLiveEnd) {
   if (!playlist || !playlist.segments) {
@@ -327,13 +327,12 @@ export const playlistEnd = function(playlist, useSafeLiveEnd) {
     return duration(playlist);
   }
   let expired = calculateExpiredTime(playlist);
-  let endSequence;
 
   if (expired === null) {
     return null;
   }
-  endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
-                                 Math.max(0, playlist.segments.length);
+  let endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
+                                     Math.max(0, playlist.segments.length);
 
   return intervalDuration(playlist,
                           playlist.mediaSequence + endSequence,
