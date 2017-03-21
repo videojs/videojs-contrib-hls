@@ -194,9 +194,9 @@ export default class VTTSegmentLoader extends SegmentLoader {
    * empty or not.
    *
    * @param {Object} segmentInfo
-   *        a segment request object that describes the segment to load
+   *        a segment info object that describes the current segment
    * @return {Object}
-   *         a segment request object that describes the segment to load
+   *         a segment info object that describes the current segment
    */
   skipEmptySegments_(segmentInfo) {
     while (segmentInfo && segmentInfo.segment.empty) {
@@ -283,6 +283,13 @@ export default class VTTSegmentLoader extends SegmentLoader {
     this.handleUpdateEnd_();
   }
 
+  /**
+   * Uses the WebVTT parser to parse the segment response
+   *
+   * @param {Object} segmentInfo
+   *        a segment info object that describes the current segment
+   * @private
+   */
   parseVTTCues_(segmentInfo) {
     let decoder;
     let decodeBytesToString = false;
@@ -327,6 +334,19 @@ export default class VTTSegmentLoader extends SegmentLoader {
     parser.flush();
   }
 
+  /**
+   * Updates the start and end times of any cues parsed by the WebVTT parser using
+   * the information parsed from the X-TIMESTAMP-MAP header and a TS to media time mapping
+   * from the SyncController
+   *
+   * @param {Object} segmentInfo
+   *        a segment info object that describes the current segment
+   * @param {Object} mappingObj
+   *        object containing a mapping from TS to media time
+   * @param {Object} playlist
+   *        the playlist object containing the segment
+   * @private
+   */
   updateTimeMapping_(segmentInfo, mappingObj, playlist) {
     const segment = segmentInfo.segment;
 
