@@ -94,11 +94,11 @@ export default class VTTSegmentLoader extends SegmentLoader {
    * @return {Boolean} True if the all configuration is ready for loading
    * @private
    */
-   couldBeginLoading_() {
+  couldBeginLoading_() {
     return this.playlist_ &&
            this.subtitlesTrack_ &&
            !this.paused();
-   }
+  }
 
   /**
    * Once all the starting parameters have been specified, begin

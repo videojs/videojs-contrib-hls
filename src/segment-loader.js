@@ -244,14 +244,14 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @return {Boolean} True if the all configuration is ready for loading
    * @private
    */
-   couldBeginLoading_() {
+  couldBeginLoading_() {
     return this.playlist_ &&
            // the source updater is created when init_ is called, so either having a
            // source updater or being in the INIT state with a mimeType is enough
            // to say we have all the needed configuration to start loading.
            (this.sourceUpdater_ || (this.mimeType_ && this.state === 'INIT')) &&
            !this.paused();
-   }
+  }
 
   /**
    * load a playlist and start to fill the buffer
