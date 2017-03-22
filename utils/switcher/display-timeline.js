@@ -60,7 +60,7 @@ const displayTimeline = function(error, data) {
   }));
   y.domain([0, Math.min(5000000, Math.max(d3.max(data.bandwidth, function(data) {
     return data.bandwidth;
-  }), d3.max(data.options.playlists), d3.max(data.playlists, function(data) {
+  }), d3.max(data.options.playlists.map((p)=>p[0])), d3.max(data.playlists, function(data) {
     return data.bitrate;
   })))]);
 
@@ -89,7 +89,7 @@ const displayTimeline = function(error, data) {
   .enter().append('path')
     .attr('class', 'line bitrate')
     .attr('d', function(playlist) {
-      return 'M0,' + y(playlist) + 'L' + width + ',' + y(playlist);
+      return 'M0,' + y(playlist[0]) + 'L' + width + ',' + y(playlist[0]);
     });
 
   // bandwidth line

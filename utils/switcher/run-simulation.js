@@ -8,8 +8,15 @@ import {
 import {Hls} from '../../';
 
 let simulationParams = {
-  // the number of seconds of video in each segment
-  segmentDuration: 10 // seconds
+  // number of seconds of video in each segment
+  segmentDuration: 10,
+  // number of milliseconds to delay the first byte
+  roundTripDelay: 70,
+  // throughput of the "backend" system (decryption, transmuxing, and appending)
+  // - for MSE, >150mbps is easily achievable
+  // - for Flash, the value is closer to 5mbps on a good day (and good computer)
+  throughput: 500000000,
+  manifestLatency: 120
 };
 
 // the number of seconds it takes for a single bit to be
@@ -18,18 +25,18 @@ const propagationDelay = 0.5;
 
 // send a mock playlist response
 const playlistResponse = (request) => {
-  let match = request.url.match(/\d+/);
-  let bitrate = match[0];
+  let match = request.url.match(/(\d+)-(\d+)/);
+  let maxBitrate = match[1];
+  let avgBitrate = match[2];
 
-  let i = simulationParams.segmentCount;
   let response =
     '#EXTM3U\n' +
     '#EXT-X-PLAYLIST-TYPE:VOD\n' +
-    '#EXT-X-TARGETDURATION:' + simulationParams.segmentDuration + '\n';
+    `#EXT-X-TARGETDURATION:${simulationParams.segmentDuration}\n`;
 
-  while (i--) {
-    response += '#EXTINF:' + simulationParams.segmentDuration + ',\n';
-    response += bitrate + '-' + (simulationParams.segmentCount - i) + '.ts\n';
+  for (let i = 0; i < simulationParams.segmentCount; i++) {
+    response += `#EXTINF:${simulationParams.segmentDuration},\n`;
+    response += `${maxBitrate}-${avgBitrate}-${i}.ts\n`;
   }
   response += '#EXT-X-ENDLIST\n';
 
@@ -43,6 +50,15 @@ const runSimulation = function(options, done) {
   simulationParams.segmentCount = Math.floor(traceDurationInMs / 1000 / simulationParams.segmentDuration);
   simulationParams.duration = simulationParams.segmentCount * simulationParams.segmentDuration;
   simulationParams.durationInMs = simulationParams.duration * 1000;
+
+  // If segments are provided, switch into "simulate movie mode"
+  if (options.segments) {
+    let key = Object.keys(options.segments)[0];
+    if (key && Array.isArray(options.segments[key])) {
+      simulationParams.segmentCount = options.segments[key].length;
+      simulationParams.dontCountNullSegments = true;
+    }
+  }
 
   Hls.GOAL_BUFFER_LENGTH = options.goalBufferLength;
   Hls.BANDWIDTH_VARIANCE = options.bandwidthVariance;
@@ -94,9 +110,9 @@ const runSimulation = function(options, done) {
 
   // run next tick so that Flash doesn't swallow exceptions
   let master = '#EXTM3U\n';
-  options.playlists.forEach((bandwidth) => {
-    master+= '#EXT-X-STREAM-INF:BANDWIDTH=' + bandwidth + '\n';
-    master += 'playlist-' + bandwidth + '.m3u8\n';
+  options.playlists.forEach((bandwidths) => {
+    master += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidths[0]},AVERAGE-BANDWIDTH=${bandwidths[1]}\n`;
+    master += `playlist-${bandwidths[0]}-${bandwidths[1]}.m3u8\n`;
   });
 
   // simulate buffered and currentTime during playback
@@ -131,17 +147,21 @@ const runSimulation = function(options, done) {
 
   let t = 0;
   let i = 0;
+  let s = 0;
   let tInSeconds = 0;
   let segmentRequest = null;
   let segmentSize = null;
   let segmentDownloaded = 0;
   let segmentStartTime;
+  let segmentDelay = 0;
+  let segmentMaxBitrate;
+  let segmentAvgBitrate;
 
   console.log('Simulation Started for', simulationParams.duration, 'seconds');
   console.time('Simulation Ended');
 
   // advance time and collect simulation results
-  while (t < simulationParams.durationInMs && i < networkTrace.length) {
+  while (t < simulationParams.durationInMs && i < networkTrace.length && s < simulationParams.segmentCount) {
     let intervalParams = {
       bytesTotal: networkTrace[i][0],
       bytesRemaining: networkTrace[i][0],
@@ -181,32 +201,52 @@ const runSimulation = function(options, done) {
 
         // playlist responses
         if (/\.m3u8$/.test(request.url)) {
-          // for simplicity, playlist responses have zero trasmission time
-          request.respond(200, null, playlistResponse(request));
+          setTimeout(() => {
+            // for simplicity, playlist responses have zero trasmission time
+            request.respond(200, null, playlistResponse(request));
+          }, simulationParams.manifestLatency);
           continue;
         }
 
+        let bitrates = request.url.match(/(\d+)-(\d+)-(\d+)/);
+
         segmentRequest = request;
-        segmentSize = Math.ceil((segmentRequest.url.match(/(\d+)-\d+/)[1] * simulationParams.segmentDuration) / 8);
+        segmentMaxBitrate = +bitrates[1];
+        segmentAvgBitrate = +bitrates[2];
+        segmentDelay += simulationParams.roundTripDelay;
         segmentDownloaded = 0;
-        segmentStartTime = tInSeconds;
+        if (Array.isArray(options.segments[segmentMaxBitrate]) &&
+            Number.isFinite(options.segments[segmentMaxBitrate][bitrates[3]])) {
+          segmentSize = options.segments[segmentMaxBitrate][bitrates[3]];
+        } else {
+          segmentSize = Math.ceil((segmentAvgBitrate * simulationParams.segmentDuration) / 8);
+        }
       }
 
+
       if (segmentRequest) {
-        segmentDownloaded += intervalParams.bytesPerMs;
+        if (segmentDelay <= 0) {
+          segmentDownloaded += intervalParams.bytesPerMs;
+        } else {
+          segmentDelay -= 1;
+          if (segmentDelay === 0) {
+            segmentStartTime = tInSeconds;
+          }
+        }
 
         if (segmentRequest.timedout) {
           results.playlists.push({
             start: segmentStartTime,
             end: tInSeconds,
             duration: simulationParams.segmentDuration,
-            bitrate: +segmentRequest.url.match(/(\d+)-\d+/)[1],
+            bitrate: segmentMaxBitrate,
             timedout: true
           });
           results.effectiveBandwidth.push({
             time: (segmentStartTime + tInSeconds) / 2,
             bandwidth: player.tech_.hls.bandwidth
           });
+          segmentDelay = 0;
           segmentRequest = null;
           segmentSize = null;
           console.error("Request for segment timedout");
@@ -218,33 +258,44 @@ const runSimulation = function(options, done) {
             start: segmentStartTime,
             end: tInSeconds,
             duration: simulationParams.segmentDuration,
-            bitrate: +segmentRequest.url.match(/(\d+)-\d+/)[1],
+            bitrate: segmentMaxBitrate,
             aborted: true
           });
           results.effectiveBandwidth.push({
             time: (segmentStartTime + tInSeconds) / 2,
             bandwidth: player.tech_.hls.bandwidth
           });
+          segmentDelay = 0;
           segmentRequest = null;
           segmentSize = null;
           console.error("Request for segment aborted");
           continue;
         }
 
-        if (segmentDownloaded >= segmentSize) {
+        if (segmentDownloaded > segmentSize) {
           if (!currentTime ||
                player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.mediaIndex !== null) {
+            if (!simulationParams.dontCountNullSegments) {
+              s++;
+            }
             buffered += simulationParams.segmentDuration;
+          } else {
+            s++;
           }
+
           segmentRequest.response = new Uint8Array(segmentSize);
           segmentRequest.respond(200, null, '');
-          sourceBuffer.trigger('updateend');
+
+          console.log('Request for', segmentRequest.uri, 'complete');
+          setTimeout((fore) => {
+            sourceBuffer.trigger('updateend');
+          }, Math.round(segmentSize / (simulationParams.throughput / 8) * 1000), segmentRequest);
 
           results.playlists.push({
             start: segmentStartTime,
             end: tInSeconds,
             duration: simulationParams.segmentDuration,
-            bitrate: +segmentRequest.url.match(/(\d+)-\d+/)[1]
+            bitrate: segmentMaxBitrate
           });
           results.effectiveBandwidth.push({
             time: (segmentStartTime + tInSeconds) / 2,

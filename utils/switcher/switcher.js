@@ -31,7 +31,17 @@ const parameters = function() {
   let playlists = $('#bitrates').value
     .trim()
     .split('\n')
-    .map(Number);
+    .map((line) => {
+      let t = line.split(/[,\s]+/).map(Number);
+      return [t[0], t[1] || t[0]];
+    });
+
+  let segments = {};
+  try {
+    segments = JSON.parse($('#segments').value);
+  } catch(e) {
+    console.log('Invalid JSON');
+  }
 
   let goalBufferLength = Math.max(1, Number($('#goal-buffer-length').value));
   let bandwidthVariance = Math.max(0.1, Number($('#bandwidth-variance').value));
@@ -40,6 +50,7 @@ const parameters = function() {
     goalBufferLength,
     bandwidthVariance,
     playlists,
+    segments,
     networkTrace
   };
 };
