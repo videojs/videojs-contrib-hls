@@ -13,11 +13,6 @@ import {
 } from './loader-common.js';
 import sinon from 'sinon';
 
-const mimeTypeOrTrack = {
-  method: 'mimeType',
-  init: () => 'video/mp2t'
-};
-
 // noop addSegmentMetadataCue_ since most test segments dont have real timing information
 // save the original function to a variable to patch it back in for the metadata cue
 // specific tests
@@ -29,15 +24,16 @@ QUnit.module('SegmentLoader', function(hooks) {
   hooks.beforeEach(LoaderCommonHooks.beforeEach);
   hooks.afterEach(LoaderCommonHooks.afterEach);
 
-  LoaderCommonFactory(SegmentLoader, { loaderType: 'main' }, mimeTypeOrTrack);
+  LoaderCommonFactory(SegmentLoader, { loaderType: 'main' }, (loader) => loader.mimeType('video/mp2t'));
 
   // Tests specific to the main segment loader go in this module
-  QUnit.module('Loader Main', function(subHooks) {
+  QUnit.module('Loader Main', function(nestedHooks) {
     let loader;
 
-    subHooks.beforeEach(function(assert) {
+    nestedHooks.beforeEach(function(assert) {
       this.segmentMetadataTrack = new MockTextTrack();
       this.startTime = sinon.stub(mp4probe, 'startTime');
+      this.mimeType = 'video/mp2t';
 
       loader = new SegmentLoader(LoaderCommonSettings.call(this, {
         loaderType: 'main',
@@ -50,18 +46,46 @@ QUnit.module('SegmentLoader', function(hooks) {
           loader.mediaSource_.sourceBuffers[0].trigger('updateend');
         }
       };
-
-      mimeTypeOrTrack.value = mimeTypeOrTrack.init();
     });
 
-    subHooks.afterEach(function(assert) {
-      delete mimeTypeOrTrack.value;
+    nestedHooks.afterEach(function(assert) {
       this.startTime.restore();
+    });
+
+    QUnit.test(`load waits until a playlist and mime type are specified to proceed`, function(assert) {
+      loader.load();
+
+      assert.equal(loader.state, 'INIT', 'waiting in init');
+      assert.equal(loader.paused(), false, 'not paused');
+
+      loader.playlist(playlistWithDuration(10));
+      assert.equal(this.requests.length, 0, 'have not made a request yet');
+      loader.mimeType(this.mimeType);
+      this.clock.tick(1);
+
+      assert.equal(this.requests.length, 1, 'made a request');
+      assert.equal(loader.state, 'WAITING', 'transitioned states');
+    });
+
+    QUnit.test(`calling mime type and load begins buffering`, function(assert) {
+      assert.equal(loader.state, 'INIT', 'starts in the init state');
+      loader.playlist(playlistWithDuration(10));
+      assert.equal(loader.state, 'INIT', 'starts in the init state');
+      assert.ok(loader.paused(), 'starts paused');
+
+      loader.mimeType(this.mimeType);
+      assert.equal(loader.state, 'INIT', 'still in the init state');
+      loader.load();
+      this.clock.tick(1);
+
+      assert.equal(loader.state, 'WAITING', 'moves to the ready state');
+      assert.ok(!loader.paused(), 'loading is not paused');
+      assert.equal(this.requests.length, 1, 'requested a segment');
     });
 
     QUnit.test('only appends one segment at a time', function(assert) {
       loader.playlist(playlistWithDuration(10));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
       this.clock.tick(1);
 
@@ -93,7 +117,7 @@ QUnit.module('SegmentLoader', function(hooks) {
         };
       });
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
 
       this.startTime.returns(11);
@@ -113,7 +137,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       let syncInfoUpdates = 0;
 
       loader.playlist(playlistWithDuration(20));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
       this.clock.tick(1);
 
@@ -142,7 +166,7 @@ QUnit.module('SegmentLoader', function(hooks) {
 
     QUnit.test('abort does not cancel segment processing in progress', function(assert) {
       loader.playlist(playlistWithDuration(20));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
       this.clock.tick(1);
 
@@ -168,7 +192,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       playlist.discontinuityStarts = [1];
       playlist.segments[1].timeline = 1;
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
       this.clock.tick(1);
 
@@ -197,7 +221,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       };
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
       this.clock.tick(1);
 
@@ -227,7 +251,7 @@ QUnit.module('SegmentLoader', function(hooks) {
         };
 
         loader.playlist(playlist);
-        loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+        loader.mimeType(this.mimeType);
         loader.load();
         this.clock.tick(1);
 
@@ -315,7 +339,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       loader.buffered_ = () => buffered;
 
       loader.playlist(playlistWithDuration(10));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
       this.clock.tick(1);
 
@@ -351,7 +375,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       playlist = playlistWithDuration(10);
       playlist.endList = false;
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
       this.clock.tick(1);
 
@@ -386,7 +410,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       playlist.endList = false;
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
       this.clock.tick(1);
 
@@ -445,7 +469,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       playlist.endList = false;
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.mimeType(this.mimeType);
       loader.load();
       this.clock.tick(1);
 

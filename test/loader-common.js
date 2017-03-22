@@ -11,6 +11,10 @@ import SyncController from '../src/sync-controller';
 import Decrypter from '../src/decrypter-worker';
 import worker from 'webworkify';
 
+/**
+ * beforeEach and afterEach hooks that should be run segment loader tests regardless of
+ * the type of loader.
+ */
 export const LoaderCommonHooks = {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
@@ -38,6 +42,16 @@ export const LoaderCommonHooks = {
   }
 };
 
+/**
+ * Returns a settings object containing the custom options provided merged with defaults
+ * for use in constructing a segment loader. This function should be called with the QUnit
+ * test environment the loader will be constructed in for proper this reference.
+ *
+ * @param {Object} options
+ *        custom options for the loader
+ * @return {Object}
+ *         Options object contiaing custom options merged with defaults
+ */
 export const LoaderCommonSettings = function(options) {
   let settings = {
     hls: this.fakeHls,
@@ -54,7 +68,19 @@ export const LoaderCommonSettings = function(options) {
   return videojs.mergeOptions(settings, options);
 };
 
-export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOrTrack) => {
+/**
+ * Sets up a QUnit module to run tests that should be run on all segment loader types.
+ * Currently only two types, SegmentLoader and VTTSegmentLoader.
+ *
+ * @param {function(new:SegmentLoader|VTTLoader, Object)} LoaderConstructor
+ *        Constructor for segment loader. Takes one parameter, an options object
+ * @param {Object} loaderOptions
+ *        Custom options to merge with defaults for the provided loader constructor
+ * @param {function(SegmentLoader|VTTLoader)} loaderBeforeEach
+ *        Function to be run in the beforeEach after loader creation. Takes one parameter,
+ *        the loader for custom modifications to the loader object.
+ */
+export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBeforeEach) => {
   let loader;
 
   QUnit.module('Loader Common', function(hooks) {
@@ -63,24 +89,14 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
       loader = new LoaderConstructor(LoaderCommonSettings.call(this, loaderOptions));
 
+      loaderBeforeEach(loader);
+
       // shim updateend trigger to be a noop if the loader has no media source
       this.updateend = function() {
         if (loader.mediaSource_) {
           loader.mediaSource_.sourceBuffers[0].trigger('updateend');
         }
       };
-
-      // shim a mimeTypeOrTrack method that calls the respective method for the given loader
-      // SegmentLoaders require a mimeType but not a track where VTTSegmentLoaders require
-      // a track but not a mimeType. This will let us test either type of loader without
-      // caring about the difference.
-      // init should return the value that should be passed into loader.mimeType or
-      // loader.track for each test.
-      mimeTypeOrTrack.value = mimeTypeOrTrack.init();
-    });
-
-    hooks.afterEach(function(assert) {
-      delete mimeTypeOrTrack.value;
     });
 
     QUnit.test('fails without required initialization options', function(assert) {
@@ -99,40 +115,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       /* eslint-enable */
     });
 
-    QUnit.test(`load waits until a playlist and ${mimeTypeOrTrack.method} are specified to proceed`, function(assert) {
-      loader.load();
-
-      assert.equal(loader.state, 'INIT', 'waiting in init');
-      assert.equal(loader.paused(), false, 'not paused');
-
-      loader.playlist(playlistWithDuration(10));
-      assert.equal(this.requests.length, 0, 'have not made a request yet');
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
-      this.clock.tick(1);
-
-      assert.equal(this.requests.length, 1, 'made a request');
-      assert.equal(loader.state, 'WAITING', 'transitioned states');
-    });
-
-    QUnit.test(`calling ${mimeTypeOrTrack.method} and load begins buffering`, function(assert) {
-      assert.equal(loader.state, 'INIT', 'starts in the init state');
-      loader.playlist(playlistWithDuration(10));
-      assert.equal(loader.state, 'INIT', 'starts in the init state');
-      assert.ok(loader.paused(), 'starts paused');
-
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
-      assert.equal(loader.state, 'INIT', 'still in the init state');
-      loader.load();
-      this.clock.tick(1);
-
-      assert.equal(loader.state, 'WAITING', 'moves to the ready state');
-      assert.ok(!loader.paused(), 'loading is not paused');
-      assert.equal(this.requests.length, 1, 'requested a segment');
-    });
-
     QUnit.test('calling load is idempotent', function(assert) {
       loader.playlist(playlistWithDuration(20));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -159,8 +144,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
     QUnit.test('calling load should unpause', function(assert) {
       loader.playlist(playlistWithDuration(20));
       loader.pause();
-
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
 
       loader.load();
       this.clock.tick(1);
@@ -193,7 +176,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('regularly checks the buffer while unpaused', function(assert) {
       loader.playlist(playlistWithDuration(90));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -223,7 +206,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('does not check the buffer while paused', function(assert) {
       loader.playlist(playlistWithDuration(90));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -245,7 +228,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('calculates bandwidth after downloading a segment', function(assert) {
       loader.playlist(playlistWithDuration(10));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -265,7 +248,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('segment request timeouts reset bandwidth', function(assert) {
       loader.playlist(playlistWithDuration(10));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -284,7 +267,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
         progressEvents++;
       });
       loader.playlist(playlistWithDuration(10));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -299,7 +282,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
         progresses++;
       });
       loader.playlist(playlistWithDuration(20));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -330,7 +313,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('only requests one segment at a time', function(assert) {
       loader.playlist(playlistWithDuration(10));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -356,7 +339,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       playlist.segments[0].map = map;
       playlist.segments[1].map = map;
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
 
       loader.load();
       this.clock.tick(1);
@@ -410,7 +392,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
       loader.buffered_ = () => buffered;
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
 
       loader.load();
       this.clock.tick(1);
@@ -449,7 +430,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('request error increments mediaRequestsErrored stat', function(assert) {
       loader.playlist(playlistWithDuration(20));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -462,7 +443,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('request timeout increments mediaRequestsTimedout stat', function(assert) {
       loader.playlist(playlistWithDuration(20));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
       this.requests[0].timedout = true;
@@ -475,7 +456,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('request abort increments mediaRequestsAborted stat', function(assert) {
       loader.playlist(playlistWithDuration(20));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -492,7 +473,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
         mediaSequence: 0,
         endList: false
       }));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       // Start at mediaIndex 2 which means that the next segment we request
       // should mediaIndex 3
@@ -551,7 +532,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
         mediaSequence: 0,
         endList: false
       }));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       // Start at mediaIndex null which means that the next segment we request
       // should be based on currentTime (mediaIndex 3)
@@ -598,7 +579,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       let errors = [];
 
       loader.playlist(playlistWithDuration(10));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -618,7 +599,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       let errors = [];
 
       loader.playlist(playlistWithDuration(10));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -636,7 +617,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('remains ready if there are no segments', function(assert) {
       loader.playlist(playlistWithDuration(0));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -645,7 +626,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('dispose cleans up outstanding work', function(assert) {
       loader.playlist(playlistWithDuration(20));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -673,7 +654,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       assert.equal(loader.state, 'INIT', 'starts in the init state');
       assert.ok(loader.paused(), 'starts paused');
 
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
       loader.load();
       this.clock.tick(1);
 
@@ -686,7 +666,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('dispose cleans up key requests for encrypted segments', function(assert) {
       loader.playlist(playlistWithDuration(20, {isEncrypted: true}));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -701,7 +681,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       let errors = [];
 
       loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -724,7 +704,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       let errors = [];
 
       loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -744,7 +724,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('key request timeouts reset bandwidth', function(assert) {
       loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -765,7 +745,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
       Config.GOAL_BUFFER_LENGTH = 1;
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
 
       segmentInfo = loader.checkBuffer_(videojs.createTimeRanges([[0, 1]]),
@@ -788,7 +768,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       playlist.endList = false;
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -837,7 +817,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       playlist.endList = false;
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
       this.clock.tick(1);
 
@@ -880,7 +860,7 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       loader.on('syncinfoupdate', () => syncInfoUpdates++);
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+
       loader.load();
 
       assert.equal(syncInfoUpdates, 1, 'first playlist triggers an update');
@@ -900,7 +880,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
     QUnit.module('Loading Calculation');
 
     QUnit.test('requests the first segment with an empty buffer', function(assert) {
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
 
       let segmentInfo = loader.checkBuffer_(videojs.createTimeRanges(),
                                             playlistWithDuration(20),
@@ -915,7 +894,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
 
     QUnit.test('no request if video not played and 1 segment is buffered', function(assert) {
       this.hasPlayed = false;
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
 
       let segmentInfo = loader.checkBuffer_(videojs.createTimeRanges([[0, 1]]),
                                             playlistWithDuration(20),
@@ -925,14 +903,11 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
                                             null);
 
       assert.ok(!segmentInfo, 'no request generated');
-
     });
 
     QUnit.test('does not download the next segment if the buffer is full', function(assert) {
       let buffered;
       let segmentInfo;
-
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
 
       buffered = videojs.createTimeRanges([
         [0, 15 + Config.GOAL_BUFFER_LENGTH]
@@ -952,7 +927,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       let segmentInfo;
       let playlist = playlistWithDuration(30);
 
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
       loader.playlist(playlist);
 
       buffered = videojs.createTimeRanges([[0, 19.999]]);
@@ -971,8 +945,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       let buffered;
       let segmentInfo;
 
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
-
       buffered = videojs.createTimeRanges([[0, 60]]);
       segmentInfo = loader.checkBuffer_(buffered,
                                         playlistWithDuration(60),
@@ -990,8 +962,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
       let segmentInfo;
       let playlist;
 
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
-
       buffered = videojs.createTimeRanges([[0, 59.9]]);
       playlist = playlistWithDuration(60);
       playlist.segments[playlist.segments.length - 1].end = 59.9;
@@ -1008,7 +978,6 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, mimeTypeOr
     QUnit.test('doesn\'t allow more than one monitor buffer timer to be set', function(assert) {
       let timeoutCount = this.clock.methods.length;
 
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
       loader.monitorBuffer_();
 
       assert.equal(this.clock.methods.length, timeoutCount, 'timeout count remains the same');

@@ -17,11 +17,6 @@ const playlistWithDuration = function(time, conf) {
   return oldPlaylistWithDuration(time, videojs.mergeOptions({ extension: '.vtt' }, conf));
 };
 
-const mimeTypeOrTrack = {
-  method: 'track',
-  init: () => new MockTextTrack()
-};
-
 QUnit.module('VTTSegmentLoader', function(hooks) {
   hooks.beforeEach(function(assert) {
     LoaderCommonHooks.beforeEach.call(this);
@@ -51,22 +46,49 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
     window.WebVTT = oldVTT;
   });
 
-  LoaderCommonFactory(VTTSegmentLoader, { loaderType: 'vtt' }, mimeTypeOrTrack);
+  LoaderCommonFactory(VTTSegmentLoader, { loaderType: 'vtt' }, (loader) => loader.track(new MockTextTrack()));
 
   // Tests specific to the vtt loader go in this module
-  QUnit.module('Loader VTT', function(subHooks) {
+  QUnit.module('Loader VTT', function(nestedHooks) {
     let loader;
 
-    subHooks.beforeEach(function(assert) {
+    nestedHooks.beforeEach(function(assert) {
       loader = new VTTSegmentLoader(LoaderCommonSettings.call(this, {
         loaderType: 'vtt'
       }));
 
-      mimeTypeOrTrack.value = mimeTypeOrTrack.init();
+      this.track = new MockTextTrack();
     });
 
-    subHooks.afterEach(function(assert) {
-      delete mimeTypeOrTrack.value;
+    QUnit.test(`load waits until a playlist and track are specified to proceed`, function(assert) {
+      loader.load();
+
+      assert.equal(loader.state, 'INIT', 'waiting in init');
+      assert.equal(loader.paused(), false, 'not paused');
+
+      loader.playlist(playlistWithDuration(10));
+      assert.equal(this.requests.length, 0, 'have not made a request yet');
+      loader.track(this.track);
+      this.clock.tick(1);
+
+      assert.equal(this.requests.length, 1, 'made a request');
+      assert.equal(loader.state, 'WAITING', 'transitioned states');
+    });
+
+    QUnit.test(`calling track and load begins buffering`, function(assert) {
+      assert.equal(loader.state, 'INIT', 'starts in the init state');
+      loader.playlist(playlistWithDuration(10));
+      assert.equal(loader.state, 'INIT', 'starts in the init state');
+      assert.ok(loader.paused(), 'starts paused');
+
+      loader.track(this.track);
+      assert.equal(loader.state, 'INIT', 'still in the init state');
+      loader.load();
+      this.clock.tick(1);
+
+      assert.equal(loader.state, 'WAITING', 'moves to the ready state');
+      assert.ok(!loader.paused(), 'loading is not paused');
+      assert.equal(this.requests.length, 1, 'requested a segment');
     });
 
     QUnit.test('saves segment info to new segment after playlist refresh',
@@ -79,7 +101,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       playlist.endList = false;
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.track(this.track);
       loader.load();
       this.clock.tick(1);
 
@@ -130,7 +152,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       playlist.endList = false;
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.track(this.track);
       loader.load();
       this.clock.tick(1);
 
@@ -188,7 +210,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       };
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.track(this.track);
       loader.load();
 
       assert.equal(loader.state, 'READY', 'loader is ready at start');
@@ -226,7 +248,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
 
       let vttjsCallback = () => {};
 
-      mimeTypeOrTrack.value.tech_ = {
+      this.track.tech_ = {
         one(event, callback) {
           if (event === 'vttjsloaded') {
             vttjsCallback = callback;
@@ -241,7 +263,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       };
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.track(this.track);
       loader.load();
 
       assert.equal(loader.state, 'READY', 'loader is ready at start');
@@ -326,7 +348,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       };
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.track(this.track);
       loader.load();
 
       this.clock.tick(1);
@@ -370,7 +392,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       };
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.track(this.track);
       loader.load();
 
       this.clock.tick(1);
@@ -396,7 +418,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       loader.on('error', () => errors++);
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.track(this.track);
       loader.load();
 
       assert.equal(errors, 0, 'no error at loader start');
@@ -421,7 +443,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       delete window.WebVTT;
       let vttjsCallback = () => {};
 
-      mimeTypeOrTrack.value.tech_ = {
+      this.track.tech_ = {
         one(event, callback) {
           if (event === 'vttjserror') {
             vttjsCallback = callback;
@@ -438,7 +460,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       loader.on('error', () => errors++);
 
       loader.playlist(playlist);
-      loader[mimeTypeOrTrack.method](mimeTypeOrTrack.value);
+      loader.track(this.track);
       loader.load();
 
       assert.equal(loader.state, 'READY', 'loader is ready at start');
