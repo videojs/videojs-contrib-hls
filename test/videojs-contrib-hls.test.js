@@ -1086,6 +1086,9 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   media = this.player.tech_.hls.playlists.master.playlists[url];
   assert.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[0],
+              'Problem encountered with the current HLS playlist. Switching to another playlist.',
+              'log generic error message');
 
   // request for the final available media
   this.requests[2].respond(404);
@@ -1094,11 +1097,18 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
 
   // media wasn't blacklisted because it's final rendition
   assert.ok(!media.excludeUntil, 'media not blacklisted after playlist 404');
-  assert.equal(this.env.log.warn.calls, 0, 'no warning logged for blacklist');
+  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[1],
+              'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
+              'log specific error message for final playlist');
 
-  this.clock.tick(10 * 1000);
+  this.clock.tick(2 * 1000);
+  // no more request was made since it hasn't been half the segment duration
+  assert.strictEqual(3, this.requests.length, 'no more request was made');
 
+  this.clock.tick(3 * 1000);
   // continue loading the final remaining playlist after it wasn't blacklisted
+  // when half the segment duaration passed
   assert.strictEqual(4, this.requests.length, 'one more request was made');
   assert.strictEqual(this.requests[3].url,
                      absoluteUrl('manifest/media1.m3u8'),
@@ -1108,7 +1118,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');
 });
 
-QUnit.test('never blacklist the playlist if its the only playlist', function(assert) {
+QUnit.test('never blacklist the playlist if it is the only playlist', function(assert) {
   let media;
 
   this.player.src({
@@ -1117,12 +1127,21 @@ QUnit.test('never blacklist the playlist if its the only playlist', function(ass
   });
   openMediaSource(this.player, this.clock);
 
-  this.requests[0].respond(404);
-  media = this.player.tech_.hls.mediaSource;
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXTINF:10,\n' +
+                                '0.ts\n');
 
-  // media wasn't blacklisted because it's fianl rendition
-  assert.ok(!media.excludeUntil, 'media not blacklisted after playlist 404');
-  assert.equal(this.env.log.warn.calls, 0, 'no warning logged for blacklist');
+  this.clock.tick(10 * 1000);
+  this.requests.shift().respond(404);
+  media = this.player.tech_.hls.playlists.media();
+
+  // media wasn't blacklisted because it's final rendition
+  assert.ok(!media.excludeUntil, 'media was not blacklisted after playlist 404');
+  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[0],
+              'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
+              'log specific error message for final playlist');
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function(assert) {
