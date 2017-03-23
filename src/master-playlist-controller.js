@@ -419,8 +419,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
         // one is updating (and give the player a chance to re-adjust to the
         // safe live point).
         this.blacklistCurrentPlaylist({
-          message: 'Playlsit no longer updating.'
+          message: 'Playlist no longer updating.'
         });
+        // useful for monitoring QoS
+        this.tech_.trigger('playliststuck');
       }
     });
   }
@@ -870,10 +872,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     nextPlaylist = this.selectPlaylist();
 
     if (nextPlaylist) {
-      let logMessage = error.message ? 'Problem encountered with the current HLS playlist. ' + error.message + ' Switching to another playlist.' :
-                                       'Problem encountered with the current HLS playlist. ' + ' Switching to another playlist.';
-
-      videojs.log.warn(logMessage);
+      videojs.log.warn('Problem encountered with the current HLS playlist.' +
+                 (error.message ? ' ' + error.message : '') +
+                 ' Switching to another playlist.');
 
       return this.masterPlaylistLoader_.media(nextPlaylist);
     }

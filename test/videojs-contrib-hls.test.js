@@ -1097,6 +1097,8 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
 });
 
 QUnit.test('blacklists playlist if it has stopped being updated', function(assert) {
+  let playliststuck = 0;
+
   this.player.src({
     src: 'master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -1116,6 +1118,8 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
   Hls.Playlist.playlistEnd = function() {
     return 170;
   };
+
+  this.player.tech_.on('playliststuck', () => playliststuck++);
   this.requests.shift().respond(200, null,
                            '#EXTM3U\n' +
                            '#EXT-X-MEDIA-SEQUENCE:16\n' +
@@ -1124,6 +1128,7 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
 
   assert.ok(!this.player.tech_.hls.playlists.media().excludeUntil, 'playlist was not blacklisted');
   assert.equal(this.env.log.warn.calls, 0, 'no warning logged for blacklist');
+  assert.equal(playliststuck, 0, 'there is no stuck playlist');
 
   this.player.tech_.trigger('play');
   this.player.tech_.trigger('playing');
@@ -1138,6 +1143,10 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
 
   assert.ok(this.player.tech_.hls.playlists.media().excludeUntil > 0, 'playlist blacklisted for some time');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[0],
+              'Problem encountered with the current HLS playlist. Playlist no longer updating. Switching to another playlist.',
+              'log specific error message for not updated playlist');
+  assert.equal(playliststuck, 1, 'there is one stuck playlist');
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function(assert) {
