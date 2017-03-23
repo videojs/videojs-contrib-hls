@@ -873,8 +873,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     if (nextPlaylist) {
       videojs.log.warn('Problem encountered with the current HLS playlist.' +
-                 (error.message ? ' ' + error.message : '') +
-                 ' Switching to another playlist.');
+                       (error.message ? ' ' + error.message : '') +
+                       ' Switching to another playlist.');
 
       return this.masterPlaylistLoader_.media(nextPlaylist);
     }
