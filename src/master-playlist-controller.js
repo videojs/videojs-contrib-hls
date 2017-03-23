@@ -843,7 +843,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     nextPlaylist = this.selectPlaylist();
 
     videojs.log.warn('Problem encountered with the current ' +
-                       'HLS playlist. Switching to another playlist.');
+                     'HLS playlist. Switching to another playlist.');
 
     return this.masterPlaylistLoader_.media(nextPlaylist);
   }
