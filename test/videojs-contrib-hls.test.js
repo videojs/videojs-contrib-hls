@@ -1103,8 +1103,8 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
               'log specific error message for final playlist');
 
   this.clock.tick(2 * 1000);
-  // no more request was made since it hasn't been half the segment duration
-  assert.strictEqual(3, this.requests.length, 'no more request was made');
+  // no new request was made since it hasn't been half the segment duration
+  assert.strictEqual(3, this.requests.length, 'no new request was made');
 
   this.clock.tick(3 * 1000);
   // continue loading the final remaining playlist after it wasn't blacklisted
@@ -1142,6 +1142,20 @@ QUnit.test('never blacklist the playlist if it is the only playlist', function(a
   assert.equal(this.env.log.warn.args[0],
               'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
               'log specific error message for final playlist');
+});
+
+QUnit.test('playlist error on the first request makes playlist fails fast when there is only that one media playlist', function(assert) {
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  this.requests.shift().respond(404);
+
+  assert.equal(this.player.tech_.hls.mediaSource.error_,
+               'network',
+               'a network error is triggered');
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function(assert) {
