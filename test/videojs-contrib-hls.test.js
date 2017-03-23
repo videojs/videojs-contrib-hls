@@ -1144,12 +1144,15 @@ QUnit.test('never blacklist the playlist if it is the only playlist', function(a
               'log specific error message for final playlist');
 });
 
-QUnit.test('playlist error on the first request makes playlist fails fast when there is only that one media playlist', function(assert) {
+QUnit.test('error on the first playlist request triggers a media source error ' +
+           'when there is only a media playlist', function(assert) {
   this.player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+
+  assert.ok(!this.player.tech_.hls.mediaSource.error_, 'no media source error');
 
   this.requests.shift().respond(404);
 
