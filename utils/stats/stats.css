@@ -3,11 +3,11 @@
   display: block;
 }
 
-.player-stats, .event-counts {
+.player-stats, .event-counts, #quality-levels {
   box-sizing: border-box;
   padding: 8px;
   float: left;
-  width: 50%;
+  width: 33%;
 }
 
 h3.bitrate-switching {
@@ -46,4 +46,17 @@ h3.bitrate-switching {
   fill: none;
   stroke: #111;
   stroke-dasharray: 2,2;
+}
+
+
+.quality-buttons button.enabled {
+  background: SkyBlue;
+}
+
+.quality-buttons button.selected {
+  background: SpringGreen;
+}
+
+.quality-buttons button.disabled {
+  background: red;
 }

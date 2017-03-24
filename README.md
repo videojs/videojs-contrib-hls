@@ -22,6 +22,7 @@ Maintenance Status: Stable
 - [Contributing](#contributing)
 - [Talk to us](#talk-to-us)
 - [Getting Started](#getting-started)
+  - [Video.js 6](#videojs-6)
 - [Documentation](#documentation)
   - [Options](#options)
     - [How to use](#how-to-use)
@@ -98,6 +99,15 @@ player.play();
 ```
 
 Check out our [live example](http://jsbin.com/liwecukasi/edit?html,output) if you're having trouble.
+
+### Video.js 6
+If you are trying to use video.js version 6, you must include [videojs-flash](https://github.com/videojs/videojs-flash)
+on your page before including videojs-contrib-hls
+
+```html
+<script src="https://unpkg.com/videojs-flash/dist/videojs-flash.js"></script>
+<script src="https://unpkg.com/videojs-contrib-hls/dist/videojs-contrib-hls.js"></script>
+```
 
 ## Documentation
 [HTTP Live Streaming](https://developer.apple.com/streaming/) (HLS) has
@@ -195,7 +205,7 @@ Some options, such as `withCredentials` can be passed in to hls during
 var player = videojs('some-video-id');
 
 player.src({
-  src: "http://solutions.brightcove.com/jwhisenant/hls/apple/bipbop/bipbopall.m3u8",
+  src: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8',
   type: 'application/x-mpegURL',
   withCredentials: true
 });
@@ -447,6 +457,50 @@ cue.value.data
 
 There are lots of guides and references to using text tracks [around
 the web](http://www.html5rocks.com/en/tutorials/track/basics/).
+
+### Segment Metadata
+You can get metadata about the segments currently in the buffer by using the `segment-metadata`
+text track. You can get the metadata of the currently rendered segment by looking at the
+track's `activeCues` array. The metadata will be attached to the `cue.value` property and
+will have this structure
+
+```javascript
+cue.value = {
+  uri, // The Segment uri
+  timeline, // Timeline of the segment for detecting discontinuities
+  playlist, // The Playlist uri
+  start, // Segment start time
+  end // Segment end time
+};
+```
+
+Example:
+Detect when a change in quality is rendered on screen
+```javascript
+let tracks = player.textTracks();
+let segmentMetadataTrack;
+
+for (let i = 0; i < tracks.length; i++) {
+  if (tracks[i].label === 'segment-metadata') {
+    segmentMetadataTrack = tracks[i];
+  }
+}
+
+let previousPlaylist;
+
+if (segmentMetadataTrack) {
+  segmentMetadataTrack.on('cuechange', function() {
+    let activeCue = segmentMetadataTrack.activeCues[0];
+
+    if (activeCue) {
+      if (previousPlaylist !== activeCue.playlist) {
+        console.log('Switched from rendition' + previousPlaylist + 'to rendition' + activeCue.playlist);
+      }
+      previousPlaylist = activeCue.playlist;
+    }
+  });
+}
+```
 
 ## Hosting Considerations
 Unlike a native HLS implementation, the HLS tech has to comply with

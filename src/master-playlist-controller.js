@@ -15,6 +15,21 @@ import Decrypter from './decrypter-worker';
 const BLACKLIST_DURATION = 5 * 60 * 1000;
 let Hls;
 
+// SegmentLoader stats that need to have each loader's
+// values summed to calculate the final value
+const loaderStats = [
+  'mediaRequests',
+  'mediaRequestsAborted',
+  'mediaRequestsTimedout',
+  'mediaRequestsErrored',
+  'mediaTransferDuration',
+  'mediaBytesTransferred'
+];
+const sumLoaderStat = function(stat) {
+  return this.audioSegmentLoader_[stat] +
+         this.mainSegmentLoader_[stat];
+};
+
 /**
  * determine if an object a is differnt from
  * and object b. both only having one dimensional
@@ -235,6 +250,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.hasPlayed_ = () => false;
 
     this.syncController_ = new SyncController();
+    this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
+      kind: 'metadata',
+      label: 'segment-metadata'
+    }, true).track;
 
     this.decrypter_ = worker(Decrypter);
 
@@ -248,8 +267,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       hasPlayed: () => this.hasPlayed_(),
       bandwidth,
       syncController: this.syncController_,
-      decrypter: this.decrypter_,
-      loaderType: 'main'
+      decrypter: this.decrypter_
     };
 
     // setup playlist loaders
@@ -259,22 +277,24 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
-    this.mainSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
-    // alternate audio track
-    segmentLoaderOptions.loaderType = 'audio';
-    this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
+    this.mainSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      segmentMetadataTrack: this.segmentMetadataTrack_,
+      loaderType: 'main'
+    }));
 
-    this.decrypter_.onmessage = (event) => {
-      if (event.data.source === 'main') {
-        this.mainSegmentLoader_.handleDecrypted_(event.data);
-      } else if (event.data.source === 'audio') {
-        this.audioSegmentLoader_.handleDecrypted_(event.data);
-      }
-    };
+    // alternate audio track
+    this.audioSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      loaderType: 'audio'
+    }));
 
     this.setupSegmentLoaderListeners_();
 
     this.masterPlaylistLoader_.start();
+
+    // Create SegmentLoader stat-getters
+    loaderStats.forEach((stat) => {
+      this[stat + '_'] = sumLoaderStat.bind(this, stat);
+    });
   }
 
   /**
@@ -338,6 +358,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // on `mediachange`
       this.mainSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
       this.updateDuration();
+
+      // If the player isn't paused, ensure that the segment loader is running,
+      // as it is possible that it was temporarily stopped while waiting for
+      // a playlist (e.g., in case the playlist errored and we re-requested it).
+      if (!this.tech_.paused()) {
+        this.mainSegmentLoader_.load();
+      }
 
       if (!updatedPlaylist.endList) {
         let addSeekableRange = () => {
@@ -434,11 +461,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @private
    */
   setupSegmentLoaderListeners_() {
-    this.mainSegmentLoader_.on('progress', () => {
+    this.mainSegmentLoader_.on('bandwidthupdate', () => {
       // figure out what stream the next segment should be downloaded from
       // with the updated bandwidth information
       this.masterPlaylistLoader_.media(this.selectPlaylist());
-
+    });
+    this.mainSegmentLoader_.on('progress', () => {
       this.trigger('progress');
     });
 
@@ -505,40 +533,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.setupAudio();
   }
 
-  /**
-   * get the total number of media requests from the `audiosegmentloader_`
-   * and the `mainSegmentLoader_`
-   *
-   * @private
-   */
-  mediaRequests_() {
-    return this.audioSegmentLoader_.mediaRequests +
-           this.mainSegmentLoader_.mediaRequests;
-  }
-
-  /**
-   * get the total time that media requests have spent trnasfering
-   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
-   *
-   * @private
-   */
-  mediaTransferDuration_() {
-    return this.audioSegmentLoader_.mediaTransferDuration +
-           this.mainSegmentLoader_.mediaTransferDuration;
-
-  }
-
-  /**
-   * get the total number of bytes transfered during media requests
-   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
-   *
-   * @private
-   */
-  mediaBytesTransferred_() {
-    return this.audioSegmentLoader_.mediaBytesTransferred +
-           this.mainSegmentLoader_.mediaBytesTransferred;
-  }
-
   mediaSecondsLoaded_() {
     return Math.max(this.audioSegmentLoader_.mediaSecondsLoaded +
                     this.mainSegmentLoader_.mediaSecondsLoaded);
@@ -574,7 +568,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         let properties = mediaGroups.AUDIO[mediaGroup][label];
         let track = new videojs.AudioTrack({
           id: label,
-          kind: properties.default ? 'main' : 'alternative',
+          kind: this.audioTrackKind_(properties),
           enabled: false,
           language: properties.language,
           label
@@ -589,6 +583,22 @@ export class MasterPlaylistController extends videojs.EventTarget {
     (this.activeAudioGroup().filter((audioTrack) => {
       return audioTrack.properties_.default;
     })[0] || this.activeAudioGroup()[0]).enabled = true;
+  }
+
+  /**
+   * Convert the properties of an HLS track into an audioTrackKind.
+   *
+   * @private
+   */
+  audioTrackKind_(properties) {
+    let kind = properties.default ? 'main' : 'alternative';
+
+    if (properties.characteristics &&
+        properties.characteristics.indexOf('public.accessibility.describes-video') >= 0) {
+      kind = 'main-desc';
+    }
+
+    return kind;
   }
 
   /**
@@ -865,24 +875,26 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.mediaSource.endOfStream('network');
     }
 
+    let isFinalRendition = this.masterPlaylistLoader_.isFinalRendition_();
+
+    if (isFinalRendition) {
+      // Never blacklisting this playlist because it's final rendition
+      videojs.log.warn('Problem encountered with the current ' +
+                       'HLS playlist. Trying again since it is the final playlist.');
+
+      return this.masterPlaylistLoader_.load(isFinalRendition);
+    }
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
 
-    if (nextPlaylist) {
-      videojs.log.warn('Problem encountered with the current HLS playlist.' +
-                       (error.message ? ' ' + error.message : '') +
-                       ' Switching to another playlist.');
+    videojs.log.warn('Problem encountered with the current HLS playlist.' +
+                     (error.message ? ' ' + error.message : '') +
+                     ' Switching to another playlist.');
 
-      return this.masterPlaylistLoader_.media(nextPlaylist);
-    }
-    videojs.log.warn('Problem encountered with the current ' +
-                     'HLS playlist. No suitable alternatives found.');
-    // We have no more playlists we can select so we must fail
-    this.error = error;
-    return this.mediaSource.endOfStream('network');
+    return this.masterPlaylistLoader_.media(nextPlaylist);
   }
 
   /**
