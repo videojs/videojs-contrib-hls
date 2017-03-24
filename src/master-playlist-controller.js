@@ -359,6 +359,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.mainSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
       this.updateDuration();
 
+      // If the player isn't paused, ensure that the segment loader is running,
+      // as it is possible that it was temporarily stopped while waiting for
+      // a playlist (e.g., in case the playlist errored and we re-requested it).
+      if (!this.tech_.paused()) {
+        this.mainSegmentLoader_.load();
+      }
+
       if (!updatedPlaylist.endList) {
         let addSeekableRange = () => {
           let seekable = this.seekable();
@@ -820,23 +827,25 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.mediaSource.endOfStream('network');
     }
 
+    let isFinalRendition = this.masterPlaylistLoader_.isFinalRendition_();
+
+    if (isFinalRendition) {
+      // Never blacklisting this playlist because it's final rendition
+      videojs.log.warn('Problem encountered with the current ' +
+                       'HLS playlist. Trying again since it is the final playlist.');
+
+      return this.masterPlaylistLoader_.load(isFinalRendition);
+    }
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
 
-    if (nextPlaylist) {
-      videojs.log.warn('Problem encountered with the current ' +
-                       'HLS playlist. Switching to another playlist.');
-
-      return this.masterPlaylistLoader_.media(nextPlaylist);
-    }
     videojs.log.warn('Problem encountered with the current ' +
-                     'HLS playlist. No suitable alternatives found.');
-    // We have no more playlists we can select so we must fail
-    this.error = error;
-    return this.mediaSource.endOfStream('network');
+                     'HLS playlist. Switching to another playlist.');
+
+    return this.masterPlaylistLoader_.media(nextPlaylist);
   }
 
   /**
