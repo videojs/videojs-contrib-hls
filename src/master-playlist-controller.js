@@ -359,6 +359,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.mainSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
       this.updateDuration();
 
+      // If the player isn't paused, ensure that the segment loader is running,
+      // as it is possible that it was temporarily stopped while waiting for
+      // a playlist (e.g., in case the playlist errored and we re-requested it).
+      if (!this.tech_.paused()) {
+        this.mainSegmentLoader_.load();
+      }
+
       if (!updatedPlaylist.endList) {
         let addSeekableRange = () => {
           let seekable = this.seekable();
@@ -427,6 +434,23 @@ export class MasterPlaylistController extends videojs.EventTarget {
         type: 'mediachange',
         bubbles: true
       });
+    });
+
+    this.masterPlaylistLoader_.on('playlistunchanged', () => {
+      let updatedPlaylist = this.masterPlaylistLoader_.media();
+      let playlistOutdated = this.stuckAtPlaylistEnd_(updatedPlaylist);
+
+      if (playlistOutdated) {
+        // Playlist has stopped updating and we're stuck at its end. Try to
+        // blacklist it and switch to another playlist in the hope that that
+        // one is updating (and give the player a chance to re-adjust to the
+        // safe live point).
+        this.blacklistCurrentPlaylist({
+          message: 'Playlist no longer updating.'
+        });
+        // useful for monitoring QoS
+        this.tech_.trigger('playliststuck');
+      }
     });
   }
 
@@ -796,6 +820,37 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Check if a playlist has stopped being updated
+   * @param {Object} playlist the media playlist object
+   * @return {boolean} whether the playlist has stopped being updated or not
+   */
+  stuckAtPlaylistEnd_(playlist) {
+    let seekable = this.seekable();
+
+    if (!seekable.length) {
+      // playlist doesn't have enough information to determine whether we are stuck
+      return false;
+    }
+
+    // does not use the safe live end to calculate playlist end, since we
+    // don't want to say we are stuck while there is still content
+    let absolutePlaylistEnd = Hls.Playlist.playlistEnd(playlist);
+    let currentTime = this.tech_.currentTime();
+    let buffered = this.tech_.buffered();
+
+    if (!buffered.length) {
+      // return true if the playhead reached the absolute end of the playlist
+      return absolutePlaylistEnd - currentTime <= Ranges.TIME_FUDGE_FACTOR;
+    }
+    let bufferedEnd = buffered.end(buffered.length - 1);
+
+    // return true if there is too little buffer left and
+    // buffer has reached absolute end of playlist
+    return bufferedEnd - currentTime <= Ranges.TIME_FUDGE_FACTOR &&
+           absolutePlaylistEnd - bufferedEnd <= Ranges.TIME_FUDGE_FACTOR;
+  }
+
+  /**
    * Blacklists a playlist when an error occurs for a set amount of time
    * making it unavailable for selection by the rendition selection algorithm
    * and then forces a new playlist (rendition) selection.
@@ -820,23 +875,26 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.mediaSource.endOfStream('network');
     }
 
+    let isFinalRendition = this.masterPlaylistLoader_.isFinalRendition_();
+
+    if (isFinalRendition) {
+      // Never blacklisting this playlist because it's final rendition
+      videojs.log.warn('Problem encountered with the current ' +
+                       'HLS playlist. Trying again since it is the final playlist.');
+
+      return this.masterPlaylistLoader_.load(isFinalRendition);
+    }
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
 
-    if (nextPlaylist) {
-      videojs.log.warn('Problem encountered with the current ' +
-                       'HLS playlist. Switching to another playlist.');
+    videojs.log.warn('Problem encountered with the current HLS playlist.' +
+                     (error.message ? ' ' + error.message : '') +
+                     ' Switching to another playlist.');
 
-      return this.masterPlaylistLoader_.media(nextPlaylist);
-    }
-    videojs.log.warn('Problem encountered with the current ' +
-                     'HLS playlist. No suitable alternatives found.');
-    // We have no more playlists we can select so we must fail
-    this.error = error;
-    return this.mediaSource.endOfStream('network');
+    return this.masterPlaylistLoader_.media(nextPlaylist);
   }
 
   /**

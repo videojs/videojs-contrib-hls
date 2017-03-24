@@ -235,9 +235,7 @@ const getPlaylistSyncPoints = function(playlist) {
   if (!playlist || !playlist.segments) {
     return [null, null];
   }
-
-  let expiredSync = playlist.syncInfo || null;
-
+  let expiredSync = playlist.syncInfo || (playlist.endList ? { time: 0, mediaSequence: 0} : null);
   let segmentSync = null;
 
   // Find the first segment with timing information
@@ -268,10 +266,12 @@ const getPlaylistSyncPoints = function(playlist) {
  * @returns {Number} the amount of time expired from the playlist
  * @function calculateExpiredTime
  */
-const calculateExpiredTime = function(playlist, expiredSync, segmentSync) {
+const calculateExpiredTime = function(playlist) {
   // If we have both an expired sync point and a segment sync point
   // determine which sync point is closest to the start of the playlist
   // so the minimal amount of timing estimation is done.
+  let { expiredSync, segmentSync } = getPlaylistSyncPoints(playlist);
+
   if (expiredSync && segmentSync) {
     let expiredDiff = expiredSync.mediaSequence - playlist.mediaSequence;
     let segmentDiff = segmentSync.mediaSequence - playlist.mediaSequence;
@@ -305,6 +305,38 @@ const calculateExpiredTime = function(playlist, expiredSync, segmentSync) {
 
     return segmentSync.time - sumDurations(playlist, syncIndex, 0);
   }
+  return null;
+};
+
+/**
+ * Calculates the playlist end time
+ *
+ * @param {Object} playlist a media playlist object
+ * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the playlist
+ *                        end calculation should consider the safe live end (truncate the playlist
+ *                        end by three segments). This is normally used for calculating the end of
+ *                        the playlist's seekable range.
+ * @returns {Number} the end time of playlist
+ * @function playlistEnd
+ */
+export const playlistEnd = function(playlist, useSafeLiveEnd) {
+  if (!playlist || !playlist.segments) {
+    return null;
+  }
+  if (playlist.endList) {
+    return duration(playlist);
+  }
+  let expired = calculateExpiredTime(playlist);
+
+  if (expired === null) {
+    return null;
+  }
+  let endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
+                                     Math.max(0, playlist.segments.length);
+
+  return intervalDuration(playlist,
+                          playlist.mediaSequence + endSequence,
+                          expired);
 };
 
 /**
@@ -321,34 +353,14 @@ const calculateExpiredTime = function(playlist, expiredSync, segmentSync) {
   * for seeking
   */
 export const seekable = function(playlist) {
-  // without segments, there are no seekable ranges
-  if (!playlist || !playlist.segments) {
+  let useSafeLiveEnd = true;
+  let seekableStart = calculateExpiredTime(playlist);
+  let seekableEnd = playlistEnd(playlist, useSafeLiveEnd);
+
+  if (seekableEnd === null) {
     return createTimeRange();
   }
-  // when the playlist is complete, the entire duration is seekable
-  if (playlist.endList) {
-    return createTimeRange(0, duration(playlist));
-  }
-
-  let { expiredSync, segmentSync } = getPlaylistSyncPoints(playlist);
-
-  // We have no sync information for this playlist so we can't create a seekable range
-  if (!expiredSync && !segmentSync) {
-    return createTimeRange();
-  }
-
-  let expired = calculateExpiredTime(playlist, expiredSync, segmentSync);
-
-  // live playlists should not expose three segment durations worth
-  // of content from the end of the playlist
-  // https://tools.ietf.org/html/draft-pantos-http-live-streaming-16#section-6.3.3
-  let start = expired;
-  let endSequence = Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS);
-  let end = intervalDuration(playlist,
-                             playlist.mediaSequence + endSequence,
-                             expired);
-
-  return createTimeRange(start, end);
+  return createTimeRange(seekableStart, seekableEnd);
 };
 
 const isWholeNumber = function(num) {
@@ -483,6 +495,7 @@ Playlist.seekable = seekable;
 Playlist.getMediaInfoForTime_ = getMediaInfoForTime_;
 Playlist.isEnabled = isEnabled;
 Playlist.isBlacklisted = isBlacklisted;
+Playlist.playlistEnd = playlistEnd;
 
 // exports
 export default Playlist;

@@ -224,7 +224,7 @@ export default class SyncController extends videojs.EventTarget {
     for (let i = mediaSequenceDiff - 1; i >= 0; i--) {
       let lastRemovedSegment = oldPlaylist.segments[i];
 
-      if (typeof lastRemovedSegment.start !== 'undefined') {
+      if (lastRemovedSegment && typeof lastRemovedSegment.start !== 'undefined') {
         newPlaylist.syncInfo = {
           mediaSequence: oldPlaylist.mediaSequence + i,
           time: lastRemovedSegment.start

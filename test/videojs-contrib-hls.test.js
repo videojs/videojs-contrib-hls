@@ -1028,6 +1028,9 @@ QUnit.test('playlist 404 should end stream with a network error', function(asser
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+
+  assert.ok(!this.player.tech_.hls.mediaSource.error_, 'no media source error');
+
   this.requests.pop().respond(404);
 
   assert.equal(this.player.tech_.hls.mediaSource.error_, 'network', 'set a network error');
@@ -1077,22 +1080,151 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
                            'media.m3u8\n' +
                            '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                            'media1.m3u8\n');
-
   assert.equal(typeof this.player.tech_.hls.playlists.media_,
               'undefined',
               'no media is initially set');
-
   // media
-  this.requests[1].respond(400);
-
+  this.requests[1].respond(404);
   url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
   media = this.player.tech_.hls.playlists.master.playlists[url];
-
   assert.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[0],
+              'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media.m3u8 Switching to another playlist.',
+              'log generic error message');
+
+  // request for the final available media
+  this.requests[2].respond(404);
+  url = this.requests[2].url.slice(this.requests[2].url.lastIndexOf('/') + 1);
+  media = this.player.tech_.hls.playlists.master.playlists[url];
+
+  // media wasn't blacklisted because it's final rendition
+  assert.ok(!media.excludeUntil, 'media not blacklisted after playlist 404');
+  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[1],
+              'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
+              'log specific error message for final playlist');
+
+  this.clock.tick(2 * 1000);
+  // no new request was made since it hasn't been half the segment duration
+  assert.strictEqual(3, this.requests.length, 'no new request was made');
+
+  this.clock.tick(3 * 1000);
+  // continue loading the final remaining playlist after it wasn't blacklisted
+  // when half the segment duaration passed
+  assert.strictEqual(4, this.requests.length, 'one more request was made');
+  assert.strictEqual(this.requests[3].url,
+                     absoluteUrl('manifest/media1.m3u8'),
+                     'media playlist requested');
 
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth set above');
+});
+
+QUnit.test('blacklists playlist if it has stopped being updated', function(assert) {
+  let playliststuck = 0;
+
+  this.player.src({
+    src: 'master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.triggerReady();
+
+  this.standardXHRResponse(this.requests.shift());
+
+  this.player.tech_.hls.masterPlaylistController_.seekable = function() {
+    return videojs.createTimeRange(90, 130);
+  };
+  this.player.tech_.setCurrentTime(170);
+  this.player.tech_.buffered = function() {
+    return videojs.createTimeRange(0, 170);
+  };
+  Hls.Playlist.playlistEnd = function() {
+    return 170;
+  };
+
+  this.player.tech_.on('playliststuck', () => playliststuck++);
+  this.requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:16\n' +
+                           '#EXTINF:10,\n' +
+                           '16.ts\n');
+
+  assert.ok(!this.player.tech_.hls.playlists.media().excludeUntil, 'playlist was not blacklisted');
+  assert.equal(this.env.log.warn.calls, 0, 'no warning logged for blacklist');
+  assert.equal(playliststuck, 0, 'there is no stuck playlist');
+
+  this.player.tech_.trigger('play');
+  this.player.tech_.trigger('playing');
+  // trigger a refresh
+  this.clock.tick(10 * 1000);
+
+  this.requests.shift().respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-MEDIA-SEQUENCE:16\n' +
+                           '#EXTINF:10,\n' +
+                           '16.ts\n');
+
+  assert.ok(this.player.tech_.hls.playlists.media().excludeUntil > 0, 'playlist blacklisted for some time');
+  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[0],
+              'Problem encountered with the current HLS playlist. Playlist no longer updating. Switching to another playlist.',
+              'log specific error message for not updated playlist');
+  assert.equal(playliststuck, 1, 'there is one stuck playlist');
+});
+
+QUnit.test('never blacklist the playlist if it is the only playlist', function(assert) {
+  let media;
+
+  this.player.src({
+    src: 'manifest/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXTINF:10,\n' +
+                                '0.ts\n');
+
+  this.clock.tick(10 * 1000);
+  this.requests.shift().respond(404);
+  media = this.player.tech_.hls.playlists.media();
+
+  // media wasn't blacklisted because it's final rendition
+  assert.ok(!media.excludeUntil, 'media was not blacklisted after playlist 404');
+  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[0],
+              'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
+              'log specific error message for final playlist');
+});
+
+QUnit.test('error on the first playlist request does not trigger an error ' +
+           'when there is master playlist with only one media playlist', function(assert) {
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  this.requests[0]
+    .respond(200, null,
+              '#EXTM3U\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+              'media.m3u8\n');
+
+  this.requests[1].respond(404);
+
+  let url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
+  let media = this.player.tech_.hls.playlists.master.playlists[url];
+
+  // media wasn't blacklisted because it's final rendition
+  assert.ok(!media.excludeUntil, 'media was not blacklisted after playlist 404');
+  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[0],
+              'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
+              'log specific error message for final playlist');
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function(assert) {
@@ -2762,11 +2894,18 @@ QUnit.module('HLS - Encryption', {
 
 QUnit.test('blacklists playlist if key requests fail', function(assert) {
   let hls = HlsSourceHandler('html5').handleSource({
-    src: 'manifest/encrypted-media.m3u8',
+    src: 'manifest/encrypted-master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   }, this.tech);
 
   hls.mediaSource.trigger('sourceopen');
+  this.requests.shift()
+    .respond(200, null,
+              '#EXTM3U\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+              'media.m3u8\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+              'media1.m3u8\n');
   this.requests.shift()
     .respond(200, null,
              '#EXTM3U\n' +
@@ -2795,11 +2934,18 @@ QUnit.test('blacklists playlist if key requests fail', function(assert) {
 
 QUnit.test('treats invalid keys as a key request failure and blacklists playlist', function(assert) {
   let hls = HlsSourceHandler('html5').handleSource({
-    src: 'manifest/encrypted-media.m3u8',
+    src: 'manifest/encrypted-master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   }, this.tech);
 
   hls.mediaSource.trigger('sourceopen');
+  this.requests.shift()
+    .respond(200, null,
+              '#EXTM3U\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+              'media.m3u8\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+              'media1.m3u8\n');
   this.requests.shift()
     .respond(200, null,
              '#EXTM3U\n' +
