@@ -1028,6 +1028,9 @@ QUnit.test('playlist 404 should end stream with a network error', function(asser
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+
+  assert.ok(!this.player.tech_.hls.mediaSource.error_, 'no media source error');
+
   this.requests.pop().respond(404);
 
   assert.equal(this.player.tech_.hls.mediaSource.error_, 'network', 'set a network error');
@@ -1145,20 +1148,30 @@ QUnit.test('never blacklist the playlist if it is the only playlist', function(a
 });
 
 QUnit.test('error on the first playlist request triggers a media source error ' +
-           'when there is only a media playlist', function(assert) {
+           'when there is master playlist with only one media playlist', function(assert) {
   this.player.src({
-    src: 'manifest/media.m3u8',
+    src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
 
-  assert.ok(!this.player.tech_.hls.mediaSource.error_, 'no media source error');
+  this.requests[0]
+    .respond(200, null,
+              '#EXTM3U\n' +
+              '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+              'media.m3u8\n');
 
-  this.requests.shift().respond(404);
+  this.requests[1].respond(404);
 
-  assert.equal(this.player.tech_.hls.mediaSource.error_,
-               'network',
-               'a network error is triggered');
+  let url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
+  let media = this.player.tech_.hls.playlists.master.playlists[url];
+
+  // media wasn't blacklisted because it's final rendition
+  assert.ok(!media.excludeUntil, 'media was not blacklisted after playlist 404');
+  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[0],
+              'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
+              'log specific error message for final playlist');
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function(assert) {
