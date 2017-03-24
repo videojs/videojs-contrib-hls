@@ -1147,7 +1147,7 @@ QUnit.test('never blacklist the playlist if it is the only playlist', function(a
               'log specific error message for final playlist');
 });
 
-QUnit.test('error on the first playlist request triggers a media source error ' +
+QUnit.test('error on the first playlist request does not error ' +
            'when there is master playlist with only one media playlist', function(assert) {
   this.player.src({
     src: 'manifest/master.m3u8',
