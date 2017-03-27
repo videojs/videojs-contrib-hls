@@ -264,7 +264,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       currentTime: this.tech_.currentTime.bind(this.tech_),
       seekable: () => this.seekable(),
       seeking: () => this.tech_.seeking(),
-      setCurrentTime: (a) => this.tech_.setCurrentTime(a),
+      duration: () => this.mediaSource.duration,
       hasPlayed: () => this.hasPlayed_(),
       bandwidth,
       syncController: this.syncController_,

@@ -7,6 +7,7 @@ import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
 import removeCuesFromTrack from 'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
+import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 
 // in ms
@@ -23,7 +24,7 @@ const CHECK_BUFFER_DELAY = 500;
  * @returns {Boolean} do we need to call endOfStream on the MediaSource
  */
 const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
-  if (!playlist) {
+  if (!playlist || !mediaSource) {
     return false;
   }
 
@@ -39,21 +40,6 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
   return playlist.endList &&
     mediaSource.readyState === 'open' &&
     appendedLastSegment;
-};
-
-/**
- * Returns a unique string identifier for a media initialization
- * segment.
- */
-const initSegmentId = function(initSegment) {
-  let byterange = initSegment.byterange || {
-    length: Infinity,
-    offset: 0
-  };
-
-  return [
-    byterange.length, byterange.offset, initSegment.resolvedUri
-  ].join(',');
 };
 
 /**
@@ -91,7 +77,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.currentTime_ = settings.currentTime;
     this.seekable_ = settings.seekable;
     this.seeking_ = settings.seeking;
-    this.setCurrentTime_ = settings.setCurrentTime;
+    this.duration_ = settings.duration;
     this.mediaSource_ = settings.mediaSource;
     this.hls_ = settings.hls;
     this.loaderType_ = settings.loaderType;
@@ -210,6 +196,64 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
+   * Indicates which time ranges are buffered
+   *
+   * @return {TimeRange}
+   *         TimeRange object representing the current buffered ranges
+   */
+  buffered_() {
+    if (!this.sourceUpdater_) {
+      return videojs.createTimeRanges();
+    }
+
+    return this.sourceUpdater_.buffered();
+  }
+
+  /**
+   * Gets and sets init segment for the provided map
+   *
+   * @param {Object} map
+   *        The map object representing the init segment to get or set
+   * @param {Boolean=} set
+   *        If true, the init segment for the provided map should be saved
+   * @return {Object}
+   *         map object for desired init segment
+   */
+  initSegment(map, set = false) {
+    if (!map) {
+      return null;
+    }
+
+    const id = initSegmentId(map);
+    let storedMap = this.initSegments_[id];
+
+    if (set && !storedMap && map.bytes) {
+      this.initSegments_[id] = storedMap = {
+        resolvedUri: map.resolvedUri,
+        byterange: map.byterange,
+        bytes: map.bytes
+      };
+    }
+
+    return storedMap || map;
+  }
+
+  /**
+   * Returns true if all configuration required for loading is present, otherwise false.
+   *
+   * @return {Boolean} True if the all configuration is ready for loading
+   * @private
+   */
+  couldBeginLoading_() {
+    return this.playlist_ &&
+           // the source updater is created when init_ is called, so either having a
+           // source updater or being in the INIT state with a mimeType is enough
+           // to say we have all the needed configuration to start loading.
+           (this.sourceUpdater_ || (this.mimeType_ && this.state === 'INIT')) &&
+           !this.paused();
+  }
+
+  /**
    * load a playlist and start to fill the buffer
    */
   load() {
@@ -226,13 +270,13 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.syncController_.setDateTimeMapping(this.playlist_);
 
     // if all the configuration is ready, initialize and begin loading
-    if (this.state === 'INIT' && this.mimeType_) {
+    if (this.state === 'INIT' && this.couldBeginLoading_()) {
       return this.init_();
     }
 
     // if we're in the middle of processing a segment already, don't
     // kick off an additional segment request
-    if (!this.sourceUpdater_ ||
+    if (!this.couldBeginLoading_() ||
         (this.state !== 'READY' &&
         this.state !== 'INIT')) {
       return;
@@ -287,7 +331,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // if we were unpaused but waiting for a playlist, start
     // buffering now
-    if (this.mimeType_ && this.state === 'INIT' && !this.paused()) {
+    if (this.state === 'INIT' && this.couldBeginLoading_()) {
       return this.init_();
     }
 
@@ -369,9 +413,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mimeType_ = mimeType;
     // if we were unpaused but waiting for a sourceUpdater, start
     // buffering now
-    if (this.playlist_ &&
-        this.state === 'INIT' &&
-        !this.paused()) {
+    if (this.state === 'INIT' && this.couldBeginLoading_()) {
       this.init_();
     }
   }
@@ -464,13 +506,13 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (!this.syncPoint_) {
       this.syncPoint_ = this.syncController_.getSyncPoint(this.playlist_,
-                                                          this.mediaSource_.duration,
+                                                          this.duration_(),
                                                           this.currentTimeline_,
                                                           this.currentTime_());
     }
 
     // see if we need to begin loading immediately
-    let segmentInfo = this.checkBuffer_(this.sourceUpdater_.buffered(),
+    let segmentInfo = this.checkBuffer_(this.buffered_(),
                                         this.playlist_,
                                         this.mediaIndex,
                                         this.hasPlayed_(),
@@ -764,16 +806,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     if (segment.map) {
-      const map = this.initSegments_[initSegmentId(segment.map)];
-
-      if (map) {
-        simpleSegment.map = map;
-      } else {
-        simpleSegment.map = {
-          resolvedUri: segment.map.resolvedUri,
-          byterange: segment.map.byterange
-        };
-      }
+      simpleSegment.map = this.initSegment(segment.map);
     }
 
     return simpleSegment;
@@ -851,7 +884,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // if this request included an initialization segment, save that data
     // to the initSegment cache
     if (simpleSegment.map) {
-      this.initSegments_[initSegmentId(simpleSegment.map)] = simpleSegment.map;
+      simpleSegment.map = this.initSegment(simpleSegment.map, true);
     }
 
     this.processSegmentResponse_(simpleSegment);
@@ -912,7 +945,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       if (!this.activeInitSegmentId_ ||
           this.activeInitSegmentId_ !== initId) {
-        const initSegment = this.initSegments_[initId];
+        const initSegment = this.initSegment(segment.map);
 
         this.sourceUpdater_.appendBuffer(initSegment.bytes, () => {
           this.activeInitSegmentId_ = initId;
