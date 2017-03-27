@@ -438,16 +438,16 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    */
   loader.load = (isFinalRendition) => {
     const media = loader.media();
-    
+
     window.clearTimeout(mediaUpdateTimeout);
-    
+
     if (isFinalRendition) {
       let refreshDelay = media ? (media.targetDuration / 2) * 1000 : 5 * 1000;
 
       mediaUpdateTimeout = window.setTimeout(loader.load.bind(null, false), refreshDelay);
       return;
     }
-    
+
     if (!loader.started) {
       loader.start();
       return;
