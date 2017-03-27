@@ -40,19 +40,13 @@ const segmentXhrHeaders = function(segment) {
 };
 
 /**
- * Abort all requests that have not already returned data
+ * Abort all requests
  *
  * @param {Object} activeXhrs - an object that tracks all XHR requests
  */
 const abortAll = (activeXhrs) => {
   activeXhrs.forEach((xhr) => {
-    // only abort xhrs that haven't had a response
-    if (!xhr.responseTime) {
-      // set an aborted property so that we can correctly
-      // track the request and not treat it as an error
-      xhr.aborted = true;
-      xhr.abort();
-    }
+    xhr.abort();
   });
 };
 
@@ -102,17 +96,6 @@ const getProgressStats = (progressEvent) => {
  * @param {Object} request -  the XHR request that possibly generated the error
  */
 const handleErrors = (error, request) => {
-  const response = request.response;
-
-  if (!request.aborted && error) {
-    return {
-      status: request.status,
-      message: 'HLS request errored at URL: ' + request.uri,
-      code: REQUEST_ERRORS.FAILURE,
-      xhr: request
-    };
-  }
-
   if (request.timedout) {
     return {
       status: request.status,
@@ -122,11 +105,20 @@ const handleErrors = (error, request) => {
     };
   }
 
-  if (request.aborted || !response || response.byteLength === 0) {
+  if (request.aborted) {
     return {
       status: request.status,
       message: 'HLS request aborted at URL: ' + request.uri,
       code: REQUEST_ERRORS.ABORTED,
+      xhr: request
+    };
+  }
+
+  if (error) {
+    return {
+      status: request.status,
+      message: 'HLS request errored at URL: ' + request.uri,
+      code: REQUEST_ERRORS.FAILURE,
       xhr: request
     };
   }
