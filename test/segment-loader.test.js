@@ -365,6 +365,48 @@ QUnit.module('SegmentLoader', function(hooks) {
       assert.equal(loader.mediaRequests, 1, '1 request');
     });
 
+    QUnit.test('endOfStream happens even after a rendition switch', function(assert) {
+      let endOfStreams = 0;
+      let bandwidthupdates = 0;
+      let buffered = videojs.createTimeRanges();
+
+      loader.buffered_ = () => buffered;
+
+      loader.playlist(playlistWithDuration(20));
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+
+      loader.mediaSource_ = {
+        readyState: 'open',
+        sourceBuffers: this.mediaSource.sourceBuffers,
+        endOfStream() {
+          endOfStreams++;
+          this.readyState = 'ended';
+        }
+      };
+
+      loader.on('bandwidthupdate', () => {
+        bandwidthupdates++;
+        // Simulate a rendition switch
+        loader.resetEverything();
+      });
+
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+      buffered = videojs.createTimeRanges([[0, 10]]);
+      this.updateend();
+      this.clock.tick(10);
+
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+      buffered = videojs.createTimeRanges([[0, 10]]);
+      this.updateend();
+
+      assert.equal(bandwidthupdates, 1, 'triggered bandwidthupdate');
+      assert.equal(endOfStreams, 1, 'triggered ended');
+    });
+
     QUnit.test('live playlists do not trigger ended', function(assert) {
       let endOfStreams = 0;
       let playlist;
