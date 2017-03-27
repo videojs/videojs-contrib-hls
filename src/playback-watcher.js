@@ -1,6 +1,13 @@
 /**
  * @file playback-watcher.js
+ *
+ * Playback starts, and now my watch begins. It shall not end until my death. I shall
+ * take no wait, hold no uncleared timeouts, father no bad seeks. I shall wear no crowns
+ * and win no glory. I shall live and die at my post. I am the corrector of the underflow.
+ * I am the watcher of gaps. I am the shield that guards the realms of seekable. I pledge
+ * my life and honor to the Playback Watch, for this Player and all the Players to come.
  */
+
 import Ranges from './ranges';
 import videojs from 'video.js';
 

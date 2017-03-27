@@ -377,6 +377,61 @@ QUnit.test('updates the enabled track when switching audio groups', function(ass
            'enabled a track in the new audio group');
 });
 
+QUnit.test('detects if the player is stuck at the playlist end', function(assert) {
+  let playlistCopy = Hls.Playlist.playlistEnd;
+
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  this.standardXHRResponse(this.requests.shift());
+  let playlist = this.player.tech_.hls.selectPlaylist();
+
+  // not stuck at playlist end when no seekable, even if empty buffer
+  // and positive currentTime
+  this.masterPlaylistController.seekable = () => videojs.createTimeRange();
+  this.player.tech_.buffered = () => videojs.createTimeRange();
+  this.player.tech_.setCurrentTime(170);
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+
+  // not stuck at playlist end when no seekable, even if empty buffer
+  // and currentTime 0
+  this.player.tech_.setCurrentTime(0);
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+
+  // not stuck at playlist end when no seekable but current time is at
+  // the end of the buffered range
+  this.player.tech_.buffered = () => videojs.createTimeRange(0, 170);
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+
+  // not stuck at playlist end when currentTime not at seekable end
+  // even if the buffer is empty
+  this.masterPlaylistController.seekable = () => videojs.createTimeRange(0, 130);
+  this.player.tech_.setCurrentTime(50);
+  this.player.tech_.buffered = () => videojs.createTimeRange();
+  Hls.Playlist.playlistEnd = () => 130;
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+
+  // not stuck at playlist end when buffer reached the absolute end of the playlist
+  // and current time is in the buffered range
+  this.player.tech_.setCurrentTime(159);
+  this.player.tech_.buffered = () => videojs.createTimeRange(0, 160);
+  Hls.Playlist.playlistEnd = () => 160;
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+
+  // stuck at playlist end when there is no buffer and playhead
+  // reached absolute end of playlist
+  this.player.tech_.setCurrentTime(160);
+  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'stuck at playlist end');
+
+  // stuck at playlist end when current time reached the buffer end
+  // and buffer has reached absolute end of playlist
+  this.masterPlaylistController.seekable = () => videojs.createTimeRange(90, 130);
+  this.player.tech_.buffered = () => videojs.createTimeRange(0, 170);
+  this.player.tech_.setCurrentTime(170);
+  Hls.Playlist.playlistEnd = () => 170;
+  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'stuck at playlist end');
+
+  Hls.Playlist.playlistEnd = playlistCopy;
+});
+
 QUnit.test('blacklists switching from video+audio playlists to audio only', function(assert) {
   let audioPlaylist;
 

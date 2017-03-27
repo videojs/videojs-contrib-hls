@@ -273,7 +273,7 @@ QUnit.test('a non-positive length interval has zero duration', function(assert) 
 
 QUnit.module('Playlist Seekable');
 
-QUnit.test('calculates seekable time ranges from the available segments', function(assert) {
+QUnit.test('calculates seekable time ranges from available segments', function(assert) {
   let playlist = {
     mediaSequence: 0,
     segments: [{
@@ -292,16 +292,35 @@ QUnit.test('calculates seekable time ranges from the available segments', functi
   assert.equal(seekable.end(0), Playlist.duration(playlist), 'ends at the duration');
 });
 
-QUnit.test('master playlists have empty seekable ranges', function(assert) {
-  let seekable = Playlist.seekable({
+QUnit.test('calculates playlist end time from the available segments', function(assert) {
+  let playlistEnd = Playlist.playlistEnd({
+    mediaSequence: 0,
+    segments: [{
+      duration: 10,
+      uri: '0.ts'
+    }, {
+      duration: 10,
+      uri: '1.ts'
+    }],
+    endList: true
+  });
+
+  assert.equal(playlistEnd, 20, 'paylist end at the duration');
+});
+
+QUnit.test('master playlists have empty seekable ranges and no playlist end', function(assert) {
+  let playlist = {
     playlists: [{
       uri: 'low.m3u8'
     }, {
       uri: 'high.m3u8'
     }]
-  });
+  };
+  let seekable = Playlist.seekable(playlist);
+  let playlistEnd = Playlist.playlistEnd(playlist);
 
   assert.equal(seekable.length, 0, 'no seekable ranges from a master playlist');
+  assert.equal(playlistEnd, null, 'no playlist end from a master playlist');
 });
 
 QUnit.test('seekable end is three target durations from the actual end of live playlists',
@@ -333,8 +352,8 @@ function(assert) {
   assert.equal(seekable.end(0), 7, 'ends three target durations from the last segment');
 });
 
-QUnit.test('seekable end accounts for non-standard target durations', function(assert) {
-  let seekable = Playlist.seekable({
+QUnit.test('seekable end and playlist end account for non-standard target durations', function(assert) {
+  let playlist = {
     targetDuration: 2,
     mediaSequence: 0,
     syncInfo: {
@@ -357,16 +376,19 @@ QUnit.test('seekable end accounts for non-standard target durations', function(a
       duration: 2,
       uri: '4.ts'
     }]
-  });
+  };
+  let seekable = Playlist.seekable(playlist);
+  let playlistEnd = Playlist.playlistEnd(playlist);
 
   assert.equal(seekable.start(0), 0, 'starts at the earliest available segment');
   assert.equal(seekable.end(0),
               9 - (2 + 2 + 1),
               'allows seeking no further than three segments from the end');
+  assert.equal(playlistEnd, 9, 'playlist end at the last segment');
 });
 
-QUnit.test('playlist with no sync points has empty seekable range', function(assert) {
-  let seekable = Playlist.seekable({
+QUnit.test('playlist with no sync points has empty seekable range and empty playlist end', function(assert) {
+  let playlist = {
     targetDuration: 10,
     mediaSequence: 0,
     segments: [{
@@ -382,16 +404,17 @@ QUnit.test('playlist with no sync points has empty seekable range', function(ass
       duration: 10,
       uri: '3.ts'
     }]
-  });
+  };
+  let seekable = Playlist.seekable(playlist);
+  let playlistEnd = Playlist.playlistEnd(playlist);
 
   assert.equal(seekable.length, 0, 'no seekable range for playlist with no sync points');
+  assert.equal(playlistEnd, null, 'no playlist end for playlist with no sync points');
 });
 
-QUnit.test('seekable uses available sync points for calculating seekable range',
+QUnit.test('seekable and playlistEnd use available sync points for calculating',
   function(assert) {
-    let seekable;
-
-    seekable = Playlist.seekable({
+    let playlist = {
       targetDuration: 10,
       mediaSequence: 100,
       syncInfo: {
@@ -420,13 +443,16 @@ QUnit.test('seekable uses available sync points for calculating seekable range',
           uri: '4.ts'
         }
       ]
-    });
+    };
+    let seekable = Playlist.seekable(playlist);
+    let playlistEnd = Playlist.playlistEnd(playlist);
 
     assert.ok(seekable.length, 'seekable range calculated');
     assert.equal(seekable.start(0), 100, 'estimated start time based on expired sync point');
     assert.equal(seekable.end(0), 120, 'allows seeking no further than three segments from the end');
+    assert.equal(playlistEnd, 150, 'playlist end at the last segment end');
 
-    seekable = Playlist.seekable({
+    playlist = {
       targetDuration: 10,
       mediaSequence: 100,
       segments: [
@@ -453,13 +479,16 @@ QUnit.test('seekable uses available sync points for calculating seekable range',
           uri: '4.ts'
         }
       ]
-    });
+    };
+    seekable = Playlist.seekable(playlist);
+    playlistEnd = Playlist.playlistEnd(playlist);
 
     assert.ok(seekable.length, 'seekable range calculated');
     assert.equal(seekable.start(0), 98.5, 'estimated start time using segmentSync');
     assert.equal(seekable.end(0), 118.4, 'allows seeking no further than three segments from the end');
+    assert.equal(playlistEnd, 148.4, 'playlist end at the last segment end');
 
-    seekable = Playlist.seekable({
+    playlist = {
       targetDuration: 10,
       mediaSequence: 100,
       syncInfo: {
@@ -490,13 +519,16 @@ QUnit.test('seekable uses available sync points for calculating seekable range',
           uri: '4.ts'
         }
       ]
-    });
+    };
+    seekable = Playlist.seekable(playlist);
+    playlistEnd = Playlist.playlistEnd(playlist);
 
     assert.ok(seekable.length, 'seekable range calculated');
     assert.equal(seekable.start(0), 98.5, 'estimated start time using nearest sync point (segmentSync in this case)');
     assert.equal(seekable.end(0), 118.5, 'allows seeking no further than three segments from the end');
+    assert.equal(playlistEnd, 148.5, 'playlist end at the last segment end');
 
-    seekable = Playlist.seekable({
+    playlist = {
       targetDuration: 10,
       mediaSequence: 100,
       syncInfo: {
@@ -527,11 +559,14 @@ QUnit.test('seekable uses available sync points for calculating seekable range',
           uri: '4.ts'
         }
       ]
-    });
+    };
+    seekable = Playlist.seekable(playlist);
+    playlistEnd = Playlist.playlistEnd(playlist);
 
     assert.ok(seekable.length, 'seekable range calculated');
     assert.equal(seekable.start(0), 100.8, 'estimated start time using nearest sync point (expiredSync in this case)');
     assert.equal(seekable.end(0), 118.5, 'allows seeking no further than three segments from the end');
+    assert.equal(playlistEnd, 148.5, 'playlist end at the last segment end');
   });
 
 QUnit.module('Playlist Media Index For Time', {
