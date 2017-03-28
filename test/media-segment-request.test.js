@@ -177,60 +177,6 @@ QUnit.test('cancels outstanding key requests on timeout', function(assert) {
   this.clock.tick(2000);
 });
 
-QUnit.test('ensure the aborted property is set on aborted requests', function(assert) {
-  let keyReq;
-  const done = assert.async();
-  let oldXHRPrototype = XMLHttpRequest.prototype;
-
-  assert.expect(7);
-  // Sinon automatically adds the aborted property so let's stop it from
-  // doing that to make sure we add it under the expected condition when
-  // running on a real, native XHR object
-  XMLHttpRequest.prototype = Object.create(XMLHttpRequest.prototype);
-  XMLHttpRequest.prototype.abort = function abort() {
-    this.response = this.responseText = '';
-    this.errorFlag = true;
-    this.requestHeaders = {};
-    this.responseHeaders = {};
-
-    if (this.readyState > 0 && this.sendFlag) {
-      this.readyStateChange(4);
-      this.sendFlag = false;
-    }
-
-    this.readyState = 0;
-  };
-  let aborter = mediaSegmentRequest(
-    this.xhr,
-    this.xhrOptions,
-    this.noop,
-    {
-      resolvedUri: '0-test.ts',
-      key: {
-        resolvedUri: '0-key.php'
-      }
-    },
-    this.noop,
-    (error, segmentData) => {
-      assert.ok(keyReq.aborted, 'aborted the key request');
-      assert.equal(error.code, REQUEST_ERRORS.ABORTED, 'error code is aborted');
-
-      done();
-    });
-
-  assert.equal(this.requests.length, 2, 'there are two requests');
-
-  keyReq = this.requests.shift();
-  const segmentReq = this.requests.shift();
-
-  assert.equal(keyReq.uri, '0-key.php', 'the first request is for a key');
-  assert.equal(segmentReq.uri, '0-test.ts', 'the second request is for a segment');
-
-  aborter();
-  // Restore the FakeXHR prototype to be good test-citizens
-  XMLHttpRequest.prototype = oldXHRPrototype;
-});
-
 QUnit.test('the key response is converted to the correct format', function(assert) {
   let keyReq;
   const done = assert.async();

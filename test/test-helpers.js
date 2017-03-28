@@ -174,7 +174,6 @@ export const useFakeEnvironment = function(assert) {
   // to an arbitrary object (in our case, a typed array).
   XMLHttpRequest.prototype = Object.create(XMLHttpRequest.prototype);
   XMLHttpRequest.prototype.abort = function abort() {
-    this.aborted = true;
     this.response = this.responseText = '';
     this.errorFlag = true;
     this.requestHeaders = {};
