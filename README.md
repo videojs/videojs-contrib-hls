@@ -98,7 +98,7 @@ player.play();
 </script>
 ```
 
-Check out our [live example](http://jsbin.com/liwecukasi/edit?html,output) if you're having trouble.
+Check out our [live example](http://jsbin.com/vokipos/8/edit?html,output) if you're having trouble.
 
 ### Video.js 6
 If you are trying to use video.js version 6, you must include [videojs-flash](https://github.com/videojs/videojs-flash)
