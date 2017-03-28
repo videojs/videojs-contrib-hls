@@ -41,9 +41,9 @@ const xhrFactory = function() {
         }
       }
 
-      // videojs.xhr now uses a specific code
-      // on the error object to signal that a request has
-      // timed out errors of setting a boolean on the request object
+      // videojs.xhr now uses a specific code on the error
+      // object to signal that a request has timed out instead
+      // of setting a boolean on the request object
       if (error && error.code === 'ETIMEDOUT') {
         request.timedout = true;
       }
