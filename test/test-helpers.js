@@ -168,6 +168,25 @@ export const useFakeEnvironment = function(assert) {
   });
   fakeEnvironment.clock = sinon.useFakeTimers();
   fakeEnvironment.xhr = sinon.useFakeXMLHttpRequest();
+
+  // Sinon 1.10.2 handles abort incorrectly (triggering the error event)
+  // Later versions fixed this but broke the ability to set the response
+  // to an arbitrary object (in our case, a typed array).
+  XMLHttpRequest.prototype = Object.create(XMLHttpRequest.prototype);
+  XMLHttpRequest.prototype.abort = function abort() {
+    this.response = this.responseText = '';
+    this.errorFlag = true;
+    this.requestHeaders = {};
+    this.responseHeaders = {};
+
+    if (this.readyState > 0 && this.sendFlag) {
+      this.readyStateChange(4);
+      this.sendFlag = false;
+    }
+
+    this.readyState = 0;
+  };
+
   fakeEnvironment.requests.length = 0;
   fakeEnvironment.xhr.onCreate = function(xhr) {
     fakeEnvironment.requests.push(xhr);

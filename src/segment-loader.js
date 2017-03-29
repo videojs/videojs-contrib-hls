@@ -1024,7 +1024,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // fire if playback reaches that point.
     const isEndOfStream = detectEndOfStream(segmentInfo.playlist,
                                             this.mediaSource_,
-                                            this.mediaIndex + 1);
+                                            segmentInfo.mediaIndex + 1);
 
     if (isEndOfStream) {
       this.mediaSource_.endOfStream();

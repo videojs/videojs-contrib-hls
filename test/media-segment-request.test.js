@@ -173,7 +173,6 @@ QUnit.test('cancels outstanding key requests on timeout', function(assert) {
   assert.equal(keyReq.uri, '0-key.php', 'the first request is for a key');
   assert.equal(segmentReq.uri, '0-test.ts', 'the second request is for a segment');
 
-  keyReq.timedout = true;
   // Timeout request
   this.clock.tick(2000);
 });
