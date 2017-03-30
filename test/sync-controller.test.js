@@ -207,6 +207,7 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
       playlist,
       timeline: 0,
       timestampOffset: 0,
+      startOfSegment: 0,
       segment
     };
 
@@ -221,6 +222,7 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
       'discontinuity sync info correct');
 
     segmentInfo.timestampOffset = null;
+    segmentInfo.startOfSegment = 10;
     segmentInfo.mediaIndex = 1;
     segment = playlist.segments[1];
     segmentInfo.segment = segment;
@@ -232,6 +234,7 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
       'discontinuity sync info correctly updated with new accuracy');
 
     segmentInfo.timestampOffset = 30;
+    segmentInfo.startOfSegment = 30;
     segmentInfo.mediaIndex = 3;
     segmentInfo.timeline = 1;
     segment = playlist.segments[3];
