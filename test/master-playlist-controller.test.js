@@ -1098,6 +1098,495 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
                'spanish track\'s kind is "alternative"');
 });
 
+QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  assert.equal(this.player.textTracks().length, 1, 'one text track to start');
+  assert.equal(this.player.textTracks()[0].label,
+               'segment-metadata',
+               'only segment-metadata text track');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+
+  // we wait for loadedmetadata before setting subtitle tracks, so we need to wait for a
+  // media playlist
+  assert.equal(this.player.textTracks().length, 1, 'only one text track after master');
+
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const master = masterPlaylistController.masterPlaylistLoader_.master;
+  const subs = master.mediaGroups.SUBTITLES.subs;
+  const subsArr = Object.keys(subs).map(key => subs[key]);
+
+  assert.equal(subsArr.length, 4, 'got 4 subtitles');
+  assert.equal(subsArr.filter(sub => sub.forced === false).length, 2, '2 forced');
+  assert.equal(subsArr.filter(sub => sub.forced === true).length, 2, '2 non-forced');
+
+  const textTracks = this.player.textTracks();
+
+  assert.equal(textTracks.length, 3, 'non-forced text tracks were added');
+  assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
+  assert.equal(textTracks[2].mode, 'disabled', 'track starts disabled');
+});
+
+QUnit.test('switches off subtitles on subtitle errors', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  // sets up listener for text track changes
+  masterPlaylistController.trigger('sourceopen');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  assert.equal(this.requests.length, 0, 'no outstanding requests');
+
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
+
+  assert.equal(this.requests.length, 1, 'made a request');
+  assert.equal(textTracks[1].mode, 'showing', 'text track still showing');
+
+  // request failed
+  this.requests.shift().respond(404, null, '');
+
+  assert.equal(textTracks[1].mode, 'disabled', 'disabled text track');
+
+  assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
+  this.env.log.warn.callCount = 0;
+
+  assert.equal(this.requests.length, 0, 'no outstanding requests');
+
+  // re-enable first text track
+  textTracks[1].mode = 'showing';
+
+  assert.equal(this.requests.length, 1, 'made a request');
+  assert.equal(textTracks[1].mode, 'showing', 'text track still showing');
+
+  this.requests.shift().respond(200, null, `
+		#EXTM3U
+		#EXT-X-TARGETDURATION:10
+		#EXT-X-MEDIA-SEQUENCE:0
+		#EXTINF:10
+		0.webvtt
+		#EXT-X-ENDLIST
+  `);
+
+  const syncController = masterPlaylistController.subtitleSegmentLoader_.syncController_;
+
+  // required for the vtt request to be made
+  syncController.timestampOffsetForTimeline = () => 0;
+
+  this.clock.tick(1);
+
+  assert.equal(this.requests.length, 1, 'made a request');
+  assert.ok(this.requests[0].url.endsWith('0.webvtt'), 'made a webvtt request');
+  assert.equal(textTracks[1].mode, 'showing', 'text track still showing');
+
+  this.requests.shift().respond(404, null, '');
+
+  assert.equal(textTracks[1].mode, 'disabled', 'disabled text track');
+
+  assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
+  this.env.log.warn.callCount = 0;
+});
+
+QUnit.test('pauses subtitle segment loader on tech errors', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  // sets up listener for text track changes
+  masterPlaylistController.trigger('sourceopen');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
+
+  let pauseCount = 0;
+
+  masterPlaylistController.subtitleSegmentLoader_.pause = () => pauseCount++;
+
+  this.player.tech_.trigger('error');
+
+  assert.equal(pauseCount, 1, 'paused subtitle segment loader');
+});
+
+QUnit.test('disposes subtitle loaders on dispose', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  let masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
+               'does not start with a subtitle playlist loader');
+  assert.ok(masterPlaylistController.subtitleSegmentLoader_,
+            'starts with a subtitle segment loader');
+
+  let segmentLoaderDisposeCount = 0;
+
+  masterPlaylistController.subtitleSegmentLoader_.dispose =
+    () => segmentLoaderDisposeCount++;
+
+  masterPlaylistController.dispose();
+
+  assert.equal(segmentLoaderDisposeCount, 1, 'disposed the subtitle segment loader');
+
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  // sets up listener for text track changes
+  masterPlaylistController.trigger('sourceopen');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
+
+  assert.ok(masterPlaylistController.subtitlePlaylistLoader_,
+            'has a subtitle playlist loader');
+  assert.ok(masterPlaylistController.subtitleSegmentLoader_,
+            'has a subtitle segment loader');
+
+  let playlistLoaderDisposeCount = 0;
+
+  segmentLoaderDisposeCount = 0;
+
+  masterPlaylistController.subtitlePlaylistLoader_.dispose =
+    () => playlistLoaderDisposeCount++;
+  masterPlaylistController.subtitleSegmentLoader_.dispose =
+    () => segmentLoaderDisposeCount++;
+
+  masterPlaylistController.dispose();
+
+  assert.equal(playlistLoaderDisposeCount, 1, 'disposed the subtitle playlist loader');
+  assert.equal(segmentLoaderDisposeCount, 1, 'disposed the subtitle segment loader');
+});
+
+QUnit.test('subtitle segment loader resets on seeks', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  // sets up listener for text track changes
+  masterPlaylistController.trigger('sourceopen');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
+
+  let resetCount = 0;
+  let abortCount = 0;
+  let loadCount = 0;
+
+  masterPlaylistController.subtitleSegmentLoader_.resetEverything = () => resetCount++;
+  masterPlaylistController.subtitleSegmentLoader_.abort = () => abortCount++;
+  masterPlaylistController.subtitleSegmentLoader_.load = () => loadCount++;
+
+  this.player.pause();
+  masterPlaylistController.setCurrentTime(5);
+
+  assert.equal(resetCount, 1, 'reset subtitle segment loader');
+  assert.equal(abortCount, 1, 'aborted subtitle segment loader');
+  assert.equal(loadCount, 0, 'did not call load on subtitle segment loader');
+
+  this.player.play();
+  resetCount = 0;
+  abortCount = 0;
+  loadCount = 0;
+  masterPlaylistController.setCurrentTime(10);
+
+  assert.equal(resetCount, 1, 'reset subtitle segment loader');
+  assert.equal(abortCount, 1, 'aborted subtitle segment loader');
+  assert.equal(loadCount, 1, 'called load on subtitle segment loader');
+});
+
+QUnit.test('can get active subtitle group', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  assert.notOk(masterPlaylistController.activeSubtitleGroup_(),
+               'no active subtitle group');
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.notOk(masterPlaylistController.activeSubtitleGroup_(),
+               'no active subtitle group');
+
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.ok(masterPlaylistController.activeSubtitleGroup_(), 'active subtitle group');
+});
+
+QUnit.test('can get active subtitle track', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  assert.notOk(masterPlaylistController.activeSubtitleTrack_(),
+               'no active subtitle track');
+
+  const textTracks = this.player.textTracks();
+
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
+
+  assert.ok(masterPlaylistController.activeSubtitleTrack_(), 'active subtitle track');
+});
+
+QUnit.test('handles subtitle errors appropriately', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const textTracks = this.player.textTracks();
+
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  let abortCalls = 0;
+  let setupSubtitlesCalls = 0;
+
+  masterPlaylistController.subtitleSegmentLoader_.abort = () => abortCalls++;
+  masterPlaylistController.setupSubtitles = () => setupSubtitlesCalls++;
+
+  masterPlaylistController.handleSubtitleError_();
+
+  assert.equal(textTracks[1].mode, 'disabled', 'set text track to disabled');
+  assert.equal(abortCalls, 1, 'aborted subtitle segment loader');
+  assert.equal(setupSubtitlesCalls, 1, 'setup subtitles');
+  assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
+
+  this.env.log.warn.callCount = 0;
+});
+
+QUnit.test('sets up subtitles', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-subtitles.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // master, contains media groups for subtitles
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  // sets up listener for text track changes
+  masterPlaylistController.trigger('sourceopen');
+
+  const segmentLoader = masterPlaylistController.subtitleSegmentLoader_;
+
+  let segmentDisposeCalls = 0;
+  let segmentLoadCalls = 0;
+  let segmentPauseCalls = 0;
+  let segmentResetCalls = 0;
+
+  segmentLoader.load = () => segmentLoadCalls++;
+  segmentLoader.dispose = () => segmentDisposeCalls++;
+  segmentLoader.pause = () => segmentPauseCalls++;
+  segmentLoader.resetEverything = () => segmentResetCalls++;
+
+  assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
+               'no subtitle playlist loader');
+
+  // no active text track
+  masterPlaylistController.setupSubtitles();
+
+  assert.equal(segmentDisposeCalls, 0, 'did not dispose subtitles segment loader');
+  assert.equal(segmentLoadCalls, 0, 'did not load subtitles segment loader');
+  assert.equal(segmentPauseCalls, 1, 'paused subtitles segment loader');
+  assert.equal(segmentResetCalls, 0, 'did not reset subtitle segment loader');
+  assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
+               'no subtitle playlist loader');
+  assert.ok(masterPlaylistController.subtitleSegmentLoader_,
+            'did not remove subtitle segment loader');
+
+  const textTracks = this.player.textTracks();
+
+  // enable first subtitle text track
+  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
+  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
+  textTracks[1].mode = 'showing';
+
+  assert.ok(masterPlaylistController.subtitlePlaylistLoader_,
+            'added a new subtitle playlist loader');
+  assert.equal(segmentLoader,
+               masterPlaylistController.subtitleSegmentLoader_,
+               'did not change subtitle segment loader');
+  assert.equal(segmentLoadCalls, 0, 'did not load subtitles segment loader');
+  assert.equal(segmentResetCalls, 1, 'reset subtitle segment loader');
+
+  let playlistLoader = masterPlaylistController.subtitlePlaylistLoader_;
+  let playlistLoadCalls = 0;
+
+  playlistLoader.load = () => playlistLoadCalls++;
+
+  // same active text track, haven't yet gotten a response from webvtt
+  masterPlaylistController.setupSubtitles();
+
+  assert.equal(this.requests.length, 2, 'total of two requests');
+
+  let oldRequest = this.requests.shift();
+
+  // tracking playlist loader dispose calls by checking request aborted status
+  assert.ok(oldRequest.aborted, 'aborted the old request');
+  assert.notEqual(playlistLoader,
+                  masterPlaylistController.subtitlePlaylistLoader_,
+                 'changed subtitle playlist loader');
+
+  let playlistDisposeCalls = 0;
+
+  playlistLoader = masterPlaylistController.subtitlePlaylistLoader_;
+  playlistLoadCalls = 0;
+
+  playlistLoader.load = () => playlistLoadCalls++;
+  playlistLoader.dispose = () => playlistDisposeCalls++;
+
+  this.requests.shift().respond(200, null, `
+		#EXTM3U
+		#EXT-X-TARGETDURATION:10
+		#EXT-X-MEDIA-SEQUENCE:0
+		#EXTINF:10
+		0.webvtt
+		#EXT-X-ENDLIST
+  `);
+
+  segmentLoadCalls = 0;
+
+  // same active text track, got a response from webvtt playlist
+  masterPlaylistController.setupSubtitles();
+
+  assert.equal(playlistLoader,
+               masterPlaylistController.subtitlePlaylistLoader_,
+              'did not change subtitle playlist loader');
+  assert.equal(segmentLoader,
+               masterPlaylistController.subtitleSegmentLoader_,
+               'did not change subtitle segment loader');
+  assert.equal(playlistDisposeCalls, 0, 'did not dispose subtitles playlist loader');
+  assert.equal(playlistLoadCalls, 0, 'did not load subtitles playlist loader');
+  assert.equal(segmentLoadCalls, 1, 'loaded subtitles segment loader');
+
+  playlistDisposeCalls = 0;
+  segmentDisposeCalls = 0;
+  playlistLoadCalls = 0;
+  segmentLoadCalls = 0;
+  segmentPauseCalls = 0;
+  segmentResetCalls = 0;
+
+  // turn off active subtitle text track
+  textTracks[1].mode = 'disabled';
+
+  assert.equal(playlistDisposeCalls, 1, 'disposed subtitles playlist loader');
+  assert.equal(segmentDisposeCalls, 0, 'did not dispose subtitles segment loader');
+  assert.equal(playlistLoadCalls, 0, 'did not load subtitles playlist loader');
+  assert.equal(segmentLoadCalls, 0, 'did not load subtitles segment loader');
+  assert.equal(segmentPauseCalls, 1, 'paused subtitles segment loader');
+  assert.equal(segmentResetCalls, 0, 'did not reset subtitle segment loader');
+  assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
+               'removed subtitle playlist loader');
+  assert.ok(masterPlaylistController.subtitleSegmentLoader_,
+            'did not remove subtitle segment loader');
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
