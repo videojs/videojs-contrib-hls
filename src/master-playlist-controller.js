@@ -725,9 +725,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.masterPlaylistLoader_.media(media);
 
       this.mainSegmentLoader_.resetLoader();
-      if (this.audiosegmentloader_) {
-        this.audioSegmentLoader_.resetLoader();
-      }
+      // don't need to reset audio as it is reset when media changes
     }
   }
 
