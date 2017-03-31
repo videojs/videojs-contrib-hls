@@ -215,31 +215,43 @@ QUnit.test('fast quality change resyncs audio segment loader', function(assert) 
   this.requests.length = 0;
   this.player = createPlayer();
   this.player.src({
-    src: 'manifest/alternateAudio.m3u8',
+    src: 'alternate-audio-multiple-groups.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  masterPlaylistController.selectPlaylist = () => {
+    return masterPlaylistController.master().playlists[0];
+  };
 
   // master
   this.standardXHRResponse(this.requests.shift());
   // media
   this.standardXHRResponse(this.requests.shift());
 
-  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
   masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  this.player.audioTracks()[0].enabled = true;
 
   let resets = 0;
 
   masterPlaylistController.audioSegmentLoader_.resetLoader = () => resets++;
+  masterPlaylistController.fastQualityChange_();
+  assert.equal(resets, 0, 'does not reset the audio segment loader when media same');
 
   // force different media
   masterPlaylistController.selectPlaylist = () => {
-    return masterPlaylistController.master().playlists[0];
+    return masterPlaylistController.master().playlists[1];
   };
 
+  assert.equal(this.requests.length, 1, 'one request');
   masterPlaylistController.fastQualityChange_();
-
-  assert.equal(resets, 1, 'reset the audio segment loader');
+  assert.equal(this.requests.length, 2, 'added a request for new media');
+  assert.equal(resets, 0, 'does not reset the audio segment loader yet');
+  // new media request
+  this.standardXHRResponse(this.requests[1]);
+  assert.equal(resets, 1, 'resets the audio segment loader when media changes');
 });
 
 QUnit.test('if buffered, will request second segment byte range', function(assert) {
