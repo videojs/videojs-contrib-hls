@@ -2,6 +2,19 @@ CHANGELOG
 =========
 
 --------------------
+## 5.4.0 (2017-04-03)
+* feature: support for in-manifest WebVTT [#1057](https://github.com/videojs/videojs-contrib-hls/pull/1057)
+* fix: minor SegmentLoader fixes [#1065](https://github.com/videojs/videojs-contrib-hls/pull/1065)
+* fix: enable fast quality change for alternate audio [#1046](https://github.com/videojs/videojs-contrib-hls/pull/1046)
+* feature: blacklist live playlists that have stopped being updated [#1039](https://github.com/videojs/videojs-contrib-hls/pull/1039)
+  * never blacklist final available final rendition
+* chore: refactor all the XHR handling code and related state out of SegmentLoader and into a single mediaSegmentRequest function [#1044](https://github.com/videojs/videojs-contrib-hls/pull/1044)
+* feature: add a segment-metadata TextTrack that contains cues for the segments currently in the buffer [#976](https://github.com/videojs/videojs-contrib-hls/pull/976)
+* feature: add support for description audio tracks in hls [#1019](https://github.com/videojs/videojs-contrib-hls/pull/1019)
+  * add support for description audio tracks (marked with characteristics of 'public.accessibility.describes-video')
+  * add test for correctly setting alternative audio kinds
+
+--------------------
 ## 5.3.3 (2017-03-03)
 * update videojs-contrib-media-sources to v4.4.2 and mux.js to 4.1.1 [#1037](https://github.com/videojs/videojs-contrib-hls/pull/1037)
   * Fix silence insertion to not insert extra frames when audio is offset [#143](https://github.com/videojs/mux.js/pull/143)
