@@ -2456,34 +2456,6 @@ QUnit.test('Allows specifying the beforeRequest function on the player', functio
   assert.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
 });
 
-QUnit.test('player specified beforeRequest survives src changes', function(assert) {
-  let beforeRequestCalled = false;
-
-  HlsSourceHandler('html5').handleSource({
-    src: 'manifest/encrypted-media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  }, this.player.tech_);
-
-  this.player.tech_.hls.xhr.beforeRequest = () => {
-    beforeRequestCalled = true;
-  };
-
-  this.player.src({
-    src: 'master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-  // master
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-
-  assert.ok(beforeRequestCalled, 'beforeRequest was called');
-
-  // verify stats
-  assert.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default');
-});
-
 QUnit.test('Allows specifying the beforeRequest function globally', function(assert) {
   let beforeRequestCalled = false;
 

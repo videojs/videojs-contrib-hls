@@ -689,21 +689,8 @@ const HlsSourceHandler = function(mode) {
 
       let settings = videojs.mergeOptions(options, {hls: {mode}});
 
-      let previousBeforeRequest;
-
-      if (tech.hls && tech.hls.xhr) {
-        previousBeforeRequest = tech.hls.xhr.beforeRequest;
-      }
-
       tech.hls = new HlsHandler(source, tech, settings);
-
       tech.hls.xhr = xhrFactory();
-
-      if (previousBeforeRequest) {
-        // The player had a beforeRequest set prior to the source change.
-        // Use it for the new source.
-        tech.hls.xhr.beforeRequest = previousBeforeRequest;
-      }
 
       tech.hls.src(source.src);
       return tech.hls;
