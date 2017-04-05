@@ -595,6 +595,27 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.equal(loader.state, 'READY', 'returned to the ready state');
     });
 
+    QUnit.test('empty segments should trigger an error', function(assert) {
+      let errors = [];
+
+      loader.playlist(playlistWithDuration(10));
+
+      loader.load();
+      this.clock.tick(1);
+
+      loader.on('error', function(error) {
+        errors.push(error);
+      });
+      this.requests[0].response = new Uint8Array(0).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(errors.length, 1, 'triggered an error');
+      assert.equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
+      assert.ok(loader.error().xhr, 'included the request object');
+      assert.ok(loader.paused(), 'paused the loader');
+      assert.equal(loader.state, 'READY', 'returned to the ready state');
+    });
+
     QUnit.test('segment 5xx status codes trigger an error', function(assert) {
       let errors = [];
 

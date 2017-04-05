@@ -151,6 +151,16 @@ const handleKeyResponse = (segment, finishProcessingFn) => (error, request) => {
     }, segment);
   }
 
+  // stop processing if received empty content
+  if(response.byteLength === 0) {
+    return finishProcessingFn({
+      status: request.status,
+      message: 'Empty HLS content at URL: ' + request.uri,
+      code: REQUEST_ERRORS.FAILURE,
+      xhr: request
+    }, segment);
+  }
+
   const view = new DataView(response);
 
   segment.key.bytes = new Uint32Array([
@@ -170,11 +180,23 @@ const handleKeyResponse = (segment, finishProcessingFn) => (error, request) => {
  *                                        this request
  */
 const handleInitSegmentResponse = (segment, finishProcessingFn) => (error, request) => {
+  const response = request.response;
   const errorObj = handleErrors(error, request);
 
   if (errorObj) {
     return finishProcessingFn(errorObj, segment);
   }
+
+  // stop processing if received empty content
+  if(response.byteLength === 0) {
+    return finishProcessingFn({
+      status: request.status,
+      message: 'Empty HLS segment content at URL: ' + request.uri,
+      code: REQUEST_ERRORS.FAILURE,
+      xhr: request
+    }, segment);
+  }
+
   segment.map.bytes = new Uint8Array(request.response);
   return finishProcessingFn(null, segment);
 };
@@ -189,11 +211,23 @@ const handleInitSegmentResponse = (segment, finishProcessingFn) => (error, reque
  *                                        this request
  */
 const handleSegmentResponse = (segment, finishProcessingFn) => (error, request) => {
+  const response = request.response;
   const errorObj = handleErrors(error, request);
 
   if (errorObj) {
     return finishProcessingFn(errorObj, segment);
   }
+
+  // stop processing if received empty content
+  if(response.byteLength === 0) {
+    return finishProcessingFn({
+      status: request.status,
+      message: 'Empty HLS segment content at URL: ' + request.uri,
+      code: REQUEST_ERRORS.FAILURE,
+      xhr: request
+    }, segment);
+  }
+
   segment.stats = getRequestStats(request);
 
   if (segment.key) {
