@@ -151,16 +151,6 @@ const handleKeyResponse = (segment, finishProcessingFn) => (error, request) => {
     }, segment);
   }
 
-  // stop processing if received empty content
-  if(response.byteLength === 0) {
-    return finishProcessingFn({
-      status: request.status,
-      message: 'Empty HLS content at URL: ' + request.uri,
-      code: REQUEST_ERRORS.FAILURE,
-      xhr: request
-    }, segment);
-  }
-
   const view = new DataView(response);
 
   segment.key.bytes = new Uint32Array([
@@ -188,7 +178,7 @@ const handleInitSegmentResponse = (segment, finishProcessingFn) => (error, reque
   }
 
   // stop processing if received empty content
-  if(response.byteLength === 0) {
+  if (response.byteLength === 0) {
     return finishProcessingFn({
       status: request.status,
       message: 'Empty HLS segment content at URL: ' + request.uri,
@@ -219,7 +209,7 @@ const handleSegmentResponse = (segment, finishProcessingFn) => (error, request) 
   }
 
   // stop processing if received empty content
-  if(response.byteLength === 0) {
+  if (response.byteLength === 0) {
     return finishProcessingFn({
       status: request.status,
       message: 'Empty HLS segment content at URL: ' + request.uri,
