@@ -1459,6 +1459,48 @@ QUnit.test('the withCredentials option overrides the global default', function(a
   videojs.options.hls = hlsOptions;
 });
 
+QUnit.test('playlist blacklisting duration is set through options', function(assert) {
+  let hlsOptions = videojs.options.hls;
+  let url;
+  let media;
+
+  this.player.dispose();
+  videojs.options.hls = {
+    blacklistDuration: 3 * 60 * 1000
+  };
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  this.player.tech_.triggerReady();
+  openMediaSource(this.player, this.clock);
+  this.requests[0].respond(200, null,
+                           '#EXTM3U\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1000\n' +
+                           'media.m3u8\n' +
+                           '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                           'media1.m3u8\n');
+  this.requests[1].respond(404);
+  // media
+  url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
+  media = this.player.tech_.hls.playlists.master.playlists[url];
+  assert.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
+  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.args[0],
+              'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media.m3u8 Switching to another playlist.',
+              'log generic error message');
+
+  this.clock.tick(2 * 60 * 1000);
+  assert.ok(media.excludeUntil - Date.now() > 0, 'original media still be blacklisted');
+
+  this.clock.tick(1 * 60 * 1000);
+  assert.equal(media.excludeUntil, Date.now(), 'media\'s exclude time reach to the current time');
+  assert.equal(this.env.log.warn.calls, 3, 'warning logged for blacklist');
+
+  videojs.options.hls = hlsOptions;
+});
+
 QUnit.test('if mode global option is used, mode is set to global option', function(assert) {
   let hlsOptions = videojs.options.hls;
 
