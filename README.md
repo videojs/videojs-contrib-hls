@@ -279,8 +279,8 @@ consistent experience.
 * can be used as an initialization option
 
 When the `blacklistDuration` property is set to a time duration in seconds,
-if a playlist is blacklist, it will be blacklisted for a period of that
-customized duation. This enables the blacklist duration to be configurable
+if a playlist is blacklisted, it will be blacklisted for a period of that
+customized duration. This enables the blacklist duration to be configurable
 by the user.
 
 __NOTE__: If you use this option, you must also set
