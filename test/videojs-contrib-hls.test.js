@@ -442,7 +442,8 @@ QUnit.test('re-initializes the handler for each source', function(assert) {
   assert.notStrictEqual(firstMSE, secondMSE, 'the media source object is not reused');
 });
 
-QUnit.test('triggers an error when a master playlist request errors', function(assert) {
+QUnit.test('triggers a media source error when an initial playlist request errors',
+function(assert) {
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -453,6 +454,50 @@ QUnit.test('triggers an error when a master playlist request errors', function(a
   assert.equal(this.player.tech_.hls.mediaSource.error_,
                'network',
                'a network error is triggered');
+});
+
+QUnit.test(
+'triggers a player error when an initial playlist request errors and the media source ' +
+'isn\'t open',
+function(assert) {
+  const done = assert.async();
+  const origError = videojs.log.error;
+  const errLogs = [];
+  const endOfStreams = [];
+
+  videojs.log.error = (log) => errLogs.push(log);
+
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  this.player.tech_.hls.masterPlaylistController_.mediaSource.endOfStream = (type) => {
+    endOfStreams.push(type);
+    throw new Error();
+  };
+
+  this.player.on('error', () => {
+    const error = this.player.error();
+
+    assert.equal(endOfStreams.length, 1, 'one endOfStream called');
+    assert.equal(endOfStreams[0], 'network', 'endOfStream called with network');
+
+    assert.equal(error.code, 2, 'error has correct code');
+    assert.equal(error.message,
+                 'HLS playlist request error at URL: manifest/master.m3u8',
+                 'error has correct message');
+    assert.equal(errLogs.length, 1, 'logged an error');
+
+    videojs.log.error = origError;
+
+    assert.notOk(this.player.tech_.hls.mediaSource.error_, 'no media source error');
+
+    done();
+  });
+
+  this.requests.pop().respond(500);
 });
 
 QUnit.test('downloads media playlists after loading the master', function(assert) {
@@ -1020,20 +1065,6 @@ QUnit.test('does not abort segment loading for in-buffer seeking', function(asse
   this.player.tech_.setCurrentTime(11);
   this.clock.tick(1);
   assert.equal(this.requests.length, 1, 'did not abort the outstanding request');
-});
-
-QUnit.test('playlist 404 should end stream with a network error', function(assert) {
-  this.player.src({
-    src: 'manifest/media.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-  openMediaSource(this.player, this.clock);
-
-  assert.ok(!this.player.tech_.hls.mediaSource.error_, 'no media source error');
-
-  this.requests.pop().respond(404);
-
-  assert.equal(this.player.tech_.hls.mediaSource.error_, 'network', 'set a network error');
 });
 
 QUnit.test('segment 404 should trigger blacklisting of media', function(assert) {

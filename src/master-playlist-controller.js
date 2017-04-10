@@ -1055,7 +1055,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // trying to load the master OR while we were disposing of the tech
     if (!currentPlaylist) {
       this.error = error;
-      return this.mediaSource.endOfStream('network');
+
+      try {
+        return this.mediaSource.endOfStream('network');
+      } catch (e) {
+        return this.trigger('error');
+      }
     }
 
     let isFinalRendition = this.masterPlaylistLoader_.isFinalRendition_();
