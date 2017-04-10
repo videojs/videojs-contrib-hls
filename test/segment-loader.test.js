@@ -131,6 +131,8 @@ QUnit.module('SegmentLoader', function(hooks) {
       this.requests.shift().respond(200, null, '');
 
       assert.equal(loader.sourceUpdater_.timestampOffset(), -11, 'set timestampOffset');
+      assert.equal(playlist.segments[0].start, 0, 'segment start time not shifted by mp4 start time');
+      assert.equal(playlist.segments[0].end, 10, 'segment end time not shifted by mp4 start time');
     });
 
     QUnit.test('triggers syncinfoupdate before attempting a resync', function(assert) {

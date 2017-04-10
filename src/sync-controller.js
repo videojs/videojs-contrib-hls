@@ -362,13 +362,13 @@ export default class SyncController extends videojs.EventTarget {
       this.logger_('tsO:', segmentInfo.timestampOffset);
 
       mappingObj = {
-        time: segmentInfo.timestampOffset,
-        mapping: segmentInfo.timestampOffset - timingInfo.start
+        time: segmentInfo.startOfSegment,
+        mapping: segmentInfo.startOfSegment - timingInfo.start
       };
       this.timelines[segmentInfo.timeline] = mappingObj;
       this.trigger('timestampoffset');
 
-      segment.start = segmentInfo.timestampOffset;
+      segment.start = segmentInfo.startOfSegment;
       segment.end = timingInfo.end + mappingObj.mapping;
     } else if (mappingObj) {
       segment.start = timingInfo.start + mappingObj.mapping;
