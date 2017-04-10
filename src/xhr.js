@@ -9,7 +9,11 @@
  * @param {Function} callback the callback to call when done
  * @return {Request} the xhr request that is going to be made
  */
-import {xhr as videojsXHR, mergeOptions} from 'video.js';
+import {
+  xhr as videojsXHR,
+  mergeOptions,
+  default as videojs
+} from 'video.js';
 
 const xhrFactory = function() {
   const xhr = function XhrFunction(options, callback) {
@@ -20,9 +24,10 @@ const xhrFactory = function() {
 
     // Allow an optional user-specified function to modify the option
     // object before we construct the xhr request
-    if (XhrFunction.beforeRequest &&
-        typeof XhrFunction.beforeRequest === 'function') {
-      let newOptions = XhrFunction.beforeRequest(options);
+    let beforeRequest = XhrFunction.beforeRequest || videojs.Hls.xhr.beforeRequest;
+
+    if (beforeRequest && typeof beforeRequest === 'function') {
+      let newOptions = beforeRequest(options);
 
       if (newOptions) {
         options = newOptions;

@@ -690,13 +690,7 @@ const HlsSourceHandler = function(mode) {
       let settings = videojs.mergeOptions(options, {hls: {mode}});
 
       tech.hls = new HlsHandler(source, tech, settings);
-
       tech.hls.xhr = xhrFactory();
-      // Use a global `before` function if specified on videojs.Hls.xhr
-      // but still allow for a per-player override
-      if (videojs.Hls.xhr.beforeRequest) {
-        tech.hls.xhr.beforeRequest = videojs.Hls.xhr.beforeRequest;
-      }
 
       tech.hls.src(source.src);
       return tech.hls;
