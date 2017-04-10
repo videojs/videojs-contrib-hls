@@ -387,7 +387,7 @@ class HlsHandler extends Component {
   setOptions_() {
     // defaults
     this.options_.withCredentials = this.options_.withCredentials || false;
-    this.options_.blacklistDuration = this.options_.blacklistDuration || 5 * 60 * 1000;
+    this.options_.blacklistDuration = this.options_.blacklistDuration || 5 * 60;
 
     // start playlist selection at a reasonable bandwidth for
     // broadband internet

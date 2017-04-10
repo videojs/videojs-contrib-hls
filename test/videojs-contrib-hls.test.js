@@ -1466,7 +1466,7 @@ QUnit.test('playlist blacklisting duration is set through options', function(ass
 
   this.player.dispose();
   videojs.options.hls = {
-    blacklistDuration: 3 * 60 * 1000
+    blacklistDuration: 3 * 60
   };
   this.player = createPlayer();
   this.player.src({

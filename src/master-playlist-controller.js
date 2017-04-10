@@ -1068,7 +1068,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.masterPlaylistLoader_.load(isFinalRendition);
     }
     // Blacklist this playlist
-    currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration;
+    currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
