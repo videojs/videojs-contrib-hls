@@ -2,6 +2,15 @@ CHANGELOG
 =========
 
 --------------------
+## 5.4.1 (2017-04-10)
+* update contrib-media-sources to 4.4.3 [#1077](https://github.com/videojs/videojs-contrib-hls/pull/1077)
+* Fix exceptions from calling endOfStream when the media source isn't ready [#1061](https://github.com/videojs/videojs-contrib-hls/pull/1061)
+* fix segment time mapping for fmp4 playback [#1067](https://github.com/videojs/videojs-contrib-hls/pull/1067)
+* If beforeRequest is set, reuse it on source changes [#983](https://github.com/videojs/videojs-contrib-hls/pull/983)
+  * Allow changing global xhr beforeRequest at runtime
+  * Always use latest beforeRequest instead of setting it when creating hls object
+
+--------------------
 ## 5.4.0 (2017-04-03)
 * feature: support for in-manifest WebVTT [#1057](https://github.com/videojs/videojs-contrib-hls/pull/1057)
 * fix: minor SegmentLoader fixes [#1065](https://github.com/videojs/videojs-contrib-hls/pull/1065)
