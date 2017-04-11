@@ -32,6 +32,7 @@ Maintenance Status: Stable
       - [withCredentials](#withcredentials)
       - [useCueTags](#usecuetags)
       - [overrideNative](#overridenative)
+      - [blacklistDuration](#blacklistduration)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -272,6 +273,15 @@ missing features like CEA-608 captions support. When `overrideNative`
 is true, if the platform supports Media Source Extensions
 videojs-contrib-hls will take over HLS playback to provide a more
 consistent experience.
+
+##### blacklistDuration
+* Type: `Number`
+* can be used as an initialization option
+
+When the `blacklistDuration` property is set to a time duration in seconds,
+if a playlist is blacklisted, it will be blacklisted for a period of that
+customized duration. This enables the blacklist duration to be configurable
+by the user.
 
 __NOTE__: If you use this option, you must also set
 `videojs.options.html5.nativeAudioTracks` and

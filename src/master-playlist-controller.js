@@ -12,8 +12,6 @@ import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-u
 import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
 
-// 5 minute blacklist
-const BLACKLIST_DURATION = 5 * 60 * 1000;
 let Hls;
 
 // SegmentLoader stats that need to have each loader's
@@ -212,7 +210,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       tech,
       bandwidth,
       externHls,
-      useCueTags
+      useCueTags,
+      blacklistDuration
     } = options;
 
     if (!url) {
@@ -226,6 +225,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.hls_ = tech.hls;
     this.mode_ = mode;
     this.useCueTags_ = useCueTags;
+    this.blacklistDuration = blacklistDuration;
     if (this.useCueTags_) {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
@@ -1073,11 +1073,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.masterPlaylistLoader_.load(isFinalRendition);
     }
     // Blacklist this playlist
-    currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
+    currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
-
     videojs.log.warn('Problem encountered with the current HLS playlist.' +
                      (error.message ? ' ' + error.message : '') +
                      ' Switching to another playlist.');
