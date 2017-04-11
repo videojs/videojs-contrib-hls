@@ -33,6 +33,7 @@ Maintenance Status: Stable
       - [useCueTags](#usecuetags)
       - [overrideNative](#overridenative)
       - [blacklistDuration](#blacklistduration)
+      - [bandwidth](#bandwidth)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -289,6 +290,14 @@ When the `blacklistDuration` property is set to a time duration in seconds,
 if a playlist is blacklisted, it will be blacklisted for a period of that
 customized duration. This enables the blacklist duration to be configured
 by the user.
+
+##### bandwidth
+* Type: `number`
+* can be used as an initialization option
+
+When the `bandwidth` property is set (bits per second), it will be used in
+the calculation for initial playlist selection, before more bandwidth
+information is seen by the player.
 
 ### Runtime Properties
 Runtime properties are attached to the tech object when HLS is in
