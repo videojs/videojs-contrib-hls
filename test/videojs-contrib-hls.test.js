@@ -1207,17 +1207,20 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
 
 QUnit.test('never blacklist the playlist if it is the only playlist', function(assert) {
   let media;
+  let finalplaylisterrors = 0;
 
   this.player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+  this.player.tech_.on('finalplaylisterrors', () => finalplaylisterrors++);
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
                                 '#EXTINF:10,\n' +
                                 '0.ts\n');
+  assert.equal(finalplaylisterrors, 0, 'there is error on final playlist');
 
   this.clock.tick(10 * 1000);
   this.requests.shift().respond(404);
@@ -1229,6 +1232,7 @@ QUnit.test('never blacklist the playlist if it is the only playlist', function(a
   assert.equal(this.env.log.warn.args[0],
               'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
               'log specific error message for final playlist');
+  assert.equal(finalplaylisterrors, 1, 'final playlist errors once');
 });
 
 QUnit.test('error on the first playlist request does not trigger an error ' +
