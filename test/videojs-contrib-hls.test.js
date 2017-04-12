@@ -1096,12 +1096,16 @@ QUnit.test('segment 404 should trigger blacklisting of media', function(assert) 
 QUnit.test('playlist 404 should blacklist media', function(assert) {
   let media;
   let url;
+  let blacklistplaylist = 0;
+  let retryplaylist = 0;
 
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+  this.player.tech_.on('blacklistplaylist', () => blacklistplaylist++);
+  this.player.tech_.on('retryplaylist', () => retryplaylist++);
 
   this.player.tech_.hls.bandwidth = 1e10;
   // master
@@ -1114,6 +1118,8 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   assert.equal(typeof this.player.tech_.hls.playlists.media_,
               'undefined',
               'no media is initially set');
+
+  assert.equal(blacklistplaylist, 0, 'there is no blacklisted playlist');
   // media
   this.requests[1].respond(404);
   url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
@@ -1123,6 +1129,8 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   assert.equal(this.env.log.warn.args[0],
               'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media.m3u8 Switching to another playlist.',
               'log generic error message');
+  assert.equal(blacklistplaylist, 1, 'there is one blacklisted playlist');
+  assert.equal(retryplaylist, 0, 'haven\'t retried any playlist');
 
   // request for the final available media
   this.requests[2].respond(404);
@@ -1135,6 +1143,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   assert.equal(this.env.log.warn.args[1],
               'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
               'log specific error message for final playlist');
+  assert.equal(retryplaylist, 1, 'retried final playlist for once');
 
   this.clock.tick(2 * 1000);
   // no new request was made since it hasn't been half the segment duration
@@ -1207,20 +1216,17 @@ QUnit.test('blacklists playlist if it has stopped being updated', function(asser
 
 QUnit.test('never blacklist the playlist if it is the only playlist', function(assert) {
   let media;
-  let finalplaylisterrors = 0;
 
   this.player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
-  this.player.tech_.on('finalplaylisterrors', () => finalplaylisterrors++);
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
                                 '#EXTINF:10,\n' +
                                 '0.ts\n');
-  assert.equal(finalplaylisterrors, 0, 'there is error on final playlist');
 
   this.clock.tick(10 * 1000);
   this.requests.shift().respond(404);
@@ -1232,7 +1238,6 @@ QUnit.test('never blacklist the playlist if it is the only playlist', function(a
   assert.equal(this.env.log.warn.args[0],
               'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
               'log specific error message for final playlist');
-  assert.equal(finalplaylisterrors, 1, 'final playlist errors once');
 });
 
 QUnit.test('error on the first playlist request does not trigger an error ' +
