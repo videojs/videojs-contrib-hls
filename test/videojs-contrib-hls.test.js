@@ -1533,13 +1533,14 @@ QUnit.test('playlist blacklisting duration is set through options', function(ass
   assert.equal(this.env.log.warn.args[0],
               'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media.m3u8 Switching to another playlist.',
               'log generic error message');
+  // this takes one millisecond
+  this.standardXHRResponse(this.requests[2]);
 
-  this.clock.tick(2 * 60 * 1000);
+  this.clock.tick(2 * 60 * 1000 - 1);
   assert.ok(media.excludeUntil - Date.now() > 0, 'original media still be blacklisted');
 
   this.clock.tick(1 * 60 * 1000);
   assert.equal(media.excludeUntil, Date.now(), 'media\'s exclude time reach to the current time');
-  assert.equal(this.env.log.warn.calls, 3, 'warning logged for blacklist');
 
   videojs.options.hls = hlsOptions;
 });
