@@ -1144,6 +1144,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
               'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
               'log specific error message for final playlist');
   assert.equal(retryplaylist, 1, 'retried final playlist for once');
+  assert.equal(blacklistplaylist, 1, 'there is one blacklisted playlist');
 
   this.clock.tick(2 * 1000);
   // no new request was made since it hasn't been half the segment duration
