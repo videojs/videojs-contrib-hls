@@ -1070,10 +1070,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
       videojs.log.warn('Problem encountered with the current ' +
                        'HLS playlist. Trying again since it is the final playlist.');
 
+      this.tech_.trigger('retryplaylist');
       return this.masterPlaylistLoader_.load(isFinalRendition);
     }
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
+    this.tech_.trigger('blacklistplaylist');
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
