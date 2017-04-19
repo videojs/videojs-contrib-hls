@@ -1138,7 +1138,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
   // media wasn't blacklisted because it's final rendition
-  assert.ok(!media.excludeUntil, 'media not blacklisted after playlist 404');
+  assert.ok(media.excludeUntil, 'second media was blacklisted after playlist 404');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
   assert.equal(this.env.log.warn.args[1],
               'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
@@ -1153,9 +1153,11 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   this.clock.tick(3 * 1000);
   // continue loading the final remaining playlist after it wasn't blacklisted
   // when half the segment duaration passed
+
   assert.strictEqual(4, this.requests.length, 'one more request was made');
+  // the first media was unblacklisted after a refresh delay
   assert.strictEqual(this.requests[3].url,
-                     absoluteUrl('manifest/media1.m3u8'),
+                     absoluteUrl('manifest/media.m3u8'),
                      'media playlist requested');
 
   // verify stats
@@ -1233,11 +1235,11 @@ QUnit.test('never blacklist the playlist if it is the only playlist', function(a
   this.requests.shift().respond(404);
   media = this.player.tech_.hls.playlists.media();
 
-  // media wasn't blacklisted because it's final rendition
+  // media wasn't blacklisted because it's the only rendition
   assert.ok(!media.excludeUntil, 'media was not blacklisted after playlist 404');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
   assert.equal(this.env.log.warn.args[0],
-              'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
+              'Problem encountered with the current HLS playlist. Trying again since it is the only playlist.',
               'log specific error message for final playlist');
 });
 
@@ -1260,12 +1262,12 @@ QUnit.test('error on the first playlist request does not trigger an error ' +
   let url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
   let media = this.player.tech_.hls.playlists.master.playlists[url];
 
-  // media wasn't blacklisted because it's final rendition
+  // media wasn't blacklisted because it's the only rendition
   assert.ok(!media.excludeUntil, 'media was not blacklisted after playlist 404');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
   assert.equal(this.env.log.warn.args[0],
-              'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
-              'log specific error message for final playlist');
+              'Problem encountered with the current HLS playlist. Trying again since it is the only playlist.',
+              'log specific error message for the only playlist');
 });
 
 QUnit.test('seeking in an empty playlist is a non-erroring noop', function(assert) {

@@ -286,13 +286,22 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     * object to switch to
     * @return {Playlist} the current loaded media
     */
-  loader.media = function(playlist) {
+  loader.media = function(playlist, isFinalRendition) {
     let startingState = loader.state;
     let mediaChange;
 
     // getter
     if (!playlist) {
       return loader.media_;
+    }
+
+    window.clearTimeout(mediaUpdateTimeout);
+
+    if (isFinalRendition) {
+      let refreshDelay = (playlist.targetDuration / 2) * 1000 || 5 * 1000;
+
+      mediaUpdateTimeout = window.setTimeout(loader.media.bind(loader, playlist, false), refreshDelay);
+      return;
     }
 
     // setter

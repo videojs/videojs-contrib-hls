@@ -1064,14 +1064,22 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     let isFinalRendition = this.masterPlaylistLoader_.isFinalRendition_();
+    let playlists = this.tech_.hls.playlists.master.playlists;
 
-    if (isFinalRendition) {
-      // Never blacklisting this playlist because it's final rendition
+    if (playlists.length === 1) {
+      // Never blacklisting this playlist because it's the only playlist
       videojs.log.warn('Problem encountered with the current ' +
-                       'HLS playlist. Trying again since it is the final playlist.');
+                       'HLS playlist. Trying again since it is the only playlist.');
 
       this.tech_.trigger('retryplaylist');
       return this.masterPlaylistLoader_.load(isFinalRendition);
+    }
+    if (isFinalRendition) {
+      playlists.forEach((playlist) => {
+        // clear the blacklist duration for the other playlists when
+        // the final playlist errors
+        playlist.excludeUntil = Date.now();
+      });
     }
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
@@ -1083,7 +1091,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
                      (error.message ? ' ' + error.message : '') +
                      ' Switching to another playlist.');
 
-    return this.masterPlaylistLoader_.media(nextPlaylist);
+    return this.masterPlaylistLoader_.media(nextPlaylist, isFinalRendition);
   }
 
   /**
