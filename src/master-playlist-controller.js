@@ -1064,7 +1064,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     let isFinalRendition = this.masterPlaylistLoader_.isFinalRendition_();
-    let playlists = this.tech_.hls.playlists.master.playlists;
+    let playlists = this.masterPlaylistLoader_.master.playlists;
 
     if (playlists.length === 1) {
       // Never blacklisting this playlist because it's the only playlist
