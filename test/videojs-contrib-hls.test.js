@@ -1129,22 +1129,21 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   assert.equal(this.env.log.warn.args[0],
               'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media.m3u8 Switching to another playlist.',
               'log generic error message');
-  assert.equal(blacklistplaylist, 1, 'there is one blacklisted playlist');
+  assert.equal(blacklistplaylist, 1, 'media is blacklisted');
   assert.equal(retryplaylist, 0, 'haven\'t retried any playlist');
 
-  // request for the final available media
+  // request for the final media
   this.requests[2].respond(404);
   url = this.requests[2].url.slice(this.requests[2].url.lastIndexOf('/') + 1);
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
-  // media wasn't blacklisted because it's final rendition
   assert.ok(media.excludeUntil, 'second media was blacklisted after playlist 404');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
   assert.equal(this.env.log.warn.args[1],
-              'Problem encountered with the current HLS playlist. Trying again since it is the final playlist.',
-              'log specific error message for final playlist');
-  assert.equal(retryplaylist, 1, 'retried final playlist for once');
-  assert.equal(blacklistplaylist, 1, 'there is one blacklisted playlist');
+              'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media1.m3u8 Switching to another playlist.',
+              'log generic error message');
+  assert.equal(retryplaylist, 0, 'haven\'t retried any playlist');
+  assert.equal(blacklistplaylist, 2, 'media1 is blacklisted');
 
   this.clock.tick(2 * 1000);
   // no new request was made since it hasn't been half the segment duration
