@@ -45,7 +45,7 @@ export default class SourceUpdater {
     this.pendingCallback_ = null;
     this.timestampOffset_ = 0;
     this.mediaSource = mediaSource;
-    this.firstAppend_ = false;
+    this.processedAppend_ = false;
 
     if (mediaSource.readyState === 'closed') {
       mediaSource.addEventListener('sourceopen', createSourceBuffer);
@@ -61,7 +61,7 @@ export default class SourceUpdater {
    * @see http://w3c.github.io/media-source/#widl-SourceBuffer-abort-void
    */
   abort(done) {
-    if (this.firstAppend_) {
+    if (this.processedAppend_) {
       this.queueCallback_(() => {
         this.sourceBuffer_.abort();
       }, done);
@@ -76,7 +76,7 @@ export default class SourceUpdater {
    * @see http://www.w3.org/TR/media-source/#widl-SourceBuffer-appendBuffer-void-ArrayBuffer-data
    */
   appendBuffer(bytes, done) {
-    this.firstAppend_ = true;
+    this.processedAppend_ = true;
 
     this.queueCallback_(() => {
       this.sourceBuffer_.appendBuffer(bytes);
@@ -103,7 +103,7 @@ export default class SourceUpdater {
    * @see http://www.w3.org/TR/media-source/#widl-SourceBuffer-remove-void-double-start-unrestricted-double-end
    */
   remove(start, end) {
-    if (this.firstAppend_) {
+    if (this.processedAppend_) {
       this.queueCallback_(() => {
         this.sourceBuffer_.remove(start, end);
       }, noop);
@@ -111,7 +111,7 @@ export default class SourceUpdater {
   }
 
   /**
-   * wether the underlying sourceBuffer is updating or not
+   * Whether the underlying sourceBuffer is updating or not
    *
    * @return {Boolean} the updating status of the SourceBuffer
    */
@@ -135,7 +135,7 @@ export default class SourceUpdater {
   }
 
   /**
-   * que a callback to run
+   * Queue a callback to run
    */
   queueCallback_(callback, done) {
     this.callbacks_.push([callback.bind(this), done]);
@@ -143,7 +143,7 @@ export default class SourceUpdater {
   }
 
   /**
-   * run a queued callback
+   * Run a queued callback
    */
   runCallback_() {
     let callbacks;
