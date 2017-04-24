@@ -1903,6 +1903,56 @@ QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
   Hls.Playlist.isFmp4 = isFmp4Copy;
 });
 
+QUnit.test('adds only CEA608 closed-caption tracks when a master playlist is loaded', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master-captions.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // wait for async player.src to complete
+  this.clock.tick(1);
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  assert.equal(this.player.textTracks().length, 1, 'one text track to start');
+  assert.equal(this.player.textTracks()[0].label,
+               'segment-metadata',
+               'only segment-metadata text track');
+
+  // master, contains media groups for captions
+  this.standardXHRResponse(this.requests.shift());
+
+  // we wait for loadedmetadata before setting caption tracks, so we need to wait for a
+  // media playlist
+  assert.equal(this.player.textTracks().length, 1, 'only one text track after master');
+
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  const master = masterPlaylistController.masterPlaylistLoader_.master;
+  const caps = master.mediaGroups['CLOSED-CAPTIONS'].CCs;
+  const capsArr = Object.keys(caps).map(key => Object.assign({name: key}, caps[key]));
+  const addedCaps = masterPlaylistController.closedCaptionGroups_.groups.CCs
+    .map(cap => Object.assign({name: cap.id}, cap));
+
+  assert.equal(capsArr.length, 4, '4 closed-caption tracks defined in playlist');
+  assert.equal(addedCaps.length, 2, '2 CEA608 tracks added internally');
+  assert.equal(addedCaps[0].instreamId, 'CC1', 'first 608 track is CC1');
+  assert.equal(addedCaps[1].instreamId, 'CC3', 'second 608 track is CC3');
+
+  const textTracks = this.player.textTracks();
+
+  assert.equal(textTracks.length, 3, '2 text tracks were added');
+  assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
+  assert.equal(textTracks[2].mode, 'disabled', 'track starts disabled');
+  assert.equal(textTracks[1].id, addedCaps[0].instreamId, 'text track 1\'s id is CC\'s instreamId');
+  assert.equal(textTracks[2].id, addedCaps[1].instreamId, 'text track 2\'s id is CC\'s instreamId');
+  assert.equal(textTracks[1].label, addedCaps[0].name, 'text track 1\'s label is CC\'s name');
+  assert.equal(textTracks[2].label, addedCaps[1].name, 'text track 2\'s label is CC\'s name');
+});
+
 QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {
   let hlsWebvttEvents = 0;
 
