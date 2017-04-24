@@ -235,8 +235,15 @@ const getPlaylistSyncPoints = function(playlist) {
   if (!playlist || !playlist.segments) {
     return [null, null];
   }
-  let expiredSync = playlist.syncInfo || (playlist.endList ? { time: 0, mediaSequence: 0} : null);
+  let expiredSync = playlist.syncInfo;
   let segmentSync = null;
+
+  if (!expiredSync) {
+    // If there is no sync point via syncInfo object on the playlist, then assume
+    // a sync point of the specified media sequence in the playlist as time 0 if this is
+    // not live, otherwise there is no expired sync point yet.
+    expiredSync = playlist.endList ? { time: 0, mediaSequence: playlist.mediaSequence } : null;
+  }
 
   // Find the first segment with timing information
   for (let i = 0, l = playlist.segments.length; i < l; i++) {

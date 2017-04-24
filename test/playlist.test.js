@@ -387,6 +387,36 @@ QUnit.test('seekable end and playlist end account for non-standard target durati
   assert.equal(playlistEnd, 9, 'playlist end at the last segment');
 });
 
+QUnit.test('seekable end and playlist end account for non-zero starting VOD media sequence', function(assert) {
+  let playlist = {
+    targetDuration: 2,
+    mediaSequence: 5,
+    endList: true,
+    segments: [{
+      duration: 2,
+      uri: '0.ts'
+    }, {
+      duration: 2,
+      uri: '1.ts'
+    }, {
+      duration: 1,
+      uri: '2.ts'
+    }, {
+      duration: 2,
+      uri: '3.ts'
+    }, {
+      duration: 2,
+      uri: '4.ts'
+    }]
+  };
+  let seekable = Playlist.seekable(playlist);
+  let playlistEnd = Playlist.playlistEnd(playlist);
+
+  assert.equal(seekable.start(0), 0, 'starts at the earliest available segment');
+  assert.equal(seekable.end(0), 9, 'seekable end is same as duration');
+  assert.equal(playlistEnd, 9, 'playlist end at the last segment');
+});
+
 QUnit.test('playlist with no sync points has empty seekable range and empty playlist end', function(assert) {
   let playlist = {
     targetDuration: 10,
