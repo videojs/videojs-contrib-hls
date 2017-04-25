@@ -19,6 +19,40 @@ import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
 
+const generateMedia = function(isMaat, isMuxed, hasVideoCodec, hasAudioCodec) {
+  const codec = (hasVideoCodec ? 'avc1.4d400d' : '') +
+    (hasVideoCodec && hasAudioCodec ? ',' : '') +
+    (hasAudioCodec ? 'mp4a.40.2' : '');
+  const master = {
+    mediaGroups: {},
+    playlists: []
+  };
+  const media = {
+    attributes: {}
+  };
+
+  if (isMaat) {
+    master.mediaGroups.AUDIO = {
+      test: {
+        demuxed: {
+          uri: 'foo.bar'
+        }
+      }
+    };
+
+    if (isMuxed) {
+      master.mediaGroups.AUDIO.test.muxed = {};
+    }
+    media.attributes.AUDIO = 'test';
+  }
+
+  if (hasVideoCodec || hasAudioCodec) {
+    media.attributes.CODECS = codec;
+  }
+
+  return [master, media];
+};
+
 QUnit.module('MasterPlaylistController', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
@@ -1590,114 +1624,76 @@ QUnit.test('sets up subtitles', function(assert) {
 QUnit.module('Codec to MIME Type Conversion');
 
 QUnit.test('recognizes muxed codec configurations', function(assert) {
-  assert.deepEqual(mimeTypesForPlaylist_({ mediaGroups: {} }, {}),
-                  [ 'video/mp2t; codecs="avc1.4d400d, mp4a.40.2"' ],
-                  'returns a default MIME type when no codecs are present');
+  // no MAAT
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(false, true, false, false)),
+    ['video/mp2t; codecs="avc1.4d400d, mp4a.40.2"'],
+    'no MAAT, codecs: none');
 
-  assert.deepEqual(mimeTypesForPlaylist_({
-    mediaGroups: {},
-    playlists: []
-  }, {
-    attributes: {
-      CODECS: 'mp4a.40.E,avc1.deadbeef'
-    }
-  }), [
-    'video/mp2t; codecs="avc1.deadbeef, mp4a.40.E"'
-  ], 'returned the parsed muxed type');
-});
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(false, true, true, false)),
+    ['video/mp2t; codecs="avc1.4d400d"'],
+    'no MAAT, codecs: video');
 
-QUnit.test('recognizes mixed codec configurations', function(assert) {
-  assert.deepEqual(mimeTypesForPlaylist_({
-    mediaGroups: {
-      AUDIO: {
-        hi: {
-          en: {},
-          es: {
-            uri: 'http://example.com/alt-audio.m3u8'
-          }
-        }
-      }
-    },
-    playlists: []
-  }, {
-    attributes: {
-      AUDIO: 'hi'
-    }
-  }), [
-    'video/mp2t; codecs="avc1.4d400d, mp4a.40.2"',
-    'audio/mp2t; codecs="mp4a.40.2"'
-  ], 'returned a default muxed type with alternate audio');
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(false, true, false, true)),
+    ['audio/mp2t; codecs="mp4a.40.2"'],
+    'no MAAT, codecs: audio');
 
-  assert.deepEqual(mimeTypesForPlaylist_({
-    mediaGroups: {
-      AUDIO: {
-        hi: {
-          eng: {},
-          es: {
-            uri: 'http://example.com/alt-audio.m3u8'
-          }
-        }
-      }
-    },
-    playlists: []
-  }, {
-    attributes: {
-      CODECS: 'mp4a.40.E,avc1.deadbeef',
-      AUDIO: 'hi'
-    }
-  }), [
-    'video/mp2t; codecs="avc1.deadbeef, mp4a.40.E"',
-    'audio/mp2t; codecs="mp4a.40.E"'
-  ], 'returned a parsed muxed type with alternate audio');
-});
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(false, true, true, true)),
+    ['video/mp2t; codecs="avc1.4d400d, mp4a.40.2"'],
+    'no MAAT, codecs: video, audio');
 
-QUnit.test('recognizes unmuxed codec configurations', function(assert) {
-  assert.deepEqual(mimeTypesForPlaylist_({
-    mediaGroups: {
-      AUDIO: {
-        hi: {
-          eng: {
-            uri: 'http://example.com/eng.m3u8'
-          },
-          es: {
-            uri: 'http://example.com/eng.m3u8'
-          }
-        }
-      }
-    },
-    playlists: []
-  }, {
-    attributes: {
-      AUDIO: 'hi'
-    }
-  }), [
-    'video/mp2t; codecs="avc1.4d400d"',
-    'audio/mp2t; codecs="mp4a.40.2"'
-  ], 'returned default unmuxed types');
+  // MAAT, not muxed
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(true, false, false, false)),
+    ['video/mp2t; codecs="avc1.4d400d"',
+     'audio/mp2t; codecs="mp4a.40.2"'],
+    'MAAT, demuxed, codecs: none');
 
-  assert.deepEqual(mimeTypesForPlaylist_({
-    mediaGroups: {
-      AUDIO: {
-        hi: {
-          eng: {
-            uri: 'http://example.com/alt-audio.m3u8'
-          },
-          es: {
-            uri: 'http://example.com/eng.m3u8'
-          }
-        }
-      }
-    },
-    playlists: []
-  }, {
-    attributes: {
-      CODECS: 'mp4a.40.E,avc1.deadbeef',
-      AUDIO: 'hi'
-    }
-  }), [
-    'video/mp2t; codecs="avc1.deadbeef"',
-    'audio/mp2t; codecs="mp4a.40.E"'
-  ], 'returned parsed unmuxed types');
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(true, false, true, false)),
+    ['video/mp2t; codecs="avc1.4d400d"',
+     'audio/mp2t; codecs="mp4a.40.2"'],
+    'MAAT, demuxed, codecs: video');
+
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(true, false, false, true)),
+    ['video/mp2t; codecs="mp4a.40.2"',
+     'audio/mp2t; codecs="mp4a.40.2"'],
+    'MAAT, demuxed, codecs: audio');
+
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(true, false, true, true)),
+    ['video/mp2t; codecs="avc1.4d400d"',
+     'audio/mp2t; codecs="mp4a.40.2"'],
+    'MAAT, demuxed, codecs: video, audio');
+
+  // MAAT, muxed
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(true, true, false, false)),
+    ['video/mp2t; codecs="avc1.4d400d, mp4a.40.2"',
+     'audio/mp2t; codecs="mp4a.40.2"'],
+    'MAAT, muxed, codecs: none');
+
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(true, true, true, false)),
+    ['video/mp2t; codecs="avc1.4d400d, mp4a.40.2"',
+     'audio/mp2t; codecs="mp4a.40.2"'],
+    'MAAT, muxed, codecs: video');
+
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(true, true, false, true)),
+    ['video/mp2t; codecs="mp4a.40.2"',
+     'audio/mp2t; codecs="mp4a.40.2"'],
+    'MAAT, muxed, codecs: audio');
+
+  assert.deepEqual(mimeTypesForPlaylist_.apply(null,
+      generateMedia(true, true, true, true)),
+    ['video/mp2t; codecs="avc1.4d400d, mp4a.40.2"',
+     'audio/mp2t; codecs="mp4a.40.2"'],
+    'MAAT, muxed, codecs: video, audio');
 });
 
 QUnit.module('Map Legacy AVC Codec');
