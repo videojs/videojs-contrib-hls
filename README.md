@@ -104,13 +104,20 @@ player.play();
 Check out our [live example](http://jsbin.com/vokipos/8/edit?html,output) if you're having trouble.
 
 ### Video.js 6
-If you are trying to use video.js version 6, you must include [videojs-flash](https://github.com/videojs/videojs-flash)
-on your page before including videojs-contrib-hls
+With Video.js 6, by default there is no flash support. Instead, flash support is provided
+through the [videojs-flash](https://github.com/videojs/videojs-flash) plugin. If you are
+trying to use Video.js version 6 and want to include flash support, you must include
+[videojs-flash](https://github.com/videojs/videojs-flash) on your page before including
+videojs-contrib-hls
 
 ```html
 <script src="https://unpkg.com/videojs-flash/dist/videojs-flash.js"></script>
 <script src="https://unpkg.com/videojs-contrib-hls/dist/videojs-contrib-hls.js"></script>
 ```
+
+Flash, and the [videojs-flash](https://github.com/videojs/videojs-flash) plugin, are not
+required, but are recommended as a fallback option for browsers that don't have a native
+HLS player or support for [Media Source Extensions](http://caniuse.com/#feat=mediasource).
 
 ## Documentation
 [HTTP Live Streaming](https://developer.apple.com/streaming/) (HLS) has
