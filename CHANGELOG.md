@@ -2,6 +2,14 @@ CHANGELOG
 =========
 
 --------------------
+## 5.5.0 (2017-04-25)
+* Update mux.js to 4.1.3 and media-sources to 4.4.4 [#1098](https://github.com/videojs/videojs-contrib-hls/pull/1098)
+* Trigger an event when a playlist is blacklisted or retried [#1080](https://github.com/videojs/videojs-contrib-hls/pull/1080)
+ * Triggers `blacklistplaylist` when a playlist is blacklisted
+ * Triggers `retryplaylist` when retrying to load an errored playlist
+* Add option to modify blacklist duration [#1076](https://github.com/videojs/videojs-contrib-hls/pull/1076)
+
+--------------------
 ## 5.4.1 (2017-04-10)
 * update contrib-media-sources to 4.4.3 [#1077](https://github.com/videojs/videojs-contrib-hls/pull/1077)
 * Fix exceptions from calling endOfStream when the media source isn't ready [#1061](https://github.com/videojs/videojs-contrib-hls/pull/1061)
