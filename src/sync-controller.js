@@ -209,6 +209,29 @@ export default class SyncController extends videojs.EventTarget {
   }
 
   /**
+   *
+   */
+  getExpiredTime(playlist, duration) {
+    if (!playlist) {
+      return null;
+    }
+
+    const syncPoint = this.getSyncPoint(playlist, duration, playlist.discontinuitySequence, 0);
+
+    if (!syncPoint) {
+      return null;
+    }
+
+    // If the sync point is beyond the start of the playlist, we want to subtract the
+    // duration from index 0 to syncPoint.segmentIndex instead of adding.
+    if (syncPoint.segmentIndex > 0) {
+      syncPoint.time = -1 * syncPoint.time;
+    }
+
+    return Math.abs(syncPoint.time + sumDurations(playlist, syncPoint.segmentIndex, 0));
+  }
+
+  /**
    * Save any meta-data present on the segments when segments leave
    * the live window to the playlist to allow for synchronization at the
    * playlist level later.
