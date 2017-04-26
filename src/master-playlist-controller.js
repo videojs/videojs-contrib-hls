@@ -14,10 +14,11 @@ import Decrypter from './decrypter-worker';
 
 let Hls;
 
-// Default codec parameters if non were provided for video and/or audio
+// Default codec parameters if none were provided for video and/or audio
 const defaultCodecs = {
   videoCodec: 'avc1',
   videoObjectTypeIndicator: '.4d400d',
+  // AAC-LC
   audioProfile: '2'
 };
 
@@ -122,8 +123,13 @@ const makeMimeTypeString = function(type, container, codecs) {
   return `${type}/${container}; codecs="${codecs.filter(c=>!!c).join(', ')}"`;
 };
 
+/**
+ * Returns the type container based on information in the playlist
+ * @param {Playlist} media the current media playlist
+ * @return {String} a valid media container type
+ */
 const getContainerType = function(media) {
-  // An initialization segment means the media playlists is an iframe
+  // An initialization segment means the media playlist is an iframe
   // playlist or is using the mp4 container. We don't currently
   // support iframe playlists, so assume this is signalling mp4
   // fragments.
@@ -133,6 +139,12 @@ const getContainerType = function(media) {
   return 'mp2t';
 };
 
+/**
+ * Returns a set of codec strings parsed from the playlist or the default
+ * codec strings if no codecs were specified in the playlist
+ * @param {Playlist} media the current media playlist
+ * @return {Object} an object with the video and audio codecs
+ */
 const getCodecs = function(media) {
   // if the codecs were explicitly specified, use them instead of the
   // defaults
@@ -167,7 +179,7 @@ export const mimeTypesForPlaylist_ = function(master, media) {
   let isMaat = false;
 
   if (!media) {
-    // Not enough information, return an error
+    // Not enough information
     return [];
   }
 
@@ -192,6 +204,8 @@ export const mimeTypesForPlaylist_ = function(master, media) {
   // HLS with multiple-audio tracks must always get an audio codec.
   // Put another way, there is no way to have a video-only multiple-audio HLS!
   if (isMaat && !codecInfo.audioProfile) {
+    videojs.log.warn('Multiple audio tracks present but no audio codec string is specified. ' +
+      'Attempting to use the default audio codec (mp4a.40.2)');
     codecInfo.audioProfile = defaultCodecs.audioProfile;
   }
 
@@ -222,6 +236,9 @@ export const mimeTypesForPlaylist_ = function(master, media) {
         justAudio
       ];
     }
+    // There exists the possiblity that this will return a `video/container`
+    // mime-type for the first entry in the array even when there is only audio.
+    // This doesn't appear to be a problem and simplifies the code.
     return [
       bothVideoAudio,
       justAudio
