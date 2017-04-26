@@ -435,8 +435,12 @@ QUnit.test('playlist with no sync points has empty seekable range and empty play
       uri: '3.ts'
     }]
   };
-  let seekable = Playlist.seekable(playlist);
-  let playlistEnd = Playlist.playlistEnd(playlist);
+
+  // seekable and playlistEnd take an optional expired parameter that is from
+  // SyncController.getExpiredTime which returns null when there is no sync point, so
+  // this test passes in null to simulate no sync points
+  let seekable = Playlist.seekable(playlist, null);
+  let playlistEnd = Playlist.playlistEnd(playlist, null);
 
   assert.equal(seekable.length, 0, 'no seekable range for playlist with no sync points');
   assert.equal(playlistEnd, null, 'no playlist end for playlist with no sync points');
@@ -474,8 +478,10 @@ QUnit.test('seekable and playlistEnd use available sync points for calculating',
         }
       ]
     };
-    let seekable = Playlist.seekable(playlist);
-    let playlistEnd = Playlist.playlistEnd(playlist);
+
+    // getExpiredTime would return 100 for this playlist
+    let seekable = Playlist.seekable(playlist, 100);
+    let playlistEnd = Playlist.playlistEnd(playlist, 100);
 
     assert.ok(seekable.length, 'seekable range calculated');
     assert.equal(seekable.start(0), 100, 'estimated start time based on expired sync point');
@@ -510,8 +516,10 @@ QUnit.test('seekable and playlistEnd use available sync points for calculating',
         }
       ]
     };
-    seekable = Playlist.seekable(playlist);
-    playlistEnd = Playlist.playlistEnd(playlist);
+
+    // getExpiredTime would return 98.5
+    seekable = Playlist.seekable(playlist, 98.5);
+    playlistEnd = Playlist.playlistEnd(playlist, 98.5);
 
     assert.ok(seekable.length, 'seekable range calculated');
     assert.equal(seekable.start(0), 98.5, 'estimated start time using segmentSync');
@@ -550,8 +558,10 @@ QUnit.test('seekable and playlistEnd use available sync points for calculating',
         }
       ]
     };
-    seekable = Playlist.seekable(playlist);
-    playlistEnd = Playlist.playlistEnd(playlist);
+
+    // getExpiredTime would return 98.5
+    seekable = Playlist.seekable(playlist, 98.5);
+    playlistEnd = Playlist.playlistEnd(playlist, 98.5);
 
     assert.ok(seekable.length, 'seekable range calculated');
     assert.equal(seekable.start(0), 98.5, 'estimated start time using nearest sync point (segmentSync in this case)');
@@ -590,8 +600,10 @@ QUnit.test('seekable and playlistEnd use available sync points for calculating',
         }
       ]
     };
-    seekable = Playlist.seekable(playlist);
-    playlistEnd = Playlist.playlistEnd(playlist);
+
+    // getExpiredTime would return 100.8
+    seekable = Playlist.seekable(playlist, 100.8);
+    playlistEnd = Playlist.playlistEnd(playlist, 100.8);
 
     assert.ok(seekable.length, 'seekable range calculated');
     assert.equal(seekable.start(0), 100.8, 'estimated start time using nearest sync point (expiredSync in this case)');

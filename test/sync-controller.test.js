@@ -249,3 +249,151 @@ QUnit.test('Correctly updates time mapping and discontinuity info when probing s
     assert.deepEqual(syncCon.discontinuities[1], { time: 30, accuracy: 0 },
       'discontinuity sync info correctly updated with new accuracy');
   });
+
+QUnit.test('Correctly calculates expired time', function(assert) {
+  let playlist = {
+    targetDuration: 10,
+    mediaSequence: 100,
+    discontinuityStarts: [],
+    syncInfo: {
+      time: 50,
+      mediaSequence: 95
+    },
+    segments: [
+      {
+        duration: 10,
+        uri: '0.ts'
+      },
+      {
+        duration: 10,
+        uri: '1.ts'
+      },
+      {
+        duration: 10,
+        uri: '2.ts'
+      },
+      {
+        duration: 10,
+        uri: '3.ts'
+      },
+      {
+        duration: 10,
+        uri: '4.ts'
+      }
+    ]
+  };
+
+  let expired = this.syncController.getExpiredTime(playlist, Infinity);
+
+  assert.equal(expired, 100, 'seekable range calculated');
+
+  playlist = {
+    targetDuration: 10,
+    discontinuityStarts: [],
+    mediaSequence: 100,
+    segments: [
+      {
+        duration: 10,
+        uri: '0.ts'
+      },
+      {
+        duration: 10,
+        uri: '1.ts',
+        start: 108.5,
+        end: 118.4
+      },
+      {
+        duration: 10,
+        uri: '2.ts'
+      },
+      {
+        duration: 10,
+        uri: '3.ts'
+      },
+      {
+        duration: 10,
+        uri: '4.ts'
+      }
+    ]
+  };
+
+  expired = this.syncController.getExpiredTime(playlist, Infinity);
+
+  assert.equal(expired, 98.5, 'estimated start time using segmentSync');
+
+  playlist = {
+    discontinuityStarts: [],
+    targetDuration: 10,
+    mediaSequence: 100,
+    syncInfo: {
+      time: 50,
+      mediaSequence: 95
+    },
+    segments: [
+      {
+        duration: 10,
+        uri: '0.ts'
+      },
+      {
+        duration: 10,
+        uri: '1.ts',
+        start: 108.5,
+        end: 118.5
+      },
+      {
+        duration: 10,
+        uri: '2.ts'
+      },
+      {
+        duration: 10,
+        uri: '3.ts'
+      },
+      {
+        duration: 10,
+        uri: '4.ts'
+      }
+    ]
+  };
+
+  expired = this.syncController.getExpiredTime(playlist, Infinity);
+
+  assert.equal(expired, 98.5, 'estimated start time using segmentSync');
+
+  playlist = {
+    targetDuration: 10,
+    discontinuityStarts: [],
+    mediaSequence: 100,
+    syncInfo: {
+      time: 90.8,
+      mediaSequence: 99
+    },
+    segments: [
+      {
+        duration: 10,
+        uri: '0.ts'
+      },
+      {
+        duration: 10,
+        uri: '1.ts'
+      },
+      {
+        duration: 10,
+        uri: '2.ts',
+        start: 118.5,
+        end: 128.5
+      },
+      {
+        duration: 10,
+        uri: '3.ts'
+      },
+      {
+        duration: 10,
+        uri: '4.ts'
+      }
+    ]
+  };
+
+  expired = this.syncController.getExpiredTime(playlist, Infinity);
+
+  assert.equal(expired, 100.8, 'estimated start time using segmentSync');
+});

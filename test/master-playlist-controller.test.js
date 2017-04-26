@@ -447,6 +447,7 @@ QUnit.test('detects if the player is stuck at the playlist end', function(assert
   // not stuck at playlist end when currentTime not at seekable end
   // even if the buffer is empty
   this.masterPlaylistController.seekable = () => videojs.createTimeRange(0, 130);
+  this.masterPlaylistController.syncController_.getExpiredTime = () => 0;
   this.player.tech_.setCurrentTime(50);
   this.player.tech_.buffered = () => videojs.createTimeRange();
   Hls.Playlist.playlistEnd = () => 130;
@@ -833,6 +834,7 @@ function(assert) {
   };
 
   this.masterPlaylistController.masterPlaylistLoader_.media = () => mainMedia;
+  this.masterPlaylistController.syncController_.getExpiredTime = () => 0;
 
   Playlist.seekable = (media) => {
     if (media === mainMedia) {
@@ -970,6 +972,7 @@ function(assert) {
     return videojs.createTimeRanges(mainTimeRanges);
   };
   this.masterPlaylistController.masterPlaylistLoader_.media = () => media;
+  this.masterPlaylistController.syncController_.getExpiredTime = () => 0;
 
   mainTimeRanges = [[0, 10]];
   mpc.seekable_ = videojs.createTimeRanges();

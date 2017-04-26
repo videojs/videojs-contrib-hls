@@ -240,6 +240,10 @@ export const playlistEnd = function(playlist, expired, useSafeLiveEnd) {
     return duration(playlist);
   }
 
+  if (expired === null) {
+    return null;
+  }
+
   expired = expired || 0;
 
   let endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
