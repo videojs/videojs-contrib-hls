@@ -211,6 +211,19 @@ export default class PlaybackWatcher {
       this.timer_ = setTimeout(this.skipTheGap_.bind(this),
                                difference * 1000,
                                currentTime);
+      return;
+    }
+
+    // Sometimes the player can stall for unknown reasons within a contiguious buffered
+    // region with no indication that anything is amiss (Seen in Firefox). Seeking to
+    // currentTime is usually enough to kickstart the player
+    if (buffered.length && currentTime + 1 < buffered.end(buffered.length - 1)) {
+      this.cancelTimer_();
+      this.tech_.setCurrentTime(currentTime);
+
+      // unknown waiting corrections may be useful for monitoring QoS
+      this.tech_.trigger('unknownwaiting');
+      return;
     }
   }
 
