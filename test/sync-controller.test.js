@@ -397,4 +397,72 @@ QUnit.test('Correctly calculates expired time', function(assert) {
   expired = this.syncController.getExpiredTime(playlist, Infinity);
 
   assert.equal(expired, 100.8, 'estimated expired time using segmentSync');
+
+  playlist = {
+    targetDuration: 10,
+    discontinuityStarts: [],
+    mediaSequence: 100,
+    endList: true,
+    segments: [
+      {
+        duration: 10,
+        uri: '0.ts'
+      },
+      {
+        duration: 10,
+        uri: '1.ts'
+      },
+      {
+        duration: 10,
+        uri: '2.ts'
+      },
+      {
+        duration: 10,
+        uri: '3.ts'
+      },
+      {
+        duration: 10,
+        uri: '4.ts'
+      }
+    ]
+  };
+
+  expired = this.syncController.getExpiredTime(playlist, 50);
+
+  assert.equal(expired, 0, 'estimated expired time using segmentSync');
+
+  playlist = {
+    targetDuration: 10,
+    discontinuityStarts: [],
+    mediaSequence: 100,
+    endList: true,
+    segments: [
+      {
+        start: 0.006,
+        duration: 10,
+        uri: '0.ts',
+        end: 9.982
+      },
+      {
+        duration: 10,
+        uri: '1.ts'
+      },
+      {
+        duration: 10,
+        uri: '2.ts'
+      },
+      {
+        duration: 10,
+        uri: '3.ts'
+      },
+      {
+        duration: 10,
+        uri: '4.ts'
+      }
+    ]
+  };
+
+  expired = this.syncController.getExpiredTime(playlist, 50);
+
+  assert.equal(expired, 0, 'estimated expired time using segmentSync');
 });
