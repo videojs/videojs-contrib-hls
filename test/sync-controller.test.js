@@ -158,10 +158,11 @@ QUnit.test('returns correct sync point for Playlist strategy', function(assert) 
   playlist.syncInfo = { time: 10, mediaSequence: 100};
 
   syncPoint = strategy.run(this.syncController, playlist, 40, 0);
-  assert.deepEqual(syncPoint, { time: 10, segmentIndex: -2 }, 'found sync point in playlist');
+  assert.deepEqual(syncPoint, { time: 10, segmentIndex: -2 },
+    'found sync point in playlist');
 });
 
-QUnit.test('saves expired info onto new playlist for possible sync point', function(assert) {
+QUnit.test('saves expired info onto new playlist for sync point', function(assert) {
   let oldPlaylist = playlistWithDuration(50);
   let newPlaylist = playlistWithDuration(50);
 
@@ -285,7 +286,7 @@ QUnit.test('Correctly calculates expired time', function(assert) {
 
   let expired = this.syncController.getExpiredTime(playlist, Infinity);
 
-  assert.equal(expired, 100, 'seekable range calculated');
+  assert.equal(expired, 100, 'estimated expired time using segmentSync');
 
   playlist = {
     targetDuration: 10,
@@ -319,7 +320,7 @@ QUnit.test('Correctly calculates expired time', function(assert) {
 
   expired = this.syncController.getExpiredTime(playlist, Infinity);
 
-  assert.equal(expired, 98.5, 'estimated start time using segmentSync');
+  assert.equal(expired, 98.5, 'estimated expired time using segmentSync');
 
   playlist = {
     discontinuityStarts: [],
@@ -357,7 +358,7 @@ QUnit.test('Correctly calculates expired time', function(assert) {
 
   expired = this.syncController.getExpiredTime(playlist, Infinity);
 
-  assert.equal(expired, 98.5, 'estimated start time using segmentSync');
+  assert.equal(expired, 98.5, 'estimated expired time using segmentSync');
 
   playlist = {
     targetDuration: 10,
@@ -395,5 +396,5 @@ QUnit.test('Correctly calculates expired time', function(assert) {
 
   expired = this.syncController.getExpiredTime(playlist, Infinity);
 
-  assert.equal(expired, 100.8, 'estimated start time using segmentSync');
+  assert.equal(expired, 100.8, 'estimated expired time using segmentSync');
 });
