@@ -1085,9 +1085,15 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return false;
     }
 
+    let expired = this.syncController_.getExpiredTime(playlist, this.mediaSource.duration);
+
+    if (expired === null) {
+      return false;
+    }
+
     // does not use the safe live end to calculate playlist end, since we
     // don't want to say we are stuck while there is still content
-    let absolutePlaylistEnd = Hls.Playlist.playlistEnd(playlist);
+    let absolutePlaylistEnd = Hls.Playlist.playlistEnd(playlist, expired);
     let currentTime = this.tech_.currentTime();
     let buffered = this.tech_.buffered();
 
@@ -1251,7 +1257,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   onSyncInfoUpdate_() {
-    let media;
     let mainSeekable;
     let audioSeekable;
 
@@ -1259,19 +1264,35 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    media = this.masterPlaylistLoader_.media();
+    let media = this.masterPlaylistLoader_.media();
 
     if (!media) {
       return;
     }
 
-    mainSeekable = Hls.Playlist.seekable(media);
+    let expired = this.syncController_.getExpiredTime(media, this.mediaSource.duration);
+
+    if (expired === null) {
+      // not enough information to update seekable
+      return;
+    }
+
+    mainSeekable = Hls.Playlist.seekable(media, expired);
+
     if (mainSeekable.length === 0) {
       return;
     }
 
     if (this.audioPlaylistLoader_) {
-      audioSeekable = Hls.Playlist.seekable(this.audioPlaylistLoader_.media());
+      media = this.audioPlaylistLoader_.media();
+      expired = this.syncController_.getExpiredTime(media, this.mediaSource.duration);
+
+      if (expired === null) {
+        return;
+      }
+
+      audioSeekable = Hls.Playlist.seekable(media, expired);
+
       if (audioSeekable.length === 0) {
         return;
       }

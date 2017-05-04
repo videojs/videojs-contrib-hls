@@ -158,28 +158,20 @@ export default class SyncController extends videojs.EventTarget {
    * A sync-point is defined as a known mapping from display-time to
    * a segment-index in the current playlist.
    *
-   * @param {Playlist} media - The playlist that needs a sync-point
-   * @param {Number} duration - Duration of the MediaSource (Infinite if playing a live source)
-   * @param {Number} currentTimeline - The last timeline from which a segment was loaded
-   * @returns {Object} - A sync-point object
+   * @param {Playlist} playlist
+   *        The playlist that needs a sync-point
+   * @param {Number} duration
+   *        Duration of the MediaSource (Infinite if playing a live source)
+   * @param {Number} currentTimeline
+   *        The last timeline from which a segment was loaded
+   * @returns {Object}
+   *          A sync-point object
    */
   getSyncPoint(playlist, duration, currentTimeline, currentTime) {
-    let syncPoints = [];
-
-    // Try to find a sync-point in by utilizing various strategies...
-    for (let i = 0; i < syncPointStrategies.length; i++) {
-      let strategy = syncPointStrategies[i];
-      let syncPoint = strategy.run(this, playlist, duration, currentTimeline, currentTime);
-
-      if (syncPoint) {
-        syncPoint.strategy = strategy.name;
-        syncPoints.push({
-          strategy: strategy.name,
-          syncPoint
-        });
-        this.logger_(`syncPoint found via <${strategy.name}>:`, syncPoint);
-      }
-    }
+    const syncPoints = this.runStrategies_(playlist,
+                                           duration,
+                                           currentTimeline,
+                                           currentTime);
 
     if (!syncPoints.length) {
       // Signal that we need to attempt to get a sync-point manually
@@ -191,12 +183,110 @@ export default class SyncController extends videojs.EventTarget {
     // Now find the sync-point that is closest to the currentTime because
     // that should result in the most accurate guess about which segment
     // to fetch
+    return this.selectSyncPoint_(syncPoints, { key: 'time', value: currentTime });
+  }
+
+  /**
+   * Calculate the amount of time that has expired off the playlist during playback
+   *
+   * @param {Playlist} playlist
+   *        Playlist object to calculate expired from
+   * @param {Number} duration
+   *        Duration of the MediaSource (Infinity if playling a live source)
+   * @returns {Number|null}
+   *          The amount of time that has expired off the playlist during playback. Null
+   *          if no sync-points for the playlist can be found.
+   */
+  getExpiredTime(playlist, duration) {
+    if (!playlist || !playlist.segments) {
+      return null;
+    }
+
+    const syncPoints = this.runStrategies_(playlist,
+                                           duration,
+                                           playlist.discontinuitySequence,
+                                           0);
+
+    // Without sync-points, there is not enough information to determine the expired time
+    if (!syncPoints.length) {
+      return null;
+    }
+
+    const syncPoint = this.selectSyncPoint_(syncPoints, {
+      key: 'segmentIndex',
+      value: 0
+    });
+
+    // If the sync-point is beyond the start of the playlist, we want to subtract the
+    // duration from index 0 to syncPoint.segmentIndex instead of adding.
+    if (syncPoint.segmentIndex > 0) {
+      syncPoint.time *= -1;
+    }
+
+    return Math.abs(syncPoint.time + sumDurations(playlist, syncPoint.segmentIndex, 0));
+  }
+
+  /**
+   * Runs each sync-point strategy and returns a list of sync-points returned by the
+   * strategies
+   *
+   * @private
+   * @param {Playlist} playlist
+   *        The playlist that needs a sync-point
+   * @param {Number} duration
+   *        Duration of the MediaSource (Infinity if playing a live source)
+   * @param {Number} currentTimeline
+   *        The last timeline from which a segment was loaded
+   * @returns {Array}
+   *          A list of sync-point objects
+   */
+  runStrategies_(playlist, duration, currentTimeline, currentTime) {
+    let syncPoints = [];
+
+    // Try to find a sync-point in by utilizing various strategies...
+    for (let i = 0; i < syncPointStrategies.length; i++) {
+      let strategy = syncPointStrategies[i];
+      let syncPoint = strategy.run(this,
+                                   playlist,
+                                   duration,
+                                   currentTimeline,
+                                   currentTime);
+
+      if (syncPoint) {
+        syncPoint.strategy = strategy.name;
+        syncPoints.push({
+          strategy: strategy.name,
+          syncPoint
+        });
+        this.logger_(`syncPoint found via <${strategy.name}>:`, syncPoint);
+      }
+    }
+
+    return syncPoints;
+  }
+
+  /**
+   * Selects the sync-point nearest the specified target
+   *
+   * @private
+   * @param {Array} syncPoints
+   *        List of sync-points to select from
+   * @param {Object} target
+   *        Object specifying the property and value we are targeting
+   * @param {String} target.key
+   *        Specifies the property to target. Must be either 'time' or 'segmentIndex'
+   * @param {Number} target.value
+   *        The value to target for the specified key.
+   * @returns {Object}
+   *          The sync-point nearest the target
+   */
+  selectSyncPoint_(syncPoints, target) {
     let bestSyncPoint = syncPoints[0].syncPoint;
-    let bestDistance = Math.abs(syncPoints[0].syncPoint.time - currentTime);
+    let bestDistance = Math.abs(syncPoints[0].syncPoint[target.key] - target.value);
     let bestStrategy = syncPoints[0].strategy;
 
     for (let i = 1; i < syncPoints.length; i++) {
-      let newDistance = Math.abs(syncPoints[i].syncPoint.time - currentTime);
+      let newDistance = Math.abs(syncPoints[i].syncPoint[target.key] - target.value);
 
       if (newDistance < bestDistance) {
         bestDistance = newDistance;
@@ -204,6 +294,7 @@ export default class SyncController extends videojs.EventTarget {
         bestStrategy = syncPoints[i].strategy;
       }
     }
+
     this.logger_(`syncPoint with strategy <${bestStrategy}> chosen: `, bestSyncPoint);
     return bestSyncPoint;
   }
@@ -351,8 +442,12 @@ export default class SyncController extends videojs.EventTarget {
    * save that display time to the segment.
    *
    * @private
-   * @param {SegmentInfo} segmentInfo - The current active request information
-   * @param {object} timingInfo - The start and end time of the current segment in "media time"
+   * @param {SegmentInfo} segmentInfo
+   *        The current active request information
+   * @param {object} timingInfo
+   *        The start and end time of the current segment in "media time"
+   * @returns {Boolean}
+   *          Returns false if segment time mapping could not be calculated
    */
   calculateSegmentTimeMapping_(segmentInfo, timingInfo) {
     let segment = segmentInfo.segment;
@@ -411,17 +506,22 @@ export default class SyncController extends videojs.EventTarget {
 
         if (!this.discontinuities[discontinuity] ||
              this.discontinuities[discontinuity].accuracy > accuracy) {
+          let time;
+
           if (mediaIndexDiff < 0) {
-            this.discontinuities[discontinuity] = {
-              time: segment.start - sumDurations(playlist, segmentInfo.mediaIndex, segmentIndex),
-              accuracy
-            };
+            time = segment.start - sumDurations(playlist,
+                                                segmentInfo.mediaIndex,
+                                                segmentIndex);
           } else {
-            this.discontinuities[discontinuity] = {
-              time: segment.end + sumDurations(playlist, segmentInfo.mediaIndex + 1, segmentIndex),
-              accuracy
-            };
+            time = segment.end + sumDurations(playlist,
+                                              segmentInfo.mediaIndex + 1,
+                                              segmentIndex);
           }
+
+          this.discontinuities[discontinuity] = {
+            time,
+            accuracy
+          };
         }
       }
     }

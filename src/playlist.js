@@ -220,98 +220,11 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
 };
 
 /**
- * Returns an array with two sync points. The first being an expired sync point, which is
- * the most recent segment with timing sync data that has fallen off the playlist. The
- * second is a segment sync point, which is the first segment that has timing sync data in
- * the current playlist.
- *
- * @param {Object} playlist a media playlist object
- * @returns {Object} an object containing the two sync points
- * @returns {Object.expiredSync|null} sync point data from an expired segment
- * @returns {Object.segmentSync|null} sync point data from a segment in the playlist
- * @function getPlaylistSyncPoints
- */
-const getPlaylistSyncPoints = function(playlist) {
-  if (!playlist || !playlist.segments) {
-    return [null, null];
-  }
-  let expiredSync = playlist.syncInfo || (playlist.endList ? { time: 0, mediaSequence: 0} : null);
-  let segmentSync = null;
-
-  // Find the first segment with timing information
-  for (let i = 0, l = playlist.segments.length; i < l; i++) {
-    let segment = playlist.segments[i];
-
-    if (typeof segment.start !== 'undefined') {
-      segmentSync = {
-        mediaSequence: playlist.mediaSequence + i,
-        time: segment.start
-      };
-      break;
-    }
-  }
-
-  return { expiredSync, segmentSync };
-};
-
-/**
- * Calculates the amount of time expired from the playlist based on the provided
- * sync points.
- *
- * @param {Object} playlist a media playlist object
- * @param {Object|null} expiredSync sync point representing most recent segment with
- *                                  timing sync data that has fallen off the playlist
- * @param {Object|null} segmentSync sync point representing the first segment that has
- *                                  timing sync data in the playlist
- * @returns {Number} the amount of time expired from the playlist
- * @function calculateExpiredTime
- */
-const calculateExpiredTime = function(playlist) {
-  // If we have both an expired sync point and a segment sync point
-  // determine which sync point is closest to the start of the playlist
-  // so the minimal amount of timing estimation is done.
-  let { expiredSync, segmentSync } = getPlaylistSyncPoints(playlist);
-
-  if (expiredSync && segmentSync) {
-    let expiredDiff = expiredSync.mediaSequence - playlist.mediaSequence;
-    let segmentDiff = segmentSync.mediaSequence - playlist.mediaSequence;
-    let syncIndex;
-    let syncTime;
-
-    if (Math.abs(expiredDiff) > Math.abs(segmentDiff)) {
-      syncIndex = segmentDiff;
-      syncTime = -segmentSync.time;
-    } else {
-      syncIndex = expiredDiff;
-      syncTime = expiredSync.time;
-    }
-
-    return Math.abs(syncTime + sumDurations(playlist, syncIndex, 0));
-  }
-
-  // We only have an expired sync point, so base expired time on the expired sync point
-  // and estimate the time from that sync point to the start of the playlist.
-  if (expiredSync) {
-    let syncIndex = expiredSync.mediaSequence - playlist.mediaSequence;
-
-    return expiredSync.time + sumDurations(playlist, syncIndex, 0);
-  }
-
-  // We only have a segment sync point, so base expired time on the first segment we have
-  // sync point data for and estimate the time from that media index to the start of the
-  // playlist.
-  if (segmentSync) {
-    let syncIndex = segmentSync.mediaSequence - playlist.mediaSequence;
-
-    return segmentSync.time - sumDurations(playlist, syncIndex, 0);
-  }
-  return null;
-};
-
-/**
  * Calculates the playlist end time
  *
  * @param {Object} playlist a media playlist object
+ * @param {Number=} expired the amount of time that has
+ *                  dropped off the front of the playlist in a live scenario
  * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the playlist
  *                        end calculation should consider the safe live end (truncate the playlist
  *                        end by three segments). This is normally used for calculating the end of
@@ -319,18 +232,20 @@ const calculateExpiredTime = function(playlist) {
  * @returns {Number} the end time of playlist
  * @function playlistEnd
  */
-export const playlistEnd = function(playlist, useSafeLiveEnd) {
+export const playlistEnd = function(playlist, expired, useSafeLiveEnd) {
   if (!playlist || !playlist.segments) {
     return null;
   }
   if (playlist.endList) {
     return duration(playlist);
   }
-  let expired = calculateExpiredTime(playlist);
 
   if (expired === null) {
     return null;
   }
+
+  expired = expired || 0;
+
   let endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
                                      Math.max(0, playlist.segments.length);
 
@@ -349,13 +264,15 @@ export const playlistEnd = function(playlist, useSafeLiveEnd) {
   *
   * @param {Object} playlist a media playlist object
   * dropped off the front of the playlist in a live scenario
+  * @param {Number=} expired the amount of time that has
+  * dropped off the front of the playlist in a live scenario
   * @return {TimeRanges} the periods of time that are valid targets
   * for seeking
   */
-export const seekable = function(playlist) {
+export const seekable = function(playlist, expired) {
   let useSafeLiveEnd = true;
-  let seekableStart = calculateExpiredTime(playlist);
-  let seekableEnd = playlistEnd(playlist, useSafeLiveEnd);
+  let seekableStart = expired || 0;
+  let seekableEnd = playlistEnd(playlist, expired, useSafeLiveEnd);
 
   if (seekableEnd === null) {
     return createTimeRange();
