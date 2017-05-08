@@ -43,7 +43,7 @@ export default class PlaybackWatcher {
     }
     this.logger_('initialize');
 
-    let waitingHandler = () => this.waiting_();
+    let waitingHandler = () => this.techWaiting_();
     let cancelTimerHandler = () => this.cancelTimer_();
     let fixesBadSeeksHandler = () => this.fixesBadSeeks_();
 
@@ -161,15 +161,55 @@ export default class PlaybackWatcher {
    * @private
    */
   waiting_() {
+    if (this.techWaiting_()) {
+      return;
+    }
+
+    // All tech waiting checks failed. Use last resort correction
+    let currentTime = this.tech_.currentTime();
+    let buffered = this.tech_.buffered();
+    let currentRange = Ranges.findRange(buffered, currentTime);
+
+    // Sometimes the player can stall for unknown reasons within a contiguous buffered
+    // region with no indication that anything is amiss (seen in Firefox). Seeking to
+    // currentTime is usually enough to kickstart the player. This checks that the player
+    // is currently within a buffered region and there is at least half a second
+    // of forward buffer so that this isn't triggered when the player is just buffering
+    // due to slow connection.
+    if (currentRange.length && currentTime <= currentRange.end(0) - 0.5) {
+      this.cancelTimer_();
+      this.tech_.setCurrentTime(currentTime);
+
+      this.logger_(`Stopped at ${currentTime} while inside a buffered region ` +
+        `[${currentRange.start(0)} -> ${currentRange.end(0)}]. Attempting to resume ` +
+        `playback by seeking to the current time.`);
+
+      // unknown waiting corrections may be useful for monitoring QoS
+      this.tech_.trigger('unknownwaiting');
+      return;
+    }
+  }
+
+  /**
+   * Handler for situations when the tech fires a `waiting` event
+   *
+   * @return {Boolean}
+   *         True if an action (or none) was needed to correct the waiting. False if no
+   *         checks passed
+   * @private
+   */
+  techWaiting_() {
     let seekable = this.seekable();
     let currentTime = this.tech_.currentTime();
 
     if (this.tech_.seeking() && this.fixesBadSeeks_()) {
-      return;
+      // Tech is seeking or bad seek fixed, no action needed
+      return true;
     }
 
     if (this.tech_.seeking() || this.timer_ !== null) {
-      return;
+      // Tech is seeking or already waiting on another action, no action needed
+      return true;
     }
 
     if (this.fellOutOfLiveWindow_(seekable, currentTime)) {
@@ -182,7 +222,7 @@ export default class PlaybackWatcher {
 
       // live window resyncs may be useful for monitoring QoS
       this.tech_.trigger('liveresync');
-      return;
+      return true;
     }
 
     let buffered = this.tech_.buffered();
@@ -198,7 +238,7 @@ export default class PlaybackWatcher {
 
       // video underflow may be useful for monitoring QoS
       this.tech_.trigger('videounderflow');
-      return;
+      return true;
     }
 
     // check for gap
@@ -211,28 +251,11 @@ export default class PlaybackWatcher {
       this.timer_ = setTimeout(this.skipTheGap_.bind(this),
                                difference * 1000,
                                currentTime);
-      return;
+      return true;
     }
 
-    let currentRange = Ranges.findRange(buffered, currentTime);
-
-    // Sometimes the player can stall for unknown reasons within a contiguous buffered
-    // region with no indication that anything is amiss (seen in Firefox). Seeking to
-    // currentTime is usually enough to kickstart the player. This checks that the player
-    // is currently within a buffered region and there is at least half a second
-    // of forward buffer so that this isn't triggered when the player is just buffering
-    // due to slow connection.
-    if (currentRange.length && currentTime <= currentRange.end(0) - 0.5) {
-      this.cancelTimer_();
-      this.tech_.setCurrentTime(currentTime);
-
-      this.logger_(`Stopped at ${currentTime} while inside a buffered region. Attempting
-        to resume playback by seeking to the current time.`);
-
-      // unknown waiting corrections may be useful for monitoring QoS
-      this.tech_.trigger('unknownwaiting');
-      return;
-    }
+    // All checks failed. Returning false to indicate failure to correct waiting
+    return false;
   }
 
   outsideOfSeekableWindow_(seekable, currentTime) {
