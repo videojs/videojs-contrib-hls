@@ -174,6 +174,7 @@ QUnit.test('seek to live point if we fall off the end of a live playlist', funct
 });
 
 QUnit.test('seeks to current time when stuck inside buffered region', function(assert) {
+
   // set an arbitrary live source
   this.player.src({
     src: 'liveStart30sBefore.m3u8',
@@ -202,11 +203,46 @@ QUnit.test('seeks to current time when stuck inside buffered region', function(a
   this.player.tech_.seekable = () => videojs.createTimeRanges([[0, 30]]);
   this.player.tech_.paused = () => false;
 
-  this.player.tech_.trigger('waiting');
+  this.clock.tick(1750);
 
   assert.equal(seeks.length, 1, 'one seek');
   assert.equal(seeks[0], 10, 'player seeked to currentTime');
 });
+
+QUnit.test('does not seek to current time when stuck near edge of buffered region',
+  function(assert) {
+    // set an arbitrary live source
+    this.player.src({
+      src: 'liveStart30sBefore.m3u8',
+      type: 'application/vnd.apple.mpegurl'
+    });
+
+    // start playback normally
+    this.player.tech_.triggerReady();
+    this.clock.tick(1);
+    standardXHRResponse(this.requests.shift());
+    openMediaSource(this.player, this.clock);
+    this.player.tech_.trigger('play');
+    this.player.tech_.trigger('playing');
+    this.clock.tick(1);
+
+    this.player.currentTime(29.8);
+
+    let seeks = [];
+
+    this.player.tech_.setCurrentTime = (time) => {
+      seeks.push(time);
+    };
+
+    this.player.tech_.seeking = () => false;
+    this.player.tech_.buffered = () => videojs.createTimeRanges([[0, 30]]);
+    this.player.tech_.seekable = () => videojs.createTimeRanges([[0, 30]]);
+    this.player.tech_.paused = () => false;
+
+    this.clock.tick(250 * 8);
+
+    assert.equal(seeks.length, 0, 'no seek');
+  });
 
 QUnit.test('fires notifications when activated', function(assert) {
   let buffered = [[]];

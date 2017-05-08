@@ -8,6 +8,7 @@
  * my life and honor to the Playback Watch, for this Player and all the Players to come.
  */
 
+import window from 'global/window';
 import Ranges from './ranges';
 import videojs from 'video.js';
 
@@ -59,7 +60,7 @@ export default class PlaybackWatcher {
       this.tech_.off('waiting', waitingHandler);
       this.tech_.off(timerCancelEvents, cancelTimerHandler);
       if (this.checkCurrentTimeTimeout_) {
-        clearTimeout(this.checkCurrentTimeTimeout_);
+        window.clearTimeout(this.checkCurrentTimeTimeout_);
       }
       this.cancelTimer_();
     };
@@ -74,11 +75,11 @@ export default class PlaybackWatcher {
     this.checkCurrentTime_();
 
     if (this.checkCurrentTimeTimeout_) {
-      clearTimeout(this.checkCurrentTimeTimeout_);
+      window.clearTimeout(this.checkCurrentTimeTimeout_);
     }
 
     // 42 = 24 fps // 250 is what Webkit uses // FF uses 15
-    this.checkCurrentTimeTimeout_ = setTimeout(this.monitorCurrentTime_.bind(this), 250);
+    this.checkCurrentTimeTimeout_ = window.setTimeout(this.monitorCurrentTime_.bind(this), 250);
   }
 
   /**
@@ -156,7 +157,7 @@ export default class PlaybackWatcher {
   }
 
   /**
-   * Handler for situations when we determine the player is waiting
+   * Handler for situations when we determine the player is waiting.
    *
    * @private
    */
@@ -176,6 +177,9 @@ export default class PlaybackWatcher {
     // is currently within a buffered region and there is at least half a second
     // of forward buffer so that this isn't triggered when the player is just buffering
     // due to slow connection.
+    // Note: This is not done when the `waiting` event fired by the tech because the tech
+    // also fires `waiting` when the player is buffering in low bandwidth scenarios, which
+    // requires no action from playback watcher.
     if (currentRange.length && currentTime <= currentRange.end(0) - 0.5) {
       this.cancelTimer_();
       this.tech_.setCurrentTime(currentTime);
