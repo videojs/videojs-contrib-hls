@@ -218,8 +218,11 @@ export default class PlaybackWatcher {
 
     // Sometimes the player can stall for unknown reasons within a contiguous buffered
     // region with no indication that anything is amiss (seen in Firefox). Seeking to
-    // currentTime is usually enough to kickstart the player.
-    if (currentRange.length) {
+    // currentTime is usually enough to kickstart the player. This checks that the player
+    // is currently within a buffered region and there is at least half a second
+    // of forward buffer so that this isn't triggered when the player is just buffering
+    // due to slow connection.
+    if (currentRange.length && currentTime <= currentRange.end(0) - 0.5) {
       this.cancelTimer_();
       this.tech_.setCurrentTime(currentTime);
 
