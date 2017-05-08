@@ -214,12 +214,17 @@ export default class PlaybackWatcher {
       return;
     }
 
-    // Sometimes the player can stall for unknown reasons within a contiguious buffered
-    // region with no indication that anything is amiss (Seen in Firefox). Seeking to
-    // currentTime is usually enough to kickstart the player
-    if (buffered.length && currentTime + 1 < buffered.end(buffered.length - 1)) {
+    let currentRange = Ranges.findRange(buffered, currentTime);
+
+    // Sometimes the player can stall for unknown reasons within a contiguous buffered
+    // region with no indication that anything is amiss (seen in Firefox). Seeking to
+    // currentTime is usually enough to kickstart the player.
+    if (currentRange.length) {
       this.cancelTimer_();
       this.tech_.setCurrentTime(currentTime);
+
+      this.logger_(`Stopped at ${currentTime} while inside a buffered region. Attempting
+        to resume playback by seeking to the current time.`);
 
       // unknown waiting corrections may be useful for monitoring QoS
       this.tech_.trigger('unknownwaiting');
