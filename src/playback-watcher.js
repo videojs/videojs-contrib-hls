@@ -186,13 +186,15 @@ export default class PlaybackWatcher {
     // Sometimes the player can stall for unknown reasons within a contiguous buffered
     // region with no indication that anything is amiss (seen in Firefox). Seeking to
     // currentTime is usually enough to kickstart the player. This checks that the player
-    // is currently within a buffered region and there is at least half a second
-    // of forward buffer so that this isn't triggered when the player is just buffering
-    // due to slow connection.
+    // is currently within a buffered region before attempting a corrective seek.
+    // Chrome does not appear to continue `timeupdate` events after a `waiting` event
+    // until there is ~ 3 seconds of forward buffer available. PlaybackWatcher should also
+    // make sure there is ~3 seconds of forward buffer before taking any corrective action
+    // to avoid triggering an `unknownwaiting` event in when the network is slow.
     // Note: This is not done when the `waiting` event fired by the tech because the tech
     // also fires `waiting` when the player is buffering in low bandwidth scenarios, which
     // requires no action from playback watcher.
-    if (currentRange.length && currentTime <= currentRange.end(0) - 0.5) {
+    if (currentRange.length && currentTime + 3 <= currentRange.end(0)) {
       this.cancelTimer_();
       this.tech_.setCurrentTime(currentTime);
 
