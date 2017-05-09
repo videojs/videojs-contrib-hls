@@ -103,7 +103,7 @@ export default class PlaybackWatcher {
     let currentTime = this.tech_.currentTime();
     let buffered = this.tech_.buffered();
 
-    if (buffered.length && currentTime + 0.1 >= buffered.end(buffered.length - 1)) {
+    if (!buffered.length || currentTime + 0.1 >= buffered.end(buffered.length - 1)) {
       // If current time is at the end of the final buffered region, then any playback
       // stall is most likely caused by buffering in a low bandwidth environment. This
       // prevents playback watcher from updating consecutive updates until the player
