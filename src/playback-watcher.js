@@ -109,6 +109,8 @@ export default class PlaybackWatcher {
       // prevents playback watcher from updating consecutive updates until the player
       // has some forward buffer to avoid miscategorizing waiting on a slow connection
       // as a playback issue.
+      this.consecutiveUpdates = 0;
+      this.lastRecordedTime = currentTime;
       return;
     }
 
