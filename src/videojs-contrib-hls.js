@@ -48,9 +48,23 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
   }
 });
 
-// A fudge factor to apply to advertised playlist bitrates to account for
-// temporary flucations in client bandwidth
-const BANDWIDTH_VARIANCE = 1.2;
+Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
+  get() {
+    videojs.log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    return Config.BANDWIDTH_VARIANCE;
+  },
+  set(v) {
+    videojs.log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      videojs.log.warn('value passed to Hls.BANDWIDTH_VARIANCE ' +
+                       'must be a number and greater than 0');
+      return;
+    }
+    Config.BANDWIDTH_VARIANCE = v;
+  }
+});
 
 /**
  * Returns the CSS value for the specified property on an element
@@ -168,7 +182,7 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   bandwidthPlaylists = sortedPlaylists.filter(function(elem) {
     return elem.attributes &&
            elem.attributes.BANDWIDTH &&
-           elem.attributes.BANDWIDTH * BANDWIDTH_VARIANCE < systemBandwidth;
+           elem.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE < systemBandwidth;
   });
 
   // get all of the renditions with the same (highest) bandwidth

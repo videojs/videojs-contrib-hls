@@ -82,7 +82,7 @@ class MockMediaSource extends videojs.EventTarget {
   }
 
   endOfStream(error) {
-    this.readyState = 'closed';
+    this.readyState = 'ended';
     this.error_ = error;
   }
 }

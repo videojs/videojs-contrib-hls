@@ -1,22 +1,10 @@
 import runSimulation from './run-simulation';
 import displayTimeline from './display-timeline';
-
-
+import Config from '../../src/config';
 
 // a dynamic number of time-bandwidth pairs may be defined to drive the simulation
 let networkTimeline = document.querySelector('.network-timeline');
-let timePeriod = networkTimeline.querySelector('li:last-child').cloneNode(true);
-const appendTimePeriod = function() {
-  let clone = timePeriod.cloneNode(true);
-  let count = networkTimeline.querySelectorAll('input.bandwidth').length;
-  let time = clone.querySelector('.time');
-  let bandwidth = clone.querySelector('input.bandwidth');
-
-  time.name = 'time' + count;
-  bandwidth.name = 'bandwidth' + count;
-  networkTimeline.appendChild(clone);
-};
-document.querySelector('.add-time-period').addEventListener('click', appendTimePeriod);
+let $ = document.querySelector.bind(document);
 
 // apply any simulation parameters that were set in the fragment identifier
 if (window.location.hash) {
@@ -32,29 +20,38 @@ if (window.location.hash) {
     });
 
   networkTimeline.innerHTML = '';
-  params.forEach(function(param) {
-    appendTimePeriod();
-    networkTimeline.querySelector('li:last-child .time').value = param[0];
-    networkTimeline.querySelector('li:last-child input.bandwidth').value = param[1];
-  });
 }
 
 // collect the simulation parameters
 const parameters = function() {
-  let times = Array.prototype.slice.call(document.querySelectorAll('.time'));
-  let bandwidths = document.querySelectorAll('input.bandwidth');
-  let playlists = Array.prototype.slice.call(document.querySelectorAll('input.bitrate'));
+  let networkTrace = $('#network-trace').value
+    .trim()
+    .split('\n')
+    .map((line) => line.split(' ').slice(-2).map(Number));
+  let playlists = $('#bitrates').value
+    .trim()
+    .split('\n')
+    .map((line) => {
+      let t = line.split(/[,\s]+/).map(Number);
+      return [t[0], t[1] || t[0]];
+    });
+
+  let segments = {};
+  try {
+    segments = JSON.parse($('#segments').value);
+  } catch(e) {
+    console.log('Invalid JSON');
+  }
+
+  let goalBufferLength = Math.max(1, Number($('#goal-buffer-length').value));
+  let bandwidthVariance = Math.max(0.1, Number($('#bandwidth-variance').value));
 
   return {
-    playlists: playlists.map(function(input) {
-      return +input.value;
-    }),
-    bandwidths: times.reduce(function(conditions, time, i) {
-      return conditions.concat({
-        time: +time.value,
-        bandwidth: +bandwidths[i].value
-      });
-    }, [])
+    goalBufferLength,
+    bandwidthVariance,
+    playlists,
+    segments,
+    networkTrace
   };
 };
 
