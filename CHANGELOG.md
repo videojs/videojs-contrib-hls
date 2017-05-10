@@ -2,6 +2,20 @@ CHANGELOG
 =========
 
 --------------------
+## 5.5.2 (2017-05-10)
+* Fix playback stalls when everything appears okay [#1100](https://github.com/videojs/videojs-contrib-hls/pull/1100)
+  * add playback watcher check for unknown player waiting
+  * do not do unknownwaiting check when the tech fires a native waiting event
+  * dont track current time waiting when at the end of the buffer
+  * call techWaiting_ when we detect a stall at the end of buffer
+
+--------------------
+## 5.5.1 (2017-05-04)
+* Use specified mediasequence for VOD expired sync instead of assuming 0 [#1097](https://github.com/videojs/videojs-contrib-hls/pull/1097)
+  * use synccontroller for expired
+* fix: CODEC to mime-type conversion now takes into account all possible scenarios [#1099](https://github.com/videojs/videojs-contrib-hls/pull/1099)
+
+--------------------
 ## 5.5.0 (2017-04-25)
 * Update mux.js to 4.1.3 and media-sources to 4.4.4 [#1098](https://github.com/videojs/videojs-contrib-hls/pull/1098)
 * Trigger an event when a playlist is blacklisted or retried [#1080](https://github.com/videojs/videojs-contrib-hls/pull/1080)
