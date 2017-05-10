@@ -103,15 +103,16 @@ export default class PlaybackWatcher {
     let currentTime = this.tech_.currentTime();
     let buffered = this.tech_.buffered();
 
-    if (!buffered.length || currentTime + 0.1 >= buffered.end(buffered.length - 1)) {
+    if (this.lastRecordedTime === currentTime &&
+        (!buffered.length || currentTime + 0.1 >= buffered.end(buffered.length - 1))) {
       // If current time is at the end of the final buffered region, then any playback
-      // stall is most likely caused by buffering in a low bandwidth environment. This
-      // prevents playback watcher from updating consecutive updates until the player
-      // has some forward buffer to avoid miscategorizing waiting on a slow connection
-      // as a playback issue.
-      this.consecutiveUpdates = 0;
-      this.lastRecordedTime = currentTime;
-      return;
+      // stall is most likely caused by buffering in a low bandwidth environment. The tech
+      // should fire a `waiting` event in this scenario, but due to browser and tech
+      // inconsistencies (e.g. The Flash tech does not fire a `waiting` event when the end
+      // of the buffer is reached and has fallen off the live window). Calling
+      // `techWaiting_` here allows us to simulate responding to a native `waiting` event
+      // when the tech fails to emit one.
+      return this.techWaiting_();
     }
 
     if (this.consecutiveUpdates >= 5 &&
@@ -190,10 +191,7 @@ export default class PlaybackWatcher {
     // Chrome does not appear to continue `timeupdate` events after a `waiting` event
     // until there is ~ 3 seconds of forward buffer available. PlaybackWatcher should also
     // make sure there is ~3 seconds of forward buffer before taking any corrective action
-    // to avoid triggering an `unknownwaiting` event in when the network is slow.
-    // Note: This is not done when the `waiting` event fired by the tech because the tech
-    // also fires `waiting` when the player is buffering in low bandwidth scenarios, which
-    // requires no action from playback watcher.
+    // to avoid triggering an `unknownwaiting` event when the network is slow.
     if (currentRange.length && currentTime + 3 <= currentRange.end(0)) {
       this.cancelTimer_();
       this.tech_.setCurrentTime(currentTime);
