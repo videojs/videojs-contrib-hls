@@ -441,7 +441,9 @@ player.hls.xhr.beforeRequest = function(options) {
 
 The global `videojs.Hls` also exposes an `xhr` property. Specifying a
 `beforeRequest` function on that will allow you to intercept the options
-for *all* requests in every player on a page.
+for *all* requests in every player on a page. For consistency across
+browsers the video source should be set at runtime once the video player
+is ready. 
 
 Example
 ```javascript
@@ -452,6 +454,14 @@ videojs.Hls.xhr.beforeRequest = function(options) {
 
   return options;
 };
+
+var player = videojs('video-player-id');
+player.ready(function() {
+  this.src({
+    src: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8',
+    type: 'application/x-mpegURL',
+  });
+});
 ```
 
 For information on the type of options that you can modify see the
