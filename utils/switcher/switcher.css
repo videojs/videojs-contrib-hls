@@ -432,9 +432,13 @@ form label {
   stroke-dasharray: 5, 5;
 }
 
+.line.buffered {
+  stroke: #FF0000;
+}
+
 .buffer-empty {
   fill: #e44d26;
-  opacity: 0.4;
+  opacity: 0.2;
 }
 
 .timeline {
@@ -443,6 +447,19 @@ form label {
   margin: 0 auto;
   text-align: center;
   width: 960px;
+}
+.segment-bitrate {
+  fill: #080;
+  opacity: 0.5;
+}
+.segment-bitrate.long {
+  fill: #A80;
+}
+.segment-bitrate.timedout {
+  fill: #A00;
+}
+.segment-bitrate.aborted {
+  fill: #009;
 }
 
 /* ==========================================================================

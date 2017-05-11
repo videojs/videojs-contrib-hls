@@ -48,9 +48,23 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
   }
 });
 
-// A fudge factor to apply to advertised playlist bitrates to account for
-// temporary flucations in client bandwidth
-const BANDWIDTH_VARIANCE = 1.2;
+Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
+  get() {
+    videojs.log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    return Config.BANDWIDTH_VARIANCE;
+  },
+  set(v) {
+    videojs.log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      videojs.log.warn('value passed to Hls.BANDWIDTH_VARIANCE ' +
+                       'must be a number and greater than 0');
+      return;
+    }
+    Config.BANDWIDTH_VARIANCE = v;
+  }
+});
 
 /**
  * Returns the CSS value for the specified property on an element
@@ -168,7 +182,7 @@ Hls.STANDARD_PLAYLIST_SELECTOR = function() {
   bandwidthPlaylists = sortedPlaylists.filter(function(elem) {
     return elem.attributes &&
            elem.attributes.BANDWIDTH &&
-           elem.attributes.BANDWIDTH * BANDWIDTH_VARIANCE < systemBandwidth;
+           elem.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE < systemBandwidth;
   });
 
   // get all of the renditions with the same (highest) bandwidth
@@ -377,12 +391,20 @@ class HlsHandler extends Component {
       this.masterPlaylistController_.setupAudio();
     };
 
+    this.textTrackChange_ = () => {
+      this.masterPlaylistController_.setupSubtitles();
+    };
+
     this.on(this.tech_, 'play', this.play);
   }
 
   setOptions_() {
     // defaults
     this.options_.withCredentials = this.options_.withCredentials || false;
+
+    if (typeof this.options_.blacklistDuration !== 'number') {
+      this.options_.blacklistDuration = 5 * 60;
+    }
 
     // start playlist selection at a reasonable bandwidth for
     // broadband internet
@@ -421,6 +443,12 @@ class HlsHandler extends Component {
       videojs.mergeOptions(this.options_, {
         seekable: () => this.seekable()
       }));
+
+    this.masterPlaylistController_.on('error', () => {
+      let player = videojs.players[this.tech_.options_.playerId];
+
+      player.error(this.masterPlaylistController_.error);
+    });
 
     // `this` in selectPlaylist should be the HlsHandler for backwards
     // compatibility with < v2
@@ -506,6 +534,18 @@ class HlsHandler extends Component {
         get: () => this.masterPlaylistController_.mediaRequests_() || 0,
         enumerable: true
       },
+      mediaRequestsAborted: {
+        get: () => this.masterPlaylistController_.mediaRequestsAborted_() || 0,
+        enumerable: true
+      },
+      mediaRequestsTimedout: {
+        get: () => this.masterPlaylistController_.mediaRequestsTimedout_() || 0,
+        enumerable: true
+      },
+      mediaRequestsErrored: {
+        get: () => this.masterPlaylistController_.mediaRequestsErrored_() || 0,
+        enumerable: true
+      },
       mediaTransferDuration: {
         get: () => this.masterPlaylistController_.mediaTransferDuration_() || 0,
         enumerable: true
@@ -525,6 +565,7 @@ class HlsHandler extends Component {
 
     this.masterPlaylistController_.on('sourceopen', () => {
       this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
+      this.tech_.remoteTextTracks().addEventListener('change', this.textTrackChange_);
     });
 
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
@@ -637,6 +678,7 @@ class HlsHandler extends Component {
       this.qualityLevels_.dispose();
     }
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
+    this.tech_.remoteTextTracks().removeEventListener('change', this.textTrackChange_);
     super.dispose();
   }
 }
@@ -672,13 +714,7 @@ const HlsSourceHandler = function(mode) {
       let settings = videojs.mergeOptions(options, {hls: {mode}});
 
       tech.hls = new HlsHandler(source, tech, settings);
-
       tech.hls.xhr = xhrFactory();
-      // Use a global `before` function if specified on videojs.Hls.xhr
-      // but still allow for a per-player override
-      if (videojs.Hls.xhr.beforeRequest) {
-        tech.hls.xhr.beforeRequest = videojs.Hls.xhr.beforeRequest;
-      }
 
       tech.hls.src(source.src);
       return tech.hls;

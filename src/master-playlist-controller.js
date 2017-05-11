@@ -3,6 +3,7 @@
  */
 import PlaylistLoader from './playlist-loader';
 import SegmentLoader from './segment-loader';
+import VTTSegmentLoader from './vtt-segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
@@ -11,9 +12,30 @@ import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-u
 import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
 
-// 5 minute blacklist
-const BLACKLIST_DURATION = 5 * 60 * 1000;
 let Hls;
+
+// Default codec parameters if none were provided for video and/or audio
+const defaultCodecs = {
+  videoCodec: 'avc1',
+  videoObjectTypeIndicator: '.4d400d',
+  // AAC-LC
+  audioProfile: '2'
+};
+
+// SegmentLoader stats that need to have each loader's
+// values summed to calculate the final value
+const loaderStats = [
+  'mediaRequests',
+  'mediaRequestsAborted',
+  'mediaRequestsTimedout',
+  'mediaRequestsErrored',
+  'mediaTransferDuration',
+  'mediaBytesTransferred'
+];
+const sumLoaderStat = function(stat) {
+  return this.audioSegmentLoader_[stat] +
+         this.mainSegmentLoader_[stat];
+};
 
 /**
  * determine if an object a is differnt from
@@ -50,10 +72,7 @@ const objectChanged = function(a, b) {
  */
 const parseCodecs = function(codecs) {
   let result = {
-    codecCount: 0,
-    videoCodec: null,
-    videoObjectTypeIndicator: null,
-    audioProfile: null
+    codecCount: 0
   };
   let parsed;
 
@@ -91,6 +110,53 @@ export const mapLegacyAvcCodecs_ = function(codecString) {
 };
 
 /**
+ * Build a media mime-type string from a set of parameters
+ * @param {String} type either 'audio' or 'video'
+ * @param {String} container either 'mp2t' or 'mp4'
+ * @param {Array} codecs an array of codec strings to add
+ * @return {String} a valid media mime-type
+ */
+const makeMimeTypeString = function(type, container, codecs) {
+  // The codecs array is filtered so that falsey values are
+  // dropped and don't cause Array#join to create spurious
+  // commas
+  return `${type}/${container}; codecs="${codecs.filter(c=>!!c).join(', ')}"`;
+};
+
+/**
+ * Returns the type container based on information in the playlist
+ * @param {Playlist} media the current media playlist
+ * @return {String} a valid media container type
+ */
+const getContainerType = function(media) {
+  // An initialization segment means the media playlist is an iframe
+  // playlist or is using the mp4 container. We don't currently
+  // support iframe playlists, so assume this is signalling mp4
+  // fragments.
+  if (media.segments && media.segments.length && media.segments[0].map) {
+    return 'mp4';
+  }
+  return 'mp2t';
+};
+
+/**
+ * Returns a set of codec strings parsed from the playlist or the default
+ * codec strings if no codecs were specified in the playlist
+ * @param {Playlist} media the current media playlist
+ * @return {Object} an object with the video and audio codecs
+ */
+const getCodecs = function(media) {
+  // if the codecs were explicitly specified, use them instead of the
+  // defaults
+  let mediaAttributes = media.attributes || {};
+
+  if (mediaAttributes.CODECS) {
+    return parseCodecs(mediaAttributes.CODECS);
+  }
+  return defaultCodecs;
+};
+
+/**
  * Calculates the MIME type strings for a working configuration of
  * SourceBuffers to play variant streams in a master playlist. If
  * there is no possible working configuration, an empty array will be
@@ -105,74 +171,92 @@ export const mapLegacyAvcCodecs_ = function(codecString) {
  * @private
  */
 export const mimeTypesForPlaylist_ = function(master, media) {
-  let container = 'mp2t';
-  let codecs = {
-    videoCodec: 'avc1',
-    videoObjectTypeIndicator: '.4d400d',
-    audioProfile: '2'
-  };
-  let audioGroup = [];
-  let mediaAttributes;
-  let previousGroup = null;
+  let containerType = getContainerType(media);
+  let codecInfo = getCodecs(media);
+  let mediaAttributes = media.attributes || {};
+  // Default condition for a traditional HLS (no demuxed audio/video)
+  let isMuxed = true;
+  let isMaat = false;
 
   if (!media) {
-    // not enough information, return an error
+    // Not enough information
     return [];
   }
-  // An initialization segment means the media playlists is an iframe
-  // playlist or is using the mp4 container. We don't currently
-  // support iframe playlists, so assume this is signalling mp4
-  // fragments.
-  // the existence check for segments can be removed once
-  // https://github.com/videojs/m3u8-parser/issues/8 is closed
-  if (media.segments && media.segments.length && media.segments[0].map) {
-    container = 'mp4';
+
+  if (master.mediaGroups.AUDIO && mediaAttributes.AUDIO) {
+    let audioGroup = master.mediaGroups.AUDIO[mediaAttributes.AUDIO];
+
+    // Handle the case where we are in a multiple-audio track scenario
+    if (audioGroup) {
+      isMaat = true;
+      // Start with the everything demuxed then...
+      isMuxed = false;
+      // ...check to see if any audio group tracks are muxed (ie. lacking a uri)
+      for (let groupId in audioGroup) {
+        if (!audioGroup[groupId].uri) {
+          isMuxed = true;
+          break;
+        }
+      }
+    }
   }
 
-  // if the codecs were explicitly specified, use them instead of the
-  // defaults
-  mediaAttributes = media.attributes || {};
-  if (mediaAttributes.CODECS) {
-    let parsedCodecs = parseCodecs(mediaAttributes.CODECS);
-
-    Object.keys(parsedCodecs).forEach((key) => {
-      codecs[key] = parsedCodecs[key] || codecs[key];
-    });
+  // HLS with multiple-audio tracks must always get an audio codec.
+  // Put another way, there is no way to have a video-only multiple-audio HLS!
+  if (isMaat && !codecInfo.audioProfile) {
+    videojs.log.warn('Multiple audio tracks present but no audio codec string is specified. ' +
+      'Attempting to use the default audio codec (mp4a.40.2)');
+    codecInfo.audioProfile = defaultCodecs.audioProfile;
   }
 
-  if (master.mediaGroups.AUDIO) {
-    audioGroup = master.mediaGroups.AUDIO[mediaAttributes.AUDIO];
+  // Generate the final codec strings from the codec object generated above
+  let codecStrings = {};
+
+  if (codecInfo.videoCodec) {
+    codecStrings.video = `${codecInfo.videoCodec}${codecInfo.videoObjectTypeIndicator}`;
   }
 
-  // if audio could be muxed or unmuxed, use mime types appropriate
-  // for both scenarios
-  for (let groupId in audioGroup) {
-    if (previousGroup && (!!audioGroup[groupId].uri !== !!previousGroup.uri)) {
-      // one source buffer with muxed video and audio and another for
-      // the alternate audio
+  if (codecInfo.audioProfile) {
+    codecStrings.audio = `mp4a.40.${codecInfo.audioProfile}`;
+  }
+
+  // Finally, make and return an array with proper mime-types depending on
+  // the configuration
+  let justAudio = makeMimeTypeString('audio', containerType, [codecStrings.audio]);
+  let justVideo = makeMimeTypeString('video', containerType, [codecStrings.video]);
+  let bothVideoAudio = makeMimeTypeString('video', containerType, [
+    codecStrings.video,
+    codecStrings.audio
+  ]);
+
+  if (isMaat) {
+    if (!isMuxed && codecStrings.video) {
       return [
-        'video/' + container + '; codecs="' +
-          codecs.videoCodec + codecs.videoObjectTypeIndicator + ', mp4a.40.' + codecs.audioProfile + '"',
-        'audio/' + container + '; codecs="mp4a.40.' + codecs.audioProfile + '"'
+        justVideo,
+        justAudio
       ];
     }
-    previousGroup = audioGroup[groupId];
-  }
-  // if all video and audio is unmuxed, use two single-codec mime
-  // types
-  if (previousGroup && previousGroup.uri) {
+    // There exists the possiblity that this will return a `video/container`
+    // mime-type for the first entry in the array even when there is only audio.
+    // This doesn't appear to be a problem and simplifies the code.
     return [
-      'video/' + container + '; codecs="' +
-        codecs.videoCodec + codecs.videoObjectTypeIndicator + '"',
-      'audio/' + container + '; codecs="mp4a.40.' + codecs.audioProfile + '"'
+      bothVideoAudio,
+      justAudio
     ];
   }
 
-  // all video and audio are muxed, use a dual-codec mime type
+  // If there is ano video codec at all, always just return a single
+  // audio/<container> mime-type
+  if (!codecStrings.video) {
+    return [
+      justAudio
+    ];
+  }
+
+  // When not using separate audio media groups, audio and video is
+  // *always* muxed
   return [
-    'video/' + container + '; codecs="' +
-      codecs.videoCodec + codecs.videoObjectTypeIndicator +
-      ', mp4a.40.' + codecs.audioProfile + '"'
+    bothVideoAudio
   ];
 };
 
@@ -196,7 +280,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       tech,
       bandwidth,
       externHls,
-      useCueTags
+      useCueTags,
+      blacklistDuration
     } = options;
 
     if (!url) {
@@ -210,19 +295,20 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.hls_ = tech.hls;
     this.mode_ = mode;
     this.useCueTags_ = useCueTags;
+    this.blacklistDuration = blacklistDuration;
     if (this.useCueTags_) {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
       this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
     }
 
-    this.audioTracks_ = [];
     this.requestOptions_ = {
       withCredentials: this.withCredentials,
       timeout: null
     };
 
     this.audioGroups_ = {};
+    this.subtitleGroups_ = { groups: {}, tracks: {} };
 
     this.mediaSource = new videojs.MediaSource({ mode });
     this.audioinfo_ = null;
@@ -235,6 +321,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.hasPlayed_ = () => false;
 
     this.syncController_ = new SyncController();
+    this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
+      kind: 'metadata',
+      label: 'segment-metadata'
+    }, true).track;
 
     this.decrypter_ = worker(Decrypter);
 
@@ -244,37 +334,43 @@ export class MasterPlaylistController extends videojs.EventTarget {
       currentTime: this.tech_.currentTime.bind(this.tech_),
       seekable: () => this.seekable(),
       seeking: () => this.tech_.seeking(),
-      setCurrentTime: (a) => this.tech_.setCurrentTime(a),
+      duration: () => this.mediaSource.duration,
       hasPlayed: () => this.hasPlayed_(),
       bandwidth,
       syncController: this.syncController_,
-      decrypter: this.decrypter_,
-      loaderType: 'main'
+      decrypter: this.decrypter_
     };
 
     // setup playlist loaders
     this.masterPlaylistLoader_ = new PlaylistLoader(url, this.hls_, this.withCredentials);
     this.setupMasterPlaylistLoaderListeners_();
     this.audioPlaylistLoader_ = null;
+    this.subtitlePlaylistLoader_ = null;
 
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
-    this.mainSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
-    // alternate audio track
-    segmentLoaderOptions.loaderType = 'audio';
-    this.audioSegmentLoader_ = new SegmentLoader(segmentLoaderOptions);
+    this.mainSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      segmentMetadataTrack: this.segmentMetadataTrack_,
+      loaderType: 'main'
+    }));
 
-    this.decrypter_.onmessage = (event) => {
-      if (event.data.source === 'main') {
-        this.mainSegmentLoader_.handleDecrypted_(event.data);
-      } else if (event.data.source === 'audio') {
-        this.audioSegmentLoader_.handleDecrypted_(event.data);
-      }
-    };
+    // alternate audio track
+    this.audioSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      loaderType: 'audio'
+    }));
+
+    this.subtitleSegmentLoader_ = new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      loaderType: 'vtt'
+    }));
 
     this.setupSegmentLoaderListeners_();
 
-    this.masterPlaylistLoader_.start();
+    // Create SegmentLoader stat-getters
+    loaderStats.forEach((stat) => {
+      this[stat + '_'] = sumLoaderStat.bind(this, stat);
+    });
+
+    this.masterPlaylistLoader_.load();
   }
 
   /**
@@ -305,6 +401,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       this.fillAudioTracks_();
       this.setupAudio();
+
+      this.fillSubtitleTracks_();
+      this.setupSubtitles();
 
       try {
         this.setupSourceBuffers_();
@@ -338,6 +437,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // on `mediachange`
       this.mainSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
       this.updateDuration();
+
+      // If the player isn't paused, ensure that the segment loader is running,
+      // as it is possible that it was temporarily stopped while waiting for
+      // a playlist (e.g., in case the playlist errored and we re-requested it).
+      if (!this.tech_.paused()) {
+        this.mainSegmentLoader_.load();
+      }
 
       if (!updatedPlaylist.endList) {
         let addSeekableRange = () => {
@@ -402,11 +508,29 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.setupAudio();
         this.trigger('audioupdate');
       }
+      this.setupSubtitles();
 
       this.tech_.trigger({
         type: 'mediachange',
         bubbles: true
       });
+    });
+
+    this.masterPlaylistLoader_.on('playlistunchanged', () => {
+      let updatedPlaylist = this.masterPlaylistLoader_.media();
+      let playlistOutdated = this.stuckAtPlaylistEnd_(updatedPlaylist);
+
+      if (playlistOutdated) {
+        // Playlist has stopped updating and we're stuck at its end. Try to
+        // blacklist it and switch to another playlist in the hope that that
+        // one is updating (and give the player a chance to re-adjust to the
+        // safe live point).
+        this.blacklistCurrentPlaylist({
+          message: 'Playlist no longer updating.'
+        });
+        // useful for monitoring QoS
+        this.tech_.trigger('playliststuck');
+      }
     });
   }
 
@@ -417,11 +541,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @private
    */
   setupSegmentLoaderListeners_() {
-    this.mainSegmentLoader_.on('progress', () => {
+    this.mainSegmentLoader_.on('bandwidthupdate', () => {
       // figure out what stream the next segment should be downloaded from
       // with the updated bandwidth information
       this.masterPlaylistLoader_.media(this.selectPlaylist());
-
+    });
+    this.mainSegmentLoader_.on('progress', () => {
       this.trigger('progress');
     });
 
@@ -444,6 +569,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.audioPlaylistLoader_ = null;
       this.setupAudio();
     });
+
+    this.subtitleSegmentLoader_.on('error', this.handleSubtitleError_.bind(this));
   }
 
   handleAudioinfoUpdate_(event) {
@@ -488,40 +615,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.setupAudio();
   }
 
-  /**
-   * get the total number of media requests from the `audiosegmentloader_`
-   * and the `mainSegmentLoader_`
-   *
-   * @private
-   */
-  mediaRequests_() {
-    return this.audioSegmentLoader_.mediaRequests +
-           this.mainSegmentLoader_.mediaRequests;
-  }
-
-  /**
-   * get the total time that media requests have spent trnasfering
-   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
-   *
-   * @private
-   */
-  mediaTransferDuration_() {
-    return this.audioSegmentLoader_.mediaTransferDuration +
-           this.mainSegmentLoader_.mediaTransferDuration;
-
-  }
-
-  /**
-   * get the total number of bytes transfered during media requests
-   * from the `audiosegmentloader_` and the `mainSegmentLoader_`
-   *
-   * @private
-   */
-  mediaBytesTransferred_() {
-    return this.audioSegmentLoader_.mediaBytesTransferred +
-           this.mainSegmentLoader_.mediaBytesTransferred;
-  }
-
   mediaSecondsLoaded_() {
     return Math.max(this.audioSegmentLoader_.mediaSecondsLoaded +
                     this.mainSegmentLoader_.mediaSecondsLoaded);
@@ -557,7 +650,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         let properties = mediaGroups.AUDIO[mediaGroup][label];
         let track = new videojs.AudioTrack({
           id: label,
-          kind: properties.default ? 'main' : 'alternative',
+          kind: this.audioTrackKind_(properties),
           enabled: false,
           language: properties.language,
           label
@@ -575,12 +668,70 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Convert the properties of an HLS track into an audioTrackKind.
+   *
+   * @private
+   */
+  audioTrackKind_(properties) {
+    let kind = properties.default ? 'main' : 'alternative';
+
+    if (properties.characteristics &&
+        properties.characteristics.indexOf('public.accessibility.describes-video') >= 0) {
+      kind = 'main-desc';
+    }
+
+    return kind;
+  }
+  /**
+   * fill our internal list of Subtitle Tracks with data from
+   * the master playlist or use a default
+   *
+   * @private
+   */
+  fillSubtitleTracks_() {
+    let master = this.master();
+    let mediaGroups = master.mediaGroups || {};
+
+    for (let mediaGroup in mediaGroups.SUBTITLES) {
+      if (!this.subtitleGroups_.groups[mediaGroup]) {
+        this.subtitleGroups_.groups[mediaGroup] = [];
+      }
+
+      for (let label in mediaGroups.SUBTITLES[mediaGroup]) {
+        let properties = mediaGroups.SUBTITLES[mediaGroup][label];
+
+        if (!properties.forced) {
+          this.subtitleGroups_.groups[mediaGroup].push(
+            videojs.mergeOptions({ id: label }, properties));
+
+          if (typeof this.subtitleGroups_.tracks[label] === 'undefined') {
+            let track = this.tech_.addRemoteTextTrack({
+              id: label,
+              kind: 'subtitles',
+              enabled: false,
+              language: properties.language,
+              label
+            }, true).track;
+
+            this.subtitleGroups_.tracks[label] = track;
+          }
+        }
+      }
+    }
+
+    // Do not enable a default subtitle track. Wait for user interaction instead.
+  }
+
+  /**
    * Call load on our SegmentLoaders
    */
   load() {
     this.mainSegmentLoader_.load();
     if (this.audioPlaylistLoader_) {
       this.audioSegmentLoader_.load();
+    }
+    if (this.subtitlePlaylistLoader_) {
+      this.subtitleSegmentLoader_.load();
     }
   }
 
@@ -597,6 +748,50 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     return result || this.audioGroups_.main;
+  }
+
+  /**
+   * Returns the subtitle group for the currently active primary
+   * media playlist.
+   */
+  activeSubtitleGroup_() {
+    let videoPlaylist = this.masterPlaylistLoader_.media();
+    let result;
+
+    if (!videoPlaylist) {
+      return null;
+    }
+
+    if (videoPlaylist.attributes && videoPlaylist.attributes.SUBTITLES) {
+      result = this.subtitleGroups_.groups[videoPlaylist.attributes.SUBTITLES];
+    }
+
+    return result || this.subtitleGroups_.groups.main;
+  }
+
+  activeSubtitleTrack_() {
+    for (let trackName in this.subtitleGroups_.tracks) {
+      if (this.subtitleGroups_.tracks[trackName].mode === 'showing') {
+        return this.subtitleGroups_.tracks[trackName];
+      }
+    }
+
+    return null;
+  }
+
+  handleSubtitleError_() {
+    videojs.log.warn('Problem encountered loading the subtitle track' +
+                     '. Switching back to default.');
+
+    this.subtitleSegmentLoader_.abort();
+
+    let track = this.activeSubtitleTrack_();
+
+    if (track) {
+      track.mode = 'disabled';
+    }
+
+    this.setupSubtitles();
   }
 
   /**
@@ -639,7 +834,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.audioPlaylistLoader_ = new PlaylistLoader(track.properties_.resolvedUri,
                                                    this.hls_,
                                                    this.withCredentials);
-    this.audioPlaylistLoader_.start();
+    this.audioPlaylistLoader_.load();
 
     this.audioPlaylistLoader_.on('loadedmetadata', () => {
       let audioPlaylist = this.audioPlaylistLoader_.media();
@@ -684,6 +879,93 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Determine the correct subtitle playlist based on the active
+   * SubtitleTrack and initialize a PlaylistLoader and SegmentLoader if
+   * necessary. This method is called once automatically before
+   * playback begins to enable the default subtitle track and should be
+   * invoked again if the track is changed.
+   */
+  setupSubtitles() {
+    let subtitleGroup = this.activeSubtitleGroup_();
+    let track = this.activeSubtitleTrack_();
+
+    this.subtitleSegmentLoader_.pause();
+
+    if (!track) {
+      // stop playlist and segment loading for subtitles
+      if (this.subtitlePlaylistLoader_) {
+        this.subtitlePlaylistLoader_.dispose();
+        this.subtitlePlaylistLoader_ = null;
+      }
+      return;
+    }
+
+    let properties = subtitleGroup.filter((subtitleProperties) => {
+      return subtitleProperties.id === track.id;
+    })[0];
+
+    // startup playlist and segment loaders for the enabled subtitle track
+    if (!this.subtitlePlaylistLoader_ ||
+        // if the media hasn't loaded yet, we don't have the URI to check, so it is
+        // easiest to simply recreate the playlist loader
+        !this.subtitlePlaylistLoader_.media() ||
+        this.subtitlePlaylistLoader_.media().resolvedUri !== properties.resolvedUri) {
+
+      if (this.subtitlePlaylistLoader_) {
+        this.subtitlePlaylistLoader_.dispose();
+      }
+
+      // reset the segment loader only when the subtitle playlist is changed instead of
+      // every time setupSubtitles is called since switching subtitle tracks fires
+      // multiple `change` events on the TextTrackList
+      this.subtitleSegmentLoader_.resetEverything();
+
+      // can't reuse playlistloader because we're only using single renditions and not a
+      // proper master
+      this.subtitlePlaylistLoader_ = new PlaylistLoader(properties.resolvedUri,
+                                                        this.hls_,
+                                                        this.withCredentials);
+
+      this.subtitlePlaylistLoader_.on('loadedmetadata', () => {
+        let subtitlePlaylist = this.subtitlePlaylistLoader_.media();
+
+        this.subtitleSegmentLoader_.playlist(subtitlePlaylist, this.requestOptions_);
+        this.subtitleSegmentLoader_.track(this.activeSubtitleTrack_());
+
+        // if the video is already playing, or if this isn't a live video and preload
+        // permits, start downloading segments
+        if (!this.tech_.paused() ||
+            (subtitlePlaylist.endList && this.tech_.preload() !== 'none')) {
+          this.subtitleSegmentLoader_.load();
+        }
+      });
+
+      this.subtitlePlaylistLoader_.on('loadedplaylist', () => {
+        let updatedPlaylist;
+
+        if (this.subtitlePlaylistLoader_) {
+          updatedPlaylist = this.subtitlePlaylistLoader_.media();
+        }
+
+        if (!updatedPlaylist) {
+          return;
+        }
+
+        this.subtitleSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
+      });
+
+      this.subtitlePlaylistLoader_.on('error', this.handleSubtitleError_.bind(this));
+    }
+
+    if (this.subtitlePlaylistLoader_.media() &&
+        this.subtitlePlaylistLoader_.media().resolvedUri === properties.resolvedUri) {
+      this.subtitleSegmentLoader_.load();
+    } else {
+      this.subtitlePlaylistLoader_.load();
+    }
+  }
+
+  /**
    * Re-tune playback quality level for the current player
    * conditions. This method may perform destructive actions, like
    * removing already buffered content, to readjust the currently
@@ -698,9 +980,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.masterPlaylistLoader_.media(media);
 
       this.mainSegmentLoader_.resetLoader();
-      if (this.audiosegmentloader_) {
-        this.audioSegmentLoader_.resetLoader();
-      }
+      // don't need to reset audio as it is reset when media changes
     }
   }
 
@@ -793,6 +1073,43 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Check if a playlist has stopped being updated
+   * @param {Object} playlist the media playlist object
+   * @return {boolean} whether the playlist has stopped being updated or not
+   */
+  stuckAtPlaylistEnd_(playlist) {
+    let seekable = this.seekable();
+
+    if (!seekable.length) {
+      // playlist doesn't have enough information to determine whether we are stuck
+      return false;
+    }
+
+    let expired = this.syncController_.getExpiredTime(playlist, this.mediaSource.duration);
+
+    if (expired === null) {
+      return false;
+    }
+
+    // does not use the safe live end to calculate playlist end, since we
+    // don't want to say we are stuck while there is still content
+    let absolutePlaylistEnd = Hls.Playlist.playlistEnd(playlist, expired);
+    let currentTime = this.tech_.currentTime();
+    let buffered = this.tech_.buffered();
+
+    if (!buffered.length) {
+      // return true if the playhead reached the absolute end of the playlist
+      return absolutePlaylistEnd - currentTime <= Ranges.TIME_FUDGE_FACTOR;
+    }
+    let bufferedEnd = buffered.end(buffered.length - 1);
+
+    // return true if there is too little buffer left and
+    // buffer has reached absolute end of playlist
+    return bufferedEnd - currentTime <= Ranges.TIME_FUDGE_FACTOR &&
+           absolutePlaylistEnd - bufferedEnd <= Ranges.TIME_FUDGE_FACTOR;
+  }
+
+  /**
    * Blacklists a playlist when an error occurs for a set amount of time
    * making it unavailable for selection by the rendition selection algorithm
    * and then forces a new playlist (rendition) selection.
@@ -814,26 +1131,35 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // trying to load the master OR while we were disposing of the tech
     if (!currentPlaylist) {
       this.error = error;
-      return this.mediaSource.endOfStream('network');
+
+      try {
+        return this.mediaSource.endOfStream('network');
+      } catch (e) {
+        return this.trigger('error');
+      }
     }
 
+    let isFinalRendition = this.masterPlaylistLoader_.isFinalRendition_();
+
+    if (isFinalRendition) {
+      // Never blacklisting this playlist because it's final rendition
+      videojs.log.warn('Problem encountered with the current ' +
+                       'HLS playlist. Trying again since it is the final playlist.');
+
+      this.tech_.trigger('retryplaylist');
+      return this.masterPlaylistLoader_.load(isFinalRendition);
+    }
     // Blacklist this playlist
-    currentPlaylist.excludeUntil = Date.now() + BLACKLIST_DURATION;
+    currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
+    this.tech_.trigger('blacklistplaylist');
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
+    videojs.log.warn('Problem encountered with the current HLS playlist.' +
+                     (error.message ? ' ' + error.message : '') +
+                     ' Switching to another playlist.');
 
-    if (nextPlaylist) {
-      videojs.log.warn('Problem encountered with the current ' +
-                       'HLS playlist. Switching to another playlist.');
-
-      return this.masterPlaylistLoader_.media(nextPlaylist);
-    }
-    videojs.log.warn('Problem encountered with the current ' +
-                     'HLS playlist. No suitable alternatives found.');
-    // We have no more playlists we can select so we must fail
-    this.error = error;
-    return this.mediaSource.endOfStream('network');
+    return this.masterPlaylistLoader_.media(nextPlaylist);
   }
 
   /**
@@ -843,6 +1169,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_.pause();
     if (this.audioPlaylistLoader_) {
       this.audioSegmentLoader_.pause();
+    }
+    if (this.subtitlePlaylistLoader_) {
+      this.subtitleSegmentLoader_.pause();
     }
   }
 
@@ -885,11 +1214,18 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.audioSegmentLoader_.resetEverything();
       this.audioSegmentLoader_.abort();
     }
+    if (this.subtitlePlaylistLoader_) {
+      this.subtitleSegmentLoader_.resetEverything();
+      this.subtitleSegmentLoader_.abort();
+    }
 
     if (!this.tech_.paused()) {
       this.mainSegmentLoader_.load();
       if (this.audioPlaylistLoader_) {
         this.audioSegmentLoader_.load();
+      }
+      if (this.subtitlePlaylistLoader_) {
+        this.subtitleSegmentLoader_.load();
       }
     }
   }
@@ -921,7 +1257,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   onSyncInfoUpdate_() {
-    let media;
     let mainSeekable;
     let audioSeekable;
 
@@ -929,19 +1264,35 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    media = this.masterPlaylistLoader_.media();
+    let media = this.masterPlaylistLoader_.media();
 
     if (!media) {
       return;
     }
 
-    mainSeekable = Hls.Playlist.seekable(media);
+    let expired = this.syncController_.getExpiredTime(media, this.mediaSource.duration);
+
+    if (expired === null) {
+      // not enough information to update seekable
+      return;
+    }
+
+    mainSeekable = Hls.Playlist.seekable(media, expired);
+
     if (mainSeekable.length === 0) {
       return;
     }
 
     if (this.audioPlaylistLoader_) {
-      audioSeekable = Hls.Playlist.seekable(this.audioPlaylistLoader_.media());
+      media = this.audioPlaylistLoader_.media();
+      expired = this.syncController_.getExpiredTime(media, this.mediaSource.duration);
+
+      if (expired === null) {
+        return;
+      }
+
+      audioSeekable = Hls.Playlist.seekable(media, expired);
+
       if (audioSeekable.length === 0) {
         return;
       }
@@ -1008,7 +1359,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
     if (this.audioPlaylistLoader_) {
       this.audioPlaylistLoader_.dispose();
     }
+    if (this.subtitlePlaylistLoader_) {
+      this.subtitlePlaylistLoader_.dispose();
+    }
     this.audioSegmentLoader_.dispose();
+    this.subtitleSegmentLoader_.dispose();
   }
 
   /**

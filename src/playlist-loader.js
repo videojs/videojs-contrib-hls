@@ -109,7 +109,7 @@ const updateMaster = function(master, media) {
 };
 
 /**
- * Load a playlist from a remote loacation
+ * Load a playlist from a remote location
  *
  * @class PlaylistLoader
  * @extends Stream
@@ -186,6 +186,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       // if the playlist is unchanged since the last reload,
       // try again after half the target duration
       refreshDelay /= 2;
+      loader.trigger('playlistunchanged');
     }
 
     // refresh live playlists after a target duration passes
@@ -264,6 +265,15 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     }).length === 0);
   };
 
+  /**
+   * Returns whether the current playlist is the final available rendition
+   *
+   * @return {Boolean} true if on final rendition
+   */
+  loader.isFinalRendition_ = function() {
+    return (loader.master.playlists.filter(isEnabled).length === 1);
+  };
+
    /**
     * When called without any arguments, returns the currently
     * active media playlist. When called with a single argument,
@@ -272,7 +282,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     * loader is in the HAVE_NOTHING causes an error to be emitted
     * but otherwise has no effect.
     *
-    * @param {Object=} playlis tthe parsed media playlist
+    * @param {Object=} playlist the parsed media playlist
     * object to switch to
     * @return {Playlist} the current loaded media
     */
@@ -392,7 +402,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       }
 
       if (error) {
-        return playlistRequestError(request, loader.media().uri);
+        return playlistRequestError(request, loader.media().uri, 'HAVE_METADATA');
       }
       haveMetadata(request, loader.media().uri);
     });
@@ -416,20 +426,37 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   loader.pause = () => {
     loader.stopRequest();
     window.clearTimeout(mediaUpdateTimeout);
+    if (loader.state === 'HAVE_NOTHING') {
+      // If we pause the loader before any data has been retrieved, its as if we never
+      // started, so reset to an unstarted state.
+      loader.started = false;
+    }
   };
 
   /**
    * start loading of the playlist
    */
-  loader.load = () => {
-    if (loader.started) {
-      if (!loader.media().endList) {
-        loader.trigger('mediaupdatetimeout');
-      } else {
-        loader.trigger('loadedplaylist');
-      }
-    } else {
+  loader.load = (isFinalRendition) => {
+    const media = loader.media();
+
+    window.clearTimeout(mediaUpdateTimeout);
+
+    if (isFinalRendition) {
+      let refreshDelay = media ? (media.targetDuration / 2) * 1000 : 5 * 1000;
+
+      mediaUpdateTimeout = window.setTimeout(loader.load.bind(null, false), refreshDelay);
+      return;
+    }
+
+    if (!loader.started) {
       loader.start();
+      return;
+    }
+
+    if (media && !media.endList) {
+      loader.trigger('mediaupdatetimeout');
+    } else {
+      loader.trigger('loadedplaylist');
     }
   };
 
@@ -464,6 +491,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
           // MEDIA_ERR_NETWORK
           code: 2
         };
+        if (loader.state === 'HAVE_NOTHING') {
+          loader.started = false;
+        }
         return loader.trigger('error');
       }
 
@@ -488,16 +518,18 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         }
 
         // resolve any media group URIs
-        for (let groupKey in loader.master.mediaGroups.AUDIO) {
-          for (let labelKey in loader.master.mediaGroups.AUDIO[groupKey]) {
-            let alternateAudio = loader.master.mediaGroups.AUDIO[groupKey][labelKey];
+        ['AUDIO', 'SUBTITLES'].forEach((mediaType) => {
+          for (let groupKey in loader.master.mediaGroups[mediaType]) {
+            for (let labelKey in loader.master.mediaGroups[mediaType][groupKey]) {
+              let mediaProperties = loader.master.mediaGroups[mediaType][groupKey][labelKey];
 
-            if (alternateAudio.uri) {
-              alternateAudio.resolvedUri =
-                resolveUrl(loader.master.uri, alternateAudio.uri);
+              if (mediaProperties.uri) {
+                mediaProperties.resolvedUri =
+                  resolveUrl(loader.master.uri, mediaProperties.uri);
+              }
             }
           }
-        }
+        });
 
         loader.trigger('loadedplaylist');
         if (!request) {
