@@ -55,6 +55,21 @@ const parameters = function() {
   };
 };
 
+let local = $('#local');
+// clear the file path to allow for reload
+local.addEventListener('click', () => local.value = '');
+local.addEventListener('change', function() {
+  var reader = new FileReader();
+  // do nothing if no file was chosen
+  if (!local.files[0]) {
+    return;
+  }
+  reader.addEventListener('loadend', function() {
+    $('#network-trace').value = reader.result;
+  });
+  reader.readAsText(local.files[0]);
+});
+
 let runButton = document.getElementById('run-simulation');
 runButton.addEventListener('click', function() {
   runSimulation(parameters(), displayTimeline);
