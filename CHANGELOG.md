@@ -2,6 +2,13 @@ CHANGELOG
 =========
 
 --------------------
+## 5.5.3 (2017-05-16)
+* update mux.js to 4.1.4 and videojs-contrib-media-sources to 4.4.5 [#1117](https://github.com/videojs/videojs-contrib-hls/pull/1117)
+  * ts probe searches packets for first it can successfully parse
+  * Fixed an issue that could cause updateend events to fire more than once per append or remove under very specific conditions on firefox
+* Trigger error events when received empty response [#1072](https://github.com/videojs/videojs-contrib-hls/pull/1072)
+
+--------------------
 ## 5.5.2 (2017-05-10)
 * Fix playback stalls when everything appears okay [#1100](https://github.com/videojs/videojs-contrib-hls/pull/1100)
   * add playback watcher check for unknown player waiting
