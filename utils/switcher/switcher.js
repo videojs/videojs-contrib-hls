@@ -75,10 +75,9 @@ local.addEventListener('change', function() {
 });
 
 let saveReport = $('#save-report');
-let report = {};
 saveReport.addEventListener('click', function(){
-  const text = JSON.stringify(report, null, 2);
-  const data = new Blob([text], {type: 'text/plain'});
+  const result = $('#result').value;
+  const data = new Blob([result], {type: 'text/plain'});
 
   let textFile = window.URL.createObjectURL(data);
 
@@ -98,8 +97,37 @@ saveReport.addEventListener('click', function(){
 let runButton = document.getElementById('run-simulation');
 runButton.addEventListener('click', function() {
   runSimulation(parameters(), function(err, res) {
-    report = res;
-    $('#result').innerText = JSON.stringify(res, null, 2);
+    const report = {
+      segments: res.playlists.length,
+      timeToStart: res.buffered.find(({buffered}) => buffered).time,
+      timeouts: res.playlists.filter(({timedout}) => timedout).length,
+      aborts: res.playlists.filter(({aborted}) => aborted).length,
+      calculatedBandwidth: res.effectiveBandwidth,
+      selectedBitrates: res.playlists.map(({bitrate}) => bitrate),
+      bufferEmpty: res.buffered.reduce(function(result, sample, index) {
+        var last = result[result.length - 1];
+
+        if (sample.buffered === 0) {
+          if (last && last.index === index - 1) {
+            // add this sample to the interval we're accumulating
+            last.end = sample.time;
+            last.index = index;
+          } else {
+            // this sample starts a new interval
+            result.push({
+              start: sample.time,
+              end: sample.time,
+              index: index
+            });
+          }
+        }
+        // filter out time periods where the buffer isn't empty
+        return result;
+      }, []).map(({start, end}) => ({start, end}))
+    };
+
+    $('#result').innerText = JSON.stringify(report, null, 2);
+
     displayTimeline(err, res);
   });
 });
