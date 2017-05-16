@@ -59,20 +59,48 @@ let local = $('#local');
 // clear the file path to allow for reload
 local.addEventListener('click', () => local.value = '');
 local.addEventListener('change', function() {
-  var reader = new FileReader();
+  const [file] = local.files;
+  const reader = new FileReader();
+
   // do nothing if no file was chosen
-  if (!local.files[0]) {
+  if (!file) {
     return;
   }
+
   reader.addEventListener('loadend', function() {
     $('#network-trace').value = reader.result;
   });
-  reader.readAsText(local.files[0]);
+
+  reader.readAsText(file);
+});
+
+let saveReport = $('#save-report');
+let report = {};
+saveReport.addEventListener('click', function(){
+  const text = JSON.stringify(report, null, 2);
+  const data = new Blob([text], {type: 'text/plain'});
+
+  let textFile = window.URL.createObjectURL(data);
+
+  let link = document.createElement('a');
+  link.setAttribute('download', 'report.json');
+  link.href = textFile;
+  document.body.appendChild(link);
+
+  window.requestAnimationFrame(function () {
+    let event = new MouseEvent('click');
+    link.dispatchEvent(event);
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(textFile);
+  });
 });
 
 let runButton = document.getElementById('run-simulation');
 runButton.addEventListener('click', function() {
-  runSimulation(parameters(), displayTimeline);
+  runSimulation(parameters(), function(err, res) {
+    report = res;
+    displayTimeline(err, res);
+  });
 });
 
 runButton.click();
