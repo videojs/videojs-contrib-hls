@@ -99,6 +99,7 @@ let runButton = document.getElementById('run-simulation');
 runButton.addEventListener('click', function() {
   runSimulation(parameters(), function(err, res) {
     report = res;
+    $('#result').innerText = JSON.stringify(res, null, 2);
     displayTimeline(err, res);
   });
 });
