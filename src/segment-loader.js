@@ -769,7 +769,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         seekable.start(0) < currentTime) {
       removeToTime = seekable.start(0);
     } else {
-      removeToTime = currentTime - 60;
+      removeToTime = currentTime - 30;
     }
 
     if (removeToTime > 0) {

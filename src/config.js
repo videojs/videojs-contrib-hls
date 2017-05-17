@@ -1,5 +1,5 @@
 export default {
-  GOAL_BUFFER_LENGTH: 30,
+  GOAL_BUFFER_LENGTH: 60,
   // A fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   BANDWIDTH_VARIANCE: 1.2
