@@ -177,3 +177,9 @@ runButton.addEventListener('click', function() {
 });
 
 runButton.click();
+
+let clearReport = $('#clear-report');
+clearReport.addEventListener('click', function() {
+    results = createResults(Object.keys(results));
+    $('#result').innerText = tableToText(objToTable(results));
+});
