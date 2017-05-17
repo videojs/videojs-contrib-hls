@@ -70,12 +70,12 @@ QUnit.test('GOAL_BUFFER_LENGTH set warning and invalid', function(assert) {
   Hls.GOAL_BUFFER_LENGTH = 'nope';
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
+  assert.equal(Config.GOAL_BUFFER_LENGTH, 60, 'default');
 
   Hls.GOAL_BUFFER_LENGTH = 0;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
+  assert.equal(Config.GOAL_BUFFER_LENGTH, 60, 'default');
 });
 
 QUnit.module('Configuration - Options', {
