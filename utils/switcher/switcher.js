@@ -59,20 +59,87 @@ let local = $('#local');
 // clear the file path to allow for reload
 local.addEventListener('click', () => local.value = '');
 local.addEventListener('change', function() {
-  const [file] = local.files;
-  const reader = new FileReader();
-
+  const files = local.files;
   // do nothing if no file was chosen
-  if (!file) {
+  if (!files) {
     return;
   }
 
-  reader.addEventListener('loadend', function() {
-    $('#network-trace').value = reader.result;
-  });
-
-  reader.readAsText(file);
+  if (files.length === 1) {
+    var reader = new FileReader();
+    reader.onloadend = function() {
+      $('#network-trace').value = reader.result;
+    };
+    reader.readAsText(file);
+    return;
+  }
+  $('#network-trace').style.display = 'none';
+  var promise = Promise.resolve();
+  Array.from(files).reduce(function(promise, file) {
+    return promise.then(function() {
+      return readFile(file);
+    }).then(function() {
+      return new Promise((resolve, reject) => runSimulations(resolve));
+    });
+  }, Promise.resolve())
 });
+
+const readFile = function(file) {
+  return new Promise((resolve, reject) => {
+    var reader = new FileReader();
+    reader.onloadend = function() {
+      $('#network-trace').value = reader.result;
+      resolve();
+    };
+    reader.readAsText(file);
+  })
+};
+
+const runSimulations = function(resolve) {
+  runSimulation(parameters(), function(err, res) {
+    const data = {
+      'run': results ? results.run.length : 0,
+      'time to start': res.buffered.find(({buffered}) => buffered).time,
+      'timeouts': res.playlists.filter(({timedout}) => timedout).length,
+      'aborts': res.playlists.filter(({aborted}) => aborted).length,
+      'calculated bandwidth [time bandwidth]': res.effectiveBandwidth.map(({time, bandwidth}) => [time, bandwidth]),
+      'selected bitrates': res.playlists.map(({bitrate}) => bitrate),
+      'empty buffer regions [start end]': res.buffered.reduce(function(result, sample, index) {
+        var last = result[result.length - 1];
+
+        if (sample.buffered === 0) {
+          if (last && last.index === index - 1) {
+            // add this sample to the interval we're accumulating
+            last.end = sample.time;
+            last.index = index;
+          } else {
+            // this sample starts a new interval
+            result.push({
+              start: sample.time,
+              end: sample.time,
+              index: index
+            });
+          }
+        }
+        // filter out time periods where the buffer isn't empty
+        return result;
+      }, []).map(({start, end}) => [start, end])
+    };
+
+    // create global result if it doesn't exist
+    if (!results) {
+      results = createResults(Object.keys(data));
+    }
+
+    // add this simulation result to the results
+    Object.entries(data).forEach(([key, value]) => results[key].push(value));
+
+    $('#result').innerText = tableToText(objToTable(results));
+
+    displayTimeline(err, res);
+    if(resolve) resolve();
+  });
+};
 
 let saveReport = $('#save-report');
 saveReport.addEventListener('click', function(){
@@ -132,48 +199,7 @@ const createResults = (keys) => keys .reduce((obj, key) => Object.assign(obj, {[
 let runButton = document.getElementById('run-simulation');
 let results;
 runButton.addEventListener('click', function() {
-  runSimulation(parameters(), function(err, res) {
-    const data = {
-      'run': results ? results.run.length : 0,
-      'time to start': res.buffered.find(({buffered}) => buffered).time,
-      'timeouts': res.playlists.filter(({timedout}) => timedout).length,
-      'aborts': res.playlists.filter(({aborted}) => aborted).length,
-      'calculated bandwidth [time bandwidth]': res.effectiveBandwidth.map(({time, bandwidth}) => [time, bandwidth]),
-      'selected bitrates': res.playlists.map(({bitrate}) => bitrate),
-      'empty buffer regions [start end]': res.buffered.reduce(function(result, sample, index) {
-        var last = result[result.length - 1];
-
-        if (sample.buffered === 0) {
-          if (last && last.index === index - 1) {
-            // add this sample to the interval we're accumulating
-            last.end = sample.time;
-            last.index = index;
-          } else {
-            // this sample starts a new interval
-            result.push({
-              start: sample.time,
-              end: sample.time,
-              index: index
-            });
-          }
-        }
-        // filter out time periods where the buffer isn't empty
-        return result;
-      }, []).map(({start, end}) => [start, end])
-    };
-
-    // create global result if it doesn't exist
-    if (!results) {
-      results = createResults(Object.keys(data));
-    }
-
-    // add this simulation result to the results
-    Object.entries(data).forEach(([key, value]) => results[key].push(value));
-
-    $('#result').innerText = tableToText(objToTable(results));
-
-    displayTimeline(err, res);
-  });
+  runSimulations();
 });
 
 runButton.click();
