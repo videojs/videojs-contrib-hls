@@ -2687,24 +2687,6 @@ QUnit.test('populates quality levels list when available', function(assert) {
   assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels from video with source');
 });
 
-QUnit.test('re-triggers bandwidthupdate events onto the tech', function(assert) {
-  this.player.src({
-    src: 'master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  let bandwidthupdateEvents = 0;
-
-  this.player.tech_.on('bandwidthupdate', () => bandwidthupdateEvents++);
-  this.player.tech_.hls.masterPlaylistController_.trigger('bandwidthupdate');
-
-  assert.equal(bandwidthupdateEvents, 1, 'triggered bandwidthupdate');
-
-  this.player.tech_.hls.masterPlaylistController_.trigger('bandwidthupdate');
-
-  assert.equal(bandwidthupdateEvents, 2, 'triggered bandwidthupdate');
-});
-
 QUnit.module('HLS Integration', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);

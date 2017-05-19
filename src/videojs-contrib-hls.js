@@ -587,10 +587,6 @@ class HlsHandler extends Component {
       this.tech_.trigger('progress');
     });
 
-    this.on(this.masterPlaylistController_, 'bandwidthupdate', function() {
-      this.tech_.trigger('bandwidthupdate');
-    });
-
     // In the live case, we need to ignore the very first `seeking` event since
     // that will be the result of the seek-to-live behavior
     this.on(this.masterPlaylistController_, 'firstplay', function() {

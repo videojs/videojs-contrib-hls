@@ -729,7 +729,7 @@ QUnit.test('selects a playlist after main/combined segment downloads', function(
   assert.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
-QUnit.test('re-triggers bandwidthupdate events', function(assert) {
+QUnit.test('re-triggers bandwidthupdate events on the tech', function(assert) {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
   // master
   this.standardXHRResponse(this.requests.shift());
@@ -738,7 +738,8 @@ QUnit.test('re-triggers bandwidthupdate events', function(assert) {
 
   let bandwidthupdateEvents = 0;
 
-  this.masterPlaylistController.on('bandwidthupdate', () => bandwidthupdateEvents++);
+  this.player.tech_.on('bandwidthupdate', () => bandwidthupdateEvents++);
+
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
 
   assert.equal(bandwidthupdateEvents, 1, 'triggered bandwidthupdate');
