@@ -70,7 +70,7 @@ local.addEventListener('change', function() {
     reader.onloadend = function() {
       $('#network-trace').value = reader.result;
     };
-    reader.readAsText(file);
+    reader.readAsText(files[0]);
     return;
   }
   $('#network-trace').style.display = 'none';
