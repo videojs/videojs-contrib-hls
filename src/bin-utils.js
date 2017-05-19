@@ -94,9 +94,8 @@ export const hexDump = (data) => {
 };
 
 export const tagDump = (tag) => {
-  return utils.hexDump(tag.bytes);
+  return hexDump(tag.bytes);
 };
-
 
 export const textRanges = (ranges) => {
   let result = '';
