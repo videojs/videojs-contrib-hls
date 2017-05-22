@@ -555,7 +555,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // ensure we have some buffer before we switch up to prevent us running out of
       // buffer while loading a higher rendition
       if (nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH ||
-          forwardBuffer > Config.BUFFER_LOW_WATER_LINE) {
+          forwardBuffer >= Config.BUFFER_LOW_WATER_LINE) {
         this.masterPlaylistLoader_.media(nextPlaylist);
       }
 
