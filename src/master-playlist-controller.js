@@ -308,11 +308,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
     };
 
     this.audioGroups_ = {};
+    this.videoGroups_ = {};
     this.subtitleGroups_ = { groups: {}, tracks: {} };
 
     this.mediaSource = new videojs.MediaSource({ mode });
-    this.audioinfo_ = null;
+    this.audioInfo_ = null;
+    this.videoInfo_ = null;
     this.mediaSource.on('audioinfo', this.handleAudioinfoUpdate_.bind(this));
+    this.mediaSource.on('videoinfo', this.handleVideoinfoUpdate_.bind(this));
 
     // load the media source into the player
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
@@ -400,6 +403,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
 
       this.fillAudioTracks_();
+      this.fillVideoTracks_();
       this.setupAudio();
 
       this.fillSubtitleTracks_();
@@ -414,6 +418,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.setupFirstPlay();
 
       this.trigger('audioupdate');
+      this.trigger('videoupdate');
       this.trigger('selectedinitialmedia');
     });
 
@@ -510,6 +515,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
       this.setupSubtitles();
 
+      this.setupVideo();
+
       this.tech_.trigger({
         type: 'mediachange',
         bubbles: true
@@ -574,6 +581,44 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.subtitleSegmentLoader_.on('error', this.handleSubtitleError_.bind(this));
   }
 
+  handleVideoinfoUpdate_(event) {
+
+    // FIXME: we need to have Hls.supportsVideoInfoChange_() as well or see if these overlap with
+    //        audio switching caps (SH)
+    if (Hls.supportsAudioInfoChange_() ||
+        !this.videoInfo_ ||
+        !objectChanged(this.videoInfo_, event.info)) {
+      this.videoInfo_ = event.info;
+
+      //console.log('new video info');
+      //console.log(this.videoInfo_);
+
+      return;
+    }
+
+    let enabledIndex =
+        this.activeVideoGroup()
+          .map((track) => track.enabled)
+          .indexOf(true);
+    let enabledTrack = this.activeVideoGroup()[enabledIndex];
+    let defaultTrack = this.activeVideoGroup().filter((track) => {
+      return track.properties_ && track.properties_.default;
+    })[0];
+
+    // FIXME: be more specific here with failure cases and reasons here!
+    //        switching codec might be a problem, but if its just codec parameters that might be totally fine.
+    let error = `The video track '${enabledTrack.label}' that we tried to ` +
+      `switch to had different video codec properties. This might cause issues with decoding.`
+      + `Falling back to the default track now.`;
+    defaultTrack.enabled = true;
+    this.activeVideoGroup().splice(enabledIndex, 1);
+    this.trigger('videoupdate');
+
+    videojs.log.warn(error);
+
+    this.setupvideo();
+  }
+
   handleAudioinfoUpdate_(event) {
     if (Hls.supportsAudioInfoChange_() ||
         !this.audioInfo_ ||
@@ -619,6 +664,62 @@ export class MasterPlaylistController extends videojs.EventTarget {
   mediaSecondsLoaded_() {
     return Math.max(this.audioSegmentLoader_.mediaSecondsLoaded +
                     this.mainSegmentLoader_.mediaSecondsLoaded);
+  }
+
+  /**
+   * fill our internal list of HlsVideoTracks with data from
+   * the master playlist or use a default
+   *
+   * @private
+   */
+  fillVideoTracks_() {
+
+    //console.log('fillVideoTracks_');
+
+    let master = this.master();
+    let mediaGroups = master.mediaGroups || {};
+
+    // force a default if we have none or we are not
+    // in html5 mode (the only mode to support more than one
+    // audio track)
+    if (!mediaGroups ||
+        !mediaGroups.VIDEO ||
+        Object.keys(mediaGroups.VIDEO).length === 0 ||
+        this.mode_ !== 'html5') {
+      // "main" audio group, track name "default"
+      mediaGroups.VIDEO = { main: { default: { default: true }}};
+    }
+
+    for (let mediaGroup in mediaGroups.VIDEO) {
+      if (!this.videoGroups_[mediaGroup]) {
+        this.videoGroups_[mediaGroup] = [];
+      }
+
+      for (let label in mediaGroups.VIDEO[mediaGroup]) {
+        let properties = mediaGroups.VIDEO[mediaGroup][label];
+        let track = new videojs.VideoTrack({
+          id: label,
+          kind: properties.default ? 'main' : 'alternative',
+          enabled: false,
+          language: properties.language,
+          label
+        });
+
+        track.properties_ = properties;
+        this.videoGroups_[mediaGroup].push(track);
+      }
+    }
+
+    // if we have a optional track set, enable that one
+    let optionalTrackIndex = this.hls_.options_.videoTrackIndex;
+    if (optionalTrackIndex !== undefined) {
+      this.activeVideoGroup()[optionalTrackIndex].enabled = true;
+    } else {
+      // otherwise enable the default active track
+      (this.activeVideoGroup().filter((videoTrack) => {
+        return videoTrack.properties_.default;
+      })[0] || this.activeVideoGroup()[0]).enabled = true;
+    }
   }
 
   /**
@@ -736,6 +837,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
+  activeVideoGroup() {
+    let videoPlaylist = this.masterPlaylistLoader_.media();
+    let result;
+
+    if (videoPlaylist.attributes && videoPlaylist.attributes.VIDEO) {
+      result = this.videoGroups_[videoPlaylist.attributes.VIDEO];
+    }
+
+    return result || this.videoGroups_.main;
+  }
+
   /**
    * Returns the audio group for the currently active primary
    * media playlist.
@@ -793,6 +905,122 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     this.setupSubtitles();
+  }
+
+  enableCurrentVideoTrackId_() {
+    let videoGroup = this.activeVideoGroup();
+
+    // if a video track label from another group has already been set-up previously,
+    // reset it to enabled here in the currently active group
+    // this is needed to make ABR switching work across video groups
+    videoGroup.forEach((videoTrack) => {
+      if (videoTrack.id === this.currentVideoTrackId_) {
+        //console.log('Enabling video track id:', videoTrack.id);
+        videoTrack.enabled = true;
+      }
+    });
+  }
+
+  setupVideo() {
+
+    this.enableCurrentVideoTrackId_();
+
+    let videoGroup = this.activeVideoGroup();
+    let track = videoGroup.filter((videoTrack) => {
+      return videoTrack.enabled;
+    })[0];
+
+    if (!track) {
+      track = videoGroup.filter((videoTrack) => {
+        return videoTrack.properties_.default;
+      })[0] || videoGroup[0];
+      track.enabled = true;
+      //console.log('Switching to default track enabled');
+    }
+
+    //console.log('Setup video track: ' + track.id);
+
+    this.currentVideoTrackId_ = track.id;
+
+    this.mainSegmentLoader_.pause();
+    this.mainSegmentLoader_.abort();
+    this.mainSegmentLoader_.resetEverything();
+
+    // stop playlist and segment loading for video
+    if (this.videoPlaylistLoader_) {
+      this.videoPlaylistLoader_.dispose();
+      this.videoPlaylistLoader_ = null;
+    }
+
+    const playlistUri = track.properties_.resolvedUri || this.masterPlaylistLoader_.media().resolvedUri;
+
+    // startup playlist and segment loaders for the enabled video
+    // track
+    this.videoPlaylistLoader_ = new PlaylistLoader(playlistUri,
+                                                   this.hls_,
+                                                   this.withCredentials);
+    this.videoPlaylistLoader_.start();
+
+    this.videoPlaylistLoader_.on('loadedmetadata', () => {
+
+      //console.log('videoPlaylistLoader loadedmetadata');
+
+      let videoPlaylist = this.videoPlaylistLoader_.media();
+
+      this.mainSegmentLoader_.playlist(videoPlaylist, this.requestOptions_);
+
+      // if the video is already playing, or if this isn't a live video and preload
+      // permits, start downloading segments
+      if (!this.tech_.paused() ||
+          (videoPlaylist.endList && this.tech_.preload() !== 'none')) {
+        this.mainSegmentLoader_.load();
+      }
+
+      if (!videoPlaylist.endList) {
+        this.videoPlaylistLoader_.trigger('firstplay');
+      }
+
+      this.hls_.trigger('loaded-video-metadata');
+
+      if (!this.audioPlaylistLoader_) {
+        this.hls_.trigger('loaded-audio-metadata');
+      }
+
+    });
+
+    this.videoPlaylistLoader_.on('loadedplaylist', () => {
+
+      //console.log('videoPlaylistLoader loadedplaylist');
+
+      let updatedPlaylist;
+
+      if (this.videoPlaylistLoader_) {
+        updatedPlaylist = this.videoPlaylistLoader_.media();
+      }
+
+      if (!updatedPlaylist) {
+        // only one playlist to select
+        this.videoPlaylistLoader_.media(
+          this.videoPlaylistLoader_.playlists.master.playlists[0]);
+        return;
+      }
+
+      // patch the playlist with attributes the master media might have
+      // (if this is an alternate rendition it has not been parsed with the default
+      // playlists attribute). This is needed to determine quality-switching events 
+      // and extract current quality.
+      if (!updatedPlaylist.attributes && this.masterPlaylistLoader_.media().attributes) {
+        updatedPlaylist.attributes = this.masterPlaylistLoader_.media().attributes;
+      }
+
+      this.mainSegmentLoader_.playlist(updatedPlaylist, this.requestOptions_);
+    });
+
+    this.videoPlaylistLoader_.on('error', () => {
+      videojs.log.warn('Problem encountered loading the alternate video track' +
+                       '. Switching back to default.');
+      this.setupVideo();
+    });
   }
 
   /**

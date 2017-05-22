@@ -518,10 +518,14 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         }
 
         // resolve any media group URIs
-        ['AUDIO', 'SUBTITLES'].forEach((mediaType) => {
+        ['AUDIO', 'SUBTITLES', 'VIDEO'].forEach((mediaType) => {
           for (let groupKey in loader.master.mediaGroups[mediaType]) {
             for (let labelKey in loader.master.mediaGroups[mediaType][groupKey]) {
               let mediaProperties = loader.master.mediaGroups[mediaType][groupKey][labelKey];
+
+              if (mediaType === 'VIDEO') {
+                mediaProperties.uri = playlist.uri;
+              }
 
               if (mediaProperties.uri) {
                 mediaProperties.resolvedUri =
