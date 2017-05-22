@@ -587,11 +587,11 @@ class HlsHandler extends Component {
     });
 
     this.masterPlaylistController_.on('videoupdate', () => {
-        // clear current videoTracks
-        this.tech_.clearTracks('video');
-        this.activeVideoGroup_().forEach((videoTrack) => {
-          this.tech_.videoTracks().addTrack(videoTrack);
-        });
+      // clear current videoTracks
+      this.tech_.clearTracks('video');
+      this.activeVideoGroup_().forEach((videoTrack) => {
+        this.tech_.videoTracks().addTrack(videoTrack);
+      });
     });
 
     // the bandwidth of the primary segment loader is our best
@@ -659,22 +659,22 @@ class HlsHandler extends Component {
   }
 
   enableAudioTrack(index) {
-    var activeGroup = this.activeAudioGroup_();
+    let activeGroup = this.activeAudioGroup_();
 
     activeGroup.forEach(function(track) {
       track.enabled = false;
-    })
+    });
     activeGroup[index].enabled = true;
 
     this.masterPlaylistController_.setupAudio();
   }
 
   enableVideoTrack(index) {
-    var activeGroup = this.activeVideoGroup_();
+    let activeGroup = this.activeVideoGroup_();
 
     activeGroup.forEach(function(track) {
       track.enabled = false;
-    })
+    });
     activeGroup[index].enabled = true;
 
     this.masterPlaylistController_.setupVideo();

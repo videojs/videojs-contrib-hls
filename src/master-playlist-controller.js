@@ -606,9 +606,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // FIXME: be more specific here with failure cases and reasons here!
     //        switching codec might be a problem, but if its just codec parameters that might be totally fine.
-    let error = `The video track '${enabledTrack.label}' that we tried to ` +
-      `switch to had different video codec properties. This might cause issues with decoding.`
-      + `Falling back to the default track now.`;
+    let error;
+
+    error = `The video track '${enabledTrack.label}' that we tried to ` +
+      `switch to had different video codec properties. This might cause issues with decoding.` +
+      `Falling back to the default track now.`;
     defaultTrack.enabled = true;
     this.activeVideoGroup().splice(enabledIndex, 1);
     this.trigger('videoupdate');
@@ -674,6 +676,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   fillVideoTracks_() {
 
     let master = this.master();
+    let optionalTrackIndex;
     let mediaGroups = master.mediaGroups || {};
 
     // force a default if we have none or we are not
@@ -708,7 +711,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     // if we have a optional track set, enable that one
-    let optionalTrackIndex = this.hls_.options_.videoTrackIndex;
+
+    optionalTrackIndex = this.hls_.options_.videoTrackIndex;
     if (optionalTrackIndex !== undefined) {
       this.activeVideoGroup()[optionalTrackIndex].enabled = true;
     } else {
@@ -979,7 +983,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       // patch the playlist with attributes the master media might have
       // (if this is an alternate rendition it has not been parsed with the default
-      // playlists attribute). This is needed to determine quality-switching events 
+      // playlists attribute). This is needed to determine quality-switching events
       // and extract current quality.
       if (!updatedPlaylist.attributes && this.masterPlaylistLoader_.media().attributes) {
         updatedPlaylist.attributes = this.masterPlaylistLoader_.media().attributes;
