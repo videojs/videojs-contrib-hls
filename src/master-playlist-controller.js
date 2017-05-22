@@ -403,8 +403,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
 
       this.fillAudioTracks_();
-      this.fillVideoTracks_();
       this.setupAudio();
+
+      this.fillVideoTracks_();
+      this.setupVideo();
 
       this.fillSubtitleTracks_();
       this.setupSubtitles();
@@ -513,9 +515,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.setupAudio();
         this.trigger('audioupdate');
       }
-      this.setupSubtitles();
 
       this.setupVideo();
+      this.setupSubtitles();
 
       this.tech_.trigger({
         type: 'mediachange',
@@ -589,9 +591,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
         !this.videoInfo_ ||
         !objectChanged(this.videoInfo_, event.info)) {
       this.videoInfo_ = event.info;
-
-      //console.log('new video info');
-      //console.log(this.videoInfo_);
 
       return;
     }
@@ -673,8 +672,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @private
    */
   fillVideoTracks_() {
-
-    //console.log('fillVideoTracks_');
 
     let master = this.master();
     let mediaGroups = master.mediaGroups || {};
@@ -907,20 +904,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.setupSubtitles();
   }
 
-  enableCurrentVideoTrackId_() {
-    let videoGroup = this.activeVideoGroup();
-
-    // if a video track label from another group has already been set-up previously,
-    // reset it to enabled here in the currently active group
-    // this is needed to make ABR switching work across video groups
-    videoGroup.forEach((videoTrack) => {
-      if (videoTrack.id === this.currentVideoTrackId_) {
-        //console.log('Enabling video track id:', videoTrack.id);
-        videoTrack.enabled = true;
-      }
-    });
-  }
-
   setupVideo() {
 
     this.enableCurrentVideoTrackId_();
@@ -935,12 +918,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         return videoTrack.properties_.default;
       })[0] || videoGroup[0];
       track.enabled = true;
-      //console.log('Switching to default track enabled');
     }
-
-    //console.log('Setup video track: ' + track.id);
-
-    this.currentVideoTrackId_ = track.id;
 
     this.mainSegmentLoader_.pause();
     this.mainSegmentLoader_.abort();
@@ -962,8 +940,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.videoPlaylistLoader_.start();
 
     this.videoPlaylistLoader_.on('loadedmetadata', () => {
-
-      //console.log('videoPlaylistLoader loadedmetadata');
 
       let videoPlaylist = this.videoPlaylistLoader_.media();
 
@@ -989,8 +965,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.videoPlaylistLoader_.on('loadedplaylist', () => {
-
-      //console.log('videoPlaylistLoader loadedplaylist');
 
       let updatedPlaylist;
 
