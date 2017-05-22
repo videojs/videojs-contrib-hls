@@ -25,20 +25,35 @@
         </header>
         <section>
           <h2>Timeline</h2>
+          <p id="running-simulation">Running simulation please wait... (this may take a few minutes)</p>
+          <p id="finished-simulation">Simulation Complete! Click "Save Report" to save the results.</p>
           <p class=timeline>Simulation results will show up here</p>
           <p><textarea rows="15" cols="120" id="result"></textarea></p>
           <button id=run-simulation type=submit>Run Simulation</button>
           <button id=save-report type=submit>Save Report</button>
-          <button id=clear-report type=submit>Clear Report</button>
         </section>
         <section>
           <h2>Parameters</h2>
           <form id=parameters>
           <fieldset>
+            <legend>Fuzz inputs?</legend>
+            <input id="fuzz-inputs" type="checkbox"/>
             <legend>Goal Buffer Length</legend>
             <input type="number", id="goal-buffer-length" value="30">
+            <div id="goal-buffer-length-secondary" style="display:none;">
+              <legend>Goal Buffer Length Max Value</legend>
+              <input type="number", id="goal-buffer-length-max" value="60">
+              <legend>Goal Buffer Length Step</legend>
+              <input type="number", id="goal-buffer-length-step" value="5">
+            </div>
             <legend>Bandwidth Variance</legend>
             <input type="number", id="bandwidth-variance" value="1.2">
+            <div id="bandwidth-variance-secondary" style="display:none;">
+              <legend>Bandwidth Variance Max Value</legend>
+              <input type="number", id="bandwidth-variance-max" value="2">
+              <legend>Bandwidth Variance Step</legend>
+              <input type="number", id="bandwidth-variance-step" value="0.1">
+            </div>
             <legend>Network Trace</legend>
             <div class="input"><input type="file" id="local" multiple value="network_logs/car.snaroya-smestad"></div>
             <legend>Video Bitrates (one per line: "max, average")</legend>

@@ -9,7 +9,15 @@ const $ = document.querySelector.bind(document);
 
 // Contains list of strings representing network traces uploaded
 const networkTraces = [defaultTrace];
-let results;
+const resultKeys = [
+  'run',
+  'time to start',
+  'timeouts',
+  'aborts',
+  'calculated bandwidth [time bandwidth]',
+  'selected bitrates',
+  'empty buffer regions [start end]']
+const results = [];
 
 /* DOM elements */
 
@@ -19,6 +27,16 @@ const local = $('#local');
 const saveReport = $('#save-report');
 const clearReport = $('#clear-report');
 const runButton = $('#run-simulation');
+const fuzzInputs = $('#fuzz-inputs');
+const waitingNote = $('#running-simulation');
+const finishedNote = $('#finished-simulation');
+const secondaryInputs = [
+  $('#goal-buffer-length-secondary'),
+  // $('#bandwidth-variance-secondary')
+];
+
+waitingNote.style.display = 'none';
+finishedNote.style.display = 'none';
 
 /* Listeners */
 
@@ -30,8 +48,14 @@ local.addEventListener('change', function() {
 });
 
 saveReport.addEventListener('click', function(){
-  const result = $('#result').value;
-  const data = new Blob([result], {type: 'text/plain'});
+  const stringifiedResults = results.map((simulation) => {
+    return JSON.stringify({
+      result: simulation.text,
+      inputs: simulation.inputs,
+      okr: simulation.okr
+    }, null, 2);
+  });
+  const data = new Blob([stringifiedResults.join(',')], {type: 'text/plain'});
 
   let textFile = window.URL.createObjectURL(data);
 
@@ -48,14 +72,40 @@ saveReport.addEventListener('click', function(){
   });
 });
 
-clearReport.addEventListener('click', function() {
-  results = createResults(Object.keys(results));
-  $('#result').innerText = tableToText(objToTable(results));
+fuzzInputs.addEventListener('change', function() {
+  secondaryInputs.forEach((el) => {
+    el.style.display = fuzzInputs.checked ? 'block' : 'none';
+  });
 });
 
 runButton.addEventListener('click', function() {
-  runSimulations().then(function() {
-    calculatedOKR();
+  // clear previous simulation before starting a new one
+  results.length = 0;
+
+  // Setup the simulation inputs
+  // [ [GoalBufferLength, BandwidthVariance], ... ]
+  const simulationInputs = setupSimulationInputs();
+
+  // This gets REALLY SLOW
+  const runs = simulationInputs.map((inputs, index) => {
+    return runSimulations(index, inputs).then(() => {
+      calculatedOKR(index);
+    });
+  });
+
+  waitingNote.style.display = 'block';
+  finishedNote.style.display = 'none';
+
+  Promise.all(runs).then(() => {
+    finishedNote.style.display = 'block';
+    waitingNote.style.display = 'none';
+
+    // If only one simulation was run over one trace, display the timeline graph of the
+    // results and add the text results to the display
+    if (results.length === 1 && networkTraces.length === 1) {
+      displayTimeline(results[0].error, results[0].raw_result);
+      $('#result').innerText = results[0].text;
+    }
   });
 });
 
@@ -124,38 +174,106 @@ const quantileMetrics = function(array) {
   return [0.25, 0.5, 0.9, 0.95, 0.99].reduce((a, b) => a.concat(d3.quantile(array, b)), []);
 };
 
-const calculatedOKR = function() {
-    // array contains all the selected bitrates
-    let selectedBitrates = results['selected bitrates'].reduce((a, b) => a.concat(b));
+const calculatedOKR = function(simulation) {
+  let simulationResults = results[simulation].result;
+  // array contains all the selected bitrates
+  let selectedBitrates = simulationResults['selected bitrates'].reduce((a, b) => a.concat(b));
 
-    // sum all the selected bitrates value and the length
-    let sumSelectedBitrates = results['selected bitrates'].reduce((a, b) => a.concat(b))
-                                                          .reduce((a, b) => a + b);
-    let selectedBitratesLength = results['selected bitrates'].reduce((a, b) => a.concat(b)).length;
+  // sum all the selected bitrates value and the length
+  let sumSelectedBitrates = simulationResults['selected bitrates'].reduce((a, b) => a.concat(b))
+                                                        .reduce((a, b) => a + b);
+  let selectedBitratesLength = simulationResults['selected bitrates'].reduce((a, b) => a.concat(b)).length;
 
-    // array contains all the calculated bitrates
-    let calculatedBitrates = results['calculated bandwidth [time bandwidth]'].reduce((a, b) => a.concat(b))
-                                                                             .reduce((a, b) => a.concat(b[1]), []);
-    // array contains all the rebuffer ratio
-    let rebufferRatios = results['empty buffer regions [start end]'].reduce((a, b) => a.concat(b))
-                                                                    .reduce((a, b) => a.concat((b[1] - b[0]) / 60000), []);
+  // array contains all the calculated bitrates
+  let calculatedBitrates = simulationResults['calculated bandwidth [time bandwidth]'].reduce((a, b) => a.concat(b))
+                                                                           .reduce((a, b) => a.concat(b[1]), []);
+  // array contains all the rebuffer ratio
+  let rebufferRatios = simulationResults['empty buffer regions [start end]'].reduce((a, b) => a.concat(b))
+                                                                  .reduce((a, b) => a.concat((b[1] - b[0]) / 60000), []);
 
-    const sum = {
-      'run': results.run.length,
-      'time to start': quantileMetrics(results['time to start']),
-      'timeouts': results.timeouts.reduce((a, b) => a + b),
-      'aborts': results.aborts.reduce((a, b) => a + b),
-      'calculated bandwidth [time bandwidth]': quantileMetrics(calculatedBitrates),
-      'selected bitrates': quantileMetrics(selectedBitrates),
-      'rebuffering count': results['empty buffer regions [start end]'].reduce((acc, val) => acc + val.length - 1, 0),
-      'indicated bitrates': sumSelectedBitrates / selectedBitratesLength,
-      'rebuffer ratio': quantileMetrics(rebufferRatios)
-    };
-    $('#result').innerText = tableToText(objToTable(sum));
+  const sum = {
+    'run': simulationResults.run.length,
+    'time to start': quantileMetrics(simulationResults['time to start']),
+    'timeouts': simulationResults.timeouts.reduce((a, b) => a + b),
+    'aborts': simulationResults.aborts.reduce((a, b) => a + b),
+    'calculated bandwidth [time bandwidth]': quantileMetrics(calculatedBitrates),
+    'selected bitrates': quantileMetrics(selectedBitrates),
+    'rebuffering count': simulationResults['empty buffer regions [start end]'].reduce((acc, val) => acc + val.length - 1, 0),
+    'indicated bitrates': sumSelectedBitrates / selectedBitratesLength,
+    'rebuffer ratio': quantileMetrics(rebufferRatios)
+  };
+
+  results[simulation].okr = tableToText(objToTable(sum));
+};
+
+const setupSimulationInputs = function() {
+  let result = [];
+
+  // First create arrays for each fuzzed input
+  const fuzz = fuzzInputs.checked;
+
+  // Goal Buffer Length
+  const GBLValues = fuzz ? fuzzGoalBufferLength() : [Math.max(1, Number($('#goal-buffer-length').value))];
+  // Bandwidth Variance
+  // const BVValues = fuzz ? fuzzBandwidthVariance() : [Math.max(0.1, Number($('#bandwidth-variance').value))];
+  const BVValues = [Math.max(0.1, Number($('#bandwidth-variance').value))];
+
+  const values = [GBLValues, BVValues];
+
+  const merger = function(arr, type) {
+    for (let i = 0, l = values[type].length; i < l; i++) {
+      const clone = arr.slice(0);
+
+      clone.push(values[type][i]);
+
+      if (type === values.length - 1) {
+        result.push(clone);
+      } else {
+        merger(clone, type + 1);
+      }
+    }
+  };
+
+  merger([], 0);
+  return result;
+};
+
+const fuzzGoalBufferLength = function() {
+  let result = [];
+
+  let GBL = Math.max(1, Number($('#goal-buffer-length').value));
+  let GBLStep = Math.max(1, Number($('#goal-buffer-length-step').value));
+  let GBLMax = Math.max(GBL, Number($('#goal-buffer-length-max').value));
+
+  result.push(GBL);
+
+  while(GBL + GBLStep <= GBLMax) {
+    GBL += GBLStep;
+    result.push(GBL);
+  }
+
+  return result;
+};
+
+const fuzzBandwidthVariance = function() {
+  let result = [];
+
+  let BV = Math.max(0.1, Number($('#bandwidth-variance').value));
+  let BVStep = Math.max(0.1, Number($('#bandwidth-variance-step').value));
+  let BVMax = Math.max(BV, Number($('#bandwidth-variance-max').value));
+
+  result.push(BV);
+
+  while(BV + BVStep <= BVMax) {
+    BV += BVStep;
+    result.push(BV);
+  }
+
+  return result;
 };
 
 // collect the simulation parameters
-const parameters = function(trace) {
+const parameters = function(trace, inputs) {
   let networkTrace = trace
     .trim()
     .split('\n')
@@ -175,21 +293,26 @@ const parameters = function(trace) {
     console.log('Invalid JSON');
   }
 
-  let goalBufferLength = Math.max(1, Number($('#goal-buffer-length').value));
-  let bandwidthVariance = Math.max(0.1, Number($('#bandwidth-variance').value));
+  // inputs: [goalBufferLength, bandwidthVariance]
 
   return {
-    goalBufferLength,
-    bandwidthVariance,
+    goalBufferLength: inputs[0],
+    bandwidthVariance: inputs[1],
     playlists,
     segments,
     networkTrace
   };
 };
 
-const simulationDone = function(promise, err, res) {
+const simulationDone = function(promise, simulation, err, res) {
+  // create global result if it doesn't exist
+  if (!results[simulation].result) {
+    results[simulation].result = createResults(resultKeys);
+  }
+
+  const simulationResults = results[simulation].result;
   const data = {
-    'run': results ? results.run.length : 0,
+    'run': simulationResults ? simulationResults.run.length : 0,
     'time to start': res.buffered.find(({buffered}) => buffered).time,
     'timeouts': res.playlists.filter(({timedout}) => timedout).length,
     'aborts': res.playlists.filter(({aborted}) => aborted).length,
@@ -217,27 +340,34 @@ const simulationDone = function(promise, err, res) {
     }, []).map(({start, end}) => [start, end])
   };
 
-  // create global result if it doesn't exist
-  if (!results) {
-    results = createResults(Object.keys(data));
-  }
-
   // add this simulation result to the results
-  Object.entries(data).forEach(([key, value]) => results[key].push(value));
+  Object.entries(data).forEach(([key, value]) => simulationResults[key].push(value));
 
-  $('#result').innerText = tableToText(objToTable(results));
+  results[simulation].text = tableToText(objToTable(simulationResults));
 
-  displayTimeline(err, res);
+  // Store the raw results and error of the simulation
+  // This is only useful in the event that a single simulation was done over a single
+  // network trace, otherwise these values will only be valid for the last network trace
+  // used for the given simulation
+  results[simulation].raw_result = res;
+  results[simulation].error = err;
+
   promise.resolve();
 }
 
-const runSimulations = () => loadFiles().then(() => {
+const runSimulations = (simulation, inputs) => loadFiles().then(() => {
+  // create the simulation ov=bject if it does not already exist
+  if (!results[simulation]) {
+    results[simulation] = {
+      inputs
+    };
+  }
+
   // network traces are loaded into `networkTraces`
   // now run the simulation through each one
-
   const simulationPromises = networkTraces.map((trace) => {
     return new Promise((resolve, reject) => {
-      runSimulation(parameters(trace), simulationDone.bind(null, { resolve, reject }));
+      runSimulation(parameters(trace, inputs), simulationDone.bind(null, { resolve, reject }, simulation));
     });
   });
 
@@ -263,4 +393,4 @@ if (window.location.hash) {
   networkTimeline.innerHTML = '';
 }
 
-runButton.click();
+// runButton.click();
