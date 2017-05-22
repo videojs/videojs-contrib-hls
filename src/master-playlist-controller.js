@@ -906,8 +906,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
   setupVideo() {
 
-    this.enableCurrentVideoTrackId_();
-
     let videoGroup = this.activeVideoGroup();
     let track = videoGroup.filter((videoTrack) => {
       return videoTrack.enabled;
