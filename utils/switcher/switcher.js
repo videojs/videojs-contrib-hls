@@ -54,7 +54,9 @@ clearReport.addEventListener('click', function() {
 });
 
 runButton.addEventListener('click', function() {
-  runSimulations();
+  runSimulations().then(function() {
+    calculatedOKR();
+  });
 });
 
 /* Functions */
@@ -66,14 +68,10 @@ runButton.addEventListener('click', function() {
 const objToTable = function(obj) {
   const rows = Object.values(obj)
     .reduce((rows, property) => {
-      property.forEach((value, i) => {
-        if (!Array.isArray(rows[i])) {
-          rows[i] = [];
-        }
-
-        rows[i].push(value);
-      });
-
+      if (!Array.isArray(rows[0])) {
+        rows[0] = [];
+      }
+      rows[0].push(property);
       return rows;
     }, []);
 
@@ -119,6 +117,41 @@ const readFile = function(file) {
     };
     reader.readAsText(file);
   })
+};
+
+const quantileMetrics = function(array) {
+  array.sort((a, b) => a - b);
+  return [0.25, 0.5, 0.9, 0.95, 0.99].reduce((a, b) => a.concat(d3.quantile(array, b)), []);
+};
+
+const calculatedOKR = function() {
+    // array contains all the selected bitrates
+    let selectedBitrates = results['selected bitrates'].reduce((a, b) => a.concat(b));
+
+    // sum all the selected bitrates value and the length
+    let sumSelectedBitrates = results['selected bitrates'].reduce((a, b) => a.concat(b))
+                                                          .reduce((a, b) => a + b);
+    let selectedBitratesLength = results['selected bitrates'].reduce((a, b) => a.concat(b)).length;
+
+    // array contains all the calculated bitrates
+    let calculatedBitrates = results['calculated bandwidth [time bandwidth]'].reduce((a, b) => a.concat(b))
+                                                                             .reduce((a, b) => a.concat(b[1]), []);
+    // array contains all the rebuffer ratio
+    let rebufferRatios = results['empty buffer regions [start end]'].reduce((a, b) => a.concat(b))
+                                                                    .reduce((a, b) => a.concat((b[1] - b[0]) / 60000), []);
+
+    const sum = {
+      'run': results.run.length,
+      'time to start': quantileMetrics(results['time to start']),
+      'timeouts': results.timeouts.reduce((a, b) => a + b),
+      'aborts': results.aborts.reduce((a, b) => a + b),
+      'calculated bandwidth [time bandwidth]': quantileMetrics(calculatedBitrates),
+      'selected bitrates': quantileMetrics(selectedBitrates),
+      'rebuffering count': results['empty buffer regions [start end]'].reduce((acc, val) => acc + val.length - 1, 0),
+      'indicated bitrates': sumSelectedBitrates / selectedBitratesLength,
+      'rebuffer ratio': quantileMetrics(rebufferRatios)
+    };
+    $('#result').innerText = tableToText(objToTable(sum));
 };
 
 // collect the simulation parameters
