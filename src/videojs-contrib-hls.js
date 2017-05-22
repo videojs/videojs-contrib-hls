@@ -19,7 +19,7 @@ import renditionSelectionMixin from './rendition-mixin';
 import window from 'global/window';
 import PlaybackWatcher from './playback-watcher';
 import reloadSourceOnError from './reload-source-on-error';
-import { STANDARD_PLAYLIST_SELECTOR, comparePlaylistBandwidth, comparePlaylistResolution } from './playlist-selectors.js';
+import { lastBandwidthSelector, comparePlaylistBandwidth, comparePlaylistResolution } from './playlist-selectors.js';
 
 const Hls = {
   PlaylistLoader,
@@ -29,7 +29,7 @@ const Hls = {
   decrypt,
   utils,
 
-  STANDARD_PLAYLIST_SELECTOR,
+  STANDARD_PLAYLIST_SELECTOR: lastBandwidthSelector,
   comparePlaylistBandwidth,
   comparePlaylistResolution,
 

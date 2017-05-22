@@ -1,6 +1,8 @@
 import Config from './config';
 import Playlist from './playlist';
 
+// Utilities
+
 /**
  * Returns the CSS value for the specified property on an element
  * using `getComputedStyle`. Firefox has a long-standing issue where
@@ -111,22 +113,12 @@ export const comparePlaylistResolution = function(left, right) {
   return leftWidth - rightWidth;
 };
 
-/**
- * Chooses the appropriate media playlist based on the current
- * bandwidth estimate and the player size.
- *
- * @return {Playlist} the highest bitrate playlist less than the currently detected
- * bandwidth, accounting for some amount of bandwidth variance
- */
-export const STANDARD_PLAYLIST_SELECTOR = function() {
-  let sortedPlaylists = this.playlists.master.playlists.slice();
+const simpleSelector = function(master, bandwidth, width, height) {
+  let sortedPlaylists = master.playlists.slice();
   let bandwidthPlaylists = [];
   let bandwidthBestVariant;
   let resolutionPlusOne;
   let resolutionBestVariant;
-  let width;
-  let height;
-  let systemBandwidth;
   let haveResolution;
   let resolutionPlusOneList = [];
   let resolutionPlusOneSmallest = [];
@@ -139,11 +131,10 @@ export const STANDARD_PLAYLIST_SELECTOR = function() {
   sortedPlaylists = sortedPlaylists.filter(Playlist.isEnabled);
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
-  systemBandwidth = this.systemBandwidth;
   bandwidthPlaylists = sortedPlaylists.filter(function(elem) {
     return elem.attributes &&
            elem.attributes.BANDWIDTH &&
-           elem.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE < systemBandwidth;
+           elem.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE < bandwidth;
   });
 
   // get all of the renditions with the same (highest) bandwidth
@@ -154,9 +145,6 @@ export const STANDARD_PLAYLIST_SELECTOR = function() {
 
   // sort variants by resolution
   stableSort(bandwidthPlaylists, comparePlaylistResolution);
-
-  width = parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10);
-  height = parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10);
 
   // filter out playlists without resolution information
   haveResolution = bandwidthPlaylists.filter(function(elem) {
@@ -200,4 +188,53 @@ export const STANDARD_PLAYLIST_SELECTOR = function() {
     resolutionBestVariant ||
     bandwidthBestVariant ||
     sortedPlaylists[0];
+};
+
+// Playlist Selectors
+
+/**
+ * Chooses the appropriate media playlist based on the most recent
+ * bandwidth estimate and the player size.
+ *
+ * @return {Playlist} the highest bitrate playlist less than the
+ * currently detected bandwidth, accounting for some amount of
+ * bandwidth variance
+ */
+export const lastBandwidthSelector = function() {
+  return simpleSelector(this.playlists.master,
+                        this.systemBandwidth,
+                        parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10),
+                        parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
+};
+
+/**
+ * Chooses the appropriate media playlist based on an
+ * exponential-weighted moving average of the bandwidth after
+ * filtering for player size.
+ *
+ * @param {Number} decay - a number between 0 and 1. Higher values of
+ * this parameter will cause previous bandwidth estimates to lose
+ * significance more quickly.
+ * @return {Function} a function which can be invoked to create a new
+ * playlist selector function.
+ * @see https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+ */
+export const movingAverageBandwidthSelector = function(decay) {
+  let average = -1;
+
+  if (decay < 0 || decay > 1) {
+    throw new Error('Moving average bandwidth decay must be between 0 and 1.');
+  }
+
+  return function() {
+    if (average < 0) {
+      average = this.systemBandwidth;
+    }
+
+    average = decay * this.systemBandwidth + (1 - decay) * average;
+    return simpleSelector(this.playlists.master,
+                          average,
+                          parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10),
+                          parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
+  };
 };
