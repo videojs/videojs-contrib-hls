@@ -523,7 +523,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
             for (let labelKey in loader.master.mediaGroups[mediaType][groupKey]) {
               let mediaProperties = loader.master.mediaGroups[mediaType][groupKey][labelKey];
 
-              if (mediaType === 'VIDEO') {
+              if (mediaType === 'VIDEO' && !mediaProperties.uri) {
                 mediaProperties.uri = playlist.uri;
               }
 
