@@ -456,7 +456,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         // one is updating (and give the player a chance to re-adjust to the
         // safe live point).
         this.blacklistCurrentPlaylist({
-          message: 'Playlist no longer updating.'
+          message: 'Playlist no longer updating'
         });
         // useful for monitoring QoS
         this.tech_.trigger('playliststuck');
@@ -1078,7 +1078,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       playlists.forEach((playlist) => {
         // clear the blacklist duration for the other playlists when
         // the final playlist errors
-        playlist.excludeUntil = Date.now();
+        delete playlist.excludeUntil;
       });
     }
     // Blacklist this playlist
@@ -1088,7 +1088,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
     videojs.log.warn('Problem encountered with the current HLS playlist.' +
-                     (error.message ? ' ' + error.message : '') +
+                     (error.message ? ' ' + error.message + '.' : '') +
                      ' Switching to another playlist.');
 
     return this.masterPlaylistLoader_.media(nextPlaylist, isFinalRendition);

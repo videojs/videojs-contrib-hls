@@ -295,6 +295,11 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       return loader.media_;
     }
 
+    // setter
+    if (loader.state === 'HAVE_NOTHING') {
+      throw new Error('Cannot switch media playlist from ' + loader.state);
+    }
+
     window.clearTimeout(mediaUpdateTimeout);
 
     if (isFinalRendition) {
@@ -302,11 +307,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
 
       mediaUpdateTimeout = window.setTimeout(loader.media.bind(loader, playlist, false), refreshDelay);
       return;
-    }
-
-    // setter
-    if (loader.state === 'HAVE_NOTHING') {
-      throw new Error('Cannot switch media playlist from ' + loader.state);
     }
 
     // find the playlist object if the target playlist has been
