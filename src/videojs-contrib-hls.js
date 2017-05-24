@@ -57,9 +57,9 @@ Object.defineProperty(Hls, 'BUFFER_LOW_WATER_LINE', {
   set(v) {
     videojs.log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
                      'you know what you are doing');
-    if (typeof v !== 'number' || v <= 0 || v > Config.GOAL_BUFFER_LENGTH) {
+    if (typeof v !== 'number' || v < 0 || v > Config.GOAL_BUFFER_LENGTH) {
       videojs.log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' +
-                       'must be a number and greater than 0 and less than' +
+                       'must be a number and greater than or equal to 0 and less than' +
                        'Hls.GOAL_BUFFER_LENGTH');
       return;
     }
