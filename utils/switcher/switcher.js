@@ -188,7 +188,7 @@ const fuzzGoalBufferLength = function() {
 const fuzzBufferLowWaterLine = function() {
   let result = [];
 
-  let BLWL = Math.max(1, Number($('#buffer-low-water-line').value));
+  let BLWL = Math.max(0, Number($('#buffer-low-water-line').value));
   let BLWLStep = Math.max(1, Number($('#buffer-low-water-line-step').value));
   let BLWLMax = Math.max(BLWL, Number($('#buffer-low-water-line-max').value));
 

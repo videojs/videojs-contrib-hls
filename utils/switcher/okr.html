@@ -26,47 +26,35 @@
   </fieldset>
 </form>
 <p>X axis labels in form of ["Goal Buffer Length", "Buffer Low Water Line", "Bandwidth Variance"]</p>
-<svg id="time-to-start" width="960" height="500"></svg>
-<svg id="calculated-bandwidth" width="960" height="500"></svg>
-<svg id="selected-bitrates" width="960" height="500"></svg>
-<svg id="rebuffer-ratio" width="960" height="500"></svg>
+<svg id="startTime" width="960" height="500"></svg>
+<svg id="rebufferRatio" width="960" height="500"></svg>
+<svg id="rebufferCount" width="960" height="500"></svg>
+<svg id="indicatedBitrate" width="960" height="500"></svg>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script>
 
 var $ = document.querySelector.bind(document);
 
 var reports = $('#reports');
-var svgTimeToStart = d3.select("#time-to-start");
-var svgCalculatedBandwidth= d3.select("#calculated-bandwidth");
-var svgSelectedBitrates = d3.select("#selected-bitrates");
-var svgRebufferRatio = d3.select("#rebuffer-ratio");
+var svgstartTime = d3.select("#startTime");
+var svgrebufferRatio= d3.select("#rebufferRatio");
+var svgrebufferCount = d3.select("#rebufferCount");
+var svgindicatedBitrate = d3.select("#indicatedBitrate");
 var tooltip = d3.select("body").append("div")
   .attr("class", "tooltip")
   .style("opacity", 0);
 
-var graphTypes = [
-  { key: 'timeToStart', index: 1 },
-  { key: 'calculatedBandwidth', index: 4 },
-  { key: 'selectedBitrates', index: 5 },
-  { key: 'rebufferingRatio', index: 8 }
-];
-
 var graphs = {
-  timeToStart: svgTimeToStart,
-  calculatedBandwidth: svgCalculatedBandwidth,
-  selectedBitrates: svgSelectedBitrates,
-  rebufferingRatio: svgRebufferRatio
+  startTime: svgstartTime,
+  rebufferRatio: svgrebufferRatio,
+  rebufferCount: svgrebufferCount,
+  indicatedBitrate: svgindicatedBitrate
 };
 
-var quartiles = ['0.25', '0.5', '0.9', '0.95', '0.99']
+var quartiles = ['25', '50', '90', '95', '99', 'max']
 var inputNames = ["Goal Buffer Length", "Buffer Low Water Line", "Bandwidth Variance"]
 
-var datas = {
-  timeToStart: [],
-  calculatedBandwidth: [],
-  selectedBitrates: [],
-  rebufferingRatio: []
-};
+var datas = { };
 
 // Load reports and parse data
 reports.addEventListener('click', function() { reports.value = '' });
@@ -77,12 +65,11 @@ reports.addEventListener('change', function() {
     return;
   }
 
-  datas = {
-    timeToStart: [],
-    calculatedBandwidth: [],
-    selectedBitrates: [],
-    rebufferingRatio: []
-  }
+  datas = {};
+
+  Object.keys(graphs).forEach(function(key) {
+    datas[key] = [];
+  });
 
   d3.selectAll("svg > *").remove();
 
@@ -92,23 +79,17 @@ reports.addEventListener('change', function() {
 
       reader.onloadend = function() {
         // parse data and store
-        var report = JSON.parse('[' + reader.result + ']');
+        var report = JSON.parse(reader.result);
 
         report.forEach(function(rep) {
-          var okrReport = JSON.parse( '[' + rep.okr.split("\n")[1] + ']' );
+          var okrReport = rep.summary;
 
-          graphTypes.forEach(function(type) {
-            var data = JSON.parse(okrReport[type.index]);
-            var result = {
-              inputs: rep.inputs.toString()
-            };
+          Object.keys(datas).forEach(function(key) {
+            var data = okrReport[key];
 
-            // data is form of array [0.25, 0.5, 0.9, 0.95, 0.99]
-            datas[type.key].push(data.reduce(function(res, quartile, i) {
-              res[quartiles[i]] = quartile;
+            data.inputs = rep.inputs.toString();
 
-              return res;
-            }, result));
+            datas[key].push(data);
           });
         });
 
@@ -124,8 +105,8 @@ reports.addEventListener('change', function() {
 });
 
 var renderGraphs = function() {
-  graphTypes.forEach(function(graph) {
-    var svg = graphs[graph.key],
+  Object.keys(graphs).forEach(function(graphKey) {
+    var svg = graphs[graphKey],
       margin = {top: 20, right: 60, bottom: 30, left: 40},
       width = +svg.attr("width") - margin.left - margin.right,
       height = +svg.attr("height") - margin.top - margin.bottom,
@@ -142,10 +123,10 @@ var renderGraphs = function() {
         .rangeRound([height, 0]);
 
     var z = d3.scaleOrdinal()
-        .range(["#98abc5", "#7b6888", "#6b486b", "#a05d56", "#ff8c00"]);
+        .range(["#98abc5", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
 
     var keys = quartiles.slice(0);
-    var data = datas[graph.key];
+    var data = datas[graphKey];
 
     x0.domain(data.map(function(d) { return d.inputs; }));
     x1.domain(keys).rangeRound([0, x0.bandwidth()]);
@@ -193,7 +174,7 @@ var renderGraphs = function() {
         .attr("fill", "#000")
         .attr("font-weight", "bold")
         .attr("text-anchor", "start")
-        .text(graph.key);
+        .text(graphKey);
 
     var legend = g.append("g")
         .attr("font-family", "sans-serif")
