@@ -24,7 +24,7 @@ const groupContiguous = (list, condition) =>
     const previousElement = list[i - 1];
 
     // start a new group if no longer contigious
-    const changed = !previousElement || !condition(previousElement, element);
+    const changed = !previousElement || condition(previousElement, element);
     const groupIndex = changed ? groups.length : groups.length - 1;
     const selectedGroup = groups[groupIndex] || [];
 
