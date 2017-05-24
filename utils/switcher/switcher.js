@@ -77,6 +77,9 @@ runButton.addEventListener('click', function() {
   // clear previous simulation before starting a new one
   results.length = 0;
 
+  waitingNote.style.display = 'block';
+  finishedNote.style.display = 'none';
+
   // Setup the simulation inputs
   // [ [GoalBufferLength, BandwidthVariance], ... ]
   const simulationInputs = setupSimulationInputs();
@@ -85,9 +88,6 @@ runButton.addEventListener('click', function() {
   const runs = simulationInputs.map((inputs, index) => {
     return runSimulations(index, inputs);
   });
-
-  waitingNote.style.display = 'block';
-  finishedNote.style.display = 'none';
 
   Promise.all(runs).then(() => {
     finishedNote.style.display = 'block';
