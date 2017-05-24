@@ -5,7 +5,10 @@ import {
   average,
 } from './fn';
 
-const isBuffered = (previous, current) => previous && previous.buffered && current.buffered;
+const isBuffered = (previous, current) => previous &&
+                                          ((!previous.buffered && current.buffered) ||
+                                           (previous.buffered && !current.buffered));
+
 const sumTime = (regions) => _.sumBy(regions, ({
   start,
   end
@@ -17,13 +20,28 @@ const summarizeSimulation = ({
   playlists
 }) => {
   const bufferedGroups = groupContiguous(buffered, isBuffered);
-  const bufferedRegions = _.map(bufferedGroups, (group) => ({
-    start: _.head(group).time,
-    end: _.last(group).time,
-    buffered: _.head(group).buffered
-  }));
+  const bufferedRegions = _.map(bufferedGroups, (group, index) => {
+    const prevGroup = bufferedGroups[index - 1];
 
-  const emptyBufferedRegions = _.filter(bufferedRegions, ['buffered', false]);
+    let start;
+    let end = _.last(group).time;
+
+    if (!prevGroup) {
+      // first group, start is 0
+      start = 0;
+    } else {
+      // there is a previous group, set start to be the end of the previous group
+      start = _.last(prevGroup).time;
+    }
+
+    return {
+      start,
+      end,
+      buffered: _.head(group).buffered
+    };
+  }).slice(0, bufferedGroups.length - 1);
+
+  const emptyBufferedRegions = _.filter(bufferedRegions, ['buffered', 0]);
 
   return {
     startTime: _.get(_.find(buffered, 'buffered'), 'time', Infinity),
