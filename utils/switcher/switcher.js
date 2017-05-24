@@ -141,11 +141,11 @@ const setupSimulationInputs = function() {
   const fuzz = fuzzInputs.checked;
 
   // Goal Buffer Length
-  const GBLValues = fuzzGoalBufferLength('goal-buffer-length', fuzz, 1, 1);
+  const GBLValues = fuzzInput('goal-buffer-length', fuzz, 1, 1);
   // Buffer Low-Water Line
-  const BLWLValues = fuzzBufferLowWaterLine('buffer-low-water-line', fuzz, 0, 1);
+  const BLWLValues = fuzzInput('buffer-low-water-line', fuzz, 0, 1);
   // Bandwidth Variance
-  const BVValues = fuzzBandwidthVariance('bandwidth-variance', false, 0.1, 0.1);
+  const BVValues = fuzzInput('bandwidth-variance', false, 0.1, 0.1);
 
   const values = [GBLValues, BLWLValues, BVValues];
 
@@ -184,60 +184,6 @@ const fuzzInput = function(input, useMax, inputMin, inputStepMin) {
 
   return result;
 }
-
-const fuzzGoalBufferLength = function() {
-  let result = [];
-
-  let GBL = Math.max(1, Number($('#goal-buffer-length').value));
-  let GBLStep = Math.max(1, Number($('#goal-buffer-length-step').value));
-  let GBLMax = Math.max(GBL, Number($('#goal-buffer-length-max').value));
-
-  for (; GBL <= GBLMax; GBL += GBLStep) {
-    result.push(GBL)
-  }
-  result.push(GBL);
-
-  while(GBL + GBLStep <= GBLMax) {
-    GBL += GBLStep;
-    result.push(GBL);
-  }
-
-  return result;
-};
-
-const fuzzBufferLowWaterLine = function() {
-  let result = [];
-
-  let BLWL = Math.max(0, Number($('#buffer-low-water-line').value));
-  let BLWLStep = Math.max(1, Number($('#buffer-low-water-line-step').value));
-  let BLWLMax = Math.max(BLWL, Number($('#buffer-low-water-line-max').value));
-
-  result.push(BLWL);
-
-  while(BLWL + BLWLStep <= BLWLMax) {
-    BLWL += BLWLStep;
-    result.push(BLWL);
-  }
-
-  return result;
-}
-
-const fuzzBandwidthVariance = function() {
-  let result = [];
-
-  let BV = Math.max(0.1, Number($('#bandwidth-variance').value));
-  let BVStep = Math.max(0.1, Number($('#bandwidth-variance-step').value));
-  let BVMax = Math.max(BV, Number($('#bandwidth-variance-max').value));
-
-  result.push(BV);
-
-  while(BV + BVStep <= BVMax) {
-    BV += BVStep;
-    result.push(BV);
-  }
-
-  return result;
-};
 
 // collect the simulation parameters
 const parameters = function(trace, inputs) {
