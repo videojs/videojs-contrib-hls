@@ -72,6 +72,7 @@ const runSimulation = function(options, done) {
 
   Hls.GOAL_BUFFER_LENGTH = options.goalBufferLength;
   Hls.BANDWIDTH_VARIANCE = options.bandwidthVariance;
+  Hls.BUFFER_LOW_WATER_LINE = options.bufferLowWaterLine;
 
   // SETUP
   let results = {
