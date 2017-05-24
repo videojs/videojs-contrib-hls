@@ -48,6 +48,25 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
   }
 });
 
+Object.defineProperty(Hls, 'BUFFER_LOW_WATER_LINE', {
+  get() {
+    videojs.log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    return Config.BUFFER_LOW_WATER_LINE;
+  },
+  set(v) {
+    videojs.log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0 || v > Config.GOAL_BUFFER_LENGTH) {
+      videojs.log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' +
+                       'must be a number and greater than 0 and less than' +
+                       'Hls.GOAL_BUFFER_LENGTH');
+      return;
+    }
+    Config.BUFFER_LOW_WATER_LINE = v;
+  }
+});
+
 Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
   get() {
     videojs.log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' +
