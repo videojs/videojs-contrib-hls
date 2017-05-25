@@ -936,12 +936,22 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         // ensure we have some buffer before we switch up to prevent us running out of
         // buffer while loading a higher rendition
 <<<<<<< HEAD
+<<<<<<< HEAD
         if (nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH || forwardBuffer >= _config2['default'].BUFFER_LOW_WATER_LINE) {
 >>>>>>> use goal buffer length of 60, low water line of 30
 =======
         // If the playlist is live, then we want to not take low water line into account
         if (!currentPlaylist.endList || nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH || forwardBuffer >= _config2['default'].BUFFER_LOW_WATER_LINE) {
 >>>>>>> ignore low-water-line for live playlists
+=======
+        // If the playlist is live, then we want to not take low water line into account.
+        // This is because in LIVE, the player plays 3 segments from the end of the
+        // playlist, and if `BUFFER_LOW_WATER_LINE` is greater than the duration availble
+        // in those segments, a viewer will never experience a rendition upswitch.
+        // For the same reason as LIVE, we ignore the low waterline when the VOD duration
+        // is below the waterline
+        if (!currentPlaylist.endList || _this3.duration() < _config2['default'].BUFFER_LOW_WATER_LINE || nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH || forwardBuffer >= _config2['default'].BUFFER_LOW_WATER_LINE) {
+>>>>>>> ignore waterline when vod duration is less than waterline
           _this3.masterPlaylistLoader_.media(nextPlaylist);
         }
 
