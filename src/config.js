@@ -4,5 +4,5 @@ export default {
   // temporary flucations in client bandwidth
   BANDWIDTH_VARIANCE: 1.2,
   // How much of the buffer must be filled before we consider upswitching
-  BUFFER_LOW_WATER_LINE: 10
+  BUFFER_LOW_WATER_LINE: 30
 };

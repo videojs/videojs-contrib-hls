@@ -2884,7 +2884,7 @@ QUnit.test('downloads additional playlists if required', function(assert) {
   this.standardXHRResponse(this.requests[2]);
   // update the buffer to reflect the appended segment, and have enough buffer to
   // change playlist
-  this.tech.buffered = () => videojs.createTimeRanges([[0, 10]]);
+  this.tech.buffered = () => videojs.createTimeRanges([[0, 30]]);
   hls.mediaSource.sourceBuffers[0].trigger('updateend');
 
   // new media
@@ -2930,7 +2930,7 @@ QUnit.test('waits to download new segments until the media playlist is stable', 
   this.standardXHRResponse(this.requests.shift());
   // update the buffer to reflect the appended segment, and have enough buffer to
   // change playlist
-  this.tech.buffered = () => videojs.createTimeRanges([[0, 10]]);
+  this.tech.buffered = () => videojs.createTimeRanges([[0, 30]]);
   // no time has elapsed, so bandwidth is really high and we'll switch
   // playlists
   sourceBuffer.trigger('updateend');

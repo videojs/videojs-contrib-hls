@@ -104,18 +104,18 @@ QUnit.test('BUFFER_LOW_WATER_LINE set warning and invalid', function(assert) {
   Hls.BUFFER_LOW_WATER_LINE = 'nope';
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.BUFFER_LOW_WATER_LINE, 10, 'default');
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 30, 'default');
 
   Hls.BUFFER_LOW_WATER_LINE = -1;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.BUFFER_LOW_WATER_LINE, 10, 'default');
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 30, 'default');
 
   // does not allow setting above goal buffer length
-  Hls.BUFFER_LOW_WATER_LINE = 45;
+  Hls.BUFFER_LOW_WATER_LINE = 65;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.BUFFER_LOW_WATER_LINE, 10, 'default');
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 30, 'default');
 });
 
 QUnit.module('Configuration - Options', {
