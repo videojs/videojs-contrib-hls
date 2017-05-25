@@ -752,6 +752,8 @@ QUnit.test('re-triggers bandwidthupdate events on the tech', function(assert) {
   assert.equal(bandwidthupdateEvents, 2, 'triggered bandwidthupdate');
 });
 
+// TODO: Add test for ignoring low waterline in LIVE playback
+
 QUnit.test('switches to lower renditions immediately, higher dependent on buffer',
 function(assert) {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
@@ -772,7 +774,8 @@ function(assert) {
     return {
       attributes: {
         BANDWIDTH: nextPlaylistBandwidth
-      }
+      },
+      endList: true
     };
   };
   this.masterPlaylistController.masterPlaylistLoader_.media = (media) => {
@@ -780,7 +783,8 @@ function(assert) {
       return {
         attributes: {
           BANDWIDTH: currentPlaylistBandwidth
-        }
+        },
+        endList: true
       };
     }
     mediaChanges.push(media);
