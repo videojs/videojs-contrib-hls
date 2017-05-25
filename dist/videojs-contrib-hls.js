@@ -244,7 +244,9 @@ exports["default"] = {
   GOAL_BUFFER_LENGTH: 60,
   // A fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
-  BANDWIDTH_VARIANCE: 1.2
+  BANDWIDTH_VARIANCE: 1.2,
+  // How much of the buffer must be filled before we consider upswitching
+  BUFFER_LOW_WATER_LINE: 30
 };
 module.exports = exports["default"];
 },{}],4:[function(require,module,exports){
@@ -353,6 +355,10 @@ var _webworkify2 = _interopRequireDefault(_webworkify);
 var _decrypterWorker = require('./decrypter-worker');
 
 var _decrypterWorker2 = _interopRequireDefault(_decrypterWorker);
+
+var _config = require('./config');
+
+var _config2 = _interopRequireDefault(_config);
 
 var Hls = undefined;
 
@@ -896,7 +902,24 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       this.mainSegmentLoader_.on('bandwidthupdate', function () {
         // figure out what stream the next segment should be downloaded from
         // with the updated bandwidth information
-        _this3.masterPlaylistLoader_.media(_this3.selectPlaylist());
+        var nextPlaylist = _this3.selectPlaylist();
+        var currentPlaylist = _this3.masterPlaylistLoader_.media();
+        var buffered = _this3.tech_.buffered();
+        var forwardBuffer = buffered.length ? buffered.end(buffered.length - 1) - _this3.tech_.currentTime() : 0;
+
+        // we want to switch down to lower resolutions quickly to continue playback, but
+        // ensure we have some buffer before we switch up to prevent us running out of
+        // buffer while loading a higher rendition
+        // If the playlist is live, then we want to not take low water line into account.
+        // This is because in LIVE, the player plays 3 segments from the end of the
+        // playlist, and if `BUFFER_LOW_WATER_LINE` is greater than the duration availble
+        // in those segments, a viewer will never experience a rendition upswitch.
+        // For the same reason as LIVE, we ignore the low waterline when the VOD duration
+        // is below the waterline
+        if (!currentPlaylist.endList || _this3.duration() < _config2['default'].BUFFER_LOW_WATER_LINE || nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH || forwardBuffer >= _config2['default'].BUFFER_LOW_WATER_LINE) {
+          _this3.masterPlaylistLoader_.media(nextPlaylist);
+        }
+
         _this3.tech_.trigger('bandwidthupdate');
       });
       this.mainSegmentLoader_.on('progress', function () {
@@ -1866,7 +1889,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 
 exports.MasterPlaylistController = MasterPlaylistController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ad-cue-tags":1,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
+},{"./ad-cue-tags":1,"./config":3,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -1910,7 +1933,8 @@ var byterangeStr = function byterangeStr(byterange) {
 /**
  * Defines headers for use in the xhr request for a particular segment.
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  */
 var segmentXhrHeaders = function segmentXhrHeaders(segment) {
   var headers = {};
@@ -2012,7 +2036,8 @@ var handleErrors = function handleErrors(error, request) {
  * Handle responses for key data and convert the key data to the correct format
  * for the decryption step later
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  * @param {Function} finishProcessingFn - a callback to execute to continue processing
  *                                        this request
  */
@@ -2044,7 +2069,8 @@ var handleKeyResponse = function handleKeyResponse(segment, finishProcessingFn) 
 /**
  * Handle init-segment responses
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  * @param {Function} finishProcessingFn - a callback to execute to continue processing
  *                                        this request
  */
@@ -2077,7 +2103,8 @@ var handleInitSegmentResponse = function handleInitSegmentResponse(segment, fini
  * property depending on whether the segment is encryped or not
  * Also records and keeps track of stats that are used for ABR purposes
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  * @param {Function} finishProcessingFn - a callback to execute to continue processing
  *                                        this request
  */
@@ -2116,7 +2143,8 @@ var handleSegmentResponse = function handleSegmentResponse(segment, finishProces
  * Decrypt the segment via the decryption web worker
  *
  * @param {WebWorker} decrypter - a WebWorker interface to AES-128 decryption routines
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  * @param {Function} doneFn - a callback that is executed after decryption has completed
  */
 var decryptSegment = function decryptSegment(decrypter, segment, doneFn) {
@@ -2199,8 +2227,10 @@ var waitForCompletion = function waitForCompletion(activeXhrs, decrypter, doneFn
  * Simple progress event callback handler that gathers some stats before
  * executing a provided callback with the `segment` object
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
- * @param {Function} progressFn - a callback that is executed each time a progress event is received
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
+ * @param {Function} progressFn - a callback that is executed each time a progress event
+ *                                is received
  * @param {Event} event - the progress event object from XMLHttpRequest
  */
 var handleProgress = function handleProgress(segment, progressFn) {
@@ -2247,11 +2277,16 @@ var handleProgress = function handleProgress(segment, progressFn) {
  *
  * @param {Function} xhr - an instance of the xhr wrapper in xhr.js
  * @param {Object} xhrOptions - the base options to provide to all xhr requests
- * @param {WebWorker} decryptionWorker - a WebWorker interface to AES-128 decryption routines
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
- * @param {Function} progressFn - a callback that receives progress events from the main segment's xhr request
- * @param {Function} doneFn - a callback that is executed only once all requests have succeeded or failed
- * @returns {Function} a function that, when invoked, immediately aborts all outstanding requests
+ * @param {WebWorker} decryptionWorker - a WebWorker interface to AES-128
+ *                                       decryption routines
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
+ * @param {Function} progressFn - a callback that receives progress events from the main
+ *                                segment's xhr request
+ * @param {Function} doneFn - a callback that is executed only once all requests have
+ *                            succeeded or failed
+ * @returns {Function} a function that, when invoked, immediately aborts all
+ *                     outstanding requests
  */
 var mediaSegmentRequest = function mediaSegmentRequest(xhr, xhrOptions, decryptionWorker, segment, progressFn, doneFn) {
   var activeXhrs = [];
@@ -3797,10 +3832,10 @@ exports.sumDurations = sumDurations;
  * @param {Object} playlist a media playlist object
  * @param {Number=} expired the amount of time that has
  *                  dropped off the front of the playlist in a live scenario
- * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the playlist
- *                        end calculation should consider the safe live end (truncate the playlist
- *                        end by three segments). This is normally used for calculating the end of
- *                        the playlist's seekable range.
+ * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the
+ *                        playlist end calculation should consider the safe live end
+ *                        (truncate the playlist end by three segments). This is normally
+ *                        used for calculating the end of the playlist's seekable range.
  * @returns {Number} the end time of playlist
  * @function playlistEnd
  */
@@ -6860,8 +6895,8 @@ var VTTSegmentLoader = (function (_SegmentLoader) {
       if (set && !storedMap && map.bytes) {
         // append WebVTT line terminators to the media initialization segment if it exists
         // to follow the WebVTT spec (https://w3c.github.io/webvtt/#file-structure) that
-        // requires two or more WebVTT line terminators between the WebVTT header and the rest
-        // of the file
+        // requires two or more WebVTT line terminators between the WebVTT header and the
+        // rest of the file
         var combinedByteLength = VTT_LINE_TERMINATORS.byteLength + map.bytes.byteLength;
         var combinedSegment = new Uint8Array(combinedByteLength);
 
@@ -18575,6 +18610,21 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
   }
 });
 
+Object.defineProperty(Hls, 'BUFFER_LOW_WATER_LINE', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].BUFFER_LOW_WATER_LINE;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v < 0 || v > _config2['default'].GOAL_BUFFER_LENGTH) {
+      _videoJs2['default'].log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' + 'must be a number and greater than or equal to 0 and less than' + 'Hls.GOAL_BUFFER_LENGTH');
+      return;
+    }
+    _config2['default'].BUFFER_LOW_WATER_LINE = v;
+  }
+});
+
 Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
   get: function get() {
     _videoJs2['default'].log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' + 'you know what you are doing');
@@ -18891,7 +18941,10 @@ var HlsHandler = (function (_Component) {
             // setting the bandwidth manually resets the throughput counter
             // `count` is set to zero that current value of `rate` isn't included
             // in the cumulative average
-            this.masterPlaylistController_.mainSegmentLoader_.throughput = { rate: 0, count: 0 };
+            this.masterPlaylistController_.mainSegmentLoader_.throughput = {
+              rate: 0,
+              count: 0
+            };
           }
         },
         /**
