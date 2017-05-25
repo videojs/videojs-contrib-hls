@@ -1138,7 +1138,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   url = this.requests[2].url.slice(this.requests[2].url.lastIndexOf('/') + 1);
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
-  assert.ok(media.excludeUntil, 'second media was blacklisted after playlist 404');
+  assert.ok(media.excludeUntil > 0, 'second media was blacklisted after playlist 404');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
   assert.equal(this.env.log.warn.args[1],
               'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media1.m3u8. ' +
@@ -1152,11 +1152,15 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   assert.strictEqual(3, this.requests.length, 'no new request was made');
 
   this.clock.tick(3 * 1000);
-  // loading the first playlist since the blacklist duration is cleared
+  // loading the first playlist since the blacklist duration was cleared
   // when half the segment duaration passed
 
   assert.strictEqual(4, this.requests.length, 'one more request was made');
+  url = this.requests[3].url.slice(this.requests[3].url.lastIndexOf('/') + 1);
+  media = this.player.tech_.hls.playlists.master.playlists[url];
+
   // the first media was unblacklisted after a refresh delay
+  assert.ok(!media.excludeUntil, 'excludeUntil was deleted after cleared the blacklist duration for the first media');
   assert.strictEqual(this.requests[3].url,
                      absoluteUrl('manifest/media.m3u8'),
                      'media playlist requested');
@@ -1532,7 +1536,8 @@ QUnit.test('playlist blacklisting duration is set through options', function(ass
   assert.ok(media.excludeUntil > 0, 'original media blacklisted for some time');
   assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
   assert.equal(this.env.log.warn.args[0],
-              'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media.m3u8. Switching to another playlist.',
+              'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media.m3u8. ' +
+              'Switching to another playlist.',
               'log generic error message');
   // this takes one millisecond
   this.standardXHRResponse(this.requests[2]);
@@ -2163,7 +2168,8 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   assert.equal(vjsAudioTracks[0].enabled, false, 'main track is disabled');
 });
 
-QUnit.test('when audioinfo changes on an independent audio track in Firefox 48 & below, the enabled track is blacklisted and removed', function(assert) {
+QUnit.test('when audioinfo changes on an independent audio track in Firefox 48 & below, ' +
+           'the enabled track is blacklisted and removed', function(assert) {
   let audioTracks = this.player.audioTracks();
   let oldLabel;
 
