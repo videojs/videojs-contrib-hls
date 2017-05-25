@@ -935,8 +935,13 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         // we want to switch down to lower resolutions quickly to continue playback, but
         // ensure we have some buffer before we switch up to prevent us running out of
         // buffer while loading a higher rendition
+<<<<<<< HEAD
         if (nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH || forwardBuffer >= _config2['default'].BUFFER_LOW_WATER_LINE) {
 >>>>>>> use goal buffer length of 60, low water line of 30
+=======
+        // If the playlist is live, then we want to not take low water line into account
+        if (!currentPlaylist.endList || nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH || forwardBuffer >= _config2['default'].BUFFER_LOW_WATER_LINE) {
+>>>>>>> ignore low-water-line for live playlists
           _this3.masterPlaylistLoader_.media(nextPlaylist);
         }
 
