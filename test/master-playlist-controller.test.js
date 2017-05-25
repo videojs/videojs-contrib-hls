@@ -709,7 +709,7 @@ QUnit.test('updates the combined segment loader on media changes', function(asse
   this.standardXHRResponse(this.requests.shift());
   // update the buffer to reflect the appended segment, and have enough buffer to
   // change playlist
-  this.masterPlaylistController.tech_.buffered = () => videojs.createTimeRanges([[0, 10]]);
+  this.masterPlaylistController.tech_.buffered = () => videojs.createTimeRanges([[0, 30]]);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // media
   this.standardXHRResponse(this.requests.shift());
@@ -816,7 +816,7 @@ function(assert) {
                0,
                'did not change media when insufficient forward buffer and equal ' +
                'bandwidth playlist');
-  buffered = [[0, 10]];
+  buffered = [[0, 30]];
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.equal(mediaChanges.length,
                1,
@@ -839,7 +839,7 @@ function(assert) {
                0,
                'did not change media when insufficient forward buffer and higher ' +
                'bandwidth playlist');
-  buffered = [[0, 100], [100, 110]];
+  buffered = [[0, 100], [100, 130]];
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.equal(mediaChanges.length,
                1,
