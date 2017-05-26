@@ -10,6 +10,8 @@ notifications:
   irc:
     channels:
       - "chat.freenode.net#videojs"
+    on_success: never
+    on_failure: never 
     use_notice: true
 # Set up a virtual screen for Chrome.
 before_script:
