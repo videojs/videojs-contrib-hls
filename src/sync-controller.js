@@ -2,10 +2,19 @@
  * @file sync-controller.js
  */
 
-import mp4probe from 'mux.js/lib/mp4/probe';
-import {inspect as tsprobe} from 'mux.js/lib/tools/ts-inspector.js';
-import {sumDurations} from './playlist';
+// import mp4probe from 'mux.js/lib/mp4/probe';
+// import tsInsector from 'mux.js/lib/tools/ts-inspector.js';
+import Playlist from './playlist';
 import videojs from 'video.js';
+
+const {sumDurations} = Playlist;
+// const {inspect} = tsInsector;
+// const tsprobe = inspect;
+const tsprobe = () => {};
+const mp4probe = {
+  timescale() {},
+  startTime() {}
+};
 
 export const syncPointStrategies = [
   // Stategy "VOD": Handle the VOD-case where the sync-point is *always*

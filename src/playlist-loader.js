@@ -6,11 +6,13 @@
  *
  */
 import resolveUrl from './resolve-url';
-import {mergeOptions} from 'video.js';
+import videojs from 'video.js';
 import { isEnabled } from './playlist.js';
 import Stream from './stream';
-import m3u8 from 'm3u8-parser';
+import * as m3u8 from 'm3u8-parser';
 import window from 'global/window';
+
+const {mergeOptions} = videojs;
 
 /**
   * Returns a new array of segments that is the result of merging

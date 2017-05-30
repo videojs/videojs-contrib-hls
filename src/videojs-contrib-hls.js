@@ -8,10 +8,10 @@ import document from 'global/document';
 import PlaylistLoader from './playlist-loader';
 import Playlist from './playlist';
 import xhrFactory from './xhr';
-import {Decrypter, AsyncStream, decrypt} from 'aes-decrypter';
-import utils from './bin-utils';
+import aesDecrypter from 'aes-decrypter';
+import * as utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
-import m3u8 from 'm3u8-parser';
+import * as m3u8 from 'm3u8-parser';
 import videojs from 'video.js';
 import { MasterPlaylistController } from './master-playlist-controller';
 import Config from './config';
@@ -19,6 +19,9 @@ import renditionSelectionMixin from './rendition-mixin';
 import window from 'global/window';
 import PlaybackWatcher from './playback-watcher';
 import reloadSourceOnError from './reload-source-on-error';
+
+const {Decrypter, AsyncStream, decrypt} = aesDecrypter;
+// const {MediaSource, URL} = mediaSources;
 
 const Hls = {
   PlaylistLoader,
