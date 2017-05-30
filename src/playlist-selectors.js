@@ -196,6 +196,8 @@ const simpleSelector = function(master, bandwidth, width, height) {
  * Chooses the appropriate media playlist based on the most recent
  * bandwidth estimate and the player size.
  *
+ * Expects to be called within the context of an instance of HlsHandler
+ *
  * @return {Playlist} the highest bitrate playlist less than the
  * currently detected bandwidth, accounting for some amount of
  * bandwidth variance
@@ -211,6 +213,8 @@ export const lastBandwidthSelector = function() {
  * Chooses the appropriate media playlist based on an
  * exponential-weighted moving average of the bandwidth after
  * filtering for player size.
+ *
+ * Expects to be called within the context of an instance of HlsHandler
  *
  * @param {Number} decay - a number between 0 and 1. Higher values of
  * this parameter will cause previous bandwidth estimates to lose
