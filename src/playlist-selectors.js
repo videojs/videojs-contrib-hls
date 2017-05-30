@@ -3,6 +3,31 @@ import Playlist from './playlist';
 
 // Utilities
 
+export const crossedLowWaterLine = (currentTime, buffered) => {
+  const forwardBuffer = buffered.length ?
+    buffered.end(buffered.length - 1) - currentTime : 0;
+
+  return forwardBuffer >= Config.BUFFER_LOW_WATER_LINE;
+};
+
+export const getBandwidth = (playlist, useAverageBandwidth) => {
+  if (!playlist || !playlist.attributes) {
+    return 0;
+  }
+
+  let bandwidth;
+
+  if (useAverageBandwidth) {
+    bandwidth = playlist.attributes['AVERAGE-BANDWIDTH'];
+  }
+
+  if (!bandwidth) {
+    bandwidth = playlist.attributes.BANDWIDTH;
+  }
+
+  return bandwidth || 0;
+};
+
 /**
  * Returns the CSS value for the specified property on an element
  * using `getComputedStyle`. Firefox has a long-standing issue where
@@ -58,18 +83,10 @@ const stableSort = function(array, sortFn) {
  * than zero if the bandwidth of right is greater than left and
  * exactly zero if the two are equal.
  */
-export const comparePlaylistBandwidth = function(left, right) {
-  let leftBandwidth;
-  let rightBandwidth;
-
-  if (left.attributes && left.attributes.BANDWIDTH) {
-    leftBandwidth = left.attributes.BANDWIDTH;
-  }
-  leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
-  if (right.attributes && right.attributes.BANDWIDTH) {
-    rightBandwidth = right.attributes.BANDWIDTH;
-  }
-  rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
+export const comparePlaylistBandwidth = function(useAverageBandwidth, left, right) {
+  let leftBandwidth = getBandwidth(left, useAverageBandwidth) || window.Number.MAX_VALUE;
+  let rightBandwidth =
+    getBandwidth(right, useAverageBandwidth) || window.Number.MAX_VALUE;
 
   return leftBandwidth - rightBandwidth;
 };
@@ -83,7 +100,7 @@ export const comparePlaylistBandwidth = function(left, right) {
  * than zero if the resolution.width of right is greater than left and
  * exactly zero if the two are equal.
  */
-export const comparePlaylistResolution = function(left, right) {
+export const comparePlaylistResolution = function(useAverageBandwidth, left, right) {
   let leftWidth;
   let rightWidth;
 
@@ -103,17 +120,22 @@ export const comparePlaylistResolution = function(left, right) {
 
   rightWidth = rightWidth || window.Number.MAX_VALUE;
 
+  const leftBandwidth = getBandwidth(left, useAverageBandwidth);
+  const rightBandwidth = getBandwidth(right, useAverageBandwidth);
+
   // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
-  // have the same media dimensions/ resolution
-  if (leftWidth === rightWidth &&
-      left.attributes.BANDWIDTH &&
-      right.attributes.BANDWIDTH) {
-    return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
+  // have the same media dimensions/ resolution.
+  if (leftWidth === rightWidth && leftBandwidth && rightBandwidth) {
+    return leftBandwidth - rightBandwidth;
   }
   return leftWidth - rightWidth;
 };
 
-const simpleSelector = function(master, bandwidth, width, height) {
+const simpleSelector = function(master,
+                                bandwidth,
+                                width,
+                                height,
+                                useAverageBandwidth = false) {
   let sortedPlaylists = master.playlists.slice();
   let bandwidthPlaylists = [];
   let bandwidthBestVariant;
@@ -124,7 +146,7 @@ const simpleSelector = function(master, bandwidth, width, height) {
   let resolutionPlusOneSmallest = [];
   let resolutionBestVariantList = [];
 
-  stableSort(sortedPlaylists, comparePlaylistBandwidth);
+  stableSort(sortedPlaylists, comparePlaylistBandwidth.bind(null, useAverageBandwidth));
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
@@ -132,19 +154,24 @@ const simpleSelector = function(master, bandwidth, width, height) {
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
   bandwidthPlaylists = sortedPlaylists.filter(function(elem) {
-    return elem.attributes &&
-           elem.attributes.BANDWIDTH &&
-           elem.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE < bandwidth;
+    const elemBandwidth = getBandwidth(elem, useAverageBandwidth);
+
+    return elemBandwidth && elemBandwidth * Config.BANDWIDTH_VARIANCE < bandwidth;
   });
 
   // get all of the renditions with the same (highest) bandwidth
   // and then taking the very first element
   bandwidthBestVariant = bandwidthPlaylists.filter(function(elem) {
-    return elem.attributes.BANDWIDTH === bandwidthPlaylists[bandwidthPlaylists.length - 1].attributes.BANDWIDTH;
+    const elemBandwidth = getBandwidth(elem, useAverageBandwidth);
+    const lastElemBandwidth = getBandwidth(
+      bandwidthPlaylists[bandwidthPlaylists.length - 1], useAverageBandwidth);
+
+    return elemBandwidth === lastElemBandwidth;
   })[0];
 
   // sort variants by resolution
-  stableSort(bandwidthPlaylists, comparePlaylistResolution);
+  stableSort(bandwidthPlaylists,
+             comparePlaylistResolution.bind(null, useAverageBandwidth));
 
   // filter out playlists without resolution information
   haveResolution = bandwidthPlaylists.filter(function(elem) {
@@ -161,7 +188,12 @@ const simpleSelector = function(master, bandwidth, width, height) {
   });
   // ensure that we pick the highest bandwidth variant that have exact resolution
   resolutionBestVariant = resolutionBestVariantList.filter(function(elem) {
-    return elem.attributes.BANDWIDTH === resolutionBestVariantList[resolutionBestVariantList.length - 1].attributes.BANDWIDTH;
+    const elemBandwidth = getBandwidth(elem, useAverageBandwidth);
+    const lastResolutionBestBandwidth = getBandwidth(
+      resolutionBestVariantList[resolutionBestVariantList.length - 1],
+      useAverageBandwidth);
+
+    return elemBandwidth === lastResolutionBestBandwidth;
   })[0];
 
   // find the smallest variant that is larger than the player
@@ -179,7 +211,12 @@ const simpleSelector = function(master, bandwidth, width, height) {
     // ensure that we also pick the highest bandwidth variant that
     // is just-larger-than the video player
     resolutionPlusOne = resolutionPlusOneSmallest.filter(function(elem) {
-      return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1].attributes.BANDWIDTH;
+      const elemBandwidth = getBandwidth(elem, useAverageBandwidth);
+      const lastResolutionPlusOneSmallestBandwidth = getBandwidth(
+        resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1],
+        useAverageBandwidth);
+
+      return elemBandwidth === lastResolutionPlusOneSmallestBandwidth;
     })[0];
   }
 
@@ -206,7 +243,9 @@ export const lastBandwidthSelector = function() {
   return simpleSelector(this.playlists.master,
                         this.systemBandwidth,
                         parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10),
-                        parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
+                        parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10),
+                        crossedLowWaterLine(this.tech_.currentTime(),
+                                            this.tech_.buffered()));
 };
 
 /**
@@ -239,6 +278,8 @@ export const movingAverageBandwidthSelector = function(decay) {
     return simpleSelector(this.playlists.master,
                           average,
                           parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10),
-                          parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
+                          parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10),
+                          crossedLowWaterLine(this.tech_.currentTime(),
+                                              this.tech_.buffered()));
   };
 };
