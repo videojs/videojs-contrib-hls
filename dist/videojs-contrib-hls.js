@@ -117,7 +117,7 @@ exports['default'] = {
   findAdCue: findAdCue
 };
 module.exports = exports['default'];
-},{"global/window":30}],2:[function(require,module,exports){
+},{"global/window":31}],2:[function(require,module,exports){
 /**
  * @file bin-utils.js
  */
@@ -295,7 +295,7 @@ exports['default'] = function (self) {
 };
 
 module.exports = exports['default'];
-},{"./bin-utils":2,"aes-decrypter":23,"global/window":30}],5:[function(require,module,exports){
+},{"./bin-utils":2,"aes-decrypter":24,"global/window":31}],5:[function(require,module,exports){
 (function (global){
 /**
  * @file master-playlist-controller.js
@@ -897,6 +897,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         // figure out what stream the next segment should be downloaded from
         // with the updated bandwidth information
         _this3.masterPlaylistLoader_.media(_this3.selectPlaylist());
+        _this3.tech_.trigger('bandwidthupdate');
       });
       this.mainSegmentLoader_.on('progress', function () {
         _this3.trigger('progress');
@@ -1865,7 +1866,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 
 exports.MasterPlaylistController = MasterPlaylistController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ad-cue-tags":1,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":10,"./segment-loader":14,"./sync-controller":17,"./vtt-segment-loader":18,"videojs-contrib-media-sources/es5/codec-utils":64,"webworkify":75}],6:[function(require,module,exports){
+},{"./ad-cue-tags":1,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -2731,7 +2732,7 @@ var PlaybackWatcher = (function () {
 exports['default'] = PlaybackWatcher;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ranges":10,"global/window":30}],8:[function(require,module,exports){
+},{"./ranges":11,"global/window":31}],8:[function(require,module,exports){
 (function (global){
 /**
  * @file playlist-loader.js
@@ -3316,7 +3317,246 @@ PlaylistLoader.prototype = new _stream2['default']();
 exports['default'] = PlaylistLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./playlist.js":9,"./resolve-url":13,"./stream":16,"global/window":30,"m3u8-parser":31}],9:[function(require,module,exports){
+},{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":31,"m3u8-parser":32}],9:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _config = require('./config');
+
+var _config2 = _interopRequireDefault(_config);
+
+var _playlist = require('./playlist');
+
+var _playlist2 = _interopRequireDefault(_playlist);
+
+// Utilities
+
+/**
+ * Returns the CSS value for the specified property on an element
+ * using `getComputedStyle`. Firefox has a long-standing issue where
+ * getComputedStyle() may return null when running in an iframe with
+ * `display: none`.
+ *
+ * @see https://bugzilla.mozilla.org/show_bug.cgi?id=548397
+ * @param {HTMLElement} el the htmlelement to work on
+ * @param {string} the proprety to get the style for
+ */
+var safeGetComputedStyle = function safeGetComputedStyle(el, property) {
+  var result = undefined;
+
+  if (!el) {
+    return '';
+  }
+
+  result = window.getComputedStyle(el);
+  if (!result) {
+    return '';
+  }
+
+  return result[property];
+};
+
+/**
+ * Resuable stable sort function
+ *
+ * @param {Playlists} array
+ * @param {Function} sortFn Different comparators
+ * @function stableSort
+ */
+var stableSort = function stableSort(array, sortFn) {
+  var newArray = array.slice();
+
+  array.sort(function (left, right) {
+    var cmp = sortFn(left, right);
+
+    if (cmp === 0) {
+      return newArray.indexOf(left) - newArray.indexOf(right);
+    }
+    return cmp;
+  });
+};
+
+/**
+ * A comparator function to sort two playlist object by bandwidth.
+ *
+ * @param {Object} left a media playlist object
+ * @param {Object} right a media playlist object
+ * @return {Number} Greater than zero if the bandwidth attribute of
+ * left is greater than the corresponding attribute of right. Less
+ * than zero if the bandwidth of right is greater than left and
+ * exactly zero if the two are equal.
+ */
+var comparePlaylistBandwidth = function comparePlaylistBandwidth(left, right) {
+  var leftBandwidth = undefined;
+  var rightBandwidth = undefined;
+
+  if (left.attributes && left.attributes.BANDWIDTH) {
+    leftBandwidth = left.attributes.BANDWIDTH;
+  }
+  leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
+  if (right.attributes && right.attributes.BANDWIDTH) {
+    rightBandwidth = right.attributes.BANDWIDTH;
+  }
+  rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
+
+  return leftBandwidth - rightBandwidth;
+};
+
+exports.comparePlaylistBandwidth = comparePlaylistBandwidth;
+/**
+ * A comparator function to sort two playlist object by resolution (width).
+ * @param {Object} left a media playlist object
+ * @param {Object} right a media playlist object
+ * @return {Number} Greater than zero if the resolution.width attribute of
+ * left is greater than the corresponding attribute of right. Less
+ * than zero if the resolution.width of right is greater than left and
+ * exactly zero if the two are equal.
+ */
+var comparePlaylistResolution = function comparePlaylistResolution(left, right) {
+  var leftWidth = undefined;
+  var rightWidth = undefined;
+
+  if (left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
+    leftWidth = left.attributes.RESOLUTION.width;
+  }
+
+  leftWidth = leftWidth || window.Number.MAX_VALUE;
+
+  if (right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
+    rightWidth = right.attributes.RESOLUTION.width;
+  }
+
+  rightWidth = rightWidth || window.Number.MAX_VALUE;
+
+  // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
+  // have the same media dimensions/ resolution
+  if (leftWidth === rightWidth && left.attributes.BANDWIDTH && right.attributes.BANDWIDTH) {
+    return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
+  }
+  return leftWidth - rightWidth;
+};
+
+exports.comparePlaylistResolution = comparePlaylistResolution;
+var simpleSelector = function simpleSelector(master, bandwidth, width, height) {
+  var sortedPlaylists = master.playlists.slice();
+  var bandwidthPlaylists = [];
+  var bandwidthBestVariant = undefined;
+  var resolutionPlusOne = undefined;
+  var resolutionBestVariant = undefined;
+  var haveResolution = undefined;
+  var resolutionPlusOneList = [];
+  var resolutionPlusOneSmallest = [];
+  var resolutionBestVariantList = [];
+
+  stableSort(sortedPlaylists, comparePlaylistBandwidth);
+
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  sortedPlaylists = sortedPlaylists.filter(_playlist2['default'].isEnabled);
+  // filter out any variant that has greater effective bitrate
+  // than the current estimated bandwidth
+  bandwidthPlaylists = sortedPlaylists.filter(function (elem) {
+    return elem.attributes && elem.attributes.BANDWIDTH && elem.attributes.BANDWIDTH * _config2['default'].BANDWIDTH_VARIANCE < bandwidth;
+  });
+
+  // get all of the renditions with the same (highest) bandwidth
+  // and then taking the very first element
+  bandwidthBestVariant = bandwidthPlaylists.filter(function (elem) {
+    return elem.attributes.BANDWIDTH === bandwidthPlaylists[bandwidthPlaylists.length - 1].attributes.BANDWIDTH;
+  })[0];
+
+  // sort variants by resolution
+  stableSort(bandwidthPlaylists, comparePlaylistResolution);
+
+  // filter out playlists without resolution information
+  haveResolution = bandwidthPlaylists.filter(function (elem) {
+    return elem.attributes && elem.attributes.RESOLUTION && elem.attributes.RESOLUTION.width && elem.attributes.RESOLUTION.height;
+  });
+
+  // if we have the exact resolution as the player use it
+  resolutionBestVariantList = haveResolution.filter(function (elem) {
+    return elem.attributes.RESOLUTION.width === width && elem.attributes.RESOLUTION.height === height;
+  });
+  // ensure that we pick the highest bandwidth variant that have exact resolution
+  resolutionBestVariant = resolutionBestVariantList.filter(function (elem) {
+    return elem.attributes.BANDWIDTH === resolutionBestVariantList[resolutionBestVariantList.length - 1].attributes.BANDWIDTH;
+  })[0];
+
+  // find the smallest variant that is larger than the player
+  // if there is no match of exact resolution
+  if (!resolutionBestVariant) {
+    resolutionPlusOneList = haveResolution.filter(function (elem) {
+      return elem.attributes.RESOLUTION.width > width || elem.attributes.RESOLUTION.height > height;
+    });
+    // find all the variants have the same smallest resolution
+    resolutionPlusOneSmallest = resolutionPlusOneList.filter(function (elem) {
+      return elem.attributes.RESOLUTION.width === resolutionPlusOneList[0].attributes.RESOLUTION.width && elem.attributes.RESOLUTION.height === resolutionPlusOneList[0].attributes.RESOLUTION.height;
+    });
+    // ensure that we also pick the highest bandwidth variant that
+    // is just-larger-than the video player
+    resolutionPlusOne = resolutionPlusOneSmallest.filter(function (elem) {
+      return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1].attributes.BANDWIDTH;
+    })[0];
+  }
+
+  // fallback chain of variants
+  return resolutionPlusOne || resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+};
+
+// Playlist Selectors
+
+/**
+ * Chooses the appropriate media playlist based on the most recent
+ * bandwidth estimate and the player size.
+ *
+ * Expects to be called within the context of an instance of HlsHandler
+ *
+ * @return {Playlist} the highest bitrate playlist less than the
+ * currently detected bandwidth, accounting for some amount of
+ * bandwidth variance
+ */
+var lastBandwidthSelector = function lastBandwidthSelector() {
+  return simpleSelector(this.playlists.master, this.systemBandwidth, parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10), parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
+};
+
+exports.lastBandwidthSelector = lastBandwidthSelector;
+/**
+ * Chooses the appropriate media playlist based on an
+ * exponential-weighted moving average of the bandwidth after
+ * filtering for player size.
+ *
+ * Expects to be called within the context of an instance of HlsHandler
+ *
+ * @param {Number} decay - a number between 0 and 1. Higher values of
+ * this parameter will cause previous bandwidth estimates to lose
+ * significance more quickly.
+ * @return {Function} a function which can be invoked to create a new
+ * playlist selector function.
+ * @see https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+ */
+var movingAverageBandwidthSelector = function movingAverageBandwidthSelector(decay) {
+  var average = -1;
+
+  if (decay < 0 || decay > 1) {
+    throw new Error('Moving average bandwidth decay must be between 0 and 1.');
+  }
+
+  return function () {
+    if (average < 0) {
+      average = this.systemBandwidth;
+    }
+
+    average = decay * this.systemBandwidth + (1 - decay) * average;
+    return simpleSelector(this.playlists.master, average, parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10), parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
+  };
+};
+exports.movingAverageBandwidthSelector = movingAverageBandwidthSelector;
+},{"./config":3,"./playlist":10}],10:[function(require,module,exports){
 (function (global){
 /**
  * @file playlist.js
@@ -3750,7 +3990,7 @@ Playlist.playlistEnd = playlistEnd;
 // exports
 exports['default'] = Playlist;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"global/window":30}],10:[function(require,module,exports){
+},{"global/window":31}],11:[function(require,module,exports){
 (function (global){
 /**
  * ranges
@@ -4102,7 +4342,7 @@ exports['default'] = {
 };
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -4233,7 +4473,7 @@ var reloadSourceOnError = function reloadSourceOnError(options) {
 exports['default'] = reloadSourceOnError;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -4341,7 +4581,7 @@ var renditionSelectionMixin = function renditionSelectionMixin(hlsHandler) {
 
 exports['default'] = renditionSelectionMixin;
 module.exports = exports['default'];
-},{"./playlist.js":9}],13:[function(require,module,exports){
+},{"./playlist.js":10}],14:[function(require,module,exports){
 /**
  * @file resolve-url.js
  */
@@ -4378,7 +4618,7 @@ var resolveUrl = function resolveUrl(baseURL, relativeURL) {
 
 exports['default'] = resolveUrl;
 module.exports = exports['default'];
-},{"global/window":30,"url-toolkit":61}],14:[function(require,module,exports){
+},{"global/window":31,"url-toolkit":62}],15:[function(require,module,exports){
 (function (global){
 /**
  * @file segment-loader.js
@@ -5567,7 +5807,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 exports['default'] = SegmentLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":9,"./source-updater":15,"global/window":30,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":71}],15:[function(require,module,exports){
+},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
 (function (global){
 /**
  * @file source-updater.js
@@ -5789,7 +6029,7 @@ var SourceUpdater = (function () {
 exports['default'] = SourceUpdater;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 /**
  * @file stream.js
  */
@@ -5920,7 +6160,7 @@ var Stream = (function () {
 
 exports['default'] = Stream;
 module.exports = exports['default'];
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 (function (global){
 /**
  * @file sync-controller.js
@@ -6504,7 +6744,7 @@ var SyncController = (function (_videojs$EventTarget) {
 
 exports['default'] = SyncController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./playlist":9,"mux.js/lib/mp4/probe":55,"mux.js/lib/tools/ts-inspector.js":57}],18:[function(require,module,exports){
+},{"./playlist":10,"mux.js/lib/mp4/probe":56,"mux.js/lib/tools/ts-inspector.js":58}],19:[function(require,module,exports){
 (function (global){
 /**
  * @file vtt-segment-loader.js
@@ -6953,7 +7193,7 @@ var VTTSegmentLoader = (function (_SegmentLoader) {
 exports['default'] = VTTSegmentLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./bin-utils":2,"./segment-loader":14,"global/window":30,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":71}],19:[function(require,module,exports){
+},{"./bin-utils":2,"./segment-loader":15,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
 (function (global){
 /**
  * @file xhr.js
@@ -7042,7 +7282,7 @@ var xhrFactory = function xhrFactory() {
 exports['default'] = xhrFactory;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 /**
  * @file aes.js
  *
@@ -7288,7 +7528,7 @@ var AES = (function () {
 
 exports['default'] = AES;
 module.exports = exports['default'];
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 /**
  * @file async-stream.js
  */
@@ -7369,7 +7609,7 @@ var AsyncStream = (function (_Stream) {
 
 exports['default'] = AsyncStream;
 module.exports = exports['default'];
-},{"./stream":24}],22:[function(require,module,exports){
+},{"./stream":25}],23:[function(require,module,exports){
 /**
  * @file decrypter.js
  *
@@ -7553,7 +7793,7 @@ exports['default'] = {
   Decrypter: Decrypter,
   decrypt: decrypt
 };
-},{"./aes":20,"./async-stream":21,"pkcs7":26}],23:[function(require,module,exports){
+},{"./aes":21,"./async-stream":22,"pkcs7":27}],24:[function(require,module,exports){
 /**
  * @file index.js
  *
@@ -7584,9 +7824,9 @@ exports['default'] = {
   AsyncStream: _asyncStream2['default']
 };
 module.exports = exports['default'];
-},{"./async-stream":21,"./decrypter":22}],24:[function(require,module,exports){
-arguments[4][16][0].apply(exports,arguments)
-},{"dup":16}],25:[function(require,module,exports){
+},{"./async-stream":22,"./decrypter":23}],25:[function(require,module,exports){
+arguments[4][17][0].apply(exports,arguments)
+},{"dup":17}],26:[function(require,module,exports){
 /*
  * pkcs7.pad
  * https://github.com/brightcove/pkcs7
@@ -7672,7 +7912,7 @@ PADDING = [
   [1]
 ];
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 /*
  * pkcs7
  * https://github.com/brightcove/pkcs7
@@ -7686,7 +7926,7 @@ PADDING = [
 exports.pad = require('./pad.js');
 exports.unpad = require('./unpad.js');
 
-},{"./pad.js":25,"./unpad.js":27}],27:[function(require,module,exports){
+},{"./pad.js":26,"./unpad.js":28}],28:[function(require,module,exports){
 /*
  * pkcs7.unpad
  * https://github.com/brightcove/pkcs7
@@ -7707,9 +7947,9 @@ module.exports = function unpad(padded) {
   return padded.subarray(0, padded.byteLength - padded[padded.byteLength - 1]);
 };
 
-},{}],28:[function(require,module,exports){
-
 },{}],29:[function(require,module,exports){
+
+},{}],30:[function(require,module,exports){
 (function (global){
 var topLevel = typeof global !== 'undefined' ? global :
     typeof window !== 'undefined' ? window : {}
@@ -7730,7 +7970,7 @@ if (typeof document !== 'undefined') {
 module.exports = doccy;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"min-document":28}],30:[function(require,module,exports){
+},{"min-document":29}],31:[function(require,module,exports){
 (function (global){
 var win;
 
@@ -7747,7 +7987,7 @@ if (typeof window !== "undefined") {
 module.exports = win;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],31:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 'use strict';
 
 var _lineStream = require('./line-stream');
@@ -7777,7 +8017,7 @@ module.exports = {
     * that do not assume the entirety of the manifest is ready and expose a
     * ReadableStream-like interface.
     */
-},{"./line-stream":32,"./parse-stream":33,"./parser":34}],32:[function(require,module,exports){
+},{"./line-stream":33,"./parse-stream":34,"./parser":35}],33:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -7846,7 +8086,7 @@ var LineStream = function (_Stream) {
 }(_stream2['default']);
 
 exports['default'] = LineStream;
-},{"./stream":35}],33:[function(require,module,exports){
+},{"./stream":36}],34:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8299,7 +8539,7 @@ var ParseStream = function (_Stream) {
 }(_stream2['default']);
 
 exports['default'] = ParseStream;
-},{"./stream":35}],34:[function(require,module,exports){
+},{"./stream":36}],35:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8690,7 +8930,7 @@ var Parser = function (_Stream) {
 }(_stream2['default']);
 
 exports['default'] = Parser;
-},{"./line-stream":32,"./parse-stream":33,"./stream":35}],35:[function(require,module,exports){
+},{"./line-stream":33,"./parse-stream":34,"./stream":36}],36:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8823,7 +9063,7 @@ var Stream = function () {
 }();
 
 exports['default'] = Stream;
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -8968,7 +9208,7 @@ AacStream.prototype = new Stream();
 
 module.exports = AacStream;
 
-},{"../utils/stream.js":60}],37:[function(require,module,exports){
+},{"../utils/stream.js":61}],38:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -9131,7 +9371,7 @@ module.exports = {
   parseAacTimestamp: parseAacTimestamp
 };
 
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -9265,7 +9505,7 @@ AdtsStream.prototype = new Stream();
 
 module.exports = AdtsStream;
 
-},{"../utils/stream.js":60}],39:[function(require,module,exports){
+},{"../utils/stream.js":61}],40:[function(require,module,exports){
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -9685,7 +9925,7 @@ module.exports = {
   NalByteStream: NalByteStream
 };
 
-},{"../utils/exp-golomb.js":59,"../utils/stream.js":60}],40:[function(require,module,exports){
+},{"../utils/exp-golomb.js":60,"../utils/stream.js":61}],41:[function(require,module,exports){
 var highPrefix = [33, 16, 5, 32, 164, 27];
 var lowPrefix = [33, 65, 108, 84, 1, 2, 4, 8, 168, 2, 4, 8, 17, 191, 252];
 var zeroFill = function(count) {
@@ -9722,7 +9962,7 @@ var coneOfSilence = {
 
 module.exports = makeTable(coneOfSilence);
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -9867,7 +10107,7 @@ CoalesceStream.prototype.flush = function(flushSource) {
 
 module.exports = CoalesceStream;
 
-},{"../utils/stream.js":60}],42:[function(require,module,exports){
+},{"../utils/stream.js":61}],43:[function(require,module,exports){
 'use strict';
 
 var FlvTag = require('./flv-tag.js');
@@ -9929,7 +10169,7 @@ var getFlvHeader = function(duration, audio, video) { // :ByteArray {
 
 module.exports = getFlvHeader;
 
-},{"./flv-tag.js":43}],43:[function(require,module,exports){
+},{"./flv-tag.js":44}],44:[function(require,module,exports){
 /**
  * An object that stores the bytes of an FLV tag and methods for
  * querying and manipulating that data.
@@ -10303,14 +10543,14 @@ FlvTag.frameTime = function(tag) {
 
 module.exports = FlvTag;
 
-},{}],44:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 module.exports = {
   tag: require('./flv-tag'),
   Transmuxer: require('./transmuxer'),
   getFlvHeader: require('./flv-header')
 };
 
-},{"./flv-header":42,"./flv-tag":43,"./transmuxer":46}],45:[function(require,module,exports){
+},{"./flv-header":43,"./flv-tag":44,"./transmuxer":47}],46:[function(require,module,exports){
 'use strict';
 
 var TagList = function() {
@@ -10337,7 +10577,7 @@ var TagList = function() {
 
 module.exports = TagList;
 
-},{}],46:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -10755,7 +10995,7 @@ Transmuxer.prototype = new Stream();
 // forward compatibility
 module.exports = Transmuxer;
 
-},{"../codecs/adts.js":38,"../codecs/h264":39,"../m2ts/m2ts.js":48,"../utils/stream.js":60,"./coalesce-stream.js":41,"./flv-tag.js":43,"./tag-list.js":45}],47:[function(require,module,exports){
+},{"../codecs/adts.js":39,"../codecs/h264":40,"../m2ts/m2ts.js":49,"../utils/stream.js":61,"./coalesce-stream.js":42,"./flv-tag.js":44,"./tag-list.js":46}],48:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -11221,7 +11461,7 @@ module.exports = {
   Cea608Stream: Cea608Stream
 };
 
-},{"../utils/stream":60}],48:[function(require,module,exports){
+},{"../utils/stream":61}],49:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -11682,7 +11922,7 @@ for (var type in StreamTypes) {
 
 module.exports = m2ts;
 
-},{"../utils/stream.js":60,"./caption-stream":47,"./metadata-stream":49,"./stream-types":51,"./stream-types.js":51,"./timestamp-rollover-stream":52}],49:[function(require,module,exports){
+},{"../utils/stream.js":61,"./caption-stream":48,"./metadata-stream":50,"./stream-types":52,"./stream-types.js":52,"./timestamp-rollover-stream":53}],50:[function(require,module,exports){
 /**
  * Accepts program elementary stream (PES) data events and parses out
  * ID3 metadata from them, if present.
@@ -11932,7 +12172,7 @@ MetadataStream.prototype = new Stream();
 
 module.exports = MetadataStream;
 
-},{"../utils/stream":60,"./stream-types":51}],50:[function(require,module,exports){
+},{"../utils/stream":61,"./stream-types":52}],51:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -12221,7 +12461,7 @@ module.exports = {
   videoPacketContainsKeyFrame: videoPacketContainsKeyFrame
 };
 
-},{"./stream-types.js":51}],51:[function(require,module,exports){
+},{"./stream-types.js":52}],52:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -12230,7 +12470,7 @@ module.exports = {
   METADATA_STREAM_TYPE: 0x15
 };
 
-},{}],52:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -12316,7 +12556,7 @@ module.exports = {
   handleRollover: handleRollover
 };
 
-},{"../utils/stream":60}],53:[function(require,module,exports){
+},{"../utils/stream":61}],54:[function(require,module,exports){
 module.exports = {
   generator: require('./mp4-generator'),
   Transmuxer: require('./transmuxer').Transmuxer,
@@ -12324,7 +12564,7 @@ module.exports = {
   VideoSegmentStream: require('./transmuxer').VideoSegmentStream
 };
 
-},{"./mp4-generator":54,"./transmuxer":56}],54:[function(require,module,exports){
+},{"./mp4-generator":55,"./transmuxer":57}],55:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -13096,7 +13336,7 @@ module.exports = {
   }
 };
 
-},{}],55:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -13286,7 +13526,7 @@ module.exports = {
   startTime: startTime
 };
 
-},{}],56:[function(require,module,exports){
+},{}],57:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -14546,7 +14786,7 @@ module.exports = {
   VIDEO_PROPERTIES: VIDEO_PROPERTIES
 };
 
-},{"../aac":36,"../codecs/adts.js":38,"../codecs/h264":39,"../data/silence":40,"../m2ts/m2ts.js":48,"../utils/clock":58,"../utils/stream.js":60,"./mp4-generator.js":54}],57:[function(require,module,exports){
+},{"../aac":37,"../codecs/adts.js":39,"../codecs/h264":40,"../data/silence":41,"../m2ts/m2ts.js":49,"../utils/clock":59,"../utils/stream.js":61,"./mp4-generator.js":55}],58:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -15060,7 +15300,7 @@ module.exports = {
   inspect: inspect
 };
 
-},{"../aac/probe.js":37,"../m2ts/probe.js":50,"../m2ts/stream-types.js":51,"../m2ts/timestamp-rollover-stream.js":52}],58:[function(require,module,exports){
+},{"../aac/probe.js":38,"../m2ts/probe.js":51,"../m2ts/stream-types.js":52,"../m2ts/timestamp-rollover-stream.js":53}],59:[function(require,module,exports){
 var
   ONE_SECOND_IN_TS = 90000, // 90kHz clock
   secondsToVideoTs,
@@ -15103,7 +15343,7 @@ module.exports = {
   videoTsToAudioTs: videoTsToAudioTs
 };
 
-},{}],59:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 'use strict';
 
 var ExpGolomb;
@@ -15252,7 +15492,7 @@ ExpGolomb = function(workingData) {
 
 module.exports = ExpGolomb;
 
-},{}],60:[function(require,module,exports){
+},{}],61:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -15371,7 +15611,7 @@ Stream.prototype.flush = function(flushSource) {
 
 module.exports = Stream;
 
-},{}],61:[function(require,module,exports){
+},{}],62:[function(require,module,exports){
 /* jshint ignore:start */
 (function(root) { 
 /* jshint ignore:end */
@@ -15474,7 +15714,7 @@ module.exports = Stream;
 })(this);
 /* jshint ignore:end */
 
-},{}],62:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 (function (global){
 /**
  * @file add-text-track-data.js
@@ -15625,7 +15865,7 @@ exports['default'] = {
 };
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"global/window":30}],63:[function(require,module,exports){
+},{"global/window":31}],64:[function(require,module,exports){
 /**
  * Remove the text track from the player if one with matching kind and
  * label properties already exists on the player
@@ -15664,7 +15904,7 @@ var cleanupTextTracks = function cleanupTextTracks(player) {
   removeExistingTrack(player, 'metadata', 'Timed Metadata');
 };
 exports.cleanupTextTracks = cleanupTextTracks;
-},{}],64:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 /**
  * @file codec-utils.js
  */
@@ -15752,7 +15992,7 @@ exports['default'] = {
   translateLegacyCodecs: translateLegacyCodecs
 };
 module.exports = exports['default'];
-},{}],65:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
 /**
  * @file create-text-tracks-if-necessary.js
  */
@@ -15796,7 +16036,7 @@ var createTextTracksIfNecessary = function createTextTracksIfNecessary(sourceBuf
 
 exports['default'] = createTextTracksIfNecessary;
 module.exports = exports['default'];
-},{"./cleanup-text-tracks":63}],66:[function(require,module,exports){
+},{"./cleanup-text-tracks":64}],67:[function(require,module,exports){
 /**
  * @file flash-constants.js
  */
@@ -15823,7 +16063,7 @@ var flashConstants = {
 
 exports["default"] = flashConstants;
 module.exports = exports["default"];
-},{}],67:[function(require,module,exports){
+},{}],68:[function(require,module,exports){
 (function (global){
 /**
  * @file flash-media-source.js
@@ -16039,7 +16279,7 @@ for (var property in _flashConstants2['default']) {
 }
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./cleanup-text-tracks":63,"./codec-utils":64,"./flash-constants":66,"./flash-source-buffer":68,"global/document":29}],68:[function(require,module,exports){
+},{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":30}],69:[function(require,module,exports){
 (function (global){
 /**
  * @file flash-source-buffer.js
@@ -16641,7 +16881,7 @@ var FlashSourceBuffer = (function (_videojs$EventTarget) {
 exports['default'] = FlashSourceBuffer;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./add-text-track-data":62,"./create-text-tracks-if-necessary":65,"./flash-constants":66,"./flash-transmuxer-worker":69,"./remove-cues-from-track":71,"global/window":30,"mux.js/lib/flv":44,"webworkify":75}],69:[function(require,module,exports){
+},{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":31,"mux.js/lib/flv":45,"webworkify":76}],70:[function(require,module,exports){
 /**
  * @file flash-transmuxer-worker.js
  */
@@ -16786,7 +17026,7 @@ exports['default'] = function (self) {
 };
 
 module.exports = exports['default'];
-},{"global/window":30,"mux.js/lib/flv":44}],70:[function(require,module,exports){
+},{"global/window":31,"mux.js/lib/flv":45}],71:[function(require,module,exports){
 (function (global){
 /**
  * @file html-media-source.js
@@ -17126,7 +17366,7 @@ var HtmlMediaSource = (function (_videojs$EventTarget) {
 exports['default'] = HtmlMediaSource;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./add-text-track-data":62,"./cleanup-text-tracks":63,"./codec-utils":64,"./virtual-source-buffer":74,"global/document":29,"global/window":30}],71:[function(require,module,exports){
+},{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":30,"global/window":31}],72:[function(require,module,exports){
 /**
  * @file remove-cues-from-track.js
  */
@@ -17170,7 +17410,7 @@ var removeCuesFromTrack = function removeCuesFromTrack(start, end, track) {
 
 exports["default"] = removeCuesFromTrack;
 module.exports = exports["default"];
-},{}],72:[function(require,module,exports){
+},{}],73:[function(require,module,exports){
 /**
  * @file transmuxer-worker.js
  */
@@ -17374,7 +17614,7 @@ exports['default'] = function (self) {
 };
 
 module.exports = exports['default'];
-},{"global/window":30,"mux.js/lib/mp4":53}],73:[function(require,module,exports){
+},{"global/window":31,"mux.js/lib/mp4":54}],74:[function(require,module,exports){
 (function (global){
 /**
  * @file videojs-contrib-media-sources.js
@@ -17533,7 +17773,7 @@ exports.URL = URL;
 _videoJs2['default'].MediaSource = MediaSource;
 _videoJs2['default'].URL = URL;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./flash-media-source":67,"./html-media-source":70,"global/window":30}],74:[function(require,module,exports){
+},{"./flash-media-source":68,"./html-media-source":71,"global/window":31}],75:[function(require,module,exports){
 (function (global){
 /**
  * @file virtual-source-buffer.js
@@ -18172,7 +18412,7 @@ var VirtualSourceBuffer = (function (_videojs$EventTarget) {
 exports['default'] = VirtualSourceBuffer;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./add-text-track-data":62,"./codec-utils":64,"./create-text-tracks-if-necessary":65,"./remove-cues-from-track":71,"./transmuxer-worker":72,"webworkify":75}],75:[function(require,module,exports){
+},{"./add-text-track-data":63,"./codec-utils":65,"./create-text-tracks-if-necessary":66,"./remove-cues-from-track":72,"./transmuxer-worker":73,"webworkify":76}],76:[function(require,module,exports){
 var bundleFn = arguments[3];
 var sources = arguments[4];
 var cache = arguments[5];
@@ -18229,7 +18469,7 @@ module.exports = function (fn) {
     ));
 };
 
-},{}],76:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 (function (global){
 /**
  * @file videojs-contrib-hls.js
@@ -18303,6 +18543,8 @@ var _reloadSourceOnError = require('./reload-source-on-error');
 
 var _reloadSourceOnError2 = _interopRequireDefault(_reloadSourceOnError);
 
+var _playlistSelectorsJs = require('./playlist-selectors.js');
+
 var Hls = {
   PlaylistLoader: _playlistLoader2['default'],
   Playlist: _playlist2['default'],
@@ -18310,6 +18552,11 @@ var Hls = {
   AsyncStream: _aesDecrypter.AsyncStream,
   decrypt: _aesDecrypter.decrypt,
   utils: _binUtils2['default'],
+
+  STANDARD_PLAYLIST_SELECTOR: _playlistSelectorsJs.lastBandwidthSelector,
+  comparePlaylistBandwidth: _playlistSelectorsJs.comparePlaylistBandwidth,
+  comparePlaylistResolution: _playlistSelectorsJs.comparePlaylistResolution,
+
   xhr: (0, _xhr2['default'])()
 };
 
@@ -18342,31 +18589,6 @@ Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
     _config2['default'].BANDWIDTH_VARIANCE = v;
   }
 });
-
-/**
- * Returns the CSS value for the specified property on an element
- * using `getComputedStyle`. Firefox has a long-standing issue where
- * getComputedStyle() may return null when running in an iframe with
- * `display: none`.
- *
- * @see https://bugzilla.mozilla.org/show_bug.cgi?id=548397
- * @param {HTMLElement} el the htmlelement to work on
- * @param {string} the proprety to get the style for
- */
-var safeGetComputedStyle = function safeGetComputedStyle(el, property) {
-  var result = undefined;
-
-  if (!el) {
-    return '';
-  }
-
-  result = _globalWindow2['default'].getComputedStyle(el);
-  if (!result) {
-    return '';
-  }
-
-  return result[property];
-};
 
 /**
  * Updates the selectedIndex of the QualityLevelList when a mediachange happens in hls.
@@ -18405,106 +18627,6 @@ var handleHlsLoadedMetadata = function handleHlsLoadedMetadata(qualityLevels, hl
     qualityLevels.addQualityLevel(rep);
   });
   handleHlsMediaChange(qualityLevels, hls.playlists);
-};
-
-/**
- * Resuable stable sort function
- *
- * @param {Playlists} array
- * @param {Function} sortFn Different comparators
- * @function stableSort
- */
-var stableSort = function stableSort(array, sortFn) {
-  var newArray = array.slice();
-
-  array.sort(function (left, right) {
-    var cmp = sortFn(left, right);
-
-    if (cmp === 0) {
-      return newArray.indexOf(left) - newArray.indexOf(right);
-    }
-    return cmp;
-  });
-};
-
-/**
- * Chooses the appropriate media playlist based on the current
- * bandwidth estimate and the player size.
- *
- * @return {Playlist} the highest bitrate playlist less than the currently detected
- * bandwidth, accounting for some amount of bandwidth variance
- */
-Hls.STANDARD_PLAYLIST_SELECTOR = function () {
-  var sortedPlaylists = this.playlists.master.playlists.slice();
-  var bandwidthPlaylists = [];
-  var bandwidthBestVariant = undefined;
-  var resolutionPlusOne = undefined;
-  var resolutionBestVariant = undefined;
-  var width = undefined;
-  var height = undefined;
-  var systemBandwidth = undefined;
-  var haveResolution = undefined;
-  var resolutionPlusOneList = [];
-  var resolutionPlusOneSmallest = [];
-  var resolutionBestVariantList = [];
-
-  stableSort(sortedPlaylists, Hls.comparePlaylistBandwidth);
-
-  // filter out any playlists that have been excluded due to
-  // incompatible configurations or playback errors
-  sortedPlaylists = sortedPlaylists.filter(_playlist2['default'].isEnabled);
-  // filter out any variant that has greater effective bitrate
-  // than the current estimated bandwidth
-  systemBandwidth = this.systemBandwidth;
-  bandwidthPlaylists = sortedPlaylists.filter(function (elem) {
-    return elem.attributes && elem.attributes.BANDWIDTH && elem.attributes.BANDWIDTH * _config2['default'].BANDWIDTH_VARIANCE < systemBandwidth;
-  });
-
-  // get all of the renditions with the same (highest) bandwidth
-  // and then taking the very first element
-  bandwidthBestVariant = bandwidthPlaylists.filter(function (elem) {
-    return elem.attributes.BANDWIDTH === bandwidthPlaylists[bandwidthPlaylists.length - 1].attributes.BANDWIDTH;
-  })[0];
-
-  // sort variants by resolution
-  stableSort(bandwidthPlaylists, Hls.comparePlaylistResolution);
-
-  width = parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10);
-  height = parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10);
-
-  // filter out playlists without resolution information
-  haveResolution = bandwidthPlaylists.filter(function (elem) {
-    return elem.attributes && elem.attributes.RESOLUTION && elem.attributes.RESOLUTION.width && elem.attributes.RESOLUTION.height;
-  });
-
-  // if we have the exact resolution as the player use it
-  resolutionBestVariantList = haveResolution.filter(function (elem) {
-    return elem.attributes.RESOLUTION.width === width && elem.attributes.RESOLUTION.height === height;
-  });
-  // ensure that we pick the highest bandwidth variant that have exact resolution
-  resolutionBestVariant = resolutionBestVariantList.filter(function (elem) {
-    return elem.attributes.BANDWIDTH === resolutionBestVariantList[resolutionBestVariantList.length - 1].attributes.BANDWIDTH;
-  })[0];
-
-  // find the smallest variant that is larger than the player
-  // if there is no match of exact resolution
-  if (!resolutionBestVariant) {
-    resolutionPlusOneList = haveResolution.filter(function (elem) {
-      return elem.attributes.RESOLUTION.width > width || elem.attributes.RESOLUTION.height > height;
-    });
-    // find all the variants have the same smallest resolution
-    resolutionPlusOneSmallest = resolutionPlusOneList.filter(function (elem) {
-      return elem.attributes.RESOLUTION.width === resolutionPlusOneList[0].attributes.RESOLUTION.width && elem.attributes.RESOLUTION.height === resolutionPlusOneList[0].attributes.RESOLUTION.height;
-    });
-    // ensure that we also pick the highest bandwidth variant that
-    // is just-larger-than the video player
-    resolutionPlusOne = resolutionPlusOneSmallest.filter(function (elem) {
-      return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1].attributes.BANDWIDTH;
-    })[0];
-  }
-
-  // fallback chain of variants
-  return resolutionPlusOne || resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
 };
 
 // HLS is a source handler, not a tech. Make sure attempts to use it
@@ -19031,65 +19153,6 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
   };
 };
 
-/**
- * A comparator function to sort two playlist object by bandwidth.
- *
- * @param {Object} left a media playlist object
- * @param {Object} right a media playlist object
- * @return {Number} Greater than zero if the bandwidth attribute of
- * left is greater than the corresponding attribute of right. Less
- * than zero if the bandwidth of right is greater than left and
- * exactly zero if the two are equal.
- */
-Hls.comparePlaylistBandwidth = function (left, right) {
-  var leftBandwidth = undefined;
-  var rightBandwidth = undefined;
-
-  if (left.attributes && left.attributes.BANDWIDTH) {
-    leftBandwidth = left.attributes.BANDWIDTH;
-  }
-  leftBandwidth = leftBandwidth || _globalWindow2['default'].Number.MAX_VALUE;
-  if (right.attributes && right.attributes.BANDWIDTH) {
-    rightBandwidth = right.attributes.BANDWIDTH;
-  }
-  rightBandwidth = rightBandwidth || _globalWindow2['default'].Number.MAX_VALUE;
-
-  return leftBandwidth - rightBandwidth;
-};
-
-/**
- * A comparator function to sort two playlist object by resolution (width).
- * @param {Object} left a media playlist object
- * @param {Object} right a media playlist object
- * @return {Number} Greater than zero if the resolution.width attribute of
- * left is greater than the corresponding attribute of right. Less
- * than zero if the resolution.width of right is greater than left and
- * exactly zero if the two are equal.
- */
-Hls.comparePlaylistResolution = function (left, right) {
-  var leftWidth = undefined;
-  var rightWidth = undefined;
-
-  if (left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
-    leftWidth = left.attributes.RESOLUTION.width;
-  }
-
-  leftWidth = leftWidth || _globalWindow2['default'].Number.MAX_VALUE;
-
-  if (right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
-    rightWidth = right.attributes.RESOLUTION.width;
-  }
-
-  rightWidth = rightWidth || _globalWindow2['default'].Number.MAX_VALUE;
-
-  // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
-  // have the same media dimensions/ resolution
-  if (leftWidth === rightWidth && left.attributes.BANDWIDTH && right.attributes.BANDWIDTH) {
-    return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
-  }
-  return leftWidth - rightWidth;
-};
-
 HlsSourceHandler.canPlayType = function (type) {
   // No support for IE 10 or below
   if (_videoJs2['default'].browser.IE_VERSION && _videoJs2['default'].browser.IE_VERSION <= 10) {
@@ -19141,5 +19204,5 @@ module.exports = {
   HlsSourceHandler: HlsSourceHandler
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":9,"./playlist-loader":8,"./reload-source-on-error":11,"./rendition-mixin":12,"./xhr":19,"aes-decrypter":23,"global/document":29,"global/window":30,"m3u8-parser":31,"videojs-contrib-media-sources":73}]},{},[76])(76)
+},{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":30,"global/window":31,"m3u8-parser":32,"videojs-contrib-media-sources":74}]},{},[77])(77)
 });
