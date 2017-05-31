@@ -67,7 +67,8 @@ const initPlugin = function(player, options) {
 
     if (!localOptions.getSource ||
         typeof localOptions.getSource !== 'function') {
-      videojs.log.error('ERROR: reloadSourceOnError - The option getSource must be a function!');
+      videojs.log.error(
+        'ERROR: reloadSourceOnError - The option getSource must be a function!');
       return;
     }
     lastCalled = Date.now();

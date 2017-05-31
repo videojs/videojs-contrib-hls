@@ -208,7 +208,9 @@ QUnit.test('the key response is converted to the correct format', function(asser
     this.noop,
     (error, segmentData) => {
       assert.notOk(error, 'there are no errors');
-      assert.equal(this.mockDecrypter.listeners.length, 0, 'all decryption webworker listeners are unbound');
+      assert.equal(this.mockDecrypter.listeners.length,
+                   0,
+                   'all decryption webworker listeners are unbound');
       // verify stats
       assert.equal(segmentData.stats.bytesReceived, 10, '10 bytes');
       done();
@@ -272,7 +274,8 @@ QUnit.test('segment with key has bytes decrypted', function(assert) {
   this.clock.tick(100);
 });
 
-QUnit.test('waits for every request to finish before the callback is run', function(assert) {
+QUnit.test('waits for every request to finish before the callback is run',
+function(assert) {
   const done = assert.async();
 
   assert.expect(10);

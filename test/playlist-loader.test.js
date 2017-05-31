@@ -73,7 +73,8 @@ QUnit.test('moves to HAVE_MASTER after loading a master playlist', function(asse
   assert.strictEqual(state, 'HAVE_MASTER', 'the state at loadedplaylist correct');
 });
 
-QUnit.test('jumps to HAVE_METADATA when initialized with a media playlist', function(assert) {
+QUnit.test('jumps to HAVE_METADATA when initialized with a media playlist',
+function(assert) {
   let loadedmetadatas = 0;
   let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
 
@@ -108,7 +109,8 @@ QUnit.test('resolves relative media playlist URIs', function(assert) {
               'resolved media URI');
 });
 
-QUnit.test('playlist loader returns the correct amount of enabled playlists', function(assert) {
+QUnit.test('playlist loader returns the correct amount of enabled playlists',
+function(assert) {
   let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
 
   loader.load();
@@ -371,7 +373,8 @@ QUnit.test('defaults missing media groups for a media playlist', function(assert
   assert.ok(loader.master.mediaGroups.SUBTITLES, 'defaulted subtitles');
 });
 
-QUnit.test('moves to HAVE_CURRENT_METADATA when refreshing the playlist', function(assert) {
+QUnit.test('moves to HAVE_CURRENT_METADATA when refreshing the playlist',
+function(assert) {
   let loader = new PlaylistLoader('live.m3u8', this.fakeHls);
 
   loader.load();
@@ -622,7 +625,8 @@ QUnit.test('switches media playlists when requested', function(assert) {
                     'updated the active media');
 });
 
-QUnit.test('can switch playlists immediately after the master is downloaded', function(assert) {
+QUnit.test('can switch playlists immediately after the master is downloaded',
+function(assert) {
   let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
 
   loader.load();
@@ -691,7 +695,9 @@ QUnit.test('aborts in-flight playlist refreshes when switching', function(assert
   assert.strictEqual(this.requests[0].aborted, true, 'aborted refresh request');
   assert.ok(!this.requests[0].onreadystatechange,
            'onreadystatechange handlers should be removed on abort');
-  assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is set accoring to the startingState');
+  assert.strictEqual(loader.state,
+                     'HAVE_METADATA',
+                     'the state is set accoring to the startingState');
 });
 
 QUnit.test('switching to the active playlist is a no-op', function(assert) {
@@ -737,7 +743,8 @@ QUnit.test('switching to the active live playlist is a no-op', function(assert) 
   assert.strictEqual(this.requests.length, 0, 'no requests are sent');
 });
 
-QUnit.test('switches back to loaded playlists without re-requesting them', function(assert) {
+QUnit.test('switches back to loaded playlists without re-requesting them',
+function(assert) {
   let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
 
   loader.load();
@@ -964,7 +971,8 @@ QUnit.test('triggers an event when the active media changes', function(assert) {
   assert.strictEqual(mediaChanges, 2, 'ignored a no-op media change');
 });
 
-QUnit.test('does not misintrepret playlists missing newlines at the end', function(assert) {
+QUnit.test('does not misintrepret playlists missing newlines at the end',
+function(assert) {
   let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
 
   loader.load();
