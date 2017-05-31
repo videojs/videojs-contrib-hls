@@ -19,7 +19,11 @@ import renditionSelectionMixin from './rendition-mixin';
 import window from 'global/window';
 import PlaybackWatcher from './playback-watcher';
 import reloadSourceOnError from './reload-source-on-error';
-import { lastBandwidthSelector, comparePlaylistBandwidth, comparePlaylistResolution } from './playlist-selectors.js';
+import {
+  lastBandwidthSelector,
+  comparePlaylistBandwidth,
+  comparePlaylistResolution
+} from './playlist-selectors.js';
 
 const Hls = {
   PlaylistLoader,
@@ -362,7 +366,10 @@ class HlsHandler extends Component {
           // setting the bandwidth manually resets the throughput counter
           // `count` is set to zero that current value of `rate` isn't included
           // in the cumulative average
-          this.masterPlaylistController_.mainSegmentLoader_.throughput = {rate: 0, count: 0};
+          this.masterPlaylistController_.mainSegmentLoader_.throughput = {
+            rate: 0,
+            count: 0
+          };
         }
       },
       /**

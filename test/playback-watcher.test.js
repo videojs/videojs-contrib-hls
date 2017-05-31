@@ -139,7 +139,8 @@ QUnit.test('skips over gap in Chrome due to video underflow', function(assert) {
   assert.equal(seeks[0], 13, 'player seeked to current time');
 });
 
-QUnit.test('seek to live point if we fall off the end of a live playlist', function(assert) {
+QUnit.test('seek to live point if we fall off the end of a live playlist',
+function(assert) {
   // set an arbitrary live source
   this.player.src({
     src: 'liveStart30sBefore.m3u8',

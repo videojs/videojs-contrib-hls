@@ -42,7 +42,8 @@ const xhrFactory = function() {
         request.roundTripTime = request.responseTime - request.requestTime;
         request.bytesReceived = reqResponse.byteLength || reqResponse.length;
         if (!request.bandwidth) {
-          request.bandwidth = Math.floor((request.bytesReceived / request.roundTripTime) * 8 * 1000);
+          request.bandwidth =
+            Math.floor((request.bytesReceived / request.roundTripTime) * 8 * 1000);
         }
       }
 

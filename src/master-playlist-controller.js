@@ -204,7 +204,8 @@ export const mimeTypesForPlaylist_ = function(master, media) {
   // HLS with multiple-audio tracks must always get an audio codec.
   // Put another way, there is no way to have a video-only multiple-audio HLS!
   if (isMaat && !codecInfo.audioProfile) {
-    videojs.log.warn('Multiple audio tracks present but no audio codec string is specified. ' +
+    videojs.log.warn(
+      'Multiple audio tracks present but no audio codec string is specified. ' +
       'Attempting to use the default audio codec (mp4a.40.2)');
     codecInfo.audioProfile = defaultCodecs.audioProfile;
   }
@@ -349,19 +350,22 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
-    this.mainSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
-      segmentMetadataTrack: this.segmentMetadataTrack_,
-      loaderType: 'main'
-    }));
+    this.mainSegmentLoader_ =
+      new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+        segmentMetadataTrack: this.segmentMetadataTrack_,
+        loaderType: 'main'
+      }));
 
     // alternate audio track
-    this.audioSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
-      loaderType: 'audio'
-    }));
+    this.audioSegmentLoader_ =
+      new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+        loaderType: 'audio'
+      }));
 
-    this.subtitleSegmentLoader_ = new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
-      loaderType: 'vtt'
-    }));
+    this.subtitleSegmentLoader_ =
+      new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+        loaderType: 'vtt'
+      }));
 
     this.setupSegmentLoaderListeners_();
 
@@ -1086,7 +1090,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return false;
     }
 
-    let expired = this.syncController_.getExpiredTime(playlist, this.mediaSource.duration);
+    let expired =
+      this.syncController_.getExpiredTime(playlist, this.mediaSource.duration);
 
     if (expired === null) {
       return false;
@@ -1198,8 +1203,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // In flash playback, the segment loaders should be reset on every seek, even
     // in buffer seeks
-    const isFlash = (this.mode_ === 'flash') ||
-                    (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
+    const isFlash =
+      (this.mode_ === 'flash') ||
+      (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
 
     // if the seek location is already buffered, continue buffering as
     // usual

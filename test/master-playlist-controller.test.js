@@ -325,7 +325,8 @@ QUnit.test('if buffered, will request second segment byte range', function(asser
   this.masterPlaylistController.mainSegmentLoader_.sourceUpdater_.buffered = () => {
     return videojs.createTimeRanges([[0, 20]]);
   };
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   // segment
   this.standardXHRResponse(this.requests[1]);
@@ -384,7 +385,8 @@ function(assert) {
   );
 });
 
-QUnit.test('updates the combined segment loader on live playlist refreshes', function(assert) {
+QUnit.test('updates the combined segment loader on live playlist refreshes',
+function(assert) {
   let updates = [];
 
   openMediaSource(this.player, this.clock);
@@ -418,7 +420,8 @@ function(assert) {
   this.player.tech_.on('progress', function() {
     progressCount++;
   });
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   // segment
   this.standardXHRResponse(this.requests.shift());
@@ -476,17 +479,20 @@ QUnit.test('detects if the player is stuck at the playlist end', function(assert
   this.masterPlaylistController.seekable = () => videojs.createTimeRange();
   this.player.tech_.buffered = () => videojs.createTimeRange();
   this.player.tech_.setCurrentTime(170);
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // not stuck at playlist end when no seekable, even if empty buffer
   // and currentTime 0
   this.player.tech_.setCurrentTime(0);
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // not stuck at playlist end when no seekable but current time is at
   // the end of the buffered range
   this.player.tech_.buffered = () => videojs.createTimeRange(0, 170);
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // not stuck at playlist end when currentTime not at seekable end
   // even if the buffer is empty
@@ -495,19 +501,22 @@ QUnit.test('detects if the player is stuck at the playlist end', function(assert
   this.player.tech_.setCurrentTime(50);
   this.player.tech_.buffered = () => videojs.createTimeRange();
   Hls.Playlist.playlistEnd = () => 130;
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // not stuck at playlist end when buffer reached the absolute end of the playlist
   // and current time is in the buffered range
   this.player.tech_.setCurrentTime(159);
   this.player.tech_.buffered = () => videojs.createTimeRange(0, 160);
   Hls.Playlist.playlistEnd = () => 160;
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // stuck at playlist end when there is no buffer and playhead
   // reached absolute end of playlist
   this.player.tech_.setCurrentTime(160);
-  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'stuck at playlist end');
+  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'stuck at playlist end');
 
   // stuck at playlist end when current time reached the buffer end
   // and buffer has reached absolute end of playlist
@@ -515,12 +524,14 @@ QUnit.test('detects if the player is stuck at the playlist end', function(assert
   this.player.tech_.buffered = () => videojs.createTimeRange(0, 170);
   this.player.tech_.setCurrentTime(170);
   Hls.Playlist.playlistEnd = () => 170;
-  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'stuck at playlist end');
+  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'stuck at playlist end');
 
   Hls.Playlist.playlistEnd = playlistCopy;
 });
 
-QUnit.test('blacklists switching from video+audio playlists to audio only', function(assert) {
+QUnit.test('blacklists switching from video+audio playlists to audio only',
+function(assert) {
   let audioPlaylist;
 
   openMediaSource(this.player, this.clock);
@@ -547,7 +558,8 @@ QUnit.test('blacklists switching from video+audio playlists to audio only', func
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth we set above');
 });
 
-QUnit.test('blacklists switching from audio-only playlists to video+audio', function(assert) {
+QUnit.test('blacklists switching from audio-only playlists to video+audio',
+function(assert) {
   let videoAudioPlaylist;
 
   openMediaSource(this.player, this.clock);
@@ -576,7 +588,8 @@ QUnit.test('blacklists switching from audio-only playlists to video+audio', func
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
 
-QUnit.test('blacklists switching from video-only playlists to video+audio', function(assert) {
+QUnit.test('blacklists switching from video-only playlists to video+audio',
+function(assert) {
   let videoAudioPlaylist;
 
   openMediaSource(this.player, this.clock);
@@ -629,7 +642,9 @@ function(assert) {
               'selected HE-AAC stream');
   alternatePlaylist =
     this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1];
-  assert.equal(alternatePlaylist.excludeUntil, undefined, 'not excluded incompatible playlist');
+  assert.equal(alternatePlaylist.excludeUntil,
+               undefined,
+               'not excluded incompatible playlist');
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
@@ -683,7 +698,8 @@ QUnit.test('updates the combined segment loader on media changes', function(asse
   this.masterPlaylistController.mainSegmentLoader_.playlist = function(update) {
     updates.push(update);
   };
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
 
   this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
@@ -770,7 +786,8 @@ QUnit.test('updates the duration after switching playlists', function(assert) {
 
     return this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1];
   };
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // segment 0
@@ -801,12 +818,14 @@ QUnit.test('playlist selection uses systemBandwidth', function(assert) {
   this.standardXHRResponse(this.requests[1]);
   assert.ok(/media3\.m3u8/i.test(this.requests[1].url), 'Selected the highest rendition');
 
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // segment 0
   this.standardXHRResponse(this.requests[2]);
-  // 20ms have passed to upload 1kb that gives us a throughput of 1024 / 20 * 8 * 1000 = 409600
+  // 20ms have passed to upload 1kb
+  // that gives us a throughput of 1024 / 20 * 8 * 1000 = 409600
   this.clock.tick(20);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // systemBandwidth is 1 / (1 / 8192000 + 1 / 409600) = ~390095
