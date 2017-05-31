@@ -1139,8 +1139,14 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
   assert.ok(media.excludeUntil > 0, 'second media was blacklisted after playlist 404');
-  assert.equal(this.env.log.warn.calls, 1, 'warning logged for blacklist');
+  assert.equal(this.env.log.warn.calls, 3, 'warning logged for blacklist');
   assert.equal(this.env.log.warn.args[1],
+              'Clearing blacklist because last rendition is about to be blacklisted.',
+              'log generic error message');
+  assert.equal(this.env.log.warn.args[2],
+              'Clearing blacklist because last rendition is about to be blacklisted.',
+              'log generic error message');
+  assert.equal(this.env.log.warn.args[3],
               'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media1.m3u8. ' +
               'Switching to another playlist.',
               'log generic error message');
