@@ -34,8 +34,8 @@ const Hls = {
   utils,
 
   STANDARD_PLAYLIST_SELECTOR: lastBandwidthSelector,
-  comparePlaylistBandwidth: comparePlaylistBandwidth.bind(null, false),
-  comparePlaylistResolution: comparePlaylistResolution.bind(null, false),
+  comparePlaylistBandwidth,
+  comparePlaylistResolution,
 
   xhr: xhrFactory()
 };

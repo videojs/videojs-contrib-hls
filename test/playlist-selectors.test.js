@@ -66,15 +66,23 @@ test('getBandwidth appropriately uses average bandwidth when specified',
 function(assert) {
   let playlist = {};
 
-  assert.equal(getBandwidth(playlist, false), 0, 'bandwidth 0 when playlist has no info');
-  assert.equal(getBandwidth(playlist, true), 0, 'bandwidth 0 when playlist has no info');
+  assert.equal(getBandwidth(playlist, false),
+               void 0,
+               'undefined when playlist has no info');
+  assert.equal(getBandwidth(playlist, true),
+               void 0,
+               'undefined when playlist has no info');
 
   playlist = {
     attributes: {}
   };
 
-  assert.equal(getBandwidth(playlist, false), 0, 'bandwidth 0 when playlist has no info');
-  assert.equal(getBandwidth(playlist, true), 0, 'bandwidth 0 when playlist has no info');
+  assert.equal(getBandwidth(playlist, false),
+               void 0,
+               'bandwidth 0 when playlist has no info');
+  assert.equal(getBandwidth(playlist, true),
+               void 0,
+               'bandwidth 0 when playlist has no info');
 
   playlist = {
     attributes: {
@@ -116,18 +124,15 @@ test('comparePlaylistBandwidth properly compares playlist bandwidths', function(
   let left = {};
   let right = {};
 
-  assert.equal(comparePlaylistBandwidth(false, left, right), 0, '0 when no info');
-  assert.equal(comparePlaylistBandwidth(true, left, right), 0, '0 when no info');
+  assert.equal(comparePlaylistBandwidth(left, right), 0, '0 when no info');
 
   left = { attributes: {} };
 
-  assert.equal(comparePlaylistBandwidth(false, left, right), 0, '0 when no info');
-  assert.equal(comparePlaylistBandwidth(true, left, right), 0, '0 when no info');
+  assert.equal(comparePlaylistBandwidth(left, right), 0, '0 when no info');
 
   right = { attributes: {} };
 
-  assert.equal(comparePlaylistBandwidth(false, left, right), 0, '0 when no info');
-  assert.equal(comparePlaylistBandwidth(true, left, right), 0, '0 when no info');
+  assert.equal(comparePlaylistBandwidth(left, right), 0, '0 when no info');
 
   left = {
     attributes: {
@@ -135,9 +140,7 @@ test('comparePlaylistBandwidth properly compares playlist bandwidths', function(
     }
   };
 
-  assert.ok(comparePlaylistBandwidth(false, left, right) < 0,
-            'left smaller when only left BANDWIDTH available');
-  assert.ok(comparePlaylistBandwidth(true, left, right) < 0,
+  assert.ok(comparePlaylistBandwidth(left, right) < 0,
             'left smaller when only left BANDWIDTH available');
 
   left = {};
@@ -147,9 +150,7 @@ test('comparePlaylistBandwidth properly compares playlist bandwidths', function(
     }
   };
 
-  assert.ok(comparePlaylistBandwidth(false, left, right) > 0,
-               'right smaller when only right BANDWIDTH available');
-  assert.ok(comparePlaylistBandwidth(true, left, right) > 0,
+  assert.ok(comparePlaylistBandwidth(left, right) > 0,
                'right smaller when only right BANDWIDTH available');
 
   left = {
@@ -158,12 +159,7 @@ test('comparePlaylistBandwidth properly compares playlist bandwidths', function(
     }
   };
 
-  assert.equal(comparePlaylistBandwidth(false, left, right),
-               0,
-               '0 when only BANDWIDTH and equal');
-  assert.equal(comparePlaylistBandwidth(true, left, right),
-               0,
-               '0 when only BANDWIDTH and equal');
+  assert.equal(comparePlaylistBandwidth(left, right), 0, '0 when BANDWIDTHs are equal');
 
   left = {
     attributes: {
@@ -171,12 +167,7 @@ test('comparePlaylistBandwidth properly compares playlist bandwidths', function(
     }
   };
 
-  assert.equal(comparePlaylistBandwidth(false, left, right),
-               5,
-               'positive when left is greater');
-  assert.equal(comparePlaylistBandwidth(true, left, right),
-               5,
-               'positive when left is greater');
+  assert.equal(comparePlaylistBandwidth(left, right), 5, 'positive when left is greater');
 
   right = {
     attributes: {
@@ -184,30 +175,19 @@ test('comparePlaylistBandwidth properly compares playlist bandwidths', function(
     }
   };
 
-  assert.equal(comparePlaylistBandwidth(false, left, right),
-               -5,
-               'negative when right is greater');
-  assert.equal(comparePlaylistBandwidth(true, left, right),
-               -5,
-               'negative when right is greater');
+  assert.equal(comparePlaylistBandwidth(left, right), -5, 'negative when right is greater');
 
   left.attributes['AVERAGE-BANDWIDTH'] = 25;
 
-  assert.equal(comparePlaylistBandwidth(false, left, right),
+  assert.equal(comparePlaylistBandwidth(left, right),
                -5,
-               'uses BANDWIDTH when useAverageBandwidth is false');
-  assert.equal(comparePlaylistBandwidth(true, left, right),
-               5,
-               'uses AVERAGE-BANDWIDTH when useAverageBandwidth is true');
+               'does not consider AVERAGE-BANDWIDTH');
 
   right.attributes['AVERAGE-BANDWIDTH'] = 31;
 
-  assert.equal(comparePlaylistBandwidth(false, left, right),
+  assert.equal(comparePlaylistBandwidth(left, right),
                -5,
-               'uses BANDWIDTH for both when useAverageBandwidth is false');
-  assert.equal(comparePlaylistBandwidth(true, left, right),
-               -6,
-               'uses AVERAGE-BANDWIDTH for both when useAverageBandwidth is true');
+               'does not consider AVERAGE-BANDWIDTH');
 });
 
 test('comparePlaylistResolution properly compares playlist resolutions',
@@ -215,18 +195,15 @@ function(assert) {
   let left = {};
   let right = {};
 
-  assert.equal(comparePlaylistResolution(false, left, right), 0, '0 when no info');
-  assert.equal(comparePlaylistResolution(true, left, right), 0, '0 when no info');
+  assert.equal(comparePlaylistResolution(left, right), 0, '0 when no info');
 
   left = { attributes: {} };
 
-  assert.equal(comparePlaylistResolution(false, left, right), 0, '0 when no info');
-  assert.equal(comparePlaylistResolution(true, left, right), 0, '0 when no info');
+  assert.equal(comparePlaylistResolution(left, right), 0, '0 when no info');
 
   right = { attributes: {} };
 
-  assert.equal(comparePlaylistResolution(false, left, right), 0, '0 when no info');
-  assert.equal(comparePlaylistResolution(true, left, right), 0, '0 when no info');
+  assert.equal(comparePlaylistResolution(left, right), 0, '0 when no info');
 
   left = {
     attributes: {
@@ -236,9 +213,7 @@ function(assert) {
     }
   };
 
-  assert.ok(comparePlaylistResolution(false, left, right) < 0,
-            'left smaller when only left width available');
-  assert.ok(comparePlaylistResolution(true, left, right) < 0,
+  assert.ok(comparePlaylistResolution(left, right) < 0,
             'left smaller when only left width available');
 
   left = {};
@@ -250,9 +225,7 @@ function(assert) {
     }
   };
 
-  assert.ok(comparePlaylistResolution(false, left, right) > 0,
-            'right smaller when only right width available');
-  assert.ok(comparePlaylistResolution(true, left, right) > 0,
+  assert.ok(comparePlaylistResolution(left, right) > 0,
             'right smaller when only right width available');
 
   left = {
@@ -263,28 +236,17 @@ function(assert) {
     }
   };
 
-  assert.equal(comparePlaylistResolution(false, left, right),
-               0,
-               '0 when widths are equal');
-  assert.equal(comparePlaylistResolution(true, left, right),
-               0,
-               '0 when widths are equal');
+  assert.equal(comparePlaylistResolution(left, right), 0, '0 when widths are equal');
 
   left.attributes.RESOLUTION.width = 1080;
 
-  assert.equal(comparePlaylistResolution(false, left, right),
-               360,
-               'positive when left is greater');
-  assert.equal(comparePlaylistResolution(true, left, right),
+  assert.equal(comparePlaylistResolution(left, right),
                360,
                'positive when left is greater');
 
   right.attributes.RESOLUTION.width = 1440;
 
-  assert.equal(comparePlaylistResolution(false, left, right),
-               -360,
-               'negative when right is greater');
-  assert.equal(comparePlaylistResolution(true, left, right),
+  assert.equal(comparePlaylistResolution(left, right),
                -360,
                'negative when right is greater');
 
@@ -305,59 +267,28 @@ function(assert) {
     }
   };
 
-  assert.equal(comparePlaylistResolution(false, left, right),
-               0,
-               'equal when width equal and BANDWIDTH equal');
-  assert.equal(comparePlaylistResolution(true, left, right),
+  assert.equal(comparePlaylistResolution(left, right),
                0,
                'equal when width equal and BANDWIDTH equal');
 
-  left.attributes['AVERAGE-BANDWIDTH'] = 10;
-  right.attributes['AVERAGE-BANDWIDTH'] = 10;
+  left.attributes['AVERAGE-BANDWIDTH'] = 17;
+  right.attributes['AVERAGE-BANDWIDTH'] = 19;
 
-  assert.equal(comparePlaylistResolution(false, left, right),
+  assert.equal(comparePlaylistResolution(left, right),
                0,
-               'equal when width equal and BANDWIDTH equal');
-  assert.equal(comparePlaylistResolution(true, left, right),
-               0,
-               'equal when width equal and AVERAGE-BANDWIDTH equal');
+               'does not consider AVERAGE-BANDWIDTH');
 
   left.attributes.BANDWIDTH = 9;
 
-  assert.equal(comparePlaylistResolution(false, left, right),
+  assert.equal(comparePlaylistResolution(left, right),
                -1,
                'left smaller when width equal and BANDWIDTH smaller');
-  assert.equal(comparePlaylistResolution(true, left, right),
-               0,
-               'equal when width equal and AVERAGE-BANDWIDTH equal');
 
   right.attributes.BANDWIDTH = 8;
 
-  assert.equal(comparePlaylistResolution(false, left, right),
+  assert.equal(comparePlaylistResolution(left, right),
                1,
                'right smaller when width equal and BANDWIDTH smaller');
-  assert.equal(comparePlaylistResolution(true, left, right),
-               0,
-               'equal when width equal and AVERAGE-BANDWIDTH equal');
-
-  left.attributes.BANDWIDTH = 8;
-  left.attributes['AVERAGE-BANDWIDTH'] = 9;
-
-  assert.equal(comparePlaylistResolution(false, left, right),
-               0,
-               'equal when width equal and BANDWIDTH equal');
-  assert.equal(comparePlaylistResolution(true, left, right),
-               -1,
-               'left smaller when width equal and AVERAGE-BANDWIDTH smaller');
-
-  right.attributes['AVERAGE-BANDWIDTH'] = 8;
-
-  assert.equal(comparePlaylistResolution(false, left, right),
-               0,
-               'equal when width equal and BANDWIDTH equal');
-  assert.equal(comparePlaylistResolution(true, left, right),
-               1,
-               'right smaller when width equal and only right BANDWIDTH available');
 });
 
 test('lastBandwidthSelector uses average bandwidth once past low water line',

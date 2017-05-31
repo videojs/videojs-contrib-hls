@@ -1,5 +1,7 @@
 import Config from './config';
 import Playlist from './playlist';
+import videojs from 'video.js';
+import window from 'global/window';
 
 // Utilities
 
@@ -12,7 +14,7 @@ export const crossedLowWaterLine = (currentTime, buffered) => {
 
 export const getBandwidth = (playlist, useAverageBandwidth) => {
   if (!playlist || !playlist.attributes) {
-    return 0;
+    return void 0;
   }
 
   let bandwidth;
@@ -25,7 +27,7 @@ export const getBandwidth = (playlist, useAverageBandwidth) => {
     bandwidth = playlist.attributes.BANDWIDTH;
   }
 
-  return bandwidth || 0;
+  return bandwidth || void 0;
 };
 
 /**
@@ -83,10 +85,11 @@ const stableSort = function(array, sortFn) {
  * than zero if the bandwidth of right is greater than left and
  * exactly zero if the two are equal.
  */
-export const comparePlaylistBandwidth = function(useAverageBandwidth, left, right) {
-  let leftBandwidth = getBandwidth(left, useAverageBandwidth) || window.Number.MAX_VALUE;
-  let rightBandwidth =
-    getBandwidth(right, useAverageBandwidth) || window.Number.MAX_VALUE;
+export const comparePlaylistBandwidth = function(left, right) {
+  let leftBandwidth = getBandwidth(left, false) || window.Number.MAX_VALUE;
+  let rightBandwidth = getBandwidth(right, false) || window.Number.MAX_VALUE;
+
+  videojs.log.warn('comparePlaylistBandwidth is deprecated');
 
   return leftBandwidth - rightBandwidth;
 };
@@ -100,9 +103,11 @@ export const comparePlaylistBandwidth = function(useAverageBandwidth, left, righ
  * than zero if the resolution.width of right is greater than left and
  * exactly zero if the two are equal.
  */
-export const comparePlaylistResolution = function(useAverageBandwidth, left, right) {
+export const comparePlaylistResolution = function(left, right) {
   let leftWidth;
   let rightWidth;
+
+  videojs.log.warn('comparePlaylistResolution is deprecated');
 
   if (left.attributes &&
       left.attributes.RESOLUTION &&
@@ -120,8 +125,8 @@ export const comparePlaylistResolution = function(useAverageBandwidth, left, rig
 
   rightWidth = rightWidth || window.Number.MAX_VALUE;
 
-  const leftBandwidth = getBandwidth(left, useAverageBandwidth);
-  const rightBandwidth = getBandwidth(right, useAverageBandwidth);
+  const leftBandwidth = getBandwidth(left, false);
+  const rightBandwidth = getBandwidth(right, false);
 
   // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
   // have the same media dimensions/ resolution.
@@ -138,8 +143,6 @@ const simpleSelector = function(master,
                                 useAverageBandwidth = false) {
   let sortedPlaylists = master.playlists.slice();
 
-  stableSort(sortedPlaylists, comparePlaylistBandwidth.bind(null, useAverageBandwidth));
-
   // convert the playlists to an intermediary representation to make comparisons easier
   // and prevent us from re-determining bandwidth each time
   let sortedPlaylistReps = sortedPlaylists.map((playlist) => {
@@ -152,12 +155,14 @@ const simpleSelector = function(master,
     }
 
     return {
-      bandwidth: getBandwidth(playlist, useAverageBandwidth),
+      bandwidth: getBandwidth(playlist, useAverageBandwidth) || window.Number.MAX_VALUE,
       width: playlistWidth,
       height: playlistHeight,
       playlist
     };
   });
+
+  stableSort(sortedPlaylistReps, (left, right) => left.bandwidth - right.bandwidth);
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
