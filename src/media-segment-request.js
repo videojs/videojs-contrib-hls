@@ -79,13 +79,12 @@ const getProgressStats = (progressEvent) => {
     roundTripTime: roundTripTime || 0
   };
 
-  if (progressEvent.lengthComputable) {
-    stats.bytesReceived = progressEvent.loaded;
-    // This can result in Infinity if stats.roundTripTime is 0 but that is ok
-    // because we should only use bandwidth stats on progress to determine when
-    // abort a request early due to insufficient bandwidth
-    stats.bandwidth = Math.floor((stats.bytesReceived / stats.roundTripTime) * 8 * 1000);
-  }
+  stats.bytesReceived = progressEvent.loaded;
+  // This can result in Infinity if stats.roundTripTime is 0 but that is ok
+  // because we should only use bandwidth stats on progress to determine when
+  // abort a request early due to insufficient bandwidth
+  stats.bandwidth = Math.floor((stats.bytesReceived / stats.roundTripTime) * 8 * 1000);
+
   return stats;
 };
 

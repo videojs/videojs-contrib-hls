@@ -717,6 +717,26 @@ export default class SegmentLoader extends videojs.EventTarget {
     };
   }
 
+  updateHandler_(event, segment) {
+    if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
+      return;
+    }
+
+    const bandwidthAdjustment = Math.min(0.8, segment.stats.roundTripTime / 5000);
+
+    // TODO: Replace timeout with a boolean indicating whether this playlist is the lowestEnabledRendition
+    if (this.xhrOptions_.timeout &&
+        segment.stats.roundTripTime > 1000 &&
+        segment.stats.bandwidth < this.playlist_.attributes.BANDWIDTH * bandwidthAdjustment) {
+      this.bandwidth = segment.stats.bandwidth;
+      this.trigger('bandwidthupdate');
+      this.abort();
+      return;
+    }
+
+    this.trigger('progress');
+  }
+
   /**
    * load a specific segment from a request into the buffer
    *
@@ -732,14 +752,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.decrypter_,
       this.createSimplifiedSegmentObj_(segmentInfo),
       // progress callback
-      (event, segment) => {
-        if (!this.pendingSegment_ ||
-            segment.requestId !== this.pendingSegment_.requestId) {
-          return;
-        }
-        // TODO: Use progress-based bandwidth to early abort low-bandwidth situations
-        this.trigger('progress');
-      },
+      this.updateHandler_.bind(this),
       this.segmentRequestFinished_.bind(this));
   }
 
