@@ -137,94 +137,101 @@ const simpleSelector = function(master,
                                 height,
                                 useAverageBandwidth = false) {
   let sortedPlaylists = master.playlists.slice();
-  let bandwidthPlaylists = [];
-  let bandwidthBestVariant;
-  let resolutionPlusOne;
-  let resolutionBestVariant;
-  let haveResolution;
-  let resolutionPlusOneList = [];
-  let resolutionPlusOneSmallest = [];
-  let resolutionBestVariantList = [];
 
   stableSort(sortedPlaylists, comparePlaylistBandwidth.bind(null, useAverageBandwidth));
 
+  // convert the playlists to an intermediary representation to make comparisons easier
+  // and prevent us from re-determining bandwidth each time
+  let sortedPlaylistReps = sortedPlaylists.map((playlist) => {
+    let playlistWidth;
+    let playlistHeight;
+
+    if (playlist.attributes && playlist.attributes.RESOLUTION) {
+      playlistWidth = playlist.attributes.RESOLUTION.width;
+      playlistHeight = playlist.attributes.RESOLUTION.height;
+    }
+
+    return {
+      bandwidth: getBandwidth(playlist, useAverageBandwidth),
+      width: playlistWidth,
+      height: playlistHeight,
+      playlist
+    };
+  });
+
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
-  sortedPlaylists = sortedPlaylists.filter(Playlist.isEnabled);
+  sortedPlaylistReps = sortedPlaylistReps.filter(
+    (rep) => Playlist.isEnabled(rep.playlist));
+
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
-  bandwidthPlaylists = sortedPlaylists.filter(function(elem) {
-    const elemBandwidth = getBandwidth(elem, useAverageBandwidth);
+  let bandwidthPlaylistReps = sortedPlaylistReps.filter(
+    (rep) => rep.bandwidth && rep.bandwidth * Config.BANDWIDTH_VARIANCE < bandwidth
+  );
 
-    return elemBandwidth && elemBandwidth * Config.BANDWIDTH_VARIANCE < bandwidth;
-  });
+  let highestRemainingBandwidthRep =
+    bandwidthPlaylistReps[bandwidthPlaylistReps.length - 1];
 
   // get all of the renditions with the same (highest) bandwidth
   // and then taking the very first element
-  bandwidthBestVariant = bandwidthPlaylists.filter(function(elem) {
-    const elemBandwidth = getBandwidth(elem, useAverageBandwidth);
-    const lastElemBandwidth = getBandwidth(
-      bandwidthPlaylists[bandwidthPlaylists.length - 1], useAverageBandwidth);
-
-    return elemBandwidth === lastElemBandwidth;
-  })[0];
+  let bandwidthBestRep = bandwidthPlaylistReps.filter(
+    (rep) => rep.bandwidth === highestRemainingBandwidthRep.bandwidth
+  )[0];
 
   // sort variants by resolution
-  stableSort(bandwidthPlaylists,
-             comparePlaylistResolution.bind(null, useAverageBandwidth));
+  stableSort(bandwidthPlaylistReps, (left, right) => {
+    const leftWidth = left.width || window.Number.MAX_VALUE;
+    const rightWidth = right.width || window.Number.MAX_VALUE;
+
+    return leftWidth - rightWidth;
+  });
 
   // filter out playlists without resolution information
-  haveResolution = bandwidthPlaylists.filter(function(elem) {
-    return elem.attributes &&
-           elem.attributes.RESOLUTION &&
-           elem.attributes.RESOLUTION.width &&
-           elem.attributes.RESOLUTION.height;
-  });
+  let haveResolution = bandwidthPlaylistReps.filter((rep) => rep.width && rep.height);
 
   // if we have the exact resolution as the player use it
-  resolutionBestVariantList = haveResolution.filter(function(elem) {
-    return elem.attributes.RESOLUTION.width === width &&
-           elem.attributes.RESOLUTION.height === height;
-  });
-  // ensure that we pick the highest bandwidth variant that have exact resolution
-  resolutionBestVariant = resolutionBestVariantList.filter(function(elem) {
-    const elemBandwidth = getBandwidth(elem, useAverageBandwidth);
-    const lastResolutionBestBandwidth = getBandwidth(
-      resolutionBestVariantList[resolutionBestVariantList.length - 1],
-      useAverageBandwidth);
+  let resolutionBestRepList =
+    haveResolution.filter((rep) => rep.width === width && rep.height === height);
 
-    return elemBandwidth === lastResolutionBestBandwidth;
-  })[0];
+  highestRemainingBandwidthRep = resolutionBestRepList[resolutionBestRepList.length - 1];
+  // ensure that we pick the highest bandwidth variant that have exact resolution
+  let resolutionBestRep = resolutionBestRepList.filter(
+    (rep) => rep.bandwidth === highestRemainingBandwidthRep.bandwidth
+  )[0];
+
+  let resolutionPlusOneList;
+  let resolutionPlusOneSmallest;
+  let resolutionPlusOneRep;
 
   // find the smallest variant that is larger than the player
   // if there is no match of exact resolution
-  if (!resolutionBestVariant) {
-    resolutionPlusOneList = haveResolution.filter(function(elem) {
-      return elem.attributes.RESOLUTION.width > width ||
-             elem.attributes.RESOLUTION.height > height;
-    });
+  if (!resolutionBestRep) {
+    resolutionPlusOneList =
+      haveResolution.filter((rep) => rep.width > width || rep.height > height);
+
     // find all the variants have the same smallest resolution
-    resolutionPlusOneSmallest = resolutionPlusOneList.filter(function(elem) {
-      return elem.attributes.RESOLUTION.width === resolutionPlusOneList[0].attributes.RESOLUTION.width &&
-             elem.attributes.RESOLUTION.height === resolutionPlusOneList[0].attributes.RESOLUTION.height;
-    });
+    resolutionPlusOneSmallest = resolutionPlusOneList.filter(
+      (rep) => rep.width === resolutionPlusOneList[0].width &&
+               rep.height === resolutionPlusOneList[0].height
+    );
+
     // ensure that we also pick the highest bandwidth variant that
     // is just-larger-than the video player
-    resolutionPlusOne = resolutionPlusOneSmallest.filter(function(elem) {
-      const elemBandwidth = getBandwidth(elem, useAverageBandwidth);
-      const lastResolutionPlusOneSmallestBandwidth = getBandwidth(
-        resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1],
-        useAverageBandwidth);
-
-      return elemBandwidth === lastResolutionPlusOneSmallestBandwidth;
-    })[0];
+    highestRemainingBandwidthRep =
+      resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1];
+    resolutionPlusOneRep = resolutionPlusOneSmallest.filter(
+      (rep) => rep.bandwidth === highestRemainingBandwidthRep.bandwidth
+    )[0];
   }
 
   // fallback chain of variants
-  return resolutionPlusOne ||
-    resolutionBestVariant ||
-    bandwidthBestVariant ||
-    sortedPlaylists[0];
+  return (
+    resolutionPlusOneRep ||
+    resolutionBestRep ||
+    bandwidthBestRep ||
+    sortedPlaylistReps[0]
+  ).playlist;
 };
 
 // Playlist Selectors
