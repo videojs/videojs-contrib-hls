@@ -1160,7 +1160,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   media = this.player.tech_.hls.playlists.master.playlists[url];
 
   // the first media was unblacklisted after a refresh delay
-  assert.ok(!media.excludeUntil, 'excludeUntil was deleted after cleared the blacklist duration for the first media');
+  assert.ok(!media.excludeUntil, 'removed first media from blacklist');
   assert.strictEqual(this.requests[3].url,
                      absoluteUrl('manifest/media.m3u8'),
                      'media playlist requested');
