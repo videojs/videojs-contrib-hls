@@ -609,6 +609,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
       const forwardBuffer = buffered.length ?
         buffered.end(buffered.length - 1) - this.tech_.currentTime() : 0;
 
+      const currentTime = this.tech_.currentTime();
+      const initial = Config.BUFFER_LOW_WATER_LINE;
+      const rate = Config.BUFFER_LOW_WATER_RATE;
+      const max = Config.MAX_BUFFER_LOW_WATER_LINE;
+      const dynamicBLWL = Math.min(initial + currentTime * rate, Math.max(initial, max));
+
       // we want to switch down to lower resolutions quickly to continue playback, but
       // ensure we have some buffer before we switch up to prevent us running out of
       // buffer while loading a higher rendition
@@ -619,9 +625,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // For the same reason as LIVE, we ignore the low waterline when the VOD duration
       // is below the waterline
       if (!currentPlaylist.endList ||
-          this.duration() < Config.BUFFER_LOW_WATER_LINE ||
+          this.duration() < dynamicBLWL ||
           nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH ||
-          forwardBuffer >= Config.BUFFER_LOW_WATER_LINE) {
+          forwardBuffer >= dynamicBLWL) {
         this.masterPlaylistLoader_.media(nextPlaylist);
       }
 

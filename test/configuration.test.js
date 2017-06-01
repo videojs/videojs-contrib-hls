@@ -72,12 +72,12 @@ QUnit.test('GOAL_BUFFER_LENGTH set warning and invalid', function(assert) {
   Hls.GOAL_BUFFER_LENGTH = 'nope';
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.GOAL_BUFFER_LENGTH, 60, 'default');
+  assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
 
   Hls.GOAL_BUFFER_LENGTH = 0;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.GOAL_BUFFER_LENGTH, 60, 'default');
+  assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
 });
 
 QUnit.test('BUFFER_LOW_WATER_LINE get warning', function(assert) {
@@ -104,18 +104,18 @@ QUnit.test('BUFFER_LOW_WATER_LINE set warning and invalid', function(assert) {
   Hls.BUFFER_LOW_WATER_LINE = 'nope';
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.BUFFER_LOW_WATER_LINE, 30, 'default');
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
 
   Hls.BUFFER_LOW_WATER_LINE = -1;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.BUFFER_LOW_WATER_LINE, 30, 'default');
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
 
   // does not allow setting above goal buffer length
   Hls.BUFFER_LOW_WATER_LINE = 65;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.BUFFER_LOW_WATER_LINE, 30, 'default');
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
 });
 
 QUnit.module('Configuration - Options', {

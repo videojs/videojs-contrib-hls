@@ -111,7 +111,11 @@ exports['default'] = {
   findAdCue: findAdCue
 };
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{"global/window":29}],2:[function(require,module,exports){
+=======
+},{"global/window":28}],2:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * @file bin-utils.js
  */
@@ -237,11 +241,16 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = {
   GOAL_BUFFER_LENGTH: 30,
   MAX_GOAL_BUFFER_LENGTH: 60,
+<<<<<<< HEAD
   GOAL_BUFFER_LENGTH_RATE: 1,
+=======
+  GOAL_BUFFER_RATE: 1,
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
   // A fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
   BANDWIDTH_VARIANCE: 1.2,
   // How much of the buffer must be filled before we consider upswitching
+<<<<<<< HEAD
 <<<<<<< HEAD
   BUFFER_LOW_WATER_LINE: 0,
   MAX_BUFFER_LOW_WATER_LINE: 30,
@@ -249,6 +258,11 @@ exports["default"] = {
 =======
   BUFFER_LOW_WATER_LINE: 30
 >>>>>>> use goal buffer length of 60, low water line of 30
+=======
+  BUFFER_LOW_WATER_LINE: 0,
+  MAX_BUFFER_LOW_WATER_LINE: 30,
+  BUFFER_LOW_WATER_RATE: 1
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 };
 module.exports = exports["default"];
 },{}],4:[function(require,module,exports){
@@ -299,7 +313,11 @@ exports['default'] = function (self) {
 };
 
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{"./bin-utils":2,"aes-decrypter":23,"global/window":29}],5:[function(require,module,exports){
+=======
+},{"./bin-utils":2,"aes-decrypter":24,"global/window":28}],5:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file master-playlist-controller.js
@@ -916,6 +934,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         var forwardBuffer = buffered.length ? buffered.end(buffered.length - 1) - _this3.tech_.currentTime() : 0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         var bufferLowWaterLine = _this3.bufferLowWaterLine();
 
         // If the playlist is live, then we want to not take low water line into account.
@@ -932,6 +951,14 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         // buffer while loading a higher rendition.
         forwardBuffer >= bufferLowWaterLine) {
 =======
+=======
+        var currentTime = _this3.tech_.currentTime();
+        var initial = _config2['default'].BUFFER_LOW_WATER_LINE;
+        var rate = _config2['default'].BUFFER_LOW_WATER_RATE;
+        var max = _config2['default'].MAX_BUFFER_LOW_WATER_LINE;
+        var dynamicBLWL = Math.min(initial + currentTime * rate, Math.max(initial, max));
+
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
         // we want to switch down to lower resolutions quickly to continue playback, but
         // ensure we have some buffer before we switch up to prevent us running out of
         // buffer while loading a higher rendition
@@ -950,8 +977,12 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         // in those segments, a viewer will never experience a rendition upswitch.
         // For the same reason as LIVE, we ignore the low waterline when the VOD duration
         // is below the waterline
+<<<<<<< HEAD
         if (!currentPlaylist.endList || _this3.duration() < _config2['default'].BUFFER_LOW_WATER_LINE || nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH || forwardBuffer >= _config2['default'].BUFFER_LOW_WATER_LINE) {
 >>>>>>> ignore waterline when vod duration is less than waterline
+=======
+        if (!currentPlaylist.endList || _this3.duration() < dynamicBLWL || nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH || forwardBuffer >= dynamicBLWL) {
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
           _this3.masterPlaylistLoader_.media(nextPlaylist);
         }
 
@@ -2919,7 +2950,11 @@ var PlaybackWatcher = (function () {
 exports['default'] = PlaybackWatcher;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./ranges":11,"global/window":29}],8:[function(require,module,exports){
+=======
+},{"./ranges":11,"global/window":28}],8:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file playlist-loader.js
@@ -3496,7 +3531,11 @@ PlaylistLoader.prototype = new _videoJs.EventTarget();
 exports['default'] = PlaylistLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./playlist.js":10,"./resolve-url":14,"global/window":29,"m3u8-parser":30}],9:[function(require,module,exports){
+=======
+},{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":28,"m3u8-parser":29}],9:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -4336,7 +4375,11 @@ Playlist.estimateSegmentRequestTime = estimateSegmentRequestTime;
 // exports
 exports['default'] = Playlist;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"global/window":29}],11:[function(require,module,exports){
+=======
+},{"global/window":28}],11:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * ranges
@@ -4987,7 +5030,11 @@ var resolveUrl = function resolveUrl(baseURL, relativeURL) {
 
 exports['default'] = resolveUrl;
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{"global/window":29,"url-toolkit":60}],15:[function(require,module,exports){
+=======
+},{"global/window":28,"url-toolkit":62}],15:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file segment-loader.js
@@ -5649,6 +5696,10 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     value: function checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
       var lastBufferedEnd = 0;
       var startOfSegment = undefined;
+      var initial = _config2['default'].GOAL_BUFFER_LENGTH;
+      var rate = _config2['default'].GOAL_BUFFER_RATE;
+      var max = _config2['default'].MAX_GOAL_BUFFER_LENGTH;
+      var dynamicGBL = Math.min(initial + currentTime * rate, Math.max(initial, max));
 
       if (buffered.length) {
         lastBufferedEnd = buffered.end(buffered.length - 1);
@@ -5662,7 +5713,11 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 
       // if there is plenty of content buffered, and the video has
       // been played before relax for awhile
+<<<<<<< HEAD
       if (bufferedTime >= this.goalBufferLength_()) {
+=======
+      if (bufferedTime >= dynamicGBL) {
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
         return null;
       }
 
@@ -6295,7 +6350,11 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 exports['default'] = SegmentLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./playlist-selectors":9,"./ranges":11,"./source-updater":16,"global/window":29,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":70}],16:[function(require,module,exports){
+=======
+},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file source-updater.js
@@ -7103,7 +7162,11 @@ var SyncController = (function (_videojs$EventTarget) {
 
 exports['default'] = SyncController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./playlist":10,"mux.js/lib/mp4/probe":54,"mux.js/lib/tools/ts-inspector.js":56}],18:[function(require,module,exports){
+=======
+},{"./playlist":10,"mux.js/lib/mp4/probe":53,"mux.js/lib/tools/ts-inspector.js":55}],19:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file vtt-segment-loader.js
@@ -7554,7 +7617,11 @@ var VTTSegmentLoader = (function (_SegmentLoader) {
 exports['default'] = VTTSegmentLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./bin-utils":2,"./segment-loader":15,"global/window":29,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":70}],19:[function(require,module,exports){
+=======
+},{"./bin-utils":2,"./segment-loader":15,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file xhr.js
@@ -8154,7 +8221,11 @@ exports['default'] = {
   Decrypter: Decrypter,
   decrypt: decrypt
 };
+<<<<<<< HEAD
 },{"./aes":20,"./async-stream":21,"pkcs7":26}],23:[function(require,module,exports){
+=======
+},{"./aes":21,"./async-stream":22,"pkcs7":60}],24:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * @file index.js
  *
@@ -8185,6 +8256,7 @@ exports['default'] = {
   AsyncStream: _asyncStream2['default']
 };
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{"./async-stream":21,"./decrypter":22}],24:[function(require,module,exports){
 /**
  * @file stream.js
@@ -8438,6 +8510,13 @@ module.exports = function unpad(padded) {
 };
 
 },{}],28:[function(require,module,exports){
+=======
+},{"./async-stream":22,"./decrypter":23}],25:[function(require,module,exports){
+arguments[4][17][0].apply(exports,arguments)
+},{"dup":17}],26:[function(require,module,exports){
+
+},{}],27:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 var topLevel = typeof global !== 'undefined' ? global :
     typeof window !== 'undefined' ? window : {}
@@ -8458,7 +8537,11 @@ if (typeof document !== 'undefined') {
 module.exports = doccy;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"min-document":74}],29:[function(require,module,exports){
+=======
+},{"min-document":26}],28:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 var win;
 
@@ -8475,7 +8558,11 @@ if (typeof window !== "undefined") {
 module.exports = win;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{}],30:[function(require,module,exports){
+=======
+},{}],29:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 var _lineStream = require('./line-stream');
@@ -8505,7 +8592,11 @@ module.exports = {
     * that do not assume the entirety of the manifest is ready and expose a
     * ReadableStream-like interface.
     */
+<<<<<<< HEAD
 },{"./line-stream":31,"./parse-stream":32,"./parser":33}],31:[function(require,module,exports){
+=======
+},{"./line-stream":30,"./parse-stream":31,"./parser":32}],30:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8574,7 +8665,11 @@ var LineStream = function (_Stream) {
 }(_stream2['default']);
 
 exports['default'] = LineStream;
+<<<<<<< HEAD
 },{"./stream":34}],32:[function(require,module,exports){
+=======
+},{"./stream":33}],31:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9027,7 +9122,11 @@ var ParseStream = function (_Stream) {
 }(_stream2['default']);
 
 exports['default'] = ParseStream;
+<<<<<<< HEAD
 },{"./stream":34}],33:[function(require,module,exports){
+=======
+},{"./stream":33}],32:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9418,7 +9517,11 @@ var Parser = function (_Stream) {
 }(_stream2['default']);
 
 exports['default'] = Parser;
+<<<<<<< HEAD
 },{"./line-stream":31,"./parse-stream":32,"./stream":34}],34:[function(require,module,exports){
+=======
+},{"./line-stream":30,"./parse-stream":31,"./stream":33}],33:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9551,7 +9654,11 @@ var Stream = function () {
 }();
 
 exports['default'] = Stream;
+<<<<<<< HEAD
 },{}],35:[function(require,module,exports){
+=======
+},{}],34:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -9696,7 +9803,11 @@ AacStream.prototype = new Stream();
 
 module.exports = AacStream;
 
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],36:[function(require,module,exports){
+=======
+},{"../utils/stream.js":58}],35:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -9859,7 +9970,11 @@ module.exports = {
   parseAacTimestamp: parseAacTimestamp
 };
 
+<<<<<<< HEAD
 },{}],37:[function(require,module,exports){
+=======
+},{}],36:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -9993,7 +10108,11 @@ AdtsStream.prototype = new Stream();
 
 module.exports = AdtsStream;
 
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],38:[function(require,module,exports){
+=======
+},{"../utils/stream.js":58}],37:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -10413,7 +10532,11 @@ module.exports = {
   NalByteStream: NalByteStream
 };
 
+<<<<<<< HEAD
 },{"../utils/exp-golomb.js":58,"../utils/stream.js":59}],39:[function(require,module,exports){
+=======
+},{"../utils/exp-golomb.js":57,"../utils/stream.js":58}],38:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 var highPrefix = [33, 16, 5, 32, 164, 27];
 var lowPrefix = [33, 65, 108, 84, 1, 2, 4, 8, 168, 2, 4, 8, 17, 191, 252];
 var zeroFill = function(count) {
@@ -10450,7 +10573,11 @@ var coneOfSilence = {
 
 module.exports = makeTable(coneOfSilence);
 
+<<<<<<< HEAD
 },{}],40:[function(require,module,exports){
+=======
+},{}],39:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -10595,7 +10722,11 @@ CoalesceStream.prototype.flush = function(flushSource) {
 
 module.exports = CoalesceStream;
 
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],41:[function(require,module,exports){
+=======
+},{"../utils/stream.js":58}],40:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 var FlvTag = require('./flv-tag.js');
@@ -10657,7 +10788,11 @@ var getFlvHeader = function(duration, audio, video) { // :ByteArray {
 
 module.exports = getFlvHeader;
 
+<<<<<<< HEAD
 },{"./flv-tag.js":42}],42:[function(require,module,exports){
+=======
+},{"./flv-tag.js":41}],41:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * An object that stores the bytes of an FLV tag and methods for
  * querying and manipulating that data.
@@ -11031,14 +11166,22 @@ FlvTag.frameTime = function(tag) {
 
 module.exports = FlvTag;
 
+<<<<<<< HEAD
 },{}],43:[function(require,module,exports){
+=======
+},{}],42:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 module.exports = {
   tag: require('./flv-tag'),
   Transmuxer: require('./transmuxer'),
   getFlvHeader: require('./flv-header')
 };
 
+<<<<<<< HEAD
 },{"./flv-header":41,"./flv-tag":42,"./transmuxer":45}],44:[function(require,module,exports){
+=======
+},{"./flv-header":40,"./flv-tag":41,"./transmuxer":44}],43:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 var TagList = function() {
@@ -11065,7 +11208,11 @@ var TagList = function() {
 
 module.exports = TagList;
 
+<<<<<<< HEAD
 },{}],45:[function(require,module,exports){
+=======
+},{}],44:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -11483,7 +11630,11 @@ Transmuxer.prototype = new Stream();
 // forward compatibility
 module.exports = Transmuxer;
 
+<<<<<<< HEAD
 },{"../codecs/adts.js":37,"../codecs/h264":38,"../m2ts/m2ts.js":47,"../utils/stream.js":59,"./coalesce-stream.js":40,"./flv-tag.js":42,"./tag-list.js":44}],46:[function(require,module,exports){
+=======
+},{"../codecs/adts.js":36,"../codecs/h264":37,"../m2ts/m2ts.js":46,"../utils/stream.js":58,"./coalesce-stream.js":39,"./flv-tag.js":41,"./tag-list.js":43}],45:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -11949,7 +12100,11 @@ module.exports = {
   Cea608Stream: Cea608Stream
 };
 
+<<<<<<< HEAD
 },{"../utils/stream":59}],47:[function(require,module,exports){
+=======
+},{"../utils/stream":58}],46:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -12428,7 +12583,11 @@ for (var type in StreamTypes) {
 
 module.exports = m2ts;
 
+<<<<<<< HEAD
 },{"../utils/stream.js":59,"./caption-stream":46,"./metadata-stream":48,"./stream-types":50,"./stream-types.js":50,"./timestamp-rollover-stream":51}],48:[function(require,module,exports){
+=======
+},{"../utils/stream.js":58,"./caption-stream":45,"./metadata-stream":47,"./stream-types":49,"./stream-types.js":49,"./timestamp-rollover-stream":50}],47:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * Accepts program elementary stream (PES) data events and parses out
  * ID3 metadata from them, if present.
@@ -12678,7 +12837,11 @@ MetadataStream.prototype = new Stream();
 
 module.exports = MetadataStream;
 
+<<<<<<< HEAD
 },{"../utils/stream":59,"./stream-types":50}],49:[function(require,module,exports){
+=======
+},{"../utils/stream":58,"./stream-types":49}],48:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -12967,7 +13130,11 @@ module.exports = {
   videoPacketContainsKeyFrame: videoPacketContainsKeyFrame
 };
 
+<<<<<<< HEAD
 },{"./stream-types.js":50}],50:[function(require,module,exports){
+=======
+},{"./stream-types.js":49}],49:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 module.exports = {
@@ -12976,7 +13143,11 @@ module.exports = {
   METADATA_STREAM_TYPE: 0x15
 };
 
+<<<<<<< HEAD
 },{}],51:[function(require,module,exports){
+=======
+},{}],50:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -13062,7 +13233,11 @@ module.exports = {
   handleRollover: handleRollover
 };
 
+<<<<<<< HEAD
 },{"../utils/stream":59}],52:[function(require,module,exports){
+=======
+},{"../utils/stream":58}],51:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 module.exports = {
   generator: require('./mp4-generator'),
   Transmuxer: require('./transmuxer').Transmuxer,
@@ -13070,7 +13245,11 @@ module.exports = {
   VideoSegmentStream: require('./transmuxer').VideoSegmentStream
 };
 
+<<<<<<< HEAD
 },{"./mp4-generator":53,"./transmuxer":55}],53:[function(require,module,exports){
+=======
+},{"./mp4-generator":52,"./transmuxer":54}],52:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -13842,7 +14021,11 @@ module.exports = {
   }
 };
 
+<<<<<<< HEAD
 },{}],54:[function(require,module,exports){
+=======
+},{}],53:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -14032,7 +14215,11 @@ module.exports = {
   startTime: startTime
 };
 
+<<<<<<< HEAD
 },{}],55:[function(require,module,exports){
+=======
+},{}],54:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -15292,7 +15479,11 @@ module.exports = {
   VIDEO_PROPERTIES: VIDEO_PROPERTIES
 };
 
+<<<<<<< HEAD
 },{"../aac":35,"../codecs/adts.js":37,"../codecs/h264":38,"../data/silence":39,"../m2ts/m2ts.js":47,"../utils/clock":57,"../utils/stream.js":59,"./mp4-generator.js":53}],56:[function(require,module,exports){
+=======
+},{"../aac":34,"../codecs/adts.js":36,"../codecs/h264":37,"../data/silence":38,"../m2ts/m2ts.js":46,"../utils/clock":56,"../utils/stream.js":58,"./mp4-generator.js":52}],55:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -15806,7 +15997,11 @@ module.exports = {
   inspect: inspect
 };
 
+<<<<<<< HEAD
 },{"../aac/probe.js":36,"../m2ts/probe.js":49,"../m2ts/stream-types.js":50,"../m2ts/timestamp-rollover-stream.js":51}],57:[function(require,module,exports){
+=======
+},{"../aac/probe.js":35,"../m2ts/probe.js":48,"../m2ts/stream-types.js":49,"../m2ts/timestamp-rollover-stream.js":50}],56:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 var
   ONE_SECOND_IN_TS = 90000, // 90kHz clock
   secondsToVideoTs,
@@ -15849,7 +16044,11 @@ module.exports = {
   videoTsToAudioTs: videoTsToAudioTs
 };
 
+<<<<<<< HEAD
 },{}],58:[function(require,module,exports){
+=======
+},{}],57:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 'use strict';
 
 var ExpGolomb;
@@ -15998,7 +16197,11 @@ ExpGolomb = function(workingData) {
 
 module.exports = ExpGolomb;
 
+<<<<<<< HEAD
 },{}],59:[function(require,module,exports){
+=======
+},{}],58:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * mux.js
  *
@@ -16117,7 +16320,132 @@ Stream.prototype.flush = function(flushSource) {
 
 module.exports = Stream;
 
+<<<<<<< HEAD
 },{}],60:[function(require,module,exports){
+=======
+},{}],59:[function(require,module,exports){
+/*
+ * pkcs7.pad
+ * https://github.com/brightcove/pkcs7
+ *
+ * Copyright (c) 2014 Brightcove
+ * Licensed under the apache2 license.
+ */
+
+'use strict';
+
+var PADDING;
+
+/**
+ * Returns a new Uint8Array that is padded with PKCS#7 padding.
+ * @param plaintext {Uint8Array} the input bytes before encryption
+ * @return {Uint8Array} the padded bytes
+ * @see http://tools.ietf.org/html/rfc5652
+ */
+module.exports = function pad(plaintext) {
+  var padding = PADDING[(plaintext.byteLength % 16) || 0],
+      result = new Uint8Array(plaintext.byteLength + padding.length);
+  result.set(plaintext);
+  result.set(padding, plaintext.byteLength);
+  return result;
+};
+
+// pre-define the padding values
+PADDING = [
+  [16, 16, 16, 16,
+   16, 16, 16, 16,
+   16, 16, 16, 16,
+   16, 16, 16, 16],
+
+  [15, 15, 15, 15,
+   15, 15, 15, 15,
+   15, 15, 15, 15,
+   15, 15, 15],
+
+  [14, 14, 14, 14,
+   14, 14, 14, 14,
+   14, 14, 14, 14,
+   14, 14],
+
+  [13, 13, 13, 13,
+   13, 13, 13, 13,
+   13, 13, 13, 13,
+   13],
+
+  [12, 12, 12, 12,
+   12, 12, 12, 12,
+   12, 12, 12, 12],
+
+  [11, 11, 11, 11,
+   11, 11, 11, 11,
+   11, 11, 11],
+
+  [10, 10, 10, 10,
+   10, 10, 10, 10,
+   10, 10],
+
+  [9, 9, 9, 9,
+   9, 9, 9, 9,
+   9],
+
+  [8, 8, 8, 8,
+   8, 8, 8, 8],
+
+  [7, 7, 7, 7,
+   7, 7, 7],
+
+  [6, 6, 6, 6,
+   6, 6],
+
+  [5, 5, 5, 5,
+   5],
+
+  [4, 4, 4, 4],
+
+  [3, 3, 3],
+
+  [2, 2],
+
+  [1]
+];
+
+},{}],60:[function(require,module,exports){
+/*
+ * pkcs7
+ * https://github.com/brightcove/pkcs7
+ *
+ * Copyright (c) 2014 Brightcove
+ * Licensed under the apache2 license.
+ */
+
+'use strict';
+
+exports.pad = require('./pad.js');
+exports.unpad = require('./unpad.js');
+
+},{"./pad.js":59,"./unpad.js":61}],61:[function(require,module,exports){
+/*
+ * pkcs7.unpad
+ * https://github.com/brightcove/pkcs7
+ *
+ * Copyright (c) 2014 Brightcove
+ * Licensed under the apache2 license.
+ */
+
+'use strict';
+
+/**
+ * Returns the subarray of a Uint8Array without PKCS#7 padding.
+ * @param padded {Uint8Array} unencrypted bytes that have been padded
+ * @return {Uint8Array} the unpadded bytes
+ * @see http://tools.ietf.org/html/rfc5652
+ */
+module.exports = function unpad(padded) {
+  return padded.subarray(0, padded.byteLength - padded[padded.byteLength - 1]);
+};
+
+},{}],62:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /* jshint ignore:start */
 (function(root) { 
 /* jshint ignore:end */
@@ -16371,7 +16699,11 @@ exports['default'] = {
 };
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"global/window":29}],62:[function(require,module,exports){
+=======
+},{"global/window":28}],64:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * Remove the text track from the player if one with matching kind and
  * label properties already exists on the player
@@ -16786,7 +17118,11 @@ for (var property in _flashConstants2['default']) {
 }
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./cleanup-text-tracks":62,"./codec-utils":63,"./flash-constants":65,"./flash-source-buffer":67,"global/document":28}],67:[function(require,module,exports){
+=======
+},{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":27}],69:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file flash-source-buffer.js
@@ -17388,7 +17724,11 @@ var FlashSourceBuffer = (function (_videojs$EventTarget) {
 exports['default'] = FlashSourceBuffer;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./create-text-tracks-if-necessary":64,"./flash-constants":65,"./flash-transmuxer-worker":68,"./remove-cues-from-track":70,"global/window":29,"mux.js/lib/flv":43,"webworkify":75}],68:[function(require,module,exports){
+=======
+},{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":28,"mux.js/lib/flv":42,"webworkify":76}],70:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * @file flash-transmuxer-worker.js
  */
@@ -17533,7 +17873,11 @@ exports['default'] = function (self) {
 };
 
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{"global/window":29,"mux.js/lib/flv":43}],69:[function(require,module,exports){
+=======
+},{"global/window":28,"mux.js/lib/flv":42}],71:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file html-media-source.js
@@ -17873,7 +18217,11 @@ var HtmlMediaSource = (function (_videojs$EventTarget) {
 exports['default'] = HtmlMediaSource;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./cleanup-text-tracks":62,"./codec-utils":63,"./virtual-source-buffer":73,"global/document":28,"global/window":29}],70:[function(require,module,exports){
+=======
+},{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":27,"global/window":28}],72:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 /**
  * @file remove-cues-from-track.js
  */
@@ -18121,7 +18469,11 @@ exports['default'] = function (self) {
 };
 
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{"global/window":29,"mux.js/lib/mp4":52}],72:[function(require,module,exports){
+=======
+},{"global/window":28,"mux.js/lib/mp4":51}],74:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file videojs-contrib-media-sources.js
@@ -18280,7 +18632,11 @@ exports.URL = URL;
 _videoJs2['default'].MediaSource = MediaSource;
 _videoJs2['default'].URL = URL;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./flash-media-source":66,"./html-media-source":69,"global/window":29}],73:[function(require,module,exports){
+=======
+},{"./flash-media-source":68,"./html-media-source":71,"global/window":28}],75:[function(require,module,exports){
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 (function (global){
 /**
  * @file virtual-source-buffer.js
@@ -19090,8 +19446,41 @@ var Hls = {
         return;
       }
 
+<<<<<<< HEAD
       _config2['default'][prop] = value;
 =======
+=======
+Object.defineProperty(Hls, 'MAX_GOAL_BUFFER_LENGTH', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.MAX_GOAL_BUFFER_LENGTH is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].MAX_GOAL_BUFFER_LENGTH;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.MAX_GOAL_BUFFER_LENGTH is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      _videoJs2['default'].log.warn('value passed to Hls.MAX_GOAL_BUFFER_LENGTH ' + 'must be a number and greater than 0');
+      return;
+    }
+    _config2['default'].MAX_GOAL_BUFFER_LENGTH = v;
+  }
+});
+
+Object.defineProperty(Hls, 'GOAL_BUFFER_RATE', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.GOAL_BUFFER_RATE is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].GOAL_BUFFER_RATE;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.GOAL_BUFFER_RATE is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      _videoJs2['default'].log.warn('value passed to Hls.GOAL_BUFFER_RATE ' + 'must be a number and greater than 0');
+      return;
+    }
+    _config2['default'].GOAL_BUFFER_RATE = v;
+  }
+});
+
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 Object.defineProperty(Hls, 'BUFFER_LOW_WATER_LINE', {
   get: function get() {
     _videoJs2['default'].log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' + 'you know what you are doing');
@@ -19104,6 +19493,36 @@ Object.defineProperty(Hls, 'BUFFER_LOW_WATER_LINE', {
       return;
     }
     _config2['default'].BUFFER_LOW_WATER_LINE = v;
+  }
+});
+
+Object.defineProperty(Hls, 'MAX_BUFFER_LOW_WATER_LINE', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.MAX_BUFFER_LOW_WATER_LINE is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].MAX_BUFFER_LOW_WATER_LINE;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.MAX_BUFFER_LOW_WATER_LINE is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v < 0 || v > _config2['default'].GOAL_BUFFER_LENGTH) {
+      _videoJs2['default'].log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' + 'must be a number and greater than or equal to 0 and less than' + 'Hls.GOAL_BUFFER_LENGTH');
+      return;
+    }
+    _config2['default'].BUFFER_LOW_WATER_LINE = v;
+  }
+});
+
+Object.defineProperty(Hls, 'BUFFER_LOW_WATER_RATE', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.BUFFER_LOW_WATER_RATE is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].BUFFER_LOW_WATER_RATE;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.BUFFER_LOW_WATER_RATE is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      _videoJs2['default'].log.warn('value passed to Hls.BUFFER_LOW_WATER_RATE ' + 'must be a number and greater than 0');
+      return;
+    }
+    _config2['default'].BUFFER_LOW_WATER_RATE = v;
   }
 });
 
@@ -19747,4 +20166,8 @@ module.exports = {
   HlsSourceHandler: HlsSourceHandler
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":19,"aes-decrypter":23,"global/document":28,"global/window":29,"m3u8-parser":30,"videojs-contrib-media-sources":72}]},{},[76]);
+=======
+},{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":27,"global/window":28,"m3u8-parser":29,"videojs-contrib-media-sources":74}]},{},[77]);
+>>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH

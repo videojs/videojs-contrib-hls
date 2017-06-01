@@ -968,7 +968,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
       let segmentInfo;
 
       buffered = videojs.createTimeRanges([
-        [0, 15 + Config.GOAL_BUFFER_LENGTH]
+        [0, 30 + Config.GOAL_BUFFER_LENGTH]
       ]);
       segmentInfo = loader.checkBuffer_(buffered,
                                         playlistWithDuration(30),
