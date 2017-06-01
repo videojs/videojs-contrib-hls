@@ -717,17 +717,20 @@ export default class SegmentLoader extends videojs.EventTarget {
     };
   }
 
-  updateHandler_(event, segment) {
+  handleProgress_(event, segment) {
     if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
       return;
     }
 
-    const bandwidthAdjustment = Math.min(0.8, segment.stats.roundTripTime / 5000);
+    // the amount of time since the first byte of data was received
+    const firstByteReceived = Date.now() - segment.stats.firstByteReceived;
+    const adjustedBandwidth = segment.stats.bandwidth * Config.BANDWIDTH_VARIANCE;
 
-    // TODO: Replace timeout with a boolean indicating whether this playlist is the lowestEnabledRendition
+    // TODO: Replace timeout with a boolean indicating whether this playlist is the
+    //       lowestEnabledRendition
     if (this.xhrOptions_.timeout &&
-        segment.stats.roundTripTime > 1000 &&
-        segment.stats.bandwidth < this.playlist_.attributes.BANDWIDTH * bandwidthAdjustment) {
+        firstByteReceived > 1000 &&
+        adjustedBandwidth < this.playlist_.attributes.BANDWIDTH) {
       this.bandwidth = segment.stats.bandwidth;
       this.trigger('bandwidthupdate');
       this.abort();
@@ -752,7 +755,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.decrypter_,
       this.createSimplifiedSegmentObj_(segmentInfo),
       // progress callback
-      this.updateHandler_.bind(this),
+      this.handleProgress_.bind(this),
       this.segmentRequestFinished_.bind(this));
   }
 
