@@ -69,7 +69,6 @@ const runSimulation = function(options, done) {
   }
   simulationParams.duration = simulationParams.segmentCount * simulationParams.segmentDuration;
   simulationParams.durationInMs = simulationParams.duration * 1000;
-  console.log(simulationParams);
 
   Hls.GOAL_BUFFER_LENGTH = options.goalBufferLength;
   Hls.BANDWIDTH_VARIANCE = options.bandwidthVariance;
