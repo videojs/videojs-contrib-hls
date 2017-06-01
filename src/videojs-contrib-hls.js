@@ -58,6 +58,42 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
   }
 });
 
+Object.defineProperty(Hls, 'MAX_GOAL_BUFFER_LENGTH', {
+  get() {
+    videojs.log.warn('using Hls.MAX_GOAL_BUFFER_LENGTH is UNSAFE be sure ' +
+                     'you know what you are doing');
+    return Config.MAX_GOAL_BUFFER_LENGTH;
+  },
+  set(v) {
+    videojs.log.warn('using Hls.MAX_GOAL_BUFFER_LENGTH is UNSAFE be sure ' +
+                     'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      videojs.log.warn('value passed to Hls.MAX_GOAL_BUFFER_LENGTH ' +
+                       'must be a number and greater than 0');
+      return;
+    }
+    Config.MAX_GOAL_BUFFER_LENGTH = v;
+  }
+});
+
+Object.defineProperty(Hls, 'GOAL_BUFFER_RATE', {
+  get() {
+    videojs.log.warn('using Hls.GOAL_BUFFER_RATE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    return Config.GOAL_BUFFER_RATE;
+  },
+  set(v) {
+    videojs.log.warn('using Hls.GOAL_BUFFER_RATE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      videojs.log.warn('value passed to Hls.GOAL_BUFFER_RATE ' +
+                       'must be a number and greater than 0');
+      return;
+    }
+    Config.GOAL_BUFFER_RATE = v;
+  }
+});
+
 Object.defineProperty(Hls, 'BUFFER_LOW_WATER_LINE', {
   get() {
     videojs.log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
@@ -74,6 +110,43 @@ Object.defineProperty(Hls, 'BUFFER_LOW_WATER_LINE', {
       return;
     }
     Config.BUFFER_LOW_WATER_LINE = v;
+  }
+});
+
+Object.defineProperty(Hls, 'MAX_BUFFER_LOW_WATER_LINE', {
+  get() {
+    videojs.log.warn('using Hls.MAX_BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    return Config.MAX_BUFFER_LOW_WATER_LINE;
+  },
+  set(v) {
+    videojs.log.warn('using Hls.MAX_BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    if (typeof v !== 'number' || v < 0 || v > Config.GOAL_BUFFER_LENGTH) {
+      videojs.log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' +
+                       'must be a number and greater than or equal to 0 and less than' +
+                       'Hls.GOAL_BUFFER_LENGTH');
+      return;
+    }
+    Config.BUFFER_LOW_WATER_LINE = v;
+  }
+});
+
+Object.defineProperty(Hls, 'BUFFER_LOW_WATER_RATE', {
+  get() {
+    videojs.log.warn('using Hls.BUFFER_LOW_WATER_RATE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    return Config.BUFFER_LOW_WATER_RATE;
+  },
+  set(v) {
+    videojs.log.warn('using Hls.BUFFER_LOW_WATER_RATE is UNSAFE be sure ' +
+                     'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      videojs.log.warn('value passed to Hls.BUFFER_LOW_WATER_RATE ' +
+                       'must be a number and greater than 0');
+      return;
+    }
+    Config.BUFFER_LOW_WATER_RATE = v;
   }
 });
 
