@@ -99,6 +99,7 @@ QUnit.module('MasterPlaylistController', {
     this.mse.restore();
     videojs.Hls.supportsNativeHls = this.origSupportsNativeHls;
     videojs.browser.IS_FIREFOX = this.oldFirefox;
+    window.localStorage.clear();
     this.player.dispose();
   }
 });

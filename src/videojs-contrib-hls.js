@@ -280,11 +280,28 @@ class HlsHandler extends Component {
       this.options_.blacklistDuration = 5 * 60;
     }
 
-    // start playlist selection at a reasonable bandwidth for
-    // broadband internet
-    // 0.5 MB/s
     if (typeof this.options_.bandwidth !== 'number') {
-      this.options_.bandwidth = 4194304;
+      if (window.localStorage) {
+        let storedBandwidth =
+          window.localStorage.getItem('videojs-contrib-hls-bandwidth');
+        let storedThroughput =
+          window.localStorage.getItem('videojs-contrib-hls-throughput');
+
+        if (storedBandwidth) {
+          this.options_.bandwidth = parseInt(storedBandwidth, 10);
+        }
+
+        if (storedThroughput) {
+          this.options_.throughput = parseInt(storedThroughput, 10);
+        }
+      }
+
+      // start playlist selection at a reasonable bandwidth for
+      // broadband internet
+      // 0.5 MB/s
+      if (typeof this.options_.bandwidth !== 'number') {
+        this.options_.bandwidth = 4194304;
+      }
     }
 
     // grab options passed to player.src
@@ -293,8 +310,6 @@ class HlsHandler extends Component {
         this.options_[option] = this.source_[option];
       }
     });
-
-    this.bandwidth = this.options_.bandwidth;
   }
   /**
    * called when player.src gets called, handle a new source
@@ -402,6 +417,13 @@ class HlsHandler extends Component {
       }
     });
 
+    if (this.options_.bandwidth) {
+      this.bandwidth = this.options_.bandwidth;
+    }
+    if (this.options_.throughput) {
+      this.throughput = this.options_.throughput;
+    }
+
     Object.defineProperties(this.stats, {
       bandwidth: {
         get: () => this.bandwidth || 0,
@@ -439,6 +461,13 @@ class HlsHandler extends Component {
 
     this.tech_.one('canplay',
       this.masterPlaylistController_.setupFirstPlay.bind(this.masterPlaylistController_));
+
+    this.tech_.on('bandwidthupdate', () => {
+      if (window.localStorage) {
+        window.localStorage.setItem('videojs-contrib-hls-bandwidth', this.bandwidth);
+        window.localStorage.setItem('videojs-contrib-hls-throughput', this.throughput);
+      }
+    });
 
     this.masterPlaylistController_.on('sourceopen', () => {
       this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);

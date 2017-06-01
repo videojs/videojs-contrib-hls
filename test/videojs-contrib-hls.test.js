@@ -122,6 +122,8 @@ QUnit.module('HLS', {
     videojs.browser.IS_FIREFOX = this.old.IS_FIREFOX;
     videojs.browser.IE_VERSION = this.old.IE_VERSION;
 
+    window.localStorage.clear();
+
     this.player.dispose();
   }
 });
@@ -2687,6 +2689,52 @@ QUnit.test('populates quality levels list when available', function(assert) {
   assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels from video with source');
 });
 
+QUnit.test('stores bandwidth and throughput in localStorage', function(assert) {
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.notOk(window.localStorage.getItem('videojs-contrib-hls-bandwidth'),
+               'bandwidth not yet set in local storage');
+  assert.notOk(window.localStorage.getItem('videojs-contrib-hls-throughput'),
+               'throughput not yet set in local storage');
+
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.bandwidth = 11;
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.throughput.rate = 22;
+  this.player.tech_.trigger('bandwidthupdate');
+
+  assert.equal(
+    parseInt(window.localStorage.getItem('videojs-contrib-hls-bandwidth'), 10),
+    11,
+    'set bandwidth');
+  assert.equal(
+    parseInt(window.localStorage.getItem('videojs-contrib-hls-throughput'), 10),
+    22,
+    'set throughput');
+});
+
+QUnit.test('retrieves bandwidth and throughput from localStorage', function(assert) {
+  window.localStorage.setItem('videojs-contrib-hls-bandwidth', 33);
+  window.localStorage.setItem('videojs-contrib-hls-throughput', 44);
+
+  // values must be stored before player is created, otherwise defaults are provided
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/master.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  assert.equal(this.player.tech_.hls.bandwidth, 33, 'retrieved stored bandwidth');
+  assert.equal(this.player.tech_.hls.throughput, 44, 'retrieved stored throughput');
+});
+
 QUnit.module('HLS Integration', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
@@ -2709,6 +2757,7 @@ QUnit.module('HLS Integration', {
   afterEach() {
     this.env.restore();
     this.mse.restore();
+    window.localStorage.clear();
     videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
   }
 });
@@ -2993,6 +3042,7 @@ QUnit.module('HLS - Encryption', {
   afterEach() {
     this.env.restore();
     this.mse.restore();
+    window.localStorage.clear();
     videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
   }
 });
