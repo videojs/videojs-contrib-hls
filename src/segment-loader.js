@@ -722,19 +722,80 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    // the amount of time since the first byte of data was received
-    const firstByteReceived = Date.now() - segment.stats.firstByteReceived;
-    const adjustedBandwidth = segment.stats.bandwidth * Config.BANDWIDTH_VARIANCE;
-
+    // If the player is not paused and the current playlist is not the
+    // lowestEnabledRendition, consider the possibility of aborting the current request
+    // early for an emergency downswitch
     // TODO: Replace timeout with a boolean indicating whether this playlist is the
     //       lowestEnabledRendition
-    if (this.xhrOptions_.timeout &&
-        firstByteReceived > 1000 &&
-        adjustedBandwidth < this.playlist_.attributes.BANDWIDTH) {
-      this.bandwidth = segment.stats.bandwidth;
-      this.trigger('bandwidthupdate');
-      this.abort();
-      return;
+    if (!this.hls_.tech_.paused() && this.xhrOptions_.timeout) {
+      const firstByteReceived = Date.now() - segment.stats.firstByteReceived;
+
+      // Wait at least 1 second before using the calculated bandwidth from the
+      // progress event to allow the bitrate to stableize
+      if (firstByteReceived > 1000) {
+        const estimatedSize = segment.duration * this.playlist_.attributes.BANDWIDTH;
+        const currentTime = this.currentTime_();
+        const estimatedDelay =
+          (estimatedSize - (segment.stats.bytesReceived * 8)) / segment.stats.bandwidth;
+        const buffered = this.buffered_();
+        const bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
+        const rebufferingDelay =
+          (bufferedEnd - currentTime) / this.hls_.tech_.playbackRate;
+
+        // consider aborting early if the estimated time to finish the download
+        // is larger than the estimated time until the player runs out of forward buffer
+        if (estimatedDelay > rebufferingDelay) {
+          // get a list of playlists with a lower bandwidth than the current
+          const playlists = this.hls_.playlists.master.playlists.slice().filter(
+            (media) => {
+              return media.attributes &&
+                     media.attributes.BANDWIDTH &&
+                     media.attributes.BANDWIDTH < this.playlist_.attributes.BANDWIDTH;
+            }
+          ).sort((a, b) => a.attributes.BANDWIDTH - b.attributes.BANDWIDTH);
+
+          let newEstimatedDelay;
+          let safeBandwidth;
+
+          // Find the playlist with the highest bandwidth that the player can load from
+          // safely without needing to rebuffer
+          for (let i = playlists.length - 1; i >= 0; i--) {
+            const newPlaylist = playlists[i];
+            const newEstimatedSize =
+              newPlaylist.targetDuration * newPlaylist.attributes.BANDWIDTH;
+            const newSyncPoint = this.syncController_.getSyncPoint(newPlaylist,
+                                                                   this.duration_(),
+                                                                   this.currentTimeline_,
+                                                                   currentTime);
+            // estimate the number of requests that will need to be made if we switch
+            // to this rendition. Typically this will be 2 requests because we are
+            // conservative on which segment to request. If there is no sync point for the
+            // rendition, a sync request will be made as well.
+            const estimatedRequestCount = newSyncPoint ? 2 : 3;
+
+            newEstimatedDelay =
+              (newEstimatedSize * estimatedRequestCount) / segment.stats.bandwidth;
+            safeBandwidth = newPlaylist.attributes.BANDWIDTH;
+
+            if (newEstimatedDelay < rebufferingDelay) {
+              // we can switch to the playlist and avoid any rebuffering!
+              break;
+            }
+          }
+
+          // Finally, only abort early and trigger the downswitch if the time to switch
+          // is less than the time to finish the current request.
+          if (newEstimatedDelay < estimatedDelay) {
+            // set the bandwidth to that of the desired playlist (scaling by
+            // BANDWIDTH_VARIANCE and adding one so the playlist selector does not
+            // exclude it)
+            this.bandwidth = (safeBandwidth * config.BANDWIDTH_VARIANCE) + 1;
+            this.abort();
+            this.trigger('bandwidthupdate');
+            return;
+          }
+        }
+      }
     }
 
     this.trigger('progress');
