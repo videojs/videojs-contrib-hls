@@ -39,6 +39,4 @@ const DecrypterWorker = function(self) {
   };
 };
 
-export default (self) => {
-  return new DecrypterWorker(self);
-};
+new DecrypterWorker(self);

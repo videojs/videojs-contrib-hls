@@ -8,6 +8,7 @@ import es3 from 'babel-preset-es3';
 import es2015 from 'babel-preset-es2015';
 import extHelp from 'babel-plugin-external-helpers';
 
+
 const primedResolve = resolve({
   jsnext: true,
   main: true,
@@ -15,6 +16,7 @@ const primedResolve = resolve({
 });
 const primedCjs = commonjs({
   sourceMap: false,
+  ignore: ['video.js']
 });
 const primedBabel = babel({
   babelrc: false,
@@ -30,23 +32,19 @@ const primedBabel = babel({
 });
 
 export default {
-  entry: 'src/worker.js',
+  entry: 'tmp/videojs-contrib-hls.js',
+  // entry: 'src/decrypter-worker.js',
   moduleName: 'worker',
-  format: 'iife',
+  format: 'es',
   plugins: [
-    worker({
-      rollup: rollup.rollup,
-      options: {
-        plugins: [
-          json(),
-          primedBabel
-        ]
-      }
-    }),
+    worker(),
     primedResolve,
     primedCjs,
     json(),
     primedBabel
   ],
-  dest: 'dist/hls.worker.js'
+  external: ['video.js'],
+  globals: {'video.js': 'videojs'},
+  dest: 'dist/hls.with.worker.js'
+  // dest: 'tmp/decrypter-worker.js'
 };
