@@ -737,11 +737,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     };
   }
 
-  handleProgress_(event, segment) {
-    if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
-      return;
-    }
-
+  abortRequestEarly_(segment) {
     // If the player is not paused and the current playlist is not the
     // lowestEnabledRendition, consider the possibility of aborting the current request
     // early for an emergency downswitch
@@ -822,10 +818,38 @@ export default class SegmentLoader extends videojs.EventTarget {
             this.bandwidth = safeBandwidth + 1;
             this.abort();
             this.trigger('bandwidthupdate');
-            return;
+            return true;
           }
         }
       }
+    }
+    return false;
+  }
+
+  abortRequestEarlySimple_(segment) {
+    const bandwidthAdjustment = Math.min(0.8, segment.stats.roundTripTime / 5000);
+    const playlistBandwidth = this.playlist_.attributes.BANDWIDTH;
+
+    // TODO: Replace timeout with a boolean indicating whether this playlist is the
+    // lowestEnabledRendition
+    if (this.xhrOptions_.timeout &&
+        segment.stats.roundTripTime > 1000 &&
+        segment.stats.bandwidth < playlistBandwidth * bandwidthAdjustment) {
+      this.bandwidth = segment.stats.bandwidth;
+      this.trigger('bandwidthupdate');
+      this.abort();
+      return true;
+    }
+    return false;
+  }
+
+  handleProgress_(event, segment) {
+    if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
+      return;
+    }
+
+    if (this.abortRequestEarly_(segment)) {
+      return;
     }
 
     this.trigger('progress');
