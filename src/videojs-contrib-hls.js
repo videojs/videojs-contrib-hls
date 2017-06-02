@@ -569,12 +569,18 @@ class HlsHandler extends Component {
  */
 const HlsSourceHandler = function(mode) {
   return {
-    canHandleSource(srcObj) {
+    canHandleSource(srcObj, options = {}) {
+      let modeOverride;
+
+      if (videojs.options.hls && videojs.options.hls.mode) {
+        modeOverride = videojs.options.hls.mode;
+      }
+      if (options.hls && options.hls.mode) {
+        modeOverride = options.hls.mode;
+      }
       // this forces video.js to skip this tech/mode if its not the one we have been
       // overriden to use, by returing that we cannot handle the source.
-      if (videojs.options.hls &&
-          videojs.options.hls.mode &&
-          videojs.options.hls.mode !== mode) {
+      if (options.hls.mode !== mode) {
         return false;
       }
       return HlsSourceHandler.canPlayType(srcObj.type);
