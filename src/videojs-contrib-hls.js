@@ -20,7 +20,7 @@ import window from 'global/window';
 import PlaybackWatcher from './playback-watcher';
 import reloadSourceOnError from './reload-source-on-error';
 import {
-  lastBandwidthSelector,
+  movingAverageBandwidthSelector,
   comparePlaylistBandwidth,
   comparePlaylistResolution
 } from './playlist-selectors.js';
@@ -32,8 +32,7 @@ const Hls = {
   AsyncStream,
   decrypt,
   utils,
-
-  STANDARD_PLAYLIST_SELECTOR: lastBandwidthSelector,
+  STANDARD_PLAYLIST_SELECTOR: movingAverageBandwidthSelector(0.5),
   comparePlaylistBandwidth,
   comparePlaylistResolution,
 
