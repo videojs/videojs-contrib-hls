@@ -108,16 +108,30 @@ test('crossedLowWaterLine detects when we have filled enough buffer', function(a
                'false when no buffer');
   assert.notOk(crossedLowWaterLine(10, videojs.createTimeRanges([])),
                'false when no buffer');
-  assert.notOk(crossedLowWaterLine(10, videojs.createTimeRanges([[0, 10]])),
-               'false when not enough forward buffer');
-  assert.notOk(crossedLowWaterLine(10, videojs.createTimeRanges([[0, 19]])),
-               'false when not enough forward buffer');
-  assert.notOk(crossedLowWaterLine(10, videojs.createTimeRanges([[10, 19]])),
-               'false when not enough forward buffer');
-  assert.notOk(crossedLowWaterLine(10, videojs.createTimeRanges([[0, 9.99], [10, 19]])),
-               'false when not enough forward buffer');
-  assert.ok(crossedLowWaterLine(10, videojs.createTimeRanges([[10, 40]])),
-            'true when enough forward buffer');
+  assert.notOk(
+    crossedLowWaterLine(10,
+                        videojs.createTimeRanges([[0, Config.BUFFER_LOW_WATER_LINE]])),
+    'false when not enough forward buffer');
+  assert.notOk(
+    crossedLowWaterLine(
+      10,
+      videojs.createTimeRanges([[0, 10 + Config.BUFFER_LOW_WATER_LINE - 1]])),
+    'false when not enough forward buffer');
+  assert.notOk(
+    crossedLowWaterLine(
+      10,
+      videojs.createTimeRanges([[10, 10 + Config.BUFFER_LOW_WATER_LINE - 1]])),
+    'false when not enough forward buffer');
+  assert.notOk(
+    crossedLowWaterLine(
+      10,
+      videojs.createTimeRanges([[0, 9.99], [10, 10 + Config.BUFFER_LOW_WATER_LINE - 1]])),
+    'false when not enough forward buffer');
+  assert.ok(
+    crossedLowWaterLine(
+      10,
+      videojs.createTimeRanges([[10, 10 + Config.BUFFER_LOW_WATER_LINE]])),
+    'true when enough forward buffer');
 });
 
 test('comparePlaylistBandwidth properly compares playlist bandwidths', function(assert) {
@@ -175,7 +189,9 @@ test('comparePlaylistBandwidth properly compares playlist bandwidths', function(
     }
   };
 
-  assert.equal(comparePlaylistBandwidth(left, right), -5, 'negative when right is greater');
+  assert.equal(comparePlaylistBandwidth(left, right),
+               -5,
+               'negative when right is greater');
 
   left.attributes['AVERAGE-BANDWIDTH'] = 25;
 

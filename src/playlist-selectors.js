@@ -27,7 +27,7 @@ export const getBandwidth = (playlist, useAverageBandwidth) => {
     bandwidth = playlist.attributes.BANDWIDTH;
   }
 
-  return bandwidth || void 0;
+  return bandwidth;
 };
 
 /**
@@ -89,7 +89,9 @@ export const comparePlaylistBandwidth = function(left, right) {
   let leftBandwidth = getBandwidth(left, false) || window.Number.MAX_VALUE;
   let rightBandwidth = getBandwidth(right, false) || window.Number.MAX_VALUE;
 
-  videojs.log.warn('comparePlaylistBandwidth is deprecated');
+  videojs.log.warn('comparePlaylistBandwidth is deprecated. If you need to change the ' +
+                   'playlist selection logic, please change the full selectPlaylist ' +
+                   'function instead');
 
   return leftBandwidth - rightBandwidth;
 };
@@ -107,7 +109,9 @@ export const comparePlaylistResolution = function(left, right) {
   let leftWidth;
   let rightWidth;
 
-  videojs.log.warn('comparePlaylistResolution is deprecated');
+  videojs.log.warn('comparePlaylistResolution is deprecated. If you need to change the ' +
+                   'playlist selection logic, please change the full selectPlaylist ' +
+                   'function instead');
 
   if (left.attributes &&
       left.attributes.RESOLUTION &&
@@ -141,11 +145,10 @@ const simpleSelector = function(master,
                                 width,
                                 height,
                                 useAverageBandwidth = false) {
-  let sortedPlaylists = master.playlists.slice();
 
   // convert the playlists to an intermediary representation to make comparisons easier
   // and prevent us from re-determining bandwidth each time
-  let sortedPlaylistReps = sortedPlaylists.map((playlist) => {
+  let sortedPlaylistReps = master.playlists.map((playlist) => {
     let playlistWidth;
     let playlistHeight;
 
@@ -167,12 +170,13 @@ const simpleSelector = function(master,
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
   sortedPlaylistReps = sortedPlaylistReps.filter(
-    (rep) => Playlist.isEnabled(rep.playlist));
+    (rep) => Playlist.isEnabled(rep.playlist)
+  );
 
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
   let bandwidthPlaylistReps = sortedPlaylistReps.filter(
-    (rep) => rep.bandwidth && rep.bandwidth * Config.BANDWIDTH_VARIANCE < bandwidth
+    (rep) => rep.bandwidth * Config.BANDWIDTH_VARIANCE < bandwidth
   );
 
   let highestRemainingBandwidthRep =
@@ -184,16 +188,11 @@ const simpleSelector = function(master,
     (rep) => rep.bandwidth === highestRemainingBandwidthRep.bandwidth
   )[0];
 
-  // sort variants by resolution
-  stableSort(bandwidthPlaylistReps, (left, right) => {
-    const leftWidth = left.width || window.Number.MAX_VALUE;
-    const rightWidth = right.width || window.Number.MAX_VALUE;
-
-    return leftWidth - rightWidth;
-  });
-
   // filter out playlists without resolution information
   let haveResolution = bandwidthPlaylistReps.filter((rep) => rep.width && rep.height);
+
+  // sort variants by resolution
+  stableSort(haveResolution, (left, right) => left.width - right.width);
 
   // if we have the exact resolution as the player use it
   let resolutionBestRepList =
