@@ -79,10 +79,10 @@ function(assert) {
 
   assert.equal(getBandwidth(playlist, false),
                void 0,
-               'bandwidth 0 when playlist has no info');
+               'bandwidth undefined when playlist has no info');
   assert.equal(getBandwidth(playlist, true),
                void 0,
-               'bandwidth 0 when playlist has no info');
+               'bandwidth undefined when playlist has no info');
 
   playlist = {
     attributes: {
