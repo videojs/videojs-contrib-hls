@@ -793,23 +793,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     return false;
   }
 
-  abortRequestEarlySimple_(stats) {
-    const bandwidthAdjustment = Math.min(0.8, stats.roundTripTime / 5000);
-    const playlistBandwidth = this.playlist_.attributes.BANDWIDTH;
-
-    // TODO: Replace timeout with a boolean indicating whether this playlist is the
-    // lowestEnabledRendition
-    if (this.xhrOptions_.timeout &&
-        stats.roundTripTime > 1000 &&
-        stats.bandwidth < playlistBandwidth * bandwidthAdjustment) {
-      this.bandwidth = stats.bandwidth;
-      this.abort();
-      this.trigger('bandwidthupdate');
-      return true;
-    }
-    return false;
-  }
-
   handleProgress_(event, segment) {
     if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
       return;
