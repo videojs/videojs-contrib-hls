@@ -4,10 +4,9 @@
 
 // import mp4probe from 'mux.js/lib/mp4/probe';
 // import tsInsector from 'mux.js/lib/tools/ts-inspector.js';
-import Playlist from './playlist';
+import Playlist, { sumDurations } from './playlist';
 import videojs from 'video.js';
 
-const {sumDurations} = Playlist;
 // const {inspect} = tsInsector;
 // const tsprobe = inspect;
 const tsprobe = () => {};
