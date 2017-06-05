@@ -33,9 +33,13 @@ const primedBabel = babel({
 
 export default {
   entry: 'tmp/videojs-contrib-hls.js',
+  moduleName: 'videojs-contrib-hls',
+  format: 'umd',
+  dest: 'dist/hls.with.worker.js',
   // entry: 'src/decrypter-worker.js',
-  moduleName: 'worker',
-  format: 'es',
+  // moduleName: 'worker',
+  // format: 'es',
+  // dest: 'tmp/decrypter-worker.js',
   plugins: [
     worker(),
     primedResolve,
@@ -44,7 +48,5 @@ export default {
     primedBabel
   ],
   external: ['video.js'],
-  globals: {'video.js': 'videojs'},
-  dest: 'dist/hls.with.worker.js'
-  // dest: 'tmp/decrypter-worker.js'
+  globals: {'video.js': 'videojs'}
 };
