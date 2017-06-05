@@ -37,4 +37,4 @@ const DecrypterWorker = function(self) {
   };
 };
 
-new DecrypterWorker(self);
+export default (self) => new DecrypterWorker(self);

@@ -1,3 +1,4 @@
-import Decrypter from 'worker!./decrypter-worker.js';
+import worker from 'webworkify';
+import Decrypter from './decrypter-worker.js';
 
-export Decrypter;
+export default () => worker(Decrypter);
