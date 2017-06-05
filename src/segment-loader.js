@@ -719,14 +719,21 @@ export default class SegmentLoader extends videojs.EventTarget {
 
   abortRequestEarly_(stats) {
     const firstByteReceived = Date.now() - stats.firstByteReceived;
-    const bandwidthAdjustment = Math.min(0.8, firstByteReceived / 5000);
+    // Since bandwidth values reported by progress events stabilize as time goes on,
+    // we adjust bandwidth by a conservative ammount, increasing as more time has passed
+    // maxing at 0.8 to prevent aborting a request we actually do have enough bandwidth
+    // for.
+    const playlistBandwidthAdjustment = Math.min(0.8, firstByteReceived / 5000);
     const playlistBandwidth = this.playlist_.attributes.BANDWIDTH;
 
+    // Wait at least 1 second before using the calculated bandwidth from the
+    // progress event to allow the bitrate to stabilize. Bandwidth information
+    // during the first second is highly variable and inaccurate.
     // TODO: Replace timeout with a boolean indicating whether this playlist is the
     // lowestEnabledRendition
     if (this.xhrOptions_.timeout &&
         firstByteReceived > 1000 &&
-        stats.bandwidth < playlistBandwidth * bandwidthAdjustment) {
+        stats.bandwidth < playlistBandwidth * playlistBandwidthAdjustment) {
       this.bandwidth = stats.bandwidth;
       this.abort();
       this.trigger('bandwidthupdate');
