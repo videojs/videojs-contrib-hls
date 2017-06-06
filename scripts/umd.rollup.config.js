@@ -8,6 +8,7 @@ import babel from 'rollup-plugin-babel';
 import commonjs from 'rollup-plugin-commonjs';
 import json from 'rollup-plugin-json';
 import resolve from 'rollup-plugin-node-resolve';
+import worker from 'rollup-plugin-bundle-worker';
 
 export default {
   moduleName: 'videojsContribHls',
@@ -20,6 +21,7 @@ export default {
   },
   legacy: true,
   plugins: [
+    worker(),
     resolve({
       browser: true,
       main: true,
@@ -39,7 +41,7 @@ export default {
         }]
       ],
       plugins: [
-        // 'external-helpers',
+        'external-helpers',
         'transform-object-assign'
       ]
     })

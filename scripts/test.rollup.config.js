@@ -8,6 +8,7 @@ import commonjs from 'rollup-plugin-commonjs';
 import json from 'rollup-plugin-json';
 import multiEntry from 'rollup-plugin-multi-entry';
 import resolve from 'rollup-plugin-node-resolve';
+import worker from 'rollup-plugin-bundle-worker';
 
 export default {
   moduleName: 'videojsContribHlsTests',
@@ -31,6 +32,7 @@ export default {
     multiEntry({
       exports: false
     }),
+    worker(),
     resolve({
       browser: true,
       main: true,

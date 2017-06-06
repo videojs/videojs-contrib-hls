@@ -7,6 +7,7 @@
  */
 import babel from 'rollup-plugin-babel';
 import json from 'rollup-plugin-json';
+import worker from 'rollup-plugin-bundle-worker';
 
 export default {
   moduleName: 'videojsContribHls',
@@ -17,6 +18,7 @@ export default {
   },
   legacy: true,
   plugins: [
+    worker(),
     json(),
     babel({
       babelrc: false,
