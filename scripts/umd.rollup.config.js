@@ -11,8 +11,8 @@ import resolve from 'rollup-plugin-node-resolve';
 import worker from 'rollup-plugin-bundle-worker';
 
 export default {
-  moduleName: 'videojsContribHls',
-  entry: 'src/plugin.js',
+  moduleName: 'videojs-contrib-hls',
+  entry: 'src/videojs-contrib-hls.js',
   dest: 'dist/videojs-contrib-hls.js',
   format: 'umd',
   external: ['video.js'],

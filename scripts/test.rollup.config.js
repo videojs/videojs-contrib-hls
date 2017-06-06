@@ -11,7 +11,7 @@ import resolve from 'rollup-plugin-node-resolve';
 import worker from 'rollup-plugin-bundle-worker';
 
 export default {
-  moduleName: 'videojsContribHlsTests',
+  moduleName: 'videojs-contrib-hls-tests',
   entry: 'test/**/*.test.js',
   dest: 'test/dist/bundle.js',
   format: 'iife',

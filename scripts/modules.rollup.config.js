@@ -10,8 +10,8 @@ import json from 'rollup-plugin-json';
 import worker from 'rollup-plugin-bundle-worker';
 
 export default {
-  moduleName: 'videojsContribHls',
-  entry: 'src/plugin.js',
+  moduleName: 'videojs-contrib-hls',
+  entry: 'src/videojs-contrib-hls.js',
   external: ['video.js'],
   globals: {
     'video.js': 'videojs'
