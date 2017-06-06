@@ -1,6 +1,14 @@
 import { module, test } from 'qunit';
-import { movingAverageBandwidthSelector } from '../src/playlist-selectors';
+import {
+  lastBandwidthSelector,
+  movingAverageBandwidthSelector,
+  getBandwidth,
+  crossedLowWaterLine,
+  comparePlaylistBandwidth,
+  comparePlaylistResolution
+} from '../src/playlist-selectors';
 import Config from '../src/config';
+import videojs from 'video.js';
 
 const video = document.createElement('video');
 const hls = {
@@ -22,6 +30,8 @@ test('Exponential moving average has a configurable decay parameter', function(a
   let playlist;
   const instantAverage = movingAverageBandwidthSelector(1.0);
 
+  hls.tech_.currentTime = () => 10;
+  hls.tech_.buffered = () => videojs.createTimeRanges([]);
   hls.playlists.master.playlists = [
     { attributes: { BANDWIDTH: 1 } },
     { attributes: { BANDWIDTH: 50 } },
@@ -50,4 +60,318 @@ test('Exponential moving average has a configurable decay parameter', function(a
   hls.systemBandwidth = 1;
   playlist = fiftyPercentDecay.call(hls);
   assert.equal(playlist.attributes.BANDWIDTH, 50, 'selected the middle playlist');
+});
+
+test('getBandwidth appropriately uses average bandwidth when specified',
+function(assert) {
+  let playlist = {};
+
+  assert.equal(getBandwidth(playlist, false),
+               void 0,
+               'undefined when playlist has no info');
+  assert.equal(getBandwidth(playlist, true),
+               void 0,
+               'undefined when playlist has no info');
+
+  playlist = {
+    attributes: {}
+  };
+
+  assert.equal(getBandwidth(playlist, false),
+               void 0,
+               'bandwidth undefined when playlist has no info');
+  assert.equal(getBandwidth(playlist, true),
+               void 0,
+               'bandwidth undefined when playlist has no info');
+
+  playlist = {
+    attributes: {
+      BANDWIDTH: 9
+    }
+  };
+
+  assert.equal(getBandwidth(playlist, false), 9, 'uses BANDWIDTH when available');
+  assert.equal(getBandwidth(playlist, true), 9, 'uses BANDWIDTH when only one available');
+
+  playlist.attributes['AVERAGE-BANDWIDTH'] = 3;
+
+  assert.equal(getBandwidth(playlist, false),
+               9,
+               'uses BANDWIDTH when useAverageBandwidth is false');
+  assert.equal(getBandwidth(playlist, true),
+               3,
+               'uses AVERAGE-BANDWIDTH when useAverageBandwidth is true');
+});
+
+test('crossedLowWaterLine detects when we have filled enough buffer', function(assert) {
+  assert.notOk(crossedLowWaterLine(0, videojs.createTimeRanges([])),
+               'false when no buffer');
+  assert.notOk(crossedLowWaterLine(10, videojs.createTimeRanges([])),
+               'false when no buffer');
+  assert.notOk(
+    crossedLowWaterLine(10,
+                        videojs.createTimeRanges([[0, Config.BUFFER_LOW_WATER_LINE]])),
+    'false when not enough forward buffer');
+  assert.notOk(
+    crossedLowWaterLine(
+      10,
+      videojs.createTimeRanges([[0, 10 + Config.BUFFER_LOW_WATER_LINE - 1]])),
+    'false when not enough forward buffer');
+  assert.notOk(
+    crossedLowWaterLine(
+      10,
+      videojs.createTimeRanges([[10, 10 + Config.BUFFER_LOW_WATER_LINE - 1]])),
+    'false when not enough forward buffer');
+  assert.notOk(
+    crossedLowWaterLine(
+      10,
+      videojs.createTimeRanges([[0, 9.99], [10, 10 + Config.BUFFER_LOW_WATER_LINE - 1]])),
+    'false when not enough forward buffer');
+  assert.ok(
+    crossedLowWaterLine(
+      10,
+      videojs.createTimeRanges([[10, 10 + Config.BUFFER_LOW_WATER_LINE]])),
+    'true when enough forward buffer');
+});
+
+test('comparePlaylistBandwidth properly compares playlist bandwidths', function(assert) {
+  let left = {};
+  let right = {};
+
+  assert.equal(comparePlaylistBandwidth(left, right), 0, '0 when no info');
+
+  left = { attributes: {} };
+
+  assert.equal(comparePlaylistBandwidth(left, right), 0, '0 when no info');
+
+  right = { attributes: {} };
+
+  assert.equal(comparePlaylistBandwidth(left, right), 0, '0 when no info');
+
+  left = {
+    attributes: {
+      BANDWIDTH: 10
+    }
+  };
+
+  assert.ok(comparePlaylistBandwidth(left, right) < 0,
+            'left smaller when only left BANDWIDTH available');
+
+  left = {};
+  right = {
+    attributes: {
+      BANDWIDTH: 10
+    }
+  };
+
+  assert.ok(comparePlaylistBandwidth(left, right) > 0,
+               'right smaller when only right BANDWIDTH available');
+
+  left = {
+    attributes: {
+      BANDWIDTH: 10
+    }
+  };
+
+  assert.equal(comparePlaylistBandwidth(left, right), 0, '0 when BANDWIDTHs are equal');
+
+  left = {
+    attributes: {
+      BANDWIDTH: 15
+    }
+  };
+
+  assert.equal(comparePlaylistBandwidth(left, right), 5, 'positive when left is greater');
+
+  right = {
+    attributes: {
+      BANDWIDTH: 20
+    }
+  };
+
+  assert.equal(comparePlaylistBandwidth(left, right),
+               -5,
+               'negative when right is greater');
+
+  left.attributes['AVERAGE-BANDWIDTH'] = 25;
+
+  assert.equal(comparePlaylistBandwidth(left, right),
+               -5,
+               'does not consider AVERAGE-BANDWIDTH');
+
+  right.attributes['AVERAGE-BANDWIDTH'] = 31;
+
+  assert.equal(comparePlaylistBandwidth(left, right),
+               -5,
+               'does not consider AVERAGE-BANDWIDTH');
+});
+
+test('comparePlaylistResolution properly compares playlist resolutions',
+function(assert) {
+  let left = {};
+  let right = {};
+
+  assert.equal(comparePlaylistResolution(left, right), 0, '0 when no info');
+
+  left = { attributes: {} };
+
+  assert.equal(comparePlaylistResolution(left, right), 0, '0 when no info');
+
+  right = { attributes: {} };
+
+  assert.equal(comparePlaylistResolution(left, right), 0, '0 when no info');
+
+  left = {
+    attributes: {
+      RESOLUTION: {
+        width: 720
+      }
+    }
+  };
+
+  assert.ok(comparePlaylistResolution(left, right) < 0,
+            'left smaller when only left width available');
+
+  left = {};
+  right = {
+    attributes: {
+      RESOLUTION: {
+        width: 720
+      }
+    }
+  };
+
+  assert.ok(comparePlaylistResolution(left, right) > 0,
+            'right smaller when only right width available');
+
+  left = {
+    attributes: {
+      RESOLUTION: {
+        width: 720
+      }
+    }
+  };
+
+  assert.equal(comparePlaylistResolution(left, right), 0, '0 when widths are equal');
+
+  left.attributes.RESOLUTION.width = 1080;
+
+  assert.equal(comparePlaylistResolution(left, right),
+               360,
+               'positive when left is greater');
+
+  right.attributes.RESOLUTION.width = 1440;
+
+  assert.equal(comparePlaylistResolution(left, right),
+               -360,
+               'negative when right is greater');
+
+  left = {
+    attributes: {
+      RESOLUTION: {
+        width: 720
+      },
+      BANDWIDTH: 10
+    }
+  };
+  right = {
+    attributes: {
+      RESOLUTION: {
+        width: 720
+      },
+      BANDWIDTH: 10
+    }
+  };
+
+  assert.equal(comparePlaylistResolution(left, right),
+               0,
+               'equal when width equal and BANDWIDTH equal');
+
+  left.attributes['AVERAGE-BANDWIDTH'] = 17;
+  right.attributes['AVERAGE-BANDWIDTH'] = 19;
+
+  assert.equal(comparePlaylistResolution(left, right),
+               0,
+               'does not consider AVERAGE-BANDWIDTH');
+
+  left.attributes.BANDWIDTH = 9;
+
+  assert.equal(comparePlaylistResolution(left, right),
+               -1,
+               'left smaller when width equal and BANDWIDTH smaller');
+
+  right.attributes.BANDWIDTH = 8;
+
+  assert.equal(comparePlaylistResolution(left, right),
+               1,
+               'right smaller when width equal and BANDWIDTH smaller');
+});
+
+test('lastBandwidthSelector uses average bandwidth once past low water line',
+function(assert) {
+  const lowAverageBandwidthPlaylist = {
+    attributes: {
+      'BANDWIDTH': 150,
+      'AVERAGE-BANDWIDTH': 50
+    }
+  };
+  const highAverageBandwidthPlaylist = {
+    attributes: {
+      'BANDWIDTH': 50,
+      'AVERAGE-BANDWIDTH': 150
+    }
+  };
+
+  hls.tech_.currentTime = () => 10;
+  hls.tech_.buffered = () => videojs.createTimeRanges([]);
+  hls.playlists.master.playlists = [
+    highAverageBandwidthPlaylist,
+    lowAverageBandwidthPlaylist
+  ];
+  hls.systemBandwidth = 100 * Config.BANDWIDTH_VARIANCE + 1;
+
+  assert.equal(lastBandwidthSelector.call(hls),
+               highAverageBandwidthPlaylist,
+               'uses BANDWIDTH if not past low water line');
+
+  hls.tech_.buffered =
+    () => videojs.createTimeRanges([[10, 10 + Config.BUFFER_LOW_WATER_LINE]]);
+  assert.equal(lastBandwidthSelector.call(hls),
+               lowAverageBandwidthPlaylist,
+               'uses AVERAGE-BANDWIDTH if past low water line');
+});
+
+test('movingAverageBandwidthSelector uses average bandwidth once past low water line',
+function(assert) {
+  const lowAverageBandwidthPlaylist = {
+    attributes: {
+      'BANDWIDTH': 150,
+      'AVERAGE-BANDWIDTH': 50
+    }
+  };
+  const highAverageBandwidthPlaylist = {
+    attributes: {
+      'BANDWIDTH': 50,
+      'AVERAGE-BANDWIDTH': 150
+    }
+  };
+  const instantAverage = movingAverageBandwidthSelector(1.0);
+
+  hls.tech_.currentTime = () => 10;
+  hls.tech_.buffered = () => videojs.createTimeRanges([]);
+  hls.playlists.master.playlists = [
+    highAverageBandwidthPlaylist,
+    lowAverageBandwidthPlaylist
+  ];
+  hls.systemBandwidth = 100 * Config.BANDWIDTH_VARIANCE + 1;
+
+  assert.equal(instantAverage.call(hls),
+               highAverageBandwidthPlaylist,
+               'uses BANDWIDTH if not past low water line');
+
+  hls.tech_.buffered =
+    () => videojs.createTimeRanges([[10, 10 + Config.BUFFER_LOW_WATER_LINE]]);
+  assert.equal(instantAverage.call(hls),
+               lowAverageBandwidthPlaylist,
+               'uses AVERAGE-BANDWIDTH if past low water line');
 });
