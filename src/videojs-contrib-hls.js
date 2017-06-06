@@ -841,7 +841,7 @@ if (videojs.registerPlugin) {
   videojs.plugin('reloadSourceOnError', reloadSourceOnError);
 }
 
-module.exports = {
+export {
   Hls,
   HlsHandler,
   HlsSourceHandler
