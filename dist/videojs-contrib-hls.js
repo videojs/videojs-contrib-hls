@@ -117,7 +117,7 @@ exports['default'] = {
   findAdCue: findAdCue
 };
 module.exports = exports['default'];
-},{"global/window":31}],2:[function(require,module,exports){
+},{"global/window":28}],2:[function(require,module,exports){
 /**
  * @file bin-utils.js
  */
@@ -297,7 +297,7 @@ exports['default'] = function (self) {
 };
 
 module.exports = exports['default'];
-},{"./bin-utils":2,"aes-decrypter":24,"global/window":31}],5:[function(require,module,exports){
+},{"./bin-utils":2,"aes-decrypter":24,"global/window":28}],5:[function(require,module,exports){
 (function (global){
 /**
  * @file master-playlist-controller.js
@@ -2767,7 +2767,7 @@ var PlaybackWatcher = (function () {
 exports['default'] = PlaybackWatcher;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ranges":11,"global/window":31}],8:[function(require,module,exports){
+},{"./ranges":11,"global/window":28}],8:[function(require,module,exports){
 (function (global){
 /**
  * @file playlist-loader.js
@@ -3352,7 +3352,8 @@ PlaylistLoader.prototype = new _stream2['default']();
 exports['default'] = PlaylistLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":31,"m3u8-parser":32}],9:[function(require,module,exports){
+},{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":28,"m3u8-parser":29}],9:[function(require,module,exports){
+(function (global){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -3369,8 +3370,42 @@ var _playlist = require('./playlist');
 
 var _playlist2 = _interopRequireDefault(_playlist);
 
+var _videoJs = (typeof window !== "undefined" ? window['videojs'] : typeof global !== "undefined" ? global['videojs'] : null);
+
+var _videoJs2 = _interopRequireDefault(_videoJs);
+
+var _globalWindow = require('global/window');
+
+var _globalWindow2 = _interopRequireDefault(_globalWindow);
+
 // Utilities
 
+var crossedLowWaterLine = function crossedLowWaterLine(currentTime, buffered) {
+  var forwardBuffer = buffered.length ? buffered.end(buffered.length - 1) - currentTime : 0;
+
+  return forwardBuffer >= _config2['default'].BUFFER_LOW_WATER_LINE;
+};
+
+exports.crossedLowWaterLine = crossedLowWaterLine;
+var getBandwidth = function getBandwidth(playlist, useAverageBandwidth) {
+  if (!playlist || !playlist.attributes) {
+    return void 0;
+  }
+
+  var bandwidth = undefined;
+
+  if (useAverageBandwidth) {
+    bandwidth = playlist.attributes['AVERAGE-BANDWIDTH'];
+  }
+
+  if (!bandwidth) {
+    bandwidth = playlist.attributes.BANDWIDTH;
+  }
+
+  return bandwidth;
+};
+
+exports.getBandwidth = getBandwidth;
 /**
  * Returns the CSS value for the specified property on an element
  * using `getComputedStyle`. Firefox has a long-standing issue where
@@ -3388,7 +3423,7 @@ var safeGetComputedStyle = function safeGetComputedStyle(el, property) {
     return '';
   }
 
-  result = window.getComputedStyle(el);
+  result = _globalWindow2['default'].getComputedStyle(el);
   if (!result) {
     return '';
   }
@@ -3427,17 +3462,10 @@ var stableSort = function stableSort(array, sortFn) {
  * exactly zero if the two are equal.
  */
 var comparePlaylistBandwidth = function comparePlaylistBandwidth(left, right) {
-  var leftBandwidth = undefined;
-  var rightBandwidth = undefined;
+  var leftBandwidth = getBandwidth(left, false) || _globalWindow2['default'].Number.MAX_VALUE;
+  var rightBandwidth = getBandwidth(right, false) || _globalWindow2['default'].Number.MAX_VALUE;
 
-  if (left.attributes && left.attributes.BANDWIDTH) {
-    leftBandwidth = left.attributes.BANDWIDTH;
-  }
-  leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
-  if (right.attributes && right.attributes.BANDWIDTH) {
-    rightBandwidth = right.attributes.BANDWIDTH;
-  }
-  rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
+  _videoJs2['default'].log.warn('comparePlaylistBandwidth is deprecated. If you need to change the ' + 'playlist selection logic, please change the full selectPlaylist ' + 'function instead');
 
   return leftBandwidth - rightBandwidth;
 };
@@ -3456,91 +3484,125 @@ var comparePlaylistResolution = function comparePlaylistResolution(left, right) 
   var leftWidth = undefined;
   var rightWidth = undefined;
 
+  _videoJs2['default'].log.warn('comparePlaylistResolution is deprecated. If you need to change the ' + 'playlist selection logic, please change the full selectPlaylist ' + 'function instead');
+
   if (left.attributes && left.attributes.RESOLUTION && left.attributes.RESOLUTION.width) {
     leftWidth = left.attributes.RESOLUTION.width;
   }
 
-  leftWidth = leftWidth || window.Number.MAX_VALUE;
+  leftWidth = leftWidth || _globalWindow2['default'].Number.MAX_VALUE;
 
   if (right.attributes && right.attributes.RESOLUTION && right.attributes.RESOLUTION.width) {
     rightWidth = right.attributes.RESOLUTION.width;
   }
 
-  rightWidth = rightWidth || window.Number.MAX_VALUE;
+  rightWidth = rightWidth || _globalWindow2['default'].Number.MAX_VALUE;
+
+  var leftBandwidth = getBandwidth(left, false);
+  var rightBandwidth = getBandwidth(right, false);
 
   // NOTE - Fallback to bandwidth sort as appropriate in cases where multiple renditions
-  // have the same media dimensions/ resolution
-  if (leftWidth === rightWidth && left.attributes.BANDWIDTH && right.attributes.BANDWIDTH) {
-    return left.attributes.BANDWIDTH - right.attributes.BANDWIDTH;
+  // have the same media dimensions/ resolution.
+  if (leftWidth === rightWidth && leftBandwidth && rightBandwidth) {
+    return leftBandwidth - rightBandwidth;
   }
   return leftWidth - rightWidth;
 };
 
 exports.comparePlaylistResolution = comparePlaylistResolution;
 var simpleSelector = function simpleSelector(master, bandwidth, width, height) {
-  var sortedPlaylists = master.playlists.slice();
-  var bandwidthPlaylists = [];
-  var bandwidthBestVariant = undefined;
-  var resolutionPlusOne = undefined;
-  var resolutionBestVariant = undefined;
-  var haveResolution = undefined;
-  var resolutionPlusOneList = [];
-  var resolutionPlusOneSmallest = [];
-  var resolutionBestVariantList = [];
+  var useAverageBandwidth = arguments.length <= 4 || arguments[4] === undefined ? false : arguments[4];
 
-  stableSort(sortedPlaylists, comparePlaylistBandwidth);
+  // convert the playlists to an intermediary representation to make comparisons easier
+  // and prevent us from re-determining bandwidth each time
+  var sortedPlaylistReps = master.playlists.map(function (playlist) {
+    var playlistWidth = undefined;
+    var playlistHeight = undefined;
+
+    if (playlist.attributes && playlist.attributes.RESOLUTION) {
+      playlistWidth = playlist.attributes.RESOLUTION.width;
+      playlistHeight = playlist.attributes.RESOLUTION.height;
+    }
+
+    return {
+      bandwidth: getBandwidth(playlist, useAverageBandwidth) || _globalWindow2['default'].Number.MAX_VALUE,
+      width: playlistWidth,
+      height: playlistHeight,
+      playlist: playlist
+    };
+  });
+
+  stableSort(sortedPlaylistReps, function (left, right) {
+    return left.bandwidth - right.bandwidth;
+  });
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
-  sortedPlaylists = sortedPlaylists.filter(_playlist2['default'].isEnabled);
+  sortedPlaylistReps = sortedPlaylistReps.filter(function (rep) {
+    return _playlist2['default'].isEnabled(rep.playlist);
+  });
+
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
-  bandwidthPlaylists = sortedPlaylists.filter(function (elem) {
-    return elem.attributes && elem.attributes.BANDWIDTH && elem.attributes.BANDWIDTH * _config2['default'].BANDWIDTH_VARIANCE < bandwidth;
+  var bandwidthPlaylistReps = sortedPlaylistReps.filter(function (rep) {
+    return rep.bandwidth * _config2['default'].BANDWIDTH_VARIANCE < bandwidth;
   });
+
+  var highestRemainingBandwidthRep = bandwidthPlaylistReps[bandwidthPlaylistReps.length - 1];
 
   // get all of the renditions with the same (highest) bandwidth
   // and then taking the very first element
-  bandwidthBestVariant = bandwidthPlaylists.filter(function (elem) {
-    return elem.attributes.BANDWIDTH === bandwidthPlaylists[bandwidthPlaylists.length - 1].attributes.BANDWIDTH;
+  var bandwidthBestRep = bandwidthPlaylistReps.filter(function (rep) {
+    return rep.bandwidth === highestRemainingBandwidthRep.bandwidth;
   })[0];
 
-  // sort variants by resolution
-  stableSort(bandwidthPlaylists, comparePlaylistResolution);
-
   // filter out playlists without resolution information
-  haveResolution = bandwidthPlaylists.filter(function (elem) {
-    return elem.attributes && elem.attributes.RESOLUTION && elem.attributes.RESOLUTION.width && elem.attributes.RESOLUTION.height;
+  var haveResolution = bandwidthPlaylistReps.filter(function (rep) {
+    return rep.width && rep.height;
+  });
+
+  // sort variants by resolution
+  stableSort(haveResolution, function (left, right) {
+    return left.width - right.width;
   });
 
   // if we have the exact resolution as the player use it
-  resolutionBestVariantList = haveResolution.filter(function (elem) {
-    return elem.attributes.RESOLUTION.width === width && elem.attributes.RESOLUTION.height === height;
+  var resolutionBestRepList = haveResolution.filter(function (rep) {
+    return rep.width === width && rep.height === height;
   });
+
+  highestRemainingBandwidthRep = resolutionBestRepList[resolutionBestRepList.length - 1];
   // ensure that we pick the highest bandwidth variant that have exact resolution
-  resolutionBestVariant = resolutionBestVariantList.filter(function (elem) {
-    return elem.attributes.BANDWIDTH === resolutionBestVariantList[resolutionBestVariantList.length - 1].attributes.BANDWIDTH;
+  var resolutionBestRep = resolutionBestRepList.filter(function (rep) {
+    return rep.bandwidth === highestRemainingBandwidthRep.bandwidth;
   })[0];
+
+  var resolutionPlusOneList = undefined;
+  var resolutionPlusOneSmallest = undefined;
+  var resolutionPlusOneRep = undefined;
 
   // find the smallest variant that is larger than the player
   // if there is no match of exact resolution
-  if (!resolutionBestVariant) {
-    resolutionPlusOneList = haveResolution.filter(function (elem) {
-      return elem.attributes.RESOLUTION.width > width || elem.attributes.RESOLUTION.height > height;
+  if (!resolutionBestRep) {
+    resolutionPlusOneList = haveResolution.filter(function (rep) {
+      return rep.width > width || rep.height > height;
     });
+
     // find all the variants have the same smallest resolution
-    resolutionPlusOneSmallest = resolutionPlusOneList.filter(function (elem) {
-      return elem.attributes.RESOLUTION.width === resolutionPlusOneList[0].attributes.RESOLUTION.width && elem.attributes.RESOLUTION.height === resolutionPlusOneList[0].attributes.RESOLUTION.height;
+    resolutionPlusOneSmallest = resolutionPlusOneList.filter(function (rep) {
+      return rep.width === resolutionPlusOneList[0].width && rep.height === resolutionPlusOneList[0].height;
     });
+
     // ensure that we also pick the highest bandwidth variant that
     // is just-larger-than the video player
-    resolutionPlusOne = resolutionPlusOneSmallest.filter(function (elem) {
-      return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1].attributes.BANDWIDTH;
+    highestRemainingBandwidthRep = resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1];
+    resolutionPlusOneRep = resolutionPlusOneSmallest.filter(function (rep) {
+      return rep.bandwidth === highestRemainingBandwidthRep.bandwidth;
     })[0];
   }
 
   // fallback chain of variants
-  return resolutionPlusOne || resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+  return (resolutionPlusOneRep || resolutionBestRep || bandwidthBestRep || sortedPlaylistReps[0]).playlist;
 };
 
 // Playlist Selectors
@@ -3556,7 +3618,7 @@ var simpleSelector = function simpleSelector(master, bandwidth, width, height) {
  * bandwidth variance
  */
 var lastBandwidthSelector = function lastBandwidthSelector() {
-  return simpleSelector(this.playlists.master, this.systemBandwidth, parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10), parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
+  return simpleSelector(this.playlists.master, this.systemBandwidth, parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10), parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10), crossedLowWaterLine(this.tech_.currentTime(), this.tech_.buffered()));
 };
 
 exports.lastBandwidthSelector = lastBandwidthSelector;
@@ -3587,11 +3649,12 @@ var movingAverageBandwidthSelector = function movingAverageBandwidthSelector(dec
     }
 
     average = decay * this.systemBandwidth + (1 - decay) * average;
-    return simpleSelector(this.playlists.master, average, parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10), parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
+    return simpleSelector(this.playlists.master, average, parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10), parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10), crossedLowWaterLine(this.tech_.currentTime(), this.tech_.buffered()));
   };
 };
 exports.movingAverageBandwidthSelector = movingAverageBandwidthSelector;
-},{"./config":3,"./playlist":10}],10:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./config":3,"./playlist":10,"global/window":28}],10:[function(require,module,exports){
 (function (global){
 /**
  * @file playlist.js
@@ -4025,7 +4088,7 @@ Playlist.playlistEnd = playlistEnd;
 // exports
 exports['default'] = Playlist;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"global/window":31}],11:[function(require,module,exports){
+},{"global/window":28}],11:[function(require,module,exports){
 (function (global){
 /**
  * ranges
@@ -4653,7 +4716,7 @@ var resolveUrl = function resolveUrl(baseURL, relativeURL) {
 
 exports['default'] = resolveUrl;
 module.exports = exports['default'];
-},{"global/window":31,"url-toolkit":62}],15:[function(require,module,exports){
+},{"global/window":28,"url-toolkit":62}],15:[function(require,module,exports){
 (function (global){
 /**
  * @file segment-loader.js
@@ -5842,7 +5905,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 exports['default'] = SegmentLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
+},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
 (function (global){
 /**
  * @file source-updater.js
@@ -6779,7 +6842,7 @@ var SyncController = (function (_videojs$EventTarget) {
 
 exports['default'] = SyncController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./playlist":10,"mux.js/lib/mp4/probe":56,"mux.js/lib/tools/ts-inspector.js":58}],19:[function(require,module,exports){
+},{"./playlist":10,"mux.js/lib/mp4/probe":53,"mux.js/lib/tools/ts-inspector.js":55}],19:[function(require,module,exports){
 (function (global){
 /**
  * @file vtt-segment-loader.js
@@ -7228,7 +7291,7 @@ var VTTSegmentLoader = (function (_SegmentLoader) {
 exports['default'] = VTTSegmentLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./bin-utils":2,"./segment-loader":15,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
+},{"./bin-utils":2,"./segment-loader":15,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
 (function (global){
 /**
  * @file xhr.js
@@ -7828,7 +7891,7 @@ exports['default'] = {
   Decrypter: Decrypter,
   decrypt: decrypt
 };
-},{"./aes":21,"./async-stream":22,"pkcs7":27}],24:[function(require,module,exports){
+},{"./aes":21,"./async-stream":22,"pkcs7":60}],24:[function(require,module,exports){
 /**
  * @file index.js
  *
@@ -7860,131 +7923,139 @@ exports['default'] = {
 };
 module.exports = exports['default'];
 },{"./async-stream":22,"./decrypter":23}],25:[function(require,module,exports){
-arguments[4][17][0].apply(exports,arguments)
-},{"dup":17}],26:[function(require,module,exports){
-/*
- * pkcs7.pad
- * https://github.com/brightcove/pkcs7
- *
- * Copyright (c) 2014 Brightcove
- * Licensed under the apache2 license.
+/**
+ * @file stream.js
  */
-
+/**
+ * A lightweight readable stream implemention that handles event dispatching.
+ *
+ * @class Stream
+ */
 'use strict';
 
-var PADDING;
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
 
-/**
- * Returns a new Uint8Array that is padded with PKCS#7 padding.
- * @param plaintext {Uint8Array} the input bytes before encryption
- * @return {Uint8Array} the padded bytes
- * @see http://tools.ietf.org/html/rfc5652
- */
-module.exports = function pad(plaintext) {
-  var padding = PADDING[(plaintext.byteLength % 16) || 0],
-      result = new Uint8Array(plaintext.byteLength + padding.length);
-  result.set(plaintext);
-  result.set(padding, plaintext.byteLength);
-  return result;
-};
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
-// pre-define the padding values
-PADDING = [
-  [16, 16, 16, 16,
-   16, 16, 16, 16,
-   16, 16, 16, 16,
-   16, 16, 16, 16],
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
-  [15, 15, 15, 15,
-   15, 15, 15, 15,
-   15, 15, 15, 15,
-   15, 15, 15],
+var Stream = (function () {
+  function Stream() {
+    _classCallCheck(this, Stream);
 
-  [14, 14, 14, 14,
-   14, 14, 14, 14,
-   14, 14, 14, 14,
-   14, 14],
+    this.listeners = {};
+  }
 
-  [13, 13, 13, 13,
-   13, 13, 13, 13,
-   13, 13, 13, 13,
-   13],
+  /**
+   * Add a listener for a specified event type.
+   *
+   * @param {String} type the event name
+   * @param {Function} listener the callback to be invoked when an event of
+   * the specified type occurs
+   */
 
-  [12, 12, 12, 12,
-   12, 12, 12, 12,
-   12, 12, 12, 12],
+  _createClass(Stream, [{
+    key: 'on',
+    value: function on(type, listener) {
+      if (!this.listeners[type]) {
+        this.listeners[type] = [];
+      }
+      this.listeners[type].push(listener);
+    }
 
-  [11, 11, 11, 11,
-   11, 11, 11, 11,
-   11, 11, 11],
+    /**
+     * Remove a listener for a specified event type.
+     *
+     * @param {String} type the event name
+     * @param {Function} listener  a function previously registered for this
+     * type of event through `on`
+     * @return {Boolean} if we could turn it off or not
+     */
+  }, {
+    key: 'off',
+    value: function off(type, listener) {
+      var index = undefined;
 
-  [10, 10, 10, 10,
-   10, 10, 10, 10,
-   10, 10],
+      if (!this.listeners[type]) {
+        return false;
+      }
+      index = this.listeners[type].indexOf(listener);
+      this.listeners[type].splice(index, 1);
+      return index > -1;
+    }
 
-  [9, 9, 9, 9,
-   9, 9, 9, 9,
-   9],
+    /**
+     * Trigger an event of the specified type on this stream. Any additional
+     * arguments to this function are passed as parameters to event listeners.
+     *
+     * @param {String} type the event name
+     */
+  }, {
+    key: 'trigger',
+    value: function trigger(type) {
+      var callbacks = undefined;
+      var i = undefined;
+      var length = undefined;
+      var args = undefined;
 
-  [8, 8, 8, 8,
-   8, 8, 8, 8],
+      callbacks = this.listeners[type];
+      if (!callbacks) {
+        return;
+      }
+      // Slicing the arguments on every invocation of this method
+      // can add a significant amount of overhead. Avoid the
+      // intermediate object creation for the common case of a
+      // single callback argument
+      if (arguments.length === 2) {
+        length = callbacks.length;
+        for (i = 0; i < length; ++i) {
+          callbacks[i].call(this, arguments[1]);
+        }
+      } else {
+        args = Array.prototype.slice.call(arguments, 1);
+        length = callbacks.length;
+        for (i = 0; i < length; ++i) {
+          callbacks[i].apply(this, args);
+        }
+      }
+    }
 
-  [7, 7, 7, 7,
-   7, 7, 7],
+    /**
+     * Destroys the stream and cleans up.
+     */
+  }, {
+    key: 'dispose',
+    value: function dispose() {
+      this.listeners = {};
+    }
 
-  [6, 6, 6, 6,
-   6, 6],
+    /**
+     * Forwards all `data` events on this stream to the destination stream. The
+     * destination stream should provide a method `push` to receive the data
+     * events as they arrive.
+     *
+     * @param {Stream} destination the stream that will receive all `data` events
+     * @see http://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
+     */
+  }, {
+    key: 'pipe',
+    value: function pipe(destination) {
+      this.on('data', function (data) {
+        destination.push(data);
+      });
+    }
+  }]);
 
-  [5, 5, 5, 5,
-   5],
+  return Stream;
+})();
 
-  [4, 4, 4, 4],
-
-  [3, 3, 3],
-
-  [2, 2],
-
-  [1]
-];
+exports['default'] = Stream;
+module.exports = exports['default'];
+},{}],26:[function(require,module,exports){
 
 },{}],27:[function(require,module,exports){
-/*
- * pkcs7
- * https://github.com/brightcove/pkcs7
- *
- * Copyright (c) 2014 Brightcove
- * Licensed under the apache2 license.
- */
-
-'use strict';
-
-exports.pad = require('./pad.js');
-exports.unpad = require('./unpad.js');
-
-},{"./pad.js":26,"./unpad.js":28}],28:[function(require,module,exports){
-/*
- * pkcs7.unpad
- * https://github.com/brightcove/pkcs7
- *
- * Copyright (c) 2014 Brightcove
- * Licensed under the apache2 license.
- */
-
-'use strict';
-
-/**
- * Returns the subarray of a Uint8Array without PKCS#7 padding.
- * @param padded {Uint8Array} unencrypted bytes that have been padded
- * @return {Uint8Array} the unpadded bytes
- * @see http://tools.ietf.org/html/rfc5652
- */
-module.exports = function unpad(padded) {
-  return padded.subarray(0, padded.byteLength - padded[padded.byteLength - 1]);
-};
-
-},{}],29:[function(require,module,exports){
-
-},{}],30:[function(require,module,exports){
 (function (global){
 var topLevel = typeof global !== 'undefined' ? global :
     typeof window !== 'undefined' ? window : {}
@@ -8005,7 +8076,7 @@ if (typeof document !== 'undefined') {
 module.exports = doccy;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"min-document":29}],31:[function(require,module,exports){
+},{"min-document":26}],28:[function(require,module,exports){
 (function (global){
 var win;
 
@@ -8022,7 +8093,7 @@ if (typeof window !== "undefined") {
 module.exports = win;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],32:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 'use strict';
 
 var _lineStream = require('./line-stream');
@@ -8052,7 +8123,7 @@ module.exports = {
     * that do not assume the entirety of the manifest is ready and expose a
     * ReadableStream-like interface.
     */
-},{"./line-stream":33,"./parse-stream":34,"./parser":35}],33:[function(require,module,exports){
+},{"./line-stream":30,"./parse-stream":31,"./parser":32}],30:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8121,7 +8192,7 @@ var LineStream = function (_Stream) {
 }(_stream2['default']);
 
 exports['default'] = LineStream;
-},{"./stream":36}],34:[function(require,module,exports){
+},{"./stream":33}],31:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8574,7 +8645,7 @@ var ParseStream = function (_Stream) {
 }(_stream2['default']);
 
 exports['default'] = ParseStream;
-},{"./stream":36}],35:[function(require,module,exports){
+},{"./stream":33}],32:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8965,7 +9036,7 @@ var Parser = function (_Stream) {
 }(_stream2['default']);
 
 exports['default'] = Parser;
-},{"./line-stream":33,"./parse-stream":34,"./stream":36}],36:[function(require,module,exports){
+},{"./line-stream":30,"./parse-stream":31,"./stream":33}],33:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9098,7 +9169,7 @@ var Stream = function () {
 }();
 
 exports['default'] = Stream;
-},{}],37:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -9243,7 +9314,7 @@ AacStream.prototype = new Stream();
 
 module.exports = AacStream;
 
-},{"../utils/stream.js":61}],38:[function(require,module,exports){
+},{"../utils/stream.js":58}],35:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -9406,7 +9477,7 @@ module.exports = {
   parseAacTimestamp: parseAacTimestamp
 };
 
-},{}],39:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -9540,7 +9611,7 @@ AdtsStream.prototype = new Stream();
 
 module.exports = AdtsStream;
 
-},{"../utils/stream.js":61}],40:[function(require,module,exports){
+},{"../utils/stream.js":58}],37:[function(require,module,exports){
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -9960,7 +10031,7 @@ module.exports = {
   NalByteStream: NalByteStream
 };
 
-},{"../utils/exp-golomb.js":60,"../utils/stream.js":61}],41:[function(require,module,exports){
+},{"../utils/exp-golomb.js":57,"../utils/stream.js":58}],38:[function(require,module,exports){
 var highPrefix = [33, 16, 5, 32, 164, 27];
 var lowPrefix = [33, 65, 108, 84, 1, 2, 4, 8, 168, 2, 4, 8, 17, 191, 252];
 var zeroFill = function(count) {
@@ -9997,7 +10068,7 @@ var coneOfSilence = {
 
 module.exports = makeTable(coneOfSilence);
 
-},{}],42:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -10142,7 +10213,7 @@ CoalesceStream.prototype.flush = function(flushSource) {
 
 module.exports = CoalesceStream;
 
-},{"../utils/stream.js":61}],43:[function(require,module,exports){
+},{"../utils/stream.js":58}],40:[function(require,module,exports){
 'use strict';
 
 var FlvTag = require('./flv-tag.js');
@@ -10204,7 +10275,7 @@ var getFlvHeader = function(duration, audio, video) { // :ByteArray {
 
 module.exports = getFlvHeader;
 
-},{"./flv-tag.js":44}],44:[function(require,module,exports){
+},{"./flv-tag.js":41}],41:[function(require,module,exports){
 /**
  * An object that stores the bytes of an FLV tag and methods for
  * querying and manipulating that data.
@@ -10578,14 +10649,14 @@ FlvTag.frameTime = function(tag) {
 
 module.exports = FlvTag;
 
-},{}],45:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 module.exports = {
   tag: require('./flv-tag'),
   Transmuxer: require('./transmuxer'),
   getFlvHeader: require('./flv-header')
 };
 
-},{"./flv-header":43,"./flv-tag":44,"./transmuxer":47}],46:[function(require,module,exports){
+},{"./flv-header":40,"./flv-tag":41,"./transmuxer":44}],43:[function(require,module,exports){
 'use strict';
 
 var TagList = function() {
@@ -10612,7 +10683,7 @@ var TagList = function() {
 
 module.exports = TagList;
 
-},{}],47:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -11030,7 +11101,7 @@ Transmuxer.prototype = new Stream();
 // forward compatibility
 module.exports = Transmuxer;
 
-},{"../codecs/adts.js":39,"../codecs/h264":40,"../m2ts/m2ts.js":49,"../utils/stream.js":61,"./coalesce-stream.js":42,"./flv-tag.js":44,"./tag-list.js":46}],48:[function(require,module,exports){
+},{"../codecs/adts.js":36,"../codecs/h264":37,"../m2ts/m2ts.js":46,"../utils/stream.js":58,"./coalesce-stream.js":39,"./flv-tag.js":41,"./tag-list.js":43}],45:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -11496,7 +11567,7 @@ module.exports = {
   Cea608Stream: Cea608Stream
 };
 
-},{"../utils/stream":61}],49:[function(require,module,exports){
+},{"../utils/stream":58}],46:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -11957,7 +12028,7 @@ for (var type in StreamTypes) {
 
 module.exports = m2ts;
 
-},{"../utils/stream.js":61,"./caption-stream":48,"./metadata-stream":50,"./stream-types":52,"./stream-types.js":52,"./timestamp-rollover-stream":53}],50:[function(require,module,exports){
+},{"../utils/stream.js":58,"./caption-stream":45,"./metadata-stream":47,"./stream-types":49,"./stream-types.js":49,"./timestamp-rollover-stream":50}],47:[function(require,module,exports){
 /**
  * Accepts program elementary stream (PES) data events and parses out
  * ID3 metadata from them, if present.
@@ -12207,7 +12278,7 @@ MetadataStream.prototype = new Stream();
 
 module.exports = MetadataStream;
 
-},{"../utils/stream":61,"./stream-types":52}],51:[function(require,module,exports){
+},{"../utils/stream":58,"./stream-types":49}],48:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -12496,7 +12567,7 @@ module.exports = {
   videoPacketContainsKeyFrame: videoPacketContainsKeyFrame
 };
 
-},{"./stream-types.js":52}],52:[function(require,module,exports){
+},{"./stream-types.js":49}],49:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -12505,7 +12576,7 @@ module.exports = {
   METADATA_STREAM_TYPE: 0x15
 };
 
-},{}],53:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -12591,7 +12662,7 @@ module.exports = {
   handleRollover: handleRollover
 };
 
-},{"../utils/stream":61}],54:[function(require,module,exports){
+},{"../utils/stream":58}],51:[function(require,module,exports){
 module.exports = {
   generator: require('./mp4-generator'),
   Transmuxer: require('./transmuxer').Transmuxer,
@@ -12599,7 +12670,7 @@ module.exports = {
   VideoSegmentStream: require('./transmuxer').VideoSegmentStream
 };
 
-},{"./mp4-generator":55,"./transmuxer":57}],55:[function(require,module,exports){
+},{"./mp4-generator":52,"./transmuxer":54}],52:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -13371,7 +13442,7 @@ module.exports = {
   }
 };
 
-},{}],56:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -13561,7 +13632,7 @@ module.exports = {
   startTime: startTime
 };
 
-},{}],57:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -14821,7 +14892,7 @@ module.exports = {
   VIDEO_PROPERTIES: VIDEO_PROPERTIES
 };
 
-},{"../aac":37,"../codecs/adts.js":39,"../codecs/h264":40,"../data/silence":41,"../m2ts/m2ts.js":49,"../utils/clock":59,"../utils/stream.js":61,"./mp4-generator.js":55}],58:[function(require,module,exports){
+},{"../aac":34,"../codecs/adts.js":36,"../codecs/h264":37,"../data/silence":38,"../m2ts/m2ts.js":46,"../utils/clock":56,"../utils/stream.js":58,"./mp4-generator.js":52}],55:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -15335,7 +15406,7 @@ module.exports = {
   inspect: inspect
 };
 
-},{"../aac/probe.js":38,"../m2ts/probe.js":51,"../m2ts/stream-types.js":52,"../m2ts/timestamp-rollover-stream.js":53}],59:[function(require,module,exports){
+},{"../aac/probe.js":35,"../m2ts/probe.js":48,"../m2ts/stream-types.js":49,"../m2ts/timestamp-rollover-stream.js":50}],56:[function(require,module,exports){
 var
   ONE_SECOND_IN_TS = 90000, // 90kHz clock
   secondsToVideoTs,
@@ -15378,7 +15449,7 @@ module.exports = {
   videoTsToAudioTs: videoTsToAudioTs
 };
 
-},{}],60:[function(require,module,exports){
+},{}],57:[function(require,module,exports){
 'use strict';
 
 var ExpGolomb;
@@ -15527,7 +15598,7 @@ ExpGolomb = function(workingData) {
 
 module.exports = ExpGolomb;
 
-},{}],61:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 /**
  * mux.js
  *
@@ -15645,6 +15716,127 @@ Stream.prototype.flush = function(flushSource) {
 };
 
 module.exports = Stream;
+
+},{}],59:[function(require,module,exports){
+/*
+ * pkcs7.pad
+ * https://github.com/brightcove/pkcs7
+ *
+ * Copyright (c) 2014 Brightcove
+ * Licensed under the apache2 license.
+ */
+
+'use strict';
+
+var PADDING;
+
+/**
+ * Returns a new Uint8Array that is padded with PKCS#7 padding.
+ * @param plaintext {Uint8Array} the input bytes before encryption
+ * @return {Uint8Array} the padded bytes
+ * @see http://tools.ietf.org/html/rfc5652
+ */
+module.exports = function pad(plaintext) {
+  var padding = PADDING[(plaintext.byteLength % 16) || 0],
+      result = new Uint8Array(plaintext.byteLength + padding.length);
+  result.set(plaintext);
+  result.set(padding, plaintext.byteLength);
+  return result;
+};
+
+// pre-define the padding values
+PADDING = [
+  [16, 16, 16, 16,
+   16, 16, 16, 16,
+   16, 16, 16, 16,
+   16, 16, 16, 16],
+
+  [15, 15, 15, 15,
+   15, 15, 15, 15,
+   15, 15, 15, 15,
+   15, 15, 15],
+
+  [14, 14, 14, 14,
+   14, 14, 14, 14,
+   14, 14, 14, 14,
+   14, 14],
+
+  [13, 13, 13, 13,
+   13, 13, 13, 13,
+   13, 13, 13, 13,
+   13],
+
+  [12, 12, 12, 12,
+   12, 12, 12, 12,
+   12, 12, 12, 12],
+
+  [11, 11, 11, 11,
+   11, 11, 11, 11,
+   11, 11, 11],
+
+  [10, 10, 10, 10,
+   10, 10, 10, 10,
+   10, 10],
+
+  [9, 9, 9, 9,
+   9, 9, 9, 9,
+   9],
+
+  [8, 8, 8, 8,
+   8, 8, 8, 8],
+
+  [7, 7, 7, 7,
+   7, 7, 7],
+
+  [6, 6, 6, 6,
+   6, 6],
+
+  [5, 5, 5, 5,
+   5],
+
+  [4, 4, 4, 4],
+
+  [3, 3, 3],
+
+  [2, 2],
+
+  [1]
+];
+
+},{}],60:[function(require,module,exports){
+/*
+ * pkcs7
+ * https://github.com/brightcove/pkcs7
+ *
+ * Copyright (c) 2014 Brightcove
+ * Licensed under the apache2 license.
+ */
+
+'use strict';
+
+exports.pad = require('./pad.js');
+exports.unpad = require('./unpad.js');
+
+},{"./pad.js":59,"./unpad.js":61}],61:[function(require,module,exports){
+/*
+ * pkcs7.unpad
+ * https://github.com/brightcove/pkcs7
+ *
+ * Copyright (c) 2014 Brightcove
+ * Licensed under the apache2 license.
+ */
+
+'use strict';
+
+/**
+ * Returns the subarray of a Uint8Array without PKCS#7 padding.
+ * @param padded {Uint8Array} unencrypted bytes that have been padded
+ * @return {Uint8Array} the unpadded bytes
+ * @see http://tools.ietf.org/html/rfc5652
+ */
+module.exports = function unpad(padded) {
+  return padded.subarray(0, padded.byteLength - padded[padded.byteLength - 1]);
+};
 
 },{}],62:[function(require,module,exports){
 /* jshint ignore:start */
@@ -15900,7 +16092,7 @@ exports['default'] = {
 };
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"global/window":31}],64:[function(require,module,exports){
+},{"global/window":28}],64:[function(require,module,exports){
 /**
  * Remove the text track from the player if one with matching kind and
  * label properties already exists on the player
@@ -16314,7 +16506,7 @@ for (var property in _flashConstants2['default']) {
 }
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":30}],69:[function(require,module,exports){
+},{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":27}],69:[function(require,module,exports){
 (function (global){
 /**
  * @file flash-source-buffer.js
@@ -16916,7 +17108,7 @@ var FlashSourceBuffer = (function (_videojs$EventTarget) {
 exports['default'] = FlashSourceBuffer;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":31,"mux.js/lib/flv":45,"webworkify":76}],70:[function(require,module,exports){
+},{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":28,"mux.js/lib/flv":42,"webworkify":76}],70:[function(require,module,exports){
 /**
  * @file flash-transmuxer-worker.js
  */
@@ -17061,7 +17253,7 @@ exports['default'] = function (self) {
 };
 
 module.exports = exports['default'];
-},{"global/window":31,"mux.js/lib/flv":45}],71:[function(require,module,exports){
+},{"global/window":28,"mux.js/lib/flv":42}],71:[function(require,module,exports){
 (function (global){
 /**
  * @file html-media-source.js
@@ -17401,7 +17593,7 @@ var HtmlMediaSource = (function (_videojs$EventTarget) {
 exports['default'] = HtmlMediaSource;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":30,"global/window":31}],72:[function(require,module,exports){
+},{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":27,"global/window":28}],72:[function(require,module,exports){
 /**
  * @file remove-cues-from-track.js
  */
@@ -17649,7 +17841,7 @@ exports['default'] = function (self) {
 };
 
 module.exports = exports['default'];
-},{"global/window":31,"mux.js/lib/mp4":54}],74:[function(require,module,exports){
+},{"global/window":28,"mux.js/lib/mp4":51}],74:[function(require,module,exports){
 (function (global){
 /**
  * @file videojs-contrib-media-sources.js
@@ -17808,7 +18000,7 @@ exports.URL = URL;
 _videoJs2['default'].MediaSource = MediaSource;
 _videoJs2['default'].URL = URL;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./flash-media-source":68,"./html-media-source":71,"global/window":31}],75:[function(require,module,exports){
+},{"./flash-media-source":68,"./html-media-source":71,"global/window":28}],75:[function(require,module,exports){
 (function (global){
 /**
  * @file virtual-source-buffer.js
@@ -19257,5 +19449,5 @@ module.exports = {
   HlsSourceHandler: HlsSourceHandler
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":30,"global/window":31,"m3u8-parser":32,"videojs-contrib-media-sources":74}]},{},[77])(77)
+},{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":27,"global/window":28,"m3u8-parser":29,"videojs-contrib-media-sources":74}]},{},[77])(77)
 });
