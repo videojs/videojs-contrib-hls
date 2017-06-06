@@ -11,11 +11,11 @@ import resolve from 'rollup-plugin-node-resolve';
 import worker from 'rollup-plugin-bundle-worker';
 
 export default {
-  moduleName: 'videojs-contrib-hls',
-  entry: 'src/videojs-contrib-hls.js',
-  dest: 'dist/videojs-contrib-hls.js',
-  format: 'umd',
-  external: ['video.js', 'videojs-contrib-media-sources'],
+  moduleName: 'worker',
+  entry: 'src/decrypter-worker.js',
+  dest: 'src/decrypter-worker.js',
+  format: 'iife',
+  external: ['video.js'],
   globals: {
     'video.js': 'videojs'
   },

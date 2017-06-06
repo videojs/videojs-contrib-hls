@@ -14,7 +14,9 @@
   "scripts": {
     "prebuild": "npm run clean",
     "build": "npm-run-all -p build:*",
+    "prebuild:js": "rollup -c scripts/worker.rollup.config.js",
     "build:js": "npm-run-all build:js:rollup-modules build:js:rollup-umd build:js:bannerize build:js:uglify",
+    "postbuild:js": "git checkout src/decrypter-worker.js",
     "build:js:babel": "babel src -d es5",
     "build:js:bannerize": "bannerize dist/videojs-contrib-hls.js --banner=scripts/banner.ejs",
     "build:js:rollup-modules": "rollup -c scripts/modules.rollup.config.js",
