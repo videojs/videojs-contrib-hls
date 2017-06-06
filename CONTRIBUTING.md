@@ -12,7 +12,7 @@ Make sure you have NodeJS 0.10 or higher and npm installed.
 
 ### Making Changes
 
-Refer to the [video.js plugin standards][standards] for more detail on best practices and tooling for video.js plugin authorship.
+Refer to the [video.js plugin conventions][conventions] for more detail on best practices and tooling for video.js plugin authorship.
 
 When you've made your changes, push your commit(s) to your fork and issue a pull request against the original repository.
 
@@ -27,4 +27,4 @@ Testing is a crucial part of any software project. For all but the most trivial 
 
 [karma]: http://karma-runner.github.io/
 [local]: http://localhost:9999/test/
-[standards]: https://github.com/videojs/generator-videojs-plugin/blob/master/docs/standards.md
+[conventions]: https://github.com/videojs/generator-videojs-plugin/blob/master/docs/conventions.md
