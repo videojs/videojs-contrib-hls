@@ -692,18 +692,16 @@ QUnit.test('selects a playlist below the current bandwidth', function(assert) {
 
   // the default playlist has a really high bitrate
   this.player.tech_.hls.playlists.master.playlists[0].attributes.BANDWIDTH = 9e10;
-  // playlist 1 has a very low bitrate
-  this.player.tech_.hls.playlists.master.playlists[1].attributes.BANDWIDTH = 1;
   // but the detected client bandwidth is really low
-  this.player.tech_.hls.bandwidth = 10;
+  this.player.tech_.hls.bandwidth = 1;
 
   playlist = this.player.tech_.hls.selectPlaylist();
   assert.strictEqual(playlist,
-                     this.player.tech_.hls.playlists.master.playlists[1],
+                     this.player.tech_.hls.playlists.master.playlists[2],
                      'the low bitrate stream is selected');
 
   // verify stats
-  assert.equal(this.player.tech_.hls.stats.bandwidth, 10, 'bandwidth set above');
+  assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth set above');
 });
 
 QUnit.test('selects a primary rendtion when there are multiple rendtions share same attributes', function(assert) {
@@ -811,6 +809,10 @@ QUnit.test('uses the lowest bitrate if no other is suitable', function(assert) {
 
   // the lowest bitrate playlist is much greater than 1b/s
   this.player.tech_.hls.bandwidth = 1;
+  this.player.tech_.hls.playlists.master.playlists[0].attributes.BANDWIDTH = 9e10;
+  this.player.tech_.hls.playlists.master.playlists[1].attributes.BANDWIDTH = 9e10 - 1;
+  this.player.tech_.hls.playlists.master.playlists[2].attributes.BANDWIDTH = 9e10;
+  this.player.tech_.hls.playlists.master.playlists[3].attributes.BANDWIDTH = 9e10;
   playlist = this.player.tech_.hls.selectPlaylist();
 
   // playlist 1 has the lowest advertised bitrate
@@ -1638,7 +1640,7 @@ QUnit.test('resets the switching algorithm if a request times out', function(ass
   this.requests[0].timedout = true;
   // segment
   this.requests.shift().abort();
-
+  this.clock.tick(1);
   this.standardXHRResponse(this.requests.shift());
 
   assert.strictEqual(this.player.tech_.hls.playlists.media(),

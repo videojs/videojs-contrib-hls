@@ -32,7 +32,7 @@ const Hls = {
   AsyncStream,
   decrypt,
   utils,
-  STANDARD_PLAYLIST_SELECTOR: movingAverageBandwidthSelector(0.5),
+  STANDARD_PLAYLIST_SELECTOR: movingAverageBandwidthSelector,
   comparePlaylistBandwidth,
   comparePlaylistResolution,
 
@@ -327,7 +327,8 @@ class HlsHandler extends Component {
     // compatibility with < v2
     this.masterPlaylistController_.selectPlaylist =
       this.selectPlaylist ?
-        this.selectPlaylist.bind(this) : Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
+        this.selectPlaylist.bind(this) :
+        Hls.STANDARD_PLAYLIST_SELECTOR(Config.EWMA_DECAY).bind(this);
 
     // re-expose some internal objects for backwards compatibility with < v2
     this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;
