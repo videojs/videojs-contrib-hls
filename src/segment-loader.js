@@ -717,17 +717,21 @@ export default class SegmentLoader extends videojs.EventTarget {
     };
   }
 
-  abortRequestEarly_(segment) {
-    const stats = segment.stats;
+  abortRequestEarly_(stats, segment) {
+    if (!this.playlist_.attributes && !this.playlist_.attributes.BANDWIDTH) {
+      // can't determine if we should abort early if we don't have bandwidth information
+      // for the current playlist.
+      return;
+    }
+
     const msSinceFirstByte = Date.now() - stats.firstByteReceived;
-    const RTT = stats.roundTripTime;
     // Since bandwidth values reported by progress events stabilize as time goes on,
     // we adjust bandwidth by a conservative amount, increasing as more time has passed
     // maxing at 0.8 to prevent aborting a request we actually do have enough bandwidth
     // for.
-    const playlistBandwidthAdjustment = Math.min(0.8, RTT / segment.duration);
-    const playlistBandwidth = this.playlist_.attributes &&
-                              this.playlist_.attributes.BANDWIDTH;
+    const playlistBandwidthAdjustment = Math.min(0.8,
+      msSinceFirstByte / segment.duration);
+    const playlistBandwidth = this.playlist_.attributes.BANDWIDTH;
 
     // When on the lowestEnabledRendition, segment request timeouts are set to 0. First
     // we check that we have a timeout in place to ensure that if we do abort early, we
@@ -741,7 +745,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         msSinceFirstByte > 1000 &&
         // Lastly, if the calculated bandwidth for the current request is less than
         // the bitrate of the playlist (adjusted downwards so that we don't jump the gun)
-        // then we want to abort this request and try a smaller rendition that we could
+        // then we want to abort this request and try a smaller rendition that we can
         // keep up with.
         stats.bandwidth < playlistBandwidth * playlistBandwidthAdjustment) {
       this.bandwidth = stats.bandwidth;
@@ -757,7 +761,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    if (this.abortRequestEarly_(segment)) {
+    if (this.abortRequestEarly_(segment.stats, this.pendingSegment_)) {
       return;
     }
 
