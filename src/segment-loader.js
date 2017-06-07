@@ -717,22 +717,32 @@ export default class SegmentLoader extends videojs.EventTarget {
     };
   }
 
-  abortRequestEarly_(stats) {
-    const firstByteReceived = Date.now() - stats.firstByteReceived;
+  abortRequestEarly_(segment) {
+    const stats = segment.stats;
+    const msSinceFirstByte = Date.now() - stats.firstByteReceived;
+    const RTT = stats.roundTripTime;
     // Since bandwidth values reported by progress events stabilize as time goes on,
-    // we adjust bandwidth by a conservative ammount, increasing as more time has passed
+    // we adjust bandwidth by a conservative amount, increasing as more time has passed
     // maxing at 0.8 to prevent aborting a request we actually do have enough bandwidth
     // for.
-    const playlistBandwidthAdjustment = Math.min(0.8, firstByteReceived / 5000);
-    const playlistBandwidth = this.playlist_.attributes.BANDWIDTH;
+    const playlistBandwidthAdjustment = Math.min(0.8, RTT / segment.duration);
+    const playlistBandwidth = this.playlist_.attributes &&
+                              this.playlist_.attributes.BANDWIDTH;
 
-    // Wait at least 1 second before using the calculated bandwidth from the
-    // progress event to allow the bitrate to stabilize. Bandwidth information
-    // during the first second is highly variable and inaccurate.
+    // When on the lowestEnabledRendition, segment request timeouts are set to 0. First
+    // we check that we have a timeout in place to ensure that if we do abort early, we
+    // actually have another playlist we can switch to.
     // TODO: Replace timeout with a boolean indicating whether this playlist is the
     // lowestEnabledRendition
     if (this.xhrOptions_.timeout &&
-        firstByteReceived > 1000 &&
+        // Wait at least 1 second before using the calculated bandwidth from the
+        // progress event to allow the bitrate to stabilize. Bandwidth information
+        // during the first second can be highly variable and inaccurate.
+        msSinceFirstByte > 1000 &&
+        // Lastly, if the calculated bandwidth for the current request is less than
+        // the bitrate of the playlist (adjusted downwards so that we don't jump the gun)
+        // then we want to abort this request and try a smaller rendition that we could
+        // keep up with.
         stats.bandwidth < playlistBandwidth * playlistBandwidthAdjustment) {
       this.bandwidth = stats.bandwidth;
       this.abort();
@@ -747,7 +757,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    if (this.abortRequestEarly_(segment.stats)) {
+    if (this.abortRequestEarly_(segment)) {
       return;
     }
 

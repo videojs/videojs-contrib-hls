@@ -280,7 +280,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
     QUnit.test('aborts request at progress events if bandwidth is too low',
     function(assert) {
       const playlist = playlistWithDuration(10);
-      const xhrOpotions = {
+      const xhrOptions = {
         timeout: 15000
       };
       let bandwidthupdates = 0;
@@ -288,7 +288,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
       playlist.attributes.BANDWIDTH = 100000;
 
       loader.on('bandwidthupdate', () => bandwidthupdates++);
-      loader.playlist(playlist, xhrOpotions);
+      loader.playlist(playlist, xhrOptions);
       loader.load();
 
       this.clock.tick(1);
