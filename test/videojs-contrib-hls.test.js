@@ -671,7 +671,7 @@ QUnit.test('buffer checks are noops when only the master is ready', function(ass
   this.standardXHRResponse(this.requests.shift());
   this.clock.tick(10 * 1000);
 
-  assert.strictEqual(1, this.requests.length, 'one request was made');
+  assert.strictEqual(this.requests.length, 1, 'one request was made');
   assert.strictEqual(this.requests[0].url,
                      absoluteUrl('manifest/media1.m3u8'),
                      'media playlist requested');

@@ -509,7 +509,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       activeAudioGroup = this.activeAudioGroup();
       activeTrack = activeAudioGroup.filter((track) => track.enabled)[0];
       if (!activeTrack) {
-        this.setupAudio();
+        this.mediaGroupChanged();
         this.trigger('audioupdate');
       }
       this.setupSubtitles();
@@ -800,13 +800,40 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Determine the correct audio renditions based on the active
+   * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
+   * necessary. This method is only called when the media-group changes
+   * and performs non-destructive 'resync' of the SegmentLoader(s) since
+   * the playlist has likely changed
+   */
+  mediaGroupChanged() {
+    let track = this.getActiveAudioTrack_();
+
+    this.stopAudioLoaders_();
+    this.resyncAudioLoaders_(track);
+  }
+
+  /**
    * Determine the correct audio rendition based on the active
    * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
    * necessary. This method is called once automatically before
    * playback begins to enable the default audio track and should be
-   * invoked again if the track is changed.
+   * invoked again if the track is changed. Performs destructive 'reset'
+   * on the SegmentLoaders(s) to ensure we start loading audio as
+   * close to currentTime as possible
    */
   setupAudio() {
+    let track = this.getActiveAudioTrack_();
+
+    this.stopAudioLoaders_();
+    this.resetAudioLoaders_(track);
+  }
+
+  /**
+   * Returns the currently active track or the default track if none
+   * are active
+   */
+  getActiveAudioTrack_() {
     // determine whether seperate loaders are required for the audio
     // rendition
     let audioGroup = this.activeAudioGroup();
@@ -821,19 +848,56 @@ export class MasterPlaylistController extends videojs.EventTarget {
       track.enabled = true;
     }
 
+    return track;
+  }
+
+  /**
+   * Destroy the PlaylistLoader and pause the SegmentLoader specifically
+   * for audio when switching audio tracks
+   */
+  stopAudioLoaders_() {
     // stop playlist and segment loading for audio
     if (this.audioPlaylistLoader_) {
       this.audioPlaylistLoader_.dispose();
       this.audioPlaylistLoader_ = null;
     }
     this.audioSegmentLoader_.pause();
+  }
 
+  /**
+   * Destructive reset of the mainSegmentLoader (when audio is muxed)
+   * or audioSegmentLoader (when audio is demuxed) to prepare them
+   * to start loading new data right at currentTime
+   */
+  resetAudioLoaders_(track) {
     if (!track.properties_.resolvedUri) {
       this.mainSegmentLoader_.resetEverything();
       return;
     }
-    this.audioSegmentLoader_.resetEverything();
 
+    this.audioSegmentLoader_.resetEverything();
+    this.setupAudioPlaylistLoader_(track);
+  }
+
+  /**
+   * Non-destructive resync of the audioSegmentLoader (when audio
+   * is demuxed) to prepare to continue appending new audio data
+   * at the end of the current buffered region
+   */
+  resyncAudioLoaders_(track) {
+    if (!track.properties_.resolvedUri) {
+      return;
+    }
+
+    this.audioSegmentLoader_.resyncLoader();
+    this.setupAudioPlaylistLoader_(track);
+  }
+
+  /**
+   * Setup a new audioPlaylistLoader and start the audioSegmentLoader
+   * to begin loading demuxed audio
+   */
+  setupAudioPlaylistLoader_(track) {
     // startup playlist and segment loaders for the enabled audio
     // track
     this.audioPlaylistLoader_ = new PlaylistLoader(track.properties_.resolvedUri,
