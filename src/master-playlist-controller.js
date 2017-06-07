@@ -321,7 +321,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.seekable_ = videojs.createTimeRanges();
     this.hasPlayed_ = () => false;
 
-    this.syncController_ = new SyncController();
+    this.syncController_ = new SyncController(options);
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
       kind: 'metadata',
       label: 'segment-metadata'
@@ -354,18 +354,18 @@ export class MasterPlaylistController extends videojs.EventTarget {
       new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
         segmentMetadataTrack: this.segmentMetadataTrack_,
         loaderType: 'main'
-      }));
+      }), options);
 
     // alternate audio track
     this.audioSegmentLoader_ =
       new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
         loaderType: 'audio'
-      }));
+      }), options);
 
     this.subtitleSegmentLoader_ =
       new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
         loaderType: 'vtt'
-      }));
+      }), options);
 
     this.setupSegmentLoaderListeners_();
 

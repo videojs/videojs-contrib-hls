@@ -89,7 +89,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
     hooks.beforeEach(function(assert) {
       // Assume this module is nested and the parent module uses CommonHooks.beforeEach
 
-      loader = new LoaderConstructor(LoaderCommonSettings.call(this, loaderOptions));
+      loader = new LoaderConstructor(LoaderCommonSettings.call(this, loaderOptions), {});
 
       loaderBeforeEach(loader);
 
