@@ -197,7 +197,7 @@ const Component = videojs.getComponent('Component');
  */
 class HlsHandler extends Component {
   constructor(source, tech, options) {
-    super(tech);
+    super(tech, options.hls);
 
     // tech.player() is deprecated but setup a reference to HLS for
     // backwards-compatibility
@@ -218,9 +218,6 @@ class HlsHandler extends Component {
     this.source_ = source;
     this.stats = {};
     this.ignoreNextSeekingEvent_ = false;
-
-    // handle global & Source Handler level options
-    this.options_ = options.hls;
     this.setOptions_();
 
     // overriding native HLS only works if audio tracks have been emulated
