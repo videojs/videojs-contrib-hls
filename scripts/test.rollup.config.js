@@ -19,7 +19,8 @@ export default {
     'qunit',
     'qunitjs',
     'sinon',
-    'video.js'
+    'video.js',
+    'videojs-contrib-media-sources'
   ],
   globals: {
     'qunit': 'QUnit',
@@ -44,7 +45,7 @@ export default {
     }),
     babel({
       babelrc: false,
-      exclude: 'node_modules/**',
+      exclude: ['node_modules/**', '**/worker.js'],
       presets: [
         ['es2015', {
           loose: true,
