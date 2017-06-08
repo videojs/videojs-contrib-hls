@@ -1820,8 +1820,11 @@ QUnit.test('fires loadstart manually if Flash is used', function(assert) {
 });
 
 QUnit.test('has no effect if native HLS is available', function(assert) {
+  const Html5 = videojs.getTech('Html5');
+  const oldHtml5CanPlaySource = Html5.canPlaySource;
   let player;
 
+  Html5.canPlaySource = () => true;
   Hls.supportsNativeHls = true;
   player = createPlayer();
   player.src({
@@ -1832,6 +1835,7 @@ QUnit.test('has no effect if native HLS is available', function(assert) {
 
   assert.ok(!player.tech_.hls, 'did not load hls tech');
   player.dispose();
+  Html5.canPlaySource = oldHtml5CanPlaySource;
 });
 
 QUnit.test('loads if native HLS is available and override is set', function(assert) {
@@ -1893,6 +1897,7 @@ QUnit.test('can be disposed before finishing initialization', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
   this.clock.tick(1);
+  readyHandlers.shift().call(this.player);
   this.player.src({
     src: 'http://example.com/media.mp4',
     type: 'video/mp4'
