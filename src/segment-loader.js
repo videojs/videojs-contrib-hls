@@ -762,17 +762,16 @@ export default class SegmentLoader extends videojs.EventTarget {
     const measuredBandwidth = stats.bandwidth;
     const estimatedSegmentSize =
       this.pendingSegment_.duration * this.playlist_.attributes.BANDWIDTH;
-    const currentTime = this.currentTime_();
-    const estimatedRoundTripTime =
+    const requestTimeRemaining =
       (estimatedSegmentSize - (stats.bytesReceived * 8)) / measuredBandwidth;
     const buffered = this.buffered_();
     const bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
     const timeUntilRebuffer =
-      (bufferedEnd - currentTime) / this.hls_.tech_.playbackRate();
+      (bufferedEnd - this.currentTime_()) / this.hls_.tech_.playbackRate();
 
     // Only consider aborting early if the estimated time to finish the download
     // is larger than the estimated time until the player runs out of forward buffer
-    if (estimatedRoundTripTime < timeUntilRebuffer) {
+    if (requestTimeRemaining < timeUntilRebuffer) {
       return false;
     }
 
@@ -782,23 +781,23 @@ export default class SegmentLoader extends videojs.EventTarget {
                              timeUntilRebuffer,
                              this.pendingSegment_.duration);
 
-    // Finally, only abort early and trigger the downswitch if the playlist
-    // that can minimize the time spent rebuffering is a different playlist than the
-    // current, and that switching will be less time than just waiting for the
+    // Finally, don't abort early and trigger the downswitch if the playlist
+    // that can minimize the time spent rebuffering is the same playlist as the
+    // current, or that switching will not be less time than just waiting for the
     // current request to complete.
-    if (playlist &&
-        playlist.uri !== this.playlist_.uri &&
-        roundTripTime < estimatedRoundTripTime) {
-      // set the bandwidth to that of the desired playlist
-      // (Being sure to scale by BANDWIDTH_VARIANCE and adding one so the
-      // playlist selector does not exclude it)
-      this.bandwidth = playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
-      this.abort();
-      this.trigger('bandwidthupdate');
-      return true;
+    if (!playlist ||
+        playlist.uri === this.playlist_.uri ||
+        roundTripTime >= requestTimeRemaining) {
+      return false;
     }
 
-    return false;
+    // set the bandwidth to that of the desired playlist
+    // (Being sure to scale by BANDWIDTH_VARIANCE and adding one so the
+    // playlist selector does not exclude it)
+    this.bandwidth = playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
+    this.abort();
+    this.trigger('bandwidthupdate');
+    return true;
   }
 
   handleProgress_(event, segment) {
