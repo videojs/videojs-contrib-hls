@@ -20,7 +20,9 @@ export default {
     'qunitjs',
     'sinon',
     'video.js',
-    'videojs-contrib-media-sources'
+    'videojs-flash',
+    'videojs-contrib-media-sources',
+    'videojs-contrib-quality-levels'
   ],
   globals: {
     'qunit': 'QUnit',
