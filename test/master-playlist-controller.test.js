@@ -1131,7 +1131,6 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
   });
   this.clock.tick(1);
 
-
   // master
   this.standardXHRResponse(this.requests.shift());
   // media - required for loadedmetadata
