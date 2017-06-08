@@ -27,8 +27,14 @@ export const LoaderCommonHooks = {
     };
     this.seeking = false;
     this.hasPlayed = true;
+    this.paused = false;
+    this.playbackRate = 1;
     this.fakeHls = {
-      xhr: xhrFactory()
+      xhr: xhrFactory(),
+      tech_: {
+        paused: () => this.paused,
+        playbackRate: () => this.playbackRate
+      }
     };
     this.mediaSource = new videojs.MediaSource();
     this.mediaSource.trigger('sourceopen');
