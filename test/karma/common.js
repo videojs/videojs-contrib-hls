@@ -14,7 +14,7 @@ var DEFAULTS = {
     'node_modules/video.js/dist/video-js.css',
     'node_modules/videojs-flash/dist/videojs-flash.js',
     'node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.js',
-    'node_modules/videojs-contrib-media-sources/dist/videojs-contrib-media-source.js',
+    'node_modules/videojs-contrib-media-sources/dist/videojs-contrib-media-sources.js',
     'test/dist/bundle.js'
   ],
 
