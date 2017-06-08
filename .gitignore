@@ -37,3 +37,6 @@ tmp
 test/test-manifests.js
 test/test-expected.js
 coverage/
+
+# this file is generated and shouldn't be checked in
+src/worker.js

@@ -33,7 +33,7 @@ export default {
     }),
     babel({
       babelrc: false,
-      exclude: 'node_modules/**',
+      exclude: ['node_modules/**', '**/worker.js'],
       presets: [
         ['es2015', {
           loose: true,

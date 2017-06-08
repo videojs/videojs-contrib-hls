@@ -9,7 +9,7 @@ import videojs from 'video.js';
 import { updateAdCues } from './ad-cue-tags';
 import SyncController from './sync-controller';
 import codecUtils from 'videojs-contrib-media-sources/es5/codec-utils';
-import worker from './worker';
+import Decrypter from 'worker!./worker.js';
 
 const { translateLegacyCodecs } = codecUtils;
 let Hls;
@@ -326,7 +326,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       label: 'segment-metadata'
     }, true).track;
 
-    this.decrypter_ = worker();
+    this.decrypter_ = new Decrypter();
 
     let segmentLoaderOptions = {
       hls: this.hls_,

@@ -13,7 +13,7 @@ import worker from 'rollup-plugin-bundle-worker';
 export default {
   moduleName: 'worker',
   entry: 'src/decrypter-worker.js',
-  dest: 'src/decrypter-worker.js',
+  dest: 'src/worker.js',
   format: 'iife',
   external: ['video.js'],
   globals: {
