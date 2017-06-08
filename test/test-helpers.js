@@ -137,7 +137,7 @@ export const useFakeEnvironment = function(assert) {
       ['warn', 'error'].forEach((level) => {
         if (this.log && this.log[level] && this.log[level].restore) {
           if (assert) {
-            let calls = this.log[level].args.map((args) => {
+            let calls = (this.log[level].args || []).map((args) => {
               return args.join(', ');
             }).join('\n  ');
 
