@@ -263,7 +263,7 @@ export const mockTech = function(tech) {
   };
 };
 
-export const createPlayer = function(options, src) {
+export const createPlayer = function(options, src, clock) {
   let video;
   let player;
 
@@ -292,6 +292,9 @@ export const createPlayer = function(options, src) {
   player.buffered = function() {
     return videojs.createTimeRange(0, 0);
   };
+  if (clock) {
+    clock.tick(1);
+  }
   mockTech(player.tech_);
 
   return player;

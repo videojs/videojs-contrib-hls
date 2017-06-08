@@ -2780,10 +2780,12 @@ QUnit.test('populates quality levels list when available', function(assert) {
   this.player = createPlayer({}, {
     src: 'http://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
-  });
+  }, this.clock);
   openMediaSource(this.player, this.clock);
 
   assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels from video with source');
+
+  this.player.dispose();
 });
 
 QUnit.module('HLS Integration', {
