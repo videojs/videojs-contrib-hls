@@ -15,7 +15,7 @@ export default {
   entry: 'src/decrypter-worker.js',
   dest: 'src/worker.js',
   format: 'iife',
-  external: ['video.js'],
+  external: ['video.js', 'videojs-flash'],
   globals: {
     'video.js': 'videojs'
   },

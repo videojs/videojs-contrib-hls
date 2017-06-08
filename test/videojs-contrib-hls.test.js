@@ -2,6 +2,7 @@
 
 import document from 'global/document';
 import videojs from 'video.js';
+import 'videojs-flash';
 import Events from 'video.js';
 import QUnit from 'qunit';
 import testDataManifests from './test-manifests.js';
@@ -19,7 +20,6 @@ import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
 import window from 'global/window';
 // we need this so the plugin registers itself
 import 'videojs-contrib-quality-levels';
-import 'videojs-flash';
 /* eslint-enable no-unused-vars */
 
 const Flash = videojs.getTech('Flash');
@@ -1599,7 +1599,6 @@ QUnit.test('playlist blacklisting duration is set through options', function(ass
 });
 
 QUnit.test('if mode global option is used, mode is set to global option', function(assert) {
-  console.log(Flash);
   let hlsOptions = videojs.options.hls;
 
   this.player.dispose();
