@@ -22,7 +22,7 @@
     "build:js:rollup-umd": "rollup -c scripts/umd.rollup.config.js",
     "build:js:rollup-worker": "rollup -c scripts/worker.rollup.config.js",
     "build:js:uglify": "uglifyjs dist/videojs-contrib-hls.js --ie8 --comments --mangle --compress  -o dist/videojs-contrib-hls.min.js",
-    "build:test": "npm-run-all build:test:manifest bukd:test:rollup",
+    "build:test": "npm-run-all build:test:manifest build:test:rollup",
     "build:test:browserify": "browserify test/browserify-test.js -o dist-test/browserify-test.js",
     "build:test:js": "node scripts/build-test.js",
     "build:test:rollup": "rollup -c scripts/test.rollup.config.js",
