@@ -12,9 +12,8 @@ var DEFAULTS = {
     'node_modules/sinon/pkg/sinon-ie.js',
     'node_modules/video.js/dist/video.js',
     'node_modules/video.js/dist/video-js.css',
-    'test/**/*.test.js',
-    'dist-test/browserify-test.js',
-    'dist-test/webpack-test.js'
+    'node_modules/videojs-contrib-media-sources/dist/videojs-contrib-media-source.js',
+    'test/dist/bundle.js'
   ],
 
   exclude: [],
