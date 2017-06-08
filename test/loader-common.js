@@ -8,8 +8,7 @@ import {
   useFakeMediaSource
 } from './test-helpers.js';
 import SyncController from '../src/sync-controller';
-import Decrypter from '../src/decrypter-worker';
-import worker from 'webworkify';
+import Decrypter from 'worker!../src/worker.js';
 
 /**
  * beforeEach and afterEach hooks that should be run segment loader tests regardless of
@@ -33,7 +32,7 @@ export const LoaderCommonHooks = {
     this.mediaSource = new videojs.MediaSource();
     this.mediaSource.trigger('sourceopen');
     this.syncController = new SyncController();
-    this.decrypter = worker(Decrypter);
+    this.decrypter = new Decrypter();
   },
   afterEach(assert) {
     this.env.restore();
