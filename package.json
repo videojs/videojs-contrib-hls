@@ -38,7 +38,7 @@
     "prestart": "npm run build",
     "start": "npm-run-all -p start:serve watch",
     "start:serve": "babel-node scripts/server.js",
-    "pretest": "npm-run-all lint build:js:rollup-worker build:test",
+    "pretest": "npm-run-all lint build:test:manifest build:js:rollup-worker build:test",
     "test": "karma start test/karma/detected.js",
     "test:chrome": "npm run pretest && karma start test/karma/chrome.js",
     "test:firefox": "npm run pretest && karma start test/karma/firefox.js",
