@@ -1129,6 +1129,8 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
     src: 'manifest/alternate-audio-accessibility.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  this.clock.tick(1);
+
 
   // master
   this.standardXHRResponse(this.requests.shift());
@@ -1462,13 +1464,13 @@ QUnit.test('can get active subtitle track', function(assert) {
     src: 'manifest/master-subtitles.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  this.clock.tick(1);
 
   // master, contains media groups for subtitles
   this.standardXHRResponse(this.requests.shift());
   // media
   this.standardXHRResponse(this.requests.shift());
 
-  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   assert.notOk(masterPlaylistController.activeSubtitleTrack_(),
@@ -1491,6 +1493,7 @@ QUnit.test('handles subtitle errors appropriately', function(assert) {
     src: 'manifest/master-subtitles.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  this.clock.tick(1);
 
   // master, contains media groups for subtitles
   this.standardXHRResponse(this.requests.shift());
@@ -1504,7 +1507,6 @@ QUnit.test('handles subtitle errors appropriately', function(assert) {
   assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
   textTracks[1].mode = 'showing';
 
-  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
   let abortCalls = 0;
   let setupSubtitlesCalls = 0;
@@ -1529,13 +1531,13 @@ QUnit.test('sets up subtitles', function(assert) {
     src: 'manifest/master-subtitles.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  this.clock.tick(1);
 
   // master, contains media groups for subtitles
   this.standardXHRResponse(this.requests.shift());
   // media
   this.standardXHRResponse(this.requests.shift());
 
-  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   // sets up listener for text track changes
