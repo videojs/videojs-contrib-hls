@@ -269,6 +269,8 @@ QUnit.test('fast quality change resyncs audio segment loader', function(assert) 
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
+
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   masterPlaylistController.selectPlaylist = () => {
@@ -310,6 +312,7 @@ QUnit.test('if buffered, will request second segment byte range', function(asser
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  this.clock.tick(1);
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
   // Make segment metadata noop since most test segments dont have real data
   this.masterPlaylistController.mainSegmentLoader_.addSegmentMetadataCue_ = () => {};
@@ -360,6 +363,7 @@ function(assert) {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  this.clock.tick(1);
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
   // Make segment metadata noop since most test segments dont have real data
   this.masterPlaylistController.mainSegmentLoader_.addSegmentMetadataCue_ = () => {};
@@ -851,6 +855,7 @@ QUnit.test('removes request timeout when the source is a media playlist and not 
       src: 'manifest/media.m3u8',
       type: 'application/vnd.apple.mpegurl'
     });
+    this.clock.tick(1);
     this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
     // media
@@ -1041,6 +1046,7 @@ QUnit.test('calls to update cues on new media', function(assert) {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  this.clock.tick(1);
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   let callCount = 0;
@@ -1072,6 +1078,7 @@ QUnit.test('calls to update cues on media when no master', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
   this.masterPlaylistController.useCueTags_ = true;
 
@@ -1101,6 +1108,7 @@ QUnit.test('respects useCueTags option', function(assert) {
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  this.clock.tick(1);
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   assert.ok(this.masterPlaylistController.cueTagsTrack_,
@@ -1156,6 +1164,7 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   assert.equal(this.player.textTracks().length, 1, 'one text track to start');
@@ -1196,6 +1205,7 @@ QUnit.test('switches off subtitles on subtitle errors', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   // sets up listener for text track changes
@@ -1270,6 +1280,7 @@ QUnit.test('pauses subtitle segment loader on tech errors', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   // sets up listener for text track changes
@@ -1304,6 +1315,7 @@ QUnit.test('disposes subtitle loaders on dispose', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
   let masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
@@ -1327,6 +1339,7 @@ QUnit.test('disposes subtitle loaders on dispose', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
   masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   // sets up listener for text track changes
@@ -1372,6 +1385,7 @@ QUnit.test('subtitle segment loader resets on seeks', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   // sets up listener for text track changes
@@ -1423,6 +1437,7 @@ QUnit.test('can get active subtitle group', function(assert) {
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   assert.notOk(masterPlaylistController.activeSubtitleGroup_(),
@@ -1453,6 +1468,7 @@ QUnit.test('can get active subtitle track', function(assert) {
   // media
   this.standardXHRResponse(this.requests.shift());
 
+  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   assert.notOk(masterPlaylistController.activeSubtitleTrack_(),
@@ -1488,6 +1504,7 @@ QUnit.test('handles subtitle errors appropriately', function(assert) {
   assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
   textTracks[1].mode = 'showing';
 
+  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
   let abortCalls = 0;
   let setupSubtitlesCalls = 0;
@@ -1518,6 +1535,7 @@ QUnit.test('sets up subtitles', function(assert) {
   // media
   this.standardXHRResponse(this.requests.shift());
 
+  this.clock.tick(1);
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
   // sets up listener for text track changes
