@@ -79,7 +79,8 @@ export default class PlaybackWatcher {
     }
 
     // 42 = 24 fps // 250 is what Webkit uses // FF uses 15
-    this.checkCurrentTimeTimeout_ = window.setTimeout(this.monitorCurrentTime_.bind(this), 250);
+    this.checkCurrentTimeTimeout_ =
+      window.setTimeout(this.monitorCurrentTime_.bind(this), 250);
   }
 
   /**
@@ -261,8 +262,9 @@ export default class PlaybackWatcher {
     if (nextRange.length > 0) {
       let difference = nextRange.start(0) - currentTime;
 
-      this.logger_(`Stopped at ${currentTime}, setting timer for ${difference}, seeking ` +
-                   `to ${nextRange.start(0)}`);
+      this.logger_(
+        `Stopped at ${currentTime}, setting timer for ${difference}, seeking ` +
+        `to ${nextRange.start(0)}`);
 
       this.timer_ = setTimeout(this.skipTheGap_.bind(this),
                                difference * 1000,

@@ -6,7 +6,8 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
-import removeCuesFromTrack from 'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
+import removeCuesFromTrack from
+  'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 
@@ -732,7 +733,8 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.createSimplifiedSegmentObj_(segmentInfo),
       // progress callback
       (event, segment) => {
-        if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
+        if (!this.pendingSegment_ ||
+            segment.requestId !== this.pendingSegment_.requestId) {
           return;
         }
         // TODO: Use progress-based bandwidth to early abort low-bandwidth situations

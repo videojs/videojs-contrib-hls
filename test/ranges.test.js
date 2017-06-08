@@ -105,15 +105,20 @@ QUnit.test('detects time range end-point changed by updates', function(assert) {
 
   // Null input
   edge = Ranges.findSoleUncommonTimeRangesEnd(null, createTimeRanges([[0, 11]]));
-  assert.strictEqual(edge, 11, 'treat null original buffer as an empty TimeRanges object');
+  assert.strictEqual(edge,
+                     11,
+                     'treat null original buffer as an empty TimeRanges object');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 11]]), null);
-  assert.strictEqual(edge, null, 'treat null update buffer as an empty TimeRanges object');
+  assert.strictEqual(edge,
+                     null,
+                     'treat null update buffer as an empty TimeRanges object');
 });
 
 QUnit.module('Segment Percent Buffered Calculations');
 
-QUnit.test('calculates the percent buffered for segments in the simple case', function(assert) {
+QUnit.test('calculates the percent buffered for segments in the simple case',
+function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 0;
@@ -187,7 +192,8 @@ QUnit.test('calculates the percent buffered for segments with multiple buffered 
   assert.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
 });
 
-QUnit.test('calculates the percent buffered as 0 for zero-length segments', function(assert) {
+QUnit.test('calculates the percent buffered as 0 for zero-length segments',
+function(assert) {
   let segmentStart = 10;
   let segmentDuration = 0;
   let currentTime = 0;

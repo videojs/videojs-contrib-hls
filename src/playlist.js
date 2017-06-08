@@ -227,10 +227,10 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
  * @param {Object} playlist a media playlist object
  * @param {Number=} expired the amount of time that has
  *                  dropped off the front of the playlist in a live scenario
- * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the playlist
- *                        end calculation should consider the safe live end (truncate the playlist
- *                        end by three segments). This is normally used for calculating the end of
- *                        the playlist's seekable range.
+ * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the
+ *                        playlist end calculation should consider the safe live end
+ *                        (truncate the playlist end by three segments). This is normally
+ *                        used for calculating the end of the playlist's seekable range.
  * @returns {Number} the end time of playlist
  * @function playlistEnd
  */
@@ -248,8 +248,9 @@ export const playlistEnd = function(playlist, expired, useSafeLiveEnd) {
 
   expired = expired || 0;
 
-  let endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
-                                     Math.max(0, playlist.segments.length);
+  let endSequence = useSafeLiveEnd ?
+    Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
+    Math.max(0, playlist.segments.length);
 
   return intervalDuration(playlist,
                           playlist.mediaSequence + endSequence,
@@ -319,7 +320,10 @@ const floorLeastSignificantDigit = roundSignificantDigit.bind(null, -1);
  * @param {Number} startTime
  * @return {Object}
  */
-export const getMediaInfoForTime_ = function(playlist, currentTime, startIndex, startTime) {
+export const getMediaInfoForTime_ = function(playlist,
+                                             currentTime,
+                                             startIndex,
+                                             startTime) {
   let i;
   let segment;
   let numSegments = playlist.segments.length;

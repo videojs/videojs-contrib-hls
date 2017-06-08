@@ -137,7 +137,7 @@
     "karma-qunit": "^1.2.1",
     "karma-safari-launcher": "^1.0.0",
     "klaw-sync": "^2.1.0",
-    "lodash-compat": "^3.10.0",
+    "lodash": "^4.17.4",
     "minimist": "^1.2.0",
     "mkdirp": "^0.5.1",
     "nodemon": "^1.9.1",

@@ -532,10 +532,11 @@ if (segmentMetadataTrack) {
     let activeCue = segmentMetadataTrack.activeCues[0];
 
     if (activeCue) {
-      if (previousPlaylist !== activeCue.playlist) {
-        console.log('Switched from rendition' + previousPlaylist + 'to rendition' + activeCue.playlist);
+      if (previousPlaylist !== activeCue.value.playlist) {
+        console.log('Switched from rendition ' + previousPlaylist +
+                    ' to rendition ' + activeCue.value.playlist);
       }
-      previousPlaylist = activeCue.playlist;
+      previousPlaylist = activeCue.value.playlist;
     }
   });
 }
