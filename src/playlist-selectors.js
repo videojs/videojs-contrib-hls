@@ -242,3 +242,39 @@ export const movingAverageBandwidthSelector = function(decay) {
                           parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
   };
 };
+
+export const minRebufferingSelector = function(master,
+                                               bandwidth,
+                                               timeUntilRebuffer,
+                                               segmentDuration) {
+  // get a list of playlists with bandwidth info and sort
+  const playlists = master.playlists.filter(
+    (media) => media.attributes && media.attributes.BANDWIDTH
+  ).sort((a, b) => a.attributes.BANDWIDTH - b.attributes.BANDWIDTH);
+
+  let minEstimatedRoundTripTime = Number.MAX_VALUE;
+  let bestPlaylist = null;
+
+  // Find the playlist with the highest bandwidth that the player can load from
+  // safely without needing to rebuffer
+  for (let i = playlists.length - 1; i >= 0; i--) {
+    const playlist = playlists[i];
+    const estimatedSegmentSize = segmentDuration * playlist.attributes.BANDWIDTH;
+    const estimatedRoundTripTime = estimatedSegmentSize / bandwidth;
+
+    if (estimatedRoundTripTime < minEstimatedRoundTripTime) {
+      minEstimatedRoundTripTime = estimatedRoundTripTime;
+      bestPlaylist = playlist;
+    }
+
+    if (estimatedRoundTripTime < timeUntilRebuffer) {
+      // we can switch to the playlist and avoid any rebuffering!
+      break;
+    }
+  }
+
+  return {
+    playlist: bestPlaylist,
+    roundTripTime: minEstimatedRoundTripTime
+  };
+};
