@@ -5431,7 +5431,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // we adjust bandwidth by a conservative amount, increasing as more time has passed
       // maxing at 0.8 to prevent aborting a request we actually do have enough bandwidth
       // for.
-      var playlistBandwidthAdjustment = Math.min(0.8, msSinceFirstByte / segment.duration);
+      var playlistBandwidthAdjustment = Math.min(0.8, msSinceFirstByte / (segment.duration * 500));
       var playlistBandwidth = this.playlist_.attributes.BANDWIDTH;
 
       // When on the lowestEnabledRendition, segment request timeouts are set to 0. First

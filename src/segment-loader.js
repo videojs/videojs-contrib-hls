@@ -730,7 +730,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // maxing at 0.8 to prevent aborting a request we actually do have enough bandwidth
     // for.
     const playlistBandwidthAdjustment = Math.min(0.8,
-      msSinceFirstByte / segment.duration);
+      msSinceFirstByte / (segment.duration * 500));
     const playlistBandwidth = this.playlist_.attributes.BANDWIDTH;
 
     // When on the lowestEnabledRendition, segment request timeouts are set to 0. First
