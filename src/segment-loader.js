@@ -720,20 +720,18 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   abortRequestEarly_(stats) {
-    // Do not consider aborting early if the player is paused
     if (this.hls_.tech_.paused() ||
-        // Or if the current playlist is on the lowestEnabledRendition
-        // TODO: Replace timeout with a boolean indicating whether this playlist is the
-        //       lowestEnabledRendition.
+        // Don't abort if the current playlist is on the lowestEnabledRendition
+        // TODO: Replace using timeout with a boolean indicating whether this playlist is
+        //       the lowestEnabledRendition.
         !this.xhrOptions_.timeout ||
-        // Or if the the current playlist does not have bandwidth information that can
-        // be used in the estimation calculations below
+        // Don't abort if we have no bandwidth information to estimate segment sizes
         !(this.playlist_.attributes && this.playlist_.attributes.BANDWIDTH)) {
       return false;
     }
 
     // Wait at least 1 second since the first byte of data has been received before
-    // using the calculated bandwidth from the] progress event to allow the bitrate
+    // using the calculated bandwidth from the progress event to allow the bitrate
     // to stabilize
     if (Date.now() - stats.firstByteRoundTripTime < 1000) {
       return false;
@@ -751,7 +749,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // Only consider aborting early if the estimated time to finish the download
     // is larger than the estimated time until the player runs out of forward buffer
-    if (requestTimeRemaining < timeUntilRebuffer) {
+    if (requestTimeRemaining <= timeUntilRebuffer) {
       return false;
     }
 
@@ -761,25 +759,22 @@ export default class SegmentLoader extends videojs.EventTarget {
                              timeUntilRebuffer,
                              this.pendingSegment_.duration);
 
-    let minimumTimeSaving = 0.5
+    const timeSavedBySwitching = requestTimeRemaining - roundTripTime;
+
+    let minimumTimeSaving = 0.5;
 
     // If we are already rebuffering, increase the amount of variance we add to the
-    // potential round trip time of the new request so that we are not too agressive
-    // with switching to a playlst that might save us a fraction of a second.
+    // potential round trip time of the new request so that we are not too aggressive
+    // with switching to a playlist that might save us a fraction of a second.
     if (timeUntilRebuffer <= TIME_FUDGE_FACTOR) {
       minimumTimeSaving = 1;
     }
 
-    // Finally, don't abort early and trigger the downswitch if the playlist
-    // that can minimize the time spent rebuffering is the same playlist as the
-    // current
     if (!playlist ||
         playlist.uri === this.playlist_.uri ||
-        // or if the amount of time we are saving does not reach the minimum
-        roundTripTime <= minimumTimeSaving ||
-        // or that switching will not be more than 50% time saving than just sticking
-        // with the current request
-        roundTripTime > requestTimeRemaining / 2) {
+        timeSavedBySwitching <= minimumTimeSaving ||
+        // Don't switch if we cant get more than 50% savings
+        timeSavedBySwitching <= requestTimeRemaining * 0.5) {
       return false;
     }
 
