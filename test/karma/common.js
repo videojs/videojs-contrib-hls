@@ -1,4 +1,4 @@
-var merge = require('lodash-compat/object/merge');
+var merge = require('lodash/mergeWith');
 var istanbul = require('browserify-istanbul');
 var isparta = require('isparta');
 
