@@ -10,6 +10,8 @@ import removeCuesFromTrack from
   'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
+import { minRebufferingSelector } from './playlist-selectors';
+import { TIME_FUDGE_FACTOR } from './ranges';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -717,6 +719,86 @@ export default class SegmentLoader extends videojs.EventTarget {
     };
   }
 
+  abortRequestEarly_(stats) {
+    if (this.hls_.tech_.paused() ||
+        // Don't abort if the current playlist is on the lowestEnabledRendition
+        // TODO: Replace using timeout with a boolean indicating whether this playlist is
+        //       the lowestEnabledRendition.
+        !this.xhrOptions_.timeout ||
+        // Don't abort if we have no bandwidth information to estimate segment sizes
+        !(this.playlist_.attributes && this.playlist_.attributes.BANDWIDTH)) {
+      return false;
+    }
+
+    // Wait at least 1 second since the first byte of data has been received before
+    // using the calculated bandwidth from the progress event to allow the bitrate
+    // to stabilize
+    if (Date.now() - stats.firstByteRoundTripTime < 1000) {
+      return false;
+    }
+
+    const measuredBandwidth = stats.bandwidth;
+    const estimatedSegmentSize =
+      this.pendingSegment_.duration * this.playlist_.attributes.BANDWIDTH;
+    const requestTimeRemaining =
+      (estimatedSegmentSize - (stats.bytesReceived * 8)) / measuredBandwidth;
+    const buffered = this.buffered_();
+    const bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
+    const timeUntilRebuffer =
+      (bufferedEnd - this.currentTime_()) / this.hls_.tech_.playbackRate();
+
+    // Only consider aborting early if the estimated time to finish the download
+    // is larger than the estimated time until the player runs out of forward buffer
+    if (requestTimeRemaining <= timeUntilRebuffer) {
+      return false;
+    }
+
+    const { playlist, roundTripTime } =
+      minRebufferingSelector(this.hls_.playlists.master,
+                             measuredBandwidth,
+                             timeUntilRebuffer,
+                             this.pendingSegment_.duration);
+
+    const timeSavedBySwitching = requestTimeRemaining - roundTripTime;
+
+    let minimumTimeSaving = 0.5;
+
+    // If we are already rebuffering, increase the amount of variance we add to the
+    // potential round trip time of the new request so that we are not too aggressive
+    // with switching to a playlist that might save us a fraction of a second.
+    if (timeUntilRebuffer <= TIME_FUDGE_FACTOR) {
+      minimumTimeSaving = 1;
+    }
+
+    if (!playlist ||
+        playlist.uri === this.playlist_.uri ||
+        timeSavedBySwitching <= minimumTimeSaving ||
+        // Don't switch if we cant get more than 50% savings
+        timeSavedBySwitching <= requestTimeRemaining * 0.5) {
+      return false;
+    }
+
+    // set the bandwidth to that of the desired playlist
+    // (Being sure to scale by BANDWIDTH_VARIANCE and add one so the
+    // playlist selector does not exclude it)
+    this.bandwidth = playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
+    this.abort();
+    this.trigger('bandwidthupdate');
+    return true;
+  }
+
+  handleProgress_(event, segment) {
+    if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
+      return;
+    }
+
+    if (this.abortRequestEarly_(segment.stats)) {
+      return;
+    }
+
+    this.trigger('progress');
+  }
+
   /**
    * load a specific segment from a request into the buffer
    *
@@ -732,14 +814,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.decrypter_,
       this.createSimplifiedSegmentObj_(segmentInfo),
       // progress callback
-      (event, segment) => {
-        if (!this.pendingSegment_ ||
-            segment.requestId !== this.pendingSegment_.requestId) {
-          return;
-        }
-        // TODO: Use progress-based bandwidth to early abort low-bandwidth situations
-        this.trigger('progress');
-      },
+      this.handleProgress_.bind(this),
       this.segmentRequestFinished_.bind(this));
   }
 

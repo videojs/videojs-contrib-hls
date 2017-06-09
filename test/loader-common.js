@@ -27,8 +27,14 @@ export const LoaderCommonHooks = {
     };
     this.seeking = false;
     this.hasPlayed = true;
+    this.paused = false;
+    this.playbackRate = 1;
     this.fakeHls = {
-      xhr: xhrFactory()
+      xhr: xhrFactory(),
+      tech_: {
+        paused: () => this.paused,
+        playbackRate: () => this.playbackRate
+      }
     };
     this.mediaSource = new videojs.MediaSource();
     this.mediaSource.trigger('sourceopen');
@@ -275,6 +281,71 @@ export const LoaderCommonFactory = (LoaderConstructor,
 
       this.requests[0].dispatchEvent({ type: 'progress', target: this.requests[0] });
       assert.equal(progressEvents, 1, 'triggered progress');
+    });
+
+    QUnit.test('aborts request at progress events if bandwidth is too low',
+    function(assert) {
+      const playlist1 = playlistWithDuration(10, { uri: 'playlist1.m3u8' });
+      const playlist2 = playlistWithDuration(10, { uri: 'playlist2.m3u8' });
+      const playlist3 = playlistWithDuration(10, { uri: 'playlist3.m3u8' });
+      const playlist4 = playlistWithDuration(10, { uri: 'playlist4.m3u8' });
+      const xhrOptions = {
+        timeout: 15000
+      };
+      let bandwidthupdates = 0;
+
+      playlist1.attributes.BANDWIDTH = 18000;
+      playlist2.attributes.BANDWIDTH = 10000;
+      playlist3.attributes.BANDWIDTH = 8888;
+      playlist4.attributes.BANDWIDTH = 7777;
+
+      loader.hls_.playlists = {
+        master: {
+          playlists: [
+            playlist1,
+            playlist2,
+            playlist3,
+            playlist4
+          ]
+        }
+      };
+
+      loader.on('bandwidthupdate', () => bandwidthupdates++);
+      loader.playlist(playlist1, xhrOptions);
+      loader.load();
+
+      this.clock.tick(1);
+
+      this.requests[0].dispatchEvent({
+        type: 'progress',
+        target: this.requests[0],
+        loaded: 1
+      });
+
+      assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
+      assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+
+      this.clock.tick(999);
+
+      this.requests[0].dispatchEvent({
+        type: 'progress',
+        target: this.requests[0],
+        loaded: 2000
+      });
+
+      assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
+      assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+
+      this.clock.tick(2);
+
+      this.requests[0].dispatchEvent({
+        type: 'progress',
+        target: this.requests[0],
+        loaded: 2001
+      });
+
+      assert.equal(bandwidthupdates, 1, 'bandwidth updated');
+      assert.ok(this.requests[0].aborted, 'request aborted');
     });
 
     QUnit.test(
