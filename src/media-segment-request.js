@@ -334,9 +334,9 @@ const waitForCompletion = (activeXhrs, decrypter, doneFn) => {
 const handleProgress = (segment, progressFn) => (event) => {
   segment.stats = videojs.mergeOptions(segment.stats, getProgressStats(event));
 
-  // record the time that we receive the byte of data
-  if (!segment.stats.firstByteReceived && segment.stats.bytesReceived) {
-    segment.stats.firstByteReceived = Date.now();
+  // record the time that we receive the first byte of data
+  if (!segment.stats.firstByteRoundTripTime && segment.stats.bytesReceived) {
+    segment.stats.firstByteRoundTripTime = Date.now();
   }
 
   return progressFn(event, segment);

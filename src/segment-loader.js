@@ -11,6 +11,7 @@ import removeCuesFromTrack from
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 import { minRebufferingSelector } from './playlist-selectors';
+import { TIME_FUDGE_FACTOR } from './ranges';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -751,11 +752,10 @@ export default class SegmentLoader extends videojs.EventTarget {
       return false;
     }
 
-    const firstByteReceived = Date.now() - stats.firstByteReceived;
-
-    // Wait at least 1 second before using the calculated bandwidth from the
-    // progress event to allow the bitrate to stabilize
-    if (firstByteReceived < 1000) {
+    // Wait at least 1 second since the first byte of data has been received before
+    // using the calculated bandwidth from the] progress event to allow the bitrate
+    // to stabilize
+    if (Date.now() - stats.firstByteRoundTripTime < 1000) {
       return false;
     }
 
@@ -781,18 +781,30 @@ export default class SegmentLoader extends videojs.EventTarget {
                              timeUntilRebuffer,
                              this.pendingSegment_.duration);
 
+    let minimumTimeSaving = 0.5
+
+    // If we are already rebuffering, increase the amount of variance we add to the
+    // potential round trip time of the new request so that we are not too agressive
+    // with switching to a playlst that might save us a fraction of a second.
+    if (timeUntilRebuffer <= TIME_FUDGE_FACTOR) {
+      minimumTimeSaving = 1;
+    }
+
     // Finally, don't abort early and trigger the downswitch if the playlist
     // that can minimize the time spent rebuffering is the same playlist as the
-    // current, or that switching will not be less time than just waiting for the
-    // current request to complete.
+    // current
     if (!playlist ||
         playlist.uri === this.playlist_.uri ||
-        roundTripTime >= requestTimeRemaining) {
+        // or if the amount of time we are saving does not reach the minimum
+        roundTripTime <= minimumTimeSaving ||
+        // or that switching will not be more than 50% time saving than just sticking
+        // with the current request
+        roundTripTime < requestTimeRemaining / 2) {
       return false;
     }
 
     // set the bandwidth to that of the desired playlist
-    // (Being sure to scale by BANDWIDTH_VARIANCE and adding one so the
+    // (Being sure to scale by BANDWIDTH_VARIANCE and add one so the
     // playlist selector does not exclude it)
     this.bandwidth = playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
     this.abort();
