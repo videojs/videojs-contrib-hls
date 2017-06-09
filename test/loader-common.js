@@ -292,7 +292,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
       };
       let bandwidthupdates = 0;
 
-      playlist1.attributes.BANDWIDTH = 12000;
+      playlist1.attributes.BANDWIDTH = 18000;
       playlist2.attributes.BANDWIDTH = 10000;
       playlist3.attributes.BANDWIDTH = 8888;
       playlist4.attributes.BANDWIDTH = 7777;
