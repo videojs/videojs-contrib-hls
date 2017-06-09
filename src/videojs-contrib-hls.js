@@ -281,7 +281,7 @@ class HlsHandler extends Component {
     }
 
     if (typeof this.options_.bandwidth !== 'number') {
-      if (window.localStorage) {
+      if (this.options_.useBandwidthFromLocalStorage && window.localStorage) {
         let storedBandwidth =
           window.localStorage.getItem('videojs-contrib-hls-bandwidth');
         let storedThroughput =
@@ -463,9 +463,16 @@ class HlsHandler extends Component {
       this.masterPlaylistController_.setupFirstPlay.bind(this.masterPlaylistController_));
 
     this.tech_.on('bandwidthupdate', () => {
-      if (window.localStorage) {
-        window.localStorage.setItem('videojs-contrib-hls-bandwidth', this.bandwidth);
-        window.localStorage.setItem('videojs-contrib-hls-throughput', this.throughput);
+      if (this.options_.storeBandwidthInLocalStorage && window.localStorage) {
+        try {
+          window.localStorage.setItem('videojs-contrib-hls-bandwidth', this.bandwidth);
+          window.localStorage.setItem('videojs-contrib-hls-throughput', this.throughput);
+        } catch (e) {
+          // Throws if storage is full (e.g., always on iOS 5+ Safari private mode, where
+          // storage is set to 0).
+          // https://developer.mozilla.org/en-US/docs/Web/API/Storage/setItem#Exceptions
+          // No need to perform any operation.
+        }
       }
     });
 

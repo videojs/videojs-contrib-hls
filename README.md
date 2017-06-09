@@ -34,6 +34,8 @@ Maintenance Status: Stable
       - [overrideNative](#overridenative)
       - [blacklistDuration](#blacklistduration)
       - [bandwidth](#bandwidth)
+      - [storeBandwidthInLocalStorage](#storebandwidthinlocalstorage)
+      - [useBandwidthFromLocalStorage](#usebandwidthfromlocalstorage)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -305,6 +307,19 @@ by the user.
 When the `bandwidth` property is set (bits per second), it will be used in
 the calculation for initial playlist selection, before more bandwidth
 information is seen by the player.
+
+##### storeBandwidthInLocalStorage
+* Type: `boolean`
+* can be used as an initialization option
+
+If true, `bandwidth` and `throughput` values are stored in local storage.
+
+##### useBandwidthFromLocalStorage
+* Type: `boolean`
+* can be used as an initialization option
+
+If true, `bandwidth` and `throughput` values are retrieved from local storage on startup
+and are used for initial rendition selection.
 
 ### Runtime Properties
 Runtime properties are attached to the tech object when HLS is in
