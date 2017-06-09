@@ -2784,8 +2784,6 @@ QUnit.test('populates quality levels list when available', function(assert) {
   openMediaSource(this.player, this.clock);
 
   assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels from video with source');
-
-  this.player.dispose();
 });
 
 QUnit.module('HLS Integration', {
