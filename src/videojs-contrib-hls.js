@@ -566,20 +566,20 @@ class HlsHandler extends Component {
  */
 const HlsSourceHandler = function(mode) {
   return {
-    canHandleSource(srcObj, options) {
-      let settings = videojs.mergeOptions(videojs.options, options);
+    canHandleSource(srcObj, options = {}) {
+      let localOptions = videojs.mergeOptions(videojs.options, options);
 
       // this forces video.js to skip this tech/mode if its not the one we have been
       // overriden to use, by returing that we cannot handle the source.
-      if (settings.hls &&
-          settings.hls.mode &&
-          settings.hls.mode !== mode) {
+      if (localOptions.hls &&
+          localOptions.hls.mode &&
+          localOptions.hls.mode !== mode) {
         return false;
       }
-      return HlsSourceHandler.canPlayType(srcObj.type, settings);
+      return HlsSourceHandler.canPlayType(srcObj.type, localOptions);
     },
-    handleSource(source, tech, options) {
-      let settings = videojs.mergeOptions(videojs.options, options, {hls: {mode}});
+    handleSource(source, tech, options = {}) {
+      let localOptions = videojs.mergeOptions(videojs.options, options, {hls: {mode}});
 
       if (mode === 'flash') {
         // We need to trigger this asynchronously to give others the chance
@@ -589,16 +589,16 @@ const HlsSourceHandler = function(mode) {
         }, 1);
       }
 
-      tech.hls = new HlsHandler(source, tech, settings);
+      tech.hls = new HlsHandler(source, tech, localOptions);
       tech.hls.xhr = xhrFactory();
 
       tech.hls.src(source.src);
       return tech.hls;
     },
-    canPlayType(type, options) {
-      let settings = videojs.mergeOptions(videojs.options, options);
+    canPlayType(type, options = {}) {
+      let localOptions = videojs.mergeOptions(videojs.options, options);
 
-      if (HlsSourceHandler.canPlayType(type, settings)) {
+      if (HlsSourceHandler.canPlayType(type, localOptions)) {
         return 'maybe';
       }
       return '';
