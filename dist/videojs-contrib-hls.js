@@ -1,4 +1,14 @@
+<<<<<<< HEAD
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+=======
+/**
+ * videojs-contrib-hls
+ * @version 5.5.3
+ * @copyright 2017 Brightcove, Inc
+ * @license Apache-2.0
+ */
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.videojsContribHls = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file ad-cue-tags.js
  */
@@ -112,10 +122,14 @@ exports['default'] = {
 };
 module.exports = exports['default'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29}],2:[function(require,module,exports){
 =======
 },{"global/window":28}],2:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"global/window":31}],2:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file bin-utils.js
  */
@@ -240,6 +254,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = {
   GOAL_BUFFER_LENGTH: 30,
+<<<<<<< HEAD
   MAX_GOAL_BUFFER_LENGTH: 60,
 <<<<<<< HEAD
   GOAL_BUFFER_LENGTH_RATE: 1,
@@ -263,6 +278,11 @@ exports["default"] = {
   MAX_BUFFER_LOW_WATER_LINE: 30,
   BUFFER_LOW_WATER_RATE: 1
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+  // A fudge factor to apply to advertised playlist bitrates to account for
+  // temporary flucations in client bandwidth
+  BANDWIDTH_VARIANCE: 1.2
+>>>>>>> add dist
 };
 module.exports = exports["default"];
 },{}],4:[function(require,module,exports){
@@ -314,10 +334,14 @@ exports['default'] = function (self) {
 
 module.exports = exports['default'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"aes-decrypter":23,"global/window":29}],5:[function(require,module,exports){
 =======
 },{"./bin-utils":2,"aes-decrypter":24,"global/window":28}],5:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./bin-utils":2,"aes-decrypter":24,"global/window":31}],5:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file master-playlist-controller.js
@@ -376,10 +400,13 @@ var _decrypterWorker = require('./decrypter-worker');
 
 var _decrypterWorker2 = _interopRequireDefault(_decrypterWorker);
 
+<<<<<<< HEAD
 var _config = require('./config');
 
 var _config2 = _interopRequireDefault(_config);
 
+=======
+>>>>>>> add dist
 var Hls = undefined;
 
 // Default codec parameters if none were provided for video and/or audio
@@ -675,7 +702,11 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       return false;
     };
 
+<<<<<<< HEAD
     this.syncController_ = new _syncController2['default'](options);
+=======
+    this.syncController_ = new _syncController2['default']();
+>>>>>>> add dist
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
       kind: 'metadata',
       label: 'segment-metadata'
@@ -683,7 +714,11 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 
     this.decrypter_ = (0, _webworkify2['default'])(_decrypterWorker2['default']);
 
+<<<<<<< HEAD
     var segmentLoaderSettings = {
+=======
+    var segmentLoaderOptions = {
+>>>>>>> add dist
       hls: this.hls_,
       mediaSource: this.mediaSource,
       currentTime: this.tech_.currentTime.bind(this.tech_),
@@ -699,9 +734,12 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       hasPlayed: function hasPlayed() {
         return _this.hasPlayed_();
       },
+<<<<<<< HEAD
       goalBufferLength: function goalBufferLength() {
         return _this.goalBufferLength();
       },
+=======
+>>>>>>> add dist
       bandwidth: bandwidth,
       syncController: this.syncController_,
       decrypter: this.decrypter_
@@ -715,6 +753,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
+<<<<<<< HEAD
     this.mainSegmentLoader_ = new _segmentLoader2['default'](_videoJs2['default'].mergeOptions(segmentLoaderSettings, {
       segmentMetadataTrack: this.segmentMetadataTrack_,
       loaderType: 'main'
@@ -728,6 +767,21 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     this.subtitleSegmentLoader_ = new _vttSegmentLoader2['default'](_videoJs2['default'].mergeOptions(segmentLoaderSettings, {
       loaderType: 'vtt'
     }), options);
+=======
+    this.mainSegmentLoader_ = new _segmentLoader2['default'](_videoJs2['default'].mergeOptions(segmentLoaderOptions, {
+      segmentMetadataTrack: this.segmentMetadataTrack_,
+      loaderType: 'main'
+    }));
+
+    // alternate audio track
+    this.audioSegmentLoader_ = new _segmentLoader2['default'](_videoJs2['default'].mergeOptions(segmentLoaderOptions, {
+      loaderType: 'audio'
+    }));
+
+    this.subtitleSegmentLoader_ = new _vttSegmentLoader2['default'](_videoJs2['default'].mergeOptions(segmentLoaderOptions, {
+      loaderType: 'vtt'
+    }));
+>>>>>>> add dist
 
     this.setupSegmentLoaderListeners_();
 
@@ -882,7 +936,11 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
           return track.enabled;
         })[0];
         if (!activeTrack) {
+<<<<<<< HEAD
           _this2.mediaGroupChanged();
+=======
+          _this2.setupAudio();
+>>>>>>> add dist
           _this2.trigger('audioupdate');
         }
         _this2.setupSubtitles();
@@ -923,6 +981,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       var _this3 = this;
 
       this.mainSegmentLoader_.on('bandwidthupdate', function () {
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
         // figure out what stream the next segment should be downloaded from
@@ -986,6 +1045,11 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
           _this3.masterPlaylistLoader_.media(nextPlaylist);
         }
 
+=======
+        // figure out what stream the next segment should be downloaded from
+        // with the updated bandwidth information
+        _this3.masterPlaylistLoader_.media(_this3.selectPlaylist());
+>>>>>>> add dist
         _this3.tech_.trigger('bandwidthupdate');
       });
       this.mainSegmentLoader_.on('progress', function () {
@@ -1236,6 +1300,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     }
 
     /**
+<<<<<<< HEAD
      * Determine the correct audio renditions based on the active
      * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
      * necessary. This method is only called when the media-group changes
@@ -1252,17 +1317,24 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     }
 
     /**
+=======
+>>>>>>> add dist
      * Determine the correct audio rendition based on the active
      * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
      * necessary. This method is called once automatically before
      * playback begins to enable the default audio track and should be
+<<<<<<< HEAD
      * invoked again if the track is changed. Performs destructive 'reset'
      * on the SegmentLoaders(s) to ensure we start loading audio as
      * close to currentTime as possible
+=======
+     * invoked again if the track is changed.
+>>>>>>> add dist
      */
   }, {
     key: 'setupAudio',
     value: function setupAudio() {
+<<<<<<< HEAD
       var track = this.getActiveAudioTrack_();
 
       this.stopAudioLoaders_();
@@ -1276,6 +1348,10 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
   }, {
     key: 'getActiveAudioTrack_',
     value: function getActiveAudioTrack_() {
+=======
+      var _this4 = this;
+
+>>>>>>> add dist
       // determine whether seperate loaders are required for the audio
       // rendition
       var audioGroup = this.activeAudioGroup();
@@ -1290,6 +1366,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         track.enabled = true;
       }
 
+<<<<<<< HEAD
       return track;
     }
 
@@ -1300,12 +1377,15 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
   }, {
     key: 'stopAudioLoaders_',
     value: function stopAudioLoaders_() {
+=======
+>>>>>>> add dist
       // stop playlist and segment loading for audio
       if (this.audioPlaylistLoader_) {
         this.audioPlaylistLoader_.dispose();
         this.audioPlaylistLoader_ = null;
       }
       this.audioSegmentLoader_.pause();
+<<<<<<< HEAD
     }
 
     /**
@@ -1316,10 +1396,14 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
   }, {
     key: 'resetAudioLoaders_',
     value: function resetAudioLoaders_(track) {
+=======
+
+>>>>>>> add dist
       if (!track.properties_.resolvedUri) {
         this.mainSegmentLoader_.resetEverything();
         return;
       }
+<<<<<<< HEAD
 
       this.audioSegmentLoader_.resetEverything();
       this.setupAudioPlaylistLoader_(track);
@@ -1349,6 +1433,9 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     key: 'setupAudioPlaylistLoader_',
     value: function setupAudioPlaylistLoader_(track) {
       var _this4 = this;
+=======
+      this.audioSegmentLoader_.resetEverything();
+>>>>>>> add dist
 
       // startup playlist and segment loaders for the enabled audio
       // track
@@ -2024,6 +2111,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 
       _adCueTags2['default'].updateAdCues(media, this.cueTagsTrack_, offset);
     }
+<<<<<<< HEAD
 
     /**
      * Calculates the desired forward buffer length based on current time
@@ -2056,6 +2144,8 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 
       return Math.min(initial + currentTime * rate, max);
     }
+=======
+>>>>>>> add dist
   }]);
 
   return MasterPlaylistController;
@@ -2064,10 +2154,14 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 exports.MasterPlaylistController = MasterPlaylistController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./ad-cue-tags":1,"./config":3,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":17,"./vtt-segment-loader":18,"videojs-contrib-media-sources/es5/codec-utils":63,"webworkify":75}],6:[function(require,module,exports){
 =======
 },{"./ad-cue-tags":1,"./config":3,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
 >>>>>>> use goal buffer length of 60, low water line of 30
+=======
+},{"./ad-cue-tags":1,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 'use strict';
 
@@ -2415,8 +2509,13 @@ var handleProgress = function handleProgress(segment, progressFn) {
     segment.stats = _videoJs2['default'].mergeOptions(segment.stats, getProgressStats(event));
 
     // record the time that we receive the first byte of data
+<<<<<<< HEAD
     if (!segment.stats.firstBytesReceivedAt && segment.stats.bytesReceived) {
       segment.stats.firstBytesReceivedAt = Date.now();
+=======
+    if (!segment.stats.firstByteRoundTripTime && segment.stats.bytesReceived) {
+      segment.stats.firstByteRoundTripTime = Date.now();
+>>>>>>> add dist
     }
 
     return progressFn(event, segment);
@@ -2951,10 +3050,14 @@ exports['default'] = PlaybackWatcher;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./ranges":11,"global/window":29}],8:[function(require,module,exports){
 =======
 },{"./ranges":11,"global/window":28}],8:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./ranges":11,"global/window":31}],8:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file playlist-loader.js
@@ -2979,6 +3082,13 @@ var _videoJs = (typeof window !== "undefined" ? window['videojs'] : typeof globa
 
 var _playlistJs = require('./playlist.js');
 
+<<<<<<< HEAD
+=======
+var _stream = require('./stream');
+
+var _stream2 = _interopRequireDefault(_stream);
+
+>>>>>>> add dist
 var _m3u8Parser = require('m3u8-parser');
 
 var _m3u8Parser2 = _interopRequireDefault(_m3u8Parser);
@@ -3091,6 +3201,10 @@ var PlaylistLoader = function PlaylistLoader(srcUrl, hls, withCredentials) {
   /* eslint-disable consistent-this */
   var loader = this;
   /* eslint-enable consistent-this */
+<<<<<<< HEAD
+=======
+  var dispose = undefined;
+>>>>>>> add dist
   var mediaUpdateTimeout = undefined;
   var request = undefined;
   var playlistRequestError = undefined;
@@ -3172,13 +3286,23 @@ var PlaylistLoader = function PlaylistLoader(srcUrl, hls, withCredentials) {
   // initialize the loader state
   loader.state = 'HAVE_NOTHING';
 
+<<<<<<< HEAD
+=======
+  // capture the prototype dispose function
+  dispose = this.dispose;
+
+>>>>>>> add dist
   /**
    * Abort any outstanding work and clean up.
    */
   loader.dispose = function () {
     loader.stopRequest();
     _globalWindow2['default'].clearTimeout(mediaUpdateTimeout);
+<<<<<<< HEAD
     loader.off();
+=======
+    dispose.call(this);
+>>>>>>> add dist
   };
 
   loader.stopRequest = function () {
@@ -3526,16 +3650,24 @@ var PlaylistLoader = function PlaylistLoader(srcUrl, hls, withCredentials) {
   };
 };
 
+<<<<<<< HEAD
 PlaylistLoader.prototype = new _videoJs.EventTarget();
+=======
+PlaylistLoader.prototype = new _stream2['default']();
+>>>>>>> add dist
 
 exports['default'] = PlaylistLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./playlist.js":10,"./resolve-url":14,"global/window":29,"m3u8-parser":30}],9:[function(require,module,exports){
 =======
 },{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":28,"m3u8-parser":29}],9:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":31,"m3u8-parser":32}],9:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -3660,6 +3792,7 @@ var comparePlaylistResolution = function comparePlaylistResolution(left, right) 
 };
 
 exports.comparePlaylistResolution = comparePlaylistResolution;
+<<<<<<< HEAD
 /**
  * Chooses the appropriate media playlist based on bandwidth and player size
  *
@@ -3764,11 +3897,76 @@ var simpleSelector = function simpleSelector(master, playerBandwidth, playerWidt
     highestRemainingBandwidthRep = resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1];
     resolutionPlusOneRep = resolutionPlusOneSmallest.filter(function (rep) {
       return rep.bandwidth === highestRemainingBandwidthRep.bandwidth;
+=======
+var simpleSelector = function simpleSelector(master, bandwidth, width, height) {
+  var sortedPlaylists = master.playlists.slice();
+  var bandwidthPlaylists = [];
+  var bandwidthBestVariant = undefined;
+  var resolutionPlusOne = undefined;
+  var resolutionBestVariant = undefined;
+  var haveResolution = undefined;
+  var resolutionPlusOneList = [];
+  var resolutionPlusOneSmallest = [];
+  var resolutionBestVariantList = [];
+
+  stableSort(sortedPlaylists, comparePlaylistBandwidth);
+
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  sortedPlaylists = sortedPlaylists.filter(_playlist2['default'].isEnabled);
+  // filter out any variant that has greater effective bitrate
+  // than the current estimated bandwidth
+  bandwidthPlaylists = sortedPlaylists.filter(function (elem) {
+    return elem.attributes && elem.attributes.BANDWIDTH && elem.attributes.BANDWIDTH * _config2['default'].BANDWIDTH_VARIANCE < bandwidth;
+  });
+
+  // get all of the renditions with the same (highest) bandwidth
+  // and then taking the very first element
+  bandwidthBestVariant = bandwidthPlaylists.filter(function (elem) {
+    return elem.attributes.BANDWIDTH === bandwidthPlaylists[bandwidthPlaylists.length - 1].attributes.BANDWIDTH;
+  })[0];
+
+  // sort variants by resolution
+  stableSort(bandwidthPlaylists, comparePlaylistResolution);
+
+  // filter out playlists without resolution information
+  haveResolution = bandwidthPlaylists.filter(function (elem) {
+    return elem.attributes && elem.attributes.RESOLUTION && elem.attributes.RESOLUTION.width && elem.attributes.RESOLUTION.height;
+  });
+
+  // if we have the exact resolution as the player use it
+  resolutionBestVariantList = haveResolution.filter(function (elem) {
+    return elem.attributes.RESOLUTION.width === width && elem.attributes.RESOLUTION.height === height;
+  });
+  // ensure that we pick the highest bandwidth variant that have exact resolution
+  resolutionBestVariant = resolutionBestVariantList.filter(function (elem) {
+    return elem.attributes.BANDWIDTH === resolutionBestVariantList[resolutionBestVariantList.length - 1].attributes.BANDWIDTH;
+  })[0];
+
+  // find the smallest variant that is larger than the player
+  // if there is no match of exact resolution
+  if (!resolutionBestVariant) {
+    resolutionPlusOneList = haveResolution.filter(function (elem) {
+      return elem.attributes.RESOLUTION.width > width || elem.attributes.RESOLUTION.height > height;
+    });
+    // find all the variants have the same smallest resolution
+    resolutionPlusOneSmallest = resolutionPlusOneList.filter(function (elem) {
+      return elem.attributes.RESOLUTION.width === resolutionPlusOneList[0].attributes.RESOLUTION.width && elem.attributes.RESOLUTION.height === resolutionPlusOneList[0].attributes.RESOLUTION.height;
+    });
+    // ensure that we also pick the highest bandwidth variant that
+    // is just-larger-than the video player
+    resolutionPlusOne = resolutionPlusOneSmallest.filter(function (elem) {
+      return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1].attributes.BANDWIDTH;
+>>>>>>> add dist
     })[0];
   }
 
   // fallback chain of variants
+<<<<<<< HEAD
   return (resolutionPlusOneRep || resolutionBestRep || bandwidthBestRep || sortedPlaylistReps[0]).playlist;
+=======
+  return resolutionPlusOne || resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+>>>>>>> add dist
 };
 
 // Playlist Selectors
@@ -3820,6 +4018,7 @@ var movingAverageBandwidthSelector = function movingAverageBandwidthSelector(dec
 };
 
 exports.movingAverageBandwidthSelector = movingAverageBandwidthSelector;
+<<<<<<< HEAD
 /**
  * Chooses the appropriate media playlist based on the potential to rebuffer
  *
@@ -3894,6 +4093,43 @@ var minRebufferMaxBandwidthSelector = function minRebufferMaxBandwidthSelector(s
   return rebufferingEstimates[0] || null;
 };
 exports.minRebufferMaxBandwidthSelector = minRebufferMaxBandwidthSelector;
+=======
+var minRebufferingSelector = function minRebufferingSelector(master, bandwidth, timeUntilRebuffer, segmentDuration) {
+  // get a list of playlists with bandwidth info and sort
+  var playlists = master.playlists.filter(function (media) {
+    return media.attributes && media.attributes.BANDWIDTH;
+  }).sort(function (a, b) {
+    return a.attributes.BANDWIDTH - b.attributes.BANDWIDTH;
+  });
+
+  var minEstimatedRoundTripTime = Number.MAX_VALUE;
+  var bestPlaylist = null;
+
+  // Find the playlist with the highest bandwidth that the player can load from
+  // safely without needing to rebuffer
+  for (var i = playlists.length - 1; i >= 0; i--) {
+    var playlist = playlists[i];
+    var estimatedSegmentSize = segmentDuration * playlist.attributes.BANDWIDTH;
+    var estimatedRoundTripTime = estimatedSegmentSize / bandwidth;
+
+    if (estimatedRoundTripTime < minEstimatedRoundTripTime) {
+      minEstimatedRoundTripTime = estimatedRoundTripTime;
+      bestPlaylist = playlist;
+    }
+
+    if (estimatedRoundTripTime < timeUntilRebuffer) {
+      // we can switch to the playlist and avoid any rebuffering!
+      break;
+    }
+  }
+
+  return {
+    playlist: bestPlaylist,
+    roundTripTime: minEstimatedRoundTripTime
+  };
+};
+exports.minRebufferingSelector = minRebufferingSelector;
+>>>>>>> add dist
 },{"./config":3,"./playlist":10}],10:[function(require,module,exports){
 (function (global){
 /**
@@ -4225,7 +4461,11 @@ var floorLeastSignificantDigit = roundSignificantDigit.bind(null, -1);
  * @param {Number} startTime
  * @return {Object}
  */
+<<<<<<< HEAD
 var getMediaInfoForTime = function getMediaInfoForTime(playlist, currentTime, startIndex, startTime) {
+=======
+var getMediaInfoForTime_ = function getMediaInfoForTime_(playlist, currentTime, startIndex, startTime) {
+>>>>>>> add dist
   var i = undefined;
   var segment = undefined;
   var numSegments = playlist.segments.length;
@@ -4291,7 +4531,11 @@ var getMediaInfoForTime = function getMediaInfoForTime(playlist, currentTime, st
   };
 };
 
+<<<<<<< HEAD
 exports.getMediaInfoForTime = getMediaInfoForTime;
+=======
+exports.getMediaInfoForTime_ = getMediaInfoForTime_;
+>>>>>>> add dist
 /**
  * Check whether the playlist is blacklisted or not.
  *
@@ -4318,6 +4562,7 @@ var isEnabled = function isEnabled(playlist) {
 };
 
 exports.isEnabled = isEnabled;
+<<<<<<< HEAD
 /**
  * Checks if the playlist has a value for the specified attribute
  *
@@ -4371,15 +4616,27 @@ Playlist.isBlacklisted = isBlacklisted;
 Playlist.playlistEnd = playlistEnd;
 Playlist.hasAttribute = hasAttribute;
 Playlist.estimateSegmentRequestTime = estimateSegmentRequestTime;
+=======
+Playlist.duration = duration;
+Playlist.seekable = seekable;
+Playlist.getMediaInfoForTime_ = getMediaInfoForTime_;
+Playlist.isEnabled = isEnabled;
+Playlist.isBlacklisted = isBlacklisted;
+Playlist.playlistEnd = playlistEnd;
+>>>>>>> add dist
 
 // exports
 exports['default'] = Playlist;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29}],11:[function(require,module,exports){
 =======
 },{"global/window":28}],11:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"global/window":31}],11:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * ranges
@@ -4720,6 +4977,7 @@ var printableRange = function printableRange(range) {
   return strArr.join(', ');
 };
 
+<<<<<<< HEAD
 /**
  * Calculates the amount of time left in seconds until the player hits the end of the
  * buffer and causes a rebuffer
@@ -4742,6 +5000,8 @@ var timeUntilRebuffer = function timeUntilRebuffer(buffered, currentTime) {
   return (bufferedEnd - currentTime) / playbackRate;
 };
 
+=======
+>>>>>>> add dist
 exports['default'] = {
   findRange: findRange,
   findNextRange: findNextRange,
@@ -4749,8 +5009,12 @@ exports['default'] = {
   findSoleUncommonTimeRangesEnd: findSoleUncommonTimeRangesEnd,
   getSegmentBufferedPercent: getSegmentBufferedPercent,
   TIME_FUDGE_FACTOR: TIME_FUDGE_FACTOR,
+<<<<<<< HEAD
   printableRange: printableRange,
   timeUntilRebuffer: timeUntilRebuffer
+=======
+  printableRange: printableRange
+>>>>>>> add dist
 };
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
@@ -5031,10 +5295,14 @@ var resolveUrl = function resolveUrl(baseURL, relativeURL) {
 exports['default'] = resolveUrl;
 module.exports = exports['default'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29,"url-toolkit":60}],15:[function(require,module,exports){
 =======
 },{"global/window":28,"url-toolkit":62}],15:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"global/window":31,"url-toolkit":62}],15:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file segment-loader.js
@@ -5047,7 +5315,11 @@ Object.defineProperty(exports, '__esModule', {
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
+<<<<<<< HEAD
 var _get = function get(_x4, _x5, _x6) { var _again = true; _function: while (_again) { var object = _x4, property = _x5, receiver = _x6; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x4 = parent; _x5 = property; _x6 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+=======
+var _get = function get(_x3, _x4, _x5) { var _again = true; _function: while (_again) { var object = _x3, property = _x4, receiver = _x5; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x3 = parent; _x4 = property; _x5 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+>>>>>>> add dist
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -5057,8 +5329,11 @@ function _inherits(subClass, superClass) { if (typeof superClass !== 'function' 
 
 var _playlist = require('./playlist');
 
+<<<<<<< HEAD
 var _playlist2 = _interopRequireDefault(_playlist);
 
+=======
+>>>>>>> add dist
 var _videoJs = (typeof window !== "undefined" ? window['videojs'] : typeof global !== "undefined" ? global['videojs'] : null);
 
 var _videoJs2 = _interopRequireDefault(_videoJs);
@@ -5083,10 +5358,17 @@ var _binUtils = require('./bin-utils');
 
 var _mediaSegmentRequest = require('./media-segment-request');
 
+<<<<<<< HEAD
 var _ranges = require('./ranges');
 
 var _playlistSelectors = require('./playlist-selectors');
 
+=======
+var _playlistSelectors = require('./playlist-selectors');
+
+var _ranges = require('./ranges');
+
+>>>>>>> add dist
 // in ms
 var CHECK_BUFFER_DELAY = 500;
 
@@ -5117,10 +5399,13 @@ var detectEndOfStream = function detectEndOfStream(playlist, mediaSource, segmen
   return playlist.endList && mediaSource.readyState === 'open' && appendedLastSegment;
 };
 
+<<<<<<< HEAD
 var finite = function finite(num) {
   return typeof num === 'number' && isFinite(num);
 };
 
+=======
+>>>>>>> add dist
 /**
  * An object that manages segment loading and appending.
  *
@@ -5132,15 +5417,22 @@ var finite = function finite(num) {
 var SegmentLoader = (function (_videojs$EventTarget) {
   _inherits(SegmentLoader, _videojs$EventTarget);
 
+<<<<<<< HEAD
   function SegmentLoader(settings) {
     var _this = this;
 
     var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
+=======
+  function SegmentLoader(options) {
+    var _this = this;
+
+>>>>>>> add dist
     _classCallCheck(this, SegmentLoader);
 
     _get(Object.getPrototypeOf(SegmentLoader.prototype), 'constructor', this).call(this);
     // check pre-conditions
+<<<<<<< HEAD
     if (!settings) {
       throw new TypeError('Initialization settings are required');
     }
@@ -5150,6 +5442,19 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     if (!settings.mediaSource) {
       throw new TypeError('No MediaSource specified');
     }
+=======
+    if (!options) {
+      throw new TypeError('Initialization options are required');
+    }
+    if (typeof options.currentTime !== 'function') {
+      throw new TypeError('No currentTime getter specified');
+    }
+    if (!options.mediaSource) {
+      throw new TypeError('No MediaSource specified');
+    }
+    var settings = _videoJs2['default'].mergeOptions(_videoJs2['default'].options.hls, options);
+
+>>>>>>> add dist
     // public properties
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
@@ -5168,7 +5473,10 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     this.hls_ = settings.hls;
     this.loaderType_ = settings.loaderType;
     this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
+<<<<<<< HEAD
     this.goalBufferLength_ = settings.goalBufferLength;
+=======
+>>>>>>> add dist
 
     // private instance variables
     this.checkBufferTimeout_ = null;
@@ -5201,7 +5509,11 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
+<<<<<<< HEAD
     if (options.debug) {
+=======
+    if (settings.debug) {
+>>>>>>> add dist
       this.logger_ = _videoJs2['default'].log.bind(_videoJs2['default'], 'segment-loader', this.loaderType_, '->');
     }
   }
@@ -5231,7 +5543,10 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     key: 'dispose',
     value: function dispose() {
       this.state = 'DISPOSED';
+<<<<<<< HEAD
       this.pause();
+=======
+>>>>>>> add dist
       this.abort_();
       if (this.sourceUpdater_) {
         this.sourceUpdater_.dispose();
@@ -5255,6 +5570,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 
       this.abort_();
 
+<<<<<<< HEAD
       // We aborted the requests we were waiting on, so reset the loader's state to READY
       // since we are no longer "waiting" on any requests. XHR callback is not always run
       // when the request is aborted. This will prevent the loader from being stuck in the
@@ -5264,6 +5580,12 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // don't wait for buffer check timeouts to begin fetching the
       // next segment
       if (!this.paused()) {
+=======
+      // don't wait for buffer check timeouts to begin fetching the
+      // next segment
+      if (!this.paused()) {
+        this.state = 'READY';
+>>>>>>> add dist
         this.monitorBuffer_();
       }
     }
@@ -5575,7 +5897,10 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     value: function resyncLoader() {
       this.mediaIndex = null;
       this.syncPoint_ = null;
+<<<<<<< HEAD
       this.abort();
+=======
+>>>>>>> add dist
     }
 
     /**
@@ -5696,10 +6021,13 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     value: function checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
       var lastBufferedEnd = 0;
       var startOfSegment = undefined;
+<<<<<<< HEAD
       var initial = _config2['default'].GOAL_BUFFER_LENGTH;
       var rate = _config2['default'].GOAL_BUFFER_RATE;
       var max = _config2['default'].MAX_GOAL_BUFFER_LENGTH;
       var dynamicGBL = Math.min(initial + currentTime * rate, Math.max(initial, max));
+=======
+>>>>>>> add dist
 
       if (buffered.length) {
         lastBufferedEnd = buffered.end(buffered.length - 1);
@@ -5714,10 +6042,14 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // if there is plenty of content buffered, and the video has
       // been played before relax for awhile
 <<<<<<< HEAD
+<<<<<<< HEAD
       if (bufferedTime >= this.goalBufferLength_()) {
 =======
       if (bufferedTime >= dynamicGBL) {
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+      if (bufferedTime >= _config2['default'].GOAL_BUFFER_LENGTH) {
+>>>>>>> add dist
         return null;
       }
 
@@ -5757,13 +6089,21 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // fetch
       if (this.fetchAtBuffer_) {
         // Find the segment containing the end of the buffer
+<<<<<<< HEAD
         var mediaSourceInfo = _playlist2['default'].getMediaInfoForTime(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
+=======
+        var mediaSourceInfo = (0, _playlist.getMediaInfoForTime_)(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
+>>>>>>> add dist
 
         mediaIndex = mediaSourceInfo.mediaIndex;
         startOfSegment = mediaSourceInfo.startTime;
       } else {
         // Find the segment containing currentTime
+<<<<<<< HEAD
         var mediaSourceInfo = _playlist2['default'].getMediaInfoForTime(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
+=======
+        var mediaSourceInfo = (0, _playlist.getMediaInfoForTime_)(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
+>>>>>>> add dist
 
         mediaIndex = mediaSourceInfo.mediaIndex;
         startOfSegment = mediaSourceInfo.startTime;
@@ -5842,6 +6182,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         segment: segment
       };
     }
+<<<<<<< HEAD
 
     /**
      * Determines if the network has enough bandwidth to complete the current segment
@@ -5853,6 +6194,8 @@ var SegmentLoader = (function (_videojs$EventTarget) {
      * @return {Boolean} True if the request was aborted, false otherwise
      * @private
      */
+=======
+>>>>>>> add dist
   }, {
     key: 'abortRequestEarly_',
     value: function abortRequestEarly_(stats) {
@@ -5869,6 +6212,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // Wait at least 1 second since the first byte of data has been received before
       // using the calculated bandwidth from the progress event to allow the bitrate
       // to stabilize
+<<<<<<< HEAD
       if (Date.now() - (stats.firstBytesReceivedAt || Date.now()) < 1000) {
         return false;
       }
@@ -5881,6 +6225,18 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
       // if we are only left with less than 1 second when the request completes.
       var timeUntilRebuffer = (0, _ranges.timeUntilRebuffer)(this.buffered_(), currentTime, this.hls_.tech_.playbackRate()) - 1;
+=======
+      if (Date.now() - stats.firstByteRoundTripTime < 1000) {
+        return false;
+      }
+
+      var measuredBandwidth = stats.bandwidth;
+      var estimatedSegmentSize = this.pendingSegment_.duration * this.playlist_.attributes.BANDWIDTH;
+      var requestTimeRemaining = (estimatedSegmentSize - stats.bytesReceived * 8) / measuredBandwidth;
+      var buffered = this.buffered_();
+      var bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
+      var timeUntilRebuffer = (bufferedEnd - this.currentTime_()) / this.hls_.tech_.playbackRate();
+>>>>>>> add dist
 
       // Only consider aborting early if the estimated time to finish the download
       // is larger than the estimated time until the player runs out of forward buffer
@@ -5888,6 +6244,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         return false;
       }
 
+<<<<<<< HEAD
       var switchCandidate = (0, _playlistSelectors.minRebufferMaxBandwidthSelector)({
         master: this.hls_.playlists.master,
         currentTime: currentTime,
@@ -5906,6 +6263,14 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       var rebufferingImpact = requestTimeRemaining - timeUntilRebuffer;
 
       var timeSavedBySwitching = rebufferingImpact - switchCandidate.rebufferingImpact;
+=======
+      var _minRebufferingSelector = (0, _playlistSelectors.minRebufferingSelector)(this.hls_.playlists.master, measuredBandwidth, timeUntilRebuffer, this.pendingSegment_.duration);
+
+      var playlist = _minRebufferingSelector.playlist;
+      var roundTripTime = _minRebufferingSelector.roundTripTime;
+
+      var timeSavedBySwitching = requestTimeRemaining - roundTripTime;
+>>>>>>> add dist
 
       var minimumTimeSaving = 0.5;
 
@@ -5916,6 +6281,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         minimumTimeSaving = 1;
       }
 
+<<<<<<< HEAD
       if (!switchCandidate.playlist || switchCandidate.playlist.uri === this.playlist_.uri || timeSavedBySwitching < minimumTimeSaving) {
         return false;
       }
@@ -5923,10 +6289,23 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // set the bandwidth to that of the desired playlist being sure to scale by
       // BANDWIDTH_VARIANCE and add one so the playlist selector does not exclude it
       this.bandwidth = switchCandidate.playlist.attributes.BANDWIDTH * _config2['default'].BANDWIDTH_VARIANCE + 1;
+=======
+      if (!playlist || playlist.uri === this.playlist_.uri || timeSavedBySwitching <= minimumTimeSaving ||
+      // Don't switch if we cant get more than 50% savings
+      timeSavedBySwitching <= requestTimeRemaining * 0.5) {
+        return false;
+      }
+
+      // set the bandwidth to that of the desired playlist
+      // (Being sure to scale by BANDWIDTH_VARIANCE and add one so the
+      // playlist selector does not exclude it)
+      this.bandwidth = playlist.attributes.BANDWIDTH * _config2['default'].BANDWIDTH_VARIANCE + 1;
+>>>>>>> add dist
       this.abort();
       this.trigger('bandwidthupdate');
       return true;
     }
+<<<<<<< HEAD
 
     /**
      * XHR `progress` event handler
@@ -5941,6 +6320,16 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     key: 'handleProgress_',
     value: function handleProgress_(event, simpleSegment) {
       if (!this.pendingSegment_ || simpleSegment.requestId !== this.pendingSegment_.requestId || this.abortRequestEarly_(simpleSegment.stats)) {
+=======
+  }, {
+    key: 'handleProgress_',
+    value: function handleProgress_(event, segment) {
+      if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
+        return;
+      }
+
+      if (this.abortRequestEarly_(segment.stats)) {
+>>>>>>> add dist
         return;
       }
 
@@ -5979,7 +6368,11 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       var currentTime = this.currentTime_();
       var removeToTime = 0;
 
+<<<<<<< HEAD
       // Chrome has a hard limit of 150MB of
+=======
+      // Chrome has a hard limit of 150mb of
+>>>>>>> add dist
       // buffer and a very conservative "garbage collector"
       // We manually clear out the old buffer to ensure
       // we don't trigger the QuotaExceeded error
@@ -6070,7 +6463,10 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // an error occurred from the active pendingSegment_ so reset everything
       if (error) {
         this.pendingSegment_ = null;
+<<<<<<< HEAD
         this.state = 'READY';
+=======
+>>>>>>> add dist
 
         // the requests were aborted just record the aborted stat and exit
         // this is not a true error condition and nothing corrective needs
@@ -6080,6 +6476,10 @@ var SegmentLoader = (function (_videojs$EventTarget) {
           return;
         }
 
+<<<<<<< HEAD
+=======
+        this.state = 'READY';
+>>>>>>> add dist
         this.pause();
 
         // the error is really just that at least one of the requests timed-out
@@ -6318,11 +6718,14 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       var start = segment.start;
       var end = segment.end;
 
+<<<<<<< HEAD
       // Do not try adding the cue if the start and end times are invalid.
       if (!finite(start) || !finite(end)) {
         return;
       }
 
+=======
+>>>>>>> add dist
       (0, _videojsContribMediaSourcesEs5RemoveCuesFromTrackJs2['default'])(start, end, this.segmentMetadataTrack_);
 
       var Cue = _globalWindow2['default'].WebKitDataCue || _globalWindow2['default'].VTTCue;
@@ -6351,10 +6754,14 @@ exports['default'] = SegmentLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./playlist-selectors":9,"./ranges":11,"./source-updater":16,"global/window":29,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":70}],16:[function(require,module,exports){
 =======
 },{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./playlist-selectors":9,"./ranges":11,"./source-updater":16,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file source-updater.js
@@ -6577,6 +6984,140 @@ exports['default'] = SourceUpdater;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],17:[function(require,module,exports){
+<<<<<<< HEAD
+=======
+/**
+ * @file stream.js
+ */
+/**
+ * A lightweight readable stream implemention that handles event dispatching.
+ *
+ * @class Stream
+ */
+'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var Stream = (function () {
+  function Stream() {
+    _classCallCheck(this, Stream);
+
+    this.listeners = {};
+  }
+
+  /**
+   * Add a listener for a specified event type.
+   *
+   * @param {String} type the event name
+   * @param {Function} listener the callback to be invoked when an event of
+   * the specified type occurs
+   */
+
+  _createClass(Stream, [{
+    key: 'on',
+    value: function on(type, listener) {
+      if (!this.listeners[type]) {
+        this.listeners[type] = [];
+      }
+      this.listeners[type].push(listener);
+    }
+
+    /**
+     * Remove a listener for a specified event type.
+     *
+     * @param {String} type the event name
+     * @param {Function} listener  a function previously registered for this
+     * type of event through `on`
+     * @return {Boolean} if we could turn it off or not
+     */
+  }, {
+    key: 'off',
+    value: function off(type, listener) {
+      var index = undefined;
+
+      if (!this.listeners[type]) {
+        return false;
+      }
+      index = this.listeners[type].indexOf(listener);
+      this.listeners[type].splice(index, 1);
+      return index > -1;
+    }
+
+    /**
+     * Trigger an event of the specified type on this stream. Any additional
+     * arguments to this function are passed as parameters to event listeners.
+     *
+     * @param {String} type the event name
+     */
+  }, {
+    key: 'trigger',
+    value: function trigger(type) {
+      var callbacks = undefined;
+      var i = undefined;
+      var length = undefined;
+      var args = undefined;
+
+      callbacks = this.listeners[type];
+      if (!callbacks) {
+        return;
+      }
+      // Slicing the arguments on every invocation of this method
+      // can add a significant amount of overhead. Avoid the
+      // intermediate object creation for the common case of a
+      // single callback argument
+      if (arguments.length === 2) {
+        length = callbacks.length;
+        for (i = 0; i < length; ++i) {
+          callbacks[i].call(this, arguments[1]);
+        }
+      } else {
+        args = Array.prototype.slice.call(arguments, 1);
+        length = callbacks.length;
+        for (i = 0; i < length; ++i) {
+          callbacks[i].apply(this, args);
+        }
+      }
+    }
+
+    /**
+     * Destroys the stream and cleans up.
+     */
+  }, {
+    key: 'dispose',
+    value: function dispose() {
+      this.listeners = {};
+    }
+
+    /**
+     * Forwards all `data` events on this stream to the destination stream. The
+     * destination stream should provide a method `push` to receive the data
+     * events as they arrive.
+     *
+     * @param {Stream} destination the stream that will receive all `data` events
+     * @see http://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
+     */
+  }, {
+    key: 'pipe',
+    value: function pipe(destination) {
+      this.on('data', function (data) {
+        destination.push(data);
+      });
+    }
+  }]);
+
+  return Stream;
+})();
+
+exports['default'] = Stream;
+module.exports = exports['default'];
+},{}],18:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file sync-controller.js
@@ -6590,7 +7131,11 @@ Object.defineProperty(exports, '__esModule', {
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
+<<<<<<< HEAD
 var _get = function get(_x2, _x3, _x4) { var _again = true; _function: while (_again) { var object = _x2, property = _x3, receiver = _x4; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x2 = parent; _x3 = property; _x4 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+=======
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+>>>>>>> add dist
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -6649,7 +7194,11 @@ var syncPointStrategies = [
 {
   name: 'Segment',
   run: function run(syncController, playlist, duration, currentTimeline, currentTime) {
+<<<<<<< HEAD
     var segments = playlist.segments || [];
+=======
+    var segments = playlist.segments;
+>>>>>>> add dist
     var syncPoint = null;
     var lastDistance = null;
 
@@ -6688,7 +7237,11 @@ var syncPointStrategies = [
 
     currentTime = currentTime || 0;
 
+<<<<<<< HEAD
     if (playlist.discontinuityStarts && playlist.discontinuityStarts.length) {
+=======
+    if (playlist.discontinuityStarts.length) {
+>>>>>>> add dist
       var lastDistance = null;
 
       for (var i = 0; i < playlist.discontinuityStarts.length; i++) {
@@ -6741,8 +7294,11 @@ var SyncController = (function (_videojs$EventTarget) {
   _inherits(SyncController, _videojs$EventTarget);
 
   function SyncController() {
+<<<<<<< HEAD
     var options = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
 
+=======
+>>>>>>> add dist
     _classCallCheck(this, SyncController);
 
     _get(Object.getPrototypeOf(SyncController.prototype), 'constructor', this).call(this);
@@ -6755,7 +7311,11 @@ var SyncController = (function (_videojs$EventTarget) {
     this.discontinuities = [];
     this.datetimeToDisplayTime = null;
 
+<<<<<<< HEAD
     if (options.debug) {
+=======
+    if (_videoJs2['default'].options.hls && _videoJs2['default'].options.hls.debug) {
+>>>>>>> add dist
       this.logger_ = _videoJs2['default'].log.bind(_videoJs2['default'], 'sync-controller ->');
     }
   }
@@ -7163,10 +7723,14 @@ var SyncController = (function (_videojs$EventTarget) {
 exports['default'] = SyncController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./playlist":10,"mux.js/lib/mp4/probe":54,"mux.js/lib/tools/ts-inspector.js":56}],18:[function(require,module,exports){
 =======
 },{"./playlist":10,"mux.js/lib/mp4/probe":53,"mux.js/lib/tools/ts-inspector.js":55}],19:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./playlist":10,"mux.js/lib/mp4/probe":56,"mux.js/lib/tools/ts-inspector.js":58}],19:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file vtt-segment-loader.js
@@ -7179,7 +7743,11 @@ Object.defineProperty(exports, '__esModule', {
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
+<<<<<<< HEAD
 var _get = function get(_x3, _x4, _x5) { var _again = true; _function: while (_again) { var object = _x3, property = _x4, receiver = _x5; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x3 = parent; _x4 = property; _x5 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+=======
+var _get = function get(_x2, _x3, _x4) { var _again = true; _function: while (_again) { var object = _x2, property = _x3, receiver = _x4; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x2 = parent; _x3 = property; _x4 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+>>>>>>> add dist
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -7224,12 +7792,19 @@ var uintToString = function uintToString(uintArray) {
 var VTTSegmentLoader = (function (_SegmentLoader) {
   _inherits(VTTSegmentLoader, _SegmentLoader);
 
+<<<<<<< HEAD
   function VTTSegmentLoader(settings) {
     var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
     _classCallCheck(this, VTTSegmentLoader);
 
     _get(Object.getPrototypeOf(VTTSegmentLoader.prototype), 'constructor', this).call(this, settings, options);
+=======
+  function VTTSegmentLoader(options) {
+    _classCallCheck(this, VTTSegmentLoader);
+
+    _get(Object.getPrototypeOf(VTTSegmentLoader.prototype), 'constructor', this).call(this, options);
+>>>>>>> add dist
 
     // SegmentLoader requires a MediaSource be specified or it will throw an error;
     // however, VTTSegmentLoader has no need of a media source, so delete the reference
@@ -7618,10 +8193,14 @@ exports['default'] = VTTSegmentLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"./segment-loader":15,"global/window":29,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":70}],19:[function(require,module,exports){
 =======
 },{"./bin-utils":2,"./segment-loader":15,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./bin-utils":2,"./segment-loader":15,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file xhr.js
@@ -7710,7 +8289,11 @@ var xhrFactory = function xhrFactory() {
 exports['default'] = xhrFactory;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{}],20:[function(require,module,exports){
+=======
+},{}],21:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file aes.js
  *
@@ -7956,7 +8539,11 @@ var AES = (function () {
 
 exports['default'] = AES;
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{}],21:[function(require,module,exports){
+=======
+},{}],22:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file async-stream.js
  */
@@ -8037,7 +8624,11 @@ var AsyncStream = (function (_Stream) {
 
 exports['default'] = AsyncStream;
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{"./stream":24}],22:[function(require,module,exports){
+=======
+},{"./stream":25}],23:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file decrypter.js
  *
@@ -8222,10 +8813,14 @@ exports['default'] = {
   decrypt: decrypt
 };
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./aes":20,"./async-stream":21,"pkcs7":26}],23:[function(require,module,exports){
 =======
 },{"./aes":21,"./async-stream":22,"pkcs7":60}],24:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./aes":21,"./async-stream":22,"pkcs7":27}],24:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file index.js
  *
@@ -8238,6 +8833,7 @@ exports['default'] = {
  */
 'use strict';
 
+<<<<<<< HEAD
 Object.defineProperty(exports, '__esModule', {
   value: true
 });
@@ -8389,6 +8985,29 @@ var Stream = (function () {
 exports['default'] = Stream;
 module.exports = exports['default'];
 },{}],25:[function(require,module,exports){
+=======
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _decrypter = require('./decrypter');
+
+var _asyncStream = require('./async-stream');
+
+var _asyncStream2 = _interopRequireDefault(_asyncStream);
+
+exports['default'] = {
+  decrypt: _decrypter.decrypt,
+  Decrypter: _decrypter.Decrypter,
+  AsyncStream: _asyncStream2['default']
+};
+module.exports = exports['default'];
+},{"./async-stream":22,"./decrypter":23}],25:[function(require,module,exports){
+arguments[4][17][0].apply(exports,arguments)
+},{"dup":17}],26:[function(require,module,exports){
+>>>>>>> add dist
 /*
  * pkcs7.pad
  * https://github.com/brightcove/pkcs7
@@ -8474,7 +9093,11 @@ PADDING = [
   [1]
 ];
 
+<<<<<<< HEAD
 },{}],26:[function(require,module,exports){
+=======
+},{}],27:[function(require,module,exports){
+>>>>>>> add dist
 /*
  * pkcs7
  * https://github.com/brightcove/pkcs7
@@ -8488,7 +9111,11 @@ PADDING = [
 exports.pad = require('./pad.js');
 exports.unpad = require('./unpad.js');
 
+<<<<<<< HEAD
 },{"./pad.js":25,"./unpad.js":27}],27:[function(require,module,exports){
+=======
+},{"./pad.js":26,"./unpad.js":28}],28:[function(require,module,exports){
+>>>>>>> add dist
 /*
  * pkcs7.unpad
  * https://github.com/brightcove/pkcs7
@@ -8509,6 +9136,7 @@ module.exports = function unpad(padded) {
   return padded.subarray(0, padded.byteLength - padded[padded.byteLength - 1]);
 };
 
+<<<<<<< HEAD
 },{}],28:[function(require,module,exports){
 =======
 },{"./async-stream":22,"./decrypter":23}],25:[function(require,module,exports){
@@ -8517,6 +9145,11 @@ arguments[4][17][0].apply(exports,arguments)
 
 },{}],27:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],29:[function(require,module,exports){
+
+},{}],30:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 var topLevel = typeof global !== 'undefined' ? global :
     typeof window !== 'undefined' ? window : {}
@@ -8538,10 +9171,14 @@ module.exports = doccy;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"min-document":74}],29:[function(require,module,exports){
 =======
 },{"min-document":26}],28:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"min-document":29}],31:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 var win;
 
@@ -8559,10 +9196,14 @@ module.exports = win;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],30:[function(require,module,exports){
 =======
 },{}],29:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],32:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 var _lineStream = require('./line-stream');
@@ -8593,10 +9234,14 @@ module.exports = {
     * ReadableStream-like interface.
     */
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./line-stream":31,"./parse-stream":32,"./parser":33}],31:[function(require,module,exports){
 =======
 },{"./line-stream":30,"./parse-stream":31,"./parser":32}],30:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./line-stream":33,"./parse-stream":34,"./parser":35}],33:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -8666,10 +9311,14 @@ var LineStream = function (_Stream) {
 
 exports['default'] = LineStream;
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream":34}],32:[function(require,module,exports){
 =======
 },{"./stream":33}],31:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./stream":36}],34:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9123,10 +9772,14 @@ var ParseStream = function (_Stream) {
 
 exports['default'] = ParseStream;
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream":34}],33:[function(require,module,exports){
 =======
 },{"./stream":33}],32:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./stream":36}],35:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9518,10 +10171,14 @@ var Parser = function (_Stream) {
 
 exports['default'] = Parser;
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./line-stream":31,"./parse-stream":32,"./stream":34}],34:[function(require,module,exports){
 =======
 },{"./line-stream":30,"./parse-stream":31,"./stream":33}],33:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./line-stream":33,"./parse-stream":34,"./stream":36}],36:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9655,10 +10312,14 @@ var Stream = function () {
 
 exports['default'] = Stream;
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],35:[function(require,module,exports){
 =======
 },{}],34:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],37:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -9804,10 +10465,14 @@ AacStream.prototype = new Stream();
 module.exports = AacStream;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],36:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58}],35:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../utils/stream.js":61}],38:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -9971,10 +10636,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],37:[function(require,module,exports){
 =======
 },{}],36:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],39:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -10109,10 +10778,14 @@ AdtsStream.prototype = new Stream();
 module.exports = AdtsStream;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],38:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58}],37:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../utils/stream.js":61}],40:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -10533,10 +11206,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/exp-golomb.js":58,"../utils/stream.js":59}],39:[function(require,module,exports){
 =======
 },{"../utils/exp-golomb.js":57,"../utils/stream.js":58}],38:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../utils/exp-golomb.js":60,"../utils/stream.js":61}],41:[function(require,module,exports){
+>>>>>>> add dist
 var highPrefix = [33, 16, 5, 32, 164, 27];
 var lowPrefix = [33, 65, 108, 84, 1, 2, 4, 8, 168, 2, 4, 8, 17, 191, 252];
 var zeroFill = function(count) {
@@ -10574,10 +11251,14 @@ var coneOfSilence = {
 module.exports = makeTable(coneOfSilence);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],40:[function(require,module,exports){
 =======
 },{}],39:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],42:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -10723,10 +11404,14 @@ CoalesceStream.prototype.flush = function(flushSource) {
 module.exports = CoalesceStream;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],41:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58}],40:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../utils/stream.js":61}],43:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 var FlvTag = require('./flv-tag.js');
@@ -10789,10 +11474,14 @@ var getFlvHeader = function(duration, audio, video) { // :ByteArray {
 module.exports = getFlvHeader;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./flv-tag.js":42}],42:[function(require,module,exports){
 =======
 },{"./flv-tag.js":41}],41:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./flv-tag.js":44}],44:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * An object that stores the bytes of an FLV tag and methods for
  * querying and manipulating that data.
@@ -11167,10 +11856,14 @@ FlvTag.frameTime = function(tag) {
 module.exports = FlvTag;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],43:[function(require,module,exports){
 =======
 },{}],42:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],45:[function(require,module,exports){
+>>>>>>> add dist
 module.exports = {
   tag: require('./flv-tag'),
   Transmuxer: require('./transmuxer'),
@@ -11178,10 +11871,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./flv-header":41,"./flv-tag":42,"./transmuxer":45}],44:[function(require,module,exports){
 =======
 },{"./flv-header":40,"./flv-tag":41,"./transmuxer":44}],43:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./flv-header":43,"./flv-tag":44,"./transmuxer":47}],46:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 var TagList = function() {
@@ -11209,10 +11906,14 @@ var TagList = function() {
 module.exports = TagList;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],45:[function(require,module,exports){
 =======
 },{}],44:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],47:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -11631,10 +12332,14 @@ Transmuxer.prototype = new Stream();
 module.exports = Transmuxer;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../codecs/adts.js":37,"../codecs/h264":38,"../m2ts/m2ts.js":47,"../utils/stream.js":59,"./coalesce-stream.js":40,"./flv-tag.js":42,"./tag-list.js":44}],46:[function(require,module,exports){
 =======
 },{"../codecs/adts.js":36,"../codecs/h264":37,"../m2ts/m2ts.js":46,"../utils/stream.js":58,"./coalesce-stream.js":39,"./flv-tag.js":41,"./tag-list.js":43}],45:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../codecs/adts.js":39,"../codecs/h264":40,"../m2ts/m2ts.js":49,"../utils/stream.js":61,"./coalesce-stream.js":42,"./flv-tag.js":44,"./tag-list.js":46}],48:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -12101,10 +12806,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream":59}],47:[function(require,module,exports){
 =======
 },{"../utils/stream":58}],46:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../utils/stream":61}],49:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -12377,9 +13086,12 @@ ElementaryStream = function() {
     parsePes = function(payload, pes) {
       var ptsDtsFlags;
 
+<<<<<<< HEAD
       // get the packet length, this will be 0 for video
       pes.packetLength = 6 + ((payload[4] << 8) | payload[5]);
 
+=======
+>>>>>>> add dist
       // find out if this packets starts a new keyframe
       pes.dataAlignmentIndicator = (payload[6] & 0x04) !== 0;
       // PES packets may be annotated with a PTS value, or a PTS value
@@ -12422,13 +13134,18 @@ ElementaryStream = function() {
       // that follow the last byte of the field.
       pes.data = payload.subarray(9 + payload[8]);
     },
+<<<<<<< HEAD
     flushStream = function(stream, type, forceFlush) {
+=======
+    flushStream = function(stream, type) {
+>>>>>>> add dist
       var
         packetData = new Uint8Array(stream.size),
         event = {
           type: type
         },
         i = 0,
+<<<<<<< HEAD
         offset = 0,
         packetFlushable = false,
         fragment;
@@ -12436,21 +13153,36 @@ ElementaryStream = function() {
       // do nothing if there is not enough buffered data for a complete
       // PES header
       if (!stream.data.length || stream.size < 9) {
+=======
+        fragment;
+
+      // do nothing if there is no buffered data
+      if (!stream.data.length) {
+>>>>>>> add dist
         return;
       }
       event.trackId = stream.data[0].pid;
 
       // reassemble the packet
+<<<<<<< HEAD
       for (i = 0; i < stream.data.length; i++) {
         fragment = stream.data[i];
 
         packetData.set(fragment.data, offset);
         offset += fragment.data.byteLength;
+=======
+      while (stream.data.length) {
+        fragment = stream.data.shift();
+
+        packetData.set(fragment.data, i);
+        i += fragment.data.byteLength;
+>>>>>>> add dist
       }
 
       // parse assembled packet's PES header
       parsePes(packetData, event);
 
+<<<<<<< HEAD
       // non-video PES packets MUST have a non-zero PES_packet_length
       // check that they match before we do a flush
       packetFlushable = type === 'video' || event.packetLength === stream.size;
@@ -12466,6 +13198,11 @@ ElementaryStream = function() {
       if (packetFlushable) {
         self.trigger('data', event);
       }
+=======
+      stream.size = 0;
+
+      self.trigger('data', event);
+>>>>>>> add dist
     };
 
   ElementaryStream.prototype.init.call(this);
@@ -12501,7 +13238,11 @@ ElementaryStream = function() {
         // if a new packet is starting, we can flush the completed
         // packet
         if (data.payloadUnitStartIndicator) {
+<<<<<<< HEAD
           flushStream(stream, streamType, true);
+=======
+          flushStream(stream, streamType);
+>>>>>>> add dist
         }
 
         // buffer this fragment until we are sure we've received the
@@ -12584,10 +13325,14 @@ for (var type in StreamTypes) {
 module.exports = m2ts;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59,"./caption-stream":46,"./metadata-stream":48,"./stream-types":50,"./stream-types.js":50,"./timestamp-rollover-stream":51}],48:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58,"./caption-stream":45,"./metadata-stream":47,"./stream-types":49,"./stream-types.js":49,"./timestamp-rollover-stream":50}],47:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../utils/stream.js":61,"./caption-stream":48,"./metadata-stream":50,"./stream-types":52,"./stream-types.js":52,"./timestamp-rollover-stream":53}],50:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * Accepts program elementary stream (PES) data events and parses out
  * ID3 metadata from them, if present.
@@ -12838,10 +13583,14 @@ MetadataStream.prototype = new Stream();
 module.exports = MetadataStream;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream":59,"./stream-types":50}],49:[function(require,module,exports){
 =======
 },{"../utils/stream":58,"./stream-types":49}],48:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../utils/stream":61,"./stream-types":52}],51:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -13131,10 +13880,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream-types.js":50}],50:[function(require,module,exports){
 =======
 },{"./stream-types.js":49}],49:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./stream-types.js":52}],52:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 module.exports = {
@@ -13144,10 +13897,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],51:[function(require,module,exports){
 =======
 },{}],50:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],53:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -13234,10 +13991,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream":59}],52:[function(require,module,exports){
 =======
 },{"../utils/stream":58}],51:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../utils/stream":61}],54:[function(require,module,exports){
+>>>>>>> add dist
 module.exports = {
   generator: require('./mp4-generator'),
   Transmuxer: require('./transmuxer').Transmuxer,
@@ -13246,10 +14007,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./mp4-generator":53,"./transmuxer":55}],53:[function(require,module,exports){
 =======
 },{"./mp4-generator":52,"./transmuxer":54}],52:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./mp4-generator":55,"./transmuxer":57}],55:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -14022,10 +14787,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],54:[function(require,module,exports){
 =======
 },{}],53:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],56:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -14216,10 +14985,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],55:[function(require,module,exports){
 =======
 },{}],54:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],57:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -15480,10 +16253,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../aac":35,"../codecs/adts.js":37,"../codecs/h264":38,"../data/silence":39,"../m2ts/m2ts.js":47,"../utils/clock":57,"../utils/stream.js":59,"./mp4-generator.js":53}],56:[function(require,module,exports){
 =======
 },{"../aac":34,"../codecs/adts.js":36,"../codecs/h264":37,"../data/silence":38,"../m2ts/m2ts.js":46,"../utils/clock":56,"../utils/stream.js":58,"./mp4-generator.js":52}],55:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../aac":37,"../codecs/adts.js":39,"../codecs/h264":40,"../data/silence":41,"../m2ts/m2ts.js":49,"../utils/clock":59,"../utils/stream.js":61,"./mp4-generator.js":55}],58:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -15998,10 +16775,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../aac/probe.js":36,"../m2ts/probe.js":49,"../m2ts/stream-types.js":50,"../m2ts/timestamp-rollover-stream.js":51}],57:[function(require,module,exports){
 =======
 },{"../aac/probe.js":35,"../m2ts/probe.js":48,"../m2ts/stream-types.js":49,"../m2ts/timestamp-rollover-stream.js":50}],56:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"../aac/probe.js":38,"../m2ts/probe.js":51,"../m2ts/stream-types.js":52,"../m2ts/timestamp-rollover-stream.js":53}],59:[function(require,module,exports){
+>>>>>>> add dist
 var
   ONE_SECOND_IN_TS = 90000, // 90kHz clock
   secondsToVideoTs,
@@ -16045,10 +16826,14 @@ module.exports = {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],58:[function(require,module,exports){
 =======
 },{}],57:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],60:[function(require,module,exports){
+>>>>>>> add dist
 'use strict';
 
 var ExpGolomb;
@@ -16198,10 +16983,14 @@ ExpGolomb = function(workingData) {
 module.exports = ExpGolomb;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],59:[function(require,module,exports){
 =======
 },{}],58:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],61:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * mux.js
  *
@@ -16320,6 +17109,7 @@ Stream.prototype.flush = function(flushSource) {
 
 module.exports = Stream;
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 },{}],60:[function(require,module,exports){
 =======
@@ -16446,6 +17236,9 @@ module.exports = function unpad(padded) {
 
 },{}],62:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{}],62:[function(require,module,exports){
+>>>>>>> add dist
 /* jshint ignore:start */
 (function(root) { 
 /* jshint ignore:end */
@@ -16548,7 +17341,11 @@ module.exports = function unpad(padded) {
 })(this);
 /* jshint ignore:end */
 
+<<<<<<< HEAD
 },{}],61:[function(require,module,exports){
+=======
+},{}],63:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file add-text-track-data.js
@@ -16700,10 +17497,14 @@ exports['default'] = {
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29}],62:[function(require,module,exports){
 =======
 },{"global/window":28}],64:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"global/window":31}],64:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * Remove the text track from the player if one with matching kind and
  * label properties already exists on the player
@@ -16742,7 +17543,11 @@ var cleanupTextTracks = function cleanupTextTracks(player) {
   removeExistingTrack(player, 'metadata', 'Timed Metadata');
 };
 exports.cleanupTextTracks = cleanupTextTracks;
+<<<<<<< HEAD
 },{}],63:[function(require,module,exports){
+=======
+},{}],65:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file codec-utils.js
  */
@@ -16830,7 +17635,11 @@ exports['default'] = {
   translateLegacyCodecs: translateLegacyCodecs
 };
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{}],64:[function(require,module,exports){
+=======
+},{}],66:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file create-text-tracks-if-necessary.js
  */
@@ -16860,7 +17669,10 @@ var createTextTracksIfNecessary = function createTextTracksIfNecessary(sourceBuf
       kind: 'captions',
       label: 'cc1'
     }, false).track;
+<<<<<<< HEAD
     player.tech_.trigger({ type: 'usage', name: 'hls-608' });
+=======
+>>>>>>> add dist
   }
 
   if (segment.metadata && segment.metadata.length && !sourceBuffer.metadataTrack_) {
@@ -16875,7 +17687,11 @@ var createTextTracksIfNecessary = function createTextTracksIfNecessary(sourceBuf
 
 exports['default'] = createTextTracksIfNecessary;
 module.exports = exports['default'];
+<<<<<<< HEAD
 },{"./cleanup-text-tracks":62}],65:[function(require,module,exports){
+=======
+},{"./cleanup-text-tracks":64}],67:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file flash-constants.js
  */
@@ -16902,7 +17718,11 @@ var flashConstants = {
 
 exports["default"] = flashConstants;
 module.exports = exports["default"];
+<<<<<<< HEAD
 },{}],66:[function(require,module,exports){
+=======
+},{}],68:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file flash-media-source.js
@@ -17119,10 +17939,14 @@ for (var property in _flashConstants2['default']) {
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./cleanup-text-tracks":62,"./codec-utils":63,"./flash-constants":65,"./flash-source-buffer":67,"global/document":28}],67:[function(require,module,exports){
 =======
 },{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":27}],69:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":30}],69:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file flash-source-buffer.js
@@ -17725,10 +18549,14 @@ exports['default'] = FlashSourceBuffer;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./create-text-tracks-if-necessary":64,"./flash-constants":65,"./flash-transmuxer-worker":68,"./remove-cues-from-track":70,"global/window":29,"mux.js/lib/flv":43,"webworkify":75}],68:[function(require,module,exports){
 =======
 },{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":28,"mux.js/lib/flv":42,"webworkify":76}],70:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":31,"mux.js/lib/flv":45,"webworkify":76}],70:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file flash-transmuxer-worker.js
  */
@@ -17874,10 +18702,14 @@ exports['default'] = function (self) {
 
 module.exports = exports['default'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29,"mux.js/lib/flv":43}],69:[function(require,module,exports){
 =======
 },{"global/window":28,"mux.js/lib/flv":42}],71:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"global/window":31,"mux.js/lib/flv":45}],71:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file html-media-source.js
@@ -18218,10 +19050,14 @@ exports['default'] = HtmlMediaSource;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./cleanup-text-tracks":62,"./codec-utils":63,"./virtual-source-buffer":73,"global/document":28,"global/window":29}],70:[function(require,module,exports){
 =======
 },{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":27,"global/window":28}],72:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":30,"global/window":31}],72:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file remove-cues-from-track.js
  */
@@ -18265,7 +19101,11 @@ var removeCuesFromTrack = function removeCuesFromTrack(start, end, track) {
 
 exports["default"] = removeCuesFromTrack;
 module.exports = exports["default"];
+<<<<<<< HEAD
 },{}],71:[function(require,module,exports){
+=======
+},{}],73:[function(require,module,exports){
+>>>>>>> add dist
 /**
  * @file transmuxer-worker.js
  */
@@ -18470,10 +19310,14 @@ exports['default'] = function (self) {
 
 module.exports = exports['default'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29,"mux.js/lib/mp4":52}],72:[function(require,module,exports){
 =======
 },{"global/window":28,"mux.js/lib/mp4":51}],74:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"global/window":31,"mux.js/lib/mp4":54}],74:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file videojs-contrib-media-sources.js
@@ -18633,10 +19477,14 @@ _videoJs2['default'].MediaSource = MediaSource;
 _videoJs2['default'].URL = URL;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./flash-media-source":66,"./html-media-source":69,"global/window":29}],73:[function(require,module,exports){
 =======
 },{"./flash-media-source":68,"./html-media-source":71,"global/window":28}],75:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./flash-media-source":68,"./html-media-source":71,"global/window":31}],75:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file virtual-source-buffer.js
@@ -19275,9 +20123,13 @@ var VirtualSourceBuffer = (function (_videojs$EventTarget) {
 exports['default'] = VirtualSourceBuffer;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./codec-utils":63,"./create-text-tracks-if-necessary":64,"./remove-cues-from-track":70,"./transmuxer-worker":71,"webworkify":75}],74:[function(require,module,exports){
 
 },{}],75:[function(require,module,exports){
+=======
+},{"./add-text-track-data":63,"./codec-utils":65,"./create-text-tracks-if-necessary":66,"./remove-cues-from-track":72,"./transmuxer-worker":73,"webworkify":76}],76:[function(require,module,exports){
+>>>>>>> add dist
 var bundleFn = arguments[3];
 var sources = arguments[4];
 var cache = arguments[5];
@@ -19334,7 +20186,11 @@ module.exports = function (fn) {
     ));
 };
 
+<<<<<<< HEAD
 },{}],76:[function(require,module,exports){
+=======
+},{}],77:[function(require,module,exports){
+>>>>>>> add dist
 (function (global){
 /**
  * @file videojs-contrib-hls.js
@@ -19346,7 +20202,11 @@ module.exports = function (fn) {
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
+<<<<<<< HEAD
 var _get = function get(_x4, _x5, _x6) { var _again = true; _function: while (_again) { var object = _x4, property = _x5, receiver = _x6; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x4 = parent; _x5 = property; _x6 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+=======
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+>>>>>>> add dist
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -19410,11 +20270,14 @@ var _reloadSourceOnError2 = _interopRequireDefault(_reloadSourceOnError);
 
 var _playlistSelectorsJs = require('./playlist-selectors.js');
 
+<<<<<<< HEAD
 // 0.5 MB/s
 var BANDWIDTH_BROADBAND = 4194304;
 // 0.0625 MB/s
 var BANDWIDTH_MOBILE = 500000;
 
+=======
+>>>>>>> add dist
 var Hls = {
   PlaylistLoader: _playlistLoader2['default'],
   Playlist: _playlist2['default'],
@@ -19430,6 +20293,7 @@ var Hls = {
   xhr: (0, _xhr2['default'])()
 };
 
+<<<<<<< HEAD
 // Define getter/setters for config properites
 ['GOAL_BUFFER_LENGTH', 'MAX_GOAL_BUFFER_LENGTH', 'GOAL_BUFFER_LENGTH_RATE', 'BUFFER_LOW_WATER_LINE', 'MAX_BUFFER_LOW_WATER_LINE', 'BUFFER_LOW_WATER_LINE_RATE', 'BANDWIDTH_VARIANCE'].forEach(function (prop) {
   Object.defineProperty(Hls, prop, {
@@ -19523,6 +20387,20 @@ Object.defineProperty(Hls, 'BUFFER_LOW_WATER_RATE', {
       return;
     }
     _config2['default'].BUFFER_LOW_WATER_RATE = v;
+=======
+Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.GOAL_BUFFER_LENGTH is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].GOAL_BUFFER_LENGTH;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.GOAL_BUFFER_LENGTH is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      _videoJs2['default'].log.warn('value passed to Hls.GOAL_BUFFER_LENGTH ' + 'must be a number and greater than 0');
+      return;
+    }
+    _config2['default'].GOAL_BUFFER_LENGTH = v;
+>>>>>>> add dist
   }
 });
 
@@ -19536,9 +20414,15 @@ Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
     if (typeof v !== 'number' || v <= 0) {
       _videoJs2['default'].log.warn('value passed to Hls.BANDWIDTH_VARIANCE ' + 'must be a number and greater than 0');
       return;
+<<<<<<< HEAD
 >>>>>>> use goal buffer length of 60, low water line of 30
     }
   });
+=======
+    }
+    _config2['default'].BANDWIDTH_VARIANCE = v;
+  }
+>>>>>>> add dist
 });
 
 /**
@@ -19665,7 +20549,11 @@ var HlsHandler = (function (_Component) {
 
     _classCallCheck(this, HlsHandler);
 
+<<<<<<< HEAD
     _get(Object.getPrototypeOf(HlsHandler.prototype), 'constructor', this).call(this, tech, options.hls);
+=======
+    _get(Object.getPrototypeOf(HlsHandler.prototype), 'constructor', this).call(this, tech);
+>>>>>>> add dist
 
     // tech.player() is deprecated but setup a reference to HLS for
     // backwards-compatibility
@@ -19682,10 +20570,20 @@ var HlsHandler = (function (_Component) {
       }
     }
 
+<<<<<<< HEAD
+=======
+    // overriding native HLS only works if audio tracks have been emulated
+    // error early if we're misconfigured:
+    if (_videoJs2['default'].options.hls.overrideNative && (tech.featuresNativeVideoTracks || tech.featuresNativeAudioTracks)) {
+      throw new Error('Overriding native HLS requires emulated tracks. ' + 'See https://git.io/vMpjB');
+    }
+
+>>>>>>> add dist
     this.tech_ = tech;
     this.source_ = source;
     this.stats = {};
     this.ignoreNextSeekingEvent_ = false;
+<<<<<<< HEAD
     this.setOptions_();
 
     // overriding native HLS only works if audio tracks have been emulated
@@ -19693,6 +20591,12 @@ var HlsHandler = (function (_Component) {
     if (this.options_.overrideNative && (tech.featuresNativeVideoTracks || tech.featuresNativeAudioTracks)) {
       throw new Error('Overriding native HLS requires emulated tracks. ' + 'See https://git.io/vMpjB');
     }
+=======
+
+    // handle global & Source Handler level options
+    this.options_ = _videoJs2['default'].mergeOptions(_videoJs2['default'].options.hls || {}, options.hls);
+    this.setOptions_();
+>>>>>>> add dist
 
     // listen for fullscreenchange events for this player so that we
     // can adjust our quality selection quickly
@@ -19750,11 +20654,18 @@ var HlsHandler = (function (_Component) {
       }
 
       // start playlist selection at a reasonable bandwidth for
+<<<<<<< HEAD
       // broadband internet (0.5 MB/s) or mobile (0.0625 MB/s)
       if (typeof this.options_.bandwidth !== 'number') {
         // only use Android for mobile because iOS does not support MSE (and uses
         // native HLS)
         this.options_.bandwidth = _videoJs2['default'].browser.IS_ANDROID ? BANDWIDTH_MOBILE : BANDWIDTH_BROADBAND;
+=======
+      // broadband internet
+      // 0.5 MB/s
+      if (typeof this.options_.bandwidth !== 'number') {
+        this.options_.bandwidth = 4194304;
+>>>>>>> add dist
       }
 
       // grab options passed to player.src
@@ -20072,6 +20983,7 @@ var HlsHandler = (function (_Component) {
 var HlsSourceHandler = function HlsSourceHandler(mode) {
   return {
     canHandleSource: function canHandleSource(srcObj) {
+<<<<<<< HEAD
       var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
       var localOptions = _videoJs2['default'].mergeOptions(_videoJs2['default'].options, options);
@@ -20088,6 +21000,16 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
 
       var localOptions = _videoJs2['default'].mergeOptions(_videoJs2['default'].options, options, { hls: { mode: mode } });
 
+=======
+      // this forces video.js to skip this tech/mode if its not the one we have been
+      // overriden to use, by returing that we cannot handle the source.
+      if (_videoJs2['default'].options.hls && _videoJs2['default'].options.hls.mode && _videoJs2['default'].options.hls.mode !== mode) {
+        return false;
+      }
+      return HlsSourceHandler.canPlayType(srcObj.type);
+    },
+    handleSource: function handleSource(source, tech, options) {
+>>>>>>> add dist
       if (mode === 'flash') {
         // We need to trigger this asynchronously to give others the chance
         // to bind to the event when a source is set at player creation
@@ -20096,18 +21018,28 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
         }, 1);
       }
 
+<<<<<<< HEAD
       tech.hls = new HlsHandler(source, tech, localOptions);
+=======
+      var settings = _videoJs2['default'].mergeOptions(options, { hls: { mode: mode } });
+
+      tech.hls = new HlsHandler(source, tech, settings);
+>>>>>>> add dist
       tech.hls.xhr = (0, _xhr2['default'])();
 
       tech.hls.src(source.src);
       return tech.hls;
     },
     canPlayType: function canPlayType(type) {
+<<<<<<< HEAD
       var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
       var localOptions = _videoJs2['default'].mergeOptions(_videoJs2['default'].options, options);
 
       if (HlsSourceHandler.canPlayType(type, localOptions)) {
+=======
+      if (HlsSourceHandler.canPlayType(type)) {
+>>>>>>> add dist
         return 'maybe';
       }
       return '';
@@ -20115,7 +21047,11 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
   };
 };
 
+<<<<<<< HEAD
 HlsSourceHandler.canPlayType = function (type, options) {
+=======
+HlsSourceHandler.canPlayType = function (type) {
+>>>>>>> add dist
   // No support for IE 10 or below
   if (_videoJs2['default'].browser.IE_VERSION && _videoJs2['default'].browser.IE_VERSION <= 10) {
     return false;
@@ -20124,7 +21060,11 @@ HlsSourceHandler.canPlayType = function (type, options) {
   var mpegurlRE = /^(audio|video|application)\/(x-|vnd\.apple\.)?mpegurl/i;
 
   // favor native HLS support if it's available
+<<<<<<< HEAD
   if (!options.hls.overrideNative && Hls.supportsNativeHls) {
+=======
+  if (!_videoJs2['default'].options.hls.overrideNative && Hls.supportsNativeHls) {
+>>>>>>> add dist
     return false;
   }
   return mpegurlRE.test(type);
@@ -20167,7 +21107,12 @@ module.exports = {
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":19,"aes-decrypter":23,"global/document":28,"global/window":29,"m3u8-parser":30,"videojs-contrib-media-sources":72}]},{},[76]);
 =======
 },{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":27,"global/window":28,"m3u8-parser":29,"videojs-contrib-media-sources":74}]},{},[77]);
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
+=======
+},{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":30,"global/window":31,"m3u8-parser":32,"videojs-contrib-media-sources":74}]},{},[77])(77)
+});
+>>>>>>> add dist
