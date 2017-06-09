@@ -779,7 +779,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         roundTripTime <= minimumTimeSaving ||
         // or that switching will not be more than 50% time saving than just sticking
         // with the current request
-        roundTripTime < requestTimeRemaining / 2) {
+        roundTripTime > requestTimeRemaining / 2) {
       return false;
     }
 
