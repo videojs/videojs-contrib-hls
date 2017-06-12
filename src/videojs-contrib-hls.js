@@ -32,7 +32,7 @@ const Hls = {
   AsyncStream,
   decrypt,
   utils,
-  STANDARD_PLAYLIST_SELECTOR: movingAverageBandwidthSelector,
+  STANDARD_PLAYLIST_SELECTOR: movingAverageBandwidthSelector(),
   comparePlaylistBandwidth,
   comparePlaylistResolution,
 
@@ -72,6 +72,24 @@ Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
       return;
     }
     Config.BANDWIDTH_VARIANCE = v;
+  }
+});
+
+Object.defineProperty(Hls, 'EWMA_DECAY', {
+  get() {
+    videojs.log.warn('using Hls.EWMA_DECAY is UNSAFE be sure ' +
+                     'you know what you are doing');
+    return Config.EWMA_DECAY;
+  },
+  set(v) {
+    videojs.log.warn('using Hls.EWMA_DECAY is UNSAFE be sure ' +
+                     'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0 || v > 1) {
+      videojs.log.warn('value passed to Hls.EWMA_DECAY ' +
+                       'must be a number and between 0 and 1');
+      return;
+    }
+    Config.EWMA_DECAY = v;
   }
 });
 
@@ -328,7 +346,7 @@ class HlsHandler extends Component {
     this.masterPlaylistController_.selectPlaylist =
       this.selectPlaylist ?
         this.selectPlaylist.bind(this) :
-        Hls.STANDARD_PLAYLIST_SELECTOR(Config.EWMA_DECAY).bind(this);
+        Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
 
     // re-expose some internal objects for backwards compatibility with < v2
     this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;

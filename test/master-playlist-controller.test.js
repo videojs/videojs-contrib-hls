@@ -18,6 +18,7 @@ import {
 import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
+import { movingAverageBandwidthSelector } from '../src/playlist-selectors.js';
 
 const generateMedia = function(isMaat, isMuxed, hasVideoCodec, hasAudioCodec, isFMP4) {
   const codec = (hasVideoCodec ? 'avc1.deadbeef' : '') +
@@ -70,6 +71,9 @@ QUnit.module('MasterPlaylistController', {
     this.requests = this.env.requests;
     this.mse = useFakeMediaSource();
 
+    this.originalSelectPlaylist = Hls.STANDARD_PLAYLIST_SELECTOR;
+    Hls.STANDARD_PLAYLIST_SELECTOR = movingAverageBandwidthSelector();
+
     // force the HLS tech to run
     this.origSupportsNativeHls = videojs.Hls.supportsNativeHls;
     videojs.Hls.supportsNativeHls = false;
@@ -97,6 +101,7 @@ QUnit.module('MasterPlaylistController', {
   afterEach() {
     this.env.restore();
     this.mse.restore();
+    Hls.STANDARD_PLAYLIST_SELECTOR = this.originalSelectPlaylist;
     videojs.Hls.supportsNativeHls = this.origSupportsNativeHls;
     videojs.browser.IS_FIREFOX = this.oldFirefox;
     this.player.dispose();

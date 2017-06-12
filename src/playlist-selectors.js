@@ -223,10 +223,10 @@ export const lastBandwidthSelector = function() {
  * playlist selector function.
  * @see https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
  */
-export const movingAverageBandwidthSelector = function(decay) {
+export const movingAverageBandwidthSelector = function() {
   let average = -1;
 
-  if (decay < 0 || decay > 1) {
+  if ((Config.EWMA_DECAY) < 0 || (Config.EWMA_DECAY) > 1) {
     throw new Error('Moving average bandwidth decay must be between 0 and 1.');
   }
 
@@ -235,7 +235,8 @@ export const movingAverageBandwidthSelector = function(decay) {
       average = this.systemBandwidth;
     }
 
-    average = decay * this.systemBandwidth + (1 - decay) * average;
+    average =
+      (Config.EWMA_DECAY) * this.systemBandwidth + (1 - (Config.EWMA_DECAY)) * average;
     return simpleSelector(this.playlists.master,
                           average,
                           parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10),
