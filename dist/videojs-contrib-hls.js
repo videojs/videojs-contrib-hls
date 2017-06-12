@@ -1,6 +1,9 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 =======
+=======
+>>>>>>> ignore: add dist
 /**
  * videojs-contrib-hls
  * @version 5.5.3
@@ -8,7 +11,10 @@
  * @license Apache-2.0
  */
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.videojsContribHls = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 /**
  * @file ad-cue-tags.js
  */
@@ -123,6 +129,7 @@ exports['default'] = {
 module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29}],2:[function(require,module,exports){
 =======
 },{"global/window":28}],2:[function(require,module,exports){
@@ -130,6 +137,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31}],2:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"global/window":31}],2:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file bin-utils.js
  */
@@ -255,6 +265,7 @@ Object.defineProperty(exports, "__esModule", {
 exports["default"] = {
   GOAL_BUFFER_LENGTH: 30,
 <<<<<<< HEAD
+<<<<<<< HEAD
   MAX_GOAL_BUFFER_LENGTH: 60,
 <<<<<<< HEAD
   GOAL_BUFFER_LENGTH_RATE: 1,
@@ -283,6 +294,11 @@ exports["default"] = {
   // temporary flucations in client bandwidth
   BANDWIDTH_VARIANCE: 1.2
 >>>>>>> add dist
+=======
+  // A fudge factor to apply to advertised playlist bitrates to account for
+  // temporary flucations in client bandwidth
+  BANDWIDTH_VARIANCE: 1.2
+>>>>>>> ignore: add dist
 };
 module.exports = exports["default"];
 },{}],4:[function(require,module,exports){
@@ -335,6 +351,7 @@ exports['default'] = function (self) {
 module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"aes-decrypter":23,"global/window":29}],5:[function(require,module,exports){
 =======
 },{"./bin-utils":2,"aes-decrypter":24,"global/window":28}],5:[function(require,module,exports){
@@ -342,6 +359,9 @@ module.exports = exports['default'];
 =======
 },{"./bin-utils":2,"aes-decrypter":24,"global/window":31}],5:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./bin-utils":2,"aes-decrypter":24,"global/window":31}],5:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file master-playlist-controller.js
@@ -401,12 +421,15 @@ var _decrypterWorker = require('./decrypter-worker');
 var _decrypterWorker2 = _interopRequireDefault(_decrypterWorker);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 var _config = require('./config');
 
 var _config2 = _interopRequireDefault(_config);
 
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 var Hls = undefined;
 
 // Default codec parameters if none were provided for video and/or audio
@@ -703,10 +726,14 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     this.syncController_ = new _syncController2['default'](options);
 =======
     this.syncController_ = new _syncController2['default']();
 >>>>>>> add dist
+=======
+    this.syncController_ = new _syncController2['default']();
+>>>>>>> ignore: add dist
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
       kind: 'metadata',
       label: 'segment-metadata'
@@ -715,10 +742,14 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     this.decrypter_ = (0, _webworkify2['default'])(_decrypterWorker2['default']);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     var segmentLoaderSettings = {
 =======
     var segmentLoaderOptions = {
 >>>>>>> add dist
+=======
+    var segmentLoaderOptions = {
+>>>>>>> ignore: add dist
       hls: this.hls_,
       mediaSource: this.mediaSource,
       currentTime: this.tech_.currentTime.bind(this.tech_),
@@ -735,11 +766,14 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         return _this.hasPlayed_();
       },
 <<<<<<< HEAD
+<<<<<<< HEAD
       goalBufferLength: function goalBufferLength() {
         return _this.goalBufferLength();
       },
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
       bandwidth: bandwidth,
       syncController: this.syncController_,
       decrypter: this.decrypter_
@@ -753,6 +787,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
+<<<<<<< HEAD
 <<<<<<< HEAD
     this.mainSegmentLoader_ = new _segmentLoader2['default'](_videoJs2['default'].mergeOptions(segmentLoaderSettings, {
       segmentMetadataTrack: this.segmentMetadataTrack_,
@@ -768,6 +803,8 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       loaderType: 'vtt'
     }), options);
 =======
+=======
+>>>>>>> ignore: add dist
     this.mainSegmentLoader_ = new _segmentLoader2['default'](_videoJs2['default'].mergeOptions(segmentLoaderOptions, {
       segmentMetadataTrack: this.segmentMetadataTrack_,
       loaderType: 'main'
@@ -781,7 +818,10 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     this.subtitleSegmentLoader_ = new _vttSegmentLoader2['default'](_videoJs2['default'].mergeOptions(segmentLoaderOptions, {
       loaderType: 'vtt'
     }));
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 
     this.setupSegmentLoaderListeners_();
 
@@ -937,10 +977,14 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         })[0];
         if (!activeTrack) {
 <<<<<<< HEAD
+<<<<<<< HEAD
           _this2.mediaGroupChanged();
 =======
           _this2.setupAudio();
 >>>>>>> add dist
+=======
+          _this2.setupAudio();
+>>>>>>> ignore: add dist
           _this2.trigger('audioupdate');
         }
         _this2.setupSubtitles();
@@ -981,6 +1025,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       var _this3 = this;
 
       this.mainSegmentLoader_.on('bandwidthupdate', function () {
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -1050,6 +1095,11 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         // with the updated bandwidth information
         _this3.masterPlaylistLoader_.media(_this3.selectPlaylist());
 >>>>>>> add dist
+=======
+        // figure out what stream the next segment should be downloaded from
+        // with the updated bandwidth information
+        _this3.masterPlaylistLoader_.media(_this3.selectPlaylist());
+>>>>>>> ignore: add dist
         _this3.tech_.trigger('bandwidthupdate');
       });
       this.mainSegmentLoader_.on('progress', function () {
@@ -1301,6 +1351,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 
     /**
 <<<<<<< HEAD
+<<<<<<< HEAD
      * Determine the correct audio renditions based on the active
      * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
      * necessary. This method is only called when the media-group changes
@@ -1319,10 +1370,13 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     /**
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
      * Determine the correct audio rendition based on the active
      * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
      * necessary. This method is called once automatically before
      * playback begins to enable the default audio track and should be
+<<<<<<< HEAD
 <<<<<<< HEAD
      * invoked again if the track is changed. Performs destructive 'reset'
      * on the SegmentLoaders(s) to ensure we start loading audio as
@@ -1330,10 +1384,14 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 =======
      * invoked again if the track is changed.
 >>>>>>> add dist
+=======
+     * invoked again if the track is changed.
+>>>>>>> ignore: add dist
      */
   }, {
     key: 'setupAudio',
     value: function setupAudio() {
+<<<<<<< HEAD
 <<<<<<< HEAD
       var track = this.getActiveAudioTrack_();
 
@@ -1352,6 +1410,10 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       var _this4 = this;
 
 >>>>>>> add dist
+=======
+      var _this4 = this;
+
+>>>>>>> ignore: add dist
       // determine whether seperate loaders are required for the audio
       // rendition
       var audioGroup = this.activeAudioGroup();
@@ -1367,6 +1429,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       return track;
     }
 
@@ -1379,12 +1442,15 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     value: function stopAudioLoaders_() {
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
       // stop playlist and segment loading for audio
       if (this.audioPlaylistLoader_) {
         this.audioPlaylistLoader_.dispose();
         this.audioPlaylistLoader_ = null;
       }
       this.audioSegmentLoader_.pause();
+<<<<<<< HEAD
 <<<<<<< HEAD
     }
 
@@ -1399,10 +1465,14 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 =======
 
 >>>>>>> add dist
+=======
+
+>>>>>>> ignore: add dist
       if (!track.properties_.resolvedUri) {
         this.mainSegmentLoader_.resetEverything();
         return;
       }
+<<<<<<< HEAD
 <<<<<<< HEAD
 
       this.audioSegmentLoader_.resetEverything();
@@ -1436,6 +1506,9 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 =======
       this.audioSegmentLoader_.resetEverything();
 >>>>>>> add dist
+=======
+      this.audioSegmentLoader_.resetEverything();
+>>>>>>> ignore: add dist
 
       // startup playlist and segment loaders for the enabled audio
       // track
@@ -2112,6 +2185,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       _adCueTags2['default'].updateAdCues(media, this.cueTagsTrack_, offset);
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     /**
      * Calculates the desired forward buffer length based on current time
@@ -2146,6 +2220,8 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
     }
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
   }]);
 
   return MasterPlaylistController;
@@ -2155,6 +2231,7 @@ exports.MasterPlaylistController = MasterPlaylistController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./ad-cue-tags":1,"./config":3,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":17,"./vtt-segment-loader":18,"videojs-contrib-media-sources/es5/codec-utils":63,"webworkify":75}],6:[function(require,module,exports){
 =======
 },{"./ad-cue-tags":1,"./config":3,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
@@ -2162,6 +2239,9 @@ exports.MasterPlaylistController = MasterPlaylistController;
 =======
 },{"./ad-cue-tags":1,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./ad-cue-tags":1,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 'use strict';
 
@@ -2256,12 +2336,22 @@ var getProgressStats = function getProgressStats(progressEvent) {
     roundTripTime: roundTripTime || 0
   };
 
+<<<<<<< HEAD
   stats.bytesReceived = progressEvent.loaded;
   // This can result in Infinity if stats.roundTripTime is 0 but that is ok
   // because we should only use bandwidth stats on progress to determine when
   // abort a request early due to insufficient bandwidth
   stats.bandwidth = Math.floor(stats.bytesReceived / stats.roundTripTime * 8 * 1000);
 
+=======
+  if (progressEvent.lengthComputable) {
+    stats.bytesReceived = progressEvent.loaded;
+    // This can result in Infinity if stats.roundTripTime is 0 but that is ok
+    // because we should only use bandwidth stats on progress to determine when
+    // abort a request early due to insufficient bandwidth
+    stats.bandwidth = Math.floor(stats.bytesReceived / stats.roundTripTime * 8 * 1000);
+  }
+>>>>>>> ignore: add dist
   return stats;
 };
 
@@ -2506,6 +2596,7 @@ var waitForCompletion = function waitForCompletion(activeXhrs, decrypter, doneFn
  */
 var handleProgress = function handleProgress(segment, progressFn) {
   return function (event) {
+<<<<<<< HEAD
     segment.stats = _videoJs2['default'].mergeOptions(segment.stats, getProgressStats(event));
 
     // record the time that we receive the first byte of data
@@ -2518,6 +2609,9 @@ var handleProgress = function handleProgress(segment, progressFn) {
 >>>>>>> add dist
     }
 
+=======
+    segment.stats = getProgressStats(event);
+>>>>>>> ignore: add dist
     return progressFn(event, segment);
   };
 };
@@ -3051,6 +3145,7 @@ module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./ranges":11,"global/window":29}],8:[function(require,module,exports){
 =======
 },{"./ranges":11,"global/window":28}],8:[function(require,module,exports){
@@ -3058,6 +3153,9 @@ module.exports = exports['default'];
 =======
 },{"./ranges":11,"global/window":31}],8:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./ranges":11,"global/window":31}],8:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file playlist-loader.js
@@ -3083,12 +3181,18 @@ var _videoJs = (typeof window !== "undefined" ? window['videojs'] : typeof globa
 var _playlistJs = require('./playlist.js');
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> ignore: add dist
 var _stream = require('./stream');
 
 var _stream2 = _interopRequireDefault(_stream);
 
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 var _m3u8Parser = require('m3u8-parser');
 
 var _m3u8Parser2 = _interopRequireDefault(_m3u8Parser);
@@ -3202,9 +3306,13 @@ var PlaylistLoader = function PlaylistLoader(srcUrl, hls, withCredentials) {
   var loader = this;
   /* eslint-enable consistent-this */
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   var dispose = undefined;
 >>>>>>> add dist
+=======
+  var dispose = undefined;
+>>>>>>> ignore: add dist
   var mediaUpdateTimeout = undefined;
   var request = undefined;
   var playlistRequestError = undefined;
@@ -3287,11 +3395,17 @@ var PlaylistLoader = function PlaylistLoader(srcUrl, hls, withCredentials) {
   loader.state = 'HAVE_NOTHING';
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   // capture the prototype dispose function
   dispose = this.dispose;
 
 >>>>>>> add dist
+=======
+  // capture the prototype dispose function
+  dispose = this.dispose;
+
+>>>>>>> ignore: add dist
   /**
    * Abort any outstanding work and clean up.
    */
@@ -3299,10 +3413,14 @@ var PlaylistLoader = function PlaylistLoader(srcUrl, hls, withCredentials) {
     loader.stopRequest();
     _globalWindow2['default'].clearTimeout(mediaUpdateTimeout);
 <<<<<<< HEAD
+<<<<<<< HEAD
     loader.off();
 =======
     dispose.call(this);
 >>>>>>> add dist
+=======
+    dispose.call(this);
+>>>>>>> ignore: add dist
   };
 
   loader.stopRequest = function () {
@@ -3651,14 +3769,19 @@ var PlaylistLoader = function PlaylistLoader(srcUrl, hls, withCredentials) {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 PlaylistLoader.prototype = new _videoJs.EventTarget();
 =======
 PlaylistLoader.prototype = new _stream2['default']();
 >>>>>>> add dist
+=======
+PlaylistLoader.prototype = new _stream2['default']();
+>>>>>>> ignore: add dist
 
 exports['default'] = PlaylistLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 },{"./playlist.js":10,"./resolve-url":14,"global/window":29,"m3u8-parser":30}],9:[function(require,module,exports){
@@ -3668,6 +3791,9 @@ module.exports = exports['default'];
 =======
 },{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":31,"m3u8-parser":32}],9:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":31,"m3u8-parser":32}],9:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -3793,6 +3919,7 @@ var comparePlaylistResolution = function comparePlaylistResolution(left, right) 
 
 exports.comparePlaylistResolution = comparePlaylistResolution;
 <<<<<<< HEAD
+<<<<<<< HEAD
 /**
  * Chooses the appropriate media playlist based on bandwidth and player size
  *
@@ -3898,6 +4025,8 @@ var simpleSelector = function simpleSelector(master, playerBandwidth, playerWidt
     resolutionPlusOneRep = resolutionPlusOneSmallest.filter(function (rep) {
       return rep.bandwidth === highestRemainingBandwidthRep.bandwidth;
 =======
+=======
+>>>>>>> ignore: add dist
 var simpleSelector = function simpleSelector(master, bandwidth, width, height) {
   var sortedPlaylists = master.playlists.slice();
   var bandwidthPlaylists = [];
@@ -3957,16 +4086,23 @@ var simpleSelector = function simpleSelector(master, bandwidth, width, height) {
     // is just-larger-than the video player
     resolutionPlusOne = resolutionPlusOneSmallest.filter(function (elem) {
       return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1].attributes.BANDWIDTH;
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
     })[0];
   }
 
   // fallback chain of variants
 <<<<<<< HEAD
+<<<<<<< HEAD
   return (resolutionPlusOneRep || resolutionBestRep || bandwidthBestRep || sortedPlaylistReps[0]).playlist;
 =======
   return resolutionPlusOne || resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
 >>>>>>> add dist
+=======
+  return resolutionPlusOne || resolutionBestVariant || bandwidthBestVariant || sortedPlaylists[0];
+>>>>>>> ignore: add dist
 };
 
 // Playlist Selectors
@@ -4016,6 +4152,7 @@ var movingAverageBandwidthSelector = function movingAverageBandwidthSelector(dec
     return simpleSelector(this.playlists.master, average, parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10), parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
   };
 };
+<<<<<<< HEAD
 
 exports.movingAverageBandwidthSelector = movingAverageBandwidthSelector;
 <<<<<<< HEAD
@@ -4130,6 +4267,9 @@ var minRebufferingSelector = function minRebufferingSelector(master, bandwidth, 
 };
 exports.minRebufferingSelector = minRebufferingSelector;
 >>>>>>> add dist
+=======
+exports.movingAverageBandwidthSelector = movingAverageBandwidthSelector;
+>>>>>>> ignore: add dist
 },{"./config":3,"./playlist":10}],10:[function(require,module,exports){
 (function (global){
 /**
@@ -4462,10 +4602,14 @@ var floorLeastSignificantDigit = roundSignificantDigit.bind(null, -1);
  * @return {Object}
  */
 <<<<<<< HEAD
+<<<<<<< HEAD
 var getMediaInfoForTime = function getMediaInfoForTime(playlist, currentTime, startIndex, startTime) {
 =======
 var getMediaInfoForTime_ = function getMediaInfoForTime_(playlist, currentTime, startIndex, startTime) {
 >>>>>>> add dist
+=======
+var getMediaInfoForTime_ = function getMediaInfoForTime_(playlist, currentTime, startIndex, startTime) {
+>>>>>>> ignore: add dist
   var i = undefined;
   var segment = undefined;
   var numSegments = playlist.segments.length;
@@ -4532,10 +4676,14 @@ var getMediaInfoForTime_ = function getMediaInfoForTime_(playlist, currentTime, 
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 exports.getMediaInfoForTime = getMediaInfoForTime;
 =======
 exports.getMediaInfoForTime_ = getMediaInfoForTime_;
 >>>>>>> add dist
+=======
+exports.getMediaInfoForTime_ = getMediaInfoForTime_;
+>>>>>>> ignore: add dist
 /**
  * Check whether the playlist is blacklisted or not.
  *
@@ -4562,6 +4710,7 @@ var isEnabled = function isEnabled(playlist) {
 };
 
 exports.isEnabled = isEnabled;
+<<<<<<< HEAD
 <<<<<<< HEAD
 /**
  * Checks if the playlist has a value for the specified attribute
@@ -4617,17 +4766,23 @@ Playlist.playlistEnd = playlistEnd;
 Playlist.hasAttribute = hasAttribute;
 Playlist.estimateSegmentRequestTime = estimateSegmentRequestTime;
 =======
+=======
+>>>>>>> ignore: add dist
 Playlist.duration = duration;
 Playlist.seekable = seekable;
 Playlist.getMediaInfoForTime_ = getMediaInfoForTime_;
 Playlist.isEnabled = isEnabled;
 Playlist.isBlacklisted = isBlacklisted;
 Playlist.playlistEnd = playlistEnd;
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 
 // exports
 exports['default'] = Playlist;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 },{"global/window":29}],11:[function(require,module,exports){
@@ -4637,6 +4792,9 @@ exports['default'] = Playlist;
 =======
 },{"global/window":31}],11:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"global/window":31}],11:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * ranges
@@ -4978,6 +5136,7 @@ var printableRange = function printableRange(range) {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 /**
  * Calculates the amount of time left in seconds until the player hits the end of the
  * buffer and causes a rebuffer
@@ -5002,6 +5161,8 @@ var timeUntilRebuffer = function timeUntilRebuffer(buffered, currentTime) {
 
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 exports['default'] = {
   findRange: findRange,
   findNextRange: findNextRange,
@@ -5010,11 +5171,15 @@ exports['default'] = {
   getSegmentBufferedPercent: getSegmentBufferedPercent,
   TIME_FUDGE_FACTOR: TIME_FUDGE_FACTOR,
 <<<<<<< HEAD
+<<<<<<< HEAD
   printableRange: printableRange,
   timeUntilRebuffer: timeUntilRebuffer
 =======
   printableRange: printableRange
 >>>>>>> add dist
+=======
+  printableRange: printableRange
+>>>>>>> ignore: add dist
 };
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
@@ -5296,6 +5461,7 @@ exports['default'] = resolveUrl;
 module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29,"url-toolkit":60}],15:[function(require,module,exports){
 =======
 },{"global/window":28,"url-toolkit":62}],15:[function(require,module,exports){
@@ -5303,6 +5469,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31,"url-toolkit":62}],15:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"global/window":31,"url-toolkit":62}],15:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file segment-loader.js
@@ -5316,10 +5485,14 @@ Object.defineProperty(exports, '__esModule', {
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 var _get = function get(_x4, _x5, _x6) { var _again = true; _function: while (_again) { var object = _x4, property = _x5, receiver = _x6; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x4 = parent; _x5 = property; _x6 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 =======
 var _get = function get(_x3, _x4, _x5) { var _again = true; _function: while (_again) { var object = _x3, property = _x4, receiver = _x5; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x3 = parent; _x4 = property; _x5 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 >>>>>>> add dist
+=======
+var _get = function get(_x3, _x4, _x5) { var _again = true; _function: while (_again) { var object = _x3, property = _x4, receiver = _x5; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x3 = parent; _x4 = property; _x5 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+>>>>>>> ignore: add dist
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -5330,10 +5503,13 @@ function _inherits(subClass, superClass) { if (typeof superClass !== 'function' 
 var _playlist = require('./playlist');
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 var _playlist2 = _interopRequireDefault(_playlist);
 
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 var _videoJs = (typeof window !== "undefined" ? window['videojs'] : typeof global !== "undefined" ? global['videojs'] : null);
 
 var _videoJs2 = _interopRequireDefault(_videoJs);
@@ -5359,6 +5535,7 @@ var _binUtils = require('./bin-utils');
 var _mediaSegmentRequest = require('./media-segment-request');
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 var _ranges = require('./ranges');
 
 var _playlistSelectors = require('./playlist-selectors');
@@ -5369,6 +5546,8 @@ var _playlistSelectors = require('./playlist-selectors');
 var _ranges = require('./ranges');
 
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 // in ms
 var CHECK_BUFFER_DELAY = 500;
 
@@ -5400,12 +5579,15 @@ var detectEndOfStream = function detectEndOfStream(playlist, mediaSource, segmen
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 var finite = function finite(num) {
   return typeof num === 'number' && isFinite(num);
 };
 
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 /**
  * An object that manages segment loading and appending.
  *
@@ -5418,6 +5600,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
   _inherits(SegmentLoader, _videojs$EventTarget);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   function SegmentLoader(settings) {
     var _this = this;
 
@@ -5428,10 +5611,16 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     var _this = this;
 
 >>>>>>> add dist
+=======
+  function SegmentLoader(options) {
+    var _this = this;
+
+>>>>>>> ignore: add dist
     _classCallCheck(this, SegmentLoader);
 
     _get(Object.getPrototypeOf(SegmentLoader.prototype), 'constructor', this).call(this);
     // check pre-conditions
+<<<<<<< HEAD
 <<<<<<< HEAD
     if (!settings) {
       throw new TypeError('Initialization settings are required');
@@ -5443,6 +5632,8 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       throw new TypeError('No MediaSource specified');
     }
 =======
+=======
+>>>>>>> ignore: add dist
     if (!options) {
       throw new TypeError('Initialization options are required');
     }
@@ -5454,7 +5645,10 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     }
     var settings = _videoJs2['default'].mergeOptions(_videoJs2['default'].options.hls, options);
 
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
     // public properties
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
@@ -5474,9 +5668,12 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     this.loaderType_ = settings.loaderType;
     this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
 <<<<<<< HEAD
+<<<<<<< HEAD
     this.goalBufferLength_ = settings.goalBufferLength;
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 
     // private instance variables
     this.checkBufferTimeout_ = null;
@@ -5510,10 +5707,14 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     this.fetchAtBuffer_ = false;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (options.debug) {
 =======
     if (settings.debug) {
 >>>>>>> add dist
+=======
+    if (settings.debug) {
+>>>>>>> ignore: add dist
       this.logger_ = _videoJs2['default'].log.bind(_videoJs2['default'], 'segment-loader', this.loaderType_, '->');
     }
   }
@@ -5544,9 +5745,12 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     value: function dispose() {
       this.state = 'DISPOSED';
 <<<<<<< HEAD
+<<<<<<< HEAD
       this.pause();
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
       this.abort_();
       if (this.sourceUpdater_) {
         this.sourceUpdater_.dispose();
@@ -5571,6 +5775,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       this.abort_();
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       // We aborted the requests we were waiting on, so reset the loader's state to READY
       // since we are no longer "waiting" on any requests. XHR callback is not always run
       // when the request is aborted. This will prevent the loader from being stuck in the
@@ -5581,11 +5786,16 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // next segment
       if (!this.paused()) {
 =======
+=======
+>>>>>>> ignore: add dist
       // don't wait for buffer check timeouts to begin fetching the
       // next segment
       if (!this.paused()) {
         this.state = 'READY';
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
         this.monitorBuffer_();
       }
     }
@@ -5898,9 +6108,12 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       this.mediaIndex = null;
       this.syncPoint_ = null;
 <<<<<<< HEAD
+<<<<<<< HEAD
       this.abort();
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
     }
 
     /**
@@ -6022,12 +6235,15 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       var lastBufferedEnd = 0;
       var startOfSegment = undefined;
 <<<<<<< HEAD
+<<<<<<< HEAD
       var initial = _config2['default'].GOAL_BUFFER_LENGTH;
       var rate = _config2['default'].GOAL_BUFFER_RATE;
       var max = _config2['default'].MAX_GOAL_BUFFER_LENGTH;
       var dynamicGBL = Math.min(initial + currentTime * rate, Math.max(initial, max));
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 
       if (buffered.length) {
         lastBufferedEnd = buffered.end(buffered.length - 1);
@@ -6043,6 +6259,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // been played before relax for awhile
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       if (bufferedTime >= this.goalBufferLength_()) {
 =======
       if (bufferedTime >= dynamicGBL) {
@@ -6050,6 +6267,9 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 =======
       if (bufferedTime >= _config2['default'].GOAL_BUFFER_LENGTH) {
 >>>>>>> add dist
+=======
+      if (bufferedTime >= _config2['default'].GOAL_BUFFER_LENGTH) {
+>>>>>>> ignore: add dist
         return null;
       }
 
@@ -6090,20 +6310,28 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       if (this.fetchAtBuffer_) {
         // Find the segment containing the end of the buffer
 <<<<<<< HEAD
+<<<<<<< HEAD
         var mediaSourceInfo = _playlist2['default'].getMediaInfoForTime(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
 =======
         var mediaSourceInfo = (0, _playlist.getMediaInfoForTime_)(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
 >>>>>>> add dist
+=======
+        var mediaSourceInfo = (0, _playlist.getMediaInfoForTime_)(playlist, lastBufferedEnd, syncPoint.segmentIndex, syncPoint.time);
+>>>>>>> ignore: add dist
 
         mediaIndex = mediaSourceInfo.mediaIndex;
         startOfSegment = mediaSourceInfo.startTime;
       } else {
         // Find the segment containing currentTime
 <<<<<<< HEAD
+<<<<<<< HEAD
         var mediaSourceInfo = _playlist2['default'].getMediaInfoForTime(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
 =======
         var mediaSourceInfo = (0, _playlist.getMediaInfoForTime_)(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
 >>>>>>> add dist
+=======
+        var mediaSourceInfo = (0, _playlist.getMediaInfoForTime_)(playlist, currentTime, syncPoint.segmentIndex, syncPoint.time);
+>>>>>>> ignore: add dist
 
         mediaIndex = mediaSourceInfo.mediaIndex;
         startOfSegment = mediaSourceInfo.startTime;
@@ -6182,6 +6410,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         segment: segment
       };
     }
+<<<<<<< HEAD
 <<<<<<< HEAD
 
     /**
@@ -6335,6 +6564,8 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 
       this.trigger('progress');
     }
+=======
+>>>>>>> ignore: add dist
 
     /**
      * load a specific segment from a request into the buffer
@@ -6344,13 +6575,28 @@ var SegmentLoader = (function (_videojs$EventTarget) {
   }, {
     key: 'loadSegment_',
     value: function loadSegment_(segmentInfo) {
+<<<<<<< HEAD
+=======
+      var _this3 = this;
+
+>>>>>>> ignore: add dist
       this.state = 'WAITING';
       this.pendingSegment_ = segmentInfo;
       this.trimBackBuffer_(segmentInfo);
 
       segmentInfo.abortRequests = (0, _mediaSegmentRequest.mediaSegmentRequest)(this.hls_.xhr, this.xhrOptions_, this.decrypter_, this.createSimplifiedSegmentObj_(segmentInfo),
       // progress callback
+<<<<<<< HEAD
       this.handleProgress_.bind(this), this.segmentRequestFinished_.bind(this));
+=======
+      function (event, segment) {
+        if (!_this3.pendingSegment_ || segment.requestId !== _this3.pendingSegment_.requestId) {
+          return;
+        }
+        // TODO: Use progress-based bandwidth to early abort low-bandwidth situations
+        _this3.trigger('progress');
+      }, this.segmentRequestFinished_.bind(this));
+>>>>>>> ignore: add dist
     }
 
     /**
@@ -6369,10 +6615,14 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       var removeToTime = 0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       // Chrome has a hard limit of 150MB of
 =======
       // Chrome has a hard limit of 150mb of
 >>>>>>> add dist
+=======
+      // Chrome has a hard limit of 150mb of
+>>>>>>> ignore: add dist
       // buffer and a very conservative "garbage collector"
       // We manually clear out the old buffer to ensure
       // we don't trigger the QuotaExceeded error
@@ -6464,9 +6714,12 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       if (error) {
         this.pendingSegment_ = null;
 <<<<<<< HEAD
+<<<<<<< HEAD
         this.state = 'READY';
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 
         // the requests were aborted just record the aborted stat and exit
         // this is not a true error condition and nothing corrective needs
@@ -6477,9 +6730,13 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         this.state = 'READY';
 >>>>>>> add dist
+=======
+        this.state = 'READY';
+>>>>>>> ignore: add dist
         this.pause();
 
         // the error is really just that at least one of the requests timed-out
@@ -6543,7 +6800,11 @@ var SegmentLoader = (function (_videojs$EventTarget) {
   }, {
     key: 'handleSegment_',
     value: function handleSegment_() {
+<<<<<<< HEAD
       var _this3 = this;
+=======
+      var _this4 = this;
+>>>>>>> ignore: add dist
 
       if (!this.pendingSegment_) {
         this.state = 'READY';
@@ -6574,11 +6835,19 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         (function () {
           var initId = (0, _binUtils.initSegmentId)(segment.map);
 
+<<<<<<< HEAD
           if (!_this3.activeInitSegmentId_ || _this3.activeInitSegmentId_ !== initId) {
             var initSegment = _this3.initSegment(segment.map);
 
             _this3.sourceUpdater_.appendBuffer(initSegment.bytes, function () {
               _this3.activeInitSegmentId_ = initId;
+=======
+          if (!_this4.activeInitSegmentId_ || _this4.activeInitSegmentId_ !== initId) {
+            var initSegment = _this4.initSegment(segment.map);
+
+            _this4.sourceUpdater_.appendBuffer(initSegment.bytes, function () {
+              _this4.activeInitSegmentId_ = initId;
+>>>>>>> ignore: add dist
             });
           }
         })();
@@ -6719,6 +6988,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       var end = segment.end;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       // Do not try adding the cue if the start and end times are invalid.
       if (!finite(start) || !finite(end)) {
         return;
@@ -6726,6 +6996,8 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
       (0, _videojsContribMediaSourcesEs5RemoveCuesFromTrackJs2['default'])(start, end, this.segmentMetadataTrack_);
 
       var Cue = _globalWindow2['default'].WebKitDataCue || _globalWindow2['default'].VTTCue;
@@ -6755,6 +7027,7 @@ module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./playlist-selectors":9,"./ranges":11,"./source-updater":16,"global/window":29,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":70}],16:[function(require,module,exports){
 =======
 },{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
@@ -6762,6 +7035,9 @@ module.exports = exports['default'];
 =======
 },{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./playlist-selectors":9,"./ranges":11,"./source-updater":16,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file source-updater.js
@@ -6985,7 +7261,10 @@ module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],17:[function(require,module,exports){
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> ignore: add dist
 /**
  * @file stream.js
  */
@@ -7117,7 +7396,10 @@ var Stream = (function () {
 exports['default'] = Stream;
 module.exports = exports['default'];
 },{}],18:[function(require,module,exports){
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file sync-controller.js
@@ -7132,10 +7414,14 @@ Object.defineProperty(exports, '__esModule', {
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 var _get = function get(_x2, _x3, _x4) { var _again = true; _function: while (_again) { var object = _x2, property = _x3, receiver = _x4; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x2 = parent; _x3 = property; _x4 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 =======
 var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 >>>>>>> add dist
+=======
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+>>>>>>> ignore: add dist
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -7195,10 +7481,14 @@ var syncPointStrategies = [
   name: 'Segment',
   run: function run(syncController, playlist, duration, currentTimeline, currentTime) {
 <<<<<<< HEAD
+<<<<<<< HEAD
     var segments = playlist.segments || [];
 =======
     var segments = playlist.segments;
 >>>>>>> add dist
+=======
+    var segments = playlist.segments;
+>>>>>>> ignore: add dist
     var syncPoint = null;
     var lastDistance = null;
 
@@ -7238,10 +7528,14 @@ var syncPointStrategies = [
     currentTime = currentTime || 0;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (playlist.discontinuityStarts && playlist.discontinuityStarts.length) {
 =======
     if (playlist.discontinuityStarts.length) {
 >>>>>>> add dist
+=======
+    if (playlist.discontinuityStarts.length) {
+>>>>>>> ignore: add dist
       var lastDistance = null;
 
       for (var i = 0; i < playlist.discontinuityStarts.length; i++) {
@@ -7295,10 +7589,13 @@ var SyncController = (function (_videojs$EventTarget) {
 
   function SyncController() {
 <<<<<<< HEAD
+<<<<<<< HEAD
     var options = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
 
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
     _classCallCheck(this, SyncController);
 
     _get(Object.getPrototypeOf(SyncController.prototype), 'constructor', this).call(this);
@@ -7312,10 +7609,14 @@ var SyncController = (function (_videojs$EventTarget) {
     this.datetimeToDisplayTime = null;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (options.debug) {
 =======
     if (_videoJs2['default'].options.hls && _videoJs2['default'].options.hls.debug) {
 >>>>>>> add dist
+=======
+    if (_videoJs2['default'].options.hls && _videoJs2['default'].options.hls.debug) {
+>>>>>>> ignore: add dist
       this.logger_ = _videoJs2['default'].log.bind(_videoJs2['default'], 'sync-controller ->');
     }
   }
@@ -7724,6 +8025,7 @@ exports['default'] = SyncController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./playlist":10,"mux.js/lib/mp4/probe":54,"mux.js/lib/tools/ts-inspector.js":56}],18:[function(require,module,exports){
 =======
 },{"./playlist":10,"mux.js/lib/mp4/probe":53,"mux.js/lib/tools/ts-inspector.js":55}],19:[function(require,module,exports){
@@ -7731,6 +8033,9 @@ exports['default'] = SyncController;
 =======
 },{"./playlist":10,"mux.js/lib/mp4/probe":56,"mux.js/lib/tools/ts-inspector.js":58}],19:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./playlist":10,"mux.js/lib/mp4/probe":56,"mux.js/lib/tools/ts-inspector.js":58}],19:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file vtt-segment-loader.js
@@ -7744,10 +8049,14 @@ Object.defineProperty(exports, '__esModule', {
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 var _get = function get(_x3, _x4, _x5) { var _again = true; _function: while (_again) { var object = _x3, property = _x4, receiver = _x5; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x3 = parent; _x4 = property; _x5 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 =======
 var _get = function get(_x2, _x3, _x4) { var _again = true; _function: while (_again) { var object = _x2, property = _x3, receiver = _x4; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x2 = parent; _x3 = property; _x4 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 >>>>>>> add dist
+=======
+var _get = function get(_x2, _x3, _x4) { var _again = true; _function: while (_again) { var object = _x2, property = _x3, receiver = _x4; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x2 = parent; _x3 = property; _x4 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+>>>>>>> ignore: add dist
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -7793,6 +8102,7 @@ var VTTSegmentLoader = (function (_SegmentLoader) {
   _inherits(VTTSegmentLoader, _SegmentLoader);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   function VTTSegmentLoader(settings) {
     var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
@@ -7800,11 +8110,16 @@ var VTTSegmentLoader = (function (_SegmentLoader) {
 
     _get(Object.getPrototypeOf(VTTSegmentLoader.prototype), 'constructor', this).call(this, settings, options);
 =======
+=======
+>>>>>>> ignore: add dist
   function VTTSegmentLoader(options) {
     _classCallCheck(this, VTTSegmentLoader);
 
     _get(Object.getPrototypeOf(VTTSegmentLoader.prototype), 'constructor', this).call(this, options);
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 
     // SegmentLoader requires a MediaSource be specified or it will throw an error;
     // however, VTTSegmentLoader has no need of a media source, so delete the reference
@@ -8194,6 +8509,7 @@ module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"./segment-loader":15,"global/window":29,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":70}],19:[function(require,module,exports){
 =======
 },{"./bin-utils":2,"./segment-loader":15,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
@@ -8201,6 +8517,9 @@ module.exports = exports['default'];
 =======
 },{"./bin-utils":2,"./segment-loader":15,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./bin-utils":2,"./segment-loader":15,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file xhr.js
@@ -8290,10 +8609,14 @@ exports['default'] = xhrFactory;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],20:[function(require,module,exports){
 =======
 },{}],21:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],21:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file aes.js
  *
@@ -8540,10 +8863,14 @@ var AES = (function () {
 exports['default'] = AES;
 module.exports = exports['default'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],21:[function(require,module,exports){
 =======
 },{}],22:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],22:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file async-stream.js
  */
@@ -8625,10 +8952,14 @@ var AsyncStream = (function (_Stream) {
 exports['default'] = AsyncStream;
 module.exports = exports['default'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream":24}],22:[function(require,module,exports){
 =======
 },{"./stream":25}],23:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./stream":25}],23:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file decrypter.js
  *
@@ -8785,6 +9116,7 @@ var Decrypter = (function () {
 
   _createClass(Decrypter, [{
     key: 'decryptChunk_',
+<<<<<<< HEAD
 
     /**
      * @private
@@ -8986,6 +9318,48 @@ exports['default'] = Stream;
 module.exports = exports['default'];
 },{}],25:[function(require,module,exports){
 =======
+=======
+
+    /**
+     * @private
+     */
+    value: function decryptChunk_(encrypted, key, initVector, decrypted) {
+      return function () {
+        var bytes = decrypt(encrypted, key, initVector);
+
+        decrypted.set(bytes, encrypted.byteOffset);
+      };
+    }
+  }], [{
+    key: 'STEP',
+    get: function get() {
+      // 4 * 8000;
+      return 32000;
+    }
+  }]);
+
+  return Decrypter;
+})();
+
+exports.Decrypter = Decrypter;
+exports['default'] = {
+  Decrypter: Decrypter,
+  decrypt: decrypt
+};
+},{"./aes":21,"./async-stream":22,"pkcs7":27}],24:[function(require,module,exports){
+/**
+ * @file index.js
+ *
+ * Index module to easily import the primary components of AES-128
+ * decryption. Like this:
+ *
+ * ```js
+ * import {Decrypter, decrypt, AsyncStream} from 'aes-decrypter';
+ * ```
+ */
+'use strict';
+
+>>>>>>> ignore: add dist
 Object.defineProperty(exports, '__esModule', {
   value: true
 });
@@ -9007,7 +9381,10 @@ module.exports = exports['default'];
 },{"./async-stream":22,"./decrypter":23}],25:[function(require,module,exports){
 arguments[4][17][0].apply(exports,arguments)
 },{"dup":17}],26:[function(require,module,exports){
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 /*
  * pkcs7.pad
  * https://github.com/brightcove/pkcs7
@@ -9094,10 +9471,14 @@ PADDING = [
 ];
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],26:[function(require,module,exports){
 =======
 },{}],27:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],27:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /*
  * pkcs7
  * https://github.com/brightcove/pkcs7
@@ -9112,10 +9493,14 @@ exports.pad = require('./pad.js');
 exports.unpad = require('./unpad.js');
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./pad.js":25,"./unpad.js":27}],27:[function(require,module,exports){
 =======
 },{"./pad.js":26,"./unpad.js":28}],28:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./pad.js":26,"./unpad.js":28}],28:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /*
  * pkcs7.unpad
  * https://github.com/brightcove/pkcs7
@@ -9137,6 +9522,7 @@ module.exports = function unpad(padded) {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],28:[function(require,module,exports){
 =======
 },{"./async-stream":22,"./decrypter":23}],25:[function(require,module,exports){
@@ -9150,6 +9536,11 @@ arguments[4][17][0].apply(exports,arguments)
 
 },{}],30:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],29:[function(require,module,exports){
+
+},{}],30:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 var topLevel = typeof global !== 'undefined' ? global :
     typeof window !== 'undefined' ? window : {}
@@ -9172,6 +9563,7 @@ module.exports = doccy;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"min-document":74}],29:[function(require,module,exports){
 =======
 },{"min-document":26}],28:[function(require,module,exports){
@@ -9179,6 +9571,9 @@ module.exports = doccy;
 =======
 },{"min-document":29}],31:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"min-document":29}],31:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 var win;
 
@@ -9197,6 +9592,7 @@ module.exports = win;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],30:[function(require,module,exports){
 =======
 },{}],29:[function(require,module,exports){
@@ -9204,6 +9600,9 @@ module.exports = win;
 =======
 },{}],32:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],32:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 var _lineStream = require('./line-stream');
@@ -9235,6 +9634,7 @@ module.exports = {
     */
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./line-stream":31,"./parse-stream":32,"./parser":33}],31:[function(require,module,exports){
 =======
 },{"./line-stream":30,"./parse-stream":31,"./parser":32}],30:[function(require,module,exports){
@@ -9242,6 +9642,9 @@ module.exports = {
 =======
 },{"./line-stream":33,"./parse-stream":34,"./parser":35}],33:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./line-stream":33,"./parse-stream":34,"./parser":35}],33:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9312,6 +9715,7 @@ var LineStream = function (_Stream) {
 exports['default'] = LineStream;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream":34}],32:[function(require,module,exports){
 =======
 },{"./stream":33}],31:[function(require,module,exports){
@@ -9319,6 +9723,9 @@ exports['default'] = LineStream;
 =======
 },{"./stream":36}],34:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./stream":36}],34:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9773,6 +10180,7 @@ var ParseStream = function (_Stream) {
 exports['default'] = ParseStream;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream":34}],33:[function(require,module,exports){
 =======
 },{"./stream":33}],32:[function(require,module,exports){
@@ -9780,6 +10188,9 @@ exports['default'] = ParseStream;
 =======
 },{"./stream":36}],35:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./stream":36}],35:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10172,6 +10583,7 @@ var Parser = function (_Stream) {
 exports['default'] = Parser;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./line-stream":31,"./parse-stream":32,"./stream":34}],34:[function(require,module,exports){
 =======
 },{"./line-stream":30,"./parse-stream":31,"./stream":33}],33:[function(require,module,exports){
@@ -10179,6 +10591,9 @@ exports['default'] = Parser;
 =======
 },{"./line-stream":33,"./parse-stream":34,"./stream":36}],36:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./line-stream":33,"./parse-stream":34,"./stream":36}],36:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10313,6 +10728,7 @@ var Stream = function () {
 exports['default'] = Stream;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],35:[function(require,module,exports){
 =======
 },{}],34:[function(require,module,exports){
@@ -10320,6 +10736,9 @@ exports['default'] = Stream;
 =======
 },{}],37:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],37:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -10466,6 +10885,7 @@ module.exports = AacStream;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],36:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58}],35:[function(require,module,exports){
@@ -10473,6 +10893,9 @@ module.exports = AacStream;
 =======
 },{"../utils/stream.js":61}],38:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../utils/stream.js":61}],38:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -10637,6 +11060,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],37:[function(require,module,exports){
 =======
 },{}],36:[function(require,module,exports){
@@ -10644,6 +11068,9 @@ module.exports = {
 =======
 },{}],39:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],39:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -10779,6 +11206,7 @@ module.exports = AdtsStream;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],38:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58}],37:[function(require,module,exports){
@@ -10786,6 +11214,9 @@ module.exports = AdtsStream;
 =======
 },{"../utils/stream.js":61}],40:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../utils/stream.js":61}],40:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -11207,6 +11638,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/exp-golomb.js":58,"../utils/stream.js":59}],39:[function(require,module,exports){
 =======
 },{"../utils/exp-golomb.js":57,"../utils/stream.js":58}],38:[function(require,module,exports){
@@ -11214,6 +11646,9 @@ module.exports = {
 =======
 },{"../utils/exp-golomb.js":60,"../utils/stream.js":61}],41:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../utils/exp-golomb.js":60,"../utils/stream.js":61}],41:[function(require,module,exports){
+>>>>>>> ignore: add dist
 var highPrefix = [33, 16, 5, 32, 164, 27];
 var lowPrefix = [33, 65, 108, 84, 1, 2, 4, 8, 168, 2, 4, 8, 17, 191, 252];
 var zeroFill = function(count) {
@@ -11252,6 +11687,7 @@ module.exports = makeTable(coneOfSilence);
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],40:[function(require,module,exports){
 =======
 },{}],39:[function(require,module,exports){
@@ -11259,6 +11695,9 @@ module.exports = makeTable(coneOfSilence);
 =======
 },{}],42:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],42:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -11405,6 +11844,7 @@ module.exports = CoalesceStream;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],41:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58}],40:[function(require,module,exports){
@@ -11412,6 +11852,9 @@ module.exports = CoalesceStream;
 =======
 },{"../utils/stream.js":61}],43:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../utils/stream.js":61}],43:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 var FlvTag = require('./flv-tag.js');
@@ -11475,6 +11918,7 @@ module.exports = getFlvHeader;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./flv-tag.js":42}],42:[function(require,module,exports){
 =======
 },{"./flv-tag.js":41}],41:[function(require,module,exports){
@@ -11482,6 +11926,9 @@ module.exports = getFlvHeader;
 =======
 },{"./flv-tag.js":44}],44:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./flv-tag.js":44}],44:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * An object that stores the bytes of an FLV tag and methods for
  * querying and manipulating that data.
@@ -11857,6 +12304,7 @@ module.exports = FlvTag;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],43:[function(require,module,exports){
 =======
 },{}],42:[function(require,module,exports){
@@ -11864,12 +12312,16 @@ module.exports = FlvTag;
 =======
 },{}],45:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],45:[function(require,module,exports){
+>>>>>>> ignore: add dist
 module.exports = {
   tag: require('./flv-tag'),
   Transmuxer: require('./transmuxer'),
   getFlvHeader: require('./flv-header')
 };
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 },{"./flv-header":41,"./flv-tag":42,"./transmuxer":45}],44:[function(require,module,exports){
@@ -11879,6 +12331,9 @@ module.exports = {
 =======
 },{"./flv-header":43,"./flv-tag":44,"./transmuxer":47}],46:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./flv-header":43,"./flv-tag":44,"./transmuxer":47}],46:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 var TagList = function() {
@@ -11907,6 +12362,7 @@ module.exports = TagList;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],45:[function(require,module,exports){
 =======
 },{}],44:[function(require,module,exports){
@@ -11914,6 +12370,9 @@ module.exports = TagList;
 =======
 },{}],47:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],47:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -12333,6 +12792,7 @@ module.exports = Transmuxer;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../codecs/adts.js":37,"../codecs/h264":38,"../m2ts/m2ts.js":47,"../utils/stream.js":59,"./coalesce-stream.js":40,"./flv-tag.js":42,"./tag-list.js":44}],46:[function(require,module,exports){
 =======
 },{"../codecs/adts.js":36,"../codecs/h264":37,"../m2ts/m2ts.js":46,"../utils/stream.js":58,"./coalesce-stream.js":39,"./flv-tag.js":41,"./tag-list.js":43}],45:[function(require,module,exports){
@@ -12340,6 +12800,9 @@ module.exports = Transmuxer;
 =======
 },{"../codecs/adts.js":39,"../codecs/h264":40,"../m2ts/m2ts.js":49,"../utils/stream.js":61,"./coalesce-stream.js":42,"./flv-tag.js":44,"./tag-list.js":46}],48:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../codecs/adts.js":39,"../codecs/h264":40,"../m2ts/m2ts.js":49,"../utils/stream.js":61,"./coalesce-stream.js":42,"./flv-tag.js":44,"./tag-list.js":46}],48:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -12807,6 +13270,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream":59}],47:[function(require,module,exports){
 =======
 },{"../utils/stream":58}],46:[function(require,module,exports){
@@ -12814,6 +13278,9 @@ module.exports = {
 =======
 },{"../utils/stream":61}],49:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../utils/stream":61}],49:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -13087,11 +13554,14 @@ ElementaryStream = function() {
       var ptsDtsFlags;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       // get the packet length, this will be 0 for video
       pes.packetLength = 6 + ((payload[4] << 8) | payload[5]);
 
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
       // find out if this packets starts a new keyframe
       pes.dataAlignmentIndicator = (payload[6] & 0x04) !== 0;
       // PES packets may be annotated with a PTS value, or a PTS value
@@ -13135,16 +13605,21 @@ ElementaryStream = function() {
       pes.data = payload.subarray(9 + payload[8]);
     },
 <<<<<<< HEAD
+<<<<<<< HEAD
     flushStream = function(stream, type, forceFlush) {
 =======
     flushStream = function(stream, type) {
 >>>>>>> add dist
+=======
+    flushStream = function(stream, type) {
+>>>>>>> ignore: add dist
       var
         packetData = new Uint8Array(stream.size),
         event = {
           type: type
         },
         i = 0,
+<<<<<<< HEAD
 <<<<<<< HEAD
         offset = 0,
         packetFlushable = false,
@@ -13154,16 +13629,22 @@ ElementaryStream = function() {
       // PES header
       if (!stream.data.length || stream.size < 9) {
 =======
+=======
+>>>>>>> ignore: add dist
         fragment;
 
       // do nothing if there is no buffered data
       if (!stream.data.length) {
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
         return;
       }
       event.trackId = stream.data[0].pid;
 
       // reassemble the packet
+<<<<<<< HEAD
 <<<<<<< HEAD
       for (i = 0; i < stream.data.length; i++) {
         fragment = stream.data[i];
@@ -13171,17 +13652,23 @@ ElementaryStream = function() {
         packetData.set(fragment.data, offset);
         offset += fragment.data.byteLength;
 =======
+=======
+>>>>>>> ignore: add dist
       while (stream.data.length) {
         fragment = stream.data.shift();
 
         packetData.set(fragment.data, i);
         i += fragment.data.byteLength;
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
       }
 
       // parse assembled packet's PES header
       parsePes(packetData, event);
 
+<<<<<<< HEAD
 <<<<<<< HEAD
       // non-video PES packets MUST have a non-zero PES_packet_length
       // check that they match before we do a flush
@@ -13203,6 +13690,11 @@ ElementaryStream = function() {
 
       self.trigger('data', event);
 >>>>>>> add dist
+=======
+      stream.size = 0;
+
+      self.trigger('data', event);
+>>>>>>> ignore: add dist
     };
 
   ElementaryStream.prototype.init.call(this);
@@ -13239,10 +13731,14 @@ ElementaryStream = function() {
         // packet
         if (data.payloadUnitStartIndicator) {
 <<<<<<< HEAD
+<<<<<<< HEAD
           flushStream(stream, streamType, true);
 =======
           flushStream(stream, streamType);
 >>>>>>> add dist
+=======
+          flushStream(stream, streamType);
+>>>>>>> ignore: add dist
         }
 
         // buffer this fragment until we are sure we've received the
@@ -13326,6 +13822,7 @@ module.exports = m2ts;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59,"./caption-stream":46,"./metadata-stream":48,"./stream-types":50,"./stream-types.js":50,"./timestamp-rollover-stream":51}],48:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58,"./caption-stream":45,"./metadata-stream":47,"./stream-types":49,"./stream-types.js":49,"./timestamp-rollover-stream":50}],47:[function(require,module,exports){
@@ -13333,6 +13830,9 @@ module.exports = m2ts;
 =======
 },{"../utils/stream.js":61,"./caption-stream":48,"./metadata-stream":50,"./stream-types":52,"./stream-types.js":52,"./timestamp-rollover-stream":53}],50:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../utils/stream.js":61,"./caption-stream":48,"./metadata-stream":50,"./stream-types":52,"./stream-types.js":52,"./timestamp-rollover-stream":53}],50:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * Accepts program elementary stream (PES) data events and parses out
  * ID3 metadata from them, if present.
@@ -13584,6 +14084,7 @@ module.exports = MetadataStream;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream":59,"./stream-types":50}],49:[function(require,module,exports){
 =======
 },{"../utils/stream":58,"./stream-types":49}],48:[function(require,module,exports){
@@ -13591,6 +14092,9 @@ module.exports = MetadataStream;
 =======
 },{"../utils/stream":61,"./stream-types":52}],51:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../utils/stream":61,"./stream-types":52}],51:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -13881,6 +14385,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream-types.js":50}],50:[function(require,module,exports){
 =======
 },{"./stream-types.js":49}],49:[function(require,module,exports){
@@ -13888,6 +14393,9 @@ module.exports = {
 =======
 },{"./stream-types.js":52}],52:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./stream-types.js":52}],52:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 module.exports = {
@@ -13898,6 +14406,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],51:[function(require,module,exports){
 =======
 },{}],50:[function(require,module,exports){
@@ -13905,6 +14414,9 @@ module.exports = {
 =======
 },{}],53:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],53:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -13992,6 +14504,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream":59}],52:[function(require,module,exports){
 =======
 },{"../utils/stream":58}],51:[function(require,module,exports){
@@ -13999,6 +14512,9 @@ module.exports = {
 =======
 },{"../utils/stream":61}],54:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../utils/stream":61}],54:[function(require,module,exports){
+>>>>>>> ignore: add dist
 module.exports = {
   generator: require('./mp4-generator'),
   Transmuxer: require('./transmuxer').Transmuxer,
@@ -14008,6 +14524,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./mp4-generator":53,"./transmuxer":55}],53:[function(require,module,exports){
 =======
 },{"./mp4-generator":52,"./transmuxer":54}],52:[function(require,module,exports){
@@ -14015,6 +14532,9 @@ module.exports = {
 =======
 },{"./mp4-generator":55,"./transmuxer":57}],55:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./mp4-generator":55,"./transmuxer":57}],55:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -14788,6 +15308,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],54:[function(require,module,exports){
 =======
 },{}],53:[function(require,module,exports){
@@ -14795,6 +15316,9 @@ module.exports = {
 =======
 },{}],56:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],56:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -14986,6 +15510,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],55:[function(require,module,exports){
 =======
 },{}],54:[function(require,module,exports){
@@ -14993,6 +15518,9 @@ module.exports = {
 =======
 },{}],57:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],57:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -16254,6 +16782,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../aac":35,"../codecs/adts.js":37,"../codecs/h264":38,"../data/silence":39,"../m2ts/m2ts.js":47,"../utils/clock":57,"../utils/stream.js":59,"./mp4-generator.js":53}],56:[function(require,module,exports){
 =======
 },{"../aac":34,"../codecs/adts.js":36,"../codecs/h264":37,"../data/silence":38,"../m2ts/m2ts.js":46,"../utils/clock":56,"../utils/stream.js":58,"./mp4-generator.js":52}],55:[function(require,module,exports){
@@ -16261,6 +16790,9 @@ module.exports = {
 =======
 },{"../aac":37,"../codecs/adts.js":39,"../codecs/h264":40,"../data/silence":41,"../m2ts/m2ts.js":49,"../utils/clock":59,"../utils/stream.js":61,"./mp4-generator.js":55}],58:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../aac":37,"../codecs/adts.js":39,"../codecs/h264":40,"../data/silence":41,"../m2ts/m2ts.js":49,"../utils/clock":59,"../utils/stream.js":61,"./mp4-generator.js":55}],58:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -16776,6 +17308,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../aac/probe.js":36,"../m2ts/probe.js":49,"../m2ts/stream-types.js":50,"../m2ts/timestamp-rollover-stream.js":51}],57:[function(require,module,exports){
 =======
 },{"../aac/probe.js":35,"../m2ts/probe.js":48,"../m2ts/stream-types.js":49,"../m2ts/timestamp-rollover-stream.js":50}],56:[function(require,module,exports){
@@ -16783,6 +17316,9 @@ module.exports = {
 =======
 },{"../aac/probe.js":38,"../m2ts/probe.js":51,"../m2ts/stream-types.js":52,"../m2ts/timestamp-rollover-stream.js":53}],59:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"../aac/probe.js":38,"../m2ts/probe.js":51,"../m2ts/stream-types.js":52,"../m2ts/timestamp-rollover-stream.js":53}],59:[function(require,module,exports){
+>>>>>>> ignore: add dist
 var
   ONE_SECOND_IN_TS = 90000, // 90kHz clock
   secondsToVideoTs,
@@ -16827,6 +17363,7 @@ module.exports = {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],58:[function(require,module,exports){
 =======
 },{}],57:[function(require,module,exports){
@@ -16834,6 +17371,9 @@ module.exports = {
 =======
 },{}],60:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],60:[function(require,module,exports){
+>>>>>>> ignore: add dist
 'use strict';
 
 var ExpGolomb;
@@ -16984,6 +17524,7 @@ module.exports = ExpGolomb;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],59:[function(require,module,exports){
 =======
 },{}],58:[function(require,module,exports){
@@ -16991,6 +17532,9 @@ module.exports = ExpGolomb;
 =======
 },{}],61:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],61:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * mux.js
  *
@@ -17109,6 +17653,7 @@ Stream.prototype.flush = function(flushSource) {
 
 module.exports = Stream;
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 },{}],60:[function(require,module,exports){
@@ -17239,6 +17784,9 @@ module.exports = function unpad(padded) {
 =======
 },{}],62:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],62:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /* jshint ignore:start */
 (function(root) { 
 /* jshint ignore:end */
@@ -17342,10 +17890,14 @@ module.exports = function unpad(padded) {
 /* jshint ignore:end */
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],61:[function(require,module,exports){
 =======
 },{}],63:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],63:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file add-text-track-data.js
@@ -17498,6 +18050,7 @@ module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29}],62:[function(require,module,exports){
 =======
 },{"global/window":28}],64:[function(require,module,exports){
@@ -17505,6 +18058,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31}],64:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"global/window":31}],64:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * Remove the text track from the player if one with matching kind and
  * label properties already exists on the player
@@ -17544,10 +18100,14 @@ var cleanupTextTracks = function cleanupTextTracks(player) {
 };
 exports.cleanupTextTracks = cleanupTextTracks;
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],63:[function(require,module,exports){
 =======
 },{}],65:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],65:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file codec-utils.js
  */
@@ -17636,10 +18196,14 @@ exports['default'] = {
 };
 module.exports = exports['default'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],64:[function(require,module,exports){
 =======
 },{}],66:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],66:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file create-text-tracks-if-necessary.js
  */
@@ -17670,9 +18234,12 @@ var createTextTracksIfNecessary = function createTextTracksIfNecessary(sourceBuf
       label: 'cc1'
     }, false).track;
 <<<<<<< HEAD
+<<<<<<< HEAD
     player.tech_.trigger({ type: 'usage', name: 'hls-608' });
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
   }
 
   if (segment.metadata && segment.metadata.length && !sourceBuffer.metadataTrack_) {
@@ -17688,10 +18255,14 @@ var createTextTracksIfNecessary = function createTextTracksIfNecessary(sourceBuf
 exports['default'] = createTextTracksIfNecessary;
 module.exports = exports['default'];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./cleanup-text-tracks":62}],65:[function(require,module,exports){
 =======
 },{"./cleanup-text-tracks":64}],67:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./cleanup-text-tracks":64}],67:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file flash-constants.js
  */
@@ -17719,10 +18290,14 @@ var flashConstants = {
 exports["default"] = flashConstants;
 module.exports = exports["default"];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],66:[function(require,module,exports){
 =======
 },{}],68:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],68:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file flash-media-source.js
@@ -17940,6 +18515,7 @@ module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./cleanup-text-tracks":62,"./codec-utils":63,"./flash-constants":65,"./flash-source-buffer":67,"global/document":28}],67:[function(require,module,exports){
 =======
 },{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":27}],69:[function(require,module,exports){
@@ -17947,6 +18523,9 @@ module.exports = exports['default'];
 =======
 },{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":30}],69:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":30}],69:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file flash-source-buffer.js
@@ -18550,6 +19129,7 @@ module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./create-text-tracks-if-necessary":64,"./flash-constants":65,"./flash-transmuxer-worker":68,"./remove-cues-from-track":70,"global/window":29,"mux.js/lib/flv":43,"webworkify":75}],68:[function(require,module,exports){
 =======
 },{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":28,"mux.js/lib/flv":42,"webworkify":76}],70:[function(require,module,exports){
@@ -18557,6 +19137,9 @@ module.exports = exports['default'];
 =======
 },{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":31,"mux.js/lib/flv":45,"webworkify":76}],70:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":31,"mux.js/lib/flv":45,"webworkify":76}],70:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file flash-transmuxer-worker.js
  */
@@ -18703,6 +19286,7 @@ exports['default'] = function (self) {
 module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29,"mux.js/lib/flv":43}],69:[function(require,module,exports){
 =======
 },{"global/window":28,"mux.js/lib/flv":42}],71:[function(require,module,exports){
@@ -18710,6 +19294,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31,"mux.js/lib/flv":45}],71:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"global/window":31,"mux.js/lib/flv":45}],71:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file html-media-source.js
@@ -19051,6 +19638,7 @@ module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./cleanup-text-tracks":62,"./codec-utils":63,"./virtual-source-buffer":73,"global/document":28,"global/window":29}],70:[function(require,module,exports){
 =======
 },{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":27,"global/window":28}],72:[function(require,module,exports){
@@ -19058,6 +19646,9 @@ module.exports = exports['default'];
 =======
 },{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":30,"global/window":31}],72:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":30,"global/window":31}],72:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file remove-cues-from-track.js
  */
@@ -19102,10 +19693,14 @@ var removeCuesFromTrack = function removeCuesFromTrack(start, end, track) {
 exports["default"] = removeCuesFromTrack;
 module.exports = exports["default"];
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],71:[function(require,module,exports){
 =======
 },{}],73:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],73:[function(require,module,exports){
+>>>>>>> ignore: add dist
 /**
  * @file transmuxer-worker.js
  */
@@ -19311,6 +19906,7 @@ exports['default'] = function (self) {
 module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29,"mux.js/lib/mp4":52}],72:[function(require,module,exports){
 =======
 },{"global/window":28,"mux.js/lib/mp4":51}],74:[function(require,module,exports){
@@ -19318,6 +19914,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31,"mux.js/lib/mp4":54}],74:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"global/window":31,"mux.js/lib/mp4":54}],74:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file videojs-contrib-media-sources.js
@@ -19478,6 +20077,7 @@ _videoJs2['default'].URL = URL;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./flash-media-source":66,"./html-media-source":69,"global/window":29}],73:[function(require,module,exports){
 =======
 },{"./flash-media-source":68,"./html-media-source":71,"global/window":28}],75:[function(require,module,exports){
@@ -19485,6 +20085,9 @@ _videoJs2['default'].URL = URL;
 =======
 },{"./flash-media-source":68,"./html-media-source":71,"global/window":31}],75:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./flash-media-source":68,"./html-media-source":71,"global/window":31}],75:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file virtual-source-buffer.js
@@ -20124,12 +20727,16 @@ exports['default'] = VirtualSourceBuffer;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./codec-utils":63,"./create-text-tracks-if-necessary":64,"./remove-cues-from-track":70,"./transmuxer-worker":71,"webworkify":75}],74:[function(require,module,exports){
 
 },{}],75:[function(require,module,exports){
 =======
 },{"./add-text-track-data":63,"./codec-utils":65,"./create-text-tracks-if-necessary":66,"./remove-cues-from-track":72,"./transmuxer-worker":73,"webworkify":76}],76:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{"./add-text-track-data":63,"./codec-utils":65,"./create-text-tracks-if-necessary":66,"./remove-cues-from-track":72,"./transmuxer-worker":73,"webworkify":76}],76:[function(require,module,exports){
+>>>>>>> ignore: add dist
 var bundleFn = arguments[3];
 var sources = arguments[4];
 var cache = arguments[5];
@@ -20187,10 +20794,14 @@ module.exports = function (fn) {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],76:[function(require,module,exports){
 =======
 },{}],77:[function(require,module,exports){
 >>>>>>> add dist
+=======
+},{}],77:[function(require,module,exports){
+>>>>>>> ignore: add dist
 (function (global){
 /**
  * @file videojs-contrib-hls.js
@@ -20203,10 +20814,14 @@ module.exports = function (fn) {
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 var _get = function get(_x4, _x5, _x6) { var _again = true; _function: while (_again) { var object = _x4, property = _x5, receiver = _x6; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x4 = parent; _x5 = property; _x6 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 =======
 var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
 >>>>>>> add dist
+=======
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+>>>>>>> ignore: add dist
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -20271,6 +20886,7 @@ var _reloadSourceOnError2 = _interopRequireDefault(_reloadSourceOnError);
 var _playlistSelectorsJs = require('./playlist-selectors.js');
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // 0.5 MB/s
 var BANDWIDTH_BROADBAND = 4194304;
 // 0.0625 MB/s
@@ -20278,6 +20894,8 @@ var BANDWIDTH_MOBILE = 500000;
 
 =======
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 var Hls = {
   PlaylistLoader: _playlistLoader2['default'],
   Playlist: _playlist2['default'],
@@ -20293,6 +20911,7 @@ var Hls = {
   xhr: (0, _xhr2['default'])()
 };
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 // Define getter/setters for config properites
 ['GOAL_BUFFER_LENGTH', 'MAX_GOAL_BUFFER_LENGTH', 'GOAL_BUFFER_LENGTH_RATE', 'BUFFER_LOW_WATER_LINE', 'MAX_BUFFER_LOW_WATER_LINE', 'BUFFER_LOW_WATER_LINE_RATE', 'BANDWIDTH_VARIANCE'].forEach(function (prop) {
@@ -20388,6 +21007,8 @@ Object.defineProperty(Hls, 'BUFFER_LOW_WATER_RATE', {
     }
     _config2['default'].BUFFER_LOW_WATER_RATE = v;
 =======
+=======
+>>>>>>> ignore: add dist
 Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
   get: function get() {
     _videoJs2['default'].log.warn('using Hls.GOAL_BUFFER_LENGTH is UNSAFE be sure ' + 'you know what you are doing');
@@ -20400,7 +21021,10 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
       return;
     }
     _config2['default'].GOAL_BUFFER_LENGTH = v;
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
   }
 });
 
@@ -20415,6 +21039,7 @@ Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
       _videoJs2['default'].log.warn('value passed to Hls.BANDWIDTH_VARIANCE ' + 'must be a number and greater than 0');
       return;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> use goal buffer length of 60, low water line of 30
     }
   });
@@ -20423,6 +21048,11 @@ Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
     _config2['default'].BANDWIDTH_VARIANCE = v;
   }
 >>>>>>> add dist
+=======
+    }
+    _config2['default'].BANDWIDTH_VARIANCE = v;
+  }
+>>>>>>> ignore: add dist
 });
 
 /**
@@ -20550,10 +21180,14 @@ var HlsHandler = (function (_Component) {
     _classCallCheck(this, HlsHandler);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     _get(Object.getPrototypeOf(HlsHandler.prototype), 'constructor', this).call(this, tech, options.hls);
 =======
     _get(Object.getPrototypeOf(HlsHandler.prototype), 'constructor', this).call(this, tech);
 >>>>>>> add dist
+=======
+    _get(Object.getPrototypeOf(HlsHandler.prototype), 'constructor', this).call(this, tech);
+>>>>>>> ignore: add dist
 
     // tech.player() is deprecated but setup a reference to HLS for
     // backwards-compatibility
@@ -20571,18 +21205,25 @@ var HlsHandler = (function (_Component) {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> ignore: add dist
     // overriding native HLS only works if audio tracks have been emulated
     // error early if we're misconfigured:
     if (_videoJs2['default'].options.hls.overrideNative && (tech.featuresNativeVideoTracks || tech.featuresNativeAudioTracks)) {
       throw new Error('Overriding native HLS requires emulated tracks. ' + 'See https://git.io/vMpjB');
     }
 
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
     this.tech_ = tech;
     this.source_ = source;
     this.stats = {};
     this.ignoreNextSeekingEvent_ = false;
+<<<<<<< HEAD
 <<<<<<< HEAD
     this.setOptions_();
 
@@ -20592,11 +21233,16 @@ var HlsHandler = (function (_Component) {
       throw new Error('Overriding native HLS requires emulated tracks. ' + 'See https://git.io/vMpjB');
     }
 =======
+=======
+>>>>>>> ignore: add dist
 
     // handle global & Source Handler level options
     this.options_ = _videoJs2['default'].mergeOptions(_videoJs2['default'].options.hls || {}, options.hls);
     this.setOptions_();
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
 
     // listen for fullscreenchange events for this player so that we
     // can adjust our quality selection quickly
@@ -20655,10 +21301,14 @@ var HlsHandler = (function (_Component) {
 
       // start playlist selection at a reasonable bandwidth for
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ignore: add dist
       // broadband internet (0.5 MB/s) or mobile (0.0625 MB/s)
       if (typeof this.options_.bandwidth !== 'number') {
         // only use Android for mobile because iOS does not support MSE (and uses
         // native HLS)
+<<<<<<< HEAD
         this.options_.bandwidth = _videoJs2['default'].browser.IS_ANDROID ? BANDWIDTH_MOBILE : BANDWIDTH_BROADBAND;
 =======
       // broadband internet
@@ -20666,6 +21316,9 @@ var HlsHandler = (function (_Component) {
       if (typeof this.options_.bandwidth !== 'number') {
         this.options_.bandwidth = 4194304;
 >>>>>>> add dist
+=======
+        this.options_.bandwidth = _videoJs2['default'].browser.IS_ANDROID ? 500000 : 4194304;
+>>>>>>> ignore: add dist
       }
 
       // grab options passed to player.src
@@ -20984,6 +21637,7 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
   return {
     canHandleSource: function canHandleSource(srcObj) {
 <<<<<<< HEAD
+<<<<<<< HEAD
       var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
       var localOptions = _videoJs2['default'].mergeOptions(_videoJs2['default'].options, options);
@@ -21001,6 +21655,8 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
       var localOptions = _videoJs2['default'].mergeOptions(_videoJs2['default'].options, options, { hls: { mode: mode } });
 
 =======
+=======
+>>>>>>> ignore: add dist
       // this forces video.js to skip this tech/mode if its not the one we have been
       // overriden to use, by returing that we cannot handle the source.
       if (_videoJs2['default'].options.hls && _videoJs2['default'].options.hls.mode && _videoJs2['default'].options.hls.mode !== mode) {
@@ -21009,7 +21665,10 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
       return HlsSourceHandler.canPlayType(srcObj.type);
     },
     handleSource: function handleSource(source, tech, options) {
+<<<<<<< HEAD
 >>>>>>> add dist
+=======
+>>>>>>> ignore: add dist
       if (mode === 'flash') {
         // We need to trigger this asynchronously to give others the chance
         // to bind to the event when a source is set at player creation
@@ -21019,18 +21678,25 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
       }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       tech.hls = new HlsHandler(source, tech, localOptions);
 =======
       var settings = _videoJs2['default'].mergeOptions(options, { hls: { mode: mode } });
 
       tech.hls = new HlsHandler(source, tech, settings);
 >>>>>>> add dist
+=======
+      var settings = _videoJs2['default'].mergeOptions(options, { hls: { mode: mode } });
+
+      tech.hls = new HlsHandler(source, tech, settings);
+>>>>>>> ignore: add dist
       tech.hls.xhr = (0, _xhr2['default'])();
 
       tech.hls.src(source.src);
       return tech.hls;
     },
     canPlayType: function canPlayType(type) {
+<<<<<<< HEAD
 <<<<<<< HEAD
       var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
@@ -21040,6 +21706,9 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
 =======
       if (HlsSourceHandler.canPlayType(type)) {
 >>>>>>> add dist
+=======
+      if (HlsSourceHandler.canPlayType(type)) {
+>>>>>>> ignore: add dist
         return 'maybe';
       }
       return '';
@@ -21048,10 +21717,14 @@ var HlsSourceHandler = function HlsSourceHandler(mode) {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 HlsSourceHandler.canPlayType = function (type, options) {
 =======
 HlsSourceHandler.canPlayType = function (type) {
 >>>>>>> add dist
+=======
+HlsSourceHandler.canPlayType = function (type) {
+>>>>>>> ignore: add dist
   // No support for IE 10 or below
   if (_videoJs2['default'].browser.IE_VERSION && _videoJs2['default'].browser.IE_VERSION <= 10) {
     return false;
@@ -21061,10 +21734,14 @@ HlsSourceHandler.canPlayType = function (type) {
 
   // favor native HLS support if it's available
 <<<<<<< HEAD
+<<<<<<< HEAD
   if (!options.hls.overrideNative && Hls.supportsNativeHls) {
 =======
   if (!_videoJs2['default'].options.hls.overrideNative && Hls.supportsNativeHls) {
 >>>>>>> add dist
+=======
+  if (!_videoJs2['default'].options.hls.overrideNative && Hls.supportsNativeHls) {
+>>>>>>> ignore: add dist
     return false;
   }
   return mpegurlRE.test(type);
@@ -21108,6 +21785,7 @@ module.exports = {
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":19,"aes-decrypter":23,"global/document":28,"global/window":29,"m3u8-parser":30,"videojs-contrib-media-sources":72}]},{},[76]);
 =======
 },{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":27,"global/window":28,"m3u8-parser":29,"videojs-contrib-media-sources":74}]},{},[77]);
@@ -21116,3 +21794,7 @@ module.exports = {
 },{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":30,"global/window":31,"m3u8-parser":32,"videojs-contrib-media-sources":74}]},{},[77])(77)
 });
 >>>>>>> add dist
+=======
+},{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":30,"global/window":31,"m3u8-parser":32,"videojs-contrib-media-sources":74}]},{},[77])(77)
+});
+>>>>>>> ignore: add dist
