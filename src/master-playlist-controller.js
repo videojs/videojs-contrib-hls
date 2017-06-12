@@ -419,6 +419,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       this.trigger('audioupdate');
       this.trigger('selectedinitialmedia');
+
+      // fired when a user selects an alternate audio stream in HLS
+      this.tech_.trigger({type: 'usage', name: 'hls-audio-change'});
     });
 
     this.masterPlaylistLoader_.on('loadedplaylist', () => {
@@ -429,6 +432,20 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.initialMedia_ = this.selectPlaylist();
         this.masterPlaylistLoader_.media(this.initialMedia_);
         return;
+      }
+
+      for(var i = 0; i < updatedPlaylist.segments; i++) {
+        if(updatedPlaylist.segments[i].key) {
+          this.tech_.trigger({type: 'usage', name: 'hls-aes'});
+          break;
+        }
+      }
+
+      for(var i = 0; i < updatedPlaylist.segments; i++) {
+        if(updatedPlaylist.segments[i].map) {
+          this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
+          break;
+        }
       }
 
       if (this.useCueTags_) {
@@ -536,6 +553,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.tech_.trigger('playliststuck');
       }
     });
+
+    this.masterPlaylistLoader_.on('hlsrenditiondisabled', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-rendition-disabled'});
+    });
   }
 
   /**
@@ -563,6 +584,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.onSyncInfoUpdate_();
     });
 
+    this.mainSegmentLoader_.on('hlstimestampoffset', () => {
+      this.trigger({type: 'usage', name: 'hls-timestamp-offset'});
+    });
     this.audioSegmentLoader_.on('syncinfoupdate', () => {
       this.onSyncInfoUpdate_();
     });
@@ -696,6 +720,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
   fillSubtitleTracks_() {
     let master = this.master();
     let mediaGroups = master.mediaGroups || {};
+
+    if(Object.keys(mediaGroups.SUBTITLES).length) {
+      // fired the usage event when a rendition has webvtt in HLS
+      this.tech_.trigger({type: 'usage', name: 'hls-webvtt'});
+    }
 
     for (let mediaGroup in mediaGroups.SUBTITLES) {
       if (!this.subtitleGroups_.groups[mediaGroup]) {
@@ -1158,6 +1187,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
     this.tech_.trigger('blacklistplaylist');
+    // fired when a rendition is blacklisted by HLS
+    this.tech_.trigger({type: 'usage', name: 'hls-rendition-blacklisted'});
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
@@ -1417,6 +1448,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_.mimeType(mimeTypes[0]);
     if (mimeTypes[1]) {
       this.audioSegmentLoader_.mimeType(mimeTypes[1]);
+      // fired when video and audio is demuxed
+      this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
     }
 
     // exclude any incompatible variant streams from future playlist

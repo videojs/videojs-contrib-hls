@@ -437,10 +437,19 @@ function(assert) {
 });
 
 QUnit.test('updates the enabled track when switching audio groups', function(assert) {
+  let hlsaudiochange = 0;
   openMediaSource(this.player, this.clock);
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-audio-change') {
+      hlsaudiochange++;
+    }
+  });
+
   // master
   this.requests.shift().respond(200, null,
                                 manifests.multipleAudioGroupsCombinedMain);
+  assert.equal(hlsaudiochange, 0, 'there is no audio change');
   // media
   this.standardXHRResponse(this.requests.shift());
   // init segment
@@ -452,6 +461,7 @@ QUnit.test('updates the enabled track when switching audio groups', function(ass
   // ignore audio segment requests
   this.requests.length = 0;
 
+  assert.equal(hlsaudiochange, 1, 'there is one audio change');
   let mpc = this.masterPlaylistController;
   let combinedPlaylist = mpc.master().playlists[0];
 
@@ -1185,11 +1195,19 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
 });
 
 QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {
+  let hlswebvtt = 0;
+
   this.requests.length = 0;
   this.player = createPlayer();
   this.player.src({
     src: 'manifest/master-subtitles.m3u8',
     type: 'application/vnd.apple.mpegurl'
+  });
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-webvtt') {
+      hlswebvtt++;
+    }
   });
 
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
@@ -1222,6 +1240,7 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
   assert.equal(textTracks.length, 3, 'non-forced text tracks were added');
   assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
   assert.equal(textTracks[2].mode, 'disabled', 'track starts disabled');
+  assert.equal(hlswebvtt, 1, 'there is webvtt detected in the rendition');
 });
 
 QUnit.test('switches off subtitles on subtitle errors', function(assert) {

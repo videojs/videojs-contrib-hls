@@ -344,6 +344,9 @@ export default class PlaybackWatcher {
 
     // only seek if we still have not played
     this.tech_.setCurrentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
+
+    // fired when a gap in the buffer is skipped in HLS
+    this.tech_.trigger({type: 'usage', name: 'hls-gap-skip'});
   }
 
   gapFromVideoUnderflow_(buffered, currentTime) {

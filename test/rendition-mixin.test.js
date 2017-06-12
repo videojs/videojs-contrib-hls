@@ -188,6 +188,7 @@ QUnit.test('blacklisted playlists are not included in the representations list',
 });
 
 QUnit.test('setting a representation to disabled sets disabled to true', function(assert) {
+  // let hlsrenditiondisabled = 0;
   let hlsHandler = makeMockHlsHandler([
     {
       bandwidth: 0,
@@ -199,15 +200,22 @@ QUnit.test('setting a representation to disabled sets disabled to true', functio
       excludeUntil: 0,
       uri: 'media1.m3u8'
     }
-  ]);
+  ])
   let playlists = hlsHandler.playlists.master.playlists;
+  // console.log(this);
+  // this.player.tech_.on('usage', (event) => {
+  //   if (event.name === 'hls-rendition-disabled') {
+  //     hlsrenditiondisabled++;
+  //   }
+  // });
 
   RenditionMixin(hlsHandler);
 
   let renditions = hlsHandler.representations();
-
+  // assert.equal(hlsrenditiondisabled, 0, 'there is no disabled rendition');
   renditions[0].enabled(false);
 
+  // assert.equal(hlsrenditiondisabled, 1, 'there is one disabled rendition');
   assert.equal(playlists[0].disabled, true, 'rendition has been disabled');
   assert.equal(playlists[1].disabled, undefined, 'rendition has not been disabled');
   assert.equal(playlists[0].excludeUntil, 0, 'excludeUntil not touched when disabling a rendition');
@@ -215,6 +223,7 @@ QUnit.test('setting a representation to disabled sets disabled to true', functio
 });
 
 QUnit.test('changing the enabled state of a representation calls fastQualityChange_', function(assert) {
+  // let hlsrenditiondisabled = 0;
   let hlsHandler = makeMockHlsHandler([
     {
       bandwidth: 0,
@@ -226,19 +235,27 @@ QUnit.test('changing the enabled state of a representation calls fastQualityChan
       uri: 'media1.m3u8'
     }
   ]);
+  // this.player.tech_.on('usage', (event) => {
+  //   if (event.name === 'hls-rendition-disabled') {
+  //     hlsrenditiondisabled++;
+  //   }
+  // });
   let mpc = hlsHandler.masterPlaylistController_;
 
   RenditionMixin(hlsHandler);
 
   let renditions = hlsHandler.representations();
 
+  // assert.equal(hlsrenditiondisabled, 0, 'there is no rendition is enabled or disabled');
   assert.equal(mpc.fastQualityChange_.calls, 0, 'fastQualityChange_ was never called');
 
   renditions[0].enabled(true);
 
+  // assert.equal(hlsrenditiondisabled, 1, 'there is one rendition is enabled or disabled');
   assert.equal(mpc.fastQualityChange_.calls, 1, 'fastQualityChange_ was called once');
 
   renditions[1].enabled(false);
 
+  // assert.equal(hlsrenditiondisabled, 2, 'there is two rendition is enabled or disabled');
   assert.equal(mpc.fastQualityChange_.calls, 2, 'fastQualityChange_ was called twice');
 });

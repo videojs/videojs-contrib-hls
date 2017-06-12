@@ -31,7 +31,7 @@ const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
     // Ensure the outside world knows about our changes
     changePlaylistFn();
   }
-
+  loader.trigger('hlsrenditiondisabled');
   return enable;
 };
 

@@ -208,11 +208,19 @@ class HlsHandler extends Component {
         Object.defineProperty(_player, 'hls', {
           get: () => {
             videojs.log.warn('player.hls is deprecated. Use player.tech_.hls instead.');
+            // fired the uasge event when player.hls is accessed
+            tech.trigger({type: 'usage', name: 'hls-player-access'});
             return this;
           }
         });
       }
     }
+    // Object.defineProperty(tech, 'hls', {
+    //   get: () => {
+    //     tech.trigger({type: 'usage', name: 'hls-tech-access'});
+    //     return this;
+    //   }
+    // });
 
     // overriding native HLS only works if audio tracks have been emulated
     // error early if we're misconfigured:

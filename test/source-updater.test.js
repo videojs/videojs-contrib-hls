@@ -173,6 +173,7 @@ QUnit.test('supports timestampOffset', function(assert) {
   let sourceBuffer;
 
   this.mediaSource.trigger('sourceopen');
+
   sourceBuffer = this.mediaSource.sourceBuffers[0];
 
   assert.equal(updater.timestampOffset(), 0, 'intialized to zero');

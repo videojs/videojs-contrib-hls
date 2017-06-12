@@ -938,6 +938,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (segmentInfo.timestampOffset !== null &&
         segmentInfo.timestampOffset !== this.sourceUpdater_.timestampOffset()) {
       this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
+      // fired when a timestamp offset is set in HLS (can also identify discontinuities)
+      this.trigger('hlstimestampoffset');
     }
 
     // if the media initialization segment is changing, append it

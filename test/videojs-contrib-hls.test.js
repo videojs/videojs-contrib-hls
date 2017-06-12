@@ -129,17 +129,26 @@ QUnit.module('HLS', {
 QUnit.test('deprication warning is show when using player.hls', function(assert) {
   let oldWarn = videojs.log.warn;
   let warning = '';
+  let hlsplayeraccess = 0;
 
   this.player.src({
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-player-access') {
+      hlsplayeraccess++;
+    }
+  });
+
   videojs.log.warn = (text) => {
     warning = text;
   };
+  assert.equal(hlsplayeraccess, 0, 'there is no player.hls access');
   let hls = this.player.hls;
 
+  assert.equal(hlsplayeraccess, 1, 'player.hls is accessed once');
   assert.equal(warning, 'player.hls is deprecated. Use player.tech_.hls instead.', 'warning would have been shown');
   assert.ok(hls, 'an instance of hls is returned by player.hls');
   videojs.log.warn = oldWarn;
@@ -1098,6 +1107,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   let url;
   let blacklistplaylist = 0;
   let retryplaylist = 0;
+  let hlsrenditionblacklisted = 0;
 
   this.player.src({
     src: 'manifest/master.m3u8',
@@ -1106,6 +1116,11 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   openMediaSource(this.player, this.clock);
   this.player.tech_.on('blacklistplaylist', () => blacklistplaylist++);
   this.player.tech_.on('retryplaylist', () => retryplaylist++);
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-rendition-blacklisted') {
+      hlsrenditionblacklisted++;
+    }
+  });
 
   this.player.tech_.hls.bandwidth = 1e10;
   // master
@@ -1120,6 +1135,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
               'no media is initially set');
 
   assert.equal(blacklistplaylist, 0, 'there is no blacklisted playlist');
+  assert.equal(hlsrenditionblacklisted, 0, 'there is no blacklised rendition');
   // media
   this.requests[1].respond(404);
   url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
@@ -1130,6 +1146,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
               'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media.m3u8 Switching to another playlist.',
               'log generic error message');
   assert.equal(blacklistplaylist, 1, 'there is one blacklisted playlist');
+  assert.equal(hlsrenditionblacklisted, 1, 'there is one blacklisted rendition');
   assert.equal(retryplaylist, 0, 'haven\'t retried any playlist');
 
   // request for the final available media
@@ -1145,6 +1162,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
               'log specific error message for final playlist');
   assert.equal(retryplaylist, 1, 'retried final playlist for once');
   assert.equal(blacklistplaylist, 1, 'there is one blacklisted playlist');
+  assert.equal(hlsrenditionblacklisted, 1, 'there is one blacklised rendition');
 
   this.clock.tick(2 * 1000);
   // no new request was made since it hasn't been half the segment duration

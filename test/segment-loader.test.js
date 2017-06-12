@@ -195,6 +195,11 @@ QUnit.module('SegmentLoader', function(hooks) {
     QUnit.test('sets the timestampOffset on timeline change', function(assert) {
       let playlist = playlistWithDuration(40);
       let buffered = videojs.createTimeRanges();
+      let hlstimestampoffset = 0;
+
+      loader.on('hlstimestampoffset', () => {
+        hlstimestampoffset++;
+      });
 
       loader.buffered_ = () => buffered;
 
@@ -212,6 +217,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       this.updateend();
       this.clock.tick(1);
 
+      assert.equal(hlstimestampoffset, 0, 'there is no timestampOffset was set');
       // segment 1, discontinuity
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
@@ -222,6 +228,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       // verify stats
       assert.equal(loader.mediaBytesTransferred, 20, '20 bytes');
       assert.equal(loader.mediaRequests, 2, '2 requests');
+      assert.equal(hlstimestampoffset, 1, 'there is one timestampOffset was set');
     });
 
     QUnit.test('tracks segment end times as they are buffered', function(assert) {

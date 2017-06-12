@@ -162,8 +162,13 @@ QUnit.test('playlist loader detects if we are on lowest rendition', function(ass
 
 QUnit.test('resolves media initialization segment URIs', function(assert) {
   let loader = new PlaylistLoader('video/fmp4.m3u8', this.fakeHls);
+  let fmp4segment = 0;
 
+  loader.on('fmp4segment', function() {
+    fmp4segment++;
+  });
   loader.load();
+
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
                                 '#EXT-X-MAP:URI="main.mp4",BYTERANGE="720@0"\n' +
@@ -173,6 +178,7 @@ QUnit.test('resolves media initialization segment URIs', function(assert) {
 
   assert.equal(loader.media().segments[0].map.resolvedUri, urlTo('video/main.mp4'),
               'resolved init segment URI');
+  // assert.equal(fmp4segment, 1, 'there is one fmp4segment');
 });
 
 QUnit.test('recognizes absolute URIs and requests them unmodified', function(assert) {
