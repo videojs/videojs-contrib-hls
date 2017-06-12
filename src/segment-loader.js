@@ -717,6 +717,57 @@ export default class SegmentLoader extends videojs.EventTarget {
     };
   }
 
+  abortRequestEarly_(stats, segment) {
+    if (!this.playlist_.attributes && !this.playlist_.attributes.BANDWIDTH) {
+      // can't determine if we should abort early if we don't have bandwidth information
+      // for the current playlist.
+      return;
+    }
+
+    const msSinceFirstByte = Date.now() - stats.firstByteReceived;
+    // Since bandwidth values reported by progress events stabilize as time goes on,
+    // we adjust bandwidth by a conservative amount, increasing as more time has passed
+    // maxing at 0.8 to prevent aborting a request we actually do have enough bandwidth
+    // for.
+    const playlistBandwidthAdjustment = Math.min(0.8,
+      msSinceFirstByte / (segment.duration * 500));
+    const playlistBandwidth = this.playlist_.attributes.BANDWIDTH;
+
+    // When on the lowestEnabledRendition, segment request timeouts are set to 0. First
+    // we check that we have a timeout in place to ensure that if we do abort early, we
+    // actually have another playlist we can switch to.
+    // TODO: Replace timeout with a boolean indicating whether this playlist is the
+    // lowestEnabledRendition
+    if (this.xhrOptions_.timeout &&
+        // Wait at least 1 second before using the calculated bandwidth from the
+        // progress event to allow the bitrate to stabilize. Bandwidth information
+        // during the first second can be highly variable and inaccurate.
+        msSinceFirstByte > 1000 &&
+        // Lastly, if the calculated bandwidth for the current request is less than
+        // the bitrate of the playlist (adjusted downwards so that we don't jump the gun)
+        // then we want to abort this request and try a smaller rendition that we can
+        // keep up with.
+        stats.bandwidth < playlistBandwidth * playlistBandwidthAdjustment) {
+      this.bandwidth = stats.bandwidth;
+      this.abort();
+      this.trigger('bandwidthupdate');
+      return true;
+    }
+    return false;
+  }
+
+  handleProgress_(event, segment) {
+    if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
+      return;
+    }
+
+    if (this.abortRequestEarly_(segment.stats, this.pendingSegment_)) {
+      return;
+    }
+
+    this.trigger('progress');
+  }
+
   /**
    * load a specific segment from a request into the buffer
    *
@@ -732,14 +783,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.decrypter_,
       this.createSimplifiedSegmentObj_(segmentInfo),
       // progress callback
-      (event, segment) => {
-        if (!this.pendingSegment_ ||
-            segment.requestId !== this.pendingSegment_.requestId) {
-          return;
-        }
-        // TODO: Use progress-based bandwidth to early abort low-bandwidth situations
-        this.trigger('progress');
-      },
+      this.handleProgress_.bind(this),
       this.segmentRequestFinished_.bind(this));
   }
 

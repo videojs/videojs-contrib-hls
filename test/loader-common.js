@@ -277,6 +277,54 @@ export const LoaderCommonFactory = (LoaderConstructor,
       assert.equal(progressEvents, 1, 'triggered progress');
     });
 
+    QUnit.test('aborts request at progress events if bandwidth is too low',
+    function(assert) {
+      const playlist = playlistWithDuration(10);
+      const xhrOptions = {
+        timeout: 15000
+      };
+      let bandwidthupdates = 0;
+
+      playlist.attributes.BANDWIDTH = 100000;
+
+      loader.on('bandwidthupdate', () => bandwidthupdates++);
+      loader.playlist(playlist, xhrOptions);
+      loader.load();
+
+      this.clock.tick(1);
+
+      this.requests[0].dispatchEvent({
+        type: 'progress',
+        target: this.requests[0],
+        loaded: 1
+      });
+
+      assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
+      assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+
+      this.clock.tick(999);
+
+      this.requests[0].dispatchEvent({
+        type: 'progress',
+        target: this.requests[0],
+        loaded: 2000
+      });
+
+      assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
+      assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+
+      this.clock.tick(2);
+
+      this.requests[0].dispatchEvent({
+        type: 'progress',
+        target: this.requests[0],
+        loaded: 2001
+      });
+
+      assert.equal(bandwidthupdates, 1, 'bandwidth updated');
+      assert.ok(this.requests[0].aborted, 'request aborted');
+    });
+
     QUnit.test(
       'appending a segment when loader is in walk-forward mode triggers bandwidthupdate',
     function(assert) {
