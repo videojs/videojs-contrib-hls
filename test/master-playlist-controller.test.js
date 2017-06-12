@@ -944,13 +944,13 @@ function(assert) {
   assert.equal(mediaChanges.length,
                0,
                'did not change media when no buffer and and higher bandwidth playlist');
-  buffered = [[0, 10], [10, 19]];
+  buffered = [[0, 19]];
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.equal(mediaChanges.length,
                0,
                'did not change media when insufficient forward buffer and higher ' +
                'bandwidth playlist');
-  buffered = [[0, 10], [10, 21]];
+  buffered = [[0, 21]];
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.equal(mediaChanges.length,
                1,
