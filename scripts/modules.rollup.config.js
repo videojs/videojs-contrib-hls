@@ -7,7 +7,7 @@
  */
 import babel from 'rollup-plugin-babel';
 import json from 'rollup-plugin-json';
-import worker from 'rollup-plugin-bundle-worker';
+import worker from '@gkatsev/rollup-plugin-bundle-worker';
 
 export default {
   moduleName: 'videojs-contrib-hls',
