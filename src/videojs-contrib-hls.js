@@ -128,7 +128,7 @@ Object.defineProperty(Hls, 'MAX_BUFFER_LOW_WATER_LINE', {
                        'Hls.GOAL_BUFFER_LENGTH');
       return;
     }
-    Config.BUFFER_LOW_WATER_LINE = v;
+    Config.MAX_BUFFER_LOW_WATER_LINE = v;
   }
 });
 
