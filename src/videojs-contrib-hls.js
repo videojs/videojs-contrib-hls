@@ -463,7 +463,7 @@ class HlsHandler extends Component {
       this.masterPlaylistController_.setupFirstPlay.bind(this.masterPlaylistController_));
 
     this.tech_.on('bandwidthupdate', () => {
-      if (this.options_.storeBandwidthInLocalStorage && window.localStorage) {
+      if (this.options_.useBandwidthFromLocalStorage && window.localStorage) {
         try {
           window.localStorage.setItem('videojs-contrib-hls-bandwidth', this.bandwidth);
           window.localStorage.setItem('videojs-contrib-hls-throughput', this.throughput);

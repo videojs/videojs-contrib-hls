@@ -2693,7 +2693,7 @@ QUnit.test('stores bandwidth and throughput in localStorage', function(assert) {
   const origHlsOptions = videojs.options.hls;
 
   videojs.options.hls = {
-    storeBandwidthInLocalStorage: true
+    useBandwidthFromLocalStorage: true
   };
 
   this.player.src({
