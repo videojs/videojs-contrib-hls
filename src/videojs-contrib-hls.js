@@ -84,7 +84,7 @@ Object.defineProperty(Hls, 'EWMA_DECAY', {
   set(v) {
     videojs.log.warn('using Hls.EWMA_DECAY is UNSAFE be sure ' +
                      'you know what you are doing');
-    if (typeof v !== 'number' || v <= 0 || v > 1) {
+    if (typeof v !== 'number' || v < 0 || v > 1) {
       videojs.log.warn('value passed to Hls.EWMA_DECAY ' +
                        'must be a number and between 0 and 1');
       return;

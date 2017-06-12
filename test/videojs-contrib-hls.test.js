@@ -797,7 +797,6 @@ QUnit.test('raises the minimum bitrate for a stream proportionially', function(a
   const EWMA = Hls.EWMA_DECAY * 11 + (1 - Hls.EWMA_DECAY) * 4194304;
   const safeBandwidth = Math.floor(EWMA / Hls.BANDWIDTH_VARIANCE) - 1;
 
-  // 9.9 * 1.1 < 11
   master.playlists[2].attributes.BANDWIDTH = safeBandwidth;
   playlist = this.player.tech_.hls.selectPlaylist();
 
