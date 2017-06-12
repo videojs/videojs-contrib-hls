@@ -1603,6 +1603,42 @@ QUnit.test('uses default bandwidth option if non-numerical value provided', func
   assert.equal(this.player.tech_.hls.bandwidth, 4194304, 'set bandwidth to default');
 });
 
+QUnit.test('uses mobile default bandwidth if browser is Android', function(assert) {
+  this.player.dispose();
+
+  const origIsAndroid = videojs.browser.IS_ANDROID;
+
+  videojs.browser.IS_ANDROID = false;
+
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  assert.equal(this.player.tech_.hls.bandwidth,
+               4194304,
+               'set bandwidth to desktop default');
+
+  this.player.dispose();
+
+  videojs.browser.IS_ANDROID = true;
+
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  assert.equal(this.player.tech_.hls.bandwidth,
+               500000,
+               'set bandwidth to mobile default');
+
+  videojs.browser.IS_ANDROID = origIsAndroid;
+});
+
 QUnit.test('does not break if the playlist has no segments', function(assert) {
   this.player.src({
     src: 'manifest/master.m3u8',
