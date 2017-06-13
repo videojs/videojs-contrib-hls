@@ -857,7 +857,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       }
 
       this.state = 'READY';
-      this.pause();
 
       // the error is really just that at least one of the requests timed-out
       // set the bandwidth to a very low value and trigger an ABR switch to
@@ -872,6 +871,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       // if control-flow has arrived here, then the error is real
       // emit an error event to blacklist the current playlist
+      this.pause();
       this.mediaRequestsErrored += 1;
       this.error(error);
       this.trigger('error');
