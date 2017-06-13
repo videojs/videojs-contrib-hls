@@ -1,4 +1,4 @@
-let hls = require('../es5/videojs-contrib-hls.js');
+let hls = require('../');
 let q = window.QUnit;
 
 q.module('Webpack Require');

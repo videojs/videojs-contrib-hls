@@ -10,6 +10,8 @@ var DEFAULTS = {
   files: [
     'node_modules/sinon/pkg/sinon.js',
     'node_modules/sinon/pkg/sinon-ie.js',
+    'test/dist/browserify-test.js',
+    'test/dist/webpack-test.js',
     'node_modules/video.js/dist/video.js',
     'node_modules/video.js/dist/video-js.css',
     'node_modules/videojs-flash/dist/videojs-flash.js',
