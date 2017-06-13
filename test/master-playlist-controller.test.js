@@ -812,19 +812,42 @@ function(assert) {
   buffered = [];
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.equal(mediaChanges.length,
-               0,
-               'did not change media when no buffer and equal bandwidth playlist');
+               1,
+               'changes media when no buffer and equal bandwidth playlist');
   buffered = [[0, 9]];
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.equal(mediaChanges.length,
-               0,
-               'did not change media when insufficient forward buffer and equal ' +
+               2,
+               'changes media when sufficient forward buffer and equal ' +
                'bandwidth playlist');
   buffered = [[0, 30]];
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.equal(mediaChanges.length,
-               1,
+               3,
                'changes media when sufficient forward buffer and equal ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  currentTime = 10;
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 1001;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when no buffer and and higher bandwidth playlist');
+  buffered = [[0, 19]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when insufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 21]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when sufficient forward buffer and higher ' +
                'bandwidth playlist');
 
   mediaChanges.length = 0;
