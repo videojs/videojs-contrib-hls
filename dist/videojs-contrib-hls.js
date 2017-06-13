@@ -1,9 +1,12 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 =======
 =======
 >>>>>>> ignore: add dist
+=======
+>>>>>>> ignore: update dist
 /**
  * videojs-contrib-hls
  * @version 5.5.3
@@ -12,9 +15,12 @@
  */
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.videojsContribHls = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> add dist
 =======
 >>>>>>> ignore: add dist
+=======
+>>>>>>> ignore: update dist
 /**
  * @file ad-cue-tags.js
  */
@@ -130,6 +136,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29}],2:[function(require,module,exports){
 =======
 },{"global/window":28}],2:[function(require,module,exports){
@@ -140,6 +147,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31}],2:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"global/window":31}],2:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * @file bin-utils.js
  */
@@ -352,6 +362,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"aes-decrypter":23,"global/window":29}],5:[function(require,module,exports){
 =======
 },{"./bin-utils":2,"aes-decrypter":24,"global/window":28}],5:[function(require,module,exports){
@@ -362,6 +373,9 @@ module.exports = exports['default'];
 =======
 },{"./bin-utils":2,"aes-decrypter":24,"global/window":31}],5:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./bin-utils":2,"aes-decrypter":24,"global/window":31}],5:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file master-playlist-controller.js
@@ -3146,6 +3160,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./ranges":11,"global/window":29}],8:[function(require,module,exports){
 =======
 },{"./ranges":11,"global/window":28}],8:[function(require,module,exports){
@@ -3156,6 +3171,9 @@ module.exports = exports['default'];
 =======
 },{"./ranges":11,"global/window":31}],8:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./ranges":11,"global/window":31}],8:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file playlist-loader.js
@@ -3784,6 +3802,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./playlist.js":10,"./resolve-url":14,"global/window":29,"m3u8-parser":30}],9:[function(require,module,exports){
 =======
 },{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":28,"m3u8-parser":29}],9:[function(require,module,exports){
@@ -3794,6 +3813,9 @@ module.exports = exports['default'];
 =======
 },{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":31,"m3u8-parser":32}],9:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./playlist.js":10,"./resolve-url":14,"./stream":17,"global/window":31,"m3u8-parser":32}],9:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -4785,6 +4807,7 @@ exports['default'] = Playlist;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29}],11:[function(require,module,exports){
 =======
 },{"global/window":28}],11:[function(require,module,exports){
@@ -4795,6 +4818,9 @@ exports['default'] = Playlist;
 =======
 },{"global/window":31}],11:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"global/window":31}],11:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * ranges
@@ -5462,6 +5488,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29,"url-toolkit":60}],15:[function(require,module,exports){
 =======
 },{"global/window":28,"url-toolkit":62}],15:[function(require,module,exports){
@@ -5472,6 +5499,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31,"url-toolkit":62}],15:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"global/window":31,"url-toolkit":62}],15:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file segment-loader.js
@@ -7028,6 +7058,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./playlist-selectors":9,"./ranges":11,"./source-updater":16,"global/window":29,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":70}],16:[function(require,module,exports){
 =======
 },{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
@@ -7038,6 +7069,9 @@ module.exports = exports['default'];
 =======
 },{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./source-updater":16,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file source-updater.js
@@ -8026,6 +8060,7 @@ exports['default'] = SyncController;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./playlist":10,"mux.js/lib/mp4/probe":54,"mux.js/lib/tools/ts-inspector.js":56}],18:[function(require,module,exports){
 =======
 },{"./playlist":10,"mux.js/lib/mp4/probe":53,"mux.js/lib/tools/ts-inspector.js":55}],19:[function(require,module,exports){
@@ -8036,6 +8071,9 @@ exports['default'] = SyncController;
 =======
 },{"./playlist":10,"mux.js/lib/mp4/probe":56,"mux.js/lib/tools/ts-inspector.js":58}],19:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./playlist":10,"mux.js/lib/mp4/probe":56,"mux.js/lib/tools/ts-inspector.js":58}],19:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file vtt-segment-loader.js
@@ -8510,6 +8548,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"./segment-loader":15,"global/window":29,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":70}],19:[function(require,module,exports){
 =======
 },{"./bin-utils":2,"./segment-loader":15,"global/window":28,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
@@ -8520,6 +8559,9 @@ module.exports = exports['default'];
 =======
 },{"./bin-utils":2,"./segment-loader":15,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./bin-utils":2,"./segment-loader":15,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],20:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file xhr.js
@@ -9382,9 +9424,12 @@ module.exports = exports['default'];
 arguments[4][17][0].apply(exports,arguments)
 },{"dup":17}],26:[function(require,module,exports){
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> add dist
 =======
 >>>>>>> ignore: add dist
+=======
+>>>>>>> ignore: update dist
 /*
  * pkcs7.pad
  * https://github.com/brightcove/pkcs7
@@ -9469,6 +9514,7 @@ PADDING = [
 
   [1]
 ];
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -9541,6 +9587,47 @@ arguments[4][17][0].apply(exports,arguments)
 
 },{}],30:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+
+},{}],27:[function(require,module,exports){
+/*
+ * pkcs7
+ * https://github.com/brightcove/pkcs7
+ *
+ * Copyright (c) 2014 Brightcove
+ * Licensed under the apache2 license.
+ */
+
+'use strict';
+
+exports.pad = require('./pad.js');
+exports.unpad = require('./unpad.js');
+
+},{"./pad.js":26,"./unpad.js":28}],28:[function(require,module,exports){
+/*
+ * pkcs7.unpad
+ * https://github.com/brightcove/pkcs7
+ *
+ * Copyright (c) 2014 Brightcove
+ * Licensed under the apache2 license.
+ */
+
+'use strict';
+
+/**
+ * Returns the subarray of a Uint8Array without PKCS#7 padding.
+ * @param padded {Uint8Array} unencrypted bytes that have been padded
+ * @return {Uint8Array} the unpadded bytes
+ * @see http://tools.ietf.org/html/rfc5652
+ */
+module.exports = function unpad(padded) {
+  return padded.subarray(0, padded.byteLength - padded[padded.byteLength - 1]);
+};
+
+},{}],29:[function(require,module,exports){
+
+},{}],30:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 var topLevel = typeof global !== 'undefined' ? global :
     typeof window !== 'undefined' ? window : {}
@@ -9564,6 +9651,7 @@ module.exports = doccy;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"min-document":74}],29:[function(require,module,exports){
 =======
 },{"min-document":26}],28:[function(require,module,exports){
@@ -9574,6 +9662,9 @@ module.exports = doccy;
 =======
 },{"min-document":29}],31:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"min-document":29}],31:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 var win;
 
@@ -9593,6 +9684,7 @@ module.exports = win;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],30:[function(require,module,exports){
 =======
 },{}],29:[function(require,module,exports){
@@ -9603,6 +9695,9 @@ module.exports = win;
 =======
 },{}],32:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],32:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 var _lineStream = require('./line-stream');
@@ -9635,6 +9730,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./line-stream":31,"./parse-stream":32,"./parser":33}],31:[function(require,module,exports){
 =======
 },{"./line-stream":30,"./parse-stream":31,"./parser":32}],30:[function(require,module,exports){
@@ -9645,6 +9741,9 @@ module.exports = {
 =======
 },{"./line-stream":33,"./parse-stream":34,"./parser":35}],33:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./line-stream":33,"./parse-stream":34,"./parser":35}],33:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9716,6 +9815,7 @@ exports['default'] = LineStream;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream":34}],32:[function(require,module,exports){
 =======
 },{"./stream":33}],31:[function(require,module,exports){
@@ -9726,6 +9826,9 @@ exports['default'] = LineStream;
 =======
 },{"./stream":36}],34:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./stream":36}],34:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10181,6 +10284,7 @@ exports['default'] = ParseStream;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream":34}],33:[function(require,module,exports){
 =======
 },{"./stream":33}],32:[function(require,module,exports){
@@ -10191,6 +10295,9 @@ exports['default'] = ParseStream;
 =======
 },{"./stream":36}],35:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./stream":36}],35:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10584,6 +10691,7 @@ exports['default'] = Parser;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./line-stream":31,"./parse-stream":32,"./stream":34}],34:[function(require,module,exports){
 =======
 },{"./line-stream":30,"./parse-stream":31,"./stream":33}],33:[function(require,module,exports){
@@ -10594,6 +10702,9 @@ exports['default'] = Parser;
 =======
 },{"./line-stream":33,"./parse-stream":34,"./stream":36}],36:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./line-stream":33,"./parse-stream":34,"./stream":36}],36:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -10729,6 +10840,7 @@ exports['default'] = Stream;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],35:[function(require,module,exports){
 =======
 },{}],34:[function(require,module,exports){
@@ -10739,6 +10851,9 @@ exports['default'] = Stream;
 =======
 },{}],37:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],37:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -10886,6 +11001,7 @@ module.exports = AacStream;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],36:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58}],35:[function(require,module,exports){
@@ -10896,6 +11012,9 @@ module.exports = AacStream;
 =======
 },{"../utils/stream.js":61}],38:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../utils/stream.js":61}],38:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -11061,6 +11180,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],37:[function(require,module,exports){
 =======
 },{}],36:[function(require,module,exports){
@@ -11071,6 +11191,9 @@ module.exports = {
 =======
 },{}],39:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],39:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -11207,6 +11330,7 @@ module.exports = AdtsStream;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],38:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58}],37:[function(require,module,exports){
@@ -11217,6 +11341,9 @@ module.exports = AdtsStream;
 =======
 },{"../utils/stream.js":61}],40:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../utils/stream.js":61}],40:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -11639,6 +11766,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/exp-golomb.js":58,"../utils/stream.js":59}],39:[function(require,module,exports){
 =======
 },{"../utils/exp-golomb.js":57,"../utils/stream.js":58}],38:[function(require,module,exports){
@@ -11649,6 +11777,9 @@ module.exports = {
 =======
 },{"../utils/exp-golomb.js":60,"../utils/stream.js":61}],41:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../utils/exp-golomb.js":60,"../utils/stream.js":61}],41:[function(require,module,exports){
+>>>>>>> ignore: update dist
 var highPrefix = [33, 16, 5, 32, 164, 27];
 var lowPrefix = [33, 65, 108, 84, 1, 2, 4, 8, 168, 2, 4, 8, 17, 191, 252];
 var zeroFill = function(count) {
@@ -11688,6 +11819,7 @@ module.exports = makeTable(coneOfSilence);
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],40:[function(require,module,exports){
 =======
 },{}],39:[function(require,module,exports){
@@ -11698,6 +11830,9 @@ module.exports = makeTable(coneOfSilence);
 =======
 },{}],42:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],42:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -11845,6 +11980,7 @@ module.exports = CoalesceStream;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59}],41:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58}],40:[function(require,module,exports){
@@ -11855,6 +11991,9 @@ module.exports = CoalesceStream;
 =======
 },{"../utils/stream.js":61}],43:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../utils/stream.js":61}],43:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 var FlvTag = require('./flv-tag.js');
@@ -11919,6 +12058,7 @@ module.exports = getFlvHeader;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./flv-tag.js":42}],42:[function(require,module,exports){
 =======
 },{"./flv-tag.js":41}],41:[function(require,module,exports){
@@ -11929,6 +12069,9 @@ module.exports = getFlvHeader;
 =======
 },{"./flv-tag.js":44}],44:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./flv-tag.js":44}],44:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * An object that stores the bytes of an FLV tag and methods for
  * querying and manipulating that data.
@@ -12305,6 +12448,7 @@ module.exports = FlvTag;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],43:[function(require,module,exports){
 =======
 },{}],42:[function(require,module,exports){
@@ -12315,12 +12459,16 @@ module.exports = FlvTag;
 =======
 },{}],45:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],45:[function(require,module,exports){
+>>>>>>> ignore: update dist
 module.exports = {
   tag: require('./flv-tag'),
   Transmuxer: require('./transmuxer'),
   getFlvHeader: require('./flv-header')
 };
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -12334,6 +12482,9 @@ module.exports = {
 =======
 },{"./flv-header":43,"./flv-tag":44,"./transmuxer":47}],46:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./flv-header":43,"./flv-tag":44,"./transmuxer":47}],46:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 var TagList = function() {
@@ -12363,6 +12514,7 @@ module.exports = TagList;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],45:[function(require,module,exports){
 =======
 },{}],44:[function(require,module,exports){
@@ -12373,6 +12525,9 @@ module.exports = TagList;
 =======
 },{}],47:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],47:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 var Stream = require('../utils/stream.js');
@@ -12793,6 +12948,7 @@ module.exports = Transmuxer;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../codecs/adts.js":37,"../codecs/h264":38,"../m2ts/m2ts.js":47,"../utils/stream.js":59,"./coalesce-stream.js":40,"./flv-tag.js":42,"./tag-list.js":44}],46:[function(require,module,exports){
 =======
 },{"../codecs/adts.js":36,"../codecs/h264":37,"../m2ts/m2ts.js":46,"../utils/stream.js":58,"./coalesce-stream.js":39,"./flv-tag.js":41,"./tag-list.js":43}],45:[function(require,module,exports){
@@ -12803,6 +12959,9 @@ module.exports = Transmuxer;
 =======
 },{"../codecs/adts.js":39,"../codecs/h264":40,"../m2ts/m2ts.js":49,"../utils/stream.js":61,"./coalesce-stream.js":42,"./flv-tag.js":44,"./tag-list.js":46}],48:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../codecs/adts.js":39,"../codecs/h264":40,"../m2ts/m2ts.js":49,"../utils/stream.js":61,"./coalesce-stream.js":42,"./flv-tag.js":44,"./tag-list.js":46}],48:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -13271,6 +13430,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream":59}],47:[function(require,module,exports){
 =======
 },{"../utils/stream":58}],46:[function(require,module,exports){
@@ -13281,6 +13441,9 @@ module.exports = {
 =======
 },{"../utils/stream":61}],49:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../utils/stream":61}],49:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -13823,6 +13986,7 @@ module.exports = m2ts;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream.js":59,"./caption-stream":46,"./metadata-stream":48,"./stream-types":50,"./stream-types.js":50,"./timestamp-rollover-stream":51}],48:[function(require,module,exports){
 =======
 },{"../utils/stream.js":58,"./caption-stream":45,"./metadata-stream":47,"./stream-types":49,"./stream-types.js":49,"./timestamp-rollover-stream":50}],47:[function(require,module,exports){
@@ -13833,6 +13997,9 @@ module.exports = m2ts;
 =======
 },{"../utils/stream.js":61,"./caption-stream":48,"./metadata-stream":50,"./stream-types":52,"./stream-types.js":52,"./timestamp-rollover-stream":53}],50:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../utils/stream.js":61,"./caption-stream":48,"./metadata-stream":50,"./stream-types":52,"./stream-types.js":52,"./timestamp-rollover-stream":53}],50:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * Accepts program elementary stream (PES) data events and parses out
  * ID3 metadata from them, if present.
@@ -14085,6 +14252,7 @@ module.exports = MetadataStream;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream":59,"./stream-types":50}],49:[function(require,module,exports){
 =======
 },{"../utils/stream":58,"./stream-types":49}],48:[function(require,module,exports){
@@ -14095,6 +14263,9 @@ module.exports = MetadataStream;
 =======
 },{"../utils/stream":61,"./stream-types":52}],51:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../utils/stream":61,"./stream-types":52}],51:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -14386,6 +14557,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./stream-types.js":50}],50:[function(require,module,exports){
 =======
 },{"./stream-types.js":49}],49:[function(require,module,exports){
@@ -14396,6 +14568,9 @@ module.exports = {
 =======
 },{"./stream-types.js":52}],52:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./stream-types.js":52}],52:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 module.exports = {
@@ -14404,6 +14579,7 @@ module.exports = {
   METADATA_STREAM_TYPE: 0x15
 };
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -14417,6 +14593,9 @@ module.exports = {
 =======
 },{}],53:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],53:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -14505,6 +14684,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../utils/stream":59}],52:[function(require,module,exports){
 =======
 },{"../utils/stream":58}],51:[function(require,module,exports){
@@ -14515,6 +14695,9 @@ module.exports = {
 =======
 },{"../utils/stream":61}],54:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../utils/stream":61}],54:[function(require,module,exports){
+>>>>>>> ignore: update dist
 module.exports = {
   generator: require('./mp4-generator'),
   Transmuxer: require('./transmuxer').Transmuxer,
@@ -14522,6 +14705,7 @@ module.exports = {
   VideoSegmentStream: require('./transmuxer').VideoSegmentStream
 };
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -14535,6 +14719,9 @@ module.exports = {
 =======
 },{"./mp4-generator":55,"./transmuxer":57}],55:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./mp4-generator":55,"./transmuxer":57}],55:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -15309,6 +15496,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],54:[function(require,module,exports){
 =======
 },{}],53:[function(require,module,exports){
@@ -15319,6 +15507,9 @@ module.exports = {
 =======
 },{}],56:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],56:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -15511,6 +15702,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],55:[function(require,module,exports){
 =======
 },{}],54:[function(require,module,exports){
@@ -15521,6 +15713,9 @@ module.exports = {
 =======
 },{}],57:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],57:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -16783,6 +16978,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../aac":35,"../codecs/adts.js":37,"../codecs/h264":38,"../data/silence":39,"../m2ts/m2ts.js":47,"../utils/clock":57,"../utils/stream.js":59,"./mp4-generator.js":53}],56:[function(require,module,exports){
 =======
 },{"../aac":34,"../codecs/adts.js":36,"../codecs/h264":37,"../data/silence":38,"../m2ts/m2ts.js":46,"../utils/clock":56,"../utils/stream.js":58,"./mp4-generator.js":52}],55:[function(require,module,exports){
@@ -16793,6 +16989,9 @@ module.exports = {
 =======
 },{"../aac":37,"../codecs/adts.js":39,"../codecs/h264":40,"../data/silence":41,"../m2ts/m2ts.js":49,"../utils/clock":59,"../utils/stream.js":61,"./mp4-generator.js":55}],58:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../aac":37,"../codecs/adts.js":39,"../codecs/h264":40,"../data/silence":41,"../m2ts/m2ts.js":49,"../utils/clock":59,"../utils/stream.js":61,"./mp4-generator.js":55}],58:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -17309,6 +17508,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"../aac/probe.js":36,"../m2ts/probe.js":49,"../m2ts/stream-types.js":50,"../m2ts/timestamp-rollover-stream.js":51}],57:[function(require,module,exports){
 =======
 },{"../aac/probe.js":35,"../m2ts/probe.js":48,"../m2ts/stream-types.js":49,"../m2ts/timestamp-rollover-stream.js":50}],56:[function(require,module,exports){
@@ -17319,6 +17519,9 @@ module.exports = {
 =======
 },{"../aac/probe.js":38,"../m2ts/probe.js":51,"../m2ts/stream-types.js":52,"../m2ts/timestamp-rollover-stream.js":53}],59:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"../aac/probe.js":38,"../m2ts/probe.js":51,"../m2ts/stream-types.js":52,"../m2ts/timestamp-rollover-stream.js":53}],59:[function(require,module,exports){
+>>>>>>> ignore: update dist
 var
   ONE_SECOND_IN_TS = 90000, // 90kHz clock
   secondsToVideoTs,
@@ -17364,6 +17567,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],58:[function(require,module,exports){
 =======
 },{}],57:[function(require,module,exports){
@@ -17374,6 +17578,9 @@ module.exports = {
 =======
 },{}],60:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],60:[function(require,module,exports){
+>>>>>>> ignore: update dist
 'use strict';
 
 var ExpGolomb;
@@ -17525,6 +17732,7 @@ module.exports = ExpGolomb;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{}],59:[function(require,module,exports){
 =======
 },{}],58:[function(require,module,exports){
@@ -17535,6 +17743,9 @@ module.exports = ExpGolomb;
 =======
 },{}],61:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{}],61:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * mux.js
  *
@@ -17653,6 +17864,7 @@ Stream.prototype.flush = function(flushSource) {
 
 module.exports = Stream;
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -17779,6 +17991,8 @@ module.exports = function unpad(padded) {
   return padded.subarray(0, padded.byteLength - padded[padded.byteLength - 1]);
 };
 
+=======
+>>>>>>> ignore: update dist
 },{}],62:[function(require,module,exports){
 >>>>>>> Use dynamic changed low-water-line and GOAL_BUFFER_LENGTH
 =======
@@ -18051,6 +18265,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29}],62:[function(require,module,exports){
 =======
 },{"global/window":28}],64:[function(require,module,exports){
@@ -18061,6 +18276,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31}],64:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"global/window":31}],64:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * Remove the text track from the player if one with matching kind and
  * label properties already exists on the player
@@ -18516,6 +18734,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./cleanup-text-tracks":62,"./codec-utils":63,"./flash-constants":65,"./flash-source-buffer":67,"global/document":28}],67:[function(require,module,exports){
 =======
 },{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":27}],69:[function(require,module,exports){
@@ -18526,6 +18745,9 @@ module.exports = exports['default'];
 =======
 },{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":30}],69:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./cleanup-text-tracks":64,"./codec-utils":65,"./flash-constants":67,"./flash-source-buffer":69,"global/document":30}],69:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file flash-source-buffer.js
@@ -19130,6 +19352,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./create-text-tracks-if-necessary":64,"./flash-constants":65,"./flash-transmuxer-worker":68,"./remove-cues-from-track":70,"global/window":29,"mux.js/lib/flv":43,"webworkify":75}],68:[function(require,module,exports){
 =======
 },{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":28,"mux.js/lib/flv":42,"webworkify":76}],70:[function(require,module,exports){
@@ -19140,6 +19363,9 @@ module.exports = exports['default'];
 =======
 },{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":31,"mux.js/lib/flv":45,"webworkify":76}],70:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./add-text-track-data":63,"./create-text-tracks-if-necessary":66,"./flash-constants":67,"./flash-transmuxer-worker":70,"./remove-cues-from-track":72,"global/window":31,"mux.js/lib/flv":45,"webworkify":76}],70:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * @file flash-transmuxer-worker.js
  */
@@ -19287,6 +19513,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29,"mux.js/lib/flv":43}],69:[function(require,module,exports){
 =======
 },{"global/window":28,"mux.js/lib/flv":42}],71:[function(require,module,exports){
@@ -19297,6 +19524,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31,"mux.js/lib/flv":45}],71:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"global/window":31,"mux.js/lib/flv":45}],71:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file html-media-source.js
@@ -19639,6 +19869,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./add-text-track-data":61,"./cleanup-text-tracks":62,"./codec-utils":63,"./virtual-source-buffer":73,"global/document":28,"global/window":29}],70:[function(require,module,exports){
 =======
 },{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":27,"global/window":28}],72:[function(require,module,exports){
@@ -19649,6 +19880,9 @@ module.exports = exports['default'];
 =======
 },{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":30,"global/window":31}],72:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./add-text-track-data":63,"./cleanup-text-tracks":64,"./codec-utils":65,"./virtual-source-buffer":75,"global/document":30,"global/window":31}],72:[function(require,module,exports){
+>>>>>>> ignore: update dist
 /**
  * @file remove-cues-from-track.js
  */
@@ -19907,6 +20141,7 @@ module.exports = exports['default'];
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"global/window":29,"mux.js/lib/mp4":52}],72:[function(require,module,exports){
 =======
 },{"global/window":28,"mux.js/lib/mp4":51}],74:[function(require,module,exports){
@@ -19917,6 +20152,9 @@ module.exports = exports['default'];
 =======
 },{"global/window":31,"mux.js/lib/mp4":54}],74:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"global/window":31,"mux.js/lib/mp4":54}],74:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file videojs-contrib-media-sources.js
@@ -20078,6 +20316,7 @@ _videoJs2['default'].URL = URL;
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./flash-media-source":66,"./html-media-source":69,"global/window":29}],73:[function(require,module,exports){
 =======
 },{"./flash-media-source":68,"./html-media-source":71,"global/window":28}],75:[function(require,module,exports){
@@ -20088,6 +20327,9 @@ _videoJs2['default'].URL = URL;
 =======
 },{"./flash-media-source":68,"./html-media-source":71,"global/window":31}],75:[function(require,module,exports){
 >>>>>>> ignore: add dist
+=======
+},{"./flash-media-source":68,"./html-media-source":71,"global/window":31}],75:[function(require,module,exports){
+>>>>>>> ignore: update dist
 (function (global){
 /**
  * @file virtual-source-buffer.js
@@ -20990,7 +21232,7 @@ Object.defineProperty(Hls, 'MAX_BUFFER_LOW_WATER_LINE', {
       _videoJs2['default'].log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' + 'must be a number and greater than or equal to 0 and less than' + 'Hls.GOAL_BUFFER_LENGTH');
       return;
     }
-    _config2['default'].BUFFER_LOW_WATER_LINE = v;
+    _config2['default'].MAX_BUFFER_LOW_WATER_LINE = v;
   }
 });
 
@@ -21786,6 +22028,7 @@ module.exports = {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 },{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":19,"aes-decrypter":23,"global/document":28,"global/window":29,"m3u8-parser":30,"videojs-contrib-media-sources":72}]},{},[76]);
 =======
 },{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":27,"global/window":28,"m3u8-parser":29,"videojs-contrib-media-sources":74}]},{},[77]);
@@ -21798,3 +22041,7 @@ module.exports = {
 },{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":30,"global/window":31,"m3u8-parser":32,"videojs-contrib-media-sources":74}]},{},[77])(77)
 });
 >>>>>>> ignore: add dist
+=======
+},{"./bin-utils":2,"./config":3,"./master-playlist-controller":5,"./playback-watcher":7,"./playlist":10,"./playlist-loader":8,"./playlist-selectors.js":9,"./reload-source-on-error":12,"./rendition-mixin":13,"./xhr":20,"aes-decrypter":24,"global/document":30,"global/window":31,"m3u8-parser":32,"videojs-contrib-media-sources":74}]},{},[77])(77)
+});
+>>>>>>> ignore: update dist
