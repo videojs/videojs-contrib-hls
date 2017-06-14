@@ -50,10 +50,10 @@ export const LoaderCommonHooks = {
  * @param {Object} settings
  *        custom settings for the loader
  * @return {Object}
- *         settings object contiaing custom settings merged with defaults
+ *         Settings object containing custom settings merged with defaults
  */
 export const LoaderCommonSettings = function(settings) {
-  let commonSettings = {
+  return videojs.mergeOptions({
     hls: this.fakeHls,
     currentTime: () => this.currentTime,
     seekable: () => this.seekable,
@@ -63,9 +63,7 @@ export const LoaderCommonSettings = function(settings) {
     mediaSource: this.mediaSource,
     syncController: this.syncController,
     decrypter: this.decrypter
-  };
-
-  return videojs.mergeOptions(commonSettings, settings);
+  }, settings);
 };
 
 /**
@@ -73,7 +71,7 @@ export const LoaderCommonSettings = function(settings) {
  * Currently only two types, SegmentLoader and VTTSegmentLoader.
  *
  * @param {function(new:SegmentLoader|VTTLoader, Object)} LoaderConstructor
- *        Constructor for segment loader. Takes one parameter, an settings object
+ *        Constructor for segment loader. Takes one parameter, a settings object
  * @param {Object} loaderSettings
  *        Custom settings to merge with defaults for the provided loader constructor
  * @param {function(SegmentLoader|VTTLoader)} loaderBeforeEach

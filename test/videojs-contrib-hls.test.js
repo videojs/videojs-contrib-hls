@@ -1768,7 +1768,7 @@ QUnit.test('has no effect if native HLS is available', function(assert) {
   player.dispose();
 });
 
-QUnit.test('loads if native HLS is available and override is set globally', function(assert) {
+QUnit.test('loads if native HLS is available and override is set locally', function(assert) {
   let player;
 
   Hls.supportsNativeHls = true;
@@ -1794,7 +1794,7 @@ QUnit.test('loads if native HLS is available and override is set globally', func
   player.dispose();
 });
 
-QUnit.test('loads if native HLS is available and override is set locally', function(assert) {
+QUnit.test('loads if native HLS is available and override is set globally', function(assert) {
   videojs.options.hls.overrideNative = true;
   let player;
 

@@ -55,7 +55,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     super();
     // check pre-conditions
     if (!settings) {
-      throw new TypeError('Initialization options are required');
+      throw new TypeError('Initialization settings are required');
     }
     if (typeof settings.currentTime !== 'function') {
       throw new TypeError('No currentTime getter specified');
