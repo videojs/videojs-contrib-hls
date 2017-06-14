@@ -18,6 +18,7 @@ import {
 import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
+import { movingAverageBandwidthSelector } from '../src/playlist-selectors.js';
 
 const generateMedia = function(isMaat, isMuxed, hasVideoCodec, hasAudioCodec, isFMP4) {
   const codec = (hasVideoCodec ? 'avc1.deadbeef' : '') +
@@ -70,6 +71,9 @@ QUnit.module('MasterPlaylistController', {
     this.requests = this.env.requests;
     this.mse = useFakeMediaSource();
 
+    this.originalSelectPlaylist = Hls.STANDARD_PLAYLIST_SELECTOR;
+    Hls.STANDARD_PLAYLIST_SELECTOR = movingAverageBandwidthSelector();
+
     // force the HLS tech to run
     this.origSupportsNativeHls = videojs.Hls.supportsNativeHls;
     videojs.Hls.supportsNativeHls = false;
@@ -97,6 +101,7 @@ QUnit.module('MasterPlaylistController', {
   afterEach() {
     this.env.restore();
     this.mse.restore();
+    Hls.STANDARD_PLAYLIST_SELECTOR = this.originalSelectPlaylist;
     videojs.Hls.supportsNativeHls = this.origSupportsNativeHls;
     videojs.browser.IS_FIREFOX = this.oldFirefox;
     this.player.dispose();
@@ -818,6 +823,9 @@ QUnit.test('playlist selection uses systemBandwidth', function(assert) {
   this.standardXHRResponse(this.requests[1]);
   assert.ok(/media3\.m3u8/i.test(this.requests[1].url), 'Selected the highest rendition');
 
+  // at start, bandwidth is 4194304 and throughput is 0
+  // this gives a systemBandwidth of 4194304
+
   // 1ms has passed to upload 1kb
   // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
@@ -829,10 +837,13 @@ QUnit.test('playlist selection uses systemBandwidth', function(assert) {
   this.clock.tick(20);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // systemBandwidth is 1 / (1 / 8192000 + 1 / 409600) = ~390095
+  // EWMA selector will calculate the moving average, decay of 0.5
+  // 0.5 * 390095 + (1 - 0.5) * 4194304 = ~2292199
 
   // media1
   this.standardXHRResponse(this.requests[3]);
-  assert.ok(/media\.m3u8/i.test(this.requests[3].url), 'Selected the rendition < 390095');
+  assert.ok(/media2\.m3u8/i.test(this.requests[3].url),
+    'Selected the rendition < 2292199');
 
   assert.ok(this.masterPlaylistController.mediaSource.duration !== 0,
            'updates the duration');
@@ -845,10 +856,9 @@ QUnit.test('playlist selection uses systemBandwidth', function(assert) {
                '1024 bytes downloaded');
 });
 
-QUnit.test('removes request timeout when segment timesout on lowest rendition',
+QUnit.test('removes request timeout when switching to lowest enabled rendition',
 function(assert) {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
-
   // master
   this.standardXHRResponse(this.requests[0]);
   // media
@@ -863,12 +873,18 @@ function(assert) {
             .masterPlaylistLoader_
             .isLowestEnabledRendition_(), 'Not lowest rendition');
 
+  // disable other playlists to force switching to lowest rendition
+  this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1].disabled = true;
+  this.masterPlaylistController.masterPlaylistLoader_.master.playlists[2].disabled = true;
+  this.masterPlaylistController.masterPlaylistLoader_.master.playlists[3].disabled = true;
+
   // Cause segment to timeout to force player into lowest rendition
   this.requests[2].timedout = true;
 
   // Downloading segment should cause media change and timeout removal
   // segment 0
   this.standardXHRResponse(this.requests[2]);
+
   // Download new segment after media change
   this.standardXHRResponse(this.requests[3]);
 

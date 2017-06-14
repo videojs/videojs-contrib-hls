@@ -448,6 +448,11 @@ export const LoaderCommonFactory = (LoaderConstructor,
     QUnit.test('request timeout increments mediaRequestsTimedout stat', function(assert) {
       loader.playlist(playlistWithDuration(20));
 
+      loader.on('bandwidthupdate', function() {
+        // pause the loader so we can verify stats
+        loader.pause();
+      });
+
       loader.load();
       this.clock.tick(1);
       this.requests[0].timedout = true;

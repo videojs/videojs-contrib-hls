@@ -19,6 +19,7 @@ import {HlsSourceHandler, HlsHandler, Hls} from '../src/videojs-contrib-hls';
 import window from 'global/window';
 // we need this so the plugin registers itself
 import 'videojs-contrib-quality-levels';
+import { movingAverageBandwidthSelector } from '../src/playlist-selectors.js';
 /* eslint-enable no-unused-vars */
 
 const Flash = videojs.getComponent('Flash');
@@ -41,6 +42,9 @@ QUnit.module('HLS', {
     this.mse = useFakeMediaSource();
     this.clock = this.env.clock;
     this.old = {};
+
+    this.old.originalSelectPlaylist = Hls.STANDARD_PLAYLIST_SELECTOR;
+    Hls.STANDARD_PLAYLIST_SELECTOR = movingAverageBandwidthSelector();
 
     // mock out Flash features for phantomjs
     this.old.Flash = videojs.mergeOptions({}, Flash);
@@ -117,6 +121,7 @@ QUnit.module('HLS', {
     Flash.isSupported = this.old.FlashSupported;
     merge(Flash, this.old.Flash);
 
+    Hls.STANDARD_PLAYLIST_SELECTOR = this.old.originalSelectPlaylist;
     videojs.Hls.supportsNativeHls = this.old.NativeHlsSupport;
     videojs.Hls.Decrypter = this.old.Decrypt;
     videojs.browser.IS_FIREFOX = this.old.IS_FIREFOX;
@@ -665,7 +670,7 @@ QUnit.test('buffer checks are noops when only the master is ready', function(ass
   openMediaSource(this.player, this.clock);
 
   // respond with the master playlist but don't send the media playlist yet
-  // force media1 to be requested
+  // force media2 to be requested
   this.player.tech_.hls.bandwidth = 1;
   // master
   this.standardXHRResponse(this.requests.shift());
@@ -673,14 +678,15 @@ QUnit.test('buffer checks are noops when only the master is ready', function(ass
 
   assert.strictEqual(1, this.requests.length, 'one request was made');
   assert.strictEqual(this.requests[0].url,
-                     absoluteUrl('manifest/media1.m3u8'),
+                     absoluteUrl('manifest/media2.m3u8'),
                      'media playlist requested');
 
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth set above');
 });
 
-QUnit.test('selects a playlist below the current bandwidth', function(assert) {
+QUnit.test('selects a playlist below the current moving average bandwidth',
+function(assert) {
   let playlist;
 
   this.player.src({
@@ -692,18 +698,16 @@ QUnit.test('selects a playlist below the current bandwidth', function(assert) {
 
   // the default playlist has a really high bitrate
   this.player.tech_.hls.playlists.master.playlists[0].attributes.BANDWIDTH = 9e10;
-  // playlist 1 has a very low bitrate
-  this.player.tech_.hls.playlists.master.playlists[1].attributes.BANDWIDTH = 1;
   // but the detected client bandwidth is really low
-  this.player.tech_.hls.bandwidth = 10;
+  this.player.tech_.hls.bandwidth = 1;
 
   playlist = this.player.tech_.hls.selectPlaylist();
   assert.strictEqual(playlist,
-                     this.player.tech_.hls.playlists.master.playlists[1],
+                     this.player.tech_.hls.playlists.master.playlists[2],
                      'the low bitrate stream is selected');
 
   // verify stats
-  assert.equal(this.player.tech_.hls.stats.bandwidth, 10, 'bandwidth set above');
+  assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth set above');
 });
 
 QUnit.test('selects a primary rendtion when there are multiple rendtions share same attributes', function(assert) {
@@ -782,20 +786,28 @@ QUnit.test('raises the minimum bitrate for a stream proportionially', function(a
 
   this.standardXHRResponse(this.requests[0]);
 
+  const master = this.player.tech_.hls.playlists.master;
+
   // the default playlist's bandwidth + 10% is assert.equal to the current bandwidth
-  this.player.tech_.hls.playlists.master.playlists[0].attributes.BANDWIDTH = 10;
+  master.playlists[0].attributes.BANDWIDTH = 10;
   this.player.tech_.hls.bandwidth = 11;
 
-  // 9.9 * 1.1 < 11
-  this.player.tech_.hls.playlists.master.playlists[1].attributes.BANDWIDTH = 9.9;
+  // starting bandwidth is 4194304
+  // new bandwidth is 11
+  // EWMA is: DECAY * 11 + (1 - DECAY) * 4194304
+  const EWMA = Hls.EWMA_DECAY * 11 + (1 - Hls.EWMA_DECAY) * 4194304;
+  const safeBandwidth = Math.floor(EWMA / Hls.BANDWIDTH_VARIANCE) - 1;
+
+  master.playlists[2].attributes.BANDWIDTH = safeBandwidth;
   playlist = this.player.tech_.hls.selectPlaylist();
 
   assert.strictEqual(playlist,
-                     this.player.tech_.hls.playlists.master.playlists[1],
+                     master.playlists[2],
                      'a lower bitrate stream is selected');
 
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 11, 'bandwidth set above');
+  assert.equal(this.env.log.warn.calls, 3, '3 warnings logged for Hls Config getters');
 });
 
 QUnit.test('uses the lowest bitrate if no other is suitable', function(assert) {
@@ -811,6 +823,10 @@ QUnit.test('uses the lowest bitrate if no other is suitable', function(assert) {
 
   // the lowest bitrate playlist is much greater than 1b/s
   this.player.tech_.hls.bandwidth = 1;
+  this.player.tech_.hls.playlists.master.playlists[0].attributes.BANDWIDTH = 9e10;
+  this.player.tech_.hls.playlists.master.playlists[1].attributes.BANDWIDTH = 9e10 - 1;
+  this.player.tech_.hls.playlists.master.playlists[2].attributes.BANDWIDTH = 9e10;
+  this.player.tech_.hls.playlists.master.playlists[3].attributes.BANDWIDTH = 9e10;
   playlist = this.player.tech_.hls.selectPlaylist();
 
   // playlist 1 has the lowest advertised bitrate
@@ -1628,7 +1644,12 @@ QUnit.test('resets the switching algorithm if a request times out', function(ass
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
-  this.player.tech_.hls.bandwidth = 1e20;
+
+  // 289000 chosen because after a request timeout, instanteous bandwidth is set to 1,
+  // but the average will be 1 * DECAY + (1 - DECAY) * 289000. With decay of 0.8,
+  // this means average bandwidth will be 57800, so we should select the lowest bitrate
+  // playlist, which is at 44000
+  this.player.tech_.hls.bandwidth = 289000;
 
   // master
   this.standardXHRResponse(this.requests.shift());
@@ -1638,7 +1659,7 @@ QUnit.test('resets the switching algorithm if a request times out', function(ass
   this.requests[0].timedout = true;
   // segment
   this.requests.shift().abort();
-
+  this.clock.tick(1);
   this.standardXHRResponse(this.requests.shift());
 
   assert.strictEqual(this.player.tech_.hls.playlists.media(),
@@ -2695,6 +2716,9 @@ QUnit.module('HLS Integration', {
     this.tech = new (videojs.getTech('Html5'))({});
     this.clock = this.env.clock;
 
+    this.originalSelectPlaylist = Hls.STANDARD_PLAYLIST_SELECTOR;
+    Hls.STANDARD_PLAYLIST_SELECTOR = movingAverageBandwidthSelector();
+
     this.standardXHRResponse = (request, data) => {
       standardXHRResponse(request, data);
 
@@ -2709,6 +2733,7 @@ QUnit.module('HLS Integration', {
   afterEach() {
     this.env.restore();
     this.mse.restore();
+    Hls.STANDARD_PLAYLIST_SELECTOR = this.originalSelectPlaylist;
     videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
   }
 });
