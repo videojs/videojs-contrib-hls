@@ -670,7 +670,7 @@ QUnit.test('buffer checks are noops when only the master is ready', function(ass
   openMediaSource(this.player, this.clock);
 
   // respond with the master playlist but don't send the media playlist yet
-  // force media1 to be requested
+  // force media2 to be requested
   this.player.tech_.hls.bandwidth = 1;
   // master
   this.standardXHRResponse(this.requests.shift());
@@ -685,7 +685,8 @@ QUnit.test('buffer checks are noops when only the master is ready', function(ass
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth set above');
 });
 
-QUnit.test('selects a playlist below the current bandwidth', function(assert) {
+QUnit.test('selects a playlist below the current moving average bandwidth',
+function(assert) {
   let playlist;
 
   this.player.src({
@@ -1643,6 +1644,11 @@ QUnit.test('resets the switching algorithm if a request times out', function(ass
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+
+  // 289000 chosen because after a request timeout, instanteous bandwidth is set to 1,
+  // but the average will be 1 * DECAY + (1 - DECAY) * 289000. With decay of 0.8,
+  // this means average bandwidth will be 57800, so we should select the lowest bitrate
+  // playlist, which is at 44000
   this.player.tech_.hls.bandwidth = 289000;
 
   // master
