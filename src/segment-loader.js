@@ -160,10 +160,15 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.abort_();
 
+    // We aborted the requests we were waiting on, so reset the loader's state to READY
+    // since we are no longer "waiting" on any requests. XHR callback is not always run
+    // when the request is aborted. This will prevent the loader from being stuck in the
+    // WAITING state indefinitely.
+    this.state = 'READY';
+
     // don't wait for buffer check timeouts to begin fetching the
     // next segment
     if (!this.paused()) {
-      this.state = 'READY';
       this.monitorBuffer_();
     }
   }
