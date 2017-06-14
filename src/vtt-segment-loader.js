@@ -23,7 +23,7 @@ const uintToString = function(uintArray) {
  * @extends videojs.EventTarget
  */
 export default class VTTSegmentLoader extends SegmentLoader {
-  constructor(settings, options) {
+  constructor(settings, options = {}) {
     super(settings, options);
 
     // SegmentLoader requires a MediaSource be specified or it will throw an error;

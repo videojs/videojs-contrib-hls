@@ -57,7 +57,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
     nestedHooks.beforeEach(function(assert) {
       loader = new VTTSegmentLoader(LoaderCommonSettings.call(this, {
         loaderType: 'vtt'
-      }), {});
+      }));
 
       this.track = new MockTextTrack();
     });

@@ -43,17 +43,17 @@ export const LoaderCommonHooks = {
 };
 
 /**
- * Returns a settings object containing the custom options provided merged with defaults
+ * Returns a settings object containing the custom settings provided merged with defaults
  * for use in constructing a segment loader. This function should be called with the QUnit
  * test environment the loader will be constructed in for proper this reference.
  *
- * @param {Object} options
- *        custom options for the loader
+ * @param {Object} settings
+ *        custom settings for the loader
  * @return {Object}
- *         Options object contiaing custom options merged with defaults
+ *         settings object contiaing custom settings merged with defaults
  */
-export const LoaderCommonSettings = function(options) {
-  let settings = {
+export const LoaderCommonSettings = function(settings) {
+  let commonSettings = {
     hls: this.fakeHls,
     currentTime: () => this.currentTime,
     seekable: () => this.seekable,
@@ -65,7 +65,7 @@ export const LoaderCommonSettings = function(options) {
     decrypter: this.decrypter
   };
 
-  return videojs.mergeOptions(settings, options);
+  return videojs.mergeOptions(commonSettings, settings);
 };
 
 /**
@@ -73,15 +73,15 @@ export const LoaderCommonSettings = function(options) {
  * Currently only two types, SegmentLoader and VTTSegmentLoader.
  *
  * @param {function(new:SegmentLoader|VTTLoader, Object)} LoaderConstructor
- *        Constructor for segment loader. Takes one parameter, an options object
- * @param {Object} loaderOptions
- *        Custom options to merge with defaults for the provided loader constructor
+ *        Constructor for segment loader. Takes one parameter, an settings object
+ * @param {Object} loaderSettings
+ *        Custom settings to merge with defaults for the provided loader constructor
  * @param {function(SegmentLoader|VTTLoader)} loaderBeforeEach
  *        Function to be run in the beforeEach after loader creation. Takes one parameter,
  *        the loader for custom modifications to the loader object.
  */
 export const LoaderCommonFactory = (LoaderConstructor,
-                                    loaderOptions,
+                                    loaderSettings,
                                     loaderBeforeEach) => {
   let loader;
 
@@ -89,7 +89,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
     hooks.beforeEach(function(assert) {
       // Assume this module is nested and the parent module uses CommonHooks.beforeEach
 
-      loader = new LoaderConstructor(LoaderCommonSettings.call(this, loaderOptions), {});
+      loader = new LoaderConstructor(LoaderCommonSettings.call(this, loaderSettings));
 
       loaderBeforeEach(loader);
 

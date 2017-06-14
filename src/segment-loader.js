@@ -51,7 +51,7 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
  * @extends videojs.EventTarget
  */
 export default class SegmentLoader extends videojs.EventTarget {
-  constructor(settings, options) {
+  constructor(settings, options = {}) {
     super();
     // check pre-conditions
     if (!settings) {

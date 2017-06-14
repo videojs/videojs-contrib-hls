@@ -329,7 +329,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.decrypter_ = worker(Decrypter);
 
-    let segmentLoaderOptions = {
+    const segmentLoaderSettings = {
       hls: this.hls_,
       mediaSource: this.mediaSource,
       currentTime: this.tech_.currentTime.bind(this.tech_),
@@ -351,19 +351,19 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
     this.mainSegmentLoader_ =
-      new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      new SegmentLoader(videojs.mergeOptions(segmentLoaderSettings, {
         segmentMetadataTrack: this.segmentMetadataTrack_,
         loaderType: 'main'
       }), options);
 
     // alternate audio track
     this.audioSegmentLoader_ =
-      new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      new SegmentLoader(videojs.mergeOptions(segmentLoaderSettings, {
         loaderType: 'audio'
       }), options);
 
     this.subtitleSegmentLoader_ =
-      new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
+      new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderSettings, {
         loaderType: 'vtt'
       }), options);
 

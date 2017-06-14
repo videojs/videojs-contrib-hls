@@ -40,7 +40,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       loader = new SegmentLoader(LoaderCommonSettings.call(this, {
         loaderType: 'main',
         segmentMetadataTrack: this.segmentMetadataTrack
-      }), {});
+      }));
 
       // shim updateend trigger to be a noop if the loader has no media source
       this.updateend = function() {
