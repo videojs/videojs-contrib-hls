@@ -1768,7 +1768,33 @@ QUnit.test('has no effect if native HLS is available', function(assert) {
   player.dispose();
 });
 
-QUnit.test('loads if native HLS is available and override is set', function(assert) {
+QUnit.test('loads if native HLS is available and override is set locally', function(assert) {
+  let player;
+
+  Hls.supportsNativeHls = true;
+  player = createPlayer({html5: {hls: {overrideNative: true}}});
+  player.tech_.featuresNativeVideoTracks = true;
+  assert.throws(function() {
+    player.src({
+      src: 'http://example.com/manifest/master.m3u8',
+      type: 'application/x-mpegURL'
+    });
+  }, 'errors if native tracks are enabled');
+  player.dispose();
+
+  player = createPlayer({html5: {hls: {overrideNative: true}}});
+  player.tech_.featuresNativeVideoTracks = false;
+  player.tech_.featuresNativeAudioTracks = false;
+  player.src({
+    src: 'http://example.com/manifest/master.m3u8',
+    type: 'application/x-mpegURL'
+  });
+
+  assert.ok(player.tech_.hls, 'did load hls tech');
+  player.dispose();
+});
+
+QUnit.test('loads if native HLS is available and override is set globally', function(assert) {
   videojs.options.hls.overrideNative = true;
   let player;
 

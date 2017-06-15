@@ -51,20 +51,18 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
  * @extends videojs.EventTarget
  */
 export default class SegmentLoader extends videojs.EventTarget {
-  constructor(options) {
+  constructor(settings, options = {}) {
     super();
     // check pre-conditions
-    if (!options) {
-      throw new TypeError('Initialization options are required');
+    if (!settings) {
+      throw new TypeError('Initialization settings are required');
     }
-    if (typeof options.currentTime !== 'function') {
+    if (typeof settings.currentTime !== 'function') {
       throw new TypeError('No currentTime getter specified');
     }
-    if (!options.mediaSource) {
+    if (!settings.mediaSource) {
       throw new TypeError('No MediaSource specified');
     }
-    let settings = videojs.mergeOptions(videojs.options.hls, options);
-
     // public properties
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
@@ -113,7 +111,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
-    if (settings.debug) {
+    if (options.debug) {
       this.logger_ = videojs.log.bind(videojs, 'segment-loader', this.loaderType_, '->');
     }
   }
