@@ -15,7 +15,7 @@ export default {
   entry: 'src/videojs-contrib-hls.js',
   dest: 'dist/videojs-contrib-hls.js',
   format: 'umd',
-  external: ['video.js', 'videojs-contrib-media-sources'],
+  external: ['video.js'],
   globals: {
     'video.js': 'videojs'
   },

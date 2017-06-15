@@ -8,7 +8,7 @@ import Ranges from './ranges';
 import videojs from 'video.js';
 import { updateAdCues } from './ad-cue-tags';
 import SyncController from './sync-controller';
-import codecUtils from 'videojs-contrib-media-sources/es5/codec-utils';
+import { codecUtils } from 'videojs-contrib-media-sources';
 import Decrypter from 'worker!./worker.js';
 
 const { translateLegacyCodecs } = codecUtils;

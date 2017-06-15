@@ -6,8 +6,7 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
-import removeCuesFromTrack from
-  'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
+import { removeCuesFromTrack } from 'videojs-contrib-media-sources';
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 
