@@ -320,6 +320,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.seekable_ = videojs.createTimeRanges();
     this.hasPlayed_ = () => false;
+    this.isAes_ = () => false;
+    this.isFmp4 = () => false;
 
     this.syncController_ = new SyncController();
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
@@ -419,9 +421,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       this.trigger('audioupdate');
       this.trigger('selectedinitialmedia');
-
-      // fired when a user selects an alternate audio stream in HLS
-      this.tech_.trigger({type: 'usage', name: 'hls-audio-change'});
     });
 
     this.masterPlaylistLoader_.on('loadedplaylist', () => {
@@ -435,14 +434,16 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
 
       for(var i = 0; i < updatedPlaylist.segments; i++) {
-        if(updatedPlaylist.segments[i].key) {
+        if(!this.isAes_() && updatedPlaylist.segments[i].key) {
+          this.isAes_ = () => true;
           this.tech_.trigger({type: 'usage', name: 'hls-aes'});
           break;
         }
       }
 
       for(var i = 0; i < updatedPlaylist.segments; i++) {
-        if(updatedPlaylist.segments[i].map) {
+        if(!this.isFmp4_() && updatedPlaylist.segments[i].map) {
+          this.isFmp4_ = () => true;
           this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
           break;
         }
@@ -585,7 +586,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.mainSegmentLoader_.on('hlstimestampoffset', () => {
-      this.trigger({type: 'usage', name: 'hls-timestamp-offset'});
+      this.tech_.trigger({type: 'usage', name: 'hls-timestamp-offset'});
     });
     this.audioSegmentLoader_.on('syncinfoupdate', () => {
       this.onSyncInfoUpdate_();
@@ -658,6 +659,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   fillAudioTracks_() {
     let master = this.master();
     let mediaGroups = master.mediaGroups || {};
+    let demuxed = true;
 
     // force a default if we have none or we are not
     // in html5 mode (the only mode to support more than one
@@ -685,9 +687,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
           label
         });
 
+        if(!properties.uri) {
+          demuxed = false;
+        }
         track.properties_ = properties;
         this.audioGroups_[mediaGroup].push(track);
       }
+    }
+
+    if(demuxed) {
+      // fired when video and audio is demuxed by default
+      this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
     }
 
     // enable the default active track
@@ -1448,8 +1458,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_.mimeType(mimeTypes[0]);
     if (mimeTypes[1]) {
       this.audioSegmentLoader_.mimeType(mimeTypes[1]);
-      // fired when video and audio is demuxed
-      this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
+      // fired when alternate audio is present
+      this.tech_.trigger({type: 'usage', name: 'hls-alternate-audio'});
     }
 
     // exclude any incompatible variant streams from future playlist

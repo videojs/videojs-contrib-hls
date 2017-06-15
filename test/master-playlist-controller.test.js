@@ -437,19 +437,11 @@ function(assert) {
 });
 
 QUnit.test('updates the enabled track when switching audio groups', function(assert) {
-  let hlsaudiochange = 0;
   openMediaSource(this.player, this.clock);
-
-  this.player.tech_.on('usage', (event) => {
-    if (event.name === 'hls-audio-change') {
-      hlsaudiochange++;
-    }
-  });
 
   // master
   this.requests.shift().respond(200, null,
                                 manifests.multipleAudioGroupsCombinedMain);
-  assert.equal(hlsaudiochange, 0, 'there is no audio change');
   // media
   this.standardXHRResponse(this.requests.shift());
   // init segment
@@ -461,7 +453,6 @@ QUnit.test('updates the enabled track when switching audio groups', function(ass
   // ignore audio segment requests
   this.requests.length = 0;
 
-  assert.equal(hlsaudiochange, 1, 'there is one audio change');
   let mpc = this.masterPlaylistController;
   let combinedPlaylist = mpc.master().playlists[0];
 

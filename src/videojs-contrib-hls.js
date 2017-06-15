@@ -215,12 +215,6 @@ class HlsHandler extends Component {
         });
       }
     }
-    // Object.defineProperty(tech, 'hls', {
-    //   get: () => {
-    //     tech.trigger({type: 'usage', name: 'hls-tech-access'});
-    //     return this;
-    //   }
-    // });
 
     // overriding native HLS only works if audio tracks have been emulated
     // error early if we're misconfigured:
@@ -271,6 +265,8 @@ class HlsHandler extends Component {
 
     this.audioTrackChange_ = () => {
       this.masterPlaylistController_.setupAudio();
+      // fired when a user selects an alternate audio stream in HLS
+      this.tech_.trigger({type: 'usage', name: 'hls-audio-change'});
     };
 
     this.textTrackChange_ = () => {
