@@ -1086,6 +1086,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     const start = segment.start;
     const end = segment.end;
 
+    // Do not try adding the cue if the start and end times are invalid.
+    if (!Number.isFinite(start) || !Number.isFinite(end)) {
+      return;
+    }
+
     removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
 
     const Cue = window.WebKitDataCue || window.VTTCue;
