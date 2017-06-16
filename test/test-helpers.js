@@ -82,7 +82,7 @@ class MockMediaSource extends videojs.EventTarget {
   }
 
   endOfStream(error) {
-    this.readyState = 'closed';
+    this.readyState = 'ended';
     this.error_ = error;
   }
 }
@@ -364,7 +364,8 @@ export const playlistWithDuration = function(time, conf) {
     segments: [],
     endList: conf && typeof conf.endList !== 'undefined' ? !!conf.endList : true,
     uri: conf && typeof conf.uri !== 'undefined' ? conf.uri : 'playlist.m3u8',
-    discontinuitySequence: conf && conf.discontinuitySequence ? conf.discontinuitySequence : 0
+    discontinuitySequence:
+      conf && conf.discontinuitySequence ? conf.discontinuitySequence : 0
   };
   let count = Math.floor(time / 10);
   let remainder = time % 10;

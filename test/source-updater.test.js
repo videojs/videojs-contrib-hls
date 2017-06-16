@@ -124,9 +124,17 @@ QUnit.test('supports abort', function(assert) {
 
   updater.abort();
   this.mediaSource.trigger('sourceopen');
+  assert.equal(updater.callbacks_.length,
+               0,
+               'abort not queued before source buffers are appended to');
+
+  updater.appendBuffer(new Uint8Array([0]));
+
+  updater.abort();
 
   sourceBuffer = this.mediaSource.sourceBuffers[0];
-  assert.ok(sourceBuffer.updates_[0].abort, 'aborted the source buffer');
+  sourceBuffer.trigger('updateend');
+  assert.ok(sourceBuffer.updates_[1].abort, 'aborted the source buffer');
 });
 
 QUnit.test('supports buffered', function(assert) {
@@ -144,22 +152,20 @@ QUnit.test('supports removeBuffer', function(assert) {
 
   this.mediaSource.trigger('sourceopen');
   sourceBuffer = this.mediaSource.sourceBuffers[0];
+
   updater.remove(1, 14);
 
-  assert.equal(sourceBuffer.updates_.length, 1, 'ran an update');
-  assert.deepEqual(sourceBuffer.updates_[0].remove, [1, 14], 'removed the time range');
-});
+  assert.equal(sourceBuffer.updates_.length,
+               0,
+               'remove not queued before sourceBuffers are appended to');
 
-QUnit.test('supports setting duration', function(assert) {
-  let updater = new SourceUpdater(this.mediaSource, 'video/mp2t');
-  let sourceBuffer;
+  updater.appendBuffer(new Uint8Array([0]));
 
-  this.mediaSource.trigger('sourceopen');
-  sourceBuffer = this.mediaSource.sourceBuffers[0];
-  updater.duration(21);
+  updater.remove(1, 14);
 
-  assert.equal(sourceBuffer.updates_.length, 1, 'ran an update');
-  assert.deepEqual(sourceBuffer.updates_[0].duration, 21, 'changed duration');
+  sourceBuffer.trigger('updateend');
+  assert.equal(sourceBuffer.updates_.length, 2, 'ran an update');
+  assert.deepEqual(sourceBuffer.updates_[1].remove, [1, 14], 'removed the time range');
 });
 
 QUnit.test('supports timestampOffset', function(assert) {

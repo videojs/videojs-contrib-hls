@@ -530,7 +530,8 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         ['AUDIO', 'SUBTITLES'].forEach((mediaType) => {
           for (let groupKey in loader.master.mediaGroups[mediaType]) {
             for (let labelKey in loader.master.mediaGroups[mediaType][groupKey]) {
-              let mediaProperties = loader.master.mediaGroups[mediaType][groupKey][labelKey];
+              let mediaProperties =
+                loader.master.mediaGroups[mediaType][groupKey][labelKey];
 
               if (mediaProperties.uri) {
                 mediaProperties.resolvedUri =

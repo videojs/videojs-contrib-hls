@@ -2,6 +2,35 @@ CHANGELOG
 =========
 
 --------------------
+## 5.5.3 (2017-05-16)
+* update mux.js to 4.1.4 and videojs-contrib-media-sources to 4.4.5 [#1117](https://github.com/videojs/videojs-contrib-hls/pull/1117)
+  * ts probe searches packets for first it can successfully parse
+  * Fixed an issue that could cause updateend events to fire more than once per append or remove under very specific conditions on firefox
+* Trigger error events when received empty response [#1072](https://github.com/videojs/videojs-contrib-hls/pull/1072)
+
+--------------------
+## 5.5.2 (2017-05-10)
+* Fix playback stalls when everything appears okay [#1100](https://github.com/videojs/videojs-contrib-hls/pull/1100)
+  * add playback watcher check for unknown player waiting
+  * do not do unknownwaiting check when the tech fires a native waiting event
+  * dont track current time waiting when at the end of the buffer
+  * call techWaiting_ when we detect a stall at the end of buffer
+
+--------------------
+## 5.5.1 (2017-05-04)
+* Use specified mediasequence for VOD expired sync instead of assuming 0 [#1097](https://github.com/videojs/videojs-contrib-hls/pull/1097)
+  * use synccontroller for expired
+* fix: CODEC to mime-type conversion now takes into account all possible scenarios [#1099](https://github.com/videojs/videojs-contrib-hls/pull/1099)
+
+--------------------
+## 5.5.0 (2017-04-25)
+* Update mux.js to 4.1.3 and media-sources to 4.4.4 [#1098](https://github.com/videojs/videojs-contrib-hls/pull/1098)
+* Trigger an event when a playlist is blacklisted or retried [#1080](https://github.com/videojs/videojs-contrib-hls/pull/1080)
+ * Triggers `blacklistplaylist` when a playlist is blacklisted
+ * Triggers `retryplaylist` when retrying to load an errored playlist
+* Add option to modify blacklist duration [#1076](https://github.com/videojs/videojs-contrib-hls/pull/1076)
+
+--------------------
 ## 5.4.1 (2017-04-10)
 * update contrib-media-sources to 4.4.3 [#1077](https://github.com/videojs/videojs-contrib-hls/pull/1077)
 * Fix exceptions from calling endOfStream when the media source isn't ready [#1061](https://github.com/videojs/videojs-contrib-hls/pull/1061)

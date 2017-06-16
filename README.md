@@ -104,13 +104,20 @@ player.play();
 Check out our [live example](http://jsbin.com/vokipos/8/edit?html,output) if you're having trouble.
 
 ### Video.js 6
-If you are trying to use video.js version 6, you must include [videojs-flash](https://github.com/videojs/videojs-flash)
-on your page before including videojs-contrib-hls
+With Video.js 6, by default there is no flash support. Instead, flash support is provided
+through the [videojs-flash](https://github.com/videojs/videojs-flash) plugin. If you are
+trying to use Video.js version 6 and want to include flash support, you must include
+[videojs-flash](https://github.com/videojs/videojs-flash) on your page before including
+videojs-contrib-hls
 
 ```html
 <script src="https://unpkg.com/videojs-flash/dist/videojs-flash.js"></script>
 <script src="https://unpkg.com/videojs-contrib-hls/dist/videojs-contrib-hls.js"></script>
 ```
+
+Flash, and the [videojs-flash](https://github.com/videojs/videojs-flash) plugin, are not
+required, but are recommended as a fallback option for browsers that don't have a native
+HLS player or support for [Media Source Extensions](http://caniuse.com/#feat=mediasource).
 
 ## Documentation
 [HTTP Live Streaming](https://developer.apple.com/streaming/) (HLS) has
@@ -434,7 +441,9 @@ player.hls.xhr.beforeRequest = function(options) {
 
 The global `videojs.Hls` also exposes an `xhr` property. Specifying a
 `beforeRequest` function on that will allow you to intercept the options
-for *all* requests in every player on a page.
+for *all* requests in every player on a page. For consistency across
+browsers the video source should be set at runtime once the video player
+is ready. 
 
 Example
 ```javascript
@@ -445,6 +454,14 @@ videojs.Hls.xhr.beforeRequest = function(options) {
 
   return options;
 };
+
+var player = videojs('video-player-id');
+player.ready(function() {
+  this.src({
+    src: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8',
+    type: 'application/x-mpegURL',
+  });
+});
 ```
 
 For information on the type of options that you can modify see the
@@ -515,10 +532,11 @@ if (segmentMetadataTrack) {
     let activeCue = segmentMetadataTrack.activeCues[0];
 
     if (activeCue) {
-      if (previousPlaylist !== activeCue.playlist) {
-        console.log('Switched from rendition' + previousPlaylist + 'to rendition' + activeCue.playlist);
+      if (previousPlaylist !== activeCue.value.playlist) {
+        console.log('Switched from rendition ' + previousPlaylist +
+                    ' to rendition ' + activeCue.value.playlist);
       }
-      previousPlaylist = activeCue.playlist;
+      previousPlaylist = activeCue.value.playlist;
     }
   });
 }

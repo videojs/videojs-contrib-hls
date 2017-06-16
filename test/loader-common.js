@@ -43,17 +43,17 @@ export const LoaderCommonHooks = {
 };
 
 /**
- * Returns a settings object containing the custom options provided merged with defaults
+ * Returns a settings object containing the custom settings provided merged with defaults
  * for use in constructing a segment loader. This function should be called with the QUnit
  * test environment the loader will be constructed in for proper this reference.
  *
- * @param {Object} options
- *        custom options for the loader
+ * @param {Object} settings
+ *        custom settings for the loader
  * @return {Object}
- *         Options object contiaing custom options merged with defaults
+ *         Settings object containing custom settings merged with defaults
  */
-export const LoaderCommonSettings = function(options) {
-  let settings = {
+export const LoaderCommonSettings = function(settings) {
+  return videojs.mergeOptions({
     hls: this.fakeHls,
     currentTime: () => this.currentTime,
     seekable: () => this.seekable,
@@ -63,9 +63,7 @@ export const LoaderCommonSettings = function(options) {
     mediaSource: this.mediaSource,
     syncController: this.syncController,
     decrypter: this.decrypter
-  };
-
-  return videojs.mergeOptions(settings, options);
+  }, settings);
 };
 
 /**
@@ -73,21 +71,23 @@ export const LoaderCommonSettings = function(options) {
  * Currently only two types, SegmentLoader and VTTSegmentLoader.
  *
  * @param {function(new:SegmentLoader|VTTLoader, Object)} LoaderConstructor
- *        Constructor for segment loader. Takes one parameter, an options object
- * @param {Object} loaderOptions
- *        Custom options to merge with defaults for the provided loader constructor
+ *        Constructor for segment loader. Takes one parameter, a settings object
+ * @param {Object} loaderSettings
+ *        Custom settings to merge with defaults for the provided loader constructor
  * @param {function(SegmentLoader|VTTLoader)} loaderBeforeEach
  *        Function to be run in the beforeEach after loader creation. Takes one parameter,
  *        the loader for custom modifications to the loader object.
  */
-export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBeforeEach) => {
+export const LoaderCommonFactory = (LoaderConstructor,
+                                    loaderSettings,
+                                    loaderBeforeEach) => {
   let loader;
 
   QUnit.module('Loader Common', function(hooks) {
     hooks.beforeEach(function(assert) {
       // Assume this module is nested and the parent module uses CommonHooks.beforeEach
 
-      loader = new LoaderConstructor(LoaderCommonSettings.call(this, loaderOptions));
+      loader = new LoaderConstructor(LoaderCommonSettings.call(this, loaderSettings), {});
 
       loaderBeforeEach(loader);
 
@@ -275,7 +275,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.equal(progressEvents, 1, 'triggered progress');
     });
 
-    QUnit.test('appending a segment when loader is in walk-forward mode triggers bandwidthupdate', function(assert) {
+    QUnit.test(
+      'appending a segment when loader is in walk-forward mode triggers bandwidthupdate',
+    function(assert) {
       let progresses = 0;
 
       loader.on('bandwidthupdate', function() {
@@ -468,7 +470,8 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.equal(loader.mediaRequestsAborted, 1, '1 aborted request');
     });
 
-    QUnit.test('SegmentLoader.mediaIndex is adjusted when live playlist is updated', function(assert) {
+    QUnit.test('SegmentLoader.mediaIndex is adjusted when live playlist is updated',
+    function(assert) {
       loader.playlist(playlistWithDuration(50, {
         mediaSequence: 0,
         endList: false
@@ -481,7 +484,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       this.clock.tick(1);
 
       assert.equal(loader.mediaIndex, 2, 'SegmentLoader.mediaIndex starts at 2');
-      assert.equal(this.requests[0].url, '3.ts', 'requesting the segment at mediaIndex 3');
+      assert.equal(this.requests[0].url,
+                   '3.ts',
+                   'requesting the segment at mediaIndex 3');
 
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
@@ -493,7 +498,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       this.clock.tick(1);
 
       assert.equal(loader.mediaIndex, 3, 'SegmentLoader.mediaIndex starts at 3');
-      assert.equal(this.requests[0].url, '4.ts', 'requesting the segment at mediaIndex 4');
+      assert.equal(this.requests[0].url,
+                   '4.ts',
+                   'requesting the segment at mediaIndex 4');
 
       // Update the playlist shifting the mediaSequence by 2 which will result
       // in a decrement of the mediaIndex by 2 to 1
@@ -512,14 +519,17 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.equal(loader.mediaIndex, 2, 'SegmentLoader.mediaIndex ends at 2');
     });
 
-    QUnit.test('segmentInfo.mediaIndex is adjusted when live playlist is updated', function(assert) {
+    QUnit.test('segmentInfo.mediaIndex is adjusted when live playlist is updated',
+    function(assert) {
       const handleUpdateEnd_ = loader.handleUpdateEnd_.bind(loader);
       let expectedLoaderIndex = 3;
 
       loader.handleUpdateEnd_ = function() {
         handleUpdateEnd_();
 
-        assert.equal(loader.mediaIndex, expectedLoaderIndex, 'SegmentLoader.mediaIndex ends at' + expectedLoaderIndex);
+        assert.equal(loader.mediaIndex,
+                     expectedLoaderIndex,
+                     'SegmentLoader.mediaIndex ends at' + expectedLoaderIndex);
         loader.mediaIndex = null;
         loader.fetchAtBuffer_ = false;
         // remove empty flag that may be added by vtt loader
@@ -546,7 +556,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       let segmentInfo = loader.pendingSegment_;
 
       assert.equal(segmentInfo.mediaIndex, 3, 'segmentInfo.mediaIndex starts at 3');
-      assert.equal(this.requests[0].url, '3.ts', 'requesting the segment at mediaIndex 3');
+      assert.equal(this.requests[0].url,
+                   '3.ts',
+                   'requesting the segment at mediaIndex 3');
 
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
@@ -557,7 +569,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       segmentInfo = loader.pendingSegment_;
 
       assert.equal(segmentInfo.mediaIndex, 3, 'segmentInfo.mediaIndex starts at 3');
-      assert.equal(this.requests[0].url, '3.ts', 'requesting the segment at mediaIndex 3');
+      assert.equal(this.requests[0].url,
+                   '3.ts',
+                   'requesting the segment at mediaIndex 3');
 
       // Update the playlist shifting the mediaSequence by 2 which will result
       // in a decrement of the mediaIndex by 2 to 1
@@ -587,6 +601,27 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
         errors.push(error);
       });
       this.requests.shift().respond(404, null, '');
+
+      assert.equal(errors.length, 1, 'triggered an error');
+      assert.equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
+      assert.ok(loader.error().xhr, 'included the request object');
+      assert.ok(loader.paused(), 'paused the loader');
+      assert.equal(loader.state, 'READY', 'returned to the ready state');
+    });
+
+    QUnit.test('empty segments should trigger an error', function(assert) {
+      let errors = [];
+
+      loader.playlist(playlistWithDuration(10));
+
+      loader.load();
+      this.clock.tick(1);
+
+      loader.on('error', function(error) {
+        errors.push(error);
+      });
+      this.requests[0].response = new Uint8Array(0).buffer;
+      this.requests.shift().respond(200, null, '');
 
       assert.equal(errors.length, 1, 'triggered an error');
       assert.equal(loader.error().code, 2, 'triggered MEDIA_ERR_NETWORK');
@@ -648,7 +683,8 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
     // Decryption
     // ----------
 
-    QUnit.test('calling load with an encrypted segment requests key and segment', function(assert) {
+    QUnit.test('calling load with an encrypted segment requests key and segment',
+    function(assert) {
       assert.equal(loader.state, 'INIT', 'starts in the init state');
       loader.playlist(playlistWithDuration(10, {isEncrypted: true}));
       assert.equal(loader.state, 'INIT', 'starts in the init state');
@@ -660,7 +696,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.equal(loader.state, 'WAITING', 'moves to the ready state');
       assert.ok(!loader.paused(), 'loading is not paused');
       assert.equal(this.requests.length, 2, 'requested a segment and key');
-      assert.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
+      assert.equal(this.requests[0].url,
+                   '0-key.php',
+                   'requested the first segment\'s key');
       assert.equal(this.requests[1].url, '0.ts', 'requested the first segment');
     });
 
@@ -672,7 +710,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
 
       loader.dispose();
       assert.equal(this.requests.length, 2, 'requested a segment and key');
-      assert.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
+      assert.equal(this.requests[0].url,
+                   '0-key.php',
+                   'requested the first segment\'s key');
       assert.ok(this.requests[0].aborted, 'aborted the first segment\s key request');
       assert.equal(this.requests.length, 2, 'did not open another request');
     });
@@ -728,7 +768,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       loader.load();
       this.clock.tick(1);
 
-      assert.equal(this.requests[0].url, '0-key.php', 'requested the first segment\'s key');
+      assert.equal(this.requests[0].url,
+                   '0-key.php',
+                   'requested the first segment\'s key');
       assert.equal(this.requests[1].url, '0.ts', 'requested the first segment');
       // a lot of time passes so the request times out
       this.requests[0].timedout = true;
@@ -738,7 +780,8 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.ok(isNaN(loader.roundTrip), 'reset round trip time');
     });
 
-    QUnit.test('checks the goal buffer configuration every loading opportunity', function(assert) {
+    QUnit.test('checks the goal buffer configuration every loading opportunity',
+    function(assert) {
       let playlist = playlistWithDuration(20);
       let defaultGoal = Config.GOAL_BUFFER_LENGTH;
       let segmentInfo;
@@ -758,7 +801,8 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       Config.GOAL_BUFFER_LENGTH = defaultGoal;
     });
 
-    QUnit.test('does not skip over segment if live playlist update occurs while processing',
+    QUnit.test(
+      'does not skip over segment if live playlist update occurs while processing',
     function(assert) {
       let playlist = playlistWithDuration(40);
       let buffered = videojs.createTimeRanges();
@@ -773,7 +817,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       this.clock.tick(1);
 
       assert.equal(loader.pendingSegment_.uri, '0.ts', 'retrieving first segment');
-      assert.equal(loader.pendingSegment_.segment.uri, '0.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '0.ts',
+                   'correct segment reference');
       assert.equal(loader.state, 'WAITING', 'waiting for response');
 
       this.requests[0].response = new Uint8Array(10).buffer;
@@ -790,7 +836,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       this.clock.tick(1);
 
       assert.equal(loader.pendingSegment_.uri, '1.ts', 'retrieving second segment');
-      assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '1.ts',
+                   'correct segment reference');
       assert.equal(loader.state, 'WAITING', 'waiting for response');
     });
 
@@ -803,11 +851,13 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
 
       loader.handleUpdateEnd_ = () => {
         // we need to check for the right state, as normally handleResponse would throw an
-        // error under failing cases, but sinon swallows it as part of fake XML HTTP request's
-        // response
+        // error under failing cases, but sinon swallows it as part of fake XML HTTP
+        // request's response
         assert.equal(loader.state, 'APPENDING', 'moved to appending state');
         assert.equal(loader.pendingSegment_.uri, expectedURI, 'correct pending segment');
-        assert.equal(loader.pendingSegment_.segment.uri, expectedURI, 'correct segment reference');
+        assert.equal(loader.pendingSegment_.segment.uri,
+                     expectedURI,
+                     'correct segment reference');
 
         handleUpdateEnd_();
       };
@@ -823,7 +873,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
 
       assert.equal(loader.state, 'WAITING', 'in waiting state');
       assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
-      assert.equal(loader.pendingSegment_.segment.uri, '0.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '0.ts',
+                   'correct segment reference');
 
       // wrap up the first request to set mediaIndex and start normal live streaming
       this.requests[0].response = new Uint8Array(10).buffer;
@@ -834,7 +886,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
 
       assert.equal(loader.state, 'WAITING', 'in waiting state');
       assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
-      assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '1.ts',
+                   'correct segment reference');
 
       // playlist updated during waiting
       let playlistUpdated = playlistWithDuration(40);
@@ -845,7 +899,9 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       loader.playlist(playlistUpdated);
 
       assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment still pending');
-      assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '1.ts',
+                   'correct segment reference');
 
       expectedURI = '1.ts';
       this.requests[0].response = new Uint8Array(10).buffer;
@@ -892,7 +948,8 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.equal(segmentInfo.uri, '0.ts', 'requested the first segment');
     });
 
-    QUnit.test('no request if video not played and 1 segment is buffered', function(assert) {
+    QUnit.test('no request if video not played and 1 segment is buffered',
+    function(assert) {
       this.hasPlayed = false;
 
       let segmentInfo = loader.checkBuffer_(videojs.createTimeRanges([[0, 1]]),
@@ -905,7 +962,8 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.ok(!segmentInfo, 'no request generated');
     });
 
-    QUnit.test('does not download the next segment if the buffer is full', function(assert) {
+    QUnit.test('does not download the next segment if the buffer is full',
+    function(assert) {
       let buffered;
       let segmentInfo;
 
@@ -922,7 +980,8 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.ok(!segmentInfo, 'no segment request generated');
     });
 
-    QUnit.test('downloads the next segment if the buffer is getting low', function(assert) {
+    QUnit.test('downloads the next segment if the buffer is getting low',
+    function(assert) {
       let buffered;
       let segmentInfo;
       let playlist = playlistWithDuration(30);
@@ -975,21 +1034,28 @@ export const LoaderCommonFactory = (LoaderConstructor, loaderOptions, loaderBefo
       assert.ok(!segmentInfo, 'no request was made');
     });
 
-    QUnit.test('doesn\'t allow more than one monitor buffer timer to be set', function(assert) {
+    QUnit.test('doesn\'t allow more than one monitor buffer timer to be set',
+    function(assert) {
       let timeoutCount = this.clock.methods.length;
 
       loader.monitorBuffer_();
 
-      assert.equal(this.clock.methods.length, timeoutCount, 'timeout count remains the same');
+      assert.equal(this.clock.methods.length,
+                   timeoutCount,
+                   'timeout count remains the same');
 
       loader.monitorBuffer_();
 
-      assert.equal(this.clock.methods.length, timeoutCount, 'timeout count remains the same');
+      assert.equal(this.clock.methods.length,
+                   timeoutCount,
+                   'timeout count remains the same');
 
       loader.monitorBuffer_();
       loader.monitorBuffer_();
 
-      assert.equal(this.clock.methods.length, timeoutCount, 'timeout count remains the same');
+      assert.equal(this.clock.methods.length,
+                   timeoutCount,
+                   'timeout count remains the same');
     });
   });
 };

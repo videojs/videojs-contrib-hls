@@ -14,6 +14,14 @@ import Decrypter from './decrypter-worker';
 
 let Hls;
 
+// Default codec parameters if none were provided for video and/or audio
+const defaultCodecs = {
+  videoCodec: 'avc1',
+  videoObjectTypeIndicator: '.4d400d',
+  // AAC-LC
+  audioProfile: '2'
+};
+
 // SegmentLoader stats that need to have each loader's
 // values summed to calculate the final value
 const loaderStats = [
@@ -64,10 +72,7 @@ const objectChanged = function(a, b) {
  */
 const parseCodecs = function(codecs) {
   let result = {
-    codecCount: 0,
-    videoCodec: null,
-    videoObjectTypeIndicator: null,
-    audioProfile: null
+    codecCount: 0
   };
   let parsed;
 
@@ -105,6 +110,53 @@ export const mapLegacyAvcCodecs_ = function(codecString) {
 };
 
 /**
+ * Build a media mime-type string from a set of parameters
+ * @param {String} type either 'audio' or 'video'
+ * @param {String} container either 'mp2t' or 'mp4'
+ * @param {Array} codecs an array of codec strings to add
+ * @return {String} a valid media mime-type
+ */
+const makeMimeTypeString = function(type, container, codecs) {
+  // The codecs array is filtered so that falsey values are
+  // dropped and don't cause Array#join to create spurious
+  // commas
+  return `${type}/${container}; codecs="${codecs.filter(c=>!!c).join(', ')}"`;
+};
+
+/**
+ * Returns the type container based on information in the playlist
+ * @param {Playlist} media the current media playlist
+ * @return {String} a valid media container type
+ */
+const getContainerType = function(media) {
+  // An initialization segment means the media playlist is an iframe
+  // playlist or is using the mp4 container. We don't currently
+  // support iframe playlists, so assume this is signalling mp4
+  // fragments.
+  if (media.segments && media.segments.length && media.segments[0].map) {
+    return 'mp4';
+  }
+  return 'mp2t';
+};
+
+/**
+ * Returns a set of codec strings parsed from the playlist or the default
+ * codec strings if no codecs were specified in the playlist
+ * @param {Playlist} media the current media playlist
+ * @return {Object} an object with the video and audio codecs
+ */
+const getCodecs = function(media) {
+  // if the codecs were explicitly specified, use them instead of the
+  // defaults
+  let mediaAttributes = media.attributes || {};
+
+  if (mediaAttributes.CODECS) {
+    return parseCodecs(mediaAttributes.CODECS);
+  }
+  return defaultCodecs;
+};
+
+/**
  * Calculates the MIME type strings for a working configuration of
  * SourceBuffers to play variant streams in a master playlist. If
  * there is no possible working configuration, an empty array will be
@@ -119,74 +171,93 @@ export const mapLegacyAvcCodecs_ = function(codecString) {
  * @private
  */
 export const mimeTypesForPlaylist_ = function(master, media) {
-  let container = 'mp2t';
-  let codecs = {
-    videoCodec: 'avc1',
-    videoObjectTypeIndicator: '.4d400d',
-    audioProfile: '2'
-  };
-  let audioGroup = [];
-  let mediaAttributes;
-  let previousGroup = null;
+  let containerType = getContainerType(media);
+  let codecInfo = getCodecs(media);
+  let mediaAttributes = media.attributes || {};
+  // Default condition for a traditional HLS (no demuxed audio/video)
+  let isMuxed = true;
+  let isMaat = false;
 
   if (!media) {
-    // not enough information, return an error
+    // Not enough information
     return [];
   }
-  // An initialization segment means the media playlists is an iframe
-  // playlist or is using the mp4 container. We don't currently
-  // support iframe playlists, so assume this is signalling mp4
-  // fragments.
-  // the existence check for segments can be removed once
-  // https://github.com/videojs/m3u8-parser/issues/8 is closed
-  if (media.segments && media.segments.length && media.segments[0].map) {
-    container = 'mp4';
+
+  if (master.mediaGroups.AUDIO && mediaAttributes.AUDIO) {
+    let audioGroup = master.mediaGroups.AUDIO[mediaAttributes.AUDIO];
+
+    // Handle the case where we are in a multiple-audio track scenario
+    if (audioGroup) {
+      isMaat = true;
+      // Start with the everything demuxed then...
+      isMuxed = false;
+      // ...check to see if any audio group tracks are muxed (ie. lacking a uri)
+      for (let groupId in audioGroup) {
+        if (!audioGroup[groupId].uri) {
+          isMuxed = true;
+          break;
+        }
+      }
+    }
   }
 
-  // if the codecs were explicitly specified, use them instead of the
-  // defaults
-  mediaAttributes = media.attributes || {};
-  if (mediaAttributes.CODECS) {
-    let parsedCodecs = parseCodecs(mediaAttributes.CODECS);
-
-    Object.keys(parsedCodecs).forEach((key) => {
-      codecs[key] = parsedCodecs[key] || codecs[key];
-    });
+  // HLS with multiple-audio tracks must always get an audio codec.
+  // Put another way, there is no way to have a video-only multiple-audio HLS!
+  if (isMaat && !codecInfo.audioProfile) {
+    videojs.log.warn(
+      'Multiple audio tracks present but no audio codec string is specified. ' +
+      'Attempting to use the default audio codec (mp4a.40.2)');
+    codecInfo.audioProfile = defaultCodecs.audioProfile;
   }
 
-  if (master.mediaGroups.AUDIO) {
-    audioGroup = master.mediaGroups.AUDIO[mediaAttributes.AUDIO];
+  // Generate the final codec strings from the codec object generated above
+  let codecStrings = {};
+
+  if (codecInfo.videoCodec) {
+    codecStrings.video = `${codecInfo.videoCodec}${codecInfo.videoObjectTypeIndicator}`;
   }
 
-  // if audio could be muxed or unmuxed, use mime types appropriate
-  // for both scenarios
-  for (let groupId in audioGroup) {
-    if (previousGroup && (!!audioGroup[groupId].uri !== !!previousGroup.uri)) {
-      // one source buffer with muxed video and audio and another for
-      // the alternate audio
+  if (codecInfo.audioProfile) {
+    codecStrings.audio = `mp4a.40.${codecInfo.audioProfile}`;
+  }
+
+  // Finally, make and return an array with proper mime-types depending on
+  // the configuration
+  let justAudio = makeMimeTypeString('audio', containerType, [codecStrings.audio]);
+  let justVideo = makeMimeTypeString('video', containerType, [codecStrings.video]);
+  let bothVideoAudio = makeMimeTypeString('video', containerType, [
+    codecStrings.video,
+    codecStrings.audio
+  ]);
+
+  if (isMaat) {
+    if (!isMuxed && codecStrings.video) {
       return [
-        'video/' + container + '; codecs="' +
-          codecs.videoCodec + codecs.videoObjectTypeIndicator + ', mp4a.40.' + codecs.audioProfile + '"',
-        'audio/' + container + '; codecs="mp4a.40.' + codecs.audioProfile + '"'
+        justVideo,
+        justAudio
       ];
     }
-    previousGroup = audioGroup[groupId];
-  }
-  // if all video and audio is unmuxed, use two single-codec mime
-  // types
-  if (previousGroup && previousGroup.uri) {
+    // There exists the possiblity that this will return a `video/container`
+    // mime-type for the first entry in the array even when there is only audio.
+    // This doesn't appear to be a problem and simplifies the code.
     return [
-      'video/' + container + '; codecs="' +
-        codecs.videoCodec + codecs.videoObjectTypeIndicator + '"',
-      'audio/' + container + '; codecs="mp4a.40.' + codecs.audioProfile + '"'
+      bothVideoAudio,
+      justAudio
     ];
   }
 
-  // all video and audio are muxed, use a dual-codec mime type
+  // If there is ano video codec at all, always just return a single
+  // audio/<container> mime-type
+  if (!codecStrings.video) {
+    return [
+      justAudio
+    ];
+  }
+
+  // When not using separate audio media groups, audio and video is
+  // *always* muxed
   return [
-    'video/' + container + '; codecs="' +
-      codecs.videoCodec + codecs.videoObjectTypeIndicator +
-      ', mp4a.40.' + codecs.audioProfile + '"'
+    bothVideoAudio
   ];
 };
 
@@ -250,7 +321,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.seekable_ = videojs.createTimeRanges();
     this.hasPlayed_ = () => false;
 
-    this.syncController_ = new SyncController();
+    this.syncController_ = new SyncController(options);
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
       kind: 'metadata',
       label: 'segment-metadata'
@@ -258,7 +329,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.decrypter_ = worker(Decrypter);
 
-    let segmentLoaderOptions = {
+    const segmentLoaderSettings = {
       hls: this.hls_,
       mediaSource: this.mediaSource,
       currentTime: this.tech_.currentTime.bind(this.tech_),
@@ -279,19 +350,22 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
-    this.mainSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
-      segmentMetadataTrack: this.segmentMetadataTrack_,
-      loaderType: 'main'
-    }));
+    this.mainSegmentLoader_ =
+      new SegmentLoader(videojs.mergeOptions(segmentLoaderSettings, {
+        segmentMetadataTrack: this.segmentMetadataTrack_,
+        loaderType: 'main'
+      }), options);
 
     // alternate audio track
-    this.audioSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
-      loaderType: 'audio'
-    }));
+    this.audioSegmentLoader_ =
+      new SegmentLoader(videojs.mergeOptions(segmentLoaderSettings, {
+        loaderType: 'audio'
+      }), options);
 
-    this.subtitleSegmentLoader_ = new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
-      loaderType: 'vtt'
-    }));
+    this.subtitleSegmentLoader_ =
+      new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderSettings, {
+        loaderType: 'vtt'
+      }), options);
 
     this.setupSegmentLoaderListeners_();
 
@@ -475,6 +549,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // figure out what stream the next segment should be downloaded from
       // with the updated bandwidth information
       this.masterPlaylistLoader_.media(this.selectPlaylist());
+      this.tech_.trigger('bandwidthupdate');
     });
     this.mainSegmentLoader_.on('progress', () => {
       this.trigger('progress');
@@ -1015,9 +1090,16 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return false;
     }
 
+    let expired =
+      this.syncController_.getExpiredTime(playlist, this.mediaSource.duration);
+
+    if (expired === null) {
+      return false;
+    }
+
     // does not use the safe live end to calculate playlist end, since we
     // don't want to say we are stuck while there is still content
-    let absolutePlaylistEnd = Hls.Playlist.playlistEnd(playlist);
+    let absolutePlaylistEnd = Hls.Playlist.playlistEnd(playlist, expired);
     let currentTime = this.tech_.currentTime();
     let buffered = this.tech_.buffered();
 
@@ -1132,8 +1214,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // In flash playback, the segment loaders should be reset on every seek, even
     // in buffer seeks
-    const isFlash = (this.mode_ === 'flash') ||
-                    (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
+    const isFlash =
+      (this.mode_ === 'flash') ||
+      (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
 
     // if the seek location is already buffered, continue buffering as
     // usual
@@ -1192,7 +1275,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   onSyncInfoUpdate_() {
-    let media;
     let mainSeekable;
     let audioSeekable;
 
@@ -1200,19 +1282,35 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    media = this.masterPlaylistLoader_.media();
+    let media = this.masterPlaylistLoader_.media();
 
     if (!media) {
       return;
     }
 
-    mainSeekable = Hls.Playlist.seekable(media);
+    let expired = this.syncController_.getExpiredTime(media, this.mediaSource.duration);
+
+    if (expired === null) {
+      // not enough information to update seekable
+      return;
+    }
+
+    mainSeekable = Hls.Playlist.seekable(media, expired);
+
     if (mainSeekable.length === 0) {
       return;
     }
 
     if (this.audioPlaylistLoader_) {
-      audioSeekable = Hls.Playlist.seekable(this.audioPlaylistLoader_.media());
+      media = this.audioPlaylistLoader_.media();
+      expired = this.syncController_.getExpiredTime(media, this.mediaSource.duration);
+
+      if (expired === null) {
+        return;
+      }
+
+      audioSeekable = Hls.Playlist.seekable(media, expired);
+
       if (audioSeekable.length === 0) {
         return;
       }

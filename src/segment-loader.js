@@ -6,7 +6,8 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
-import removeCuesFromTrack from 'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
+import removeCuesFromTrack from
+  'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 
@@ -42,6 +43,8 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
     appendedLastSegment;
 };
 
+const finite = (num) => typeof num === 'number' && isFinite(num);
+
 /**
  * An object that manages segment loading and appending.
  *
@@ -50,20 +53,18 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
  * @extends videojs.EventTarget
  */
 export default class SegmentLoader extends videojs.EventTarget {
-  constructor(options) {
+  constructor(settings, options = {}) {
     super();
     // check pre-conditions
-    if (!options) {
-      throw new TypeError('Initialization options are required');
+    if (!settings) {
+      throw new TypeError('Initialization settings are required');
     }
-    if (typeof options.currentTime !== 'function') {
+    if (typeof settings.currentTime !== 'function') {
       throw new TypeError('No currentTime getter specified');
     }
-    if (!options.mediaSource) {
+    if (!settings.mediaSource) {
       throw new TypeError('No MediaSource specified');
     }
-    let settings = videojs.mergeOptions(videojs.options.hls, options);
-
     // public properties
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
@@ -112,7 +113,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
-    if (settings.debug) {
+    if (options.debug) {
       this.logger_ = videojs.log.bind(videojs, 'segment-loader', this.loaderType_, '->');
     }
   }
@@ -732,7 +733,8 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.createSimplifiedSegmentObj_(segmentInfo),
       // progress callback
       (event, segment) => {
-        if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
+        if (!this.pendingSegment_ ||
+            segment.requestId !== this.pendingSegment_.requestId) {
           return;
         }
         // TODO: Use progress-based bandwidth to early abort low-bandwidth situations
@@ -1085,6 +1087,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     const segment = segmentInfo.segment;
     const start = segment.start;
     const end = segment.end;
+
+    // Do not try adding the cue if the start and end times are invalid.
+    if (!finite(start) || !finite(end)) {
+      return;
+    }
 
     removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
 
