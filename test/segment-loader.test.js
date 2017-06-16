@@ -253,7 +253,7 @@ QUnit.module('SegmentLoader', function(hooks) {
                'as they are buffered',
       function(assert) {
         const track = loader.segmentMetadataTrack_;
-        let playlist = playlistWithDuration(40);
+        let playlist = playlistWithDuration(50);
         let probeResponse;
         let expectedCue;
 
@@ -328,6 +328,7 @@ QUnit.module('SegmentLoader', function(hooks) {
         this.requests[0].response = new Uint8Array(10).buffer;
         this.requests.shift().respond(200, null, '');
         this.updateend();
+        this.clock.tick(1);
         expectedCue = {
           uri: '3.ts',
           timeline: 0,
@@ -340,9 +341,18 @@ QUnit.module('SegmentLoader', function(hooks) {
         assert.deepEqual(track.cues[2].value, expectedCue,
           'added correct segment info to cue');
 
+        // does not add cue for invalid segment timing info
+        probeResponse = { start: 30, end: void 0 };
+        this.requests[0].response = new Uint8Array(10).buffer;
+        this.requests.shift().respond(200, null, '');
+        this.updateend();
+        this.clock.tick(1);
+
+        assert.equal(track.cues.length, 3, 'no cue added');
+
         // verify stats
-        assert.equal(loader.mediaBytesTransferred, 40, '40 bytes');
-        assert.equal(loader.mediaRequests, 4, '4 requests');
+        assert.equal(loader.mediaBytesTransferred, 50, '50 bytes');
+        assert.equal(loader.mediaRequests, 5, '5 requests');
       });
 
     QUnit.test('fires ended at the end of a playlist', function(assert) {
