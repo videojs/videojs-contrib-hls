@@ -9,11 +9,10 @@
  * @param {Function} callback the callback to call when done
  * @return {Request} the xhr request that is going to be made
  */
-import {
-  xhr as videojsXHR,
-  mergeOptions,
-  default as videojs
-} from 'video.js';
+import videojs from 'video.js';
+
+const videojsXHR = videojs.xhr;
+const mergeOptions = videojs.mergeOptions;
 
 const xhrFactory = function() {
   const xhr = function XhrFunction(options, callback) {

@@ -1,4 +1,4 @@
-var merge = require('lodash-compat/object/merge');
+var merge = require('lodash/mergeWith');
 var istanbul = require('browserify-istanbul');
 var isparta = require('isparta');
 
@@ -10,11 +10,14 @@ var DEFAULTS = {
   files: [
     'node_modules/sinon/pkg/sinon.js',
     'node_modules/sinon/pkg/sinon-ie.js',
+    'test/dist/browserify-test.js',
+    'test/dist/webpack-test.js',
     'node_modules/video.js/dist/video.js',
     'node_modules/video.js/dist/video-js.css',
-    'test/**/*.test.js',
-    'dist-test/browserify-test.js',
-    'dist-test/webpack-test.js'
+    'node_modules/videojs-flash/dist/videojs-flash.js',
+    'node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.js',
+    'node_modules/videojs-contrib-media-sources/dist/videojs-contrib-media-sources.js',
+    'test/dist/bundle.js'
   ],
 
   exclude: [],

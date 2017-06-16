@@ -3,9 +3,12 @@
  */
 
 import mp4probe from 'mux.js/lib/mp4/probe';
-import {inspect as tsprobe} from 'mux.js/lib/tools/ts-inspector.js';
-import {sumDurations} from './playlist';
+import tsInsector from 'mux.js/lib/tools/ts-inspector.js';
+import { sumDurations } from './playlist';
 import videojs from 'video.js';
+
+const {inspect} = tsInsector;
+const tsprobe = inspect;
 
 export const syncPointStrategies = [
   // Stategy "VOD": Handle the VOD-case where the sync-point is *always*

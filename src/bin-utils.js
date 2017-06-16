@@ -40,7 +40,7 @@ const formatAsciiString = function(e) {
  *         Modified message with TypedArray values expanded
  * @function createTransferableMessage
  */
-const createTransferableMessage = function(message) {
+export const createTransferableMessage = function(message) {
   const transferable = {};
 
   Object.keys(message).forEach((key) => {
@@ -64,7 +64,7 @@ const createTransferableMessage = function(message) {
  * Returns a unique string identifier for a media initialization
  * segment.
  */
-const initSegmentId = function(initSegment) {
+export const initSegmentId = function(initSegment) {
   let byterange = initSegment.byterange || {
     length: Infinity,
     offset: 0
@@ -78,35 +78,31 @@ const initSegmentId = function(initSegment) {
 /**
  * utils to help dump binary data to the console
  */
-const utils = {
-  hexDump(data) {
-    let bytes = Array.prototype.slice.call(data);
-    let step = 16;
-    let result = '';
-    let hex;
-    let ascii;
+export const hexDump = (data) => {
+  let bytes = Array.prototype.slice.call(data);
+  let step = 16;
+  let result = '';
+  let hex;
+  let ascii;
 
-    for (let j = 0; j < bytes.length / step; j++) {
-      hex = bytes.slice(j * step, j * step + step).map(formatHexString).join('');
-      ascii = bytes.slice(j * step, j * step + step).map(formatAsciiString).join('');
-      result += hex + ' ' + ascii + '\n';
-    }
-    return result;
-  },
-  tagDump(tag) {
-    return utils.hexDump(tag.bytes);
-  },
-  textRanges(ranges) {
-    let result = '';
-    let i;
-
-    for (i = 0; i < ranges.length; i++) {
-      result += textRange(ranges, i) + ' ';
-    }
-    return result;
-  },
-  createTransferableMessage,
-  initSegmentId
+  for (let j = 0; j < bytes.length / step; j++) {
+    hex = bytes.slice(j * step, j * step + step).map(formatHexString).join('');
+    ascii = bytes.slice(j * step, j * step + step).map(formatAsciiString).join('');
+    result += hex + ' ' + ascii + '\n';
+  }
+  return result;
 };
 
-export default utils;
+export const tagDump = (tag) => {
+  return hexDump(tag.bytes);
+};
+
+export const textRanges = (ranges) => {
+  let result = '';
+  let i;
+
+  for (i = 0; i < ranges.length; i++) {
+    result += textRange(ranges, i) + ' ';
+  }
+  return result;
+};

@@ -4,8 +4,7 @@
 import SegmentLoader from './segment-loader';
 import videojs from 'video.js';
 import window from 'global/window';
-import removeCuesFromTrack from
-  'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
+import { removeCuesFromTrack } from 'videojs-contrib-media-sources';
 import { initSegmentId } from './bin-utils';
 
 const VTT_LINE_TERMINATORS =

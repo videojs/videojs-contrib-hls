@@ -396,6 +396,7 @@ QUnit.test('fixes bad seeks', function(assert) {
 
   playbackWatcher.seekable = () => seekable;
   playbackWatcher.tech_ = {
+    off: () => {},
     seeking: () => seeking,
     setCurrentTime: (time) => {
       seeks.push(time);
@@ -448,6 +449,7 @@ QUnit.test('seeks to live point if we try to seek outside of seekable', function
 
   playbackWatcher.seekable = () => seekable;
   playbackWatcher.tech_ = {
+    off: () => {},
     seeking: () => seeking,
     setCurrentTime: (time) => {
       seeks.push(time);

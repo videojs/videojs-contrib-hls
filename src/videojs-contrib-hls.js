@@ -8,10 +8,10 @@ import document from 'global/document';
 import PlaylistLoader from './playlist-loader';
 import Playlist from './playlist';
 import xhrFactory from './xhr';
-import {Decrypter, AsyncStream, decrypt} from 'aes-decrypter';
-import utils from './bin-utils';
+import aes from 'aes-decrypter';
+import * as utils from './bin-utils';
 import {MediaSource, URL} from 'videojs-contrib-media-sources';
-import m3u8 from 'm3u8-parser';
+import * as m3u8 from 'm3u8-parser';
 import videojs from 'video.js';
 import { MasterPlaylistController } from './master-playlist-controller';
 import Config from './config';
@@ -24,6 +24,9 @@ import {
   comparePlaylistBandwidth,
   comparePlaylistResolution
 } from './playlist-selectors.js';
+
+// const {MediaSource, URL} = mediaSources;
+const {Decrypter, AsyncStream, decrypt} = aes;
 
 const Hls = {
   PlaylistLoader,
@@ -652,7 +655,7 @@ if (videojs.registerPlugin) {
   videojs.plugin('reloadSourceOnError', reloadSourceOnError);
 }
 
-module.exports = {
+export {
   Hls,
   HlsHandler,
   HlsSourceHandler

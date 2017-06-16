@@ -110,9 +110,9 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    openMediaSource(this.player, this.clock);
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.default,
                 `${opt.name} should be default`);
@@ -126,9 +126,9 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    openMediaSource(this.player, this.clock);
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to global`);
@@ -144,9 +144,9 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    openMediaSource(this.player, this.clock);
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourceHandler Option`);
@@ -162,9 +162,9 @@ options.forEach((opt) => {
     this.player = createPlayer();
     this.player.src(srcOptions);
 
+    openMediaSource(this.player, this.clock);
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to src option`);
@@ -181,9 +181,9 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    openMediaSource(this.player, this.clock);
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourchHandler option`);
@@ -201,9 +201,9 @@ options.forEach((opt) => {
     this.player = createPlayer(sourceHandlerOptions);
     this.player.src(srcOptions);
 
+    openMediaSource(this.player, this.clock);
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourchHandler option`);

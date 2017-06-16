@@ -6,7 +6,7 @@ import window from 'global/window';
 /**
  * Searches for an ad cue that overlaps with the given mediaTime
  */
-const findAdCue = function(track, mediaTime) {
+export const findAdCue = function(track, mediaTime) {
   let cues = track.cues;
 
   for (let i = 0; i < cues.length; i++) {
@@ -19,7 +19,7 @@ const findAdCue = function(track, mediaTime) {
   return null;
 };
 
-const updateAdCues = function(media, track, offset = 0) {
+export const updateAdCues = function(media, track, offset = 0) {
   if (!media.segments) {
     return;
   }
@@ -89,9 +89,3 @@ const updateAdCues = function(media, track, offset = 0) {
     mediaTime += segment.duration;
   }
 };
-
-export default {
-  updateAdCues,
-  findAdCue
-};
-

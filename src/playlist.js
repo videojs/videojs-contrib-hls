@@ -3,8 +3,10 @@
  *
  * Playlist related utilities.
  */
-import {createTimeRange} from 'video.js';
+import videojs from 'video.js';
 import window from 'global/window';
+
+const {createTimeRange} = videojs;
 
 let Playlist = {
   /**

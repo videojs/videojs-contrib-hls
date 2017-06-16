@@ -6,12 +6,12 @@ import SegmentLoader from './segment-loader';
 import VTTSegmentLoader from './vtt-segment-loader';
 import Ranges from './ranges';
 import videojs from 'video.js';
-import AdCueTags from './ad-cue-tags';
+import { updateAdCues } from './ad-cue-tags';
 import SyncController from './sync-controller';
-import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
-import worker from 'webworkify';
-import Decrypter from './decrypter-worker';
+import { codecUtils } from 'videojs-contrib-media-sources';
+import Decrypter from 'worker!./worker.js';
 
+const { translateLegacyCodecs } = codecUtils;
 let Hls;
 
 // Default codec parameters if none were provided for video and/or audio
@@ -327,7 +327,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       label: 'segment-metadata'
     }, true).track;
 
-    this.decrypter_ = worker(Decrypter);
+    this.decrypter_ = new Decrypter();
 
     const segmentLoaderSettings = {
       hls: this.hls_,
@@ -1491,6 +1491,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       offset = seekable.start(0);
     }
 
-    AdCueTags.updateAdCues(media, this.cueTagsTrack_, offset);
+    updateAdCues(media, this.cueTagsTrack_, offset);
   }
 }

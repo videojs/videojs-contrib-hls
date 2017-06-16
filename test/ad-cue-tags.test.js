@@ -1,5 +1,5 @@
 import QUnit from 'qunit';
-import AdCueTags from '../src/ad-cue-tags';
+import {updateAdCues, findAdCue} from '../src/ad-cue-tags';
 import window from 'global/window';
 
 QUnit.module('AdCueTags', {
@@ -22,7 +22,7 @@ QUnit.test('update tag cues', function(assert) {
 
   this.track.addCue(testCue);
 
-  AdCueTags.updateAdCues({}, this.track);
+  updateAdCues({}, this.track);
 
   assert.equal(this.track.cues.length,
               1,
@@ -31,7 +31,7 @@ QUnit.test('update tag cues', function(assert) {
               testCue,
               'does not change cues if media does not have segment property');
 
-  AdCueTags.updateAdCues({
+  updateAdCues({
     segments: []
   }, this.track);
 
@@ -41,7 +41,7 @@ QUnit.test('update tag cues', function(assert) {
 
   this.track.clearTrack();
 
-  AdCueTags.updateAdCues({
+  updateAdCues({
     segments: [{
       duration: 5.1,
       cueOut: '11.5'
@@ -62,7 +62,7 @@ QUnit.test('update tag cues', function(assert) {
 
   this.track.clearTrack();
 
-  AdCueTags.updateAdCues({
+  updateAdCues({
     segments: [{
       duration: 10,
       cueOutCont: '10/30'
@@ -86,7 +86,7 @@ QUnit.test('update tag cues', function(assert) {
 });
 
 QUnit.test('update incomplete cue in live playlist situation', function(assert) {
-  AdCueTags.updateAdCues({
+  updateAdCues({
     segments: [
       {
         duration: 10,
@@ -108,7 +108,7 @@ QUnit.test('update incomplete cue in live playlist situation', function(assert) 
   assert.equal(testCue.adStartTime, 10, 'cue ad starts at 10');
   assert.equal(testCue.adEndTime, 40, 'cue ad ends at 40');
 
-  AdCueTags.updateAdCues({
+  updateAdCues({
     segments: [
       {
         duration: 10,
@@ -128,7 +128,7 @@ QUnit.test('update incomplete cue in live playlist situation', function(assert) 
   assert.equal(testCue.adStartTime, 10, 'cue ad still starts at 10');
   assert.equal(testCue.adEndTime, 40, 'cue ad still ends at 40');
 
-  AdCueTags.updateAdCues({
+  updateAdCues({
     segments: [
       {
         duration: 10,
@@ -150,7 +150,7 @@ QUnit.test('update incomplete cue in live playlist situation', function(assert) 
 });
 
 QUnit.test('adjust cue end time in event of early CUE-IN', function(assert) {
-  AdCueTags.updateAdCues({
+  updateAdCues({
     segments: [
       {
         duration: 10,
@@ -176,7 +176,7 @@ QUnit.test('adjust cue end time in event of early CUE-IN', function(assert) {
   assert.equal(testCue.adStartTime, 10, 'cue ad starts at 10');
   assert.equal(testCue.adEndTime, 40, 'cue ad ends at 40');
 
-  AdCueTags.updateAdCues({
+  updateAdCues({
     segments: [
       {
         duration: 10,
@@ -202,7 +202,7 @@ QUnit.test('adjust cue end time in event of early CUE-IN', function(assert) {
 });
 
 QUnit.test('correctly handle multiple ad cues', function(assert) {
-  AdCueTags.updateAdCues({
+  updateAdCues({
     segments: [
       {
         duration: 10
@@ -285,15 +285,15 @@ QUnit.test('findAdCue returns correct cue', function(assert) {
 
   let cue;
 
-  cue = AdCueTags.findAdCue(this.track, 15);
+  cue = findAdCue(this.track, 15);
   assert.equal(cue.adStartTime, 0, 'returned correct cue');
 
-  cue = AdCueTags.findAdCue(this.track, 40);
+  cue = findAdCue(this.track, 40);
   assert.equal(cue, null, 'cue not found, returned null');
 
-  cue = AdCueTags.findAdCue(this.track, 120);
+  cue = findAdCue(this.track, 120);
   assert.equal(cue.adStartTime, 100, 'returned correct cue');
 
-  cue = AdCueTags.findAdCue(this.track, 45);
+  cue = findAdCue(this.track, 45);
   assert.equal(cue.adStartTime, 45, 'returned correct cue');
 });
