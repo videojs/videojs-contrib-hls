@@ -43,6 +43,8 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
     appendedLastSegment;
 };
 
+const finite = (num) => typeof num === 'number' && isFinite(num);
+
 /**
  * An object that manages segment loading and appending.
  *
@@ -1087,7 +1089,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     const end = segment.end;
 
     // Do not try adding the cue if the start and end times are invalid.
-    if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    if (!finite(start) || !finite(end)) {
       return;
     }
 
