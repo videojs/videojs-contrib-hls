@@ -1078,11 +1078,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // Since we're on the final non-blacklisted playlist, and we're about to blacklist it,
       // instead of erring the player or retrying this playlist, we clear out the current blacklist
       // so the other playlists may be attempted in case any have been fixed.
+      videojs.log.warn('Clearing blacklist for every playlist because last rendition ' +
+                       'is about to be blacklisted.');
       playlists.forEach((playlist) => {
         delete playlist.excludeUntil;
       });
-      videojs.log.warn('Clearing blacklist for every playlist because last rendition ' +
-                       'is about to be blacklisted.');
     }
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
