@@ -1075,13 +1075,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.masterPlaylistLoader_.load(isFinalRendition);
     }
     if (isFinalRendition) {
+      // Since we're on the final non-blacklisted playlist, and we're about to blacklist it,
+      // instead of erring the player or retrying this playlist, we clear out the current blacklist
+      // so the other playlists may be attempted in case any have been fixed.
       playlists.forEach((playlist) => {
-        // Since we're on the final non-blacklisted playlist, and we're about to blacklist it,
-        // instead of erring the player or retrying this playlist, we clear out the current blacklist
-        // so the other playlists may be attempted in case any have been fixed.
-        videojs.log.warn('Clearing blacklist because last rendition is about to be blacklisted.');
         delete playlist.excludeUntil;
       });
+      videojs.log.warn('Clearing blacklist for every playlist because last rendition ' +
+                       'is about to be blacklisted.');
     }
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
