@@ -5474,7 +5474,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // Wait at least 1 second since the first byte of data has been received before
       // using the calculated bandwidth from the progress event to allow the bitrate
       // to stabilize
-      if (Date.now() - stats.firstByteRoundTripTime < 1000) {
+      if (Date.now() - (stats.firstByteRoundTripTime || Date.now()) < 1000) {
         return false;
       }
 
@@ -6383,7 +6383,7 @@ var syncPointStrategies = [
 {
   name: 'Segment',
   run: function run(syncController, playlist, duration, currentTimeline, currentTime) {
-    var segments = playlist.segments;
+    var segments = playlist.segments || [];
     var syncPoint = null;
     var lastDistance = null;
 
@@ -6422,7 +6422,7 @@ var syncPointStrategies = [
 
     currentTime = currentTime || 0;
 
-    if (playlist.discontinuityStarts.length) {
+    if (playlist.discontinuityStarts && playlist.discontinuityStarts.length) {
       var lastDistance = null;
 
       for (var i = 0; i < playlist.discontinuityStarts.length; i++) {

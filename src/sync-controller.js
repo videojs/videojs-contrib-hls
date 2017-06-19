@@ -46,7 +46,7 @@ export const syncPointStrategies = [
   {
     name: 'Segment',
     run: (syncController, playlist, duration, currentTimeline, currentTime) => {
-      let segments = playlist.segments;
+      let segments = playlist.segments || [];
       let syncPoint = null;
       let lastDistance = null;
 
@@ -87,7 +87,7 @@ export const syncPointStrategies = [
 
       currentTime = currentTime || 0;
 
-      if (playlist.discontinuityStarts.length) {
+      if (playlist.discontinuityStarts && playlist.discontinuityStarts.length) {
         let lastDistance = null;
 
         for (let i = 0; i < playlist.discontinuityStarts.length; i++) {
