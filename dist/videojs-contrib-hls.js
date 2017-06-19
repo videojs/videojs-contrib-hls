@@ -6502,6 +6502,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       // using the calculated bandwidth from the progress event to allow the bitrate
       // to stabilize
 <<<<<<< HEAD
+<<<<<<< HEAD
       if (Date.now() - (stats.firstBytesReceivedAt || Date.now()) < 1000) {
         return false;
       }
@@ -6516,6 +6517,9 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       var timeUntilRebuffer = (0, _ranges.timeUntilRebuffer)(this.buffered_(), currentTime, this.hls_.tech_.playbackRate()) - 1;
 =======
       if (Date.now() - stats.firstByteRoundTripTime < 1000) {
+=======
+      if (Date.now() - (stats.firstByteRoundTripTime || Date.now()) < 1000) {
+>>>>>>> fix some undefined bugs
         return false;
       }
 
@@ -7616,6 +7620,7 @@ var syncPointStrategies = [
   run: function run(syncController, playlist, duration, currentTimeline, currentTime) {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     var segments = playlist.segments || [];
 =======
     var segments = playlist.segments;
@@ -7623,6 +7628,9 @@ var syncPointStrategies = [
 =======
     var segments = playlist.segments;
 >>>>>>> ignore: add dist
+=======
+    var segments = playlist.segments || [];
+>>>>>>> fix some undefined bugs
     var syncPoint = null;
     var lastDistance = null;
 
@@ -7663,6 +7671,7 @@ var syncPointStrategies = [
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (playlist.discontinuityStarts && playlist.discontinuityStarts.length) {
 =======
     if (playlist.discontinuityStarts.length) {
@@ -7670,6 +7679,9 @@ var syncPointStrategies = [
 =======
     if (playlist.discontinuityStarts.length) {
 >>>>>>> ignore: add dist
+=======
+    if (playlist.discontinuityStarts && playlist.discontinuityStarts.length) {
+>>>>>>> fix some undefined bugs
       var lastDistance = null;
 
       for (var i = 0; i < playlist.discontinuityStarts.length; i++) {

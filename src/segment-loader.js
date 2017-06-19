@@ -752,7 +752,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Wait at least 1 second since the first byte of data has been received before
     // using the calculated bandwidth from the progress event to allow the bitrate
     // to stabilize
-    if (Date.now() - stats.firstByteRoundTripTime < 1000) {
+    if (Date.now() - (stats.firstByteRoundTripTime || Date.now()) < 1000) {
       return false;
     }
 
