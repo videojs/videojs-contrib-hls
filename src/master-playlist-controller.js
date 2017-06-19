@@ -320,8 +320,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.seekable_ = videojs.createTimeRanges();
     this.hasPlayed_ = () => false;
-    this.isAes_ = () => false;
-    this.isFmp4 = () => false;
 
     this.syncController_ = new SyncController();
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
@@ -405,6 +403,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.load();
       }
 
+      if(this.masterPlaylistLoader_.isAes_(media)) {
+        this.tech_.trigger({type: 'usage', name: 'hls-aes'});
+      }
+
+      if(this.masterPlaylistLoader_.isFmp4_(media)) {
+        this.tech_.trigger({type: 'usage', name: 'hls-aes'});
+      }
+
       this.fillAudioTracks_();
       this.setupAudio();
 
@@ -431,22 +437,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.initialMedia_ = this.selectPlaylist();
         this.masterPlaylistLoader_.media(this.initialMedia_);
         return;
-      }
-
-      for(var i = 0; i < updatedPlaylist.segments; i++) {
-        if(!this.isAes_() && updatedPlaylist.segments[i].key) {
-          this.isAes_ = () => true;
-          this.tech_.trigger({type: 'usage', name: 'hls-aes'});
-          break;
-        }
-      }
-
-      for(var i = 0; i < updatedPlaylist.segments; i++) {
-        if(!this.isFmp4_() && updatedPlaylist.segments[i].map) {
-          this.isFmp4_ = () => true;
-          this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
-          break;
-        }
       }
 
       if (this.useCueTags_) {
@@ -555,7 +545,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
     });
 
-    this.masterPlaylistLoader_.on('hlsrenditiondisabled', () => {
+    this.masterPlaylistLoader_.on('renditiondisabled', () => {
       this.tech_.trigger({type: 'usage', name: 'hls-rendition-disabled'});
     });
   }
@@ -585,7 +575,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.onSyncInfoUpdate_();
     });
 
-    this.mainSegmentLoader_.on('hlstimestampoffset', () => {
+    this.mainSegmentLoader_.on('timestampoffset', () => {
       this.tech_.trigger({type: 'usage', name: 'hls-timestamp-offset'});
     });
     this.audioSegmentLoader_.on('syncinfoupdate', () => {

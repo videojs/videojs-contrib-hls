@@ -197,7 +197,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       let buffered = videojs.createTimeRanges();
       let hlstimestampoffset = 0;
 
-      loader.on('hlstimestampoffset', () => {
+      loader.on('timestampoffset', () => {
         hlstimestampoffset++;
       });
 
