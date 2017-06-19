@@ -6,9 +6,8 @@
  *
  */
 import resolveUrl from './resolve-url';
-import {mergeOptions} from 'video.js';
+import { mergeOptions, EventTarget } from 'video.js';
 import { isEnabled } from './playlist.js';
-import Stream from './stream';
 import m3u8 from 'm3u8-parser';
 import window from 'global/window';
 
@@ -121,7 +120,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   /* eslint-disable consistent-this */
   let loader = this;
   /* eslint-enable consistent-this */
-  let dispose;
   let mediaUpdateTimeout;
   let request;
   let playlistRequestError;
@@ -203,16 +201,13 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   // initialize the loader state
   loader.state = 'HAVE_NOTHING';
 
-  // capture the prototype dispose function
-  dispose = this.dispose;
-
    /**
     * Abort any outstanding work and clean up.
     */
   loader.dispose = function() {
     loader.stopRequest();
     window.clearTimeout(mediaUpdateTimeout);
-    dispose.call(this);
+    loader.off();
   };
 
   loader.stopRequest = () => {
@@ -563,6 +558,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   };
 };
 
-PlaylistLoader.prototype = new Stream();
+PlaylistLoader.prototype = new EventTarget();
 
 export default PlaylistLoader;
