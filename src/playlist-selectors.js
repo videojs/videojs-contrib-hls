@@ -243,6 +243,24 @@ export const movingAverageBandwidthSelector = function(decay) {
   };
 };
 
+/**
+ * Chooses the playlist with the highest bandwidth that loading a segment from would
+ * result in the minimum time spent rebuffering.
+ *
+ * @param {Object} master
+ *        Object representing the master playlist
+ * @param {Number} bandwidth
+ *        Current bandwidth
+ * @param {Number} timeUnitRebuffer
+ *        Time in seconds left in the forward buffer
+ * @param {Number} segmentDuration
+ *        Duration of the expected segment
+ * @return {Object}
+ *         Object with two properties
+ *         playlist - The playlist object that will result in the minimum rebuffering
+ *         roundTripTime - The estimated amount of time in seconds it will take to
+ *         switch to this playlist and download a segment
+ */
 export const minRebufferingSelector = function(master,
                                                bandwidth,
                                                timeUntilRebuffer,

@@ -4178,6 +4178,7 @@ var movingAverageBandwidthSelector = function movingAverageBandwidthSelector(dec
 
 exports.movingAverageBandwidthSelector = movingAverageBandwidthSelector;
 <<<<<<< HEAD
+<<<<<<< HEAD
 /**
  * Chooses the appropriate media playlist based on the potential to rebuffer
  *
@@ -4253,6 +4254,26 @@ var minRebufferMaxBandwidthSelector = function minRebufferMaxBandwidthSelector(s
 };
 exports.minRebufferMaxBandwidthSelector = minRebufferMaxBandwidthSelector;
 =======
+=======
+/**
+ * Chooses the playlist with the highest bandwidth that loading a segment from would
+ * result in the minimum time spent rebuffering.
+ *
+ * @param {Object} master
+ *        Object representing the master playlist
+ * @param {Number} bandwidth
+ *        Current bandwidth
+ * @param {Number} timeUnitRebuffer
+ *        Time in seconds left in the forward buffer
+ * @param {Number} segmentDuration
+ *        Duration of the expected segment
+ * @return {Object}
+ *         Object with two properties
+ *         playlist - The playlist object that will result in the minimum rebuffering
+ *         roundTripTime - The estimated amount of time in seconds it will take to
+ *         switch to this playlist and download a segment
+ */
+>>>>>>> add 1 second wiggle room for early abort and dont require 50% savings
 var minRebufferingSelector = function minRebufferingSelector(master, bandwidth, timeUntilRebuffer, segmentDuration) {
   // get a list of playlists with bandwidth info and sort
   var playlists = master.playlists.filter(function (media) {
@@ -6494,8 +6515,14 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       var requestTimeRemaining = (estimatedSegmentSize - stats.bytesReceived * 8) / measuredBandwidth;
       var buffered = this.buffered_();
       var bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
+<<<<<<< HEAD
       var timeUntilRebuffer = (bufferedEnd - this.currentTime_()) / this.hls_.tech_.playbackRate();
 >>>>>>> add dist
+=======
+      // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
+      // if we are only left with less than 1 second when the request completes.
+      var timeUntilRebuffer = (bufferedEnd - this.currentTime_()) / this.hls_.tech_.playbackRate() - 1;
+>>>>>>> add 1 second wiggle room for early abort and dont require 50% savings
 
       // Only consider aborting early if the estimated time to finish the download
       // is larger than the estimated time until the player runs out of forward buffer
@@ -6541,6 +6568,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       if (!switchCandidate.playlist || switchCandidate.playlist.uri === this.playlist_.uri || timeSavedBySwitching < minimumTimeSaving) {
         return false;
       }
@@ -6552,6 +6580,9 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       if (!playlist || playlist.uri === this.playlist_.uri || timeSavedBySwitching <= minimumTimeSaving ||
       // Don't switch if we cant get more than 50% savings
       timeSavedBySwitching <= requestTimeRemaining * 0.5) {
+=======
+      if (!playlist || playlist.uri === this.playlist_.uri || timeSavedBySwitching <= minimumTimeSaving) {
+>>>>>>> add 1 second wiggle room for early abort and dont require 50% savings
         return false;
       }
 
