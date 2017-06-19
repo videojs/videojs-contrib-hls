@@ -19039,10 +19039,11 @@ var HlsHandler = (function (_Component) {
       }
 
       // start playlist selection at a reasonable bandwidth for
-      // broadband internet
-      // 0.5 MB/s
+      // broadband internet (0.5 MB/s) or mobile (0.0625 MB/s)
       if (typeof this.options_.bandwidth !== 'number') {
-        this.options_.bandwidth = 4194304;
+        // only use Android for mobile because iOS does not support MSE (and uses
+        // native HLS)
+        this.options_.bandwidth = _videoJs2['default'].browser.IS_ANDROID ? 500000 : 4194304;
       }
 
       // grab options passed to player.src
