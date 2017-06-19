@@ -10,7 +10,6 @@ import removeCuesFromTrack from
   'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
-import { minRebufferingSelector } from './playlist-selectors';
 import { TIME_FUDGE_FACTOR } from './ranges';
 
 // in ms
@@ -759,8 +758,9 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     const currentTime = this.currentTime_();
     const measuredBandwidth = stats.bandwidth;
+    const segmentDuration = this.pendingSegment_.duration;
     const estimatedSegmentSize =
-      this.pendingSegment_.duration * this.playlist_.attributes.BANDWIDTH;
+      segmentDuration * this.playlist_.attributes.BANDWIDTH;
     const requestTimeRemaining =
       (estimatedSegmentSize - (stats.bytesReceived * 8)) / measuredBandwidth;
     const buffered = this.buffered_();
@@ -776,30 +776,36 @@ export default class SegmentLoader extends videojs.EventTarget {
       return false;
     }
 
-    const sortedPlaylists =
-      minRebufferingSelector(this.hls_.playlists.master,
-                             measuredBandwidth,
-                             timeUntilRebuffer,
-                             this.pendingSegment_.duration);
-
-    const switchCandidate = sortedPlaylists.map((media) => {
-      let { playlist, roundTripTime } = media;
-      const syncPoint = this.syncController_.getSyncPoint(media.playlist,
+    const switchCandidate = this.hls_.playlists.master.playlists.filter(
+      (playlist) => playlist.attributes && playlist.attributes.BANDWIDTH
+    ).map((playlist) => {
+      const syncPoint = this.syncController_.getSyncPoint(playlist,
                                                           this.duration_(),
                                                           this.currentTimeline_,
                                                           currentTime);
-
-      if (!syncPoint) {
-        // There is no sync point for this playlist, so switching to it will require a
-        // sync request first. This will double the round trip time
-        roundTripTime *= 2;
-      }
+      // There is no sync point for this playlist, so switching to it will require a
+      // sync request first. This will double the round trip time
+      const numRequests = syncPoint ? 1 : 2;
+      const segmentSize = segmentDuration * playlist.attributes.BANDWIDTH;
+      const roundTripTime = segmentSize * numRequests / measuredBandwidth;
 
       return {
         playlist,
         roundTripTime
       };
-    }).sort((a, b) => a.roundTripTime - b.roundTripTime)[0];
+    }).sort((a, b) => {
+      if (a.roundTripTime <= timeUntilRebuffer && b.roundTripTime <= timeUntilRebuffer) {
+        // if both playlists will prevent rebuffernig, prioritize highest bandwidth
+        return b.playlist.attributes.BANDWIDTH - a.playlist.attributes.BANDWIDTH;
+      }
+
+      // if neither can result in no rebuffering, sort by round trip time
+      return a.roundTripTime - b.roundTripTime;
+    })[0];
+
+    if (!switchCandidate) {
+      return;
+    }
 
     const timeSavedBySwitching = requestTimeRemaining - switchCandidate.roundTripTime;
 
