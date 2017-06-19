@@ -10,7 +10,6 @@ import removeCuesFromTrack from
   'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
-import { minRebufferingSelector } from './playlist-selectors';
 import { TIME_FUDGE_FACTOR } from './ranges';
 
 // in ms
@@ -741,9 +740,11 @@ export default class SegmentLoader extends videojs.EventTarget {
       return false;
     }
 
+    const currentTime = this.currentTime_();
     const measuredBandwidth = stats.bandwidth;
+    const segmentDuration = this.pendingSegment_.duration;
     const estimatedSegmentSize =
-      this.pendingSegment_.duration * this.playlist_.attributes.BANDWIDTH;
+      segmentDuration * this.playlist_.attributes.BANDWIDTH;
     const requestTimeRemaining =
       (estimatedSegmentSize - (stats.bytesReceived * 8)) / measuredBandwidth;
     const buffered = this.buffered_();
@@ -751,7 +752,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
     // if we are only left with less than 1 second when the request completes.
     const timeUntilRebuffer =
-      ((bufferedEnd - this.currentTime_()) / this.hls_.tech_.playbackRate()) - 1;
+      ((bufferedEnd - currentTime) / this.hls_.tech_.playbackRate()) - 1;
 
     // Only consider aborting early if the estimated time to finish the download
     // is larger than the estimated time until the player runs out of forward buffer
@@ -759,13 +760,37 @@ export default class SegmentLoader extends videojs.EventTarget {
       return false;
     }
 
-    const { playlist, roundTripTime } =
-      minRebufferingSelector(this.hls_.playlists.master,
-                             measuredBandwidth,
-                             timeUntilRebuffer,
-                             this.pendingSegment_.duration);
+    const switchCandidate = this.hls_.playlists.master.playlists.filter(
+      (playlist) => playlist.attributes && playlist.attributes.BANDWIDTH
+    ).map((playlist) => {
+      const syncPoint = this.syncController_.getSyncPoint(playlist,
+                                                          this.duration_(),
+                                                          this.currentTimeline_,
+                                                          currentTime);
+      // There is no sync point for this playlist, so switching to it will require a
+      // sync request first. This will double the round trip time
+      const numRequests = syncPoint ? 1 : 2;
+      const segmentSize = segmentDuration * playlist.attributes.BANDWIDTH;
+      const roundTripTime = segmentSize * numRequests / measuredBandwidth;
 
-    const timeSavedBySwitching = requestTimeRemaining - roundTripTime;
+      return {
+        playlist,
+        roundTripTime
+      };
+    }).sort((a, b) => {
+      if (a.roundTripTime <= timeUntilRebuffer && b.roundTripTime <= timeUntilRebuffer) {
+        // if both playlists will prevent rebuffering, prioritize highest bandwidth
+        return b.playlist.attributes.BANDWIDTH - a.playlist.attributes.BANDWIDTH;
+      }
+
+      return a.roundTripTime - b.roundTripTime;
+    })[0];
+
+    if (!switchCandidate) {
+      return;
+    }
+
+    const timeSavedBySwitching = requestTimeRemaining - switchCandidate.roundTripTime;
 
     let minimumTimeSaving = 0.5;
 
@@ -776,16 +801,17 @@ export default class SegmentLoader extends videojs.EventTarget {
       minimumTimeSaving = 1;
     }
 
-    if (!playlist ||
-        playlist.uri === this.playlist_.uri ||
-        timeSavedBySwitching <= minimumTimeSaving) {
+    if (!switchCandidate.playlist ||
+        switchCandidate.playlist.uri === this.playlist_.uri ||
+        timeSavedBySwitching < minimumTimeSaving) {
       return false;
     }
 
     // set the bandwidth to that of the desired playlist
     // (Being sure to scale by BANDWIDTH_VARIANCE and add one so the
     // playlist selector does not exclude it)
-    this.bandwidth = playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
+    this.bandwidth =
+      switchCandidate.playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
     this.abort();
     this.trigger('bandwidthupdate');
     return true;
