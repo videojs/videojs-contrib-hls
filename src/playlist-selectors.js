@@ -255,44 +255,27 @@ export const movingAverageBandwidthSelector = function(decay) {
  *        Time in seconds left in the forward buffer
  * @param {Number} segmentDuration
  *        Duration of the expected segment
- * @return {Object}
- *         Object with two properties
- *         playlist - The playlist object that will result in the minimum rebuffering
- *         roundTripTime - The estimated amount of time in seconds it will take to
- *         switch to this playlist and download a segment
+ * @return {Array}
+ *         List of playlists with estimated segment round trip times sorted by round trip
+ *         time
  */
 export const minRebufferingSelector = function(master,
                                                bandwidth,
                                                timeUntilRebuffer,
                                                segmentDuration) {
-  // get a list of playlists with bandwidth info and sort
-  const playlists = master.playlists.filter(
-    (media) => media.attributes && media.attributes.BANDWIDTH
-  ).sort((a, b) => a.attributes.BANDWIDTH - b.attributes.BANDWIDTH);
-
-  let minEstimatedRoundTripTime = Number.MAX_VALUE;
-  let bestPlaylist = null;
-
-  // Find the playlist with the highest bandwidth that the player can load from
-  // safely without needing to rebuffer
-  for (let i = playlists.length - 1; i >= 0; i--) {
-    const playlist = playlists[i];
+  // get a list of playlists with bandwidth info and sort on estimated segment round trip
+  // time
+  return master.playlists.filter(
+    (playlist) => playlist.attributes && playlist.attributes.BANDWIDTH
+  ).sort(
+    (a, b) => a.attributes.BANDWIDTH - b.attributes.BANDWIDTH
+  ).map((playlist) => {
     const estimatedSegmentSize = segmentDuration * playlist.attributes.BANDWIDTH;
-    const estimatedRoundTripTime = estimatedSegmentSize / bandwidth;
+    const roundTripTime = estimatedSegmentSize / bandwidth;
 
-    if (estimatedRoundTripTime < minEstimatedRoundTripTime) {
-      minEstimatedRoundTripTime = estimatedRoundTripTime;
-      bestPlaylist = playlist;
-    }
-
-    if (estimatedRoundTripTime < timeUntilRebuffer) {
-      // we can switch to the playlist and avoid any rebuffering!
-      break;
-    }
-  }
-
-  return {
-    playlist: bestPlaylist,
-    roundTripTime: minEstimatedRoundTripTime
-  };
+    return {
+      playlist,
+      roundTripTime
+    };
+  }).sort((a, b) => a.roundTripTime - b.roundTripTime);
 };
