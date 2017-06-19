@@ -236,7 +236,6 @@ QUnit.test('changing the enabled state of a representation calls fastQualityChan
       uri: 'media1.m3u8'
     }
   ]);
-
   let mpc = hlsHandler.masterPlaylistController_;
 
   RenditionMixin(hlsHandler);

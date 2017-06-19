@@ -438,7 +438,6 @@ function(assert) {
 
 QUnit.test('updates the enabled track when switching audio groups', function(assert) {
   openMediaSource(this.player, this.clock);
-
   // master
   this.requests.shift().respond(200, null,
                                 manifests.multipleAudioGroupsCombinedMain);
@@ -1185,24 +1184,12 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
                'spanish track\'s kind is "alternative"');
 });
 
-QUnit.test('trigger events when an AES or a fmp4 stream are detected', function(assert) {
+QUnit.test('trigger events when an AES is detected', function(assert) {
   let hlsaes = 0;
-  let hlsfmp4 = 0;
 
-  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  this.masterPlaylistController.isAes_ = () => {
+  this.masterPlaylistController.masterPlaylistLoader_.isAes_ = (media) => {
     return true;
   };
-  this.masterPlaylistController.isFmp4_ = () => {
-    return true;
-  };
-
-  // master
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-  this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   this.player.tech_.on('usage', (event) => {
     if (event.name === 'hls-aes') {
@@ -1210,14 +1197,65 @@ QUnit.test('trigger events when an AES or a fmp4 stream are detected', function(
     }
   });
 
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  assert.equal(hlsaes, 1, 'an AES HLS stream is detected');
+});
+
+QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
+  let hlsfmp4 = 0;
+
+  this.masterPlaylistController.masterPlaylistLoader_.isFmp4_ = (media) => {
+    return true;
+  };
+
   this.player.tech_.on('usage', (event) => {
-    if (event.name === 'hlsfmp4') {
+    if (event.name === 'hls-fmp4') {
       hlsfmp4++;
     }
   });
 
-  // assert.equal(hlsaes, 1, 'an AES HLS stream is detected');
-  // assert.equal(hlsfmp4, 1, 'an fMP4 stream is detected');
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  assert.equal(hlsfmp4, 1, 'an fMP4 stream is detected');
+});
+
+QUnit.test('trigger events when video and audio is demuxed by default', function(assert) {
+  let demuxed = 0;
+
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-demuxed') {
+      demuxed++;
+    }
+  });
+
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  // init segment
+  this.standardXHRResponse(this.requests.shift());
+  // video segment
+  this.standardXHRResponse(this.requests.shift());
+  // audio media
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.equal(demuxed, 1, 'video and audio is demuxed by default');
 });
 
 QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {

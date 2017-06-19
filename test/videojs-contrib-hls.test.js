@@ -2496,11 +2496,19 @@ QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
 });
 
 QUnit.test('when mediaGroup changes enabled track should not change', function(assert) {
+  let hlsaudiochange = 0;
+
   this.player.src({
     src: 'manifest/multipleAudioGroups.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-audio-change') {
+      hlsaudiochange++;
+    }
+  });
 
   // master
   this.standardXHRResponse(this.requests.shift());
@@ -2510,6 +2518,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function(a
   let mpc = hls.masterPlaylistController_;
   let audioTracks = this.player.audioTracks();
 
+  assert.equal(hlsaudiochange, 0, 'there is no audio track change');
   assert.equal(audioTracks.length, 3, 'three audio tracks after load');
   assert.equal(audioTracks[0].enabled, true, 'track one enabled after load');
 
@@ -2549,6 +2558,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function(a
   assert.notEqual(oldMediaGroup, hls.playlists.media().attributes.AUDIO, 'selected a new playlist');
   audioTracks = this.player.audioTracks();
 
+  assert.equal(hlsaudiochange, 1, 'there is one audio track change');
   assert.equal(audioTracks.length, 3, 'three audio tracks after reverting mediaGroup');
   assert.ok(audioTracks[0].properties_.default, 'track one should be the default');
   assert.notOk(audioTracks[0].enabled, 'the default track is still disabled');
