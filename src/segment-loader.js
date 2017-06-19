@@ -748,8 +748,10 @@ export default class SegmentLoader extends videojs.EventTarget {
       (estimatedSegmentSize - (stats.bytesReceived * 8)) / measuredBandwidth;
     const buffered = this.buffered_();
     const bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
+    // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
+    // if we are only left with less than 1 second when the request completes.
     const timeUntilRebuffer =
-      (bufferedEnd - this.currentTime_()) / this.hls_.tech_.playbackRate();
+      ((bufferedEnd - this.currentTime_()) / this.hls_.tech_.playbackRate()) - 1;
 
     // Only consider aborting early if the estimated time to finish the download
     // is larger than the estimated time until the player runs out of forward buffer
@@ -776,9 +778,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (!playlist ||
         playlist.uri === this.playlist_.uri ||
-        timeSavedBySwitching <= minimumTimeSaving ||
-        // Don't switch if we cant get more than 50% savings
-        timeSavedBySwitching <= requestTimeRemaining * 0.5) {
+        timeSavedBySwitching <= minimumTimeSaving) {
       return false;
     }
 
