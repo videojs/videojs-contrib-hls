@@ -351,8 +351,8 @@ QUnit.test('fires notifications when activated', function(assert) {
   let buffered = [[]];
   let seekable = [[]];
   let currentTime = 0;
-  let liveresync = 0;
-  let videounderflow = 0;
+  let hlsliveresync = 0;
+  let hlsvideounderflow = 0;
   let playbackWatcher;
 
   this.player.src({
@@ -387,20 +387,28 @@ QUnit.test('fires notifications when activated', function(assert) {
       }
     };
   };
-  this.player.tech_.on('liveresync', () => liveresync++);
-  this.player.tech_.on('videounderflow', () => videounderflow++);
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-live-resync') {
+      hlsliveresync++;
+    }
+  });
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-video-underflow') {
+      hlsvideounderflow++;
+    }
+  });
 
   currentTime = 19;
   seekable[0] = [20, 30];
   playbackWatcher.waiting_();
-  assert.equal(liveresync, 1, 'triggered a liveresync event');
+  assert.equal(hlsliveresync, 1, 'triggered a liveresync event');
 
   currentTime = 12;
   seekable[0] = [0, 100];
   buffered = [[0, 9], [10, 20]];
   playbackWatcher.waiting_();
-  assert.equal(videounderflow, 1, 'triggered a videounderflow event');
-  assert.equal(liveresync, 1, 'did not trigger an additional liveresync event');
+  assert.equal(hlsvideounderflow, 1, 'triggered a videounderflow event');
+  assert.equal(hlsliveresync, 1, 'did not trigger an additional liveresync event');
 });
 
 QUnit.test('fixes bad seeks', function(assert) {
