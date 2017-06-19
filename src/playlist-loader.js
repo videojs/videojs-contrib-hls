@@ -280,8 +280,8 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * @return {Boolean} true if it's an AES encrypted HLS stream
    */
   loader.isAes_ = function(media) {
-    for(var i = 0; i < media.segments.length; i++) {
-      if(media.segments[i].key) {
+    for (let i = 0; i < media.segments.length; i++) {
+      if (media.segments[i].key) {
         return true;
       }
     }
@@ -294,8 +294,8 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * @return {Boolean} true if it contains fMP4
    */
   loader.isFmp4_ = function(media) {
-    for(var i = 0; i < media.segments.length; i++) {
-      if(media.segments[i].map) {
+    for (let i = 0; i < media.segments.length; i++) {
+      if (media.segments[i].map) {
         return true;
       }
     }

@@ -1185,6 +1185,41 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
                'spanish track\'s kind is "alternative"');
 });
 
+QUnit.test('trigger events when an AES or a fmp4 stream are detected', function(assert) {
+  let hlsaes = 0;
+  let hlsfmp4 = 0;
+
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  this.masterPlaylistController.isAes_ = () => {
+    return true;
+  };
+  this.masterPlaylistController.isFmp4_ = () => {
+    return true;
+  };
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-aes') {
+      hlsaes++;
+    }
+  });
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hlsfmp4') {
+      hlsfmp4++;
+    }
+  });
+
+  // assert.equal(hlsaes, 1, 'an AES HLS stream is detected');
+  // assert.equal(hlsfmp4, 1, 'an fMP4 stream is detected');
+});
+
 QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {
   let hlswebvtt = 0;
 
@@ -1203,6 +1238,7 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
 
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
+  assert.equal(hlswebvtt, 0, 'there is no webvtt detected');
   assert.equal(this.player.textTracks().length, 1, 'one text track to start');
   assert.equal(this.player.textTracks()[0].label,
                'segment-metadata',

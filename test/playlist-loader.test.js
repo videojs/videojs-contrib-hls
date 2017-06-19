@@ -308,6 +308,7 @@ QUnit.test('recognizes absolute key URLs', function(assert) {
     'http://example.com/000001.ts\n' +
     '#EXT-X-ENDLIST\n'
   );
+  assert.ok(loader.isAes_(loader.media()), 'current playlist is an AES encrypted HLS stream');
   assert.equal(loader.media().segments[0].key.resolvedUri,
               'http://example.com/keys/key.php', 'resolved absolute path for key URI');
 });

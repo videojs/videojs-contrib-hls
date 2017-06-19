@@ -403,12 +403,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.load();
       }
 
-      if(this.masterPlaylistLoader_.isAes_(media)) {
+      if (this.masterPlaylistLoader_.isAes_(media)) {
         this.tech_.trigger({type: 'usage', name: 'hls-aes'});
       }
 
-      if(this.masterPlaylistLoader_.isFmp4_(media)) {
-        this.tech_.trigger({type: 'usage', name: 'hls-aes'});
+      if (this.masterPlaylistLoader_.isFmp4_(media)) {
+        this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
       }
 
       this.fillAudioTracks_();
@@ -677,7 +677,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
           label
         });
 
-        if(!properties.uri) {
+        if (!properties.uri) {
           demuxed = false;
         }
         track.properties_ = properties;
@@ -685,7 +685,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
     }
 
-    if(demuxed) {
+    if (demuxed) {
       // fired when video and audio is demuxed by default
       this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
     }
@@ -721,7 +721,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let master = this.master();
     let mediaGroups = master.mediaGroups || {};
 
-    if(Object.keys(mediaGroups.SUBTITLES).length) {
+    if (Object.keys(mediaGroups.SUBTITLES).length) {
       // fired the usage event when a rendition has webvtt in HLS
       this.tech_.trigger({type: 'usage', name: 'hls-webvtt'});
     }

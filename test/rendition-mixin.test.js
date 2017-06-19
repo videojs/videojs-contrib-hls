@@ -65,11 +65,11 @@ const makeMockHlsHandler = function(playlistOptions) {
   let triggered = false;
 
   hlsHandler.playlists.trigger = function(event) {
-    if(event === 'renditiondisabled') {
+    if (event === 'renditiondisabled') {
       triggered = true;
     }
     return triggered;
-  }
+  };
 
   playlistOptions.forEach((playlist, i) => {
     hlsHandler.playlists.master.playlists[i] = makeMockPlaylist(playlist);
@@ -196,7 +196,6 @@ QUnit.test('blacklisted playlists are not included in the representations list',
 });
 
 QUnit.test('setting a representation to disabled sets disabled to true', function(assert) {
-  let renditiondisabled = 0;
   let hlsHandler = makeMockHlsHandler([
     {
       bandwidth: 0,
@@ -208,7 +207,7 @@ QUnit.test('setting a representation to disabled sets disabled to true', functio
       excludeUntil: 0,
       uri: 'media1.m3u8'
     }
-  ])
+  ]);
   let playlists = hlsHandler.playlists.master.playlists;
 
   RenditionMixin(hlsHandler);
