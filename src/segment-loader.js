@@ -795,11 +795,10 @@ export default class SegmentLoader extends videojs.EventTarget {
       };
     }).sort((a, b) => {
       if (a.roundTripTime <= timeUntilRebuffer && b.roundTripTime <= timeUntilRebuffer) {
-        // if both playlists will prevent rebuffernig, prioritize highest bandwidth
+        // if both playlists will prevent rebuffering, prioritize highest bandwidth
         return b.playlist.attributes.BANDWIDTH - a.playlist.attributes.BANDWIDTH;
       }
 
-      // if neither can result in no rebuffering, sort by round trip time
       return a.roundTripTime - b.roundTripTime;
     })[0];
 
