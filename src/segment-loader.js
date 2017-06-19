@@ -572,6 +572,10 @@ export default class SegmentLoader extends videojs.EventTarget {
   checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
     let lastBufferedEnd = 0;
     let startOfSegment;
+    const initial = Config.GOAL_BUFFER_LENGTH;
+    const rate = Config.GOAL_BUFFER_RATE;
+    const max = Config.MAX_GOAL_BUFFER_LENGTH;
+    const dynamicGBL = Math.min(initial + currentTime * rate, Math.max(initial, max));
 
     if (buffered.length) {
       lastBufferedEnd = buffered.end(buffered.length - 1);
@@ -585,7 +589,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // if there is plenty of content buffered, and the video has
     // been played before relax for awhile
-    if (bufferedTime >= Config.GOAL_BUFFER_LENGTH) {
+    if (bufferedTime >= dynamicGBL) {
       return null;
     }
 
@@ -844,7 +848,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         seekable.start(0) < currentTime) {
       removeToTime = seekable.start(0);
     } else {
-      removeToTime = currentTime - 60;
+      removeToTime = currentTime - 30;
     }
 
     if (removeToTime > 0) {

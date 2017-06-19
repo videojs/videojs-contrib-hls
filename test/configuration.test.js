@@ -38,6 +38,7 @@ QUnit.module('Configuration - Deprication', {
     this.clock = this.env.clock;
     this.old = {};
     this.old.GOAL_BUFFER_LENGTH = Config.GOAL_BUFFER_LENGTH;
+    this.old.BUFFER_LOW_WATER_LINE = Config.BUFFER_LOW_WATER_LINE;
     // force the HLS tech to run
     this.old.NativeHlsSupport = videojs.Hls.supportsNativeHls;
     videojs.Hls.supportsNativeHls = false;
@@ -45,6 +46,7 @@ QUnit.module('Configuration - Deprication', {
 
   afterEach() {
     Config.GOAL_BUFFER_LENGTH = this.old.GOAL_BUFFER_LENGTH;
+    Config.BUFFER_LOW_WATER_LINE = this.old.BUFFER_LOW_WATER_LINE;
 
     this.env.restore();
     this.mse.restore();
@@ -76,6 +78,44 @@ QUnit.test('GOAL_BUFFER_LENGTH set warning and invalid', function(assert) {
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
   assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
+});
+
+QUnit.test('BUFFER_LOW_WATER_LINE get warning', function(assert) {
+  assert.equal(Hls.BUFFER_LOW_WATER_LINE,
+              Config.BUFFER_LOW_WATER_LINE,
+              'Hls.BUFFER_LOW_WATER_LINE returns the default');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+});
+
+QUnit.test('BUFFER_LOW_WATER_LINE set warning', function(assert) {
+  Hls.BUFFER_LOW_WATER_LINE = 20;
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 20, 'returns what we set it to');
+
+  // Allow setting to 0
+  Hls.BUFFER_LOW_WATER_LINE = 0;
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'returns what we set it to');
+});
+
+QUnit.test('BUFFER_LOW_WATER_LINE set warning and invalid', function(assert) {
+  Hls.BUFFER_LOW_WATER_LINE = 'nope';
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
+
+  Hls.BUFFER_LOW_WATER_LINE = -1;
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
+
+  // does not allow setting above goal buffer length
+  Hls.BUFFER_LOW_WATER_LINE = 65;
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
 });
 
 QUnit.module('Configuration - Options', {

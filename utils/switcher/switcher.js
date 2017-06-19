@@ -32,6 +32,7 @@ const waitingNote = $('#running-simulation');
 const finishedNote = $('#finished-simulation');
 const secondaryInputs = [
   $('#goal-buffer-length-secondary'),
+  $('#buffer-low-water-line-secondary')
   // $('#bandwidth-variance-secondary')
 ];
 
@@ -76,6 +77,9 @@ runButton.addEventListener('click', function() {
   // clear previous simulation before starting a new one
   results.length = 0;
 
+  waitingNote.style.display = 'block';
+  finishedNote.style.display = 'none';
+
   // Setup the simulation inputs
   // [ [GoalBufferLength, BandwidthVariance], ... ]
   const simulationInputs = setupSimulationInputs();
@@ -84,9 +88,6 @@ runButton.addEventListener('click', function() {
   const runs = simulationInputs.map((inputs, index) => {
     return runSimulations(index, inputs);
   });
-
-  waitingNote.style.display = 'block';
-  finishedNote.style.display = 'none';
 
   Promise.all(runs).then(() => {
     finishedNote.style.display = 'block';
@@ -140,12 +141,13 @@ const setupSimulationInputs = function() {
   const fuzz = fuzzInputs.checked;
 
   // Goal Buffer Length
-  const GBLValues = fuzz ? fuzzGoalBufferLength() : [Math.max(1, Number($('#goal-buffer-length').value))];
+  const GBLValues = fuzzInput('goal-buffer-length', fuzz, 1, 1);
+  // Buffer Low-Water Line
+  const BLWLValues = fuzzInput('buffer-low-water-line', fuzz, 0, 1);
   // Bandwidth Variance
-  // const BVValues = fuzz ? fuzzBandwidthVariance() : [Math.max(0.1, Number($('#bandwidth-variance').value))];
-  const BVValues = [Math.max(0.1, Number($('#bandwidth-variance').value))];
+  const BVValues = fuzzInput('bandwidth-variance', false, 0.1, 0.1);
 
-  const values = [GBLValues, BVValues];
+  const values = [GBLValues, BLWLValues, BVValues];
 
   const merger = function(arr, type) {
     for (let i = 0, l = values[type].length; i < l; i++) {
@@ -165,39 +167,23 @@ const setupSimulationInputs = function() {
   return result;
 };
 
-const fuzzGoalBufferLength = function() {
-  let result = [];
+const fuzzInput = function(input, useMax, inputMin, inputStepMin) {
+  const result = [];
 
-  let GBL = Math.max(1, Number($('#goal-buffer-length').value));
-  let GBLStep = Math.max(1, Number($('#goal-buffer-length-step').value));
-  let GBLMax = Math.max(GBL, Number($('#goal-buffer-length-max').value));
+  let value = Math.max(inputMin, Number($(`#${input}`).value));
+  let step = Math.max(inputStepMin, Number($(`#${input}-step`).value));
+  let max = value;
 
-  result.push(GBL);
+  if (useMax) {
+    max = Math.max(max, Number($(`#${input}-max`).value));
+  }
 
-  while(GBL + GBLStep <= GBLMax) {
-    GBL += GBLStep;
-    result.push(GBL);
+  for (; value <= max; value += step) {
+    result.push(value);
   }
 
   return result;
-};
-
-const fuzzBandwidthVariance = function() {
-  let result = [];
-
-  let BV = Math.max(0.1, Number($('#bandwidth-variance').value));
-  let BVStep = Math.max(0.1, Number($('#bandwidth-variance-step').value));
-  let BVMax = Math.max(BV, Number($('#bandwidth-variance-max').value));
-
-  result.push(BV);
-
-  while(BV + BVStep <= BVMax) {
-    BV += BVStep;
-    result.push(BV);
-  }
-
-  return result;
-};
+}
 
 // collect the simulation parameters
 const parameters = function(trace, inputs) {
@@ -220,11 +206,12 @@ const parameters = function(trace, inputs) {
     console.log('Invalid JSON');
   }
 
-  // inputs: [goalBufferLength, bandwidthVariance]
+  // inputs: [goalBufferLength, bufferLowWaterLine, bandwidthVariance]
 
   return {
     goalBufferLength: inputs[0],
-    bandwidthVariance: inputs[1],
+    bufferLowWaterLine: inputs[1],
+    bandwidthVariance: inputs[2],
     playlists,
     segments,
     networkTrace

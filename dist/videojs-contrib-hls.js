@@ -242,9 +242,15 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = {
   GOAL_BUFFER_LENGTH: 30,
+  MAX_GOAL_BUFFER_LENGTH: 60,
+  GOAL_BUFFER_RATE: 1,
   // A fudge factor to apply to advertised playlist bitrates to account for
   // temporary flucations in client bandwidth
-  BANDWIDTH_VARIANCE: 1.2
+  BANDWIDTH_VARIANCE: 1.2,
+  // How much of the buffer must be filled before we consider upswitching
+  BUFFER_LOW_WATER_LINE: 0,
+  MAX_BUFFER_LOW_WATER_LINE: 30,
+  BUFFER_LOW_WATER_RATE: 1
 };
 module.exports = exports["default"];
 },{}],4:[function(require,module,exports){
@@ -353,6 +359,10 @@ var _webworkify2 = _interopRequireDefault(_webworkify);
 var _decrypterWorker = require('./decrypter-worker');
 
 var _decrypterWorker2 = _interopRequireDefault(_decrypterWorker);
+
+var _config = require('./config');
+
+var _config2 = _interopRequireDefault(_config);
 
 var Hls = undefined;
 
@@ -896,7 +906,30 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
       this.mainSegmentLoader_.on('bandwidthupdate', function () {
         // figure out what stream the next segment should be downloaded from
         // with the updated bandwidth information
-        _this3.masterPlaylistLoader_.media(_this3.selectPlaylist());
+        var nextPlaylist = _this3.selectPlaylist();
+        var currentPlaylist = _this3.masterPlaylistLoader_.media();
+        var buffered = _this3.tech_.buffered();
+        var forwardBuffer = buffered.length ? buffered.end(buffered.length - 1) - _this3.tech_.currentTime() : 0;
+
+        var currentTime = _this3.tech_.currentTime();
+        var initial = _config2['default'].BUFFER_LOW_WATER_LINE;
+        var rate = _config2['default'].BUFFER_LOW_WATER_RATE;
+        var max = _config2['default'].MAX_BUFFER_LOW_WATER_LINE;
+        var dynamicBLWL = Math.min(initial + currentTime * rate, Math.max(initial, max));
+
+        // we want to switch down to lower resolutions quickly to continue playback, but
+        // ensure we have some buffer before we switch up to prevent us running out of
+        // buffer while loading a higher rendition
+        // If the playlist is live, then we want to not take low water line into account.
+        // This is because in LIVE, the player plays 3 segments from the end of the
+        // playlist, and if `BUFFER_LOW_WATER_LINE` is greater than the duration availble
+        // in those segments, a viewer will never experience a rendition upswitch.
+        // For the same reason as LIVE, we ignore the low waterline when the VOD duration
+        // is below the waterline
+        if (!currentPlaylist.endList || _this3.duration() < dynamicBLWL || nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH || forwardBuffer >= dynamicBLWL) {
+          _this3.masterPlaylistLoader_.media(nextPlaylist);
+        }
+
         _this3.tech_.trigger('bandwidthupdate');
       });
       this.mainSegmentLoader_.on('progress', function () {
@@ -1866,7 +1899,7 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
 
 exports.MasterPlaylistController = MasterPlaylistController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ad-cue-tags":1,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
+},{"./ad-cue-tags":1,"./config":3,"./decrypter-worker":4,"./playlist-loader":8,"./ranges":11,"./segment-loader":15,"./sync-controller":18,"./vtt-segment-loader":19,"videojs-contrib-media-sources/es5/codec-utils":65,"webworkify":76}],6:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -5319,6 +5352,10 @@ var SegmentLoader = (function (_videojs$EventTarget) {
     value: function checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
       var lastBufferedEnd = 0;
       var startOfSegment = undefined;
+      var initial = _config2['default'].GOAL_BUFFER_LENGTH;
+      var rate = _config2['default'].GOAL_BUFFER_RATE;
+      var max = _config2['default'].MAX_GOAL_BUFFER_LENGTH;
+      var dynamicGBL = Math.min(initial + currentTime * rate, Math.max(initial, max));
 
       if (buffered.length) {
         lastBufferedEnd = buffered.end(buffered.length - 1);
@@ -5332,7 +5369,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 
       // if there is plenty of content buffered, and the video has
       // been played before relax for awhile
-      if (bufferedTime >= _config2['default'].GOAL_BUFFER_LENGTH) {
+      if (bufferedTime >= dynamicGBL) {
         return null;
       }
 
@@ -5577,7 +5614,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
       if (seekable.length && seekable.start(0) > 0 && seekable.start(0) < currentTime) {
         removeToTime = seekable.start(0);
       } else {
-        removeToTime = currentTime - 60;
+        removeToTime = currentTime - 30;
       }
 
       if (removeToTime > 0) {
@@ -18697,6 +18734,81 @@ Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
       return;
     }
     _config2['default'].GOAL_BUFFER_LENGTH = v;
+  }
+});
+
+Object.defineProperty(Hls, 'MAX_GOAL_BUFFER_LENGTH', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.MAX_GOAL_BUFFER_LENGTH is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].MAX_GOAL_BUFFER_LENGTH;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.MAX_GOAL_BUFFER_LENGTH is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      _videoJs2['default'].log.warn('value passed to Hls.MAX_GOAL_BUFFER_LENGTH ' + 'must be a number and greater than 0');
+      return;
+    }
+    _config2['default'].MAX_GOAL_BUFFER_LENGTH = v;
+  }
+});
+
+Object.defineProperty(Hls, 'GOAL_BUFFER_RATE', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.GOAL_BUFFER_RATE is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].GOAL_BUFFER_RATE;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.GOAL_BUFFER_RATE is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      _videoJs2['default'].log.warn('value passed to Hls.GOAL_BUFFER_RATE ' + 'must be a number and greater than 0');
+      return;
+    }
+    _config2['default'].GOAL_BUFFER_RATE = v;
+  }
+});
+
+Object.defineProperty(Hls, 'BUFFER_LOW_WATER_LINE', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].BUFFER_LOW_WATER_LINE;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v < 0 || v > _config2['default'].GOAL_BUFFER_LENGTH) {
+      _videoJs2['default'].log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' + 'must be a number and greater than or equal to 0 and less than' + 'Hls.GOAL_BUFFER_LENGTH');
+      return;
+    }
+    _config2['default'].BUFFER_LOW_WATER_LINE = v;
+  }
+});
+
+Object.defineProperty(Hls, 'MAX_BUFFER_LOW_WATER_LINE', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.MAX_BUFFER_LOW_WATER_LINE is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].MAX_BUFFER_LOW_WATER_LINE;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.MAX_BUFFER_LOW_WATER_LINE is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v < 0 || v > _config2['default'].GOAL_BUFFER_LENGTH) {
+      _videoJs2['default'].log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' + 'must be a number and greater than or equal to 0 and less than' + 'Hls.GOAL_BUFFER_LENGTH');
+      return;
+    }
+    _config2['default'].MAX_BUFFER_LOW_WATER_LINE = v;
+  }
+});
+
+Object.defineProperty(Hls, 'BUFFER_LOW_WATER_RATE', {
+  get: function get() {
+    _videoJs2['default'].log.warn('using Hls.BUFFER_LOW_WATER_RATE is UNSAFE be sure ' + 'you know what you are doing');
+    return _config2['default'].BUFFER_LOW_WATER_RATE;
+  },
+  set: function set(v) {
+    _videoJs2['default'].log.warn('using Hls.BUFFER_LOW_WATER_RATE is UNSAFE be sure ' + 'you know what you are doing');
+    if (typeof v !== 'number' || v <= 0) {
+      _videoJs2['default'].log.warn('value passed to Hls.BUFFER_LOW_WATER_RATE ' + 'must be a number and greater than 0');
+      return;
+    }
+    _config2['default'].BUFFER_LOW_WATER_RATE = v;
   }
 });
 
