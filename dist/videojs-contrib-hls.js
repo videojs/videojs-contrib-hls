@@ -3605,61 +3605,7 @@ var movingAverageBandwidthSelector = function movingAverageBandwidthSelector(dec
     return simpleSelector(this.playlists.master, average, parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10), parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
   };
 };
-
 exports.movingAverageBandwidthSelector = movingAverageBandwidthSelector;
-/**
- * Chooses the playlist with the highest bandwidth that loading a segment from would
- * result in the minimum time spent rebuffering.
- *
- * @param {Object} master
- *        Object representing the master playlist
- * @param {Number} bandwidth
- *        Current bandwidth
- * @param {Number} timeUnitRebuffer
- *        Time in seconds left in the forward buffer
- * @param {Number} segmentDuration
- *        Duration of the expected segment
- * @return {Object}
- *         Object with two properties
- *         playlist - The playlist object that will result in the minimum rebuffering
- *         roundTripTime - The estimated amount of time in seconds it will take to
- *         switch to this playlist and download a segment
- */
-var minRebufferingSelector = function minRebufferingSelector(master, bandwidth, timeUntilRebuffer, segmentDuration) {
-  // get a list of playlists with bandwidth info and sort
-  var playlists = master.playlists.filter(function (media) {
-    return media.attributes && media.attributes.BANDWIDTH;
-  }).sort(function (a, b) {
-    return a.attributes.BANDWIDTH - b.attributes.BANDWIDTH;
-  });
-
-  var minEstimatedRoundTripTime = Number.MAX_VALUE;
-  var bestPlaylist = null;
-
-  // Find the playlist with the highest bandwidth that the player can load from
-  // safely without needing to rebuffer
-  for (var i = playlists.length - 1; i >= 0; i--) {
-    var playlist = playlists[i];
-    var estimatedSegmentSize = segmentDuration * playlist.attributes.BANDWIDTH;
-    var estimatedRoundTripTime = estimatedSegmentSize / bandwidth;
-
-    if (estimatedRoundTripTime < minEstimatedRoundTripTime) {
-      minEstimatedRoundTripTime = estimatedRoundTripTime;
-      bestPlaylist = playlist;
-    }
-
-    if (estimatedRoundTripTime < timeUntilRebuffer) {
-      // we can switch to the playlist and avoid any rebuffering!
-      break;
-    }
-  }
-
-  return {
-    playlist: bestPlaylist,
-    roundTripTime: minEstimatedRoundTripTime
-  };
-};
-exports.minRebufferingSelector = minRebufferingSelector;
 },{"./config":3,"./playlist":10}],10:[function(require,module,exports){
 (function (global){
 /**
@@ -4769,8 +4715,6 @@ var _binUtils = require('./bin-utils');
 
 var _mediaSegmentRequest = require('./media-segment-request');
 
-var _playlistSelectors = require('./playlist-selectors');
-
 var _ranges = require('./ranges');
 
 // in ms
@@ -5515,6 +5459,8 @@ var SegmentLoader = (function (_videojs$EventTarget) {
   }, {
     key: 'abortRequestEarly_',
     value: function abortRequestEarly_(stats) {
+      var _this3 = this;
+
       if (this.hls_.tech_.paused() ||
       // Don't abort if the current playlist is on the lowestEnabledRendition
       // TODO: Replace using timeout with a boolean indicating whether this playlist is
@@ -5532,14 +5478,16 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         return false;
       }
 
+      var currentTime = this.currentTime_();
       var measuredBandwidth = stats.bandwidth;
-      var estimatedSegmentSize = this.pendingSegment_.duration * this.playlist_.attributes.BANDWIDTH;
+      var segmentDuration = this.pendingSegment_.duration;
+      var estimatedSegmentSize = segmentDuration * this.playlist_.attributes.BANDWIDTH;
       var requestTimeRemaining = (estimatedSegmentSize - stats.bytesReceived * 8) / measuredBandwidth;
       var buffered = this.buffered_();
       var bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
       // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
       // if we are only left with less than 1 second when the request completes.
-      var timeUntilRebuffer = (bufferedEnd - this.currentTime_()) / this.hls_.tech_.playbackRate() - 1;
+      var timeUntilRebuffer = (bufferedEnd - currentTime) / this.hls_.tech_.playbackRate() - 1;
 
       // Only consider aborting early if the estimated time to finish the download
       // is larger than the estimated time until the player runs out of forward buffer
@@ -5547,12 +5495,34 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         return false;
       }
 
-      var _minRebufferingSelector = (0, _playlistSelectors.minRebufferingSelector)(this.hls_.playlists.master, measuredBandwidth, timeUntilRebuffer, this.pendingSegment_.duration);
+      var switchCandidate = this.hls_.playlists.master.playlists.filter(function (playlist) {
+        return playlist.attributes && playlist.attributes.BANDWIDTH;
+      }).map(function (playlist) {
+        var syncPoint = _this3.syncController_.getSyncPoint(playlist, _this3.duration_(), _this3.currentTimeline_, currentTime);
+        // There is no sync point for this playlist, so switching to it will require a
+        // sync request first. This will double the round trip time
+        var numRequests = syncPoint ? 1 : 2;
+        var segmentSize = segmentDuration * playlist.attributes.BANDWIDTH;
+        var roundTripTime = segmentSize * numRequests / measuredBandwidth;
 
-      var playlist = _minRebufferingSelector.playlist;
-      var roundTripTime = _minRebufferingSelector.roundTripTime;
+        return {
+          playlist: playlist,
+          roundTripTime: roundTripTime
+        };
+      }).sort(function (a, b) {
+        if (a.roundTripTime <= timeUntilRebuffer && b.roundTripTime <= timeUntilRebuffer) {
+          // if both playlists will prevent rebuffering, prioritize highest bandwidth
+          return b.playlist.attributes.BANDWIDTH - a.playlist.attributes.BANDWIDTH;
+        }
 
-      var timeSavedBySwitching = requestTimeRemaining - roundTripTime;
+        return a.roundTripTime - b.roundTripTime;
+      })[0];
+
+      if (!switchCandidate) {
+        return;
+      }
+
+      var timeSavedBySwitching = requestTimeRemaining - switchCandidate.roundTripTime;
 
       var minimumTimeSaving = 0.5;
 
@@ -5563,14 +5533,14 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         minimumTimeSaving = 1;
       }
 
-      if (!playlist || playlist.uri === this.playlist_.uri || timeSavedBySwitching <= minimumTimeSaving) {
+      if (!switchCandidate.playlist || switchCandidate.playlist.uri === this.playlist_.uri || timeSavedBySwitching < minimumTimeSaving) {
         return false;
       }
 
       // set the bandwidth to that of the desired playlist
       // (Being sure to scale by BANDWIDTH_VARIANCE and add one so the
       // playlist selector does not exclude it)
-      this.bandwidth = playlist.attributes.BANDWIDTH * _config2['default'].BANDWIDTH_VARIANCE + 1;
+      this.bandwidth = switchCandidate.playlist.attributes.BANDWIDTH * _config2['default'].BANDWIDTH_VARIANCE + 1;
       this.abort();
       this.trigger('bandwidthupdate');
       return true;
@@ -5785,7 +5755,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
   }, {
     key: 'handleSegment_',
     value: function handleSegment_() {
-      var _this3 = this;
+      var _this4 = this;
 
       if (!this.pendingSegment_) {
         this.state = 'READY';
@@ -5816,11 +5786,11 @@ var SegmentLoader = (function (_videojs$EventTarget) {
         (function () {
           var initId = (0, _binUtils.initSegmentId)(segment.map);
 
-          if (!_this3.activeInitSegmentId_ || _this3.activeInitSegmentId_ !== initId) {
-            var initSegment = _this3.initSegment(segment.map);
+          if (!_this4.activeInitSegmentId_ || _this4.activeInitSegmentId_ !== initId) {
+            var initSegment = _this4.initSegment(segment.map);
 
-            _this3.sourceUpdater_.appendBuffer(initSegment.bytes, function () {
-              _this3.activeInitSegmentId_ = initId;
+            _this4.sourceUpdater_.appendBuffer(initSegment.bytes, function () {
+              _this4.activeInitSegmentId_ = initId;
             });
           }
         })();
@@ -5987,7 +5957,7 @@ var SegmentLoader = (function (_videojs$EventTarget) {
 exports['default'] = SegmentLoader;
 module.exports = exports['default'];
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./playlist-selectors":9,"./ranges":11,"./source-updater":16,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
+},{"./bin-utils":2,"./config":3,"./media-segment-request":6,"./playlist":10,"./ranges":11,"./source-updater":16,"global/window":31,"videojs-contrib-media-sources/es5/remove-cues-from-track.js":72}],16:[function(require,module,exports){
 (function (global){
 /**
  * @file source-updater.js
