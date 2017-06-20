@@ -138,6 +138,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   dispose() {
     this.state = 'DISPOSED';
+    this.pause();
     this.abort_();
     if (this.sourceUpdater_) {
       this.sourceUpdater_.dispose();
@@ -159,10 +160,15 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.abort_();
 
+    // We aborted the requests we were waiting on, so reset the loader's state to READY
+    // since we are no longer "waiting" on any requests. XHR callback is not always run
+    // when the request is aborted. This will prevent the loader from being stuck in the
+    // WAITING state indefinitely.
+    this.state = 'READY';
+
     // don't wait for buffer check timeouts to begin fetching the
     // next segment
     if (!this.paused()) {
-      this.state = 'READY';
       this.monitorBuffer_();
     }
   }
@@ -445,6 +451,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   resyncLoader() {
     this.mediaIndex = null;
     this.syncPoint_ = null;
+    this.abort();
   }
 
   /**
@@ -847,6 +854,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // an error occurred from the active pendingSegment_ so reset everything
     if (error) {
       this.pendingSegment_ = null;
+      this.state = 'READY';
 
       // the requests were aborted just record the aborted stat and exit
       // this is not a true error condition and nothing corrective needs
@@ -856,7 +864,6 @@ export default class SegmentLoader extends videojs.EventTarget {
         return;
       }
 
-      this.state = 'READY';
       this.pause();
 
       // the error is really just that at least one of the requests timed-out

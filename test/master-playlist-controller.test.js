@@ -281,11 +281,18 @@ QUnit.test('fast quality change resyncs audio segment loader', function(assert) 
 
   this.player.audioTracks()[0].enabled = true;
 
+  let resyncs = 0;
   let resets = 0;
+  let realReset = masterPlaylistController.audioSegmentLoader_.resetLoader;
 
-  masterPlaylistController.audioSegmentLoader_.resetLoader = () => resets++;
+  masterPlaylistController.audioSegmentLoader_.resetLoader = function() {
+    resets++;
+    realReset.call(this);
+  };
+
+  masterPlaylistController.audioSegmentLoader_.resyncLoader = () => resyncs++;
   masterPlaylistController.fastQualityChange_();
-  assert.equal(resets, 0, 'does not reset the audio segment loader when media same');
+  assert.equal(resyncs, 0, 'does not resync the audio segment loader when media same');
 
   // force different media
   masterPlaylistController.selectPlaylist = () => {
@@ -295,10 +302,52 @@ QUnit.test('fast quality change resyncs audio segment loader', function(assert) 
   assert.equal(this.requests.length, 1, 'one request');
   masterPlaylistController.fastQualityChange_();
   assert.equal(this.requests.length, 2, 'added a request for new media');
-  assert.equal(resets, 0, 'does not reset the audio segment loader yet');
+  assert.equal(resyncs, 0, 'does not resync the audio segment loader yet');
   // new media request
   this.standardXHRResponse(this.requests[1]);
-  assert.equal(resets, 1, 'resets the audio segment loader when media changes');
+  assert.equal(resyncs, 1, 'resyncs the audio segment loader when media changes');
+  assert.equal(resets, 0, 'does not reset the audio segment loader when media changes');
+});
+
+QUnit.test('audio segment loader is reset on audio track change', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'alternate-audio-multiple-groups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  masterPlaylistController.selectPlaylist = () => {
+    return masterPlaylistController.master().playlists[0];
+  };
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  let resyncs = 0;
+  let resets = 0;
+  let realReset = masterPlaylistController.audioSegmentLoader_.resetLoader;
+
+  masterPlaylistController.audioSegmentLoader_.resetLoader = function() {
+    resets++;
+    realReset.call(this);
+  };
+  masterPlaylistController.audioSegmentLoader_.resyncLoader = () => resyncs++;
+
+  assert.equal(this.requests.length, 1, 'one request');
+  assert.equal(resyncs, 0, 'does not resync the audio segment loader yet');
+
+  this.player.audioTracks()[1].enabled = true;
+
+  assert.equal(this.requests.length, 2, 'two requests');
+  assert.equal(resyncs, 1, 'resyncs the audio segment loader when audio track changes');
+  assert.equal(resets, 1, 'resets the audio segment loader when audio track changes');
 });
 
 QUnit.test('if buffered, will request second segment byte range', function(assert) {
