@@ -2,6 +2,16 @@ CHANGELOG
 =========
 
 --------------------
+## 5.6.0 (2017-06-20)
+* Do not reset segmentloaders when switching media groups [#1155](https://github.com/videojs/videojs-contrib-hls/pull/1155)
+  * set loader state to ready on aborts even when loader is paused
+* don't crash when segment metadata cues can't be created [#1167](https://github.com/videojs/videojs-contrib-hls/pull/1167)
+* Allow overrideNative to be set as a player-level option [#1156](https://github.com/videojs/videojs-contrib-hls/pull/1156)
+* Create a moving-average playlist selector [#1125](https://github.com/videojs/videojs-contrib-hls/pull/1125)
+  * Define a variant of the standard playlist selector that calculates a moving average of bandwidth and uses that to select a playlist.
+* Trigger bandwidthupdate events on the tech [#1122](https://github.com/videojs/videojs-contrib-hls/pull/1122)
+
+--------------------
 ## 5.5.3 (2017-05-16)
 * update mux.js to 4.1.4 and videojs-contrib-media-sources to 4.4.5 [#1117](https://github.com/videojs/videojs-contrib-hls/pull/1117)
   * ts probe searches packets for first it can successfully parse
