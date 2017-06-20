@@ -1127,18 +1127,26 @@ QUnit.test('calls to update cues on media when no master', function(assert) {
 
 QUnit.test('respects useCueTags option', function(assert) {
   let origHlsOptions = videojs.options.hls;
+  let hlsplaylistcuetags = 0;
 
   videojs.options.hls = {
     useCueTags: true
   };
 
   this.player = createPlayer();
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-playlist-cue-tags') {
+      hlsplaylistcuetags++;
+    }
+  });
   this.player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
+  assert.equal(hlsplaylistcuetags, 1, '');
   assert.ok(this.masterPlaylistController.cueTagsTrack_,
            'creates cueTagsTrack_ if useCueTags is truthy');
   assert.equal(this.masterPlaylistController.cueTagsTrack_.label,
@@ -1186,8 +1194,9 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
 
 QUnit.test('trigger events when an AES is detected', function(assert) {
   let hlsaes = 0;
+  let playlistCopy = Hls.Playlist;
 
-  this.masterPlaylistController.masterPlaylistLoader_.isAes_ = (media) => {
+  Hls.Playlist.isAes = (media) => {
     return true;
   };
 
@@ -1204,12 +1213,14 @@ QUnit.test('trigger events when an AES is detected', function(assert) {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   assert.equal(hlsaes, 1, 'an AES HLS stream is detected');
+  Hls.Playlist = playlistCopy;
 });
 
 QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
   let hlsfmp4 = 0;
+  let playlistCopy = Hls.Playlist;
 
-  this.masterPlaylistController.masterPlaylistLoader_.isFmp4_ = (media) => {
+  Hls.Playlist.isFmp4 = (media) => {
     return true;
   };
 
@@ -1226,6 +1237,7 @@ QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   assert.equal(hlsfmp4, 1, 'an fMP4 stream is detected');
+  Hls.Playlist = playlistCopy;
 });
 
 QUnit.test('trigger events when video and audio is demuxed by default', function(assert) {

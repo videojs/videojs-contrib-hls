@@ -274,34 +274,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     return (loader.master.playlists.filter(isEnabled).length === 1);
   };
 
-  /**
-   * Returns whether the current playlist is an AES encrypted HLS stream
-   *
-   * @return {Boolean} true if it's an AES encrypted HLS stream
-   */
-  loader.isAes_ = function(media) {
-    for (let i = 0; i < media.segments.length; i++) {
-      if (media.segments[i].key) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  /**
-   * Returns whether the current playlist contains fMP4
-   *
-   * @return {Boolean} true if it contains fMP4
-   */
-  loader.isFmp4_ = function(media) {
-    for (let i = 0; i < media.segments.length; i++) {
-      if (media.segments[i].map) {
-        return true;
-      }
-    }
-    return false;
-  };
-
    /**
     * When called without any arguments, returns the currently
     * active media playlist. When called with a single argument,

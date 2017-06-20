@@ -173,7 +173,6 @@ QUnit.test('resolves media initialization segment URIs', function(assert) {
 
   assert.equal(loader.media().segments[0].map.resolvedUri, urlTo('video/main.mp4'),
               'resolved init segment URI');
-  assert.ok(loader.isFmp4_(loader.media()), 'fmp4 is detcted when playing HLS');
 });
 
 QUnit.test('recognizes absolute URIs and requests them unmodified', function(assert) {
@@ -303,7 +302,6 @@ QUnit.test('recognizes absolute key URLs', function(assert) {
     'http://example.com/000001.ts\n' +
     '#EXT-X-ENDLIST\n'
   );
-  assert.ok(loader.isAes_(loader.media()), 'current playlist is an AES encrypted HLS stream');
   assert.equal(loader.media().segments[0].key.resolvedUri,
               'http://example.com/keys/key.php', 'resolved absolute path for key URI');
 });

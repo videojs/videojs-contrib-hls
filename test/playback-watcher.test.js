@@ -123,13 +123,13 @@ QUnit.test('skips over gap in chrome without waiting event', function(assert) {
 });
 
 QUnit.test('skips over gap in Chrome due to video underflow', function(assert) {
-  let hlsgapskip = 0;
+  let hlsvideounderflow = 0;
 
   this.player.autoplay(true);
 
   this.player.tech_.on('usage', (event) => {
-    if (event.name === 'hls-gap-skip') {
-      hlsgapskip++;
+    if (event.name === 'hls-video-underflow') {
+      hlsvideounderflow++;
     }
   });
 
@@ -152,7 +152,7 @@ QUnit.test('skips over gap in Chrome due to video underflow', function(assert) {
   this.player.tech_.trigger('playing');
   this.clock.tick(1);
 
-  assert.equal(hlsgapskip, 0, 'there is no skipped gap');
+  assert.equal(hlsvideounderflow, 0, 'no video underflow event got triggered');
 
   this.player.currentTime(13);
 
@@ -166,8 +166,7 @@ QUnit.test('skips over gap in Chrome due to video underflow', function(assert) {
 
   assert.equal(seeks.length, 1, 'one seek');
   assert.equal(seeks[0], 13, 'player seeked to current time');
-  // ?? not sure if it's correct that there is no skipped gap
-  assert.equal(hlsgapskip, 0, 'there is no skipped gap');
+  assert.equal(hlsvideounderflow, 1, 'triggered an video underflow event');
 });
 
 QUnit.test('seek to live point if we fall off the end of a live playlist',

@@ -301,6 +301,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
       this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
+      this.tech_.trigger({type: 'usage', name: 'hls-playlist-cue-tags'});
     }
 
     this.requestOptions_ = {
@@ -403,11 +404,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.load();
       }
 
-      if (this.masterPlaylistLoader_.isAes_(media)) {
+      if (Hls.Playlist.isAes(media)) {
         this.tech_.trigger({type: 'usage', name: 'hls-aes'});
       }
 
-      if (this.masterPlaylistLoader_.isFmp4_(media)) {
+      if (Hls.Playlist.isFmp4(media)) {
         this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
       }
 
