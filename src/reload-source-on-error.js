@@ -22,7 +22,7 @@ const initPlugin = function(player, options) {
   let seekTo = 0;
   let localOptions = videojs.mergeOptions(defaultOptions, options);
 
-  player.tech_.trigger({type: 'usage', name: 'hls-first-initialized'});
+  player.tech_.trigger({type: 'usage', name: 'hls-error-reload-initialized'});
 
   /**
    * Player modifications to perform that must wait until `loadedmetadata`
