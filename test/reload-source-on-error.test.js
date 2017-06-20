@@ -25,6 +25,14 @@ QUnit.module('ReloadSourceOnError', {
       return this.tech;
     };
 
+    this.player.tech_ = () => {
+      return this.tech;
+    };
+
+    this.player.tech_.trigger = (event) => {
+      return event;
+    };
+
     this.player.duration = () => {
       return this.player.currentValues.duration;
     };

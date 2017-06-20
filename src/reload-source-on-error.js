@@ -22,6 +22,8 @@ const initPlugin = function(player, options) {
   let seekTo = 0;
   let localOptions = videojs.mergeOptions(defaultOptions, options);
 
+  player.tech_.trigger({type: 'usage', name: 'hls-first-initialized'});
+
   /**
    * Player modifications to perform that must wait until `loadedmetadata`
    * has been triggered
@@ -49,6 +51,7 @@ const initPlugin = function(player, options) {
     player.one('loadedmetadata', loadedMetadataHandler);
 
     player.src(sourceObj);
+    player.tech_.trigger({type: 'usage', name: 'hls-error-reload'});
     player.play();
   };
 
@@ -62,6 +65,7 @@ const initPlugin = function(player, options) {
     // Do not attempt to reload the source if a source-reload occurred before
     // 'errorInterval' time has elapsed since the last source-reload
     if (Date.now() - lastCalled < localOptions.errorInterval * 1000) {
+      player.tech_.trigger({type: 'usage', name: 'hls-error-not-reload'});
       return;
     }
 
