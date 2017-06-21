@@ -1194,7 +1194,7 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
 
 QUnit.test('trigger events when an AES is detected', function(assert) {
   let hlsaes = 0;
-  let playlistCopy = Hls.Playlist.isAes;
+  let isAesCopy = Hls.Playlist.isAes;
 
   Hls.Playlist.isAes = (media) => {
     return true;
@@ -1213,12 +1213,12 @@ QUnit.test('trigger events when an AES is detected', function(assert) {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   assert.equal(hlsaes, 1, 'an AES HLS stream is detected');
-  Hls.Playlist.isAes = playlistCopy;
+  Hls.Playlist.isAes = isAesCopy;
 });
 
 QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
   let hlsfmp4 = 0;
-  let playlistCopy = Hls.Playlist.isFmp4;
+  let isFmp4Copy = Hls.Playlist.isFmp4;
 
   Hls.Playlist.isFmp4 = (media) => {
     return true;
@@ -1237,7 +1237,7 @@ QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   assert.equal(hlsfmp4, 1, 'an fMP4 stream is detected');
-  Hls.Playlist.isFmp4 = playlistCopy;
+  Hls.Playlist.isFmp4 = isFmp4Copy;
 });
 
 QUnit.test('trigger events when video and audio is demuxed by default', function(assert) {
