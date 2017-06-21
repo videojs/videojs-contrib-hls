@@ -17,9 +17,8 @@ module.exports = function(config) {
     }
   };
 
-  // On Travis CI, we can only run in Firefox.
   if (process.env.TRAVIS) {
-    config.browsers = ['Firefox', 'travisChrome'];
+    config.browsers = ['travisChrome'];
   }
 
   // If no browsers are specified, we enable `karma-detect-browsers`
