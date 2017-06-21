@@ -22,7 +22,7 @@ import window from 'global/window';
 import 'videojs-contrib-quality-levels';
 /* eslint-enable no-unused-vars */
 
-const Flash = videojs.getComponent('Flash');
+const Flash = videojs.getTech('Flash');
 const ogHlsHandlerSetupQualityLevels = videojs.HlsHandler.prototype.setupQualityLevels_;
 let nextId = 0;
 
@@ -43,47 +43,45 @@ QUnit.module('HLS', {
     this.clock = this.env.clock;
     this.old = {};
 
-    if (Flash) {
-      // mock out Flash features for phantomjs
-      this.old.Flash = videojs.mergeOptions({}, Flash);
-      /* eslint-disable camelcase */
-      Flash.embed = function(swf, flashVars) {
-        let el = document.createElement('div');
+    // mock out Flash features for phantomjs
+    this.old.Flash = videojs.mergeOptions({}, Flash);
+    /* eslint-disable camelcase */
+    Flash.embed = function(swf, flashVars) {
+      let el = document.createElement('div');
 
-        el.id = 'vjs_mock_flash_' + nextId++;
-        el.className = 'vjs-tech vjs-mock-flash';
-        el.duration = Infinity;
-        el.vjs_load = function() {};
-        el.vjs_getProperty = function(attr) {
-          if (attr === 'buffered') {
-            return [[0, 0]];
-          }
-          return el[attr];
-        };
-        el.vjs_setProperty = function(attr, value) {
-          el[attr] = value;
-        };
-        el.vjs_src = function() {};
-        el.vjs_play = function() {};
-        el.vjs_discontinuity = function() {};
-
-        if (flashVars.autoplay) {
-          el.autoplay = true;
+      el.id = 'vjs_mock_flash_' + nextId++;
+      el.className = 'vjs-tech vjs-mock-flash';
+      el.duration = Infinity;
+      el.vjs_load = function() {};
+      el.vjs_getProperty = function(attr) {
+        if (attr === 'buffered') {
+          return [[0, 0]];
         }
-        if (flashVars.preload) {
-          el.preload = flashVars.preload;
-        }
-
-        el.currentTime = 0;
-
-        return el;
+        return el[attr];
       };
-      /* eslint-enable camelcase */
-      this.old.FlashSupported = Flash.isSupported;
-      Flash.isSupported = function() {
-        return true;
+      el.vjs_setProperty = function(attr, value) {
+        el[attr] = value;
       };
-    }
+      el.vjs_src = function() {};
+      el.vjs_play = function() {};
+      el.vjs_discontinuity = function() {};
+
+      if (flashVars.autoplay) {
+        el.autoplay = true;
+      }
+      if (flashVars.preload) {
+        el.preload = flashVars.preload;
+      }
+
+      el.currentTime = 0;
+
+      return el;
+    };
+    /* eslint-enable camelcase */
+    this.old.FlashSupported = Flash.isSupported;
+    Flash.isSupported = function() {
+      return true;
+    };
 
     // store functionality that some tests need to mock
     this.old.GlobalOptions = videojs.mergeOptions(videojs.options);
@@ -117,11 +115,9 @@ QUnit.module('HLS', {
     this.env.restore();
     this.mse.restore();
 
-    if (Flash) {
-      merge(videojs.options, this.old.GlobalOptions);
-      Flash.isSupported = this.old.FlashSupported;
-      merge(Flash, this.old.Flash);
-    }
+    merge(videojs.options, this.old.GlobalOptions);
+    Flash.isSupported = this.old.FlashSupported;
+    merge(Flash, this.old.Flash);
 
     videojs.Hls.supportsNativeHls = this.old.NativeHlsSupport;
     videojs.Hls.Decrypter = this.old.Decrypt;
@@ -1439,27 +1435,25 @@ QUnit.test('the withCredentials option overrides the global default', function(a
   videojs.options.hls = hlsOptions;
 });
 
-if (Flash) {
-  QUnit.test('if mode global option is used, mode is set to global option', function(assert) {
-    let hlsOptions = videojs.options.hls;
+QUnit.test('if mode global option is used, mode is set to global option', function(assert) {
+  let hlsOptions = videojs.options.hls;
 
-    this.player.dispose();
-    videojs.options.hls = {
-      mode: 'flash'
-    };
-    this.player = createPlayer();
-    this.player.src({
-      src: 'http://example.com/media.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-
-    this.clock.tick(1);
-
-    openMediaSource(this.player, this.clock);
-    assert.equal(this.player.tech_.hls.options_.mode, 'flash', 'mode set to flash');
-    videojs.options.hls = hlsOptions;
+  this.player.dispose();
+  videojs.options.hls = {
+    mode: 'flash'
+  };
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
   });
-}
+
+  this.clock.tick(1);
+
+  openMediaSource(this.player, this.clock);
+  assert.equal(this.player.tech_.hls.options_.mode, 'flash', 'mode set to flash');
+  videojs.options.hls = hlsOptions;
+});
 
 QUnit.test('respects bandwidth option of 0', function(assert) {
   this.player.dispose();
@@ -1621,11 +1615,7 @@ QUnit.test('remove event handlers on dispose', function(assert) {
 });
 
 QUnit.test('the source handler supports HLS mime types', function(assert) {
-  const techs = ['html5'];
-
-  if (Flash) {
-    techs.push('flash');
-  }
+  const techs = ['html5', 'flash'];
 
   techs.forEach(function(techName) {
     assert.ok(HlsSourceHandler(techName).canHandleSource({
@@ -1652,46 +1642,44 @@ QUnit.test('the source handler supports HLS mime types', function(assert) {
   });
 });
 
-if (Flash) {
-  QUnit.test('fires loadstart manually if Flash is used', function(assert) {
-    videojs.HlsHandler.prototype.setupQualityLevels_ = () => {};
-    let tech = new (videojs.getTech('Flash'))({});
-    let loadstarts = 0;
+QUnit.test('fires loadstart manually if Flash is used', function(assert) {
+  videojs.HlsHandler.prototype.setupQualityLevels_ = () => {};
+  let tech = new (videojs.getTech('Flash'))({});
+  let loadstarts = 0;
 
-    tech.on('loadstart', function() {
-      loadstarts++;
-    });
-    HlsSourceHandler('flash').handleSource({
-      src: 'movie.m3u8',
+  tech.on('loadstart', function() {
+    loadstarts++;
+  });
+  HlsSourceHandler('flash').handleSource({
+    src: 'movie.m3u8',
+    type: 'application/x-mpegURL'
+  }, tech);
+
+  assert.equal(loadstarts, 0, 'loadstart is not synchronous');
+  this.clock.tick(1);
+  assert.equal(loadstarts, 1, 'fired loadstart');
+  videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
+});
+
+QUnit.test('source handler does not support sources when IE 10 or below', function(assert) {
+  videojs.browser.IE_VERSION = 10;
+
+  ['html5', 'flash'].forEach(function(techName) {
+    assert.ok(!HlsSourceHandler(techName).canHandleSource({
       type: 'application/x-mpegURL'
-    }, tech);
-
-    assert.equal(loadstarts, 0, 'loadstart is not synchronous');
-    this.clock.tick(1);
-    assert.equal(loadstarts, 1, 'fired loadstart');
-    videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
+    }), 'does not support when browser is IE10');
   });
+});
 
-  QUnit.test('source handler does not support sources when IE 10 or below', function(assert) {
-    videojs.browser.IE_VERSION = 10;
+QUnit.test('fires loadstart manually if Flash is used', function(assert) {
+  videojs.HlsHandler.prototype.setupQualityLevels_ = () => {};
+  let tech = new (videojs.getTech('Flash'))({});
+  let loadstarts = 0;
 
-    ['html5', 'flash'].forEach(function(techName) {
-      assert.ok(!HlsSourceHandler(techName).canHandleSource({
-        type: 'application/x-mpegURL'
-      }), 'does not support when browser is IE10');
-    });
+  tech.on('loadstart', function() {
+    loadstarts++;
   });
-
-  QUnit.test('fires loadstart manually if Flash is used', function(assert) {
-    videojs.HlsHandler.prototype.setupQualityLevels_ = () => {};
-    let tech = new (videojs.getTech('Flash'))({});
-    let loadstarts = 0;
-
-    tech.on('loadstart', function() {
-      loadstarts++;
-    });
-  });
-}
+});
 
 QUnit.test('has no effect if native HLS is available', function(assert) {
   const Html5 = videojs.getTech('Html5');
@@ -2084,39 +2072,37 @@ QUnit.test('adds 1 default audio track if we have not parsed any and the playlis
   assert.equal(this.player.audioTracks()[0].label, 'default', 'set the label');
 });
 
-if (Flash) {
-  QUnit.test('adds 1 default audio track if in flash mode', function(assert) {
-    let hlsOptions = videojs.options.hls;
+QUnit.test('adds 1 default audio track if in flash mode', function(assert) {
+  let hlsOptions = videojs.options.hls;
 
-    this.player.dispose();
-    videojs.options.hls = {
-      mode: 'flash'
-    };
+  this.player.dispose();
+  videojs.options.hls = {
+    mode: 'flash'
+  };
 
-    this.player = createPlayer();
+  this.player = createPlayer();
 
-    this.player.src({
-      src: 'manifest/multipleAudioGroups.m3u8',
-      type: 'application/vnd.apple.mpegurl'
-    });
-
-    this.clock.tick(1);
-
-    assert.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
-
-    openMediaSource(this.player, this.clock);
-
-    // master
-    this.standardXHRResponse(this.requests.shift());
-    // media
-    this.standardXHRResponse(this.requests.shift());
-
-    assert.equal(this.player.audioTracks().length, 1, 'one audio track after load');
-    assert.equal(this.player.audioTracks()[0].label, 'default', 'set the label');
-
-    videojs.options.hls = hlsOptions;
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
   });
-}
+
+  this.clock.tick(1);
+
+  assert.equal(this.player.audioTracks().length, 0, 'zero audio tracks at load time');
+
+  openMediaSource(this.player, this.clock);
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.equal(this.player.audioTracks().length, 1, 'one audio track after load');
+  assert.equal(this.player.audioTracks()[0].label, 'default', 'set the label');
+
+  videojs.options.hls = hlsOptions;
+});
 
 QUnit.test('adds audio tracks if we have parsed some from a playlist', function(assert) {
   this.player.src({
