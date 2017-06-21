@@ -1960,22 +1960,26 @@ QUnit.test('loads if native HLS is available and override is set locally', funct
 
   Hls.supportsNativeHls = true;
   player = createPlayer({html5: {hls: {overrideNative: true}}});
+  this.clock.tick(1);
   player.tech_.featuresNativeVideoTracks = true;
   assert.throws(function() {
     player.src({
       src: 'http://example.com/manifest/master.m3u8',
       type: 'application/x-mpegURL'
     });
+    this.clock.tick(1);
   }, 'errors if native tracks are enabled');
   player.dispose();
 
   player = createPlayer({html5: {hls: {overrideNative: true}}});
+  this.clock.tick(1);
   player.tech_.featuresNativeVideoTracks = false;
   player.tech_.featuresNativeAudioTracks = false;
   player.src({
     src: 'http://example.com/manifest/master.m3u8',
     type: 'application/x-mpegURL'
   });
+  this.clock.tick(1);
 
   assert.ok(player.tech_.hls, 'did load hls tech');
   player.dispose();
