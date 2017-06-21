@@ -476,6 +476,93 @@ are triggered on the player object.
 Fired after the first segment is downloaded for a playlist. This will not happen
 until playback if video.js's `metadata` setting is `none`
 
+### HLS Usage Tracking Events
+
+Add more metrics around HLS feature usage to help track down the cause of HLS errors and
+understand which features are used most often.
+These may be removed in the furture.
+
+#### Presence Stats
+
+Fired once per source when we have enough info to determine these features are present
+
+##### hls-webvtt
+
+Fired when a rendition has webvtt in HLS
+
+##### hls-aes
+
+Fired when the player detects an AES encrypted HLS stream
+
+##### hls-fmp4
+
+Fired when fMP4 is detected when playing HLS
+
+##### hls-demuxed
+
+Fired when video and audio is demuxed by default
+
+##### hls-alternate-audio
+
+Fired when alternate audio is detected when playing HLS
+
+#### Use Stats
+
+Fired once each time a feature is used
+
+##### hls-gap-skip
+
+Fired when a gap in the buffer is skipped in HLS
+
+##### hls-player-access
+
+Fired when player.hls is accessed
+
+##### hls-audio-change
+
+Fired when a user selects an alternate audio stream in HLS
+
+##### hls-rendition-disabled
+
+Fired when a rendition is enabled/disabled in HLS
+
+##### hls-rendition-blacklisted
+
+Fired when a rendition is blacklisted by HLS
+
+##### hls-timestamp-offset
+
+Fired when a timestamp offset is set in HLS (can also identify discontinuities)
+
+##### hls-playlist-cue-tags
+
+Fired when cue tags is used in HLS
+
+##### hls-unknown-waiting
+
+Fired when unknown waiting corrections are detected when playing HLS
+
+##### hls-live-resync
+
+Fired when live window resyncs happen when playing a live stream
+
+##### hls-video-underflow
+
+Fired when video underflow is detected by HLS
+
+##### hls-error-reload-initialized
+
+Fired when the event when the reload src on error plugin is first initialized
+
+##### hls-error-reload
+
+Fired when we set the source after an error ahs caused the reload
+
+##### hls-error-not-reload
+
+Fired when an error occurs but don't reload the source when there is not enough time has elapsed
+
+
 ### In-Band Metadata
 The HLS tech supports [timed
 metadata](https://developer.apple.com/library/ios/#documentation/AudioVideo/Conceptual/HTTP_Live_Streaming_Metadata_Spec/Introduction/Introduction.html)
