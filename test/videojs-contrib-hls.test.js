@@ -2,7 +2,6 @@
 
 import document from 'global/document';
 import videojs from 'video.js';
-import 'videojs-flash';
 import Events from 'video.js';
 import QUnit from 'qunit';
 import testDataManifests from './test-manifests.js';
