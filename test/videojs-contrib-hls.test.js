@@ -1713,6 +1713,7 @@ QUnit.test('loads if native HLS is available and override is set', function(asse
       src: 'http://example.com/manifest/master.m3u8',
       type: 'application/x-mpegURL'
     });
+    this.clock.tick(1);
   }, 'errors if native tracks are enabled');
   player.dispose();
 
@@ -2663,7 +2664,7 @@ QUnit.test('populates quality levels list when available', function(assert) {
   this.player = createPlayer({}, {
     src: 'http://example.com/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
-  });
+  }, this.clock);
   openMediaSource(this.player, this.clock);
 
   assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels from video with source');
