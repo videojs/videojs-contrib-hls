@@ -567,6 +567,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.onSyncInfoUpdate_();
     });
 
+    this.mainSegmentLoader_.on('ended', () => {
+      this.onEndOfStream();
+    });
+
+    this.audioSegmentLoader_.on('ended', () => {
+      this.onEndOfStream();
+    });
+
     this.audioSegmentLoader_.on('error', () => {
       videojs.log.warn('Problem encountered with the current alternate audio track' +
                        '. Switching back to default.');
@@ -1139,6 +1147,28 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     this.trigger('sourceopen');
+  }
+
+  /**
+   * Calls endOfStream on the media source when all active stream types have called
+   * endOfStream
+   *
+   * @param {string} streamType
+   *        Stream type of the segment loader that called endOfStream
+   * @private
+   */
+  onEndOfStream() {
+    let isEndOfStream = this.mainSegmentLoader_.ended_;
+
+    if (this.audioPlaylistLoader_) {
+      // if the audio playlist loader exists, then alternate audio is active, so we need
+      // to wait for both the main and audio segment loaders to call endOfStream
+      isEndOfStream = isEndOfStream && this.audioSegmentLoader_.ended_;
+    }
+
+    if (isEndOfStream) {
+      this.mediaSource.endOfStream();
+    }
   }
 
   /**

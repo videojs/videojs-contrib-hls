@@ -110,6 +110,8 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.syncController_.on('syncinfoupdate', () => this.trigger('syncinfoupdate'));
 
+    this.mediaSource_.addEventListener('sourceopen', () => this.ended_ = false);
+
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
@@ -200,6 +202,12 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.pendingSegment_ = null;
     return this.error_;
+  }
+
+  endOfStream() {
+    this.ended_ = true;
+    this.pause();
+    this.trigger('ended');
   }
 
   /**
@@ -429,6 +437,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * Delete all the buffered data and reset the SegmentLoader
    */
   resetEverything() {
+    this.ended_ = false;
     this.resetLoader();
     this.remove(0, Infinity);
   }
@@ -536,7 +545,7 @@ export default class SegmentLoader extends videojs.EventTarget {
                                           segmentInfo.mediaIndex);
 
     if (isEndOfStream) {
-      this.mediaSource_.endOfStream();
+      this.endOfStream();
       return;
     }
 
@@ -1036,7 +1045,7 @@ export default class SegmentLoader extends videojs.EventTarget {
                                             segmentInfo.mediaIndex + 1);
 
     if (isEndOfStream) {
-      this.mediaSource_.endOfStream();
+      this.endOfStream();
     }
 
     if (!this.paused()) {

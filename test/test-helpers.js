@@ -84,6 +84,7 @@ class MockMediaSource extends videojs.EventTarget {
   endOfStream(error) {
     this.readyState = 'ended';
     this.error_ = error;
+    this.trigger('sourceended');
   }
 }
 
