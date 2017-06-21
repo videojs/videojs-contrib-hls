@@ -321,7 +321,7 @@ QUnit.test('including HLS as a tech does not error', function(assert) {
   this.clock.tick(1);
 
   assert.ok(player, 'created the player');
-  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings for deprications');
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings for deprecations');
 });
 
 QUnit.test('creates a PlaylistLoader on init', function(assert) {
@@ -2632,9 +2632,10 @@ QUnit.test('populates quality levels list when available', function(assert) {
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  openMediaSource(this.player, this.clock);
 
   this.clock.tick(1);
+
+  openMediaSource(this.player, this.clock);
 
   assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels');
 
