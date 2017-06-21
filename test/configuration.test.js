@@ -111,10 +111,10 @@ options.forEach((opt) => {
     });
 
     this.clock.tick(1);
+    openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.default,
                 `${opt.name} should be default`);
@@ -129,10 +129,10 @@ options.forEach((opt) => {
     });
 
     this.clock.tick(1);
+    openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to global`);
@@ -149,10 +149,10 @@ options.forEach((opt) => {
     });
 
     this.clock.tick(1);
+    openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourceHandler Option`);
@@ -169,10 +169,10 @@ options.forEach((opt) => {
     this.player.src(srcOptions);
 
     this.clock.tick(1);
+    openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to src option`);
@@ -190,10 +190,10 @@ options.forEach((opt) => {
     });
 
     this.clock.tick(1);
+    openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourchHandler option`);
@@ -212,10 +212,10 @@ options.forEach((opt) => {
     this.player.src(srcOptions);
 
     this.clock.tick(1);
+    openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourchHandler option`);
