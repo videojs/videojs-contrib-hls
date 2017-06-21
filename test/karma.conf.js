@@ -38,8 +38,8 @@ module.exports = function(config) {
       'node_modules/video.js/dist/video-js.css',
       'node_modules/videojs-flash/dist/videojs-flash.js',
       'dist-test/browserify-test.js',
-      'dist-test/webpack-test.js'
-      'dist-test/videojs-contrib-hls.js',
+      'dist-test/webpack-test.js',
+      'dist-test/videojs-contrib-hls.js'
     ],
     browserConsoleLogOptions: {
       level: 'error',
