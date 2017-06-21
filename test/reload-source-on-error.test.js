@@ -5,6 +5,10 @@ import reloadSourceOnError from '../src/reload-source-on-error';
 
 QUnit.module('ReloadSourceOnError', {
   beforeEach() {
+    let hlserrorreloadinitialized = false;
+    let hlserrorreload = false;
+    let hlserrornotreload = false;
+
     this.clock = sinon.useFakeTimers();
 
     // setup a player
@@ -30,7 +34,18 @@ QUnit.module('ReloadSourceOnError', {
     };
 
     this.player.tech_.trigger = (event) => {
-      return event;
+      if (!event) {
+        return [hlserrorreloadinitialized, hlserrorreload, hlserrornotreload];
+      }
+      if (event.name === 'hls-error-reload-initialized') {
+        hlserrorreloadinitialized = true;
+      }
+      if (event.name === 'hls-error-reload') {
+        hlserrorreload = true;
+      }
+      if (event.name === 'hls-error-not-reload') {
+        hlserrornotreload = true;
+      }
     };
 
     this.player.duration = () => {
@@ -111,10 +126,16 @@ QUnit.test('doesn\'t seek to currentTime in live', function(assert) {
 });
 
 QUnit.test('by default, only allows a retry once every 30 seconds', function(assert) {
+  assert.ok(!this.player.tech_.trigger()[0], 'the plugin has not been initialized');
+  assert.ok(!this.player.tech_.trigger()[1], 'there is no source was set');
+  assert.ok(!this.player.tech_.trigger()[2], 'not reload event has not been triggered');
+
   this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
+  assert.ok(this.player.tech_.trigger()[0], 'the plugin has been initialized');
+  assert.ok(this.player.tech_.trigger()[1], 'src was set after an error has caused the reload');
   assert.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
 
   // Advance 59 seconds
@@ -129,6 +150,7 @@ QUnit.test('by default, only allows a retry once every 30 seconds', function(ass
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
+  assert.ok(this.player.tech_.trigger()[2], 'did not reload the source because not enough time has elapsed');
   assert.equal(this.player.src.calledWith.length, 2, 'player.src was called twice');
 });
 
