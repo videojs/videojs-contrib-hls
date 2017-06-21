@@ -134,10 +134,10 @@
     "sinon": "1.10.2",
     "uglify-js": "^2.5.0",
     "videojs-contrib-quality-levels": "^2.0.2",
-    "videojs-flash": "^1.0.0-RC.0",
+    "videojs-flash": "^2.0.0",
     "videojs-standard": "^4.0.3",
+    "videojs-swf": "^5.2.0",
     "watchify": "^3.6.0",
-    "webpack": "^1.13.2",
-    "videojs-swf": "^5.2.0"
+    "webpack": "^1.13.2"
   }
 }
