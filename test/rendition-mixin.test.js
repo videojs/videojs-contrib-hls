@@ -2,6 +2,7 @@
 
 import QUnit from 'qunit';
 import RenditionMixin from '../src/rendition-mixin.js';
+import videojs from 'video.js';
 
 const makeMockPlaylist = function(options) {
   options = options || {};
@@ -55,21 +56,11 @@ const makeMockHlsHandler = function(playlistOptions) {
   mcp.fastQualityChange_.calls = 0;
 
   let hlsHandler = {
-    masterPlaylistController_: mcp,
-    playlists: {
-      master: {
-        playlists: []
-      }
-    }
+    masterPlaylistController_: mcp
   };
-  let triggered = false;
 
-  hlsHandler.playlists.trigger = function(event) {
-    if (event === 'renditiondisabled') {
-      triggered = true;
-    }
-    return triggered;
-  };
+  hlsHandler.playlists = new videojs.EventTarget();
+  hlsHandler.playlists.master = { playlists: [] };
 
   playlistOptions.forEach((playlist, i) => {
     hlsHandler.playlists.master.playlists[i] = makeMockPlaylist(playlist);
@@ -196,6 +187,7 @@ QUnit.test('blacklisted playlists are not included in the representations list',
 });
 
 QUnit.test('setting a representation to disabled sets disabled to true', function(assert) {
+  let renditiondisabled = 0;
   let hlsHandler = makeMockHlsHandler([
     {
       bandwidth: 0,
@@ -210,14 +202,18 @@ QUnit.test('setting a representation to disabled sets disabled to true', functio
   ]);
   let playlists = hlsHandler.playlists.master.playlists;
 
+  hlsHandler.playlists.on('renditiondisabled', function() {
+    renditiondisabled++;
+  });
+
   RenditionMixin(hlsHandler);
 
   let renditions = hlsHandler.representations();
 
-  assert.ok(!hlsHandler.playlists.trigger(), 'renditiondisabled event has not been triggered');
+  assert.equal(renditiondisabled, 0, 'renditiondisabled event has not been triggered');
   renditions[0].enabled(false);
 
-  assert.ok(hlsHandler.playlists.trigger(), 'renditiondisabled event has been triggered');
+  assert.equal(renditiondisabled, 1, 'renditiondisabled event has been triggered');
   assert.equal(playlists[0].disabled, true, 'rendition has been disabled');
   assert.equal(playlists[1].disabled, undefined, 'rendition has not been disabled');
   assert.equal(playlists[0].excludeUntil, 0, 'excludeUntil not touched when disabling a rendition');
