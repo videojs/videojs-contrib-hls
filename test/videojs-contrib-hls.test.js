@@ -1933,6 +1933,16 @@ QUnit.test('fires loadstart manually if Flash is used', function(assert) {
   tech.on('loadstart', function() {
     loadstarts++;
   });
+  HlsSourceHandler('flash').handleSource({
+    src: 'movie.m3u8',
+    type: 'application/x-mpegURL'
+  }, tech);
+
+  assert.equal(loadstarts, 0, 'loadstart is not synchronous');
+  this.clock.tick(1);
+  assert.equal(loadstarts, 1, 'fired loadstart');
+  tech.dispose();
+  videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
 });
 
 QUnit.test('has no effect if native HLS is available', function(assert) {
