@@ -41,6 +41,7 @@
     "test:safari": "npm run pretest && karma start test/karma.conf.js --browsers Safari",
     "preversion": "npm test",
     "version": "npm run build",
+    "prewatch": "npm run build:test:manifest",
     "watch": "npm-run-all -p watch:*",
     "watch:docs": "nodemon --watch src/ --exec npm run docs",
     "watch:js": "npm-run-all -p watch:js:babel watch:js:browserify watch:js:switcher",
