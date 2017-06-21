@@ -25,59 +25,148 @@
         </header>
         <section>
           <h2>Timeline</h2>
+          <p id="running-simulation">Running simulation please wait... (this may take a few minutes)</p>
+          <p id="finished-simulation">Simulation Complete! Click "Save Report" to save the results.</p>
           <p class=timeline>Simulation results will show up here</p>
+          <p><textarea rows="15" cols="120" id="result"></textarea></p>
           <button id=run-simulation type=submit>Run Simulation</button>
+          <button id=save-report type=submit>Save Report</button>
         </section>
         <section>
           <h2>Parameters</h2>
           <form id=parameters>
-            <ol class=network-timeline>
-              <li>
-                <label>
-                  After <input name=time0 class=time type=number value=0 min=0> seconds,
-                </label>
-                <label>
-                  the link capacity is <input name=bandwidth0 class=bandwidth type=number value=250000> bits per second
-                </label>
-              </li>
-              <li>
-                <label>
-                  After <input name=time1 class=time type=number value=150 min=0> seconds,
-                </label>
-                <label>
-                  the link capacity is <input name=bandwidth1 class=bandwidth type=number value=500000> bits per second
-                </label>
-              </li>
-              <li>
-                <label>
-                  After <input name=time2 class=time type=number value=600 min=0> seconds,
-                </label>
-                <label>
-                  the link capacity is <input name=bandwidth2 class=bandwidth type=number value=250000> bits per second
-                </label>
-              </li>
-            </ol>
-            <p>
-              You can simulate more complex network conditions by
-              changing the bandwidth during the run. Start a new time
-              period and then define its starting time and link
-              capacity.
-              <button type=button class=add-time-period>Add time period</button>
-            </p>
-            <p>
-              If you've created a complex scenario you'd like to retry
-              later, run the simulation and then save the URL of this
-              page. All of the network conditions you specify are
-              saved into the URL fragment after the results of a
-              simulation run are displayed.
-            </p>
-            The video is available at
-            <ul>
-              <li><input class=bitrate type=number min=1 value=52400> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=129600> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=212500> bits per second</li>
-              <li><input class=bitrate type=number min=1 value=312500> bits per second</li>
-            </ul>
+          <fieldset>
+            <legend>Fuzz inputs?</legend>
+            <input id="fuzz-inputs" type="checkbox"/>
+            <legend>Goal Buffer Length</legend>
+            <input type="number", id="goal-buffer-length" value="30">
+            <div id="goal-buffer-length-secondary" style="display:none;">
+              <legend>Goal Buffer Length Max Value</legend>
+              <input type="number", id="goal-buffer-length-max" value="60">
+              <legend>Goal Buffer Length Step</legend>
+              <input type="number", id="goal-buffer-length-step" value="5">
+            </div>
+            <legend>Bandwidth Variance</legend>
+            <input type="number", id="bandwidth-variance" value="1.2">
+            <div id="bandwidth-variance-secondary" style="display:none;">
+              <legend>Bandwidth Variance Max Value</legend>
+              <input type="number", id="bandwidth-variance-max" value="2">
+              <legend>Bandwidth Variance Step</legend>
+              <input type="number", id="bandwidth-variance-step" value="0.1">
+            </div>
+            <legend>Network Trace</legend>
+            <div class="input"><input type="file" id="local" multiple value="network_logs/car.snaroya-smestad"></div>
+            <legend>Video Bitrates (one per line: "max, average")</legend>
+            <textarea rows="15" cols="120" id="bitrates">
+355846, 267880
+677251, 516619
+988278, 754451
+1544909, 1162739
+2237501, 1668115
+3016122, 2212994
+            </textarea>
+            <legend><i>(Optional)</i> Segment Sizes (JSON with bitrates as the keys and arrays of segment sizes)</legend>
+            <textarea rows="15" cols="120" id="segments">
+{
+  "3016122": [
+    3498116,
+    2501716,
+    1861200,
+    3608096,
+    2076084,
+    3770152,
+    2977920,
+    2720924,
+    2757208,
+    2892004,
+    2538564,
+    2396812,
+    2405272,
+    3084516,
+     468684 ],
+  "2237501": [
+    2618840,
+    1892408,
+    1418084,
+    2676556,
+    1538968,
+    2796876,
+    2219152,
+    2017052,
+    2107480,
+    2215204,
+    1951628,
+    1809124,
+    1833940,
+    2352444,
+    369796 ],
+  "1544909": [
+    1877932,
+    1390824,
+    1015576,
+    1661544,
+    1118600,
+    1931136,
+    1549872,
+    1414324,
+    1503060,
+    1582020,
+    1380296,
+    1262420,
+    1286672,
+    1580516,
+    229172 ],
+  "988278": [
+    1197748,
+    887924,
+    682064,
+    1006552,
+    766664,
+    1235348,
+    997152,
+    883788,
+    1016892,
+    1037008,
+    924396,
+    803136,
+    879276,
+    1003920,
+    163936 ],
+  "677251": [
+    836600,
+    610248,
+    473572,
+    665708,
+    533356,
+    846564,
+    676800,
+    592200,
+    702932,
+    717972,
+    633372,
+    534484,
+    614948,
+    673980,
+    121824 ],
+  "355846": [
+    444808,
+    334828,
+    251732,
+    319976,
+    269780,
+    434092,
+    363780,
+    317908,
+    364720,
+    373368,
+    329188,
+    277300,
+    301740,
+    353440,
+    51700 ]
+}
+            </textarea>
+          </fieldset>
           </form>
         </section>
       </article>
@@ -93,7 +182,6 @@
   <div id="qunit-fixture"></div>
   <script src="/node_modules/sinon/pkg/sinon.js"></script>
   <script src="/node_modules/video.js/dist/video.js"></script>
-  <script src="/dist/videojs-contrib-hls.js"></script>
   <script src="/node_modules/d3/d3.min.js"></script>
   <script src="/dist/switcher.js"></script>
 </body>

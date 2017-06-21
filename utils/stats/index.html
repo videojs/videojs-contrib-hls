@@ -7,10 +7,13 @@
   <link href="../../node_modules/video.js/dist/video-js.css" rel="stylesheet">
 
   <!-- video.js -->
-  <script src="../../node_modules/video.js/dist/video.js"></script>
+  <script src="../../node_modules/video.js/dist/alt/video.novtt.js"></script>
 
   <!-- HLS plugin -->
   <script src="../../dist/videojs-contrib-hls.js"></script>
+
+  <!-- quality levels plugin -->
+  <script src="../../node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.js"></script>
 
   <!-- player stats visualization -->
   <link href="stats.css" rel="stylesheet">
@@ -120,6 +123,11 @@
         <dd class="seeked-count">0</dd>
       </dl>
     </div>
+    <div id="quality-levels">
+      <h2>Quality Levels:</h2>
+      <ul class="quality-buttons">
+      </ul>
+    </div>
     <h3 class="bitrate-switching">Bitrate Switching</h3>
     <div class="switching-stats">
       Once the player begins loading, you'll see information about the
@@ -131,6 +139,30 @@
 
   <script src="stats.js"></script>
   <script>
+    function createQualityButton(qualityLevel, parent) {
+      var li = document.createElement('li');
+      var button = document.createElement('button');
+      var classes = button.classList;
+
+      if (qualityLevel.enabled) {
+        classes.add('enabled');
+      } else {
+        classes.add('disabled');
+      }
+
+      button.innerHTML = qualityLevel.id + ': ' + qualityLevel.bitrate + ' kbps';
+      button.id = 'quality-level-' + qualityLevel.id;
+
+      button.onclick = function() {
+        var old = qualityLevel.enabled;
+        qualityLevel.enabled = !old;
+        button.classList.toggle('enabled');
+        button.classList.toggle('disabled');
+      }
+      li.appendChild(button);
+      parent.appendChild(li);
+    }
+
     function getCheckedValue(name) {
       var radios = document.getElementsByName(name);
       var value;
@@ -151,6 +183,10 @@
       if(window.player) {
         window.player.dispose();
       }
+
+      var qualityButtons = document.querySelector('.quality-buttons');
+
+      qualityButtons.innerHTML = '';
 
       // create video element in the dom
       var video = document.createElement('video');
@@ -231,6 +267,7 @@
         var seekableEndStat = document.querySelector('.seekable-end-stat');
         var videoBitrateState = document.querySelector('.video-bitrate-stat');
         var measuredBitrateStat = document.querySelector('.measured-bitrate-stat');
+        var qualityButtons = document.querySelector('.quality-buttons');
 
         player.on('timeupdate', function() {
           currentTimeStat.textContent = player.currentTime().toFixed(1);
@@ -291,6 +328,27 @@
 
         videojs.Hls.displayStats(document.querySelector('.switching-stats'), player);
         videojs.Hls.displayCues(document.querySelector('.segment-timeline'), player);
+
+        player.ready(function() {
+          var qualityLevels = player.qualityLevels();
+
+          qualityLevels.on('addqualitylevel', function(event) {
+            createQualityButton(event.qualityLevel, qualityButtons);
+          });
+
+          qualityLevels.on('change', function(event) {
+            for (var i = 0; i < qualityLevels.length; i++) {
+              var level = qualityLevels[i];
+              var button = document.getElementById('quality-level-' + level.id);
+
+              button.classList.remove('selected');
+            }
+
+            var selected = qualityLevels[event.selectedIndex];
+            var button = document.getElementById('quality-level-' + selected.id);
+            button.classList.add('selected');
+          });
+        });
       });
     }
 

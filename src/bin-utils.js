@@ -61,6 +61,21 @@ const createTransferableMessage = function(message) {
 };
 
 /**
+ * Returns a unique string identifier for a media initialization
+ * segment.
+ */
+const initSegmentId = function(initSegment) {
+  let byterange = initSegment.byterange || {
+    length: Infinity,
+    offset: 0
+  };
+
+  return [
+    byterange.length, byterange.offset, initSegment.resolvedUri
+  ].join(',');
+};
+
+/**
  * utils to help dump binary data to the console
  */
 const utils = {
@@ -90,7 +105,8 @@ const utils = {
     }
     return result;
   },
-  createTransferableMessage
+  createTransferableMessage,
+  initSegmentId
 };
 
 export default utils;

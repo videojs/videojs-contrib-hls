@@ -3,6 +3,8 @@
  */
 import videojs from 'video.js';
 
+const noop = function() {};
+
 /**
  * A queue of callbacks to be serialized and applied when a
  * MediaSource and its associated SourceBuffers are not in the
@@ -43,6 +45,7 @@ export default class SourceUpdater {
     this.pendingCallback_ = null;
     this.timestampOffset_ = 0;
     this.mediaSource = mediaSource;
+    this.processedAppend_ = false;
 
     if (mediaSource.readyState === 'closed') {
       mediaSource.addEventListener('sourceopen', createSourceBuffer);
@@ -58,9 +61,11 @@ export default class SourceUpdater {
    * @see http://w3c.github.io/media-source/#widl-SourceBuffer-abort-void
    */
   abort(done) {
-    this.queueCallback_(() => {
-      this.sourceBuffer_.abort();
-    }, done);
+    if (this.processedAppend_) {
+      this.queueCallback_(() => {
+        this.sourceBuffer_.abort();
+      }, done);
+    }
   }
 
   /**
@@ -71,6 +76,8 @@ export default class SourceUpdater {
    * @see http://www.w3.org/TR/media-source/#widl-SourceBuffer-appendBuffer-void-ArrayBuffer-data
    */
   appendBuffer(bytes, done) {
+    this.processedAppend_ = true;
+
     this.queueCallback_(() => {
       this.sourceBuffer_.appendBuffer(bytes);
     }, done);
@@ -89,18 +96,6 @@ export default class SourceUpdater {
   }
 
   /**
-   * Queue an update to set the duration.
-   *
-   * @param {Double} duration what to set the duration to
-   * @see http://www.w3.org/TR/media-source/#widl-MediaSource-duration
-   */
-  duration(duration) {
-    this.queueCallback_(() => {
-      this.sourceBuffer_.duration = duration;
-    });
-  }
-
-  /**
    * Queue an update to remove a time range from the buffer.
    *
    * @param {Number} start where to start the removal
@@ -108,18 +103,20 @@ export default class SourceUpdater {
    * @see http://www.w3.org/TR/media-source/#widl-SourceBuffer-remove-void-double-start-unrestricted-double-end
    */
   remove(start, end) {
-    this.queueCallback_(() => {
-      this.sourceBuffer_.remove(start, end);
-    });
+    if (this.processedAppend_) {
+      this.queueCallback_(() => {
+        this.sourceBuffer_.remove(start, end);
+      }, noop);
+    }
   }
 
   /**
-   * wether the underlying sourceBuffer is updating or not
+   * Whether the underlying sourceBuffer is updating or not
    *
    * @return {Boolean} the updating status of the SourceBuffer
    */
   updating() {
-    return !this.sourceBuffer_ || this.sourceBuffer_.updating;
+    return !this.sourceBuffer_ || this.sourceBuffer_.updating || this.pendingCallback_;
   }
 
   /**
@@ -138,7 +135,7 @@ export default class SourceUpdater {
   }
 
   /**
-   * que a callback to run
+   * Queue a callback to run
    */
   queueCallback_(callback, done) {
     this.callbacks_.push([callback.bind(this), done]);
@@ -146,13 +143,12 @@ export default class SourceUpdater {
   }
 
   /**
-   * run a queued callback
+   * Run a queued callback
    */
   runCallback_() {
     let callbacks;
 
-    if (this.sourceBuffer_ &&
-        !this.sourceBuffer_.updating &&
+    if (!this.updating() &&
         this.callbacks_.length) {
       callbacks = this.callbacks_.shift();
       this.pendingCallback_ = callbacks[1];

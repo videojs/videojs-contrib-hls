@@ -139,7 +139,8 @@ QUnit.test('skips over gap in Chrome due to video underflow', function(assert) {
   assert.equal(seeks[0], 13, 'player seeked to current time');
 });
 
-QUnit.test('seek to live point if we fall off the end of a live playlist', function(assert) {
+QUnit.test('seek to live point if we fall off the end of a live playlist',
+function(assert) {
   // set an arbitrary live source
   this.player.src({
     src: 'liveStart30sBefore.m3u8',
@@ -172,6 +173,148 @@ QUnit.test('seek to live point if we fall off the end of a live playlist', funct
   assert.equal(seeks.length, 1, 'one seek');
   assert.equal(seeks[0], 45, 'player seeked to live point');
 });
+
+QUnit.test('seeks to current time when stuck inside buffered region', function(assert) {
+
+  // set an arbitrary live source
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // start playback normally
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  standardXHRResponse(this.requests.shift());
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.player.tech_.trigger('playing');
+  this.clock.tick(1);
+
+  this.player.currentTime(10);
+
+  let seeks = [];
+
+  this.player.tech_.setCurrentTime = (time) => {
+    seeks.push(time);
+  };
+
+  this.player.tech_.seeking = () => false;
+  this.player.tech_.buffered = () => videojs.createTimeRanges([[0, 30]]);
+  this.player.tech_.seekable = () => videojs.createTimeRanges([[0, 30]]);
+  this.player.tech_.paused = () => false;
+
+  // Playback watcher loop runs on a 250ms clock
+  this.clock.tick(250);
+
+  // Loop has run through once, `lastRecordedTime` should have been recorded
+  // and `consecutiveUpdates` set to 0 to begin count
+  assert.equal(this.player.tech_.hls.playbackWatcher_.lastRecordedTime, 10,
+    'Playback Watcher stored current time');
+  assert.equal(this.player.tech_.hls.playbackWatcher_.consecutiveUpdates, 0,
+    'consecutiveUpdates set to 0');
+
+  // Playback watcher loop runs on a 250ms clock
+  this.clock.tick(250);
+
+  // Loop should increment consecutive updates until it is >= 5
+  assert.equal(this.player.tech_.hls.playbackWatcher_.consecutiveUpdates, 1,
+    'consecutiveUpdates incremented');
+
+  // Playback watcher loop runs on a 250ms clock
+  this.clock.tick(250);
+
+  // Loop should increment consecutive updates until it is >= 5
+  assert.equal(this.player.tech_.hls.playbackWatcher_.consecutiveUpdates, 2,
+    'consecutiveUpdates incremented');
+
+  // Playback watcher loop runs on a 250ms clock
+  this.clock.tick(250);
+
+  // Loop should increment consecutive updates until it is >= 5
+  assert.equal(this.player.tech_.hls.playbackWatcher_.consecutiveUpdates, 3,
+    'consecutiveUpdates incremented');
+
+  // Playback watcher loop runs on a 250ms clock
+  this.clock.tick(250);
+
+  // Loop should increment consecutive updates until it is >= 5
+  assert.equal(this.player.tech_.hls.playbackWatcher_.consecutiveUpdates, 4,
+    'consecutiveUpdates incremented');
+
+  // Playback watcher loop runs on a 250ms clock
+  this.clock.tick(250);
+
+  // Loop should increment consecutive updates until it is >= 5
+  assert.equal(this.player.tech_.hls.playbackWatcher_.consecutiveUpdates, 5,
+    'consecutiveUpdates incremented');
+
+  // Playback watcher loop runs on a 250ms clock
+  this.clock.tick(250);
+
+  // Loop should see consecutive updates >= 5, call `waiting_`
+  assert.equal(this.player.tech_.hls.playbackWatcher_.consecutiveUpdates, 0,
+    'consecutiveUpdates reset');
+
+  // Playback watcher seeked to currentTime in `waiting_` to correct the `unknownwaiting`
+  assert.equal(seeks.length, 1, 'one seek');
+  assert.equal(seeks[0], 10, 'player seeked to currentTime');
+});
+
+QUnit.test('does not seek to current time when stuck near edge of buffered region',
+  function(assert) {
+    // set an arbitrary live source
+    this.player.src({
+      src: 'liveStart30sBefore.m3u8',
+      type: 'application/vnd.apple.mpegurl'
+    });
+
+    // start playback normally
+    this.player.tech_.triggerReady();
+    this.clock.tick(1);
+    standardXHRResponse(this.requests.shift());
+    openMediaSource(this.player, this.clock);
+    this.player.tech_.trigger('play');
+    this.player.tech_.trigger('playing');
+    this.clock.tick(1);
+
+    this.player.currentTime(29.98);
+
+    let seeks = [];
+
+    this.player.tech_.setCurrentTime = (time) => {
+      seeks.push(time);
+    };
+
+    this.player.tech_.seeking = () => false;
+    this.player.tech_.buffered = () => videojs.createTimeRanges([[0, 30]]);
+    this.player.tech_.seekable = () => videojs.createTimeRanges([[0, 30]]);
+    this.player.tech_.paused = () => false;
+
+    // Playback watcher loop runs on a 250ms clock
+    this.clock.tick(250);
+
+    // Loop has run through once, `lastRecordedTime` should have been recorded
+    // and `consecutiveUpdates` set to 0 to begin count
+    assert.equal(this.player.tech_.hls.playbackWatcher_.lastRecordedTime, 29.98,
+      'Playback Watcher stored current time');
+    assert.equal(this.player.tech_.hls.playbackWatcher_.consecutiveUpdates, 0,
+      'consecutiveUpdates set to 0');
+
+    // Playback watcher loop runs on a 250ms clock
+    this.clock.tick(250);
+
+    // Loop has run through a second time, should detect that currentTime hasn't made
+    // progress while at the end of the buffer. Since the currentTime is at the end of the
+    // buffer, `consecutiveUpdates` should not be incremented
+    assert.equal(this.player.tech_.hls.playbackWatcher_.lastRecordedTime, 29.98,
+      'Playback Watcher stored current time');
+    assert.equal(this.player.tech_.hls.playbackWatcher_.consecutiveUpdates, 0,
+      'consecutiveUpdates should still be 0');
+
+    // no corrective seek
+    assert.equal(seeks.length, 0, 'no seek');
+  });
 
 QUnit.test('fires notifications when activated', function(assert) {
   let buffered = [[]];
@@ -227,6 +370,172 @@ QUnit.test('fires notifications when activated', function(assert) {
   playbackWatcher.waiting_();
   assert.equal(videounderflow, 1, 'triggered a videounderflow event');
   assert.equal(liveresync, 1, 'did not trigger an additional liveresync event');
+});
+
+QUnit.test('fixes bad seeks', function(assert) {
+  // set an arbitrary live source
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // start playback normally
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  standardXHRResponse(this.requests.shift());
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.player.tech_.trigger('playing');
+  this.clock.tick(1);
+
+  let playbackWatcher = this.player.tech_.hls.playbackWatcher_;
+  let seeks = [];
+  let seekable;
+  let seeking;
+  let currentTime;
+
+  playbackWatcher.seekable = () => seekable;
+  playbackWatcher.tech_ = {
+    seeking: () => seeking,
+    setCurrentTime: (time) => {
+      seeks.push(time);
+    },
+    currentTime: () => currentTime
+  };
+
+  currentTime = 50;
+  seekable = videojs.createTimeRanges([[1, 45]]);
+  seeking = false;
+  assert.ok(!playbackWatcher.fixesBadSeeks_(), 'does nothing when not seeking');
+  assert.equal(seeks.length, 0, 'did not seek');
+
+  seeking = true;
+  assert.ok(playbackWatcher.fixesBadSeeks_(), 'acts when seek past seekable range');
+  assert.equal(seeks.length, 1, 'seeked');
+  assert.equal(seeks[0], 45, 'player seeked to live point');
+
+  currentTime = 0;
+  assert.ok(playbackWatcher.fixesBadSeeks_(), 'acts when seek before seekable range');
+  assert.equal(seeks.length, 2, 'seeked');
+  assert.equal(seeks[1], 45, 'player seeked to live point');
+
+  currentTime = 30;
+  assert.ok(!playbackWatcher.fixesBadSeeks_(), 'does nothing when time within range');
+  assert.equal(seeks.length, 2, 'did not seek');
+});
+
+QUnit.test('seeks to live point if we try to seek outside of seekable', function(assert) {
+  // set an arbitrary live source
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // start playback normally
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  standardXHRResponse(this.requests.shift());
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.player.tech_.trigger('playing');
+  this.clock.tick(1);
+
+  let playbackWatcher = this.player.tech_.hls.playbackWatcher_;
+  let seeks = [];
+  let seekable;
+  let seeking;
+  let currentTime;
+
+  playbackWatcher.seekable = () => seekable;
+  playbackWatcher.tech_ = {
+    seeking: () => seeking,
+    setCurrentTime: (time) => {
+      seeks.push(time);
+    },
+    currentTime: () => currentTime,
+    // mocked out
+    paused: () => false,
+    buffered: () => videojs.createTimeRanges()
+  };
+
+  // waiting
+
+  currentTime = 50;
+  seekable = videojs.createTimeRanges([[1, 45]]);
+  seeking = true;
+  this.player.tech_.trigger('waiting');
+  assert.equal(seeks.length, 1, 'seeked');
+  assert.equal(seeks[0], 45, 'player seeked to live point');
+
+  currentTime = 0;
+  this.player.tech_.trigger('waiting');
+  assert.equal(seeks.length, 2, 'seeked');
+  assert.equal(seeks[1], 45, 'player seeked to live point');
+
+  // inside of seekable range
+  currentTime = 10;
+  this.player.tech_.trigger('waiting');
+  assert.equal(seeks.length, 2, 'did not seek');
+
+  currentTime = 50;
+  // if we're not seeking, the case shouldn't be handled here
+  seeking = false;
+  this.player.tech_.trigger('waiting');
+  assert.equal(seeks.length, 2, 'did not seek');
+
+  // no check for 0 with seeking false because that should be handled by live falloff
+
+  // checkCurrentTime
+
+  seeking = true;
+  currentTime = 50;
+  playbackWatcher.checkCurrentTime_();
+  assert.equal(seeks.length, 3, 'seeked');
+  assert.equal(seeks[2], 45, 'player seeked to live point');
+
+  currentTime = 0;
+  playbackWatcher.checkCurrentTime_();
+  assert.equal(seeks.length, 4, 'seeked');
+  assert.equal(seeks[3], 45, 'player seeked to live point');
+
+  currentTime = 10;
+  playbackWatcher.checkCurrentTime_();
+  assert.equal(seeks.length, 4, 'did not seek');
+
+  seeking = false;
+  currentTime = 50;
+  playbackWatcher.checkCurrentTime_();
+  assert.equal(seeks.length, 4, 'did not seek');
+
+  currentTime = 0;
+  playbackWatcher.checkCurrentTime_();
+  assert.equal(seeks.length, 4, 'did not seek');
+});
+
+QUnit.test('calls fixesBadSeeks_ on seekablechanged', function(assert) {
+  // set an arbitrary live source
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  // start playback normally
+  this.player.tech_.triggerReady();
+  this.clock.tick(1);
+  standardXHRResponse(this.requests.shift());
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.player.tech_.trigger('playing');
+  this.clock.tick(1);
+
+  let playbackWatcher = this.player.tech_.hls.playbackWatcher_;
+  let fixesBadSeeks_ = 0;
+
+  playbackWatcher.fixesBadSeeks_ = () => fixesBadSeeks_++;
+
+  this.player.tech_.trigger('seekablechanged');
+
+  assert.equal(fixesBadSeeks_, 1, 'fixesBadSeeks_ was called');
 });
 
 QUnit.module('PlaybackWatcher isolated functions', {
@@ -328,4 +637,38 @@ QUnit.test('detects live window falloff', function(assert) {
   assert.ok(
     fellOutOfLiveWindow_(videojs.createTimeRanges([[11, 20]]), 0),
     'true if current time is 0 and earlier than seekable range');
+});
+
+QUnit.test('detects outside of seekable window', function(assert) {
+  let outsideOfSeekableWindow =
+    this.playbackWatcher.outsideOfSeekableWindow_.bind(this.playbackWatcher);
+
+  assert.ok(
+    outsideOfSeekableWindow(videojs.createTimeRanges([[11, 20]]), 10.8),
+    'true if before seekable range');
+  assert.ok(
+    outsideOfSeekableWindow(videojs.createTimeRanges([[11, 20]]), 20.2),
+    'true if after seekable range');
+  assert.ok(
+    !outsideOfSeekableWindow(videojs.createTimeRanges([[11, 20]]), 10.9),
+    'false if within starting seekable range buffer');
+  assert.ok(
+    !outsideOfSeekableWindow(videojs.createTimeRanges([[11, 20]]), 20.1),
+    'false if within ending seekable range buffer');
+
+  assert.ok(
+    !outsideOfSeekableWindow(videojs.createTimeRanges(), 10),
+    'false if no seekable range');
+  assert.ok(
+    outsideOfSeekableWindow(videojs.createTimeRanges([[0, 10]]), -0.2),
+    'true even if current time is negative');
+  assert.ok(
+    !outsideOfSeekableWindow(videojs.createTimeRanges([[0, 10]]), 5),
+    'false if within seekable range');
+  assert.ok(
+    !outsideOfSeekableWindow(videojs.createTimeRanges([[0, 10]]), 0),
+    'false if within seekable range');
+  assert.ok(
+    !outsideOfSeekableWindow(videojs.createTimeRanges([[0, 10]]), 10),
+    'false if within seekable range');
 });

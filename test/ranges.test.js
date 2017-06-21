@@ -105,15 +105,20 @@ QUnit.test('detects time range end-point changed by updates', function(assert) {
 
   // Null input
   edge = Ranges.findSoleUncommonTimeRangesEnd(null, createTimeRanges([[0, 11]]));
-  assert.strictEqual(edge, 11, 'treat null original buffer as an empty TimeRanges object');
+  assert.strictEqual(edge,
+                     11,
+                     'treat null original buffer as an empty TimeRanges object');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 11]]), null);
-  assert.strictEqual(edge, null, 'treat null update buffer as an empty TimeRanges object');
+  assert.strictEqual(edge,
+                     null,
+                     'treat null update buffer as an empty TimeRanges object');
 });
 
 QUnit.module('Segment Percent Buffered Calculations');
 
-QUnit.test('calculates the percent buffered for segments in the simple case', function(assert) {
+QUnit.test('calculates the percent buffered for segments in the simple case',
+function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 0;
@@ -187,7 +192,8 @@ QUnit.test('calculates the percent buffered for segments with multiple buffered 
   assert.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
 });
 
-QUnit.test('calculates the percent buffered as 0 for zero-length segments', function(assert) {
+QUnit.test('calculates the percent buffered as 0 for zero-length segments',
+function(assert) {
   let segmentStart = 10;
   let segmentDuration = 0;
   let currentTime = 0;
@@ -279,4 +285,26 @@ QUnit.test('finds gaps within ranges', function(assert) {
   assert.ok(rangesEqual(Ranges.findGaps(createTimeRanges([[0, 10], [11, 20], [22, 30]])),
            createTimeRanges([[10, 11], [20, 22]])),
            'finds multiple gaps');
+});
+
+QUnit.test('creates printable ranges', function(assert) {
+  assert.equal(Ranges.printableRange(createTimeRanges()), '', 'empty range empty string');
+  assert.equal(Ranges.printableRange(createTimeRanges([[0, 0]])),
+               '0 => 0',
+               'formats range correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[0, 1]])),
+               '0 => 1',
+               'formats range correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[1, -1]])),
+               '1 => -1',
+               'formats range correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[10.2, 25.2]])),
+               '10.2 => 25.2',
+               'formats range correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[10, 20], [30, 40]])),
+               '10 => 20, 30 => 40',
+               'formats ranges correctly');
+  assert.equal(Ranges.printableRange(createTimeRanges([[10, 25], [20, 40], [-1, -2]])),
+               '10 => 25, 20 => 40, -1 => -2',
+               'formats ranges correctly');
 });

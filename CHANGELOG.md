@@ -2,6 +2,103 @@ CHANGELOG
 =========
 
 --------------------
+## 5.6.0 (2017-06-20)
+* Do not reset segmentloaders when switching media groups [#1155](https://github.com/videojs/videojs-contrib-hls/pull/1155)
+  * set loader state to ready on aborts even when loader is paused
+* don't crash when segment metadata cues can't be created [#1167](https://github.com/videojs/videojs-contrib-hls/pull/1167)
+* Allow overrideNative to be set as a player-level option [#1156](https://github.com/videojs/videojs-contrib-hls/pull/1156)
+* Create a moving-average playlist selector [#1125](https://github.com/videojs/videojs-contrib-hls/pull/1125)
+  * Define a variant of the standard playlist selector that calculates a moving average of bandwidth and uses that to select a playlist.
+* Trigger bandwidthupdate events on the tech [#1122](https://github.com/videojs/videojs-contrib-hls/pull/1122)
+
+--------------------
+## 5.5.3 (2017-05-16)
+* update mux.js to 4.1.4 and videojs-contrib-media-sources to 4.4.5 [#1117](https://github.com/videojs/videojs-contrib-hls/pull/1117)
+  * ts probe searches packets for first it can successfully parse
+  * Fixed an issue that could cause updateend events to fire more than once per append or remove under very specific conditions on firefox
+* Trigger error events when received empty response [#1072](https://github.com/videojs/videojs-contrib-hls/pull/1072)
+
+--------------------
+## 5.5.2 (2017-05-10)
+* Fix playback stalls when everything appears okay [#1100](https://github.com/videojs/videojs-contrib-hls/pull/1100)
+  * add playback watcher check for unknown player waiting
+  * do not do unknownwaiting check when the tech fires a native waiting event
+  * dont track current time waiting when at the end of the buffer
+  * call techWaiting_ when we detect a stall at the end of buffer
+
+--------------------
+## 5.5.1 (2017-05-04)
+* Use specified mediasequence for VOD expired sync instead of assuming 0 [#1097](https://github.com/videojs/videojs-contrib-hls/pull/1097)
+  * use synccontroller for expired
+* fix: CODEC to mime-type conversion now takes into account all possible scenarios [#1099](https://github.com/videojs/videojs-contrib-hls/pull/1099)
+
+--------------------
+## 5.5.0 (2017-04-25)
+* Update mux.js to 4.1.3 and media-sources to 4.4.4 [#1098](https://github.com/videojs/videojs-contrib-hls/pull/1098)
+* Trigger an event when a playlist is blacklisted or retried [#1080](https://github.com/videojs/videojs-contrib-hls/pull/1080)
+ * Triggers `blacklistplaylist` when a playlist is blacklisted
+ * Triggers `retryplaylist` when retrying to load an errored playlist
+* Add option to modify blacklist duration [#1076](https://github.com/videojs/videojs-contrib-hls/pull/1076)
+
+--------------------
+## 5.4.1 (2017-04-10)
+* update contrib-media-sources to 4.4.3 [#1077](https://github.com/videojs/videojs-contrib-hls/pull/1077)
+* Fix exceptions from calling endOfStream when the media source isn't ready [#1061](https://github.com/videojs/videojs-contrib-hls/pull/1061)
+* fix segment time mapping for fmp4 playback [#1067](https://github.com/videojs/videojs-contrib-hls/pull/1067)
+* If beforeRequest is set, reuse it on source changes [#983](https://github.com/videojs/videojs-contrib-hls/pull/983)
+  * Allow changing global xhr beforeRequest at runtime
+  * Always use latest beforeRequest instead of setting it when creating hls object
+
+--------------------
+## 5.4.0 (2017-04-03)
+* feature: support for in-manifest WebVTT [#1057](https://github.com/videojs/videojs-contrib-hls/pull/1057)
+* fix: minor SegmentLoader fixes [#1065](https://github.com/videojs/videojs-contrib-hls/pull/1065)
+* fix: enable fast quality change for alternate audio [#1046](https://github.com/videojs/videojs-contrib-hls/pull/1046)
+* feature: blacklist live playlists that have stopped being updated [#1039](https://github.com/videojs/videojs-contrib-hls/pull/1039)
+  * never blacklist final available final rendition
+* chore: refactor all the XHR handling code and related state out of SegmentLoader and into a single mediaSegmentRequest function [#1044](https://github.com/videojs/videojs-contrib-hls/pull/1044)
+* feature: add a segment-metadata TextTrack that contains cues for the segments currently in the buffer [#976](https://github.com/videojs/videojs-contrib-hls/pull/976)
+* feature: add support for description audio tracks in hls [#1019](https://github.com/videojs/videojs-contrib-hls/pull/1019)
+  * add support for description audio tracks (marked with characteristics of 'public.accessibility.describes-video')
+  * add test for correctly setting alternative audio kinds
+
+--------------------
+## 5.3.3 (2017-03-03)
+* update videojs-contrib-media-sources to v4.4.2 and mux.js to 4.1.1 [#1037](https://github.com/videojs/videojs-contrib-hls/pull/1037)
+  * Fix silence insertion to not insert extra frames when audio is offset [#143](https://github.com/videojs/mux.js/pull/143)
+  * Fixed metadata cue mapping so that it considers groups cues with the same startTime and remaps them collectively to the same endTime [#121](https://github.com/videojs/videojs-contrib-media-sources/pull/121)
+  * add fudge factor to flash tag trim target [#137](https://github.com/videojs/videojs-contrib-media-sources/pull/137)
+  * Feat/vjs6 compat [#130](https://github.com/videojs/videojs-contrib-media-sources/pull/130)
+  * Fix flash tag trimming for misaligned audio and video [#136](https://github.com/videojs/videojs-contrib-media-sources/pull/136)
+  * Revert "Revert flash transmuxing in a web worker (#133)" [#135](https://github.com/videojs/videojs-contrib-media-sources/pull/135)
+* fix: do not timeout segment requests for non-master playlist source [#1032](https://github.com/videojs/videojs-contrib-hls/pull/1032)
+
+--------------------
+## 5.3.2 (2017-02-23)
+* fix: Fix a bug with the combination of seek-to-live and resync-on-a-poor-guess behaviors [#1023](https://github.com/videojs/videojs-contrib-hls/pull/1023)
+
+--------------------
+## 5.3.1 (2017-02-22)
+* Locking url-toolkit to 1.0.9 to support relative urls [#1027](https://github.com/videojs/videojs-contrib-hls/pull/1027)
+* Resync on poor initial segment choice [#1016](https://github.com/videojs/videojs-contrib-hls/pull/1016)
+* Fix resuming live playback after long pauses [#1006](https://github.com/videojs/videojs-contrib-hls/pull/1006)
+
+--------------------
+## 5.3.0 (2017-02-16)
+* reset segment loaders on all flash seeks [#1008](https://github.com/videojs/videojs-contrib-hls/pull/1008)
+  * update mux.js to 4.1.0 update videojs-contrib-media-sources to 4.4.0
+* Reorganized the functions in SegmentLoader to better follow the flow of execution from top-down [#1015](https://github.com/videojs/videojs-contrib-hls/pull/1015)
+* Remove ad-hoc logging in favor of a config-enabled logging like playback-watcher [#1014](https://github.com/videojs/videojs-contrib-hls/pull/1014)
+* isLowestEnabledRendition worked with redundant streams [#1004](https://github.com/videojs/videojs-contrib-hls/pull/1004)
+* Rename Worker to DecrypterWorker [#1003](https://github.com/videojs/videojs-contrib-hls/pull/1003)
+
+--------------------
+## 5.2.1 (2017-02-09)
+* feature: Support for Akamai-style Redundant HLS [#990](https://github.com/videojs/videojs-contrib-hls/pull/990)
+  * stable sorting and always pick primary first
+* Fix routing of decrypter messages intended for audio segment loader [#1001](https://github.com/videojs/videojs-contrib-hls/pull/1001)
+
+--------------------
 ## 5.2.0 (2017-02-08)
 * update deps for 4.3.0 mediasources [#998](https://github.com/videojs/videojs-contrib-hls/pull/998)
 * Remove HLS object events from README [#992](https://github.com/videojs/videojs-contrib-hls/pull/992)

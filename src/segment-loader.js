@@ -6,18 +6,13 @@ import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import Config from './config';
 import window from 'global/window';
-import { createTransferableMessage } from './bin-utils';
+import removeCuesFromTrack from
+  'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
+import { initSegmentId } from './bin-utils';
+import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
-const c = 'console';
-
-// temporary, switchable debug logging
-const log = function() {
-  if (window.logit) {
-    window[c].log.apply(window[c], arguments);
-  }
-};
 
 /**
  * Determines if we should call endOfStream on the media source based
@@ -30,7 +25,7 @@ const log = function() {
  * @returns {Boolean} do we need to call endOfStream on the MediaSource
  */
 const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
-  if (!playlist) {
+  if (!playlist || !mediaSource) {
     return false;
   }
 
@@ -48,47 +43,7 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
     appendedLastSegment;
 };
 
-/**
- * Turns segment byterange into a string suitable for use in
- * HTTP Range requests
- */
-const byterangeStr = function(byterange) {
-  let byterangeStart;
-  let byterangeEnd;
-
-  // `byterangeEnd` is one less than `offset + length` because the HTTP range
-  // header uses inclusive ranges
-  byterangeEnd = byterange.offset + byterange.length - 1;
-  byterangeStart = byterange.offset;
-  return 'bytes=' + byterangeStart + '-' + byterangeEnd;
-};
-
-/**
- * Defines headers for use in the xhr request for a particular segment.
- */
-const segmentXhrHeaders = function(segment) {
-  let headers = {};
-
-  if ('byterange' in segment) {
-    headers.Range = byterangeStr(segment.byterange);
-  }
-  return headers;
-};
-
-/**
- * Returns a unique string identifier for a media initialization
- * segment.
- */
-const initSegmentId = function(initSegment) {
-  let byterange = initSegment.byterange || {
-    length: Infinity,
-    offset: 0
-  };
-
-  return [
-    byterange.length, byterange.offset, initSegment.resolvedUri
-  ].join(',');
-};
+const finite = (num) => typeof num === 'number' && isFinite(num);
 
 /**
  * An object that manages segment loading and appending.
@@ -98,22 +53,18 @@ const initSegmentId = function(initSegment) {
  * @extends videojs.EventTarget
  */
 export default class SegmentLoader extends videojs.EventTarget {
-  constructor(options) {
+  constructor(settings, options = {}) {
     super();
-    let settings;
-
     // check pre-conditions
-    if (!options) {
-      throw new TypeError('Initialization options are required');
+    if (!settings) {
+      throw new TypeError('Initialization settings are required');
     }
-    if (typeof options.currentTime !== 'function') {
+    if (typeof settings.currentTime !== 'function') {
       throw new TypeError('No currentTime getter specified');
     }
-    if (!options.mediaSource) {
+    if (!settings.mediaSource) {
       throw new TypeError('No MediaSource specified');
     }
-    settings = videojs.mergeOptions(videojs.options.hls, options);
-
     // public properties
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
@@ -127,16 +78,16 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.currentTime_ = settings.currentTime;
     this.seekable_ = settings.seekable;
     this.seeking_ = settings.seeking;
-    this.setCurrentTime_ = settings.setCurrentTime;
+    this.duration_ = settings.duration;
     this.mediaSource_ = settings.mediaSource;
     this.hls_ = settings.hls;
     this.loaderType_ = settings.loaderType;
+    this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
 
     // private instance variables
     this.checkBufferTimeout_ = null;
     this.error_ = void 0;
     this.currentTimeline_ = -1;
-    this.xhr_ = null;
     this.pendingSegment_ = null;
     this.mimeType_ = null;
     this.sourceUpdater_ = null;
@@ -161,6 +112,10 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
+
+    if (options.debug) {
+      this.logger_ = videojs.log.bind(videojs, 'segment-loader', this.loaderType_, '->');
+    }
   }
 
   /**
@@ -171,6 +126,9 @@ export default class SegmentLoader extends videojs.EventTarget {
   resetStats_() {
     this.mediaBytesTransferred = 0;
     this.mediaRequests = 0;
+    this.mediaRequestsAborted = 0;
+    this.mediaRequestsTimedout = 0;
+    this.mediaRequestsErrored = 0;
     this.mediaTransferDuration = 0;
     this.mediaSecondsLoaded = 0;
   }
@@ -180,6 +138,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   dispose() {
     this.state = 'DISPOSED';
+    this.pause();
     this.abort_();
     if (this.sourceUpdater_) {
       this.sourceUpdater_.dispose();
@@ -192,7 +151,6 @@ export default class SegmentLoader extends videojs.EventTarget {
    * and reset to a default state
    */
   abort() {
-
     if (this.state !== 'WAITING') {
       if (this.pendingSegment_) {
         this.pendingSegment_ = null;
@@ -202,12 +160,31 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.abort_();
 
+    // We aborted the requests we were waiting on, so reset the loader's state to READY
+    // since we are no longer "waiting" on any requests. XHR callback is not always run
+    // when the request is aborted. This will prevent the loader from being stuck in the
+    // WAITING state indefinitely.
+    this.state = 'READY';
+
     // don't wait for buffer check timeouts to begin fetching the
     // next segment
     if (!this.paused()) {
-      this.state = 'READY';
       this.monitorBuffer_();
     }
+  }
+
+  /**
+   * abort all pending xhr requests and null any pending segements
+   *
+   * @private
+   */
+  abort_() {
+    if (this.pendingSegment_) {
+      this.pendingSegment_.abortRequests();
+    }
+
+    // clear out the segment being processed
+    this.pendingSegment_ = null;
   }
 
   /**
@@ -223,6 +200,64 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.pendingSegment_ = null;
     return this.error_;
+  }
+
+  /**
+   * Indicates which time ranges are buffered
+   *
+   * @return {TimeRange}
+   *         TimeRange object representing the current buffered ranges
+   */
+  buffered_() {
+    if (!this.sourceUpdater_) {
+      return videojs.createTimeRanges();
+    }
+
+    return this.sourceUpdater_.buffered();
+  }
+
+  /**
+   * Gets and sets init segment for the provided map
+   *
+   * @param {Object} map
+   *        The map object representing the init segment to get or set
+   * @param {Boolean=} set
+   *        If true, the init segment for the provided map should be saved
+   * @return {Object}
+   *         map object for desired init segment
+   */
+  initSegment(map, set = false) {
+    if (!map) {
+      return null;
+    }
+
+    const id = initSegmentId(map);
+    let storedMap = this.initSegments_[id];
+
+    if (set && !storedMap && map.bytes) {
+      this.initSegments_[id] = storedMap = {
+        resolvedUri: map.resolvedUri,
+        byterange: map.byterange,
+        bytes: map.bytes
+      };
+    }
+
+    return storedMap || map;
+  }
+
+  /**
+   * Returns true if all configuration required for loading is present, otherwise false.
+   *
+   * @return {Boolean} True if the all configuration is ready for loading
+   * @private
+   */
+  couldBeginLoading_() {
+    return this.playlist_ &&
+           // the source updater is created when init_ is called, so either having a
+           // source updater or being in the INIT state with a mimeType is enough
+           // to say we have all the needed configuration to start loading.
+           (this.sourceUpdater_ || (this.mimeType_ && this.state === 'INIT')) &&
+           !this.paused();
   }
 
   /**
@@ -242,19 +277,33 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.syncController_.setDateTimeMapping(this.playlist_);
 
     // if all the configuration is ready, initialize and begin loading
-    if (this.state === 'INIT' && this.mimeType_) {
+    if (this.state === 'INIT' && this.couldBeginLoading_()) {
       return this.init_();
     }
 
     // if we're in the middle of processing a segment already, don't
     // kick off an additional segment request
-    if (!this.sourceUpdater_ ||
+    if (!this.couldBeginLoading_() ||
         (this.state !== 'READY' &&
         this.state !== 'INIT')) {
       return;
     }
 
     this.state = 'READY';
+  }
+
+  /**
+   * Once all the starting parameters have been specified, begin
+   * operation. This method should only be invoked from the INIT
+   * state.
+   *
+   * @private
+   */
+  init_() {
+    this.state = 'READY';
+    this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, this.mimeType_);
+    this.resetEverything();
+    return this.monitorBuffer_();
   }
 
   /**
@@ -281,12 +330,15 @@ export default class SegmentLoader extends videojs.EventTarget {
         mediaSequence: newPlaylist.mediaSequence,
         time: 0
       };
-      this.trigger('syncinfoupdate');
     }
+
+    // in VOD, this is always a rendition switch (or we updated our syncInfo above)
+    // in LIVE, we always want to update with new playlists (including refreshes)
+    this.trigger('syncinfoupdate');
 
     // if we were unpaused but waiting for a playlist, start
     // buffering now
-    if (this.mimeType_ && this.state === 'INIT' && !this.paused()) {
+    if (this.state === 'INIT' && this.couldBeginLoading_()) {
       return this.init_();
     }
 
@@ -305,7 +357,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // and we will likely need to adjust the mediaIndex
     let mediaSequenceDiff = newPlaylist.mediaSequence - oldPlaylist.mediaSequence;
 
-    log('mediaSequenceDiff', mediaSequenceDiff);
+    this.logger_('mediaSequenceDiff', mediaSequenceDiff);
 
     // update the mediaIndex on the SegmentLoader
     // this is important because we can abort a request and this value must be
@@ -368,11 +420,50 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mimeType_ = mimeType;
     // if we were unpaused but waiting for a sourceUpdater, start
     // buffering now
-    if (this.playlist_ &&
-        this.state === 'INIT' &&
-        !this.paused()) {
+    if (this.state === 'INIT' && this.couldBeginLoading_()) {
       this.init_();
     }
+  }
+
+  /**
+   * Delete all the buffered data and reset the SegmentLoader
+   */
+  resetEverything() {
+    this.resetLoader();
+    this.remove(0, Infinity);
+  }
+
+  /**
+   * Force the SegmentLoader to resync and start loading around the currentTime instead
+   * of starting at the end of the buffer
+   *
+   * Useful for fast quality changes
+   */
+  resetLoader() {
+    this.fetchAtBuffer_ = false;
+    this.resyncLoader();
+  }
+
+  /**
+   * Force the SegmentLoader to restart synchronization and make a conservative guess
+   * before returning to the simple walk-forward method
+   */
+  resyncLoader() {
+    this.mediaIndex = null;
+    this.syncPoint_ = null;
+    this.abort();
+  }
+
+  /**
+   * Remove any data in the source buffer between start and end times
+   * @param {Number} start - the start time of the region to remove from the buffer
+   * @param {Number} end - the end time of the region to remove from the buffer
+   */
+  remove(start, end) {
+    if (this.sourceUpdater_) {
+      this.sourceUpdater_.remove(start, end);
+    }
+    removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
   }
 
   /**
@@ -408,187 +499,6 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
-   * The segment loader has no recourse except to fetch a segment in the
-   * current playlist and use the internal timestamps in that segment to
-   * generate a syncPoint. This function returns a good candidate index
-   * for that process.
-   *
-   * @param {Object} playlist - the playlist object to look for a
-   * @returns {Number} An index of a segment from the playlist to load
-   */
-  getSyncSegmentCandidate_(playlist) {
-    if (this.currentTimeline_ === -1) {
-      return 0;
-    }
-
-    let segmentIndexArray = playlist.segments
-      .map((s, i) => {
-        return {
-          timeline: s.timeline,
-          segmentIndex: i
-        };
-      }).filter(s => s.timeline === this.currentTimeline_);
-
-    if (segmentIndexArray.length) {
-      return segmentIndexArray[Math.min(segmentIndexArray.length - 1, 1)].segmentIndex;
-    }
-
-    return Math.max(playlist.segments.length - 1, 0);
-  }
-
-  /**
-   * Determines what segment request should be made, given current playback
-   * state.
-   *
-   * @param {TimeRanges} buffered - the state of the buffer
-   * @param {Object} playlist - the playlist object to fetch segments from
-   * @param {Number} mediaIndex - the previous mediaIndex fetched or null
-   * @param {Boolean} hasPlayed - a flag indicating whether we have played or not
-   * @param {Number} currentTime - the playback position in seconds
-   * @param {Object} syncPoint - a segment info object that describes the
-   * @returns {Object} a segment request object that describes the segment to load
-   */
-  checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
-    let lastBufferedEnd = 0;
-    let startOfSegment;
-
-    if (buffered.length) {
-      lastBufferedEnd = buffered.end(buffered.length - 1);
-    }
-
-    let bufferedTime = Math.max(0, lastBufferedEnd - currentTime);
-
-    if (!playlist.segments.length) {
-      return null;
-    }
-
-    log('cB_', 'mediaIndex:', mediaIndex, 'hasPlayed:', hasPlayed, 'currentTime:', currentTime, 'syncPoint:', syncPoint, 'fetchAtBuffer:', this.fetchAtBuffer_);
-    log('cB_ 2', 'bufferedTime:', bufferedTime);
-
-    // if there is plenty of content buffered, and the video has
-    // been played before relax for awhile
-    if (bufferedTime >= Config.GOAL_BUFFER_LENGTH) {
-      return null;
-    }
-
-    // if the video has not yet played once, and we already have
-    // one segment downloaded do nothing
-    if (!hasPlayed && bufferedTime >= 1) {
-      return null;
-    }
-
-    // When the syncPoint is null, there is no way of determining a good
-    // conservative segment index to fetch from
-    // The best thing to do here is to get the kind of sync-point data by
-    // making a request
-    if (syncPoint === null) {
-      mediaIndex = this.getSyncSegmentCandidate_(playlist);
-      log('getSync', mediaIndex);
-      return this.generateSegmentInfo_(playlist, mediaIndex, null, true);
-    }
-
-    // Under normal playback conditions fetching is a simple walk forward
-    if (mediaIndex !== null) {
-      log('++', mediaIndex + 1);
-      let segment = playlist.segments[mediaIndex];
-
-      if (segment && segment.end) {
-        startOfSegment = segment.end;
-      } else {
-        startOfSegment = lastBufferedEnd;
-      }
-      return this.generateSegmentInfo_(playlist, mediaIndex + 1, startOfSegment, false);
-    }
-
-    // There is a sync-point but the lack of a mediaIndex indicates that
-    // we need to make a good conservative guess about which segment to
-    // fetch
-    if (this.fetchAtBuffer_) {
-      // Find the segment containing the end of the buffer
-      let mediaSourceInfo = getMediaInfoForTime(playlist,
-                                                lastBufferedEnd,
-                                                syncPoint.segmentIndex,
-                                                syncPoint.time);
-
-      mediaIndex = mediaSourceInfo.mediaIndex;
-      startOfSegment = mediaSourceInfo.startTime;
-    } else {
-      // Find the segment containing currentTime
-      let mediaSourceInfo = getMediaInfoForTime(playlist,
-                                                currentTime,
-                                                syncPoint.segmentIndex,
-                                                syncPoint.time);
-
-      mediaIndex = mediaSourceInfo.mediaIndex;
-      startOfSegment = mediaSourceInfo.startTime;
-    }
-    log('gMIFT', mediaIndex, 'sos', startOfSegment);
-    return this.generateSegmentInfo_(playlist, mediaIndex, startOfSegment, false);
-  }
-
-  generateSegmentInfo_(playlist, mediaIndex, startOfSegment, isSyncRequest) {
-    if (mediaIndex < 0 || mediaIndex >= playlist.segments.length) {
-      return null;
-    }
-
-    let segment = playlist.segments[mediaIndex];
-
-    return {
-      // resolve the segment URL relative to the playlist
-      uri: segment.resolvedUri,
-      // the segment's mediaIndex at the time it was requested
-      mediaIndex,
-      // whether or not to update the SegmentLoader's state with this
-      // segment's mediaIndex
-      isSyncRequest,
-      startOfSegment,
-      // the segment's playlist
-      playlist,
-      // unencrypted bytes of the segment
-      bytes: null,
-      // when a key is defined for this segment, the encrypted bytes
-      encryptedBytes: null,
-      // The target timestampOffset for this segment when we append it
-      // to the source buffer
-      timestampOffset: null,
-      // The timeline that the segment is in
-      timeline: segment.timeline,
-      // The expected duration of the segment in seconds
-      duration: segment.duration,
-      // retain the segment in case the playlist updates while doing an async process
-      segment
-    };
-  }
-
-  /**
-   * abort all pending xhr requests and null any pending segements
-   *
-   * @private
-   */
-  abort_() {
-    if (this.xhr_) {
-      this.xhr_.abort();
-    }
-
-    // clear out the segment being processed
-    this.pendingSegment_ = null;
-  }
-
-  /**
-   * Once all the starting parameters have been specified, begin
-   * operation. This method should only be invoked from the INIT
-   * state.
-   *
-   * @private
-   */
-  init_() {
-    this.state = 'READY';
-    this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, this.mimeType_);
-    this.resetEverything();
-    return this.monitorBuffer_();
-  }
-
-  /**
    * fill the buffer with segements unless the sourceBuffers are
    * currently updating
    *
@@ -604,12 +514,13 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (!this.syncPoint_) {
       this.syncPoint_ = this.syncController_.getSyncPoint(this.playlist_,
-                                                          this.mediaSource_.duration,
-                                                          this.currentTimeline_);
+                                                          this.duration_(),
+                                                          this.currentTimeline_,
+                                                          this.currentTime_());
     }
 
     // see if we need to begin loading immediately
-    let segmentInfo = this.checkBuffer_(this.sourceUpdater_.buffered(),
+    let segmentInfo = this.checkBuffer_(this.buffered_(),
                                         this.playlist_,
                                         this.mediaIndex,
                                         this.hasPlayed_(),
@@ -648,24 +559,209 @@ export default class SegmentLoader extends videojs.EventTarget {
       segmentInfo.timestampOffset = segmentInfo.startOfSegment;
     }
 
-    this.currentTimeline_ = segmentInfo.timeline;
     this.loadSegment_(segmentInfo);
   }
 
   /**
-   * trim the back buffer so we only remove content
-   * on segment boundaries
+   * Determines what segment request should be made, given current playback
+   * state.
+   *
+   * @param {TimeRanges} buffered - the state of the buffer
+   * @param {Object} playlist - the playlist object to fetch segments from
+   * @param {Number} mediaIndex - the previous mediaIndex fetched or null
+   * @param {Boolean} hasPlayed - a flag indicating whether we have played or not
+   * @param {Number} currentTime - the playback position in seconds
+   * @param {Object} syncPoint - a segment info object that describes the
+   * @returns {Object} a segment request object that describes the segment to load
+   */
+  checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
+    let lastBufferedEnd = 0;
+    let startOfSegment;
+
+    if (buffered.length) {
+      lastBufferedEnd = buffered.end(buffered.length - 1);
+    }
+
+    let bufferedTime = Math.max(0, lastBufferedEnd - currentTime);
+
+    if (!playlist.segments.length) {
+      return null;
+    }
+
+    // if there is plenty of content buffered, and the video has
+    // been played before relax for awhile
+    if (bufferedTime >= Config.GOAL_BUFFER_LENGTH) {
+      return null;
+    }
+
+    // if the video has not yet played once, and we already have
+    // one segment downloaded do nothing
+    if (!hasPlayed && bufferedTime >= 1) {
+      return null;
+    }
+
+    this.logger_('checkBuffer_',
+      'mediaIndex:', mediaIndex,
+      'hasPlayed:', hasPlayed,
+      'currentTime:', currentTime,
+      'syncPoint:', syncPoint,
+      'fetchAtBuffer:', this.fetchAtBuffer_,
+      'bufferedTime:', bufferedTime);
+
+    // When the syncPoint is null, there is no way of determining a good
+    // conservative segment index to fetch from
+    // The best thing to do here is to get the kind of sync-point data by
+    // making a request
+    if (syncPoint === null) {
+      mediaIndex = this.getSyncSegmentCandidate_(playlist);
+      this.logger_('getSync', 'mediaIndex:', mediaIndex);
+      return this.generateSegmentInfo_(playlist, mediaIndex, null, true);
+    }
+
+    // Under normal playback conditions fetching is a simple walk forward
+    if (mediaIndex !== null) {
+      this.logger_('walkForward', 'mediaIndex:', mediaIndex + 1);
+      let segment = playlist.segments[mediaIndex];
+
+      if (segment && segment.end) {
+        startOfSegment = segment.end;
+      } else {
+        startOfSegment = lastBufferedEnd;
+      }
+      return this.generateSegmentInfo_(playlist, mediaIndex + 1, startOfSegment, false);
+    }
+
+    // There is a sync-point but the lack of a mediaIndex indicates that
+    // we need to make a good conservative guess about which segment to
+    // fetch
+    if (this.fetchAtBuffer_) {
+      // Find the segment containing the end of the buffer
+      let mediaSourceInfo = getMediaInfoForTime(playlist,
+                                                lastBufferedEnd,
+                                                syncPoint.segmentIndex,
+                                                syncPoint.time);
+
+      mediaIndex = mediaSourceInfo.mediaIndex;
+      startOfSegment = mediaSourceInfo.startTime;
+    } else {
+      // Find the segment containing currentTime
+      let mediaSourceInfo = getMediaInfoForTime(playlist,
+                                                currentTime,
+                                                syncPoint.segmentIndex,
+                                                syncPoint.time);
+
+      mediaIndex = mediaSourceInfo.mediaIndex;
+      startOfSegment = mediaSourceInfo.startTime;
+    }
+    this.logger_('getMediaIndexForTime',
+      'mediaIndex:', mediaIndex,
+      'startOfSegment:', startOfSegment);
+
+    return this.generateSegmentInfo_(playlist, mediaIndex, startOfSegment, false);
+  }
+
+  /**
+   * The segment loader has no recourse except to fetch a segment in the
+   * current playlist and use the internal timestamps in that segment to
+   * generate a syncPoint. This function returns a good candidate index
+   * for that process.
+   *
+   * @param {Object} playlist - the playlist object to look for a
+   * @returns {Number} An index of a segment from the playlist to load
+   */
+  getSyncSegmentCandidate_(playlist) {
+    if (this.currentTimeline_ === -1) {
+      return 0;
+    }
+
+    let segmentIndexArray = playlist.segments
+      .map((s, i) => {
+        return {
+          timeline: s.timeline,
+          segmentIndex: i
+        };
+      }).filter(s => s.timeline === this.currentTimeline_);
+
+    if (segmentIndexArray.length) {
+      return segmentIndexArray[Math.min(segmentIndexArray.length - 1, 1)].segmentIndex;
+    }
+
+    return Math.max(playlist.segments.length - 1, 0);
+  }
+
+  generateSegmentInfo_(playlist, mediaIndex, startOfSegment, isSyncRequest) {
+    if (mediaIndex < 0 || mediaIndex >= playlist.segments.length) {
+      return null;
+    }
+
+    let segment = playlist.segments[mediaIndex];
+
+    return {
+      requestId: 'segment-loader-' + Math.random(),
+      // resolve the segment URL relative to the playlist
+      uri: segment.resolvedUri,
+      // the segment's mediaIndex at the time it was requested
+      mediaIndex,
+      // whether or not to update the SegmentLoader's state with this
+      // segment's mediaIndex
+      isSyncRequest,
+      startOfSegment,
+      // the segment's playlist
+      playlist,
+      // unencrypted bytes of the segment
+      bytes: null,
+      // when a key is defined for this segment, the encrypted bytes
+      encryptedBytes: null,
+      // The target timestampOffset for this segment when we append it
+      // to the source buffer
+      timestampOffset: null,
+      // The timeline that the segment is in
+      timeline: segment.timeline,
+      // The expected duration of the segment in seconds
+      duration: segment.duration,
+      // retain the segment in case the playlist updates while doing an async process
+      segment
+    };
+  }
+
+  /**
+   * load a specific segment from a request into the buffer
+   *
+   * @private
+   */
+  loadSegment_(segmentInfo) {
+    this.state = 'WAITING';
+    this.pendingSegment_ = segmentInfo;
+    this.trimBackBuffer_(segmentInfo);
+
+    segmentInfo.abortRequests = mediaSegmentRequest(this.hls_.xhr,
+      this.xhrOptions_,
+      this.decrypter_,
+      this.createSimplifiedSegmentObj_(segmentInfo),
+      // progress callback
+      (event, segment) => {
+        if (!this.pendingSegment_ ||
+            segment.requestId !== this.pendingSegment_.requestId) {
+          return;
+        }
+        // TODO: Use progress-based bandwidth to early abort low-bandwidth situations
+        this.trigger('progress');
+      },
+      this.segmentRequestFinished_.bind(this));
+  }
+
+  /**
+   * trim the back buffer so that we don't have too much data
+   * in the source buffer
    *
    * @private
    *
    * @param {Object} segmentInfo - the current segment
-   * @returns {Number} removeToTime - the end point in time, in seconds
-   * that the the buffer should be trimmed.
    */
-  trimBuffer_(segmentInfo) {
-    let seekable = this.seekable_();
-    let currentTime = this.currentTime_();
-    let removeToTime;
+  trimBackBuffer_(segmentInfo) {
+    const seekable = this.seekable_();
+    const currentTime = this.currentTime_();
+    let removeToTime = 0;
 
     // Chrome has a hard limit of 150mb of
     // buffer and a very conservative "garbage collector"
@@ -678,306 +774,146 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (seekable.length &&
         seekable.start(0) > 0 &&
         seekable.start(0) < currentTime) {
-      return seekable.start(0);
+      removeToTime = seekable.start(0);
+    } else {
+      removeToTime = currentTime - 60;
     }
-
-    removeToTime = currentTime - 60;
-
-    return removeToTime;
-  }
-
-  /**
-   * load a specific segment from a request into the buffer
-   *
-   * @private
-   */
-  loadSegment_(segmentInfo) {
-    let segment;
-    let keyXhr;
-    let initSegmentXhr;
-    let segmentXhr;
-    let removeToTime = 0;
-
-    removeToTime = this.trimBuffer_(segmentInfo);
 
     if (removeToTime > 0) {
-      this.sourceUpdater_.remove(0, removeToTime);
+      this.remove(0, removeToTime);
     }
+  }
 
-    segment = segmentInfo.segment;
-
-    // optionally, request the decryption key
-    if (segment.key) {
-      let keyRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
-        uri: segment.key.resolvedUri,
-        responseType: 'arraybuffer'
-      });
-
-      keyXhr = this.hls_.xhr(keyRequestOptions, this.handleResponse_.bind(this));
-    }
-
-    // optionally, request the associated media init segment
-    if (segment.map &&
-        !this.initSegments_[initSegmentId(segment.map)]) {
-      let initSegmentOptions = videojs.mergeOptions(this.xhrOptions_, {
-        uri: segment.map.resolvedUri,
-        responseType: 'arraybuffer',
-        headers: segmentXhrHeaders(segment.map)
-      });
-
-      initSegmentXhr = this.hls_.xhr(initSegmentOptions,
-                                     this.handleResponse_.bind(this));
-    }
-    this.pendingSegment_ = segmentInfo;
-
-    let segmentRequestOptions = videojs.mergeOptions(this.xhrOptions_, {
-      uri: segmentInfo.uri,
-      responseType: 'arraybuffer',
-      headers: segmentXhrHeaders(segment)
-    });
-
-    segmentXhr = this.hls_.xhr(segmentRequestOptions, this.handleResponse_.bind(this));
-    segmentXhr.addEventListener('progress', (event) => {
-      this.trigger(event);
-    });
-
-    this.xhr_ = {
-      keyXhr,
-      initSegmentXhr,
-      segmentXhr,
-      abort() {
-        if (this.segmentXhr) {
-          // Prevent error handler from running.
-          this.segmentXhr.onreadystatechange = null;
-          this.segmentXhr.abort();
-          this.segmentXhr = null;
-        }
-        if (this.initSegmentXhr) {
-          // Prevent error handler from running.
-          this.initSegmentXhr.onreadystatechange = null;
-          this.initSegmentXhr.abort();
-          this.initSegmentXhr = null;
-        }
-        if (this.keyXhr) {
-          // Prevent error handler from running.
-          this.keyXhr.onreadystatechange = null;
-          this.keyXhr.abort();
-          this.keyXhr = null;
-        }
-      }
+  /**
+   * created a simplified copy of the segment object with just the
+   * information necessary to perform the XHR and decryption
+   *
+   * @private
+   *
+   * @param {Object} segmentInfo - the current segment
+   * @returns {Object} a simplified segment object copy
+   */
+  createSimplifiedSegmentObj_(segmentInfo) {
+    const segment = segmentInfo.segment;
+    const simpleSegment = {
+      resolvedUri: segment.resolvedUri,
+      byterange: segment.byterange,
+      requestId: segmentInfo.requestId
     };
 
-    this.state = 'WAITING';
-  }
-
-  /**
-   * triggered when a segment response is received
-   *
-   * @private
-   */
-  handleResponse_(error, request) {
-    let segmentInfo;
-    let segment;
-    let view;
-
-    // timeout of previously aborted request
-    if (!this.xhr_ ||
-        (request !== this.xhr_.segmentXhr &&
-         request !== this.xhr_.keyXhr &&
-         request !== this.xhr_.initSegmentXhr)) {
-      return;
-    }
-
-    segmentInfo = this.pendingSegment_;
-    segment = segmentInfo.segment;
-
-    // if a request times out, reset bandwidth tracking
-    if (request.timedout) {
-      this.abort_();
-      this.bandwidth = 1;
-      this.roundTrip = NaN;
-      this.state = 'READY';
-      return this.trigger('progress');
-    }
-
-    // trigger an event for other errors
-    if (!request.aborted && error) {
-      // abort will clear xhr_
-      let keyXhrRequest = this.xhr_.keyXhr;
-
-      this.abort_();
-      this.error({
-        status: request.status,
-        message: request === keyXhrRequest ?
-          'HLS key request error at URL: ' + segment.key.uri :
-          'HLS segment request error at URL: ' + segmentInfo.uri,
-        code: 2,
-        xhr: request
-      });
-      this.state = 'READY';
-      this.pause();
-      return this.trigger('error');
-    }
-
-    // stop processing if the request was aborted
-    if (!request.response) {
-      this.abort_();
-      return;
-    }
-
-    if (request === this.xhr_.segmentXhr) {
-      // the segment request is no longer outstanding
-      this.xhr_.segmentXhr = null;
-      segmentInfo.startOfAppend = Date.now();
-
-      // calculate the download bandwidth based on segment request
-      this.roundTrip = request.roundTripTime;
-      this.bandwidth = request.bandwidth;
-      this.mediaBytesTransferred += request.bytesReceived || 0;
-      this.mediaRequests += 1;
-      this.mediaTransferDuration += request.roundTripTime || 0;
-
-      if (segment.key) {
-        segmentInfo.encryptedBytes = new Uint8Array(request.response);
-      } else {
-        segmentInfo.bytes = new Uint8Array(request.response);
-      }
-    }
-
-    if (request === this.xhr_.keyXhr) {
-      // the key request is no longer outstanding
-      this.xhr_.keyXhr = null;
-
-      if (request.response.byteLength !== 16) {
-        this.abort_();
-        this.error({
-          status: request.status,
-          message: 'Invalid HLS key at URL: ' + segment.key.uri,
-          code: 2,
-          xhr: request
-        });
-        this.state = 'READY';
-        this.pause();
-        return this.trigger('error');
-      }
-
-      view = new DataView(request.response);
-      segment.key.bytes = new Uint32Array([
-        view.getUint32(0),
-        view.getUint32(4),
-        view.getUint32(8),
-        view.getUint32(12)
-      ]);
-
+    if (segment.key) {
       // if the media sequence is greater than 2^32, the IV will be incorrect
       // assuming 10s segments, that would be about 1300 years
-      segment.key.iv = segment.key.iv || new Uint32Array([
+      const iv = segment.key.iv || new Uint32Array([
         0, 0, 0, segmentInfo.mediaIndex + segmentInfo.playlist.mediaSequence
       ]);
+
+      simpleSegment.key = {
+        resolvedUri: segment.key.resolvedUri,
+        iv
+      };
     }
 
-    if (request === this.xhr_.initSegmentXhr) {
-      // the init segment request is no longer outstanding
-      this.xhr_.initSegmentXhr = null;
-      segment.map.bytes = new Uint8Array(request.response);
-      this.initSegments_[initSegmentId(segment.map)] = segment.map;
+    if (segment.map) {
+      simpleSegment.map = this.initSegment(segment.map);
     }
 
-    if (!this.xhr_.segmentXhr && !this.xhr_.keyXhr && !this.xhr_.initSegmentXhr) {
-      this.xhr_ = null;
-      this.processResponse_();
-    }
+    return simpleSegment;
   }
 
   /**
-   * Delete all the buffered data and reset the SegmentLoader
-   */
-  resetEverything() {
-    this.resetLoader();
-    this.remove(0, Infinity);
-  }
-
-  /**
-   * Force the SegmentLoader to resync and start loading around the currentTime instead
-   * of starting at the end of the buffer
-   *
-   * Useful for fast quality changes
-   */
-  resetLoader() {
-    this.fetchAtBuffer_ = false;
-    this.resyncLoader();
-  }
-
-  /**
-   * Force the SegmentLoader to restart synchronization and make a conservative guess
-   * before returning to the simple walk-forward method
-   */
-  resyncLoader() {
-    this.mediaIndex = null;
-    this.syncPoint_ = null;
-  }
-
-  /**
-   * Remove any data in the source buffer between start and end times
-   * @param {Number} start - the start time of the region to remove from the buffer
-   * @param {Number} end - the end time of the region to remove from the buffer
-   */
-  remove(start, end) {
-    if (this.sourceUpdater_) {
-      this.sourceUpdater_.remove(start, end);
-    }
-  }
-
-  /**
-   * Decrypt the segment that is being loaded if necessary
+   * Handle the callback from the segmentRequest function and set the
+   * associated SegmentLoader state and errors if necessary
    *
    * @private
    */
-  processResponse_() {
+  segmentRequestFinished_(error, simpleSegment) {
+    // every request counts as a media request even if it has been aborted
+    // or canceled due to a timeout
+    this.mediaRequests += 1;
+
+    if (simpleSegment.stats) {
+      this.mediaBytesTransferred += simpleSegment.stats.bytesReceived;
+      this.mediaTransferDuration += simpleSegment.stats.roundTripTime;
+    }
+
+    // The request was aborted and the SegmentLoader has already been reset
     if (!this.pendingSegment_) {
-      this.state = 'READY';
+      this.mediaRequestsAborted += 1;
       return;
     }
 
-    this.state = 'DECRYPTING';
-
-    let segmentInfo = this.pendingSegment_;
-    let segment = segmentInfo.segment;
-
-    if (segment.key) {
-      // this is an encrypted segment
-      // incrementally decrypt the segment
-      this.decrypter_.postMessage(createTransferableMessage({
-        source: this.loaderType_,
-        encrypted: segmentInfo.encryptedBytes,
-        key: segment.key.bytes,
-        iv: segment.key.iv
-      }), [
-        segmentInfo.encryptedBytes.buffer,
-        segment.key.bytes.buffer
-      ]);
-    } else {
-      this.handleSegment_();
+    // the request was aborted and the SegmentLoader has already started
+    // another request. this can happen when the timeout for an aborted
+    // request triggers due to a limitation in the XHR library
+    // do not count this as any sort of request or we risk double-counting
+    if (simpleSegment.requestId !== this.pendingSegment_.requestId) {
+      return;
     }
+
+    // an error occurred from the active pendingSegment_ so reset everything
+    if (error) {
+      this.pendingSegment_ = null;
+      this.state = 'READY';
+
+      // the requests were aborted just record the aborted stat and exit
+      // this is not a true error condition and nothing corrective needs
+      // to be done
+      if (error.code === REQUEST_ERRORS.ABORTED) {
+        this.mediaRequestsAborted += 1;
+        return;
+      }
+
+      this.pause();
+
+      // the error is really just that at least one of the requests timed-out
+      // set the bandwidth to a very low value and trigger an ABR switch to
+      // take emergency action
+      if (error.code === REQUEST_ERRORS.TIMEOUT) {
+        this.mediaRequestsTimedout += 1;
+        this.bandwidth = 1;
+        this.roundTrip = NaN;
+        this.trigger('bandwidthupdate');
+        return;
+      }
+
+      // if control-flow has arrived here, then the error is real
+      // emit an error event to blacklist the current playlist
+      this.mediaRequestsErrored += 1;
+      this.error(error);
+      this.trigger('error');
+      return;
+    }
+
+    // the response was a success so set any bandwidth stats the request
+    // generated for ABR purposes
+    this.bandwidth = simpleSegment.stats.bandwidth;
+    this.roundTrip = simpleSegment.stats.roundTripTime;
+
+    // if this request included an initialization segment, save that data
+    // to the initSegment cache
+    if (simpleSegment.map) {
+      simpleSegment.map = this.initSegment(simpleSegment.map, true);
+    }
+
+    this.processSegmentResponse_(simpleSegment);
   }
 
   /**
-   * Handles response from the decrypter and attaches the decrypted bytes to the pending
-   * segment
+   * Move any important data from the simplified segment object
+   * back to the real segment object for future phases
    *
-   * @param {Object} data
-   *        Response from decrypter
-   * @method handleDecrypted_
+   * @private
    */
-  handleDecrypted_(data) {
+  processSegmentResponse_(simpleSegment) {
     const segmentInfo = this.pendingSegment_;
-    const decrypted = data.decrypted;
 
-    if (segmentInfo) {
-      segmentInfo.bytes = new Uint8Array(decrypted.bytes,
-                                         decrypted.byteOffset,
-                                         decrypted.byteLength);
+    segmentInfo.bytes = simpleSegment.bytes;
+    if (simpleSegment.map) {
+      segmentInfo.segment.map.bytes = simpleSegment.map.bytes;
     }
+
+    segmentInfo.endOfAllRequests = simpleSegment.endOfAllRequests;
     this.handleSegment_();
   }
 
@@ -994,12 +930,13 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.state = 'APPENDING';
 
-    let segmentInfo = this.pendingSegment_;
-    let segment = segmentInfo.segment;
+    const segmentInfo = this.pendingSegment_;
+    const segment = segmentInfo.segment;
 
     this.syncController_.probeSegmentInfo(segmentInfo);
 
     if (segmentInfo.isSyncRequest) {
+      this.trigger('syncinfoupdate');
       this.pendingSegment_ = null;
       this.state = 'READY';
       return;
@@ -1013,11 +950,11 @@ export default class SegmentLoader extends videojs.EventTarget {
     // if the media initialization segment is changing, append it
     // before the content segment
     if (segment.map) {
-      let initId = initSegmentId(segment.map);
+      const initId = initSegmentId(segment.map);
 
       if (!this.activeInitSegmentId_ ||
           this.activeInitSegmentId_ !== initId) {
-        let initSegment = this.initSegments_[initId];
+        const initSegment = this.initSegment(segment.map);
 
         this.sourceUpdater_.appendBuffer(initSegment.bytes, () => {
           this.activeInitSegmentId_ = initId;
@@ -1044,6 +981,8 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   handleUpdateEnd_() {
+    this.logger_('handleUpdateEnd_', 'segmentInfo:', this.pendingSegment_);
+
     if (!this.pendingSegment_) {
       this.state = 'READY';
       if (!this.paused()) {
@@ -1052,28 +991,53 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    let segmentInfo = this.pendingSegment_;
+    const segmentInfo = this.pendingSegment_;
+    const segment = segmentInfo.segment;
+    const isWalkingForward = this.mediaIndex !== null;
 
     this.pendingSegment_ = null;
     this.recordThroughput_(segmentInfo);
+    this.addSegmentMetadataCue_(segmentInfo);
+
+    this.state = 'READY';
+
     this.mediaIndex = segmentInfo.mediaIndex;
     this.fetchAtBuffer_ = true;
+    this.currentTimeline_ = segmentInfo.timeline;
 
-    log('handleUpdateEnd_', this.mediaIndex);
+    // We must update the syncinfo to recalculate the seekable range before
+    // the following conditional otherwise it may consider this a bad "guess"
+    // and attempt to resync when the post-update seekable window and live
+    // point would mean that this was the perfect segment to fetch
+    this.trigger('syncinfoupdate');
+
+    // If we previously appended a segment that ends more than 3 targetDurations before
+    // the currentTime_ that means that our conservative guess was too conservative.
+    // In that case, reset the loader state so that we try to use any information gained
+    // from the previous request to create a new, more accurate, sync-point.
+    if (segment.end &&
+        this.currentTime_() - segment.end > segmentInfo.playlist.targetDuration * 3) {
+      this.resetEverything();
+      return;
+    }
+
+    // Don't do a rendition switch unless we have enough time to get a sync segment
+    // and conservatively guess
+    if (isWalkingForward) {
+      this.trigger('bandwidthupdate');
+    }
+    this.trigger('progress');
 
     // any time an update finishes and the last segment is in the
     // buffer, end the stream. this ensures the "ended" event will
     // fire if playback reaches that point.
-    let isEndOfStream = detectEndOfStream(segmentInfo.playlist,
-                                          this.mediaSource_,
-                                          this.mediaIndex + 1);
+    const isEndOfStream = detectEndOfStream(segmentInfo.playlist,
+                                            this.mediaSource_,
+                                            segmentInfo.mediaIndex + 1);
 
     if (isEndOfStream) {
       this.mediaSource_.endOfStream();
     }
-
-    this.state = 'READY';
-    this.trigger('progress');
 
     if (!this.paused()) {
       this.monitorBuffer_();
@@ -1090,18 +1054,69 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @param {Object} segmentInfo the object returned by loadSegment
    */
   recordThroughput_(segmentInfo) {
-    let rate = this.throughput.rate;
+    const rate = this.throughput.rate;
     // Add one to the time to ensure that we don't accidentally attempt to divide
     // by zero in the case where the throughput is ridiculously high
-    let segmentProcessingTime =
-      Date.now() - segmentInfo.startOfAppend + 1;
+    const segmentProcessingTime =
+      Date.now() - segmentInfo.endOfAllRequests + 1;
     // Multiply by 8000 to convert from bytes/millisecond to bits/second
-    let segmentProcessingThroughput =
+    const segmentProcessingThroughput =
       Math.floor((segmentInfo.byteLength / segmentProcessingTime) * 8 * 1000);
 
     // This is just a cumulative moving average calculation:
     //   newAvg = oldAvg + (sample - oldAvg) / (sampleCount + 1)
     this.throughput.rate +=
       (segmentProcessingThroughput - rate) / (++this.throughput.count);
+  }
+
+  /**
+   * A debugging logger noop that is set to console.log only if debugging
+   * is enabled globally
+   *
+   * @private
+   */
+  logger_() {}
+
+  /**
+   * Adds a cue to the segment-metadata track with some metadata information about the
+   * segment
+   *
+   * @private
+   * @param {Object} segmentInfo
+   *        the object returned by loadSegment
+   * @method addSegmentMetadataCue_
+   */
+  addSegmentMetadataCue_(segmentInfo) {
+    if (!this.segmentMetadataTrack_) {
+      return;
+    }
+
+    const segment = segmentInfo.segment;
+    const start = segment.start;
+    const end = segment.end;
+
+    // Do not try adding the cue if the start and end times are invalid.
+    if (!finite(start) || !finite(end)) {
+      return;
+    }
+
+    removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
+
+    const Cue = window.WebKitDataCue || window.VTTCue;
+    const value = {
+      uri: segmentInfo.uri,
+      timeline: segmentInfo.timeline,
+      playlist: segmentInfo.playlist.uri,
+      start,
+      end
+    };
+    const data = JSON.stringify(value);
+    const cue = new Cue(start, end, data);
+
+    // Attach the metadata to the value property of the cue to keep consistency between
+    // the differences of WebKitDataCue in safari and VTTCue in other browsers
+    cue.value = value;
+
+    this.segmentMetadataTrack_.addCue(cue);
   }
 }
