@@ -41,7 +41,6 @@
     "test:safari": "npm run pretest && karma start test/karma.conf.js --browsers Safari",
     "preversion": "npm test",
     "version": "npm run build",
-    "prewatch": "npm run build:test:manifest",
     "watch": "npm-run-all -p watch:*",
     "watch:docs": "nodemon --watch src/ --exec npm run docs",
     "watch:js": "npm-run-all -p watch:js:babel watch:js:browserify watch:js:switcher",
@@ -50,7 +49,7 @@
     "watch:js:switcher": "watchify utils/switcher/switcher.js -v -t babelify -g browserify-shim -o dist/switcher.js",
     "watch:test:browserify": "watchify test/browserify-test.js -o dist-test/browserify-test.js",
     "watch:test:webpack": "watchify test/webpack-test.js -o dist-test/webpack-test.js",
-    "watch:test": "npm-run-all -p watch:test:js watch:test:webpack watch:test:browserify",
+    "watch:test": "npm-run-all -p watch:test:manifest watch:test:js watch:test:webpack watch:test:browserify",
     "watch:test:js": "node scripts/watch-test.js",
     "watch:test:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.watch();\"",
     "prepublish": "npm run build"
