@@ -1896,25 +1896,6 @@ QUnit.test('the source handler supports HLS mime types', function(assert) {
   });
 });
 
-QUnit.test('fires loadstart manually if Flash is used', function(assert) {
-  videojs.HlsHandler.prototype.setupQualityLevels_ = () => {};
-  let tech = new (videojs.getTech('Flash'))({});
-  let loadstarts = 0;
-
-  tech.on('loadstart', function() {
-    loadstarts++;
-  });
-  HlsSourceHandler('flash').handleSource({
-    src: 'movie.m3u8',
-    type: 'application/x-mpegURL'
-  }, tech);
-
-  assert.equal(loadstarts, 0, 'loadstart is not synchronous');
-  this.clock.tick(1);
-  assert.equal(loadstarts, 1, 'fired loadstart');
-  videojs.HlsHandler.prototype.setupQualityLevels_ = ogHlsHandlerSetupQualityLevels;
-});
-
 QUnit.test('source handler does not support sources when IE 10 or below', function(assert) {
   videojs.browser.IE_VERSION = 10;
 
