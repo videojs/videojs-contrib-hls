@@ -110,7 +110,6 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
-    this.clock.tick(1);
     openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
@@ -128,7 +127,6 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
-    this.clock.tick(1);
     openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
@@ -148,7 +146,6 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
-    this.clock.tick(1);
     openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
@@ -168,7 +165,6 @@ options.forEach((opt) => {
     this.player = createPlayer();
     this.player.src(srcOptions);
 
-    this.clock.tick(1);
     openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
@@ -189,7 +185,6 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
-    this.clock.tick(1);
     openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
@@ -211,7 +206,6 @@ options.forEach((opt) => {
     this.player = createPlayer(sourceHandlerOptions);
     this.player.src(srcOptions);
 
-    this.clock.tick(1);
     openMediaSource(this.player, this.clock);
 
     let hls = this.player.tech_.hls;
