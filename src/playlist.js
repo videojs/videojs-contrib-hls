@@ -428,7 +428,7 @@ export const isAes = function(media) {
 /**
  * Returns whether the current playlist contains fMP4
  *
- * @return {Boolean} true if it contains fMP4
+ * @return {Boolean} true if the playlist contains fMP4
  */
 export const isFmp4 = function(media) {
   for (let i = 0; i < media.segments.length; i++) {

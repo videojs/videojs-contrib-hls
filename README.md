@@ -45,27 +45,9 @@ Maintenance Status: Stable
     - [hls.xhr](#hlsxhr)
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
-  - [HLS Usage Tracking Events](#hls-usage-tracking-events)
+  - [HLS Usage Events](#hls-usage-events)
     - [Presence Stats](#presence-stats)
-      - [hls-webvtt](#hls-webvtt)
-      - [hls-aes](#hls-aes)
-      - [hls-fmp4](#hls-fmp4)
-      - [hls-demuxed](#hls-demuxed)
-      - [hls-alternate-audio](#hls-alternate-audio)
     - [Use Stats](#use-stats)
-      - [hls-gap-skip](#hls-gap-skip)
-      - [hls-player-access](#hls-player-access)
-      - [hls-audio-change](#hls-audio-change)
-      - [hls-rendition-disabled](#hls-rendition-disabled)
-      - [hls-rendition-blacklisted](#hls-rendition-blacklisted)
-      - [hls-timestamp-offset](#hls-timestamp-offset)
-      - [hls-playlist-cue-tags](#hls-playlist-cue-tags)
-      - [hls-unknown-waiting](#hls-unknown-waiting)
-      - [hls-live-resync](#hls-live-resync)
-      - [hls-video-underflow](#hls-video-underflow)
-      - [hls-error-reload-initialized](#hls-error-reload-initialized)
-      - [hls-error-reload](#hls-error-reload)
-      - [hls-error-not-reload](#hls-error-not-reload)
   - [In-Band Metadata](#in-band-metadata)
   - [Segment Metadata](#segment-metadata)
 - [Hosting Considerations](#hosting-considerations)
@@ -497,91 +479,49 @@ are triggered on the player object.
 Fired after the first segment is downloaded for a playlist. This will not happen
 until playback if video.js's `metadata` setting is `none`
 
-### HLS Usage Tracking Events
+### HLS Usage Events
 
-Add more metrics around HLS feature usage to help track down the cause of HLS errors and
-understand which features are used most often.
-These may be removed in the furture.
+Usage tracking events are fired when we detect a certain HLS feature, encoding setting,
+or API is used. These can be helpful for analytics, and to pinpoint the cause of HLS errors.
+For instance, if errors are being fired in tandem with a usage event indicating that the
+player was playing an AES encrypted stream, then we have a possible avenue to explore when
+debugging the error.
+
+Note that although these usage events are listed below, they may change at any time without
+a major version change.
 
 #### Presence Stats
 
-Fired once per source when we have enough info to determine these features are present
+Each of the following usage events are fired once per source if (and when) detected:
 
-##### hls-webvtt
-
-Fired when a rendition has webvtt in HLS
-
-##### hls-aes
-
-Fired when the player detects an AES encrypted HLS stream
-
-##### hls-fmp4
-
-Fired when fMP4 is detected when playing HLS
-
-##### hls-demuxed
-
-Fired when video and audio is demuxed by default
-
-##### hls-alternate-audio
-
-Fired when alternate audio is detected when playing HLS
+| Name          | Description   |
+| ------------- | ------------- |
+| hls-webvtt    | master manifest has at least one segmented WebVTT playlist |
+| hls-aes       | a playlist is AES encrypted |
+| hls-fmp4      | a playlist used fMP4 segments |
+| hls-demuxed   | audio and video are demuxed by default |
+| hls-alternate-audio | alternate audio available in the master manifest |
 
 #### Use Stats
 
-Fired once each time a feature is used
+Each of the following usage events are fired per use:
 
-##### hls-gap-skip
-
-Fired when a gap in the buffer is skipped in HLS
-
-##### hls-player-access
-
-Fired when player.hls is accessed
-
-##### hls-audio-change
-
-Fired when a user selects an alternate audio stream in HLS
-
-##### hls-rendition-disabled
-
-Fired when a rendition is enabled/disabled in HLS
-
-##### hls-rendition-blacklisted
-
-Fired when a rendition is blacklisted by HLS
-
-##### hls-timestamp-offset
-
-Fired when a timestamp offset is set in HLS (can also identify discontinuities)
-
-##### hls-playlist-cue-tags
-
-Fired when cue tags is used in HLS
-
-##### hls-unknown-waiting
-
-Fired when unknown waiting corrections are detected when playing HLS
-
-##### hls-live-resync
-
-Fired when live window resyncs happen when playing a live stream
-
-##### hls-video-underflow
-
-Fired when video underflow is detected by HLS
-
-##### hls-error-reload-initialized
-
-Fired when the event when the reload src on error plugin is first initialized
-
-##### hls-error-reload
-
-Fired when we set the source after an error ahs caused the reload
-
-##### hls-error-not-reload
-
-Fired when an error occurs but don't reload the source when there is not enough time has elapsed
+| Name          | Description   |
+| ------------- | ------------- |
+| hls-gap-skip  | player skipped a gap in the buffer |
+| hls-player-access | player.hls was accessed |
+| hls-audio-change | a user selected an alternate audio stream |
+| hls-rendition-disabled | a rendition was disabled |
+| hls-rendition-enabled | a rendition was enabled |
+| hls-rendition-blacklisted | a rendition was blacklisted |
+| hls-timestamp-offset | a timestamp offset was set in HLS (can identify discontinuities) |
+| hls-playlist-cue-tags | a playlist used cue tags (see useCueTags for details) |
+| hls-unknown-waiting | the player stopped for an unknown reason and we seeked to current time try to address it |
+| hls-live-resync | playback fell off the back of a live playlist and we resynced to the live point |
+| hls-video-underflow | we seeked to current time to address video underflow |
+| hls-error-reload-initialized | the reloadSourceOnError plugin was initialized |
+| hls-error-reload | the reloadSourceOnError plugin reloaded a source |
+| hls-error-reload-canceled | an error occurred too soon after the last reload, so we didn't reload again (to prevent error loops) |
 
 
 ### In-Band Metadata

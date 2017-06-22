@@ -1127,7 +1127,7 @@ QUnit.test('calls to update cues on media when no master', function(assert) {
 
 QUnit.test('respects useCueTags option', function(assert) {
   let origHlsOptions = videojs.options.hls;
-  let hlsplaylistcuetags = 0;
+  let hlsPlaylistCueTagsEvents = 0;
 
   videojs.options.hls = {
     useCueTags: true
@@ -1136,7 +1136,7 @@ QUnit.test('respects useCueTags option', function(assert) {
   this.player = createPlayer();
   this.player.tech_.on('usage', (event) => {
     if (event.name === 'hls-playlist-cue-tags') {
-      hlsplaylistcuetags++;
+      hlsPlaylistCueTagsEvents++;
     }
   });
   this.player.src({
@@ -1146,7 +1146,7 @@ QUnit.test('respects useCueTags option', function(assert) {
 
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
-  assert.equal(hlsplaylistcuetags, 1, '');
+  assert.equal(hlsPlaylistCueTagsEvents, 1, 'cue tags event has been triggered once');
   assert.ok(this.masterPlaylistController.cueTagsTrack_,
            'creates cueTagsTrack_ if useCueTags is truthy');
   assert.equal(this.masterPlaylistController.cueTagsTrack_.label,
@@ -1192,57 +1192,10 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
                'spanish track\'s kind is "alternative"');
 });
 
-QUnit.test('trigger events when an AES is detected', function(assert) {
-  let hlsaes = 0;
-  let isAesCopy = Hls.Playlist.isAes;
-
-  Hls.Playlist.isAes = (media) => {
-    return true;
-  };
-
-  this.player.tech_.on('usage', (event) => {
-    if (event.name === 'hls-aes') {
-      hlsaes++;
-    }
-  });
-
-  // master
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-  this.masterPlaylistController.mediaSource.trigger('sourceopen');
-
-  assert.equal(hlsaes, 1, 'an AES HLS stream is detected');
-  Hls.Playlist.isAes = isAesCopy;
-});
-
-QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
-  let hlsfmp4 = 0;
-  let isFmp4Copy = Hls.Playlist.isFmp4;
-
-  Hls.Playlist.isFmp4 = (media) => {
-    return true;
-  };
-
-  this.player.tech_.on('usage', (event) => {
-    if (event.name === 'hls-fmp4') {
-      hlsfmp4++;
-    }
-  });
-
-  // master
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-  this.masterPlaylistController.mediaSource.trigger('sourceopen');
-
-  assert.equal(hlsfmp4, 1, 'an fMP4 stream is detected');
-  Hls.Playlist.isFmp4 = isFmp4Copy;
-});
-
 QUnit.test('trigger events when video and audio is demuxed by default', function(assert) {
-  let demuxed = 0;
+  let hlsDemuxedEvents = 0;
 
+  this.requests.length = 0;
   this.player = createPlayer();
   this.player.src({
     src: 'manifest/multipleAudioGroups.m3u8',
@@ -1251,27 +1204,69 @@ QUnit.test('trigger events when video and audio is demuxed by default', function
 
   this.player.tech_.on('usage', (event) => {
     if (event.name === 'hls-demuxed') {
-      demuxed++;
+      hlsDemuxedEvents++;
     }
   });
 
-  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  openMediaSource(this.player, this.clock);
   // master
   this.standardXHRResponse(this.requests.shift());
   // media
   this.standardXHRResponse(this.requests.shift());
-  // init segment
-  this.standardXHRResponse(this.requests.shift());
-  // video segment
-  this.standardXHRResponse(this.requests.shift());
-  // audio media
-  this.standardXHRResponse(this.requests.shift());
 
-  assert.equal(demuxed, 1, 'video and audio is demuxed by default');
+  assert.equal(hlsDemuxedEvents, 1, 'video and audio is demuxed by default');
+});
+
+QUnit.test('trigger events when an AES is detected', function(assert) {
+  let hlsAesEvents = 0;
+  let isAesCopy = Hls.Playlist.isAes;
+
+  Hls.Playlist.isAes = (media) => {
+    return true;
+  };
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-aes') {
+      hlsAesEvents++;
+    }
+  });
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  assert.equal(hlsAesEvents, 1, 'an AES HLS stream is detected');
+  Hls.Playlist.isAes = isAesCopy;
+});
+
+QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
+  let hlsFmp4Events = 0;
+  let isFmp4Copy = Hls.Playlist.isFmp4;
+
+  Hls.Playlist.isFmp4 = (media) => {
+    return true;
+  };
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-fmp4') {
+      hlsFmp4Events++;
+    }
+  });
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  assert.equal(hlsFmp4Events, 1, 'an fMP4 stream is detected');
+  Hls.Playlist.isFmp4 = isFmp4Copy;
 });
 
 QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {
-  let hlswebvtt = 0;
+  let hlsWebvttEvents = 0;
 
   this.requests.length = 0;
   this.player = createPlayer();
@@ -1282,13 +1277,13 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
 
   this.player.tech_.on('usage', (event) => {
     if (event.name === 'hls-webvtt') {
-      hlswebvtt++;
+      hlsWebvttEvents++;
     }
   });
 
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
-  assert.equal(hlswebvtt, 0, 'there is no webvtt detected');
+  assert.equal(hlsWebvttEvents, 0, 'there is no webvtt detected');
   assert.equal(this.player.textTracks().length, 1, 'one text track to start');
   assert.equal(this.player.textTracks()[0].label,
                'segment-metadata',
@@ -1317,7 +1312,7 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
   assert.equal(textTracks.length, 3, 'non-forced text tracks were added');
   assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
   assert.equal(textTracks[2].mode, 'disabled', 'track starts disabled');
-  assert.equal(hlswebvtt, 1, 'there is webvtt detected in the rendition');
+  assert.equal(hlsWebvttEvents, 1, 'there is webvtt detected in the rendition');
 });
 
 QUnit.test('switches off subtitles on subtitle errors', function(assert) {

@@ -668,7 +668,7 @@ QUnit.test('determine if playlist is an AES encrypted HLS stream', function(asse
   assert.ok(Playlist.isAes(media), 'media is an AES encrypted HLS stream');
 });
 
-QUnit.test('determine if playlist contains fmp4 segment', function(assert) {
+QUnit.test('determine if playlist contains an fmp4 segment', function(assert) {
   let media;
   let loader = new PlaylistLoader('video/fmp4.m3u8', this.fakeHls);
 
@@ -677,7 +677,7 @@ QUnit.test('determine if playlist contains fmp4 segment', function(assert) {
                                 '#EXTM3U\n' +
                                 '#EXT-X-MAP:URI="main.mp4",BYTERANGE="720@0"\n' +
                                 '#EXTINF:10,\n' +
-                                '0.ts\n' +
+                                '0.mp4\n' +
                                 '#EXT-X-ENDLIST\n');
 
   media = loader.media();

@@ -549,6 +549,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.on('renditiondisabled', () => {
       this.tech_.trigger({type: 'usage', name: 'hls-rendition-disabled'});
     });
+    this.masterPlaylistLoader_.on('renditionenabled', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-rendition-enabled'});
+    });
   }
 
   /**
@@ -650,7 +653,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   fillAudioTracks_() {
     let master = this.master();
     let mediaGroups = master.mediaGroups || {};
-    let demuxed = true;
+    let defaultDemuxed = true;
 
     // force a default if we have none or we are not
     // in html5 mode (the only mode to support more than one
@@ -679,15 +682,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
         });
 
         if (!properties.uri) {
-          demuxed = false;
+          defaultDemuxed = false;
         }
         track.properties_ = properties;
         this.audioGroups_[mediaGroup].push(track);
       }
     }
 
-    if (demuxed) {
-      // fired when video and audio is demuxed by default
+    if (defaultDemuxed) {
       this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
     }
 
@@ -723,7 +725,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let mediaGroups = master.mediaGroups || {};
 
     if (Object.keys(mediaGroups.SUBTITLES).length) {
-      // fired the usage event when a rendition has webvtt in HLS
       this.tech_.trigger({type: 'usage', name: 'hls-webvtt'});
     }
 
@@ -1188,7 +1189,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
     this.tech_.trigger('blacklistplaylist');
-    // fired when a rendition is blacklisted by HLS
     this.tech_.trigger({type: 'usage', name: 'hls-rendition-blacklisted'});
 
     // Select a new playlist
@@ -1449,7 +1449,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_.mimeType(mimeTypes[0]);
     if (mimeTypes[1]) {
       this.audioSegmentLoader_.mimeType(mimeTypes[1]);
-      // fired when alternate audio is present
       this.tech_.trigger({type: 'usage', name: 'hls-alternate-audio'});
     }
 

@@ -221,6 +221,7 @@ QUnit.test('setting a representation to disabled sets disabled to true', functio
 });
 
 QUnit.test('changing the enabled state of a representation calls fastQualityChange_', function(assert) {
+  let renditionEnabledEvents = 0;
   let hlsHandler = makeMockHlsHandler([
     {
       bandwidth: 0,
@@ -234,15 +235,21 @@ QUnit.test('changing the enabled state of a representation calls fastQualityChan
   ]);
   let mpc = hlsHandler.masterPlaylistController_;
 
+  hlsHandler.playlists.on('renditionenabled', function() {
+    renditionEnabledEvents++;
+  });
+
   RenditionMixin(hlsHandler);
 
   let renditions = hlsHandler.representations();
 
   assert.equal(mpc.fastQualityChange_.calls, 0, 'fastQualityChange_ was never called');
+  assert.equal(renditionEnabledEvents, 0, 'renditionenabled event has not been triggered');
 
   renditions[0].enabled(true);
 
   assert.equal(mpc.fastQualityChange_.calls, 1, 'fastQualityChange_ was called once');
+  assert.equal(renditionEnabledEvents, 1, 'renditionenabled event has been triggered once');
 
   renditions[1].enabled(false);
 

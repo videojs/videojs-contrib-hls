@@ -65,7 +65,7 @@ const initPlugin = function(player, options) {
     // Do not attempt to reload the source if a source-reload occurred before
     // 'errorInterval' time has elapsed since the last source-reload
     if (Date.now() - lastCalled < localOptions.errorInterval * 1000) {
-      player.tech_.trigger({type: 'usage', name: 'hls-error-not-reload'});
+      player.tech_.trigger({type: 'usage', name: 'hls-error-reload-canceled'});
       return;
     }
 

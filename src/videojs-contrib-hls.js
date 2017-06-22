@@ -208,7 +208,6 @@ class HlsHandler extends Component {
         Object.defineProperty(_player, 'hls', {
           get: () => {
             videojs.log.warn('player.hls is deprecated. Use player.tech_.hls instead.');
-            // fired the uasge event when player.hls is accessed
             tech.trigger({type: 'usage', name: 'hls-player-access'});
             return this;
           }
@@ -265,7 +264,6 @@ class HlsHandler extends Component {
 
     this.audioTrackChange_ = () => {
       this.masterPlaylistController_.setupAudio();
-      // fired when a user selects an alternate audio stream in HLS
       this.tech_.trigger({type: 'usage', name: 'hls-audio-change'});
     };
 

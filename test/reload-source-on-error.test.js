@@ -100,38 +100,38 @@ QUnit.test('doesn\'t seek to currentTime in live', function(assert) {
 });
 
 QUnit.test('by default, only allows a retry once every 30 seconds', function(assert) {
-  let hlserrorreloadinitialized = 0;
-  let hlserrorload = 0;
-  let hlserrornotload = 0;
+  let hlsErrorReloadInitializedEvents = 0;
+  let hlsErrorReloadEvents = 0;
+  let hlsErrorReloadCanceledEvents = 0;
 
   this.player.tech_.on('usage', (event) => {
     if (event.name === 'hls-error-reload-initialized') {
-      hlserrorreloadinitialized++;
+      hlsErrorReloadInitializedEvents++;
     }
   });
 
   this.player.tech_.on('usage', (event) => {
     if (event.name === 'hls-error-reload') {
-      hlserrorload++;
+      hlsErrorReloadEvents++;
     }
   });
 
   this.player.tech_.on('usage', (event) => {
-    if (event.name === 'hls-error-not-reload') {
-      hlserrornotload++;
+    if (event.name === 'hls-error-reload-canceled') {
+      hlsErrorReloadCanceledEvents++;
     }
   });
 
-  assert.equal(hlserrorreloadinitialized, 0, 'the plugin has not been initialized');
-  assert.equal(hlserrorload, 0, 'there is no source was set');
-  assert.equal(hlserrornotload, 0, 'not reload event has not been triggered');
+  assert.equal(hlsErrorReloadInitializedEvents, 0, 'the plugin has not been initialized');
+  assert.equal(hlsErrorReloadEvents, 0, 'no source was set');
+  assert.equal(hlsErrorReloadCanceledEvents, 0, 'not reload event has not been triggered');
 
   this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  assert.equal(hlserrorreloadinitialized, 1, 'the plugin has been initialized');
-  assert.equal(hlserrorload, 1, 'src was set after an error has caused the reload');
+  assert.equal(hlsErrorReloadInitializedEvents, 1, 'the plugin has been initialized');
+  assert.equal(hlsErrorReloadEvents, 1, 'src was set after an error caused the reload');
   assert.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
 
   // Advance 59 seconds
@@ -146,7 +146,7 @@ QUnit.test('by default, only allows a retry once every 30 seconds', function(ass
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  assert.equal(hlserrornotload, 1, 'did not reload the source because not enough time has elapsed');
+  assert.equal(hlsErrorReloadCanceledEvents, 1, 'did not reload the source because not enough time has elapsed');
   assert.equal(this.player.src.calledWith.length, 2, 'player.src was called twice');
 });
 

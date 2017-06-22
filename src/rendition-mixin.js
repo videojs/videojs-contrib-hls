@@ -30,8 +30,11 @@ const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
   if (enable !== currentlyEnabled && !blacklisted) {
     // Ensure the outside world knows about our changes
     changePlaylistFn();
-    // fired when a rendition is enabled/disabled in HLS
-    loader.trigger('renditiondisabled');
+    if (currentlyEnabled) {
+      loader.trigger('renditiondisabled');
+    } else {
+      loader.trigger('renditionenabled');
+    }
   }
   return enable;
 };
