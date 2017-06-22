@@ -30,10 +30,10 @@ const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
   if (enable !== currentlyEnabled && !blacklisted) {
     // Ensure the outside world knows about our changes
     changePlaylistFn();
-    if (currentlyEnabled) {
-      loader.trigger('renditiondisabled');
-    } else {
+    if (enable) {
       loader.trigger('renditionenabled');
+    } else {
+      loader.trigger('renditiondisabled');
     }
   }
   return enable;
