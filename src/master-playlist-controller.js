@@ -409,7 +409,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.fillSubtitleTracks_();
       this.setupSubtitles();
 
-      this.presenceUsage(this.master(), media);
+      this.triggerPresenceUsage_(this.master(), media);
 
       try {
         this.setupSourceBuffers_();
@@ -547,16 +547,15 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
   }
 
-  presenceUsage(master, media) {
+  /**
+   * A helper function for triggerring presence events once per source
+   *
+   * @private
+   */
+  triggerPresenceUsage_(master, media) {
     let mediaGroups = master.mediaGroups || {};
     let defaultDemuxed = true;
-
-    if (!mediaGroups ||
-        !mediaGroups.AUDIO ||
-        Object.keys(mediaGroups.AUDIO).length === 0 ||
-        this.mode_ !== 'html5') {
-      mediaGroups.AUDIO = { main: { default: { default: true }}};
-    }
+    let audioGroupKeys = Object.keys(mediaGroups.AUDIO);
 
     for (let mediaGroup in mediaGroups.AUDIO) {
       for (let label in mediaGroups.AUDIO[mediaGroup]) {
@@ -583,8 +582,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     if (Hls.Playlist.isFmp4(media)) {
       this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
     }
-
-    let audioGroupKeys = Object.keys(mediaGroups.AUDIO);
 
     if (audioGroupKeys.length && mediaGroups.AUDIO[audioGroupKeys[0]].length > 1) {
       this.tech_.trigger({type: 'usage', name: 'hls-alternate-audio'});
