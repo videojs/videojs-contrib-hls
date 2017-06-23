@@ -446,7 +446,7 @@ The global `videojs.Hls` also exposes an `xhr` property. Specifying a
 `beforeRequest` function on that will allow you to intercept the options
 for *all* requests in every player on a page. For consistency across
 browsers the video source should be set at runtime once the video player
-is ready. 
+is ready.
 
 Example
 ```javascript

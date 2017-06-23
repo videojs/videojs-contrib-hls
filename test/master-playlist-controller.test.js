@@ -1145,6 +1145,8 @@ QUnit.test('respects useCueTags option', function(assert) {
   });
 
   this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  this.standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
 
   assert.equal(hlsPlaylistCueTagsEvents, 1, 'cue tags event has been triggered once');
   assert.ok(this.masterPlaylistController.cueTagsTrack_,

@@ -301,7 +301,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
       this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
-      this.tech_.trigger({type: 'usage', name: 'hls-playlist-cue-tags'});
     }
 
     this.requestOptions_ = {
@@ -404,19 +403,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.load();
       }
 
-      if (Hls.Playlist.isAes(media)) {
-        this.tech_.trigger({type: 'usage', name: 'hls-aes'});
-      }
-
-      if (Hls.Playlist.isFmp4(media)) {
-        this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
-      }
-
       this.fillAudioTracks_();
       this.setupAudio();
 
       this.fillSubtitleTracks_();
       this.setupSubtitles();
+
+      this.presenceUsage(this.master(), media);
 
       try {
         this.setupSourceBuffers_();
@@ -554,6 +547,53 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
   }
 
+  presenceUsage(master, media) {
+    let mediaGroups = master.mediaGroups || {};
+    let defaultDemuxed = true;
+
+    if (!mediaGroups ||
+        !mediaGroups.AUDIO ||
+        Object.keys(mediaGroups.AUDIO).length === 0 ||
+        this.mode_ !== 'html5') {
+      mediaGroups.AUDIO = { main: { default: { default: true }}};
+    }
+
+    for (let mediaGroup in mediaGroups.AUDIO) {
+      for (let label in mediaGroups.AUDIO[mediaGroup]) {
+        let properties = mediaGroups.AUDIO[mediaGroup][label];
+
+        if (!properties.uri) {
+          defaultDemuxed = false;
+        }
+      }
+    }
+
+    if (defaultDemuxed) {
+      this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
+    }
+
+    if (Object.keys(mediaGroups.SUBTITLES).length) {
+      this.tech_.trigger({type: 'usage', name: 'hls-webvtt'});
+    }
+
+    if (Hls.Playlist.isAes(media)) {
+      this.tech_.trigger({type: 'usage', name: 'hls-aes'});
+    }
+
+    if (Hls.Playlist.isFmp4(media)) {
+      this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
+    }
+
+    let audioGroupKeys = Object.keys(mediaGroups.AUDIO);
+
+    if (audioGroupKeys.length && mediaGroups.AUDIO[audioGroupKeys[0]].length > 1) {
+      this.tech_.trigger({type: 'usage', name: 'hls-alternate-audio'});
+    }
+
+    if (this.useCueTags_) {
+      this.tech_.trigger({type: 'usage', name: 'hls-playlist-cue-tags'});
+    }
+  }
   /**
    * Register event handlers on the segment loaders. A helper function
    * for construction time.
@@ -653,7 +693,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
   fillAudioTracks_() {
     let master = this.master();
     let mediaGroups = master.mediaGroups || {};
-    let defaultDemuxed = true;
 
     // force a default if we have none or we are not
     // in html5 mode (the only mode to support more than one
@@ -681,16 +720,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
           label
         });
 
-        if (!properties.uri) {
-          defaultDemuxed = false;
-        }
         track.properties_ = properties;
         this.audioGroups_[mediaGroup].push(track);
       }
-    }
-
-    if (defaultDemuxed) {
-      this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
     }
 
     // enable the default active track
@@ -723,10 +755,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
   fillSubtitleTracks_() {
     let master = this.master();
     let mediaGroups = master.mediaGroups || {};
-
-    if (Object.keys(mediaGroups.SUBTITLES).length) {
-      this.tech_.trigger({type: 'usage', name: 'hls-webvtt'});
-    }
 
     for (let mediaGroup in mediaGroups.SUBTITLES) {
       if (!this.subtitleGroups_.groups[mediaGroup]) {
@@ -1449,7 +1477,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_.mimeType(mimeTypes[0]);
     if (mimeTypes[1]) {
       this.audioSegmentLoader_.mimeType(mimeTypes[1]);
-      this.tech_.trigger({type: 'usage', name: 'hls-alternate-audio'});
     }
 
     // exclude any incompatible variant streams from future playlist
