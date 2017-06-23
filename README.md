@@ -501,6 +501,7 @@ Each of the following usage events are fired once per source if (and when) detec
 | hls-fmp4      | a playlist used fMP4 segments |
 | hls-demuxed   | audio and video are demuxed by default |
 | hls-alternate-audio | alternate audio available in the master manifest |
+| hls-playlist-cue-tags | a playlist used cue tags (see useCueTags(#usecuetags) for details) |
 
 #### Use Stats
 
@@ -515,7 +516,6 @@ Each of the following usage events are fired per use:
 | hls-rendition-enabled | a rendition was enabled |
 | hls-rendition-blacklisted | a rendition was blacklisted |
 | hls-timestamp-offset | a timestamp offset was set in HLS (can identify discontinuities) |
-| hls-playlist-cue-tags | a playlist used cue tags (see useCueTags for details) |
 | hls-unknown-waiting | the player stopped for an unknown reason and we seeked to current time try to address it |
 | hls-live-resync | playback fell off the back of a live playlist and we resynced to the live point |
 | hls-video-underflow | we seeked to current time to address video underflow |
