@@ -368,12 +368,10 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       loader.mediaSource_ = {
         readyState: 'open',
-        sourceBuffers: this.mediaSource.sourceBuffers,
-        endOfStream() {
-          endOfStreams++;
-          this.readyState = 'ended';
-        }
+        sourceBuffers: this.mediaSource.sourceBuffers
       };
+
+      loader.on('ended', () => endOfStreams++);
 
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
@@ -402,12 +400,10 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       loader.mediaSource_ = {
         readyState: 'open',
-        sourceBuffers: this.mediaSource.sourceBuffers,
-        endOfStream() {
-          endOfStreams++;
-          this.readyState = 'ended';
-        }
+        sourceBuffers: this.mediaSource.sourceBuffers
       };
+
+      loader.on('ended', () => endOfStreams++);
 
       loader.on('bandwidthupdate', () => {
         bandwidthupdates++;
@@ -446,11 +442,10 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       loader.mediaSource_ = {
         readyState: 'open',
-        sourceBuffers: this.mediaSource.sourceBuffers,
-        endOfStream() {
-          endOfStreams++;
-        }
+        sourceBuffers: this.mediaSource.sourceBuffers
       };
+
+      loader.on('ended', () => endOfStreams++);
 
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');

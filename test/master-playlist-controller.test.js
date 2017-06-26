@@ -516,6 +516,64 @@ QUnit.test('updates the enabled track when switching audio groups', function(ass
            'enabled a track in the new audio group');
 });
 
+QUnit.test('waits for both main and audio loaders to finish before calling endOfStream',
+function(assert) {
+  openMediaSource(this.player, this.clock);
+
+  const videoMedia = '#EXTM3U\n' +
+                     '#EXT-X-VERSION:3\n' +
+                     '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                     '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                     '#EXT-X-TARGETDURATION:10\n' +
+                     '#EXTINF:10,\n' +
+                     'video-0.ts\n' +
+                     '#EXT-X-ENDLIST\n';
+
+  const audioMedia = '#EXTM3U\n' +
+                     '#EXT-X-VERSION:3\n' +
+                     '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                     '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                     '#EXT-X-TARGETDURATION:10\n' +
+                     '#EXTINF:10,\n' +
+                     'audio-0.ts\n' +
+                     '#EXT-X-ENDLIST\n';
+
+  let videoEnded = 0;
+  let audioEnded = 0;
+
+  const MPC = this.masterPlaylistController;
+
+  MPC.mainSegmentLoader_.on('ended', () => videoEnded++);
+  MPC.audioSegmentLoader_.on('ended', () => audioEnded++);
+
+  // master
+  this.standardXHRResponse(this.requests.shift(), manifests.demuxed);
+
+  // video media
+  this.standardXHRResponse(this.requests.shift(), videoMedia);
+
+  // audio media
+  this.standardXHRResponse(this.requests.shift(), audioMedia);
+
+  // video segment
+  this.standardXHRResponse(this.requests.shift());
+
+  MPC.mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(videoEnded, 1, 'main segment loader triggered endded');
+  assert.equal(audioEnded, 0, 'audio segment loader did not trigger ended');
+  assert.equal(MPC.mediaSource.readyState, 'open', 'Media Source not yet ended');
+
+  // audio segment
+  this.standardXHRResponse(this.requests.shift());
+
+  MPC.mediaSource.sourceBuffers[1].trigger('updateend');
+
+  assert.equal(videoEnded, 1, 'main segment loader did not trigger ended again');
+  assert.equal(audioEnded, 1, 'audio segment loader triggered ended');
+  assert.equal(MPC.mediaSource.readyState, 'ended', 'Media Source ended');
+});
+
 QUnit.test('detects if the player is stuck at the playlist end', function(assert) {
   let playlistCopy = Hls.Playlist.playlistEnd;
 
