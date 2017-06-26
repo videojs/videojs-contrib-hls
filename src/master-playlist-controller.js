@@ -583,8 +583,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
     }
 
-    if (audioGroupKeys.length
-        && Object.keys(mediaGroups.AUDIO[audioGroupKeys[0]]).length > 1) {
+    if (audioGroupKeys.length &&
+        Object.keys(mediaGroups.AUDIO[audioGroupKeys[0]]).length > 1) {
       this.tech_.trigger({type: 'usage', name: 'hls-alternate-audio'});
     }
 

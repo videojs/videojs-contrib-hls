@@ -490,6 +490,9 @@ debugging the error.
 Note that although these usage events are listed below, they may change at any time without
 a major version change.
 
+HLS usage events are triggered on the tech with the exception of the 3 hls-reload-error
+events, which are triggered on the player.
+
 #### Presence Stats
 
 Each of the following usage events are fired once per source if (and when) detected:

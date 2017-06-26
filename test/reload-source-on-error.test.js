@@ -14,13 +14,20 @@ QUnit.module('ReloadSourceOnError', {
       duration: 12
     };
 
-    this.tech = new videojs.EventTarget();
-    this.tech.currentSource_ = {
-      src: 'thisisasource.m3u8',
-      type: 'doesn\'t/matter'
+    this.player.ready = (callback) => {
+      callback.call(this.player);
     };
-    this.player.tech = () => this.tech;
-    this.player.tech_ = this.tech;
+
+    this.tech = {
+      currentSource_: {
+        src: 'thisisasource.m3u8',
+        type: 'doesn\'t/matter'
+      }
+    };
+
+    this.player.tech = () => {
+      return this.tech;
+    };
 
     this.player.duration = () => {
       return this.player.currentValues.duration;
@@ -104,19 +111,22 @@ QUnit.test('by default, only allows a retry once every 30 seconds', function(ass
   let hlsErrorReloadEvents = 0;
   let hlsErrorReloadCanceledEvents = 0;
 
-  this.player.tech_.on('usage', (event) => {
+  this.player.ready = (callback) => {
+    callback.call(this.player);
+  };
+  this.player.on('usage', (event) => {
     if (event.name === 'hls-error-reload-initialized') {
       hlsErrorReloadInitializedEvents++;
     }
   });
 
-  this.player.tech_.on('usage', (event) => {
+  this.player.on('usage', (event) => {
     if (event.name === 'hls-error-reload') {
       hlsErrorReloadEvents++;
     }
   });
 
-  this.player.tech_.on('usage', (event) => {
+  this.player.on('usage', (event) => {
     if (event.name === 'hls-error-reload-canceled') {
       hlsErrorReloadCanceledEvents++;
     }
