@@ -548,7 +548,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
-   * A helper function for triggerring presence events once per source
+   * A helper function for triggerring presence usage events once per source
    *
    * @private
    */
