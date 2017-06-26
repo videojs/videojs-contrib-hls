@@ -409,6 +409,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.fillSubtitleTracks_();
       this.setupSubtitles();
 
+      this.triggerPresenceUsage_(this.master(), media);
+
       try {
         this.setupSourceBuffers_();
       } catch (e) {
@@ -536,8 +538,60 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.tech_.trigger('playliststuck');
       }
     });
+
+    this.masterPlaylistLoader_.on('renditiondisabled', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-rendition-disabled'});
+    });
+    this.masterPlaylistLoader_.on('renditionenabled', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-rendition-enabled'});
+    });
   }
 
+  /**
+   * A helper function for triggerring presence usage events once per source
+   *
+   * @private
+   */
+  triggerPresenceUsage_(master, media) {
+    let mediaGroups = master.mediaGroups || {};
+    let defaultDemuxed = true;
+    let audioGroupKeys = Object.keys(mediaGroups.AUDIO);
+
+    for (let mediaGroup in mediaGroups.AUDIO) {
+      for (let label in mediaGroups.AUDIO[mediaGroup]) {
+        let properties = mediaGroups.AUDIO[mediaGroup][label];
+
+        if (!properties.uri) {
+          defaultDemuxed = false;
+        }
+      }
+    }
+
+    if (defaultDemuxed) {
+      this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
+    }
+
+    if (Object.keys(mediaGroups.SUBTITLES).length) {
+      this.tech_.trigger({type: 'usage', name: 'hls-webvtt'});
+    }
+
+    if (Hls.Playlist.isAes(media)) {
+      this.tech_.trigger({type: 'usage', name: 'hls-aes'});
+    }
+
+    if (Hls.Playlist.isFmp4(media)) {
+      this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
+    }
+
+    if (audioGroupKeys.length &&
+        Object.keys(mediaGroups.AUDIO[audioGroupKeys[0]]).length > 1) {
+      this.tech_.trigger({type: 'usage', name: 'hls-alternate-audio'});
+    }
+
+    if (this.useCueTags_) {
+      this.tech_.trigger({type: 'usage', name: 'hls-playlist-cue-tags'});
+    }
+  }
   /**
    * Register event handlers on the segment loaders. A helper function
    * for construction time.
@@ -563,6 +617,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.onSyncInfoUpdate_();
     });
 
+    this.mainSegmentLoader_.on('timestampoffset', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-timestamp-offset'});
+    });
     this.audioSegmentLoader_.on('syncinfoupdate', () => {
       this.onSyncInfoUpdate_();
     });
@@ -1252,6 +1309,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
     this.tech_.trigger('blacklistplaylist');
+    this.tech_.trigger({type: 'usage', name: 'hls-rendition-blacklisted'});
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();

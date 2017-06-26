@@ -411,12 +411,42 @@ export const isEnabled = function(playlist) {
   return (!playlist.disabled && !blacklisted);
 };
 
+/**
+ * Returns whether the current playlist is an AES encrypted HLS stream
+ *
+ * @return {Boolean} true if it's an AES encrypted HLS stream
+ */
+export const isAes = function(media) {
+  for (let i = 0; i < media.segments.length; i++) {
+    if (media.segments[i].key) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Returns whether the current playlist contains fMP4
+ *
+ * @return {Boolean} true if the playlist contains fMP4
+ */
+export const isFmp4 = function(media) {
+  for (let i = 0; i < media.segments.length; i++) {
+    if (media.segments[i].map) {
+      return true;
+    }
+  }
+  return false;
+};
+
 Playlist.duration = duration;
 Playlist.seekable = seekable;
 Playlist.getMediaInfoForTime_ = getMediaInfoForTime_;
 Playlist.isEnabled = isEnabled;
 Playlist.isBlacklisted = isBlacklisted;
 Playlist.playlistEnd = playlistEnd;
+Playlist.isAes = isAes;
+Playlist.isFmp4 = isFmp4;
 
 // exports
 export default Playlist;

@@ -14,6 +14,10 @@ QUnit.module('ReloadSourceOnError', {
       duration: 12
     };
 
+    this.player.ready = (callback) => {
+      callback.call(this.player);
+    };
+
     this.tech = {
       currentSource_: {
         src: 'thisisasource.m3u8',
@@ -103,10 +107,38 @@ QUnit.test('doesn\'t seek to currentTime in live', function(assert) {
 });
 
 QUnit.test('by default, only allows a retry once every 30 seconds', function(assert) {
+  let hlsErrorReloadInitializedEvents = 0;
+  let hlsErrorReloadEvents = 0;
+  let hlsErrorReloadCanceledEvents = 0;
+
+  this.player.on('usage', (event) => {
+    if (event.name === 'hls-error-reload-initialized') {
+      hlsErrorReloadInitializedEvents++;
+    }
+  });
+
+  this.player.on('usage', (event) => {
+    if (event.name === 'hls-error-reload') {
+      hlsErrorReloadEvents++;
+    }
+  });
+
+  this.player.on('usage', (event) => {
+    if (event.name === 'hls-error-reload-canceled') {
+      hlsErrorReloadCanceledEvents++;
+    }
+  });
+
+  assert.equal(hlsErrorReloadInitializedEvents, 0, 'the plugin has not been initialized');
+  assert.equal(hlsErrorReloadEvents, 0, 'no source was set');
+  assert.equal(hlsErrorReloadCanceledEvents, 0, 'reload canceled event has not been triggered');
+
   this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
+  assert.equal(hlsErrorReloadInitializedEvents, 1, 'the plugin has been initialized');
+  assert.equal(hlsErrorReloadEvents, 1, 'src was set after an error caused the reload');
   assert.equal(this.player.src.calledWith.length, 1, 'player.src was only called once');
 
   // Advance 59 seconds
@@ -121,6 +153,7 @@ QUnit.test('by default, only allows a retry once every 30 seconds', function(ass
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
+  assert.equal(hlsErrorReloadCanceledEvents, 1, 'did not reload the source because not enough time has elapsed');
   assert.equal(this.player.src.calledWith.length, 2, 'player.src was called twice');
 });
 
