@@ -111,9 +111,6 @@ QUnit.test('by default, only allows a retry once every 30 seconds', function(ass
   let hlsErrorReloadEvents = 0;
   let hlsErrorReloadCanceledEvents = 0;
 
-  this.player.ready = (callback) => {
-    callback.call(this.player);
-  };
   this.player.on('usage', (event) => {
     if (event.name === 'hls-error-reload-initialized') {
       hlsErrorReloadInitializedEvents++;
