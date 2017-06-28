@@ -633,6 +633,58 @@ QUnit.test('seekable and playlistEnd use available sync points for calculating',
     assert.equal(playlistEnd, 148.5, 'playlist end at the last segment end');
   });
 
+QUnit.module('Playlist isAes and isFmp4', {
+  beforeEach(assert) {
+    this.env = useFakeEnvironment(assert);
+    this.clock = this.env.clock;
+    this.requests = this.env.requests;
+    this.fakeHls = {
+      xhr: xhrFactory()
+    };
+  },
+  afterEach() {
+    this.env.restore();
+  }
+});
+
+QUnit.test('determine if playlist is an AES encrypted HLS stream', function(assert) {
+  let media;
+  let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
+
+  loader.load();
+  this.requests.shift().respond(
+    200,
+    null,
+    '#EXTM3U\n' +
+    '#EXT-X-TARGETDURATION:15\n' +
+    '#EXT-X-KEY:METHOD=AES-128,URI="http://example.com/keys/key.php"\n' +
+    '#EXTINF:2.833,\n' +
+    'http://example.com/000001.ts\n' +
+    '#EXT-X-ENDLIST\n'
+  );
+
+  media = loader.media();
+
+  assert.ok(Playlist.isAes(media), 'media is an AES encrypted HLS stream');
+});
+
+QUnit.test('determine if playlist contains an fmp4 segment', function(assert) {
+  let media;
+  let loader = new PlaylistLoader('video/fmp4.m3u8', this.fakeHls);
+
+  loader.load();
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXT-X-MAP:URI="main.mp4",BYTERANGE="720@0"\n' +
+                                '#EXTINF:10,\n' +
+                                '0.mp4\n' +
+                                '#EXT-X-ENDLIST\n');
+
+  media = loader.media();
+
+  assert.ok(Playlist.isFmp4(media), 'media contains fmp4 segment');
+});
+
 QUnit.module('Playlist Media Index For Time', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);

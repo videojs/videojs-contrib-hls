@@ -110,6 +110,8 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.syncController_.on('syncinfoupdate', () => this.trigger('syncinfoupdate'));
 
+    this.mediaSource_.addEventListener('sourceopen', () => this.ended_ = false);
+
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
@@ -138,6 +140,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   dispose() {
     this.state = 'DISPOSED';
+    this.pause();
     this.abort_();
     if (this.sourceUpdater_) {
       this.sourceUpdater_.dispose();
@@ -159,10 +162,15 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.abort_();
 
+    // We aborted the requests we were waiting on, so reset the loader's state to READY
+    // since we are no longer "waiting" on any requests. XHR callback is not always run
+    // when the request is aborted. This will prevent the loader from being stuck in the
+    // WAITING state indefinitely.
+    this.state = 'READY';
+
     // don't wait for buffer check timeouts to begin fetching the
     // next segment
     if (!this.paused()) {
-      this.state = 'READY';
       this.monitorBuffer_();
     }
   }
@@ -194,6 +202,12 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.pendingSegment_ = null;
     return this.error_;
+  }
+
+  endOfStream() {
+    this.ended_ = true;
+    this.pause();
+    this.trigger('ended');
   }
 
   /**
@@ -423,6 +437,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * Delete all the buffered data and reset the SegmentLoader
    */
   resetEverything() {
+    this.ended_ = false;
     this.resetLoader();
     this.remove(0, Infinity);
   }
@@ -445,6 +460,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   resyncLoader() {
     this.mediaIndex = null;
     this.syncPoint_ = null;
+    this.abort();
   }
 
   /**
@@ -529,7 +545,7 @@ export default class SegmentLoader extends videojs.EventTarget {
                                           segmentInfo.mediaIndex);
 
     if (isEndOfStream) {
-      this.mediaSource_.endOfStream();
+      this.endOfStream();
       return;
     }
 
@@ -847,6 +863,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // an error occurred from the active pendingSegment_ so reset everything
     if (error) {
       this.pendingSegment_ = null;
+      this.state = 'READY';
 
       // the requests were aborted just record the aborted stat and exit
       // this is not a true error condition and nothing corrective needs
@@ -856,7 +873,6 @@ export default class SegmentLoader extends videojs.EventTarget {
         return;
       }
 
-      this.state = 'READY';
       this.pause();
 
       // the error is really just that at least one of the requests timed-out
@@ -938,6 +954,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (segmentInfo.timestampOffset !== null &&
         segmentInfo.timestampOffset !== this.sourceUpdater_.timestampOffset()) {
       this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
+      // fired when a timestamp offset is set in HLS (can also identify discontinuities)
+      this.trigger('timestampoffset');
     }
 
     // if the media initialization segment is changing, append it
@@ -1029,7 +1047,7 @@ export default class SegmentLoader extends videojs.EventTarget {
                                             segmentInfo.mediaIndex + 1);
 
     if (isEndOfStream) {
-      this.mediaSource_.endOfStream();
+      this.endOfStream();
     }
 
     if (!this.paused()) {

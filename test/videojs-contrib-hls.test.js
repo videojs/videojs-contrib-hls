@@ -129,17 +129,26 @@ QUnit.module('HLS', {
 QUnit.test('deprication warning is show when using player.hls', function(assert) {
   let oldWarn = videojs.log.warn;
   let warning = '';
+  let hlsPlayerAccessEvents = 0;
 
   this.player.src({
     src: 'manifest/playlist.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-player-access') {
+      hlsPlayerAccessEvents++;
+    }
+  });
+
   videojs.log.warn = (text) => {
     warning = text;
   };
+  assert.equal(hlsPlayerAccessEvents, 0, 'no hls-player-access event was fired');
   let hls = this.player.hls;
 
+  assert.equal(hlsPlayerAccessEvents, 1, 'an hls-player-access event was fired');
   assert.equal(warning, 'player.hls is deprecated. Use player.tech_.hls instead.', 'warning would have been shown');
   assert.ok(hls, 'an instance of hls is returned by player.hls');
   videojs.log.warn = oldWarn;
@@ -671,7 +680,7 @@ QUnit.test('buffer checks are noops when only the master is ready', function(ass
   this.standardXHRResponse(this.requests.shift());
   this.clock.tick(10 * 1000);
 
-  assert.strictEqual(1, this.requests.length, 'one request was made');
+  assert.strictEqual(this.requests.length, 1, 'one request was made');
   assert.strictEqual(this.requests[0].url,
                      absoluteUrl('manifest/media1.m3u8'),
                      'media playlist requested');
@@ -1098,6 +1107,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   let url;
   let blacklistplaylist = 0;
   let retryplaylist = 0;
+  let hlsRenditionBlacklistedEvents = 0;
 
   this.player.src({
     src: 'manifest/master.m3u8',
@@ -1106,6 +1116,11 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   openMediaSource(this.player, this.clock);
   this.player.tech_.on('blacklistplaylist', () => blacklistplaylist++);
   this.player.tech_.on('retryplaylist', () => retryplaylist++);
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-rendition-blacklisted') {
+      hlsRenditionBlacklistedEvents++;
+    }
+  });
 
   this.player.tech_.hls.bandwidth = 1e10;
   // master
@@ -1120,6 +1135,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
               'no media is initially set');
 
   assert.equal(blacklistplaylist, 0, 'there is no blacklisted playlist');
+  assert.equal(hlsRenditionBlacklistedEvents, 0, 'no hls-rendition-blacklisted event was fired');
   // media
   this.requests[1].respond(404);
   url = this.requests[1].url.slice(this.requests[1].url.lastIndexOf('/') + 1);
@@ -1130,7 +1146,8 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
               'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media.m3u8. ' +
               'Switching to another playlist.',
               'log generic error message');
-  assert.equal(blacklistplaylist, 1, 'media is blacklisted');
+  assert.equal(blacklistplaylist, 1, 'there is one blacklisted playlist');
+  assert.equal(hlsRenditionBlacklistedEvents, 1, 'an hls-rendition-blacklisted event was fired');
   assert.equal(retryplaylist, 0, 'haven\'t retried any playlist');
 
   // request for the final media
@@ -2517,11 +2534,19 @@ QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
 });
 
 QUnit.test('when mediaGroup changes enabled track should not change', function(assert) {
+  let hlsAudioChangeEvents = 0;
+
   this.player.src({
     src: 'manifest/multipleAudioGroups.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
   openMediaSource(this.player, this.clock);
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-audio-change') {
+      hlsAudioChangeEvents++;
+    }
+  });
 
   // master
   this.standardXHRResponse(this.requests.shift());
@@ -2531,6 +2556,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function(a
   let mpc = hls.masterPlaylistController_;
   let audioTracks = this.player.audioTracks();
 
+  assert.equal(hlsAudioChangeEvents, 0, 'no hls-audio-change event was fired');
   assert.equal(audioTracks.length, 3, 'three audio tracks after load');
   assert.equal(audioTracks[0].enabled, true, 'track one enabled after load');
 
@@ -2570,6 +2596,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function(a
   assert.notEqual(oldMediaGroup, hls.playlists.media().attributes.AUDIO, 'selected a new playlist');
   audioTracks = this.player.audioTracks();
 
+  assert.equal(hlsAudioChangeEvents, 1, 'an hls-audio-change event was fired');
   assert.equal(audioTracks.length, 3, 'three audio tracks after reverting mediaGroup');
   assert.ok(audioTracks[0].properties_.default, 'track one should be the default');
   assert.notOk(audioTracks[0].enabled, 'the default track is still disabled');

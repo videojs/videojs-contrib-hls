@@ -281,11 +281,18 @@ QUnit.test('fast quality change resyncs audio segment loader', function(assert) 
 
   this.player.audioTracks()[0].enabled = true;
 
+  let resyncs = 0;
   let resets = 0;
+  let realReset = masterPlaylistController.audioSegmentLoader_.resetLoader;
 
-  masterPlaylistController.audioSegmentLoader_.resetLoader = () => resets++;
+  masterPlaylistController.audioSegmentLoader_.resetLoader = function() {
+    resets++;
+    realReset.call(this);
+  };
+
+  masterPlaylistController.audioSegmentLoader_.resyncLoader = () => resyncs++;
   masterPlaylistController.fastQualityChange_();
-  assert.equal(resets, 0, 'does not reset the audio segment loader when media same');
+  assert.equal(resyncs, 0, 'does not resync the audio segment loader when media same');
 
   // force different media
   masterPlaylistController.selectPlaylist = () => {
@@ -295,10 +302,52 @@ QUnit.test('fast quality change resyncs audio segment loader', function(assert) 
   assert.equal(this.requests.length, 1, 'one request');
   masterPlaylistController.fastQualityChange_();
   assert.equal(this.requests.length, 2, 'added a request for new media');
-  assert.equal(resets, 0, 'does not reset the audio segment loader yet');
+  assert.equal(resyncs, 0, 'does not resync the audio segment loader yet');
   // new media request
   this.standardXHRResponse(this.requests[1]);
-  assert.equal(resets, 1, 'resets the audio segment loader when media changes');
+  assert.equal(resyncs, 1, 'resyncs the audio segment loader when media changes');
+  assert.equal(resets, 0, 'does not reset the audio segment loader when media changes');
+});
+
+QUnit.test('audio segment loader is reset on audio track change', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'alternate-audio-multiple-groups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  masterPlaylistController.selectPlaylist = () => {
+    return masterPlaylistController.master().playlists[0];
+  };
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  let resyncs = 0;
+  let resets = 0;
+  let realReset = masterPlaylistController.audioSegmentLoader_.resetLoader;
+
+  masterPlaylistController.audioSegmentLoader_.resetLoader = function() {
+    resets++;
+    realReset.call(this);
+  };
+  masterPlaylistController.audioSegmentLoader_.resyncLoader = () => resyncs++;
+
+  assert.equal(this.requests.length, 1, 'one request');
+  assert.equal(resyncs, 0, 'does not resync the audio segment loader yet');
+
+  this.player.audioTracks()[1].enabled = true;
+
+  assert.equal(this.requests.length, 2, 'two requests');
+  assert.equal(resyncs, 1, 'resyncs the audio segment loader when audio track changes');
+  assert.equal(resets, 1, 'resets the audio segment loader when audio track changes');
 });
 
 QUnit.test('if buffered, will request second segment byte range', function(assert) {
@@ -465,6 +514,64 @@ QUnit.test('updates the enabled track when switching audio groups', function(ass
 
   assert.ok(mpc.activeAudioGroup().filter((track) => track.enabled)[0],
            'enabled a track in the new audio group');
+});
+
+QUnit.test('waits for both main and audio loaders to finish before calling endOfStream',
+function(assert) {
+  openMediaSource(this.player, this.clock);
+
+  const videoMedia = '#EXTM3U\n' +
+                     '#EXT-X-VERSION:3\n' +
+                     '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                     '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                     '#EXT-X-TARGETDURATION:10\n' +
+                     '#EXTINF:10,\n' +
+                     'video-0.ts\n' +
+                     '#EXT-X-ENDLIST\n';
+
+  const audioMedia = '#EXTM3U\n' +
+                     '#EXT-X-VERSION:3\n' +
+                     '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                     '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                     '#EXT-X-TARGETDURATION:10\n' +
+                     '#EXTINF:10,\n' +
+                     'audio-0.ts\n' +
+                     '#EXT-X-ENDLIST\n';
+
+  let videoEnded = 0;
+  let audioEnded = 0;
+
+  const MPC = this.masterPlaylistController;
+
+  MPC.mainSegmentLoader_.on('ended', () => videoEnded++);
+  MPC.audioSegmentLoader_.on('ended', () => audioEnded++);
+
+  // master
+  this.standardXHRResponse(this.requests.shift(), manifests.demuxed);
+
+  // video media
+  this.standardXHRResponse(this.requests.shift(), videoMedia);
+
+  // audio media
+  this.standardXHRResponse(this.requests.shift(), audioMedia);
+
+  // video segment
+  this.standardXHRResponse(this.requests.shift());
+
+  MPC.mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(videoEnded, 1, 'main segment loader triggered endded');
+  assert.equal(audioEnded, 0, 'audio segment loader did not trigger ended');
+  assert.equal(MPC.mediaSource.readyState, 'open', 'Media Source not yet ended');
+
+  // audio segment
+  this.standardXHRResponse(this.requests.shift());
+
+  MPC.mediaSource.sourceBuffers[1].trigger('updateend');
+
+  assert.equal(videoEnded, 1, 'main segment loader did not trigger ended again');
+  assert.equal(audioEnded, 1, 'audio segment loader triggered ended');
+  assert.equal(MPC.mediaSource.readyState, 'ended', 'Media Source ended');
 });
 
 QUnit.test('detects if the player is stuck at the playlist end', function(assert) {
@@ -1127,18 +1234,28 @@ QUnit.test('calls to update cues on media when no master', function(assert) {
 
 QUnit.test('respects useCueTags option', function(assert) {
   let origHlsOptions = videojs.options.hls;
+  let hlsPlaylistCueTagsEvents = 0;
 
   videojs.options.hls = {
     useCueTags: true
   };
 
   this.player = createPlayer();
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-playlist-cue-tags') {
+      hlsPlaylistCueTagsEvents++;
+    }
+  });
   this.player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  this.standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.equal(hlsPlaylistCueTagsEvents, 1, 'cue tags event has been triggered once');
   assert.ok(this.masterPlaylistController.cueTagsTrack_,
            'creates cueTagsTrack_ if useCueTags is truthy');
   assert.equal(this.masterPlaylistController.cueTagsTrack_.label,
@@ -1184,7 +1301,82 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
                'spanish track\'s kind is "alternative"');
 });
 
+QUnit.test('trigger events when video and audio is demuxed by default', function(assert) {
+  let hlsDemuxedEvents = 0;
+
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-demuxed') {
+      hlsDemuxedEvents++;
+    }
+  });
+
+  openMediaSource(this.player, this.clock);
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.equal(hlsDemuxedEvents, 1, 'video and audio is demuxed by default');
+});
+
+QUnit.test('trigger events when an AES is detected', function(assert) {
+  let hlsAesEvents = 0;
+  let isAesCopy = Hls.Playlist.isAes;
+
+  Hls.Playlist.isAes = (media) => {
+    return true;
+  };
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-aes') {
+      hlsAesEvents++;
+    }
+  });
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  assert.equal(hlsAesEvents, 1, 'an AES HLS stream is detected');
+  Hls.Playlist.isAes = isAesCopy;
+});
+
+QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
+  let hlsFmp4Events = 0;
+  let isFmp4Copy = Hls.Playlist.isFmp4;
+
+  Hls.Playlist.isFmp4 = (media) => {
+    return true;
+  };
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-fmp4') {
+      hlsFmp4Events++;
+    }
+  });
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  assert.equal(hlsFmp4Events, 1, 'an fMP4 stream is detected');
+  Hls.Playlist.isFmp4 = isFmp4Copy;
+});
+
 QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {
+  let hlsWebvttEvents = 0;
+
   this.requests.length = 0;
   this.player = createPlayer();
   this.player.src({
@@ -1192,8 +1384,15 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-webvtt') {
+      hlsWebvttEvents++;
+    }
+  });
+
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
+  assert.equal(hlsWebvttEvents, 0, 'there is no webvtt detected');
   assert.equal(this.player.textTracks().length, 1, 'one text track to start');
   assert.equal(this.player.textTracks()[0].label,
                'segment-metadata',
@@ -1222,6 +1421,7 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
   assert.equal(textTracks.length, 3, 'non-forced text tracks were added');
   assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
   assert.equal(textTracks[2].mode, 'disabled', 'track starts disabled');
+  assert.equal(hlsWebvttEvents, 1, 'there is webvtt detected in the rendition');
 });
 
 QUnit.test('switches off subtitles on subtitle errors', function(assert) {

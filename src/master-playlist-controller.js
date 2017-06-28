@@ -409,6 +409,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.fillSubtitleTracks_();
       this.setupSubtitles();
 
+      this.triggerPresenceUsage_(this.master(), media);
+
       try {
         this.setupSourceBuffers_();
       } catch (e) {
@@ -509,7 +511,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       activeAudioGroup = this.activeAudioGroup();
       activeTrack = activeAudioGroup.filter((track) => track.enabled)[0];
       if (!activeTrack) {
-        this.setupAudio();
+        this.mediaGroupChanged();
         this.trigger('audioupdate');
       }
       this.setupSubtitles();
@@ -536,8 +538,60 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.tech_.trigger('playliststuck');
       }
     });
+
+    this.masterPlaylistLoader_.on('renditiondisabled', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-rendition-disabled'});
+    });
+    this.masterPlaylistLoader_.on('renditionenabled', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-rendition-enabled'});
+    });
   }
 
+  /**
+   * A helper function for triggerring presence usage events once per source
+   *
+   * @private
+   */
+  triggerPresenceUsage_(master, media) {
+    let mediaGroups = master.mediaGroups || {};
+    let defaultDemuxed = true;
+    let audioGroupKeys = Object.keys(mediaGroups.AUDIO);
+
+    for (let mediaGroup in mediaGroups.AUDIO) {
+      for (let label in mediaGroups.AUDIO[mediaGroup]) {
+        let properties = mediaGroups.AUDIO[mediaGroup][label];
+
+        if (!properties.uri) {
+          defaultDemuxed = false;
+        }
+      }
+    }
+
+    if (defaultDemuxed) {
+      this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
+    }
+
+    if (Object.keys(mediaGroups.SUBTITLES).length) {
+      this.tech_.trigger({type: 'usage', name: 'hls-webvtt'});
+    }
+
+    if (Hls.Playlist.isAes(media)) {
+      this.tech_.trigger({type: 'usage', name: 'hls-aes'});
+    }
+
+    if (Hls.Playlist.isFmp4(media)) {
+      this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
+    }
+
+    if (audioGroupKeys.length &&
+        Object.keys(mediaGroups.AUDIO[audioGroupKeys[0]]).length > 1) {
+      this.tech_.trigger({type: 'usage', name: 'hls-alternate-audio'});
+    }
+
+    if (this.useCueTags_) {
+      this.tech_.trigger({type: 'usage', name: 'hls-playlist-cue-tags'});
+    }
+  }
   /**
    * Register event handlers on the segment loaders. A helper function
    * for construction time.
@@ -563,8 +617,19 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.onSyncInfoUpdate_();
     });
 
+    this.mainSegmentLoader_.on('timestampoffset', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-timestamp-offset'});
+    });
     this.audioSegmentLoader_.on('syncinfoupdate', () => {
       this.onSyncInfoUpdate_();
+    });
+
+    this.mainSegmentLoader_.on('ended', () => {
+      this.onEndOfStream();
+    });
+
+    this.audioSegmentLoader_.on('ended', () => {
+      this.onEndOfStream();
     });
 
     this.audioSegmentLoader_.on('error', () => {
@@ -800,13 +865,40 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Determine the correct audio renditions based on the active
+   * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
+   * necessary. This method is only called when the media-group changes
+   * and performs non-destructive 'resync' of the SegmentLoader(s) since
+   * the playlist has likely changed
+   */
+  mediaGroupChanged() {
+    let track = this.getActiveAudioTrack_();
+
+    this.stopAudioLoaders_();
+    this.resyncAudioLoaders_(track);
+  }
+
+  /**
    * Determine the correct audio rendition based on the active
    * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
    * necessary. This method is called once automatically before
    * playback begins to enable the default audio track and should be
-   * invoked again if the track is changed.
+   * invoked again if the track is changed. Performs destructive 'reset'
+   * on the SegmentLoaders(s) to ensure we start loading audio as
+   * close to currentTime as possible
    */
   setupAudio() {
+    let track = this.getActiveAudioTrack_();
+
+    this.stopAudioLoaders_();
+    this.resetAudioLoaders_(track);
+  }
+
+  /**
+   * Returns the currently active track or the default track if none
+   * are active
+   */
+  getActiveAudioTrack_() {
     // determine whether seperate loaders are required for the audio
     // rendition
     let audioGroup = this.activeAudioGroup();
@@ -821,19 +913,56 @@ export class MasterPlaylistController extends videojs.EventTarget {
       track.enabled = true;
     }
 
+    return track;
+  }
+
+  /**
+   * Destroy the PlaylistLoader and pause the SegmentLoader specifically
+   * for audio when switching audio tracks
+   */
+  stopAudioLoaders_() {
     // stop playlist and segment loading for audio
     if (this.audioPlaylistLoader_) {
       this.audioPlaylistLoader_.dispose();
       this.audioPlaylistLoader_ = null;
     }
     this.audioSegmentLoader_.pause();
+  }
 
+  /**
+   * Destructive reset of the mainSegmentLoader (when audio is muxed)
+   * or audioSegmentLoader (when audio is demuxed) to prepare them
+   * to start loading new data right at currentTime
+   */
+  resetAudioLoaders_(track) {
     if (!track.properties_.resolvedUri) {
       this.mainSegmentLoader_.resetEverything();
       return;
     }
-    this.audioSegmentLoader_.resetEverything();
 
+    this.audioSegmentLoader_.resetEverything();
+    this.setupAudioPlaylistLoader_(track);
+  }
+
+  /**
+   * Non-destructive resync of the audioSegmentLoader (when audio
+   * is demuxed) to prepare to continue appending new audio data
+   * at the end of the current buffered region
+   */
+  resyncAudioLoaders_(track) {
+    if (!track.properties_.resolvedUri) {
+      return;
+    }
+
+    this.audioSegmentLoader_.resyncLoader();
+    this.setupAudioPlaylistLoader_(track);
+  }
+
+  /**
+   * Setup a new audioPlaylistLoader and start the audioSegmentLoader
+   * to begin loading demuxed audio
+   */
+  setupAudioPlaylistLoader_(track) {
     // startup playlist and segment loaders for the enabled audio
     // track
     this.audioPlaylistLoader_ = new PlaylistLoader(track.properties_.resolvedUri,
@@ -1078,6 +1207,28 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Calls endOfStream on the media source when all active stream types have called
+   * endOfStream
+   *
+   * @param {string} streamType
+   *        Stream type of the segment loader that called endOfStream
+   * @private
+   */
+  onEndOfStream() {
+    let isEndOfStream = this.mainSegmentLoader_.ended_;
+
+    if (this.audioPlaylistLoader_) {
+      // if the audio playlist loader exists, then alternate audio is active, so we need
+      // to wait for both the main and audio segment loaders to call endOfStream
+      isEndOfStream = isEndOfStream && this.audioSegmentLoader_.ended_;
+    }
+
+    if (isEndOfStream) {
+      this.mediaSource.endOfStream();
+    }
+  }
+
+  /**
    * Check if a playlist has stopped being updated
    * @param {Object} playlist the media playlist object
    * @return {boolean} whether the playlist has stopped being updated or not
@@ -1169,6 +1320,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
     this.tech_.trigger('blacklistplaylist');
+    this.tech_.trigger({type: 'usage', name: 'hls-rendition-blacklisted'});
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
