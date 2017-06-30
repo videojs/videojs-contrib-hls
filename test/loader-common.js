@@ -36,6 +36,14 @@ export const LoaderCommonHooks = {
         playbackRate: () => this.playbackRate
       }
     };
+    this.goalBufferLength = () => {
+      const currentTime = this.currentTime;
+      const initial = Config.GOAL_BUFFER_LENGTH;
+      const rate = Config.GOAL_BUFFER_RATE;
+      const max = Math.max(initial, Config.MAX_GOAL_BUFFER_LENGTH);
+
+      return Math.min(initial + currentTime * rate, max);
+    };
     this.mediaSource = new videojs.MediaSource();
     this.mediaSource.trigger('sourceopen');
     this.syncController = new SyncController();
@@ -66,6 +74,7 @@ export const LoaderCommonSettings = function(settings) {
     seeking: () => this.seeking,
     hasPlayed: () => this.hasPlayed,
     duration: () => this.mediaSource.duration,
+    goalBufferLength: () => this.goalBufferLength(),
     mediaSource: this.mediaSource,
     syncController: this.syncController,
     decrypter: this.decrypter

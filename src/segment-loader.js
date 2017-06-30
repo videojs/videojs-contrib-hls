@@ -84,6 +84,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.hls_ = settings.hls;
     this.loaderType_ = settings.loaderType;
     this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
+    this.goalBufferLength_ = settings.goalBufferLength;
 
     // private instance variables
     this.checkBufferTimeout_ = null;
@@ -587,10 +588,6 @@ export default class SegmentLoader extends videojs.EventTarget {
   checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
     let lastBufferedEnd = 0;
     let startOfSegment;
-    const initial = Config.GOAL_BUFFER_LENGTH;
-    const rate = Config.GOAL_BUFFER_RATE;
-    const max = Config.MAX_GOAL_BUFFER_LENGTH;
-    const dynamicGBL = Math.min(initial + currentTime * rate, Math.max(initial, max));
 
     if (buffered.length) {
       lastBufferedEnd = buffered.end(buffered.length - 1);
@@ -604,7 +601,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // if there is plenty of content buffered, and the video has
     // been played before relax for awhile
-    if (bufferedTime >= dynamicGBL) {
+    if (bufferedTime >= this.goalBufferLength_()) {
       return null;
     }
 
@@ -738,6 +735,16 @@ export default class SegmentLoader extends videojs.EventTarget {
     };
   }
 
+  /**
+   * Determines if the network has enough bandwidth to complete the current segment
+   * request in a timely manner. If not, the request will be aborted early and bandwidth
+   * updated to trigger a playlist switch.
+   *
+   * @param {Object} stats
+   *        Object continaing stats about the request timing and size
+   * @return {Boolean} True if the request was aborted, false otherwise
+   * @private
+   */
   abortRequestEarly_(stats) {
     if (this.hls_.tech_.paused() ||
         // Don't abort if the current playlist is on the lowestEnabledRendition
@@ -752,7 +759,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Wait at least 1 second since the first byte of data has been received before
     // using the calculated bandwidth from the progress event to allow the bitrate
     // to stabilize
-    if (Date.now() - (stats.firstByteRoundTripTime || Date.now()) < 1000) {
+    if (Date.now() - (stats.firstBytesReceivedAt || Date.now()) < 1000) {
       return false;
     }
 
@@ -833,12 +840,22 @@ export default class SegmentLoader extends videojs.EventTarget {
     return true;
   }
 
-  handleProgress_(event, segment) {
-    if (!this.pendingSegment_ || segment.requestId !== this.pendingSegment_.requestId) {
+  /**
+   * XHR `progress` event handler
+   *
+   * @param {Event}
+   *        The XHR `progress` event
+   * @param {Object} simpleSegment
+   *        A simplified segment object copy
+   * @private
+   */
+  handleProgress_(event, simpleSegment) {
+    if (!this.pendingSegment_ ||
+        simpleSegment.requestId !== this.pendingSegment_.requestId) {
       return;
     }
 
-    if (this.abortRequestEarly_(segment.stats)) {
+    if (this.abortRequestEarly_(simpleSegment.stats)) {
       return;
     }
 

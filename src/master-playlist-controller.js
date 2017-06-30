@@ -338,6 +338,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       seeking: () => this.tech_.seeking(),
       duration: () => this.mediaSource.duration,
       hasPlayed: () => this.hasPlayed_(),
+      goalBufferLength: () => this.goalBufferLength(),
       bandwidth,
       syncController: this.syncController_,
       decrypter: this.decrypter_
@@ -609,11 +610,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       const forwardBuffer = buffered.length ?
         buffered.end(buffered.length - 1) - this.tech_.currentTime() : 0;
 
-      const currentTime = this.tech_.currentTime();
-      const initial = Config.BUFFER_LOW_WATER_LINE;
-      const rate = Config.BUFFER_LOW_WATER_RATE;
-      const max = Config.MAX_BUFFER_LOW_WATER_LINE;
-      const dynamicBLWL = Math.min(initial + currentTime * rate, Math.max(initial, max));
+      const bufferLowWaterLine = this.bufferLowWaterLine();
 
       // we want to switch down to lower resolutions quickly to continue playback, but
       // ensure we have some buffer before we switch up to prevent us running out of
@@ -625,9 +622,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // For the same reason as LIVE, we ignore the low waterline when the VOD duration
       // is below the waterline
       if (!currentPlaylist.endList ||
-          this.duration() < dynamicBLWL ||
+          this.duration() < bufferLowWaterLine ||
           nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH ||
-          forwardBuffer >= dynamicBLWL) {
+          forwardBuffer >= bufferLowWaterLine) {
         this.masterPlaylistLoader_.media(nextPlaylist);
       }
 
@@ -1672,5 +1669,33 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     AdCueTags.updateAdCues(media, this.cueTagsTrack_, offset);
+  }
+
+  /**
+   * Calculates the desired forward buffer length based on current time
+   *
+   * @return {Number} Desired forward buffer length in seconds
+   */
+  goalBufferLength() {
+    const currentTime = this.tech_.currentTime();
+    const initial = Config.GOAL_BUFFER_LENGTH;
+    const rate = Config.GOAL_BUFFER_RATE;
+    const max = Math.max(initial, Config.MAX_GOAL_BUFFER_LENGTH);
+
+    return Math.min(initial + currentTime * rate, max);
+  }
+
+  /**
+   * Calculates the desired buffer low water line based on current time
+   *
+   * @return {Number} Desired buffer low water line in seconds
+   */
+  bufferLowWaterLine() {
+    const currentTime = this.tech_.currentTime();
+    const initial = Config.BUFFER_LOW_WATER_LINE;
+    const rate = Config.BUFFER_LOW_WATER_RATE;
+    const max = Math.max(initial, Config.MAX_BUFFER_LOW_WATER_LINE);
+
+    return Math.min(initial + currentTime * rate, max);
   }
 }
