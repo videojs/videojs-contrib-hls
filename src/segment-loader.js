@@ -886,13 +886,13 @@ export default class SegmentLoader extends videojs.EventTarget {
     // on the source buffer during subsequent appends
 
     // If we have a seekable range use that as the limit for what can be removed safely
-    // otherwise remove anything older than 1 minute before the current play head
+    // otherwise remove anything older than 30 seconds before the current play head
     if (seekable.length &&
         seekable.start(0) > 0 &&
         seekable.start(0) < currentTime) {
       removeToTime = seekable.start(0);
     } else {
-      removeToTime = currentTime - 60;
+      removeToTime = currentTime - 30;
     }
 
     if (removeToTime > 0) {

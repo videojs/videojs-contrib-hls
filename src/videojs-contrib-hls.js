@@ -26,9 +26,9 @@ import {
 } from './playlist-selectors.js';
 
 // 0.5 MB/s
-const BANDWIDTH_BROADBAND = 4194304;
+const INIT_BANDWIDTH_DESKTOP = 4194304;
 // 0.0625 MB/s
-const BANDWIDTH_MOBILE = 500000;
+const INIT_BANDWIDTH_MOBILE = 500000;
 
 const Hls = {
   PlaylistLoader,
@@ -64,7 +64,7 @@ const Hls = {
       videojs.log.warn(`using Hls.${prop} is UNSAFE be sure you know what you are doing`);
 
       if (typeof value !== 'number' || value < 0) {
-        videojs.log.warn(`value passed to Hls.${prop} must be a positive number or 0`);
+        videojs.log.warn(`value of Hls.${prop} must be greater than or equal to 0`);
         return;
       }
 
@@ -282,7 +282,7 @@ class HlsHandler extends Component {
       // only use Android for mobile because iOS does not support MSE (and uses
       // native HLS)
       this.options_.bandwidth =
-        videojs.browser.IS_ANDROID ? BANDWIDTH_MOBILE : BANDWIDTH_BROADBAND;
+        videojs.browser.IS_ANDROID ? INITIAL_BANDWIDTH_MOBILE : INITIAL_BANDWIDTH_DESKTOP;
     }
 
     // grab options passed to player.src

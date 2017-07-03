@@ -2432,8 +2432,8 @@ QUnit.test('cleans up the buffer when loading live segments', function(assert) {
   assert.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8',
                     'master playlist requested');
   assert.equal(removes.length, 1, 'remove called');
-  // segment-loader removes at currentTime - 60
-  assert.deepEqual(removes[0], [0, 10],
+  // segment-loader removes at currentTime - 30
+  assert.deepEqual(removes[0], [0, 40],
                   'remove called with the right range');
 
   // verify stats
@@ -2505,7 +2505,7 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
 
   assert.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
   assert.equal(removes.length, 1, 'remove called');
-  assert.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
+  assert.deepEqual(removes[0], [0, 80 - 30], 'remove called with the right range');
 });
 
 QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
@@ -2554,7 +2554,7 @@ QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
   assert.strictEqual(this.requests[1].url, absoluteUrl('manifest/media3.m3u8'),
                     'media playlist requested');
   assert.equal(removes.length, 1, 'remove called');
-  assert.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
+  assert.deepEqual(removes[0], [0, 120 - 30], 'remove called with the right range');
 });
 
 QUnit.test('when mediaGroup changes enabled track should not change', function(assert) {
