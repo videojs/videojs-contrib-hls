@@ -26,9 +26,9 @@ import {
 } from './playlist-selectors.js';
 
 // 0.5 MB/s
-const INIT_BANDWIDTH_DESKTOP = 4194304;
+const INITIAL_BANDWIDTH_DESKTOP = 4194304;
 // 0.0625 MB/s
-const INIT_BANDWIDTH_MOBILE = 500000;
+const INITIAL_BANDWIDTH_MOBILE = 500000;
 
 const Hls = {
   PlaylistLoader,
