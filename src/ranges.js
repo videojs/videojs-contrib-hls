@@ -338,6 +338,26 @@ const printableRange = (range) => {
   return strArr.join(', ');
 };
 
+/**
+ * Calculates the amount of time left in seconds until the player hits the end of the
+ * buffer and causes a rebuffer
+ *
+ * @param {TimeRange} buffered
+ *        The state of the buffer
+ * @param {Numnber} currentTime
+ *        The current time of the player
+ * @param {Number} playbackRate
+ *        The current playback rate of the player. Defaults to 1.
+ * @return {Number}
+ *         Time until the player has to start rebuffering in seconds.
+ * @function timeUntilRebuffer
+ */
+const timeUntilRebuffer = function(buffered, currentTime, playbackRate = 1) {
+  const bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
+
+  return (bufferedEnd - currentTime) / playbackRate;
+};
+
 export default {
   findRange,
   findNextRange,
@@ -345,5 +365,6 @@ export default {
   findSoleUncommonTimeRangesEnd,
   getSegmentBufferedPercent,
   TIME_FUDGE_FACTOR,
-  printableRange
+  printableRange,
+  timeUntilRebuffer
 };

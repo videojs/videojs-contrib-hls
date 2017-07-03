@@ -602,8 +602,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
    */
   setupSegmentLoaderListeners_() {
     this.mainSegmentLoader_.on('bandwidthupdate', () => {
-      // figure out what stream the next segment should be downloaded from
-      // with the updated bandwidth information
       const nextPlaylist = this.selectPlaylist();
       const currentPlaylist = this.masterPlaylistLoader_.media();
       const buffered = this.tech_.buffered();
@@ -612,18 +610,18 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       const bufferLowWaterLine = this.bufferLowWaterLine();
 
-      // we want to switch down to lower resolutions quickly to continue playback, but
-      // ensure we have some buffer before we switch up to prevent us running out of
-      // buffer while loading a higher rendition
       // If the playlist is live, then we want to not take low water line into account.
       // This is because in LIVE, the player plays 3 segments from the end of the
       // playlist, and if `BUFFER_LOW_WATER_LINE` is greater than the duration availble
       // in those segments, a viewer will never experience a rendition upswitch.
-      // For the same reason as LIVE, we ignore the low waterline when the VOD duration
-      // is below the waterline
       if (!currentPlaylist.endList ||
+          // For the same reason as LIVE, we ignore the low waterline when the VOD
+          // duration is below the waterline
           this.duration() < bufferLowWaterLine ||
+          // we want to switch down to lower resolutions quickly to continue playback, but
           nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH ||
+          // ensure we have some buffer before we switch up to prevent us running out of
+          // buffer while loading a higher rendition.
           forwardBuffer >= bufferLowWaterLine) {
         this.masterPlaylistLoader_.media(nextPlaylist);
       }
@@ -1679,7 +1677,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   goalBufferLength() {
     const currentTime = this.tech_.currentTime();
     const initial = Config.GOAL_BUFFER_LENGTH;
-    const rate = Config.GOAL_BUFFER_RATE;
+    const rate = Config.GOAL_BUFFER_LENGTH_RATE;
     const max = Math.max(initial, Config.MAX_GOAL_BUFFER_LENGTH);
 
     return Math.min(initial + currentTime * rate, max);
@@ -1693,7 +1691,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   bufferLowWaterLine() {
     const currentTime = this.tech_.currentTime();
     const initial = Config.BUFFER_LOW_WATER_LINE;
-    const rate = Config.BUFFER_LOW_WATER_RATE;
+    const rate = Config.BUFFER_LOW_WATER_LINE_RATE;
     const max = Math.max(initial, Config.MAX_BUFFER_LOW_WATER_LINE);
 
     return Math.min(initial + currentTime * rate, max);

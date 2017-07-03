@@ -25,6 +25,11 @@ import {
   comparePlaylistResolution
 } from './playlist-selectors.js';
 
+// 0.5 MB/s
+const BANDWIDTH_BROADBAND = 4194304;
+// 0.0625 MB/s
+const BANDWIDTH_MOBILE = 500000;
+
 const Hls = {
   PlaylistLoader,
   Playlist,
@@ -40,132 +45,32 @@ const Hls = {
   xhr: xhrFactory()
 };
 
-Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
-  get() {
-    videojs.log.warn('using Hls.GOAL_BUFFER_LENGTH is UNSAFE be sure ' +
-                     'you know what you are doing');
-    return Config.GOAL_BUFFER_LENGTH;
-  },
-  set(v) {
-    videojs.log.warn('using Hls.GOAL_BUFFER_LENGTH is UNSAFE be sure ' +
-                     'you know what you are doing');
-    if (typeof v !== 'number' || v <= 0) {
-      videojs.log.warn('value passed to Hls.GOAL_BUFFER_LENGTH ' +
-                       'must be a number and greater than 0');
-      return;
-    }
-    Config.GOAL_BUFFER_LENGTH = v;
-  }
-});
+// Define getter/setters for config properites
+[
+  'GOAL_BUFFER_LENGTH',
+  'MAX_GOAL_BUFFER_LENGTH',
+  'GOAL_BUFFER_LENGTH_RATE',
+  'BUFFER_LOW_WATER_LINE',
+  'MAX_BUFFER_LOW_WATER_LINE',
+  'BUFFER_LOW_WATER_LINE_RATE',
+  'BANDWIDTH_VARIANCE'
+].forEach((prop) => {
+  Object.defineProperty(Hls, prop, {
+    get() {
+      videojs.log.warn(`using Hls.${prop} is UNSAFE be sure you know what you are doing`);
+      return Config[prop];
+    },
+    set(value) {
+      videojs.log.warn(`using Hls.${prop} is UNSAFE be sure you know what you are doing`);
 
-Object.defineProperty(Hls, 'MAX_GOAL_BUFFER_LENGTH', {
-  get() {
-    videojs.log.warn('using Hls.MAX_GOAL_BUFFER_LENGTH is UNSAFE be sure ' +
-                     'you know what you are doing');
-    return Config.MAX_GOAL_BUFFER_LENGTH;
-  },
-  set(v) {
-    videojs.log.warn('using Hls.MAX_GOAL_BUFFER_LENGTH is UNSAFE be sure ' +
-                     'you know what you are doing');
-    if (typeof v !== 'number' || v <= 0) {
-      videojs.log.warn('value passed to Hls.MAX_GOAL_BUFFER_LENGTH ' +
-                       'must be a number and greater than 0');
-      return;
-    }
-    Config.MAX_GOAL_BUFFER_LENGTH = v;
-  }
-});
+      if (typeof value !== 'number' || value < 0) {
+        videojs.log.warn(`value passed to Hls.${prop} must be a positive number or 0`);
+        return;
+      }
 
-Object.defineProperty(Hls, 'GOAL_BUFFER_RATE', {
-  get() {
-    videojs.log.warn('using Hls.GOAL_BUFFER_RATE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    return Config.GOAL_BUFFER_RATE;
-  },
-  set(v) {
-    videojs.log.warn('using Hls.GOAL_BUFFER_RATE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    if (typeof v !== 'number' || v <= 0) {
-      videojs.log.warn('value passed to Hls.GOAL_BUFFER_RATE ' +
-                       'must be a number and greater than 0');
-      return;
+      Config[prop] = value;
     }
-    Config.GOAL_BUFFER_RATE = v;
-  }
-});
-
-Object.defineProperty(Hls, 'BUFFER_LOW_WATER_LINE', {
-  get() {
-    videojs.log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    return Config.BUFFER_LOW_WATER_LINE;
-  },
-  set(v) {
-    videojs.log.warn('using Hls.BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    if (typeof v !== 'number' || v < 0 || v > Config.GOAL_BUFFER_LENGTH) {
-      videojs.log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' +
-                       'must be a number and greater than or equal to 0 and less than' +
-                       'Hls.GOAL_BUFFER_LENGTH');
-      return;
-    }
-    Config.BUFFER_LOW_WATER_LINE = v;
-  }
-});
-
-Object.defineProperty(Hls, 'MAX_BUFFER_LOW_WATER_LINE', {
-  get() {
-    videojs.log.warn('using Hls.MAX_BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    return Config.MAX_BUFFER_LOW_WATER_LINE;
-  },
-  set(v) {
-    videojs.log.warn('using Hls.MAX_BUFFER_LOW_WATER_LINE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    if (typeof v !== 'number' || v < 0 || v > Config.GOAL_BUFFER_LENGTH) {
-      videojs.log.warn('value passed to Hls.BUFFER_LOW_WATER_LINE ' +
-                       'must be a number and greater than or equal to 0 and less than' +
-                       'Hls.GOAL_BUFFER_LENGTH');
-      return;
-    }
-    Config.MAX_BUFFER_LOW_WATER_LINE = v;
-  }
-});
-
-Object.defineProperty(Hls, 'BUFFER_LOW_WATER_RATE', {
-  get() {
-    videojs.log.warn('using Hls.BUFFER_LOW_WATER_RATE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    return Config.BUFFER_LOW_WATER_RATE;
-  },
-  set(v) {
-    videojs.log.warn('using Hls.BUFFER_LOW_WATER_RATE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    if (typeof v !== 'number' || v <= 0) {
-      videojs.log.warn('value passed to Hls.BUFFER_LOW_WATER_RATE ' +
-                       'must be a number and greater than 0');
-      return;
-    }
-    Config.BUFFER_LOW_WATER_RATE = v;
-  }
-});
-
-Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
-  get() {
-    videojs.log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    return Config.BANDWIDTH_VARIANCE;
-  },
-  set(v) {
-    videojs.log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    if (typeof v !== 'number' || v <= 0) {
-      videojs.log.warn('value passed to Hls.BANDWIDTH_VARIANCE ' +
-                       'must be a number and greater than 0');
-      return;
-    }
-    Config.BANDWIDTH_VARIANCE = v;
-  }
+  });
 });
 
 /**
@@ -376,7 +281,8 @@ class HlsHandler extends Component {
     if (typeof this.options_.bandwidth !== 'number') {
       // only use Android for mobile because iOS does not support MSE (and uses
       // native HLS)
-      this.options_.bandwidth = videojs.browser.IS_ANDROID ? 500000 : 4194304;
+      this.options_.bandwidth =
+        videojs.browser.IS_ANDROID ? BANDWIDTH_MOBILE : BANDWIDTH_BROADBAND;
     }
 
     // grab options passed to player.src

@@ -113,6 +113,21 @@ export const comparePlaylistResolution = function(left, right) {
   return leftWidth - rightWidth;
 };
 
+/**
+ * Chooses the appropriate media playlist based on bandwidth and player size
+ *
+ * @param {Object} master
+ *        Object representation of the master manifest
+ * @param {Number} playerBandwidth
+ *        Current calculated bandwidth of the player
+ * @param {Number} playerWidth
+ *        Current width of the player element
+ * @param {Number} playerHeight
+ *        Current height of the player element
+ * @return {Playlist} the highest bitrate playlist less than the
+ * currently detected bandwidth, accounting for some amount of
+ * bandwidth variance
+ */
 const simpleSelector = function(master, playerBandwidth, playerWidth, playerHeight) {
   // convert the playlists to an intermediary representation to make comparisons easier
   let sortedPlaylistReps = master.playlists.map((playlist) => {
@@ -262,4 +277,81 @@ export const movingAverageBandwidthSelector = function(decay) {
                           parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10),
                           parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
   };
+};
+
+/**
+ * Chooses the appropriate media playlist based on the potential to rebuffer
+ *
+ * @param {Object} settings
+ *        Object of information required to use this selector
+ * @param {Object} settings.master
+ *        Object representation of the master manifest
+ * @param {Number} settings.currentTime
+ *        The current time of the player
+ * @param {Number} settings.bandwidth
+ *        Current measured bandwidth
+ * @param {Number} settings.duration
+ *        Duration of the media
+ * @param {Number} settings.segmentDuration
+ *        Segment duration to be used in round trip time calculations
+ * @param {Number} settings.timeUntilRebuffer
+ *        Time left in seconds until the player has to rebuffer
+ * @param {Number} settings.currentTimeline
+ *        The current timeline segments are being loaded from
+ * @param {SyncController} settings.syncController
+ *        SyncController for determining if we have a sync point for a given playlist
+ * @return {Object|null}
+ *         {Object} return.playlist
+ *         The highest bandwidth playlist with the least amount of rebuffering
+ *         {Number} return.rebufferingImpact
+ *         The amount of time in seconds switching to this playlist will rebuffer. A
+ *         negative value means that switching will cause zero rebuffering.
+ */
+export const minRebufferMaxBandwidthSelector = function(settings) {
+  const {
+    master,
+    currentTime,
+    bandwidth,
+    duration,
+    segmentDuration,
+    timeUntilRebuffer,
+    currentTimeline,
+    syncController
+  } = settings;
+
+  const bandwidthPlaylists =
+    master.playlists.filter(Playlist.hasAttribute.bind(null, 'BANDWIDTH'));
+
+  const rebufferingEstimates = bandwidthPlaylists.map((playlist) => {
+    const syncPoint = syncController.getSyncPoint(playlist,
+                                                  duration,
+                                                  currentTimeline,
+                                                  currentTime);
+    // If there is no sync point for this playlist, switching to it will require a
+    // sync request first. This will double the request time
+    const numRequests = syncPoint ? 1 : 2;
+    const requestTimeEstimate = Playlist.estimateSegmentRequestTime(segmentDuration,
+                                                                    bandwidth,
+                                                                    playlist);
+    const rebufferingImpact = (requestTimeEstimate * numRequests) - timeUntilRebuffer;
+
+    return {
+      playlist,
+      rebufferingImpact
+    };
+  });
+
+  const noRebufferingPlaylists = rebufferingEstimates.filter(
+    (estimate) => estimate.rebufferingImpact < 0);
+
+  // Sort by bandwidth DESC
+  stableSort(noRebufferingPlaylists, (a, b) => comparePlaylistBandwidth(b, a));
+
+  if (noRebufferingPlaylists.length) {
+    return noRebufferingPlaylists[0];
+  }
+
+  stableSort(rebufferingEstimates, (a, b) => a.rebufferingImpact - b.rebufferingImpact);
+
+  return rebufferingEstimates[0] || null;
 };

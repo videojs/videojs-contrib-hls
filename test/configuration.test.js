@@ -39,10 +39,10 @@ QUnit.module('Configuration - Deprication', {
     this.old = {};
     this.old.GOAL_BUFFER_LENGTH = Config.GOAL_BUFFER_LENGTH;
     this.old.MAX_GOAL_BUFFER_LENGTH = Config.MAX_GOAL_BUFFER_LENGTH;
-    this.old.GOAL_BUFFER_RATE = Config.GOAL_BUFFER_RATE;
+    this.old.GOAL_BUFFER_LENGTH_RATE = Config.GOAL_BUFFER_LENGTH_RATE;
     this.old.BUFFER_LOW_WATER_LINE = Config.BUFFER_LOW_WATER_LINE;
     this.old.MAX_BUFFER_LOW_WATER_LINE = Config.MAX_BUFFER_LOW_WATER_LINE;
-    this.old.BUFFER_LOW_WATER_RATE = Config.BUFFER_LOW_WATER_RATE;
+    this.old.BUFFER_LOW_WATER_LINE_RATE = Config.BUFFER_LOW_WATER_LINE_RATE;
     // force the HLS tech to run
     this.old.NativeHlsSupport = videojs.Hls.supportsNativeHls;
     videojs.Hls.supportsNativeHls = false;
@@ -51,10 +51,10 @@ QUnit.module('Configuration - Deprication', {
   afterEach() {
     Config.GOAL_BUFFER_LENGTH = this.old.GOAL_BUFFER_LENGTH;
     Config.MAX_GOAL_BUFFER_LENGTH = this.old.MAX_GOAL_BUFFER_LENGTH;
-    Config.GOAL_BUFFER_RATE = this.old.GOAL_BUFFER_RATE;
+    Config.GOAL_BUFFER_LENGTH_RATE = this.old.GOAL_BUFFER_LENGTH_RATE;
     Config.BUFFER_LOW_WATER_LINE = this.old.BUFFER_LOW_WATER_LINE;
     Config.MAX_BUFFER_LOW_WATER_LINE = this.old.MAX_BUFFER_LOW_WATER_LINE;
-    Config.BUFFER_LOW_WATER_RATE = this.old.BUFFER_LOW_WATER_RATE;
+    Config.BUFFER_LOW_WATER_LINE_RATE = this.old.BUFFER_LOW_WATER_LINE_RATE;
 
     this.env.restore();
     this.mse.restore();
@@ -82,7 +82,7 @@ QUnit.test('GOAL_BUFFER_LENGTH set warning and invalid', function(assert) {
 
   assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
 
-  Hls.GOAL_BUFFER_LENGTH = 0;
+  Hls.GOAL_BUFFER_LENGTH = -1;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
   assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
@@ -108,36 +108,36 @@ QUnit.test('MAX_GOAL_BUFFER_LENGTH set warning and invalid', function(assert) {
 
   assert.equal(Config.MAX_GOAL_BUFFER_LENGTH, 60, 'default');
 
-  Hls.MAX_GOAL_BUFFER_LENGTH = 0;
+  Hls.MAX_GOAL_BUFFER_LENGTH = -1;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
   assert.equal(Config.MAX_GOAL_BUFFER_LENGTH, 60, 'default');
 });
 
-QUnit.test('GOAL_BUFFER_RATE get warning', function(assert) {
-  assert.equal(Hls.GOAL_BUFFER_RATE,
-              Config.GOAL_BUFFER_RATE,
-              'Hls.GOAL_BUFFER_RATE returns the default');
+QUnit.test('GOAL_BUFFER_LENGTH_RATE get warning', function(assert) {
+  assert.equal(Hls.GOAL_BUFFER_LENGTH_RATE,
+              Config.GOAL_BUFFER_LENGTH_RATE,
+              'Hls.GOAL_BUFFER_LENGTH_RATE returns the default');
   assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
 });
 
-QUnit.test('GOAL_BUFFER_RATE set warning', function(assert) {
-  Hls.GOAL_BUFFER_RATE = 10;
+QUnit.test('GOAL_BUFFER_LENGTH_RATE set warning', function(assert) {
+  Hls.GOAL_BUFFER_LENGTH_RATE = 10;
   assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
 
-  assert.equal(Config.GOAL_BUFFER_RATE, 10, 'returns what we set it to');
+  assert.equal(Config.GOAL_BUFFER_LENGTH_RATE, 10, 'returns what we set it to');
 });
 
-QUnit.test('GOAL_BUFFER_RATE set warning and invalid', function(assert) {
-  Hls.GOAL_BUFFER_RATE = 'nope';
+QUnit.test('GOAL_BUFFER_LENGTH_RATE set warning and invalid', function(assert) {
+  Hls.GOAL_BUFFER_LENGTH_RATE = 'nope';
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.GOAL_BUFFER_RATE, 1, 'default');
+  assert.equal(Config.GOAL_BUFFER_LENGTH_RATE, 1, 'default');
 
-  Hls.GOAL_BUFFER_RATE = 0;
+  Hls.GOAL_BUFFER_LENGTH_RATE = -1;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.GOAL_BUFFER_RATE, 1, 'default');
+  assert.equal(Config.GOAL_BUFFER_LENGTH_RATE, 1, 'default');
 });
 
 QUnit.test('BUFFER_LOW_WATER_LINE get warning', function(assert) {
@@ -167,12 +167,6 @@ QUnit.test('BUFFER_LOW_WATER_LINE set warning and invalid', function(assert) {
   assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
 
   Hls.BUFFER_LOW_WATER_LINE = -1;
-  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
-
-  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
-
-  // does not allow setting above goal buffer length
-  Hls.BUFFER_LOW_WATER_LINE = Config.GOAL_BUFFER_LENGTH + 10;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
   assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
@@ -208,38 +202,32 @@ QUnit.test('MAX_BUFFER_LOW_WATER_LINE set warning and invalid', function(assert)
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
   assert.equal(Config.MAX_BUFFER_LOW_WATER_LINE, 30, 'default');
-
-  // does not allow setting above goal buffer length
-  Hls.MAX_BUFFER_LOW_WATER_LINE = Config.GOAL_BUFFER_LENGTH + 10;
-  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
-
-  assert.equal(Config.MAX_BUFFER_LOW_WATER_LINE, 30, 'default');
 });
 
-QUnit.test('BUFFER_LOW_WATER_RATE get warning', function(assert) {
-  assert.equal(Hls.BUFFER_LOW_WATER_RATE,
-              Config.BUFFER_LOW_WATER_RATE,
-              'Hls.BUFFER_LOW_WATER_RATE returns the default');
+QUnit.test('BUFFER_LOW_WATER_LINE_RATE get warning', function(assert) {
+  assert.equal(Hls.BUFFER_LOW_WATER_LINE_RATE,
+              Config.BUFFER_LOW_WATER_LINE_RATE,
+              'Hls.BUFFER_LOW_WATER_LINE_RATE returns the default');
   assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
 });
 
-QUnit.test('BUFFER_LOW_WATER_RATE set warning', function(assert) {
-  Hls.BUFFER_LOW_WATER_RATE = 10;
+QUnit.test('BUFFER_LOW_WATER_LINE_RATE set warning', function(assert) {
+  Hls.BUFFER_LOW_WATER_LINE_RATE = 10;
   assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
 
-  assert.equal(Config.BUFFER_LOW_WATER_RATE, 10, 'returns what we set it to');
+  assert.equal(Config.BUFFER_LOW_WATER_LINE_RATE, 10, 'returns what we set it to');
 });
 
-QUnit.test('BUFFER_LOW_WATER_RATE set warning and invalid', function(assert) {
-  Hls.BUFFER_LOW_WATER_RATE = 'nope';
+QUnit.test('BUFFER_LOW_WATER_LINE_RATE set warning and invalid', function(assert) {
+  Hls.BUFFER_LOW_WATER_LINE_RATE = 'nope';
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.BUFFER_LOW_WATER_RATE, 1, 'default');
+  assert.equal(Config.BUFFER_LOW_WATER_LINE_RATE, 1, 'default');
 
-  Hls.BUFFER_LOW_WATER_RATE = 0;
+  Hls.BUFFER_LOW_WATER_LINE_RATE = -1;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
-  assert.equal(Config.BUFFER_LOW_WATER_RATE, 1, 'default');
+  assert.equal(Config.BUFFER_LOW_WATER_LINE_RATE, 1, 'default');
 });
 
 QUnit.module('Configuration - Options', {

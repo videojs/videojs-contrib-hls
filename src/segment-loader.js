@@ -1,7 +1,7 @@
 /**
  * @file segment-loader.js
  */
-import {getMediaInfoForTime_ as getMediaInfoForTime} from './playlist';
+import Playlist from './playlist';
 import videojs from 'video.js';
 import SourceUpdater from './source-updater';
 import Config from './config';
@@ -10,7 +10,8 @@ import removeCuesFromTrack from
   'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
-import { TIME_FUDGE_FACTOR } from './ranges';
+import { TIME_FUDGE_FACTOR, timeUntilRebuffer as timeUntilRebuffer_ } from './ranges';
+import { minRebufferMaxBandwidthSelector } from './playlist-selectors';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -647,19 +648,19 @@ export default class SegmentLoader extends videojs.EventTarget {
     // fetch
     if (this.fetchAtBuffer_) {
       // Find the segment containing the end of the buffer
-      let mediaSourceInfo = getMediaInfoForTime(playlist,
-                                                lastBufferedEnd,
-                                                syncPoint.segmentIndex,
-                                                syncPoint.time);
+      let mediaSourceInfo = Playlist.getMediaInfoForTime(playlist,
+                                                         lastBufferedEnd,
+                                                         syncPoint.segmentIndex,
+                                                         syncPoint.time);
 
       mediaIndex = mediaSourceInfo.mediaIndex;
       startOfSegment = mediaSourceInfo.startTime;
     } else {
       // Find the segment containing currentTime
-      let mediaSourceInfo = getMediaInfoForTime(playlist,
-                                                currentTime,
-                                                syncPoint.segmentIndex,
-                                                syncPoint.time);
+      let mediaSourceInfo = Playlist.getMediaInfoForTime(playlist,
+                                                         currentTime,
+                                                         syncPoint.segmentIndex,
+                                                         syncPoint.time);
 
       mediaIndex = mediaSourceInfo.mediaIndex;
       startOfSegment = mediaSourceInfo.startTime;
@@ -741,7 +742,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * updated to trigger a playlist switch.
    *
    * @param {Object} stats
-   *        Object continaing stats about the request timing and size
+   *        Object containing stats about the request timing and size
    * @return {Boolean} True if the request was aborted, false otherwise
    * @private
    */
@@ -766,16 +767,17 @@ export default class SegmentLoader extends videojs.EventTarget {
     const currentTime = this.currentTime_();
     const measuredBandwidth = stats.bandwidth;
     const segmentDuration = this.pendingSegment_.duration;
-    const estimatedSegmentSize =
-      segmentDuration * this.playlist_.attributes.BANDWIDTH;
+
     const requestTimeRemaining =
-      (estimatedSegmentSize - (stats.bytesReceived * 8)) / measuredBandwidth;
-    const buffered = this.buffered_();
-    const bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
+      Playlist.estimateSegmentRequestTime(segmentDuration,
+                                          measuredBandwidth,
+                                          this.playlist_,
+                                          stats.bytesReceived);
     // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
     // if we are only left with less than 1 second when the request completes.
-    const timeUntilRebuffer =
-      ((bufferedEnd - currentTime) / this.hls_.tech_.playbackRate()) - 1;
+    const timeUntilRebuffer = timeUntilRebuffer_(this.buffered_(),
+                                                 currentTime,
+                                                 this.hls_.tech_.playbackRate()) - 1;
 
     // Only consider aborting early if the estimated time to finish the download
     // is larger than the estimated time until the player runs out of forward buffer
@@ -783,37 +785,24 @@ export default class SegmentLoader extends videojs.EventTarget {
       return false;
     }
 
-    const switchCandidate = this.hls_.playlists.master.playlists.filter(
-      (playlist) => playlist.attributes && playlist.attributes.BANDWIDTH
-    ).map((playlist) => {
-      const syncPoint = this.syncController_.getSyncPoint(playlist,
-                                                          this.duration_(),
-                                                          this.currentTimeline_,
-                                                          currentTime);
-      // There is no sync point for this playlist, so switching to it will require a
-      // sync request first. This will double the round trip time
-      const numRequests = syncPoint ? 1 : 2;
-      const segmentSize = segmentDuration * playlist.attributes.BANDWIDTH;
-      const roundTripTime = segmentSize * numRequests / measuredBandwidth;
-
-      return {
-        playlist,
-        roundTripTime
-      };
-    }).sort((a, b) => {
-      if (a.roundTripTime <= timeUntilRebuffer && b.roundTripTime <= timeUntilRebuffer) {
-        // if both playlists will prevent rebuffering, prioritize highest bandwidth
-        return b.playlist.attributes.BANDWIDTH - a.playlist.attributes.BANDWIDTH;
-      }
-
-      return a.roundTripTime - b.roundTripTime;
-    })[0];
+    const switchCandidate = minRebufferMaxBandwidthSelector({
+      master: this.hls_.playlists.master,
+      currentTime,
+      bandwidth: measuredBandwidth,
+      duration: this.duration_(),
+      segmentDuration,
+      timeUntilRebuffer,
+      currentTimeline: this.currentTimeline_,
+      syncController: this.syncController_
+    });
 
     if (!switchCandidate) {
       return;
     }
 
-    const timeSavedBySwitching = requestTimeRemaining - switchCandidate.roundTripTime;
+    const rebufferingImpact = requestTimeRemaining - timeUntilRebuffer;
+
+    const timeSavedBySwitching = rebufferingImpact - switchCandidate.rebufferingImpact;
 
     let minimumTimeSaving = 0.5;
 
@@ -830,9 +819,8 @@ export default class SegmentLoader extends videojs.EventTarget {
       return false;
     }
 
-    // set the bandwidth to that of the desired playlist
-    // (Being sure to scale by BANDWIDTH_VARIANCE and add one so the
-    // playlist selector does not exclude it)
+    // set the bandwidth to that of the desired playlist being sure to scale by
+    // BANDWIDTH_VARIANCE and add one so the playlist selector does not exclude it
     this.bandwidth =
       switchCandidate.playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
     this.abort();
@@ -851,11 +839,8 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   handleProgress_(event, simpleSegment) {
     if (!this.pendingSegment_ ||
-        simpleSegment.requestId !== this.pendingSegment_.requestId) {
-      return;
-    }
-
-    if (this.abortRequestEarly_(simpleSegment.stats)) {
+        simpleSegment.requestId !== this.pendingSegment_.requestId ||
+        this.abortRequestEarly_(simpleSegment.stats)) {
       return;
     }
 
@@ -894,7 +879,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     const currentTime = this.currentTime_();
     let removeToTime = 0;
 
-    // Chrome has a hard limit of 150mb of
+    // Chrome has a hard limit of 150MB of
     // buffer and a very conservative "garbage collector"
     // We manually clear out the old buffer to ensure
     // we don't trigger the QuotaExceeded error
@@ -907,7 +892,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         seekable.start(0) < currentTime) {
       removeToTime = seekable.start(0);
     } else {
-      removeToTime = currentTime - 30;
+      removeToTime = currentTime - 60;
     }
 
     if (removeToTime > 0) {

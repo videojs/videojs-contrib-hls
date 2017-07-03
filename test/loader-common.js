@@ -7,6 +7,7 @@ import {
   useFakeEnvironment,
   useFakeMediaSource
 } from './test-helpers.js';
+import { MasterPlaylistController } from '../src/master-playlist-controller';
 import SyncController from '../src/sync-controller';
 import Decrypter from '../src/decrypter-worker';
 import worker from 'webworkify';
@@ -33,17 +34,13 @@ export const LoaderCommonHooks = {
       xhr: xhrFactory(),
       tech_: {
         paused: () => this.paused,
-        playbackRate: () => this.playbackRate
+        playbackRate: () => this.playbackRate,
+        currentTime: () => this.currentTime
       }
     };
-    this.goalBufferLength = () => {
-      const currentTime = this.currentTime;
-      const initial = Config.GOAL_BUFFER_LENGTH;
-      const rate = Config.GOAL_BUFFER_RATE;
-      const max = Math.max(initial, Config.MAX_GOAL_BUFFER_LENGTH);
-
-      return Math.min(initial + currentTime * rate, max);
-    };
+    this.tech_ = this.fakeHls.tech_;
+    this.goalBufferLength =
+      MasterPlaylistController.prototype.goalBufferLength.bind(this);
     this.mediaSource = new videojs.MediaSource();
     this.mediaSource.trigger('sourceopen');
     this.syncController = new SyncController();
