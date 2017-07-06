@@ -773,8 +773,10 @@ export default class SegmentLoader extends videojs.EventTarget {
                                           measuredBandwidth,
                                           this.playlist_,
                                           stats.bytesReceived);
+
     // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
     // if we are only left with less than 1 second when the request completes.
+    // A negative timeUntilRebuffering indicates we are already rebuffering
     const timeUntilRebuffer = timeUntilRebuffer_(this.buffered_(),
                                                  currentTime,
                                                  this.hls_.tech_.playbackRate()) - 1;
