@@ -2,6 +2,14 @@ CHANGELOG
 =========
 
 --------------------
+## 5.8.0 (2017-07-06)
+* Abr Improvements [#1176](https://github.com/videojs/videojs-contrib-hls/pull/1176)
+  * Use a starting `bandwidth` value of `0.0625 MB/s` on Android devices
+  * Do not allow an up-switch in quality until a certain amount of forward buffer has been filled, `BUFFER_LOW_WATER_LINE`
+  * Dynamically increase the `BUFFER_LOW_WATER_LINE` and `GOAL_BUFFER_LENGTH` from `0 - > 30` and `30 -> 60` respectively during the first 30 seconds of playback
+  * Abort segment requests before completion if bandwidth reported by the XHR `progress` event shows that network conditions are not fast enough to complete the request without causing rebuffering
+
+--------------------
 ## 5.7.0 (2017-06-27)
 * update mux.js to 4.1.5 and videojs-contrib-media-sources to 4.4.6 [#1180](https://github.com/videojs/videojs-contrib-hls/pull/1180)
   * Only flush PES packets from TS parsing front end when they are complete
