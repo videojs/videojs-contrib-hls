@@ -18,6 +18,7 @@ import {
 import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
+import Config from '../src/config';
 
 const generateMedia = function(isMaat, isMuxed, hasVideoCodec, hasAudioCodec, isFMP4) {
   const codec = (hasVideoCodec ? 'avc1.deadbeef' : '') +
@@ -814,6 +815,11 @@ QUnit.test('updates the combined segment loader on media changes', function(asse
   // playlist change
   // segment 0
   this.standardXHRResponse(this.requests.shift());
+  // update the buffer to reflect the appended segment, and have enough buffer to
+  // change playlist
+  this.masterPlaylistController.tech_.buffered = () => {
+    return videojs.createTimeRanges([[0, 30]]);
+  };
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // media
   this.standardXHRResponse(this.requests.shift());
@@ -870,6 +876,182 @@ QUnit.test('re-triggers bandwidthupdate events on the tech', function(assert) {
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
 
   assert.equal(bandwidthupdateEvents, 2, 'triggered bandwidthupdate');
+});
+
+QUnit.test('switches to lower renditions immediately, higher dependent on buffer',
+function(assert) {
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  let buffered = [];
+  let currentPlaylistBandwidth = 0;
+  let nextPlaylistBandwidth = 0;
+  let mediaChanges = [];
+  let currentTime = 0;
+  let endList = true;
+  let duration = 100;
+
+  this.masterPlaylistController.tech_.currentTime = () => currentTime;
+  this.masterPlaylistController.tech_.buffered = () => videojs.createTimeRanges(buffered);
+  this.masterPlaylistController.duration = () => duration;
+  this.masterPlaylistController.selectPlaylist = () => {
+    return {
+      attributes: {
+        BANDWIDTH: nextPlaylistBandwidth
+      },
+      endList
+    };
+  };
+  this.masterPlaylistController.masterPlaylistLoader_.media = (media) => {
+    if (!media) {
+      return {
+        attributes: {
+          BANDWIDTH: currentPlaylistBandwidth
+        },
+        endList
+      };
+    }
+    mediaChanges.push(media);
+  };
+
+  currentTime = 0;
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 1000;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when no buffer and equal bandwidth playlist');
+  buffered = [[0, 9]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes media when sufficient forward buffer and equal ' +
+               'bandwidth playlist');
+  buffered = [[0, 30]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               3,
+               'changes media when sufficient forward buffer and equal ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  currentTime = 10;
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 1001;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when no buffer and and higher bandwidth playlist');
+  buffered = [[0, 19]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when insufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 20]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when sufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 21]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes media when sufficient forward buffer and higher ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  currentTime = 100;
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 1001;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when no buffer and higher bandwidth playlist');
+  buffered = [[0, 100], [100, 109]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when insufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 100], [100, 130]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when sufficient forward buffer and higher ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  buffered = [];
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 999;
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when no buffer but lower bandwidth playlist');
+  buffered = [[100, 109]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes media when insufficient forward buffer but lower ' +
+               'bandwidth playlist');
+  buffered = [[100, 110]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               3,
+               'changes media when sufficient forward buffer and lower ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  endList = false;
+  currentTime = 100;
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 1001;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes live media when no buffer and higher bandwidth playlist');
+  buffered = [[0, 100], [100, 109]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes live media when insufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 100], [100, 130]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               3,
+               'changes live media when sufficient forward buffer and higher ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  endList = true;
+  currentTime = 9;
+  duration = 18;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when no buffer and duration less than low water line');
+  buffered = [[0, 10]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes media when insufficient forward buffer and duration ' +
+               'less than low water line');
 });
 
 QUnit.test('updates the duration after switching playlists', function(assert) {
@@ -1871,6 +2053,75 @@ QUnit.test('sets up subtitles', function(assert) {
                'removed subtitle playlist loader');
   assert.ok(masterPlaylistController.subtitleSegmentLoader_,
             'did not remove subtitle segment loader');
+});
+
+QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {
+  const configOld = {
+    GOAL_BUFFER_LENGTH: Config.GOAL_BUFFER_LENGTH,
+    MAX_GOAL_BUFFER_LENGTH: Config.MAX_GOAL_BUFFER_LENGTH,
+    GOAL_BUFFER_LENGTH_RATE: Config.GOAL_BUFFER_LENGTH_RATE
+  };
+  const mpc = this.masterPlaylistController;
+
+  let currentTime = 0;
+
+  Config.GOAL_BUFFER_LENGTH = 30;
+  Config.MAX_GOAL_BUFFER_LENGTH = 60;
+  Config.GOAL_BUFFER_LENGTH_RATE = 0.5;
+
+  mpc.tech_.currentTime = () => currentTime;
+
+  assert.equal(mpc.goalBufferLength(), 30, 'dynamic GBL uses starting value at time 0');
+
+  currentTime = 10;
+
+  assert.equal(mpc.goalBufferLength(), 35, 'dynamic GBL increases by currentTime * rate');
+
+  currentTime = 60;
+
+  assert.equal(mpc.goalBufferLength(), 60, 'dynamic GBL uses max value');
+
+  currentTime = 70;
+
+  assert.equal(mpc.goalBufferLength(), 60, 'dynamic GBL continues to use max value');
+
+  // restore config
+  Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);
+});
+
+QUnit.test('calculates dynamic BUFFER_LOW_WATER_LINE', function(assert) {
+  const configOld = {
+    BUFFER_LOW_WATER_LINE: Config.BUFFER_LOW_WATER_LINE,
+    MAX_BUFFER_LOW_WATER_LINE: Config.MAX_BUFFER_LOW_WATER_LINE,
+    BUFFER_LOW_WATER_LINE_RATE: Config.BUFFER_LOW_WATER_LINE_RATE
+  };
+  const mpc = this.masterPlaylistController;
+
+  let currentTime = 0;
+
+  Config.BUFFER_LOW_WATER_LINE = 0;
+  Config.MAX_BUFFER_LOW_WATER_LINE = 30;
+  Config.BUFFER_LOW_WATER_LINE_RATE = 0.5;
+
+  mpc.tech_.currentTime = () => currentTime;
+
+  assert.equal(mpc.bufferLowWaterLine(), 0, 'dynamic BLWL uses starting value at time 0');
+
+  currentTime = 10;
+
+  assert.equal(mpc.bufferLowWaterLine(), 5,
+    'dynamic BLWL increases by currentTime * rate');
+
+  currentTime = 60;
+
+  assert.equal(mpc.bufferLowWaterLine(), 30, 'dynamic BLWL uses max value');
+
+  currentTime = 70;
+
+  assert.equal(mpc.bufferLowWaterLine(), 30, 'dynamic BLWL continues to use max value');
+
+  // restore config
+  Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);
 });
 
 QUnit.module('Codec to MIME Type Conversion');

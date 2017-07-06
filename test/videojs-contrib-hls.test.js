@@ -1603,6 +1603,42 @@ QUnit.test('uses default bandwidth option if non-numerical value provided', func
   assert.equal(this.player.tech_.hls.bandwidth, 4194304, 'set bandwidth to default');
 });
 
+QUnit.test('uses mobile default bandwidth if browser is Android', function(assert) {
+  this.player.dispose();
+
+  const origIsAndroid = videojs.browser.IS_ANDROID;
+
+  videojs.browser.IS_ANDROID = false;
+
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  assert.equal(this.player.tech_.hls.bandwidth,
+               4194304,
+               'set bandwidth to desktop default');
+
+  this.player.dispose();
+
+  videojs.browser.IS_ANDROID = true;
+
+  this.player = createPlayer();
+  this.player.src({
+    src: 'http://example.com/media.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+  openMediaSource(this.player, this.clock);
+
+  assert.equal(this.player.tech_.hls.bandwidth,
+               500000,
+               'set bandwidth to mobile default');
+
+  videojs.browser.IS_ANDROID = origIsAndroid;
+});
+
 QUnit.test('does not break if the playlist has no segments', function(assert) {
   this.player.src({
     src: 'manifest/master.m3u8',
@@ -2396,8 +2432,8 @@ QUnit.test('cleans up the buffer when loading live segments', function(assert) {
   assert.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8',
                     'master playlist requested');
   assert.equal(removes.length, 1, 'remove called');
-  // segment-loader removes at currentTime - 60
-  assert.deepEqual(removes[0], [0, 10],
+  // segment-loader removes at currentTime - 30
+  assert.deepEqual(removes[0], [0, 40],
                   'remove called with the right range');
 
   // verify stats
@@ -2469,7 +2505,7 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
 
   assert.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8', 'master playlist requested');
   assert.equal(removes.length, 1, 'remove called');
-  assert.deepEqual(removes[0], [0, 80 - 60], 'remove called with the right range');
+  assert.deepEqual(removes[0], [0, 80 - 30], 'remove called with the right range');
 });
 
 QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
@@ -2518,7 +2554,7 @@ QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
   assert.strictEqual(this.requests[1].url, absoluteUrl('manifest/media3.m3u8'),
                     'media playlist requested');
   assert.equal(removes.length, 1, 'remove called');
-  assert.deepEqual(removes[0], [0, 120 - 60], 'remove called with the right range');
+  assert.deepEqual(removes[0], [0, 120 - 30], 'remove called with the right range');
 });
 
 QUnit.test('when mediaGroup changes enabled track should not change', function(assert) {
@@ -2882,6 +2918,9 @@ QUnit.test('downloads additional playlists if required', function(assert) {
   this.requests[2].bandwidth = 3000000;
   // segment
   this.standardXHRResponse(this.requests[2]);
+  // update the buffer to reflect the appended segment, and have enough buffer to
+  // change playlist
+  this.tech.buffered = () => videojs.createTimeRanges([[0, 30]]);
   hls.mediaSource.sourceBuffers[0].trigger('updateend');
 
   // new media
@@ -2925,6 +2964,9 @@ QUnit.test('waits to download new segments until the media playlist is stable', 
 
   // segment 0
   this.standardXHRResponse(this.requests.shift());
+  // update the buffer to reflect the appended segment, and have enough buffer to
+  // change playlist
+  this.tech.buffered = () => videojs.createTimeRanges([[0, 30]]);
   // no time has elapsed, so bandwidth is really high and we'll switch
   // playlists
   sourceBuffer.trigger('updateend');

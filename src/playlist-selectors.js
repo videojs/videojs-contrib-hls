@@ -113,81 +113,117 @@ export const comparePlaylistResolution = function(left, right) {
   return leftWidth - rightWidth;
 };
 
-const simpleSelector = function(master, bandwidth, width, height) {
-  let sortedPlaylists = master.playlists.slice();
-  let bandwidthPlaylists = [];
-  let bandwidthBestVariant;
-  let resolutionPlusOne;
-  let resolutionBestVariant;
-  let haveResolution;
-  let resolutionPlusOneList = [];
-  let resolutionPlusOneSmallest = [];
-  let resolutionBestVariantList = [];
+/**
+ * Chooses the appropriate media playlist based on bandwidth and player size
+ *
+ * @param {Object} master
+ *        Object representation of the master manifest
+ * @param {Number} playerBandwidth
+ *        Current calculated bandwidth of the player
+ * @param {Number} playerWidth
+ *        Current width of the player element
+ * @param {Number} playerHeight
+ *        Current height of the player element
+ * @return {Playlist} the highest bitrate playlist less than the
+ * currently detected bandwidth, accounting for some amount of
+ * bandwidth variance
+ */
+const simpleSelector = function(master, playerBandwidth, playerWidth, playerHeight) {
+  // convert the playlists to an intermediary representation to make comparisons easier
+  let sortedPlaylistReps = master.playlists.map((playlist) => {
+    let width;
+    let height;
+    let bandwidth;
 
-  stableSort(sortedPlaylists, comparePlaylistBandwidth);
+    if (playlist.attributes) {
+      width = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.width;
+      height = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.height;
+      bandwidth = playlist.attributes.BANDWIDTH;
+    }
+
+    bandwidth = bandwidth || window.Number.MAX_VALUE;
+
+    return {
+      bandwidth,
+      width,
+      height,
+      playlist
+    };
+  });
+
+  stableSort(sortedPlaylistReps, (left, right) => left.bandwidth - right.bandwidth);
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
-  sortedPlaylists = sortedPlaylists.filter(Playlist.isEnabled);
+  sortedPlaylistReps = sortedPlaylistReps.filter(
+    (rep) => Playlist.isEnabled(rep.playlist)
+  );
+
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
-  bandwidthPlaylists = sortedPlaylists.filter(function(elem) {
-    return elem.attributes &&
-           elem.attributes.BANDWIDTH &&
-           elem.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE < bandwidth;
-  });
+  let bandwidthPlaylistReps = sortedPlaylistReps.filter(
+    (rep) => rep.bandwidth * Config.BANDWIDTH_VARIANCE < playerBandwidth
+  );
+
+  let highestRemainingBandwidthRep =
+    bandwidthPlaylistReps[bandwidthPlaylistReps.length - 1];
 
   // get all of the renditions with the same (highest) bandwidth
   // and then taking the very first element
-  bandwidthBestVariant = bandwidthPlaylists.filter(function(elem) {
-    return elem.attributes.BANDWIDTH === bandwidthPlaylists[bandwidthPlaylists.length - 1].attributes.BANDWIDTH;
-  })[0];
-
-  // sort variants by resolution
-  stableSort(bandwidthPlaylists, comparePlaylistResolution);
+  let bandwidthBestRep = bandwidthPlaylistReps.filter(
+    (rep) => rep.bandwidth === highestRemainingBandwidthRep.bandwidth
+  )[0];
 
   // filter out playlists without resolution information
-  haveResolution = bandwidthPlaylists.filter(function(elem) {
-    return elem.attributes &&
-           elem.attributes.RESOLUTION &&
-           elem.attributes.RESOLUTION.width &&
-           elem.attributes.RESOLUTION.height;
-  });
+  let haveResolution = bandwidthPlaylistReps.filter((rep) => rep.width && rep.height);
+
+  // sort variants by resolution
+  stableSort(haveResolution, (left, right) => left.width - right.width);
 
   // if we have the exact resolution as the player use it
-  resolutionBestVariantList = haveResolution.filter(function(elem) {
-    return elem.attributes.RESOLUTION.width === width &&
-           elem.attributes.RESOLUTION.height === height;
-  });
+  let resolutionBestRepList = haveResolution.filter(
+    (rep) => rep.width === playerWidth && rep.height === playerHeight
+  );
+
+  highestRemainingBandwidthRep = resolutionBestRepList[resolutionBestRepList.length - 1];
   // ensure that we pick the highest bandwidth variant that have exact resolution
-  resolutionBestVariant = resolutionBestVariantList.filter(function(elem) {
-    return elem.attributes.BANDWIDTH === resolutionBestVariantList[resolutionBestVariantList.length - 1].attributes.BANDWIDTH;
-  })[0];
+  let resolutionBestRep = resolutionBestRepList.filter(
+    (rep) => rep.bandwidth === highestRemainingBandwidthRep.bandwidth
+  )[0];
+
+  let resolutionPlusOneList;
+  let resolutionPlusOneSmallest;
+  let resolutionPlusOneRep;
 
   // find the smallest variant that is larger than the player
   // if there is no match of exact resolution
-  if (!resolutionBestVariant) {
-    resolutionPlusOneList = haveResolution.filter(function(elem) {
-      return elem.attributes.RESOLUTION.width > width ||
-             elem.attributes.RESOLUTION.height > height;
-    });
+  if (!resolutionBestRep) {
+    resolutionPlusOneList = haveResolution.filter(
+      (rep) => rep.width > playerWidth || rep.height > playerHeight
+    );
+
     // find all the variants have the same smallest resolution
-    resolutionPlusOneSmallest = resolutionPlusOneList.filter(function(elem) {
-      return elem.attributes.RESOLUTION.width === resolutionPlusOneList[0].attributes.RESOLUTION.width &&
-             elem.attributes.RESOLUTION.height === resolutionPlusOneList[0].attributes.RESOLUTION.height;
-    });
+    resolutionPlusOneSmallest = resolutionPlusOneList.filter(
+      (rep) => rep.width === resolutionPlusOneList[0].width &&
+               rep.height === resolutionPlusOneList[0].height
+    );
+
     // ensure that we also pick the highest bandwidth variant that
     // is just-larger-than the video player
-    resolutionPlusOne = resolutionPlusOneSmallest.filter(function(elem) {
-      return elem.attributes.BANDWIDTH === resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1].attributes.BANDWIDTH;
-    })[0];
+    highestRemainingBandwidthRep =
+      resolutionPlusOneSmallest[resolutionPlusOneSmallest.length - 1];
+    resolutionPlusOneRep = resolutionPlusOneSmallest.filter(
+      (rep) => rep.bandwidth === highestRemainingBandwidthRep.bandwidth
+    )[0];
   }
 
   // fallback chain of variants
-  return resolutionPlusOne ||
-    resolutionBestVariant ||
-    bandwidthBestVariant ||
-    sortedPlaylists[0];
+  return (
+    resolutionPlusOneRep ||
+    resolutionBestRep ||
+    bandwidthBestRep ||
+    sortedPlaylistReps[0]
+  ).playlist;
 };
 
 // Playlist Selectors
@@ -241,4 +277,82 @@ export const movingAverageBandwidthSelector = function(decay) {
                           parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10),
                           parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
   };
+};
+
+/**
+ * Chooses the appropriate media playlist based on the potential to rebuffer
+ *
+ * @param {Object} settings
+ *        Object of information required to use this selector
+ * @param {Object} settings.master
+ *        Object representation of the master manifest
+ * @param {Number} settings.currentTime
+ *        The current time of the player
+ * @param {Number} settings.bandwidth
+ *        Current measured bandwidth
+ * @param {Number} settings.duration
+ *        Duration of the media
+ * @param {Number} settings.segmentDuration
+ *        Segment duration to be used in round trip time calculations
+ * @param {Number} settings.timeUntilRebuffer
+ *        Time left in seconds until the player has to rebuffer
+ * @param {Number} settings.currentTimeline
+ *        The current timeline segments are being loaded from
+ * @param {SyncController} settings.syncController
+ *        SyncController for determining if we have a sync point for a given playlist
+ * @return {Object|null}
+ *         {Object} return.playlist
+ *         The highest bandwidth playlist with the least amount of rebuffering
+ *         {Number} return.rebufferingImpact
+ *         The amount of time in seconds switching to this playlist will rebuffer. A
+ *         negative value means that switching will cause zero rebuffering.
+ */
+export const minRebufferMaxBandwidthSelector = function(settings) {
+  const {
+    master,
+    currentTime,
+    bandwidth,
+    duration,
+    segmentDuration,
+    timeUntilRebuffer,
+    currentTimeline,
+    syncController
+  } = settings;
+
+  const bandwidthPlaylists =
+    master.playlists.filter(Playlist.hasAttribute.bind(null, 'BANDWIDTH'));
+
+  const rebufferingEstimates = bandwidthPlaylists.map((playlist) => {
+    const syncPoint = syncController.getSyncPoint(playlist,
+                                                  duration,
+                                                  currentTimeline,
+                                                  currentTime);
+    // If there is no sync point for this playlist, switching to it will require a
+    // sync request first. This will double the request time
+    const numRequests = syncPoint ? 1 : 2;
+    const requestTimeEstimate = Playlist.estimateSegmentRequestTime(segmentDuration,
+                                                                    bandwidth,
+                                                                    playlist);
+    const rebufferingImpact = (requestTimeEstimate * numRequests) - timeUntilRebuffer;
+
+    return {
+      playlist,
+      rebufferingImpact
+    };
+  });
+
+  const noRebufferingPlaylists = rebufferingEstimates.filter(
+    (estimate) => estimate.rebufferingImpact <= 0);
+
+  // Sort by bandwidth DESC
+  stableSort(noRebufferingPlaylists,
+    (a, b) => comparePlaylistBandwidth(b.playlist, a.playlist));
+
+  if (noRebufferingPlaylists.length) {
+    return noRebufferingPlaylists[0];
+  }
+
+  stableSort(rebufferingEstimates, (a, b) => a.rebufferingImpact - b.rebufferingImpact);
+
+  return rebufferingEstimates[0] || null;
 };

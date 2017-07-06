@@ -25,6 +25,11 @@ import {
   comparePlaylistResolution
 } from './playlist-selectors.js';
 
+// 0.5 MB/s
+const INITIAL_BANDWIDTH_DESKTOP = 4194304;
+// 0.0625 MB/s
+const INITIAL_BANDWIDTH_MOBILE = 500000;
+
 const Hls = {
   PlaylistLoader,
   Playlist,
@@ -40,40 +45,32 @@ const Hls = {
   xhr: xhrFactory()
 };
 
-Object.defineProperty(Hls, 'GOAL_BUFFER_LENGTH', {
-  get() {
-    videojs.log.warn('using Hls.GOAL_BUFFER_LENGTH is UNSAFE be sure ' +
-                     'you know what you are doing');
-    return Config.GOAL_BUFFER_LENGTH;
-  },
-  set(v) {
-    videojs.log.warn('using Hls.GOAL_BUFFER_LENGTH is UNSAFE be sure ' +
-                     'you know what you are doing');
-    if (typeof v !== 'number' || v <= 0) {
-      videojs.log.warn('value passed to Hls.GOAL_BUFFER_LENGTH ' +
-                       'must be a number and greater than 0');
-      return;
-    }
-    Config.GOAL_BUFFER_LENGTH = v;
-  }
-});
+// Define getter/setters for config properites
+[
+  'GOAL_BUFFER_LENGTH',
+  'MAX_GOAL_BUFFER_LENGTH',
+  'GOAL_BUFFER_LENGTH_RATE',
+  'BUFFER_LOW_WATER_LINE',
+  'MAX_BUFFER_LOW_WATER_LINE',
+  'BUFFER_LOW_WATER_LINE_RATE',
+  'BANDWIDTH_VARIANCE'
+].forEach((prop) => {
+  Object.defineProperty(Hls, prop, {
+    get() {
+      videojs.log.warn(`using Hls.${prop} is UNSAFE be sure you know what you are doing`);
+      return Config[prop];
+    },
+    set(value) {
+      videojs.log.warn(`using Hls.${prop} is UNSAFE be sure you know what you are doing`);
 
-Object.defineProperty(Hls, 'BANDWIDTH_VARIANCE', {
-  get() {
-    videojs.log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    return Config.BANDWIDTH_VARIANCE;
-  },
-  set(v) {
-    videojs.log.warn('using Hls.BANDWIDTH_VARIANCE is UNSAFE be sure ' +
-                     'you know what you are doing');
-    if (typeof v !== 'number' || v <= 0) {
-      videojs.log.warn('value passed to Hls.BANDWIDTH_VARIANCE ' +
-                       'must be a number and greater than 0');
-      return;
+      if (typeof value !== 'number' || value < 0) {
+        videojs.log.warn(`value of Hls.${prop} must be greater than or equal to 0`);
+        return;
+      }
+
+      Config[prop] = value;
     }
-    Config.BANDWIDTH_VARIANCE = v;
-  }
+  });
 });
 
 /**
@@ -280,10 +277,12 @@ class HlsHandler extends Component {
     }
 
     // start playlist selection at a reasonable bandwidth for
-    // broadband internet
-    // 0.5 MB/s
+    // broadband internet (0.5 MB/s) or mobile (0.0625 MB/s)
     if (typeof this.options_.bandwidth !== 'number') {
-      this.options_.bandwidth = 4194304;
+      // only use Android for mobile because iOS does not support MSE (and uses
+      // native HLS)
+      this.options_.bandwidth =
+        videojs.browser.IS_ANDROID ? INITIAL_BANDWIDTH_MOBILE : INITIAL_BANDWIDTH_DESKTOP;
     }
 
     // grab options passed to player.src

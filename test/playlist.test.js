@@ -633,6 +633,59 @@ QUnit.test('seekable and playlistEnd use available sync points for calculating',
     assert.equal(playlistEnd, 148.5, 'playlist end at the last segment end');
   });
 
+QUnit.module('Playlist hasAttribute');
+
+QUnit.test('correctly checks for existence of playlist attribute', function(assert) {
+  const playlist = {};
+
+  assert.notOk(Playlist.hasAttribute('BANDWIDTH', playlist),
+    'false for playlist with no attributes property');
+
+  playlist.attributes = {};
+
+  assert.notOk(Playlist.hasAttribute('BANDWIDTH', playlist),
+    'false for playlist with without specified attribute');
+
+  playlist.attributes.BANDWIDTH = 100;
+
+  assert.ok(Playlist.hasAttribute('BANDWIDTH', playlist),
+    'true for playlist with specified attribute');
+});
+
+QUnit.module('Playlist estimateSegmentRequestTime');
+
+QUnit.test('estimates segment request time based on bandwidth', function(assert) {
+  let segmentDuration = 10;
+  let bandwidth = 100;
+  let playlist = { attributes: { } };
+  let bytesReceived = 0;
+
+  let estimate = Playlist.estimateSegmentRequestTime(segmentDuration,
+                                                     bandwidth,
+                                                     playlist,
+                                                     bytesReceived);
+
+  assert.ok(isNaN(estimate), 'returns NaN when no BANDWIDTH information on playlist');
+
+  playlist.attributes.BANDWIDTH = 100;
+
+  estimate = Playlist.estimateSegmentRequestTime(segmentDuration,
+                                                 bandwidth,
+                                                 playlist,
+                                                 bytesReceived);
+
+  assert.equal(estimate, 10, 'calculated estimated download time');
+
+  bytesReceived = 25;
+
+  estimate = Playlist.estimateSegmentRequestTime(segmentDuration,
+                                                 bandwidth,
+                                                 playlist,
+                                                 bytesReceived);
+
+  assert.equal(estimate, 8, 'takes into account bytes already received from download');
+});
+
 QUnit.module('Playlist isAes and isFmp4', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
@@ -720,15 +773,15 @@ function(assert) {
 
   media = loader.media();
 
-  assert.equal(Playlist.getMediaInfoForTime_(media, -1, 0, 0).mediaIndex, 0,
+  assert.equal(Playlist.getMediaInfoForTime(media, -1, 0, 0).mediaIndex, 0,
               'the index is never less than zero');
-  assert.equal(Playlist.getMediaInfoForTime_(media, 0, 0, 0).mediaIndex, 0,
+  assert.equal(Playlist.getMediaInfoForTime(media, 0, 0, 0).mediaIndex, 0,
     'time zero is index zero');
-  assert.equal(Playlist.getMediaInfoForTime_(media, 3, 0, 0).mediaIndex, 0,
+  assert.equal(Playlist.getMediaInfoForTime(media, 3, 0, 0).mediaIndex, 0,
     'time three is index zero');
-  assert.equal(Playlist.getMediaInfoForTime_(media, 10, 0, 0).mediaIndex, 2,
+  assert.equal(Playlist.getMediaInfoForTime(media, 10, 0, 0).mediaIndex, 2,
     'time 10 is index 2');
-  assert.equal(Playlist.getMediaInfoForTime_(media, 22, 0, 0).mediaIndex, 2,
+  assert.equal(Playlist.getMediaInfoForTime(media, 22, 0, 0).mediaIndex, 2,
               'time greater than the length is index 2');
 });
 
@@ -751,11 +804,11 @@ function(assert) {
 
   media = loader.media();
 
-  assert.equal(Playlist.getMediaInfoForTime_(media, 4, 0, 0).mediaIndex, 0,
+  assert.equal(Playlist.getMediaInfoForTime(media, 4, 0, 0).mediaIndex, 0,
     'rounds down exact matches');
-  assert.equal(Playlist.getMediaInfoForTime_(media, 3.7, 0, 0).mediaIndex, 0,
+  assert.equal(Playlist.getMediaInfoForTime(media, 3.7, 0, 0).mediaIndex, 0,
     'rounds down');
-  assert.equal(Playlist.getMediaInfoForTime_(media, 4.5, 0, 0).mediaIndex, 1,
+  assert.equal(Playlist.getMediaInfoForTime(media, 4.5, 0, 0).mediaIndex, 1,
     'rounds up at 0.5');
 });
 
@@ -779,58 +832,58 @@ function(assert) {
   media = loader.media();
 
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 45, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 45, 0, 150).mediaIndex,
     0,
     'expired content returns 0 for earliest segment available'
   );
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 75, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 75, 0, 150).mediaIndex,
     0,
     'expired content returns 0 for earliest segment available'
   );
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 0, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 0, 0, 150).mediaIndex,
     0,
     'time of 0 with no expired time returns first segment'
   );
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 50 + 100, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 50 + 100, 0, 150).mediaIndex,
     0,
     'calculates the earliest available position'
   );
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 50 + 100 + 2, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 50 + 100 + 2, 0, 150).mediaIndex,
     0,
     'calculates within the first segment'
   );
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 50 + 100 + 2, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 50 + 100 + 2, 0, 150).mediaIndex,
     0,
     'calculates within the first segment'
   );
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 50 + 100 + 4, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 50 + 100 + 4, 0, 150).mediaIndex,
     0,
     'calculates earlier segment on exact boundary match'
   );
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 50 + 100 + 4.5, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 50 + 100 + 4.5, 0, 150).mediaIndex,
     1,
     'calculates within the second segment'
   );
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 50 + 100 + 6, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 50 + 100 + 6, 0, 150).mediaIndex,
     1,
     'calculates within the second segment'
   );
 
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 159, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 159, 0, 150).mediaIndex,
     1,
     'returns last segment when time is equal to end of last segment'
   );
   assert.equal(
-    Playlist.getMediaInfoForTime_(media, 160, 0, 150).mediaIndex,
+    Playlist.getMediaInfoForTime(media, 160, 0, 150).mediaIndex,
     1,
     'returns last segment when time is past end of last segment'
   );

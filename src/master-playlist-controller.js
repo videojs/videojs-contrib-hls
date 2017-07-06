@@ -11,6 +11,7 @@ import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
 import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
+import Config from './config';
 
 let Hls;
 
@@ -337,6 +338,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       seeking: () => this.tech_.seeking(),
       duration: () => this.mediaSource.duration,
       hasPlayed: () => this.hasPlayed_(),
+      goalBufferLength: () => this.goalBufferLength(),
       bandwidth,
       syncController: this.syncController_,
       decrypter: this.decrypter_
@@ -600,9 +602,30 @@ export class MasterPlaylistController extends videojs.EventTarget {
    */
   setupSegmentLoaderListeners_() {
     this.mainSegmentLoader_.on('bandwidthupdate', () => {
-      // figure out what stream the next segment should be downloaded from
-      // with the updated bandwidth information
-      this.masterPlaylistLoader_.media(this.selectPlaylist());
+      const nextPlaylist = this.selectPlaylist();
+      const currentPlaylist = this.masterPlaylistLoader_.media();
+      const buffered = this.tech_.buffered();
+      const forwardBuffer = buffered.length ?
+        buffered.end(buffered.length - 1) - this.tech_.currentTime() : 0;
+
+      const bufferLowWaterLine = this.bufferLowWaterLine();
+
+      // If the playlist is live, then we want to not take low water line into account.
+      // This is because in LIVE, the player plays 3 segments from the end of the
+      // playlist, and if `BUFFER_LOW_WATER_LINE` is greater than the duration availble
+      // in those segments, a viewer will never experience a rendition upswitch.
+      if (!currentPlaylist.endList ||
+          // For the same reason as LIVE, we ignore the low water line when the VOD
+          // duration is below the max potential low water line
+          this.duration() < Config.MAX_BUFFER_LOW_WATER_LINE ||
+          // we want to switch down to lower resolutions quickly to continue playback, but
+          nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH ||
+          // ensure we have some buffer before we switch up to prevent us running out of
+          // buffer while loading a higher rendition.
+          forwardBuffer >= bufferLowWaterLine) {
+        this.masterPlaylistLoader_.media(nextPlaylist);
+      }
+
       this.tech_.trigger('bandwidthupdate');
     });
     this.mainSegmentLoader_.on('progress', () => {
@@ -1644,5 +1667,33 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     AdCueTags.updateAdCues(media, this.cueTagsTrack_, offset);
+  }
+
+  /**
+   * Calculates the desired forward buffer length based on current time
+   *
+   * @return {Number} Desired forward buffer length in seconds
+   */
+  goalBufferLength() {
+    const currentTime = this.tech_.currentTime();
+    const initial = Config.GOAL_BUFFER_LENGTH;
+    const rate = Config.GOAL_BUFFER_LENGTH_RATE;
+    const max = Math.max(initial, Config.MAX_GOAL_BUFFER_LENGTH);
+
+    return Math.min(initial + currentTime * rate, max);
+  }
+
+  /**
+   * Calculates the desired buffer low water line based on current time
+   *
+   * @return {Number} Desired buffer low water line in seconds
+   */
+  bufferLowWaterLine() {
+    const currentTime = this.tech_.currentTime();
+    const initial = Config.BUFFER_LOW_WATER_LINE;
+    const rate = Config.BUFFER_LOW_WATER_LINE_RATE;
+    const max = Math.max(initial, Config.MAX_BUFFER_LOW_WATER_LINE);
+
+    return Math.min(initial + currentTime * rate, max);
   }
 }
