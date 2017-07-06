@@ -30,6 +30,8 @@ const options = [{
   alt: 555
 }];
 
+const CONFIG_KEYS = Object.keys(Config);
+
 QUnit.module('Configuration - Deprication', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
@@ -37,24 +39,16 @@ QUnit.module('Configuration - Deprication', {
     this.mse = useFakeMediaSource();
     this.clock = this.env.clock;
     this.old = {};
-    this.old.GOAL_BUFFER_LENGTH = Config.GOAL_BUFFER_LENGTH;
-    this.old.MAX_GOAL_BUFFER_LENGTH = Config.MAX_GOAL_BUFFER_LENGTH;
-    this.old.GOAL_BUFFER_LENGTH_RATE = Config.GOAL_BUFFER_LENGTH_RATE;
-    this.old.BUFFER_LOW_WATER_LINE = Config.BUFFER_LOW_WATER_LINE;
-    this.old.MAX_BUFFER_LOW_WATER_LINE = Config.MAX_BUFFER_LOW_WATER_LINE;
-    this.old.BUFFER_LOW_WATER_LINE_RATE = Config.BUFFER_LOW_WATER_LINE_RATE;
+
+    CONFIG_KEYS.forEach((key) => this.old[key] = Config[key]);
+
     // force the HLS tech to run
     this.old.NativeHlsSupport = videojs.Hls.supportsNativeHls;
     videojs.Hls.supportsNativeHls = false;
   },
 
   afterEach() {
-    Config.GOAL_BUFFER_LENGTH = this.old.GOAL_BUFFER_LENGTH;
-    Config.MAX_GOAL_BUFFER_LENGTH = this.old.MAX_GOAL_BUFFER_LENGTH;
-    Config.GOAL_BUFFER_LENGTH_RATE = this.old.GOAL_BUFFER_LENGTH_RATE;
-    Config.BUFFER_LOW_WATER_LINE = this.old.BUFFER_LOW_WATER_LINE;
-    Config.MAX_BUFFER_LOW_WATER_LINE = this.old.MAX_BUFFER_LOW_WATER_LINE;
-    Config.BUFFER_LOW_WATER_LINE_RATE = this.old.BUFFER_LOW_WATER_LINE_RATE;
+    CONFIG_KEYS.forEach((key) => Config[key] = this.old[key]);
 
     this.env.restore();
     this.mse.restore();

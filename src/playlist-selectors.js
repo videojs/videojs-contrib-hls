@@ -345,7 +345,8 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
     (estimate) => estimate.rebufferingImpact <= 0);
 
   // Sort by bandwidth DESC
-  stableSort(noRebufferingPlaylists, (a, b) => comparePlaylistBandwidth(b, a));
+  stableSort(noRebufferingPlaylists,
+    (a, b) => comparePlaylistBandwidth(b.playlist, a.playlist));
 
   if (noRebufferingPlaylists.length) {
     return noRebufferingPlaylists[0];

@@ -1,44 +1,53 @@
 import { module, test } from 'qunit';
-import { movingAverageBandwidthSelector } from '../src/playlist-selectors';
+import {
+  movingAverageBandwidthSelector,
+  minRebufferMaxBandwidthSelector
+} from '../src/playlist-selectors';
 import Config from '../src/config';
 
-const video = document.createElement('video');
-const hls = {
-  tech_: {
-    el() {
-      return video;
-    }
-  },
-  playlists: {
-    master: {
-      playlists: []
-    }
-  }
-};
+module('Playlist Selectors', {
+  beforeEach(assert) {
+    const video = document.createElement('video');
 
-module('Playlist Selectors');
+    this.hls = {
+      tech_: {
+        el() {
+          return video;
+        }
+      },
+      playlists: {
+        master: {
+          playlists: []
+        }
+      }
+    };
+  },
+  afterEach() {
+
+  }
+});
 
 test('Exponential moving average has a configurable decay parameter', function(assert) {
   let playlist;
   const instantAverage = movingAverageBandwidthSelector(1.0);
 
-  hls.playlists.master.playlists = [
+  this.hls.playlists.master.playlists = [
     { attributes: { BANDWIDTH: 1 } },
     { attributes: { BANDWIDTH: 50 } },
     { attributes: { BANDWIDTH: 100 } }
   ];
-  hls.systemBandwidth = 50 * Config.BANDWIDTH_VARIANCE + 1;
-  playlist = instantAverage.call(hls);
+  this.hls.systemBandwidth = 50 * Config.BANDWIDTH_VARIANCE + 1;
+  playlist = instantAverage.call(this.hls);
   assert.equal(playlist.attributes.BANDWIDTH, 50, 'selected the middle playlist');
 
-  hls.systemBandwidth = 100 * Config.BANDWIDTH_VARIANCE + 1;
-  playlist = instantAverage.call(hls);
+  this.hls.systemBandwidth = 100 * Config.BANDWIDTH_VARIANCE + 1;
+  playlist = instantAverage.call(this.hls);
   assert.equal(playlist.attributes.BANDWIDTH, 100, 'selected the top playlist');
 
   const fiftyPercentDecay = movingAverageBandwidthSelector(0.5);
 
-  hls.systemBandwidth = 100 * Config.BANDWIDTH_VARIANCE + 1;
-  playlist = fiftyPercentDecay.call(hls);
+  this.hls.systemBandwidth = 100 * Config.BANDWIDTH_VARIANCE + 1;
+  playlist = fiftyPercentDecay.call(this.hls);
   assert.equal(playlist.attributes.BANDWIDTH, 100, 'selected the top playlist');
 
   // average = decay * systemBandwidth + (1 - decay) * average
@@ -47,7 +56,68 @@ test('Exponential moving average has a configurable decay parameter', function(a
   // 2 * 50 * variance + 2 = systemBandwidth + (100 * variance + 1)
   // 100 * variance + 2 - (100 * variance + 1) = systemBandwidth
   // 1 = systemBandwidth
-  hls.systemBandwidth = 1;
-  playlist = fiftyPercentDecay.call(hls);
+  this.hls.systemBandwidth = 1;
+  playlist = fiftyPercentDecay.call(this.hls);
   assert.equal(playlist.attributes.BANDWIDTH, 50, 'selected the middle playlist');
+});
+
+test('minRebufferMaxBandwidthSelector picks highest rendition without rebuffering',
+function(assert) {
+  let master = this.hls.playlists.master;
+  let currentTime = 0;
+  let bandwidth = 2000;
+  let duration = 100;
+  let segmentDuration = 10;
+  let timeUntilRebuffer = 5;
+  let currentTimeline = 0;
+  let syncController = {
+    getSyncPoint: (playlist) => playlist.syncPoint
+  };
+
+  const settings = () => {
+    return {
+      master,
+      currentTime,
+      bandwidth,
+      duration,
+      segmentDuration,
+      timeUntilRebuffer,
+      currentTimeline,
+      syncController
+    };
+  };
+
+  master.playlists = [
+    { attributes: { BANDWIDTH: 100 }, syncPoint: false },
+    { attributes: { BANDWIDTH: 500 }, syncPoint: false },
+    { attributes: { BANDWIDTH: 1000 }, syncPoint: false },
+    { attributes: { BANDWIDTH: 2000 }, syncPoint: true },
+    { attributes: { BANDWIDTH: 5000 }, syncPoint: false }
+  ];
+
+  let result = minRebufferMaxBandwidthSelector(settings());
+
+  assert.equal(result.playlist, master.playlists[1], 'selected the correct playlist');
+  assert.equal(result.rebufferingImpact, 0, 'impact on rebuffering is 0');
+
+  master.playlists = [
+    { attributes: { BANDWIDTH: 100 }, syncPoint: false },
+    { attributes: { BANDWIDTH: 500 }, syncPoint: false },
+    { attributes: { BANDWIDTH: 1000 }, syncPoint: true },
+    { attributes: { BANDWIDTH: 2000 }, syncPoint: true },
+    { attributes: { BANDWIDTH: 5000 }, syncPoint: false }
+  ];
+
+  result = minRebufferMaxBandwidthSelector(settings());
+
+  assert.equal(result.playlist, master.playlists[2], 'selected the corerct playlist');
+  assert.equal(result.rebufferingImpact, 0, 'impact on rebuffering is 0');
+
+  bandwidth = 500;
+  timeUntilRebuffer = 3;
+
+  result = minRebufferMaxBandwidthSelector(settings());
+
+  assert.equal(result.playlist, master.playlists[0], 'selected the correct playlist');
+  assert.equal(result.rebufferingImpact, 1, 'impact on rebuffering is 1 second');
 });

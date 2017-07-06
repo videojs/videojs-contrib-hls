@@ -297,6 +297,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
         timeout: 15000
       };
       let bandwidthupdates = 0;
+      let firstProgress = false;
 
       playlist1.attributes.BANDWIDTH = 18000;
       playlist2.attributes.BANDWIDTH = 10000;
@@ -312,6 +313,17 @@ export const LoaderCommonFactory = (LoaderConstructor,
             playlist4
           ]
         }
+      };
+
+      const oldHandleProgress = loader.handleProgress_.bind(loader);
+
+      loader.handleProgress_ = (event, simpleSegment) => {
+        if (!firstProgress) {
+          firstProgress = true;
+          assert.equal(simpleSegment.stats.firstBytesReceivedAt, Date.now(),
+            'firstBytesReceivedAt timestamp added on first progress event with bytes');
+        }
+        oldHandleProgress(event, simpleSegment);
       };
 
       loader.on('bandwidthupdate', () => bandwidthupdates++);

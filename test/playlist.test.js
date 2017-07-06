@@ -633,6 +633,59 @@ QUnit.test('seekable and playlistEnd use available sync points for calculating',
     assert.equal(playlistEnd, 148.5, 'playlist end at the last segment end');
   });
 
+QUnit.module('Playlist hasAttribute');
+
+QUnit.test('correctly checks for existence of playlist attribute', function(assert) {
+  const playlist = {};
+
+  assert.notOk(Playlist.hasAttribute('BANDWIDTH', playlist),
+    'false for playlist with no attributes property');
+
+  playlist.attributes = {};
+
+  assert.notOk(Playlist.hasAttribute('BANDWIDTH', playlist),
+    'false for playlist with without specified attribute');
+
+  playlist.attributes.BANDWIDTH = 100;
+
+  assert.ok(Playlist.hasAttribute('BANDWIDTH', playlist),
+    'true for playlist with specified attribute');
+});
+
+QUnit.module('Playlist estimateSegmentRequestTime');
+
+QUnit.test('estimates segment request time based on bandwidth', function(assert) {
+  let segmentDuration = 10;
+  let bandwidth = 100;
+  let playlist = { attributes: { } };
+  let bytesReceived = 0;
+
+  let estimate = Playlist.estimateSegmentRequestTime(segmentDuration,
+                                                     bandwidth,
+                                                     playlist,
+                                                     bytesReceived);
+
+  assert.ok(isNaN(estimate), 'returns NaN when no BANDWIDTH information on playlist');
+
+  playlist.attributes.BANDWIDTH = 100;
+
+  estimate = Playlist.estimateSegmentRequestTime(segmentDuration,
+                                                 bandwidth,
+                                                 playlist,
+                                                 bytesReceived);
+
+  assert.equal(estimate, 10, 'calculated estimated download time');
+
+  bytesReceived = 25;
+
+  estimate = Playlist.estimateSegmentRequestTime(segmentDuration,
+                                                 bandwidth,
+                                                 playlist,
+                                                 bytesReceived);
+
+  assert.equal(estimate, 8, 'takes into account bytes already received from download');
+});
+
 QUnit.module('Playlist isAes and isFmp4', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);

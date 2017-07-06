@@ -18,6 +18,7 @@ import {
 import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
+import Config from '../src/config';
 
 const generateMedia = function(isMaat, isMuxed, hasVideoCodec, hasAudioCodec, isFMP4) {
   const codec = (hasVideoCodec ? 'avc1.deadbeef' : '') +
@@ -891,9 +892,11 @@ function(assert) {
   let mediaChanges = [];
   let currentTime = 0;
   let endList = true;
+  let duration = 100;
 
   this.masterPlaylistController.tech_.currentTime = () => currentTime;
   this.masterPlaylistController.tech_.buffered = () => videojs.createTimeRanges(buffered);
+  this.masterPlaylistController.duration = () => duration;
   this.masterPlaylistController.selectPlaylist = () => {
     return {
       attributes: {
@@ -951,10 +954,16 @@ function(assert) {
                0,
                'did not change media when insufficient forward buffer and higher ' +
                'bandwidth playlist');
-  buffered = [[0, 21]];
+  buffered = [[0, 20]];
   this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
   assert.equal(mediaChanges.length,
                1,
+               'changes media when sufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 21]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
                'changes media when sufficient forward buffer and higher ' +
                'bandwidth playlist');
 
@@ -1026,6 +1035,23 @@ function(assert) {
                3,
                'changes live media when sufficient forward buffer and higher ' +
                'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  endList = true;
+  currentTime = 9;
+  duration = 18;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when no buffer and duration less than low water line');
+  buffered = [[0, 10]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes media when insufficient forward buffer and duration ' +
+               'less than low water line');
 });
 
 QUnit.test('updates the duration after switching playlists', function(assert) {
@@ -2027,6 +2053,75 @@ QUnit.test('sets up subtitles', function(assert) {
                'removed subtitle playlist loader');
   assert.ok(masterPlaylistController.subtitleSegmentLoader_,
             'did not remove subtitle segment loader');
+});
+
+QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {
+  const configOld = {
+    GOAL_BUFFER_LENGTH: Config.GOAL_BUFFER_LENGTH,
+    MAX_GOAL_BUFFER_LENGTH: Config.MAX_GOAL_BUFFER_LENGTH,
+    GOAL_BUFFER_LENGTH_RATE: Config.GOAL_BUFFER_LENGTH_RATE
+  };
+  const mpc = this.masterPlaylistController;
+
+  let currentTime = 0;
+
+  Config.GOAL_BUFFER_LENGTH = 30;
+  Config.MAX_GOAL_BUFFER_LENGTH = 60;
+  Config.GOAL_BUFFER_LENGTH_RATE = 0.5;
+
+  mpc.tech_.currentTime = () => currentTime;
+
+  assert.equal(mpc.goalBufferLength(), 30, 'dynamic GBL uses starting value at time 0');
+
+  currentTime = 10;
+
+  assert.equal(mpc.goalBufferLength(), 35, 'dynamic GBL increases by currentTime * rate');
+
+  currentTime = 60;
+
+  assert.equal(mpc.goalBufferLength(), 60, 'dynamic GBL uses max value');
+
+  currentTime = 70;
+
+  assert.equal(mpc.goalBufferLength(), 60, 'dynamic GBL continues to use max value');
+
+  // restore config
+  Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);
+});
+
+QUnit.test('calculates dynamic BUFFER_LOW_WATER_LINE', function(assert) {
+  const configOld = {
+    BUFFER_LOW_WATER_LINE: Config.BUFFER_LOW_WATER_LINE,
+    MAX_BUFFER_LOW_WATER_LINE: Config.MAX_BUFFER_LOW_WATER_LINE,
+    BUFFER_LOW_WATER_LINE_RATE: Config.BUFFER_LOW_WATER_LINE_RATE
+  };
+  const mpc = this.masterPlaylistController;
+
+  let currentTime = 0;
+
+  Config.BUFFER_LOW_WATER_LINE = 0;
+  Config.MAX_BUFFER_LOW_WATER_LINE = 30;
+  Config.BUFFER_LOW_WATER_LINE_RATE = 0.5;
+
+  mpc.tech_.currentTime = () => currentTime;
+
+  assert.equal(mpc.bufferLowWaterLine(), 0, 'dynamic BLWL uses starting value at time 0');
+
+  currentTime = 10;
+
+  assert.equal(mpc.bufferLowWaterLine(), 5,
+    'dynamic BLWL increases by currentTime * rate');
+
+  currentTime = 60;
+
+  assert.equal(mpc.bufferLowWaterLine(), 30, 'dynamic BLWL uses max value');
+
+  currentTime = 70;
+
+  assert.equal(mpc.bufferLowWaterLine(), 30, 'dynamic BLWL continues to use max value');
+
+  // restore config
+  Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);
 });
 
 QUnit.module('Codec to MIME Type Conversion');
