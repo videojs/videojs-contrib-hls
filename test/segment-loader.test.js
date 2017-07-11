@@ -24,7 +24,9 @@ QUnit.module('SegmentLoader', function(hooks) {
   hooks.beforeEach(LoaderCommonHooks.beforeEach);
   hooks.afterEach(LoaderCommonHooks.afterEach);
 
-  LoaderCommonFactory(SegmentLoader, { loaderType: 'main' }, (loader) => loader.mimeType('video/mp2t'));
+  LoaderCommonFactory(SegmentLoader,
+                      { loaderType: 'main' },
+                      (loader) => loader.mimeType('video/mp2t'));
 
   // Tests specific to the main segment loader go in this module
   QUnit.module('Loader Main', function(nestedHooks) {
@@ -38,7 +40,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       loader = new SegmentLoader(LoaderCommonSettings.call(this, {
         loaderType: 'main',
         segmentMetadataTrack: this.segmentMetadataTrack
-      }));
+      }), {});
 
       // shim updateend trigger to be a noop if the loader has no media source
       this.updateend = function() {
@@ -52,7 +54,8 @@ QUnit.module('SegmentLoader', function(hooks) {
       this.startTime.restore();
     });
 
-    QUnit.test(`load waits until a playlist and mime type are specified to proceed`, function(assert) {
+    QUnit.test(`load waits until a playlist and mime type are specified to proceed`,
+    function(assert) {
       loader.load();
 
       assert.equal(loader.state, 'INIT', 'waiting in init');
@@ -131,8 +134,12 @@ QUnit.module('SegmentLoader', function(hooks) {
       this.requests.shift().respond(200, null, '');
 
       assert.equal(loader.sourceUpdater_.timestampOffset(), -11, 'set timestampOffset');
-      assert.equal(playlist.segments[0].start, 0, 'segment start time not shifted by mp4 start time');
-      assert.equal(playlist.segments[0].end, 10, 'segment end time not shifted by mp4 start time');
+      assert.equal(playlist.segments[0].start,
+                   0,
+                   'segment start time not shifted by mp4 start time');
+      assert.equal(playlist.segments[0].end,
+                   10,
+                   'segment end time not shifted by mp4 start time');
     });
 
     QUnit.test('triggers syncinfoupdate before attempting a resync', function(assert) {
@@ -188,6 +195,11 @@ QUnit.module('SegmentLoader', function(hooks) {
     QUnit.test('sets the timestampOffset on timeline change', function(assert) {
       let playlist = playlistWithDuration(40);
       let buffered = videojs.createTimeRanges();
+      let hlsTimestampOffsetEvents = 0;
+
+      loader.on('timestampoffset', () => {
+        hlsTimestampOffsetEvents++;
+      });
 
       loader.buffered_ = () => buffered;
 
@@ -205,14 +217,20 @@ QUnit.module('SegmentLoader', function(hooks) {
       this.updateend();
       this.clock.tick(1);
 
+      assert.equal(hlsTimestampOffsetEvents, 0,
+        'no hls-timestamp-offset event was fired');
       // segment 1, discontinuity
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
-      assert.equal(loader.mediaSource_.sourceBuffers[0].timestampOffset, 10, 'set timestampOffset');
+      assert.equal(loader.mediaSource_.sourceBuffers[0].timestampOffset,
+                   10,
+                   'set timestampOffset');
 
       // verify stats
       assert.equal(loader.mediaBytesTransferred, 20, '20 bytes');
       assert.equal(loader.mediaRequests, 2, '2 requests');
+      assert.equal(hlsTimestampOffsetEvents, 1,
+        'an hls-timestamp-offset event was fired');
     });
 
     QUnit.test('tracks segment end times as they are buffered', function(assert) {
@@ -240,10 +258,11 @@ QUnit.module('SegmentLoader', function(hooks) {
       assert.equal(loader.mediaRequests, 1, '1 request');
     });
 
-    QUnit.test('adds cues with segment information to the segment-metadata track as they are buffered',
+    QUnit.test('adds cues with segment information to the segment-metadata track ' +
+               'as they are buffered',
       function(assert) {
         const track = loader.segmentMetadataTrack_;
-        let playlist = playlistWithDuration(40);
+        let playlist = playlistWithDuration(50);
         let probeResponse;
         let expectedCue;
 
@@ -257,7 +276,8 @@ QUnit.module('SegmentLoader', function(hooks) {
         loader.load();
         this.clock.tick(1);
 
-        assert.ok(!track.cues.length, 'segment-metadata track empty when no segments appended');
+        assert.ok(!track.cues.length,
+                  'segment-metadata track empty when no segments appended');
 
         // Start appending some segments
         probeResponse = { start: 0, end: 9.5 };
@@ -317,6 +337,7 @@ QUnit.module('SegmentLoader', function(hooks) {
         this.requests[0].response = new Uint8Array(10).buffer;
         this.requests.shift().respond(200, null, '');
         this.updateend();
+        this.clock.tick(1);
         expectedCue = {
           uri: '3.ts',
           timeline: 0,
@@ -329,9 +350,18 @@ QUnit.module('SegmentLoader', function(hooks) {
         assert.deepEqual(track.cues[2].value, expectedCue,
           'added correct segment info to cue');
 
+        // does not add cue for invalid segment timing info
+        probeResponse = { start: 30, end: void 0 };
+        this.requests[0].response = new Uint8Array(10).buffer;
+        this.requests.shift().respond(200, null, '');
+        this.updateend();
+        this.clock.tick(1);
+
+        assert.equal(track.cues.length, 3, 'no cue added');
+
         // verify stats
-        assert.equal(loader.mediaBytesTransferred, 40, '40 bytes');
-        assert.equal(loader.mediaRequests, 4, '4 requests');
+        assert.equal(loader.mediaBytesTransferred, 50, '50 bytes');
+        assert.equal(loader.mediaRequests, 5, '5 requests');
       });
 
     QUnit.test('fires ended at the end of a playlist', function(assert) {
@@ -347,12 +377,10 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       loader.mediaSource_ = {
         readyState: 'open',
-        sourceBuffers: this.mediaSource.sourceBuffers,
-        endOfStream() {
-          endOfStreams++;
-          this.readyState = 'ended';
-        }
+        sourceBuffers: this.mediaSource.sourceBuffers
       };
+
+      loader.on('ended', () => endOfStreams++);
 
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
@@ -381,12 +409,10 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       loader.mediaSource_ = {
         readyState: 'open',
-        sourceBuffers: this.mediaSource.sourceBuffers,
-        endOfStream() {
-          endOfStreams++;
-          this.readyState = 'ended';
-        }
+        sourceBuffers: this.mediaSource.sourceBuffers
       };
+
+      loader.on('ended', () => endOfStreams++);
 
       loader.on('bandwidthupdate', () => {
         bandwidthupdates++;
@@ -425,11 +451,10 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       loader.mediaSource_ = {
         readyState: 'open',
-        sourceBuffers: this.mediaSource.sourceBuffers,
-        endOfStream() {
-          endOfStreams++;
-        }
+        sourceBuffers: this.mediaSource.sourceBuffers
       };
+
+      loader.on('ended', () => endOfStreams++);
 
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
@@ -460,7 +485,9 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       assert.equal(loader.state, 'WAITING', 'in waiting state');
       assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
-      assert.equal(loader.pendingSegment_.segment.uri, '0.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '0.ts',
+                   'correct segment reference');
 
       // wrap up the first request to set mediaIndex and start normal live streaming
       this.requests[0].response = new Uint8Array(10).buffer;
@@ -471,7 +498,9 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       assert.equal(loader.state, 'WAITING', 'in waiting state');
       assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
-      assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '1.ts',
+                   'correct segment reference');
 
       // playlist updated during waiting
       let playlistUpdated = playlistWithDuration(40);
@@ -481,7 +510,9 @@ QUnit.module('SegmentLoader', function(hooks) {
       loader.playlist(playlistUpdated);
 
       assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment still pending');
-      assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '1.ts',
+                   'correct segment reference');
 
       // mock probeSegmentInfo as the response bytes aren't parsable (and won't provide
       // time info)
@@ -499,11 +530,13 @@ QUnit.module('SegmentLoader', function(hooks) {
       assert.equal(playlistUpdated.segments[0].end,
                    20,
                    'set end on segment of new playlist');
-      assert.ok(!playlist.segments[1].start, 'did not set start on segment of old playlist');
+      assert.ok(!playlist.segments[1].start,
+                'did not set start on segment of old playlist');
       assert.ok(!playlist.segments[1].end, 'did not set end on segment of old playlist');
     });
 
-    QUnit.test('saves segment info to old segment after playlist refresh if segment fell off',
+    QUnit.test(
+      'saves segment info to old segment after playlist refresh if segment fell off',
     function(assert) {
       let playlist = playlistWithDuration(40);
       let buffered = videojs.createTimeRanges();
@@ -519,7 +552,9 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       assert.equal(loader.state, 'WAITING', 'in waiting state');
       assert.equal(loader.pendingSegment_.uri, '0.ts', 'first segment pending');
-      assert.equal(loader.pendingSegment_.segment.uri, '0.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '0.ts',
+                   'correct segment reference');
 
       // wrap up the first request to set mediaIndex and start normal live streaming
       this.requests[0].response = new Uint8Array(10).buffer;
@@ -530,7 +565,9 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       assert.equal(loader.state, 'WAITING', 'in waiting state');
       assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment pending');
-      assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '1.ts',
+                   'correct segment reference');
 
       // playlist updated during waiting
       let playlistUpdated = playlistWithDuration(40);
@@ -541,7 +578,9 @@ QUnit.module('SegmentLoader', function(hooks) {
       loader.playlist(playlistUpdated);
 
       assert.equal(loader.pendingSegment_.uri, '1.ts', 'second segment still pending');
-      assert.equal(loader.pendingSegment_.segment.uri, '1.ts', 'correct segment reference');
+      assert.equal(loader.pendingSegment_.segment.uri,
+                   '1.ts',
+                   'correct segment reference');
 
       // mock probeSegmentInfo as the response bytes aren't parsable (and won't provide
       // time info)

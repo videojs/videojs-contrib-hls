@@ -225,10 +225,10 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
  * @param {Object} playlist a media playlist object
  * @param {Number=} expired the amount of time that has
  *                  dropped off the front of the playlist in a live scenario
- * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the playlist
- *                        end calculation should consider the safe live end (truncate the playlist
- *                        end by three segments). This is normally used for calculating the end of
- *                        the playlist's seekable range.
+ * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the
+ *                        playlist end calculation should consider the safe live end
+ *                        (truncate the playlist end by three segments). This is normally
+ *                        used for calculating the end of the playlist's seekable range.
  * @returns {Number} the end time of playlist
  * @function playlistEnd
  */
@@ -246,8 +246,9 @@ export const playlistEnd = function(playlist, expired, useSafeLiveEnd) {
 
   expired = expired || 0;
 
-  let endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
-                                     Math.max(0, playlist.segments.length);
+  let endSequence = useSafeLiveEnd ?
+    Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
+    Math.max(0, playlist.segments.length);
 
   return intervalDuration(playlist,
                           playlist.mediaSequence + endSequence,
@@ -317,7 +318,10 @@ const floorLeastSignificantDigit = roundSignificantDigit.bind(null, -1);
  * @param {Number} startTime
  * @return {Object}
  */
-export const getMediaInfoForTime_ = function(playlist, currentTime, startIndex, startTime) {
+export const getMediaInfoForTime = function(playlist,
+                                            currentTime,
+                                            startIndex,
+                                            startTime) {
   let i;
   let segment;
   let numSegments = playlist.segments.length;
@@ -407,12 +411,88 @@ export const isEnabled = function(playlist) {
   return (!playlist.disabled && !blacklisted);
 };
 
+/**
+ * Returns whether the current playlist is an AES encrypted HLS stream
+ *
+ * @return {Boolean} true if it's an AES encrypted HLS stream
+ */
+export const isAes = function(media) {
+  for (let i = 0; i < media.segments.length; i++) {
+    if (media.segments[i].key) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Returns whether the current playlist contains fMP4
+ *
+ * @return {Boolean} true if the playlist contains fMP4
+ */
+export const isFmp4 = function(media) {
+  for (let i = 0; i < media.segments.length; i++) {
+    if (media.segments[i].map) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Checks if the playlist has a value for the specified attribute
+ *
+ * @param {String} attr
+ *        Attribute to check for
+ * @param {Object} playlist
+ *        The media playlist object
+ * @return {Boolean}
+ *         Whether the playlist contains a value for the attribute or not
+ * @function hasAttribute
+ */
+export const hasAttribute = function(attr, playlist) {
+  return playlist.attributes && playlist.attributes[attr];
+};
+
+/**
+ * Estimates the time required to complete a segment download from the specified playlist
+ *
+ * @param {Number} segmentDuration
+ *        Duration of requested segment
+ * @param {Number} bandwidth
+ *        Current measured bandwidth of the player
+ * @param {Object} playlist
+ *        The media playlist object
+ * @param {Number=} bytesReceived
+ *        Number of bytes already received for the request. Defaults to 0
+ * @return {Number|NaN}
+ *         The estimated time to request the segment. NaN if bandwidth information for
+ *         the given playlist is unavailable
+ * @function estimateSegmentRequestTime
+ */
+export const estimateSegmentRequestTime = function(segmentDuration,
+                                                   bandwidth,
+                                                   playlist,
+                                                   bytesReceived = 0) {
+  if (!hasAttribute('BANDWIDTH', playlist)) {
+    return NaN;
+  }
+
+  const size = segmentDuration * playlist.attributes.BANDWIDTH;
+
+  return (size - (bytesReceived * 8)) / bandwidth;
+};
+
 Playlist.duration = duration;
 Playlist.seekable = seekable;
-Playlist.getMediaInfoForTime_ = getMediaInfoForTime_;
+Playlist.getMediaInfoForTime = getMediaInfoForTime;
 Playlist.isEnabled = isEnabled;
 Playlist.isBlacklisted = isBlacklisted;
 Playlist.playlistEnd = playlistEnd;
+Playlist.isAes = isAes;
+Playlist.isFmp4 = isFmp4;
+Playlist.hasAttribute = hasAttribute;
+Playlist.estimateSegmentRequestTime = estimateSegmentRequestTime;
 
 // exports
 export default Playlist;

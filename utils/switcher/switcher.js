@@ -1,22 +1,22 @@
+import _ from 'lodash';
 import runSimulation from './run-simulation';
 import displayTimeline from './display-timeline';
 import Config from '../../src/config';
 import defaultTrace from './network_logs/default.js';
-
-const $ = document.querySelector.bind(document);
+import { $ } from './fn';
+import { appendToSimulations, summarizeSimulations } from './aggregate-simulations';
 
 /* Data */
 
 // Contains list of strings representing network traces uploaded
 const networkTraces = [defaultTrace];
-const resultKeys = [
-  'run',
-  'time to start',
-  'timeouts',
-  'aborts',
-  'calculated bandwidth [time bandwidth]',
-  'selected bitrates',
-  'empty buffer regions [start end]']
+const defaultResults = {
+  startTimes: [],
+  rebufferRatios: [],
+  rebufferCounts: [],
+  indicatedBitrates: []
+};
+const createResults = () => _.cloneDeep(defaultResults);
 const results = [];
 
 /* DOM elements */
@@ -32,6 +32,7 @@ const waitingNote = $('#running-simulation');
 const finishedNote = $('#finished-simulation');
 const secondaryInputs = [
   $('#goal-buffer-length-secondary'),
+  $('#buffer-low-water-line-secondary')
   // $('#bandwidth-variance-secondary')
 ];
 
@@ -48,19 +49,13 @@ local.addEventListener('change', function() {
 });
 
 saveReport.addEventListener('click', function(){
-  const stringifiedResults = results.map((simulation) => {
-    return JSON.stringify({
-      result: simulation.text,
-      inputs: simulation.inputs,
-      okr: simulation.okr
-    }, null, 2);
-  });
-  const data = new Blob([stringifiedResults.join(',')], {type: 'text/plain'});
+  const rows = results.map(({ inputs, summary }) =>({ inputs, summary }));
+  const data = new Blob([JSON.stringify(rows, null, 2)], {type: 'text/plain'});
 
   let textFile = window.URL.createObjectURL(data);
 
   let link = document.createElement('a');
-  link.setAttribute('download', 'report.csv');
+  link.setAttribute('download', 'report.json');
   link.href = textFile;
   document.body.appendChild(link);
 
@@ -82,19 +77,17 @@ runButton.addEventListener('click', function() {
   // clear previous simulation before starting a new one
   results.length = 0;
 
+  waitingNote.style.display = 'block';
+  finishedNote.style.display = 'none';
+
   // Setup the simulation inputs
   // [ [GoalBufferLength, BandwidthVariance], ... ]
   const simulationInputs = setupSimulationInputs();
 
   // This gets REALLY SLOW
   const runs = simulationInputs.map((inputs, index) => {
-    return runSimulations(index, inputs).then(() => {
-      calculatedOKR(index);
-    });
+    return runSimulations(index, inputs);
   });
-
-  waitingNote.style.display = 'block';
-  finishedNote.style.display = 'none';
 
   Promise.all(runs).then(() => {
     finishedNote.style.display = 'block';
@@ -103,45 +96,17 @@ runButton.addEventListener('click', function() {
     // If only one simulation was run over one trace, display the timeline graph of the
     // results and add the text results to the display
     if (results.length === 1 && networkTraces.length === 1) {
+      $('#result').style.display = 'none';
       displayTimeline(results[0].error, results[0].raw_result);
-      $('#result').innerText = results[0].text;
+      // hide JSON summary if there's only one simulation run
+    } else {
+      $('#result').style.display = 'block';
+      $('#result').innerText = JSON.stringify(results);
     }
   });
 });
 
 /* Functions */
-
-// { foo: [1, 2], bar: [3, 4] } =>
-// [[ foo, bar ],
-//  [ 1,   3   ],
-//  [ 2,   4   ]]
-const objToTable = function(obj) {
-  const rows = Object.values(obj)
-    .reduce((rows, property) => {
-      if (!Array.isArray(rows[0])) {
-        rows[0] = [];
-      }
-      rows[0].push(property);
-      return rows;
-    }, []);
-
-  return [
-    Object.keys(obj),
-    ...rows
-  ];
-};
-
-// [header, [values...]...] => header\nvalues,values
-const tableToText = function([header, ...rows], delimiter=',') {
-  const quote = (x) => Array.isArray(x) ? `"${JSON.stringify(x)}"` : x;
-
-  return [
-    header.join(delimiter),
-    ...rows.map((row) => row.map(quote).join(delimiter))
-  ].join('\n');
-};
-
-const createResults = (keys) => keys.reduce((obj, key) => Object.assign(obj, {[key]: []}), {});
 
 const loadFiles = () => {
   const files = local.files;
@@ -169,43 +134,6 @@ const readFile = function(file) {
   })
 };
 
-const quantileMetrics = function(array) {
-  array.sort((a, b) => a - b);
-  return [0.25, 0.5, 0.9, 0.95, 0.99].reduce((a, b) => a.concat(d3.quantile(array, b)), []);
-};
-
-const calculatedOKR = function(simulation) {
-  let simulationResults = results[simulation].result;
-  // array contains all the selected bitrates
-  let selectedBitrates = simulationResults['selected bitrates'].reduce((a, b) => a.concat(b));
-
-  // sum all the selected bitrates value and the length
-  let sumSelectedBitrates = simulationResults['selected bitrates'].reduce((a, b) => a.concat(b))
-                                                        .reduce((a, b) => a + b);
-  let selectedBitratesLength = simulationResults['selected bitrates'].reduce((a, b) => a.concat(b)).length;
-
-  // array contains all the calculated bitrates
-  let calculatedBitrates = simulationResults['calculated bandwidth [time bandwidth]'].reduce((a, b) => a.concat(b))
-                                                                           .reduce((a, b) => a.concat(b[1]), []);
-  // array contains all the rebuffer ratio
-  let rebufferRatios = simulationResults['empty buffer regions [start end]'].reduce((a, b) => a.concat(b))
-                                                                  .reduce((a, b) => a.concat((b[1] - b[0]) / 60000), []);
-
-  const sum = {
-    'run': simulationResults.run.length,
-    'time to start': quantileMetrics(simulationResults['time to start']),
-    'timeouts': simulationResults.timeouts.reduce((a, b) => a + b),
-    'aborts': simulationResults.aborts.reduce((a, b) => a + b),
-    'calculated bandwidth [time bandwidth]': quantileMetrics(calculatedBitrates),
-    'selected bitrates': quantileMetrics(selectedBitrates),
-    'rebuffering count': simulationResults['empty buffer regions [start end]'].reduce((acc, val) => acc + val.length - 1, 0),
-    'indicated bitrates': sumSelectedBitrates / selectedBitratesLength,
-    'rebuffer ratio': quantileMetrics(rebufferRatios)
-  };
-
-  results[simulation].okr = tableToText(objToTable(sum));
-};
-
 const setupSimulationInputs = function() {
   let result = [];
 
@@ -213,12 +141,13 @@ const setupSimulationInputs = function() {
   const fuzz = fuzzInputs.checked;
 
   // Goal Buffer Length
-  const GBLValues = fuzz ? fuzzGoalBufferLength() : [Math.max(1, Number($('#goal-buffer-length').value))];
+  const GBLValues = fuzzInput('goal-buffer-length', fuzz, 1, 1);
+  // Buffer Low-Water Line
+  const BLWLValues = fuzzInput('buffer-low-water-line', fuzz, 0, 1);
   // Bandwidth Variance
-  // const BVValues = fuzz ? fuzzBandwidthVariance() : [Math.max(0.1, Number($('#bandwidth-variance').value))];
-  const BVValues = [Math.max(0.1, Number($('#bandwidth-variance').value))];
+  const BVValues = fuzzInput('bandwidth-variance', false, 0.1, 0.1);
 
-  const values = [GBLValues, BVValues];
+  const values = [GBLValues, BLWLValues, BVValues];
 
   const merger = function(arr, type) {
     for (let i = 0, l = values[type].length; i < l; i++) {
@@ -238,39 +167,23 @@ const setupSimulationInputs = function() {
   return result;
 };
 
-const fuzzGoalBufferLength = function() {
-  let result = [];
+const fuzzInput = function(input, useMax, inputMin, inputStepMin) {
+  const result = [];
 
-  let GBL = Math.max(1, Number($('#goal-buffer-length').value));
-  let GBLStep = Math.max(1, Number($('#goal-buffer-length-step').value));
-  let GBLMax = Math.max(GBL, Number($('#goal-buffer-length-max').value));
+  let value = Math.max(inputMin, Number($(`#${input}`).value));
+  let step = Math.max(inputStepMin, Number($(`#${input}-step`).value));
+  let max = value;
 
-  result.push(GBL);
+  if (useMax) {
+    max = Math.max(max, Number($(`#${input}-max`).value));
+  }
 
-  while(GBL + GBLStep <= GBLMax) {
-    GBL += GBLStep;
-    result.push(GBL);
+  for (; value <= max; value += step) {
+    result.push(value);
   }
 
   return result;
-};
-
-const fuzzBandwidthVariance = function() {
-  let result = [];
-
-  let BV = Math.max(0.1, Number($('#bandwidth-variance').value));
-  let BVStep = Math.max(0.1, Number($('#bandwidth-variance-step').value));
-  let BVMax = Math.max(BV, Number($('#bandwidth-variance-max').value));
-
-  result.push(BV);
-
-  while(BV + BVStep <= BVMax) {
-    BV += BVStep;
-    result.push(BV);
-  }
-
-  return result;
-};
+}
 
 // collect the simulation parameters
 const parameters = function(trace, inputs) {
@@ -293,11 +206,12 @@ const parameters = function(trace, inputs) {
     console.log('Invalid JSON');
   }
 
-  // inputs: [goalBufferLength, bandwidthVariance]
+  // inputs: [goalBufferLength, bufferLowWaterLine, bandwidthVariance]
 
   return {
     goalBufferLength: inputs[0],
-    bandwidthVariance: inputs[1],
+    bufferLowWaterLine: inputs[1],
+    bandwidthVariance: inputs[2],
     playlists,
     segments,
     networkTrace
@@ -305,45 +219,14 @@ const parameters = function(trace, inputs) {
 };
 
 const simulationDone = function(promise, simulation, err, res) {
-  // create global result if it doesn't exist
-  if (!results[simulation].result) {
-    results[simulation].result = createResults(resultKeys);
+  // create global summary if it doesn't exist
+  if (!results[simulation].results) {
+    results[simulation].results = createResults();
   }
 
-  const simulationResults = results[simulation].result;
-  const data = {
-    'run': simulationResults ? simulationResults.run.length : 0,
-    'time to start': res.buffered.find(({buffered}) => buffered).time,
-    'timeouts': res.playlists.filter(({timedout}) => timedout).length,
-    'aborts': res.playlists.filter(({aborted}) => aborted).length,
-    'calculated bandwidth [time bandwidth]': res.effectiveBandwidth.map(({time, bandwidth}) => [time, bandwidth]),
-    'selected bitrates': res.playlists.map(({bitrate}) => bitrate),
-    'empty buffer regions [start end]': res.buffered.reduce(function(result, sample, index) {
-      var last = result[result.length - 1];
-
-      if (sample.buffered === 0) {
-        if (last && last.index === index - 1) {
-          // add this sample to the interval we're accumulating
-          last.end = sample.time;
-          last.index = index;
-        } else {
-          // this sample starts a new interval
-          result.push({
-            start: sample.time,
-            end: sample.time,
-            index: index
-          });
-        }
-      }
-      // filter out time periods where the buffer isn't empty
-      return result;
-    }, []).map(({start, end}) => [start, end])
-  };
-
-  // add this simulation result to the results
-  Object.entries(data).forEach(([key, value]) => simulationResults[key].push(value));
-
-  results[simulation].text = tableToText(objToTable(simulationResults));
+  // recalculate summary with new result
+  results[simulation].results = appendToSimulations(results[simulation].results, res);
+  results[simulation].summary = summarizeSimulations(results[simulation].results);
 
   // Store the raw results and error of the simulation
   // This is only useful in the event that a single simulation was done over a single
@@ -356,7 +239,7 @@ const simulationDone = function(promise, simulation, err, res) {
 }
 
 const runSimulations = (simulation, inputs) => loadFiles().then(() => {
-  // create the simulation ov=bject if it does not already exist
+  // create the simulation object if it does not already exist
   if (!results[simulation]) {
     results[simulation] = {
       inputs
@@ -392,5 +275,8 @@ if (window.location.hash) {
 
   networkTimeline.innerHTML = '';
 }
+
+// initially hide the JSON summary output
+$('#result').style.display = 'none';
 
 // runButton.click();

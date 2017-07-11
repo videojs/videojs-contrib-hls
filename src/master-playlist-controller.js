@@ -11,6 +11,7 @@ import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
 import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
+import Config from './config';
 
 let Hls;
 
@@ -204,7 +205,8 @@ export const mimeTypesForPlaylist_ = function(master, media) {
   // HLS with multiple-audio tracks must always get an audio codec.
   // Put another way, there is no way to have a video-only multiple-audio HLS!
   if (isMaat && !codecInfo.audioProfile) {
-    videojs.log.warn('Multiple audio tracks present but no audio codec string is specified. ' +
+    videojs.log.warn(
+      'Multiple audio tracks present but no audio codec string is specified. ' +
       'Attempting to use the default audio codec (mp4a.40.2)');
     codecInfo.audioProfile = defaultCodecs.audioProfile;
   }
@@ -323,7 +325,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.seekable_ = videojs.createTimeRanges();
     this.hasPlayed_ = () => false;
 
-    this.syncController_ = new SyncController();
+    this.syncController_ = new SyncController(options);
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
       kind: 'metadata',
       label: 'segment-metadata'
@@ -331,7 +333,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.decrypter_ = worker(Decrypter);
 
-    let segmentLoaderOptions = {
+    const segmentLoaderSettings = {
       hls: this.hls_,
       mediaSource: this.mediaSource,
       currentTime: this.tech_.currentTime.bind(this.tech_),
@@ -339,6 +341,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       seeking: () => this.tech_.seeking(),
       duration: () => this.mediaSource.duration,
       hasPlayed: () => this.hasPlayed_(),
+      goalBufferLength: () => this.goalBufferLength(),
       bandwidth,
       syncController: this.syncController_,
       decrypter: this.decrypter_
@@ -352,19 +355,22 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // setup segment loaders
     // combined audio/video or just video when alternate audio track is selected
-    this.mainSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
-      segmentMetadataTrack: this.segmentMetadataTrack_,
-      loaderType: 'main'
-    }));
+    this.mainSegmentLoader_ =
+      new SegmentLoader(videojs.mergeOptions(segmentLoaderSettings, {
+        segmentMetadataTrack: this.segmentMetadataTrack_,
+        loaderType: 'main'
+      }), options);
 
     // alternate audio track
-    this.audioSegmentLoader_ = new SegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
-      loaderType: 'audio'
-    }));
+    this.audioSegmentLoader_ =
+      new SegmentLoader(videojs.mergeOptions(segmentLoaderSettings, {
+        loaderType: 'audio'
+      }), options);
 
-    this.subtitleSegmentLoader_ = new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderOptions, {
-      loaderType: 'vtt'
-    }));
+    this.subtitleSegmentLoader_ =
+      new VTTSegmentLoader(videojs.mergeOptions(segmentLoaderSettings, {
+        loaderType: 'vtt'
+      }), options);
 
     this.setupSegmentLoaderListeners_();
 
@@ -410,6 +416,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       this.fillSubtitleTracks_();
       this.setupSubtitles();
+
+      this.triggerPresenceUsage_(this.master(), media);
 
       try {
         this.setupSourceBuffers_();
@@ -512,7 +520,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       activeAudioGroup = this.activeAudioGroup();
       activeTrack = activeAudioGroup.filter((track) => track.enabled)[0];
       if (!activeTrack) {
-        this.setupAudio();
+        this.mediaGroupChanged();
         this.trigger('audioupdate');
       }
 
@@ -541,8 +549,60 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.tech_.trigger('playliststuck');
       }
     });
+
+    this.masterPlaylistLoader_.on('renditiondisabled', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-rendition-disabled'});
+    });
+    this.masterPlaylistLoader_.on('renditionenabled', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-rendition-enabled'});
+    });
   }
 
+  /**
+   * A helper function for triggerring presence usage events once per source
+   *
+   * @private
+   */
+  triggerPresenceUsage_(master, media) {
+    let mediaGroups = master.mediaGroups || {};
+    let defaultDemuxed = true;
+    let audioGroupKeys = Object.keys(mediaGroups.AUDIO);
+
+    for (let mediaGroup in mediaGroups.AUDIO) {
+      for (let label in mediaGroups.AUDIO[mediaGroup]) {
+        let properties = mediaGroups.AUDIO[mediaGroup][label];
+
+        if (!properties.uri) {
+          defaultDemuxed = false;
+        }
+      }
+    }
+
+    if (defaultDemuxed) {
+      this.tech_.trigger({type: 'usage', name: 'hls-demuxed'});
+    }
+
+    if (Object.keys(mediaGroups.SUBTITLES).length) {
+      this.tech_.trigger({type: 'usage', name: 'hls-webvtt'});
+    }
+
+    if (Hls.Playlist.isAes(media)) {
+      this.tech_.trigger({type: 'usage', name: 'hls-aes'});
+    }
+
+    if (Hls.Playlist.isFmp4(media)) {
+      this.tech_.trigger({type: 'usage', name: 'hls-fmp4'});
+    }
+
+    if (audioGroupKeys.length &&
+        Object.keys(mediaGroups.AUDIO[audioGroupKeys[0]]).length > 1) {
+      this.tech_.trigger({type: 'usage', name: 'hls-alternate-audio'});
+    }
+
+    if (this.useCueTags_) {
+      this.tech_.trigger({type: 'usage', name: 'hls-playlist-cue-tags'});
+    }
+  }
   /**
    * Register event handlers on the segment loaders. A helper function
    * for construction time.
@@ -551,9 +611,30 @@ export class MasterPlaylistController extends videojs.EventTarget {
    */
   setupSegmentLoaderListeners_() {
     this.mainSegmentLoader_.on('bandwidthupdate', () => {
-      // figure out what stream the next segment should be downloaded from
-      // with the updated bandwidth information
-      this.masterPlaylistLoader_.media(this.selectPlaylist());
+      const nextPlaylist = this.selectPlaylist();
+      const currentPlaylist = this.masterPlaylistLoader_.media();
+      const buffered = this.tech_.buffered();
+      const forwardBuffer = buffered.length ?
+        buffered.end(buffered.length - 1) - this.tech_.currentTime() : 0;
+
+      const bufferLowWaterLine = this.bufferLowWaterLine();
+
+      // If the playlist is live, then we want to not take low water line into account.
+      // This is because in LIVE, the player plays 3 segments from the end of the
+      // playlist, and if `BUFFER_LOW_WATER_LINE` is greater than the duration availble
+      // in those segments, a viewer will never experience a rendition upswitch.
+      if (!currentPlaylist.endList ||
+          // For the same reason as LIVE, we ignore the low water line when the VOD
+          // duration is below the max potential low water line
+          this.duration() < Config.MAX_BUFFER_LOW_WATER_LINE ||
+          // we want to switch down to lower resolutions quickly to continue playback, but
+          nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH ||
+          // ensure we have some buffer before we switch up to prevent us running out of
+          // buffer while loading a higher rendition.
+          forwardBuffer >= bufferLowWaterLine) {
+        this.masterPlaylistLoader_.media(nextPlaylist);
+      }
+
       this.tech_.trigger('bandwidthupdate');
     });
     this.mainSegmentLoader_.on('progress', () => {
@@ -568,8 +649,19 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.onSyncInfoUpdate_();
     });
 
+    this.mainSegmentLoader_.on('timestampoffset', () => {
+      this.tech_.trigger({type: 'usage', name: 'hls-timestamp-offset'});
+    });
     this.audioSegmentLoader_.on('syncinfoupdate', () => {
       this.onSyncInfoUpdate_();
+    });
+
+    this.mainSegmentLoader_.on('ended', () => {
+      this.onEndOfStream();
+    });
+
+    this.audioSegmentLoader_.on('ended', () => {
+      this.onEndOfStream();
     });
 
     this.audioSegmentLoader_.on('error', () => {
@@ -1000,13 +1092,40 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Determine the correct audio renditions based on the active
+   * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
+   * necessary. This method is only called when the media-group changes
+   * and performs non-destructive 'resync' of the SegmentLoader(s) since
+   * the playlist has likely changed
+   */
+  mediaGroupChanged() {
+    let track = this.getActiveAudioTrack_();
+
+    this.stopAudioLoaders_();
+    this.resyncAudioLoaders_(track);
+  }
+
+  /**
    * Determine the correct audio rendition based on the active
    * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
    * necessary. This method is called once automatically before
    * playback begins to enable the default audio track and should be
-   * invoked again if the track is changed.
+   * invoked again if the track is changed. Performs destructive 'reset'
+   * on the SegmentLoaders(s) to ensure we start loading audio as
+   * close to currentTime as possible
    */
   setupAudio() {
+    let track = this.getActiveAudioTrack_();
+
+    this.stopAudioLoaders_();
+    this.resetAudioLoaders_(track);
+  }
+
+  /**
+   * Returns the currently active track or the default track if none
+   * are active
+   */
+  getActiveAudioTrack_() {
     // determine whether seperate loaders are required for the audio
     // rendition
     let audioGroup = this.activeAudioGroup();
@@ -1021,19 +1140,56 @@ export class MasterPlaylistController extends videojs.EventTarget {
       track.enabled = true;
     }
 
+    return track;
+  }
+
+  /**
+   * Destroy the PlaylistLoader and pause the SegmentLoader specifically
+   * for audio when switching audio tracks
+   */
+  stopAudioLoaders_() {
     // stop playlist and segment loading for audio
     if (this.audioPlaylistLoader_) {
       this.audioPlaylistLoader_.dispose();
       this.audioPlaylistLoader_ = null;
     }
     this.audioSegmentLoader_.pause();
+  }
 
+  /**
+   * Destructive reset of the mainSegmentLoader (when audio is muxed)
+   * or audioSegmentLoader (when audio is demuxed) to prepare them
+   * to start loading new data right at currentTime
+   */
+  resetAudioLoaders_(track) {
     if (!track.properties_.resolvedUri) {
       this.mainSegmentLoader_.resetEverything();
       return;
     }
-    this.audioSegmentLoader_.resetEverything();
 
+    this.audioSegmentLoader_.resetEverything();
+    this.setupAudioPlaylistLoader_(track);
+  }
+
+  /**
+   * Non-destructive resync of the audioSegmentLoader (when audio
+   * is demuxed) to prepare to continue appending new audio data
+   * at the end of the current buffered region
+   */
+  resyncAudioLoaders_(track) {
+    if (!track.properties_.resolvedUri) {
+      return;
+    }
+
+    this.audioSegmentLoader_.resyncLoader();
+    this.setupAudioPlaylistLoader_(track);
+  }
+
+  /**
+   * Setup a new audioPlaylistLoader and start the audioSegmentLoader
+   * to begin loading demuxed audio
+   */
+  setupAudioPlaylistLoader_(track) {
     // startup playlist and segment loaders for the enabled audio
     // track
     this.audioPlaylistLoader_ = new PlaylistLoader(track.properties_.resolvedUri,
@@ -1278,6 +1434,28 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
+   * Calls endOfStream on the media source when all active stream types have called
+   * endOfStream
+   *
+   * @param {string} streamType
+   *        Stream type of the segment loader that called endOfStream
+   * @private
+   */
+  onEndOfStream() {
+    let isEndOfStream = this.mainSegmentLoader_.ended_;
+
+    if (this.audioPlaylistLoader_) {
+      // if the audio playlist loader exists, then alternate audio is active, so we need
+      // to wait for both the main and audio segment loaders to call endOfStream
+      isEndOfStream = isEndOfStream && this.audioSegmentLoader_.ended_;
+    }
+
+    if (isEndOfStream) {
+      this.mediaSource.endOfStream();
+    }
+  }
+
+  /**
    * Check if a playlist has stopped being updated
    * @param {Object} playlist the media playlist object
    * @return {boolean} whether the playlist has stopped being updated or not
@@ -1290,7 +1468,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return false;
     }
 
-    let expired = this.syncController_.getExpiredTime(playlist, this.mediaSource.duration);
+    let expired =
+      this.syncController_.getExpiredTime(playlist, this.mediaSource.duration);
 
     if (expired === null) {
       return false;
@@ -1357,6 +1536,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
     this.tech_.trigger('blacklistplaylist');
+    this.tech_.trigger({type: 'usage', name: 'hls-rendition-blacklisted'});
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();
@@ -1402,8 +1582,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // In flash playback, the segment loaders should be reset on every seek, even
     // in buffer seeks
-    const isFlash = (this.mode_ === 'flash') ||
-                    (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
+    const isFlash =
+      (this.mode_ === 'flash') ||
+      (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
 
     // if the seek location is already buffered, continue buffering as
     // usual
@@ -1690,5 +1871,33 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     AdCueTags.updateAdCues(media, this.cueTagsTrack_, offset);
+  }
+
+  /**
+   * Calculates the desired forward buffer length based on current time
+   *
+   * @return {Number} Desired forward buffer length in seconds
+   */
+  goalBufferLength() {
+    const currentTime = this.tech_.currentTime();
+    const initial = Config.GOAL_BUFFER_LENGTH;
+    const rate = Config.GOAL_BUFFER_LENGTH_RATE;
+    const max = Math.max(initial, Config.MAX_GOAL_BUFFER_LENGTH);
+
+    return Math.min(initial + currentTime * rate, max);
+  }
+
+  /**
+   * Calculates the desired buffer low water line based on current time
+   *
+   * @return {Number} Desired buffer low water line in seconds
+   */
+  bufferLowWaterLine() {
+    const currentTime = this.tech_.currentTime();
+    const initial = Config.BUFFER_LOW_WATER_LINE;
+    const rate = Config.BUFFER_LOW_WATER_LINE_RATE;
+    const max = Math.max(initial, Config.MAX_BUFFER_LOW_WATER_LINE);
+
+    return Math.min(initial + currentTime * rate, max);
   }
 }
