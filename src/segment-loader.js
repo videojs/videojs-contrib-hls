@@ -1222,7 +1222,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
 
-    const Cue = window.WebKitDataCue || window.VTTCue;
+    const Cue = window.WebKitDataCue || window.VTTCue || window.TextTrackCue;
     const value = {
       uri: segmentInfo.uri,
       timeline: segmentInfo.timeline,
