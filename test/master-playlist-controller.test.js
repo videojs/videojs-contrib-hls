@@ -18,6 +18,7 @@ import {
 import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
+import Config from '../src/config';
 
 const generateMedia = function(isMaat, isMuxed, hasVideoCodec, hasAudioCodec, isFMP4) {
   const codec = (hasVideoCodec ? 'avc1.deadbeef' : '') +
@@ -281,11 +282,18 @@ QUnit.test('fast quality change resyncs audio segment loader', function(assert) 
 
   this.player.audioTracks()[0].enabled = true;
 
+  let resyncs = 0;
   let resets = 0;
+  let realReset = masterPlaylistController.audioSegmentLoader_.resetLoader;
 
-  masterPlaylistController.audioSegmentLoader_.resetLoader = () => resets++;
+  masterPlaylistController.audioSegmentLoader_.resetLoader = function() {
+    resets++;
+    realReset.call(this);
+  };
+
+  masterPlaylistController.audioSegmentLoader_.resyncLoader = () => resyncs++;
   masterPlaylistController.fastQualityChange_();
-  assert.equal(resets, 0, 'does not reset the audio segment loader when media same');
+  assert.equal(resyncs, 0, 'does not resync the audio segment loader when media same');
 
   // force different media
   masterPlaylistController.selectPlaylist = () => {
@@ -295,10 +303,52 @@ QUnit.test('fast quality change resyncs audio segment loader', function(assert) 
   assert.equal(this.requests.length, 1, 'one request');
   masterPlaylistController.fastQualityChange_();
   assert.equal(this.requests.length, 2, 'added a request for new media');
-  assert.equal(resets, 0, 'does not reset the audio segment loader yet');
+  assert.equal(resyncs, 0, 'does not resync the audio segment loader yet');
   // new media request
   this.standardXHRResponse(this.requests[1]);
-  assert.equal(resets, 1, 'resets the audio segment loader when media changes');
+  assert.equal(resyncs, 1, 'resyncs the audio segment loader when media changes');
+  assert.equal(resets, 0, 'does not reset the audio segment loader when media changes');
+});
+
+QUnit.test('audio segment loader is reset on audio track change', function(assert) {
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'alternate-audio-multiple-groups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+  masterPlaylistController.selectPlaylist = () => {
+    return masterPlaylistController.master().playlists[0];
+  };
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  let resyncs = 0;
+  let resets = 0;
+  let realReset = masterPlaylistController.audioSegmentLoader_.resetLoader;
+
+  masterPlaylistController.audioSegmentLoader_.resetLoader = function() {
+    resets++;
+    realReset.call(this);
+  };
+  masterPlaylistController.audioSegmentLoader_.resyncLoader = () => resyncs++;
+
+  assert.equal(this.requests.length, 1, 'one request');
+  assert.equal(resyncs, 0, 'does not resync the audio segment loader yet');
+
+  this.player.audioTracks()[1].enabled = true;
+
+  assert.equal(this.requests.length, 2, 'two requests');
+  assert.equal(resyncs, 1, 'resyncs the audio segment loader when audio track changes');
+  assert.equal(resets, 1, 'resets the audio segment loader when audio track changes');
 });
 
 QUnit.test('if buffered, will request second segment byte range', function(assert) {
@@ -325,7 +375,8 @@ QUnit.test('if buffered, will request second segment byte range', function(asser
   this.masterPlaylistController.mainSegmentLoader_.sourceUpdater_.buffered = () => {
     return videojs.createTimeRanges([[0, 20]]);
   };
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   // segment
   this.standardXHRResponse(this.requests[1]);
@@ -384,7 +435,8 @@ function(assert) {
   );
 });
 
-QUnit.test('updates the combined segment loader on live playlist refreshes', function(assert) {
+QUnit.test('updates the combined segment loader on live playlist refreshes',
+function(assert) {
   let updates = [];
 
   openMediaSource(this.player, this.clock);
@@ -418,7 +470,8 @@ function(assert) {
   this.player.tech_.on('progress', function() {
     progressCount++;
   });
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   // segment
   this.standardXHRResponse(this.requests.shift());
@@ -464,6 +517,64 @@ QUnit.test('updates the enabled track when switching audio groups', function(ass
            'enabled a track in the new audio group');
 });
 
+QUnit.test('waits for both main and audio loaders to finish before calling endOfStream',
+function(assert) {
+  openMediaSource(this.player, this.clock);
+
+  const videoMedia = '#EXTM3U\n' +
+                     '#EXT-X-VERSION:3\n' +
+                     '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                     '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                     '#EXT-X-TARGETDURATION:10\n' +
+                     '#EXTINF:10,\n' +
+                     'video-0.ts\n' +
+                     '#EXT-X-ENDLIST\n';
+
+  const audioMedia = '#EXTM3U\n' +
+                     '#EXT-X-VERSION:3\n' +
+                     '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                     '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                     '#EXT-X-TARGETDURATION:10\n' +
+                     '#EXTINF:10,\n' +
+                     'audio-0.ts\n' +
+                     '#EXT-X-ENDLIST\n';
+
+  let videoEnded = 0;
+  let audioEnded = 0;
+
+  const MPC = this.masterPlaylistController;
+
+  MPC.mainSegmentLoader_.on('ended', () => videoEnded++);
+  MPC.audioSegmentLoader_.on('ended', () => audioEnded++);
+
+  // master
+  this.standardXHRResponse(this.requests.shift(), manifests.demuxed);
+
+  // video media
+  this.standardXHRResponse(this.requests.shift(), videoMedia);
+
+  // audio media
+  this.standardXHRResponse(this.requests.shift(), audioMedia);
+
+  // video segment
+  this.standardXHRResponse(this.requests.shift());
+
+  MPC.mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.equal(videoEnded, 1, 'main segment loader triggered endded');
+  assert.equal(audioEnded, 0, 'audio segment loader did not trigger ended');
+  assert.equal(MPC.mediaSource.readyState, 'open', 'Media Source not yet ended');
+
+  // audio segment
+  this.standardXHRResponse(this.requests.shift());
+
+  MPC.mediaSource.sourceBuffers[1].trigger('updateend');
+
+  assert.equal(videoEnded, 1, 'main segment loader did not trigger ended again');
+  assert.equal(audioEnded, 1, 'audio segment loader triggered ended');
+  assert.equal(MPC.mediaSource.readyState, 'ended', 'Media Source ended');
+});
+
 QUnit.test('detects if the player is stuck at the playlist end', function(assert) {
   let playlistCopy = Hls.Playlist.playlistEnd;
 
@@ -476,17 +587,20 @@ QUnit.test('detects if the player is stuck at the playlist end', function(assert
   this.masterPlaylistController.seekable = () => videojs.createTimeRange();
   this.player.tech_.buffered = () => videojs.createTimeRange();
   this.player.tech_.setCurrentTime(170);
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // not stuck at playlist end when no seekable, even if empty buffer
   // and currentTime 0
   this.player.tech_.setCurrentTime(0);
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // not stuck at playlist end when no seekable but current time is at
   // the end of the buffered range
   this.player.tech_.buffered = () => videojs.createTimeRange(0, 170);
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // not stuck at playlist end when currentTime not at seekable end
   // even if the buffer is empty
@@ -495,19 +609,22 @@ QUnit.test('detects if the player is stuck at the playlist end', function(assert
   this.player.tech_.setCurrentTime(50);
   this.player.tech_.buffered = () => videojs.createTimeRange();
   Hls.Playlist.playlistEnd = () => 130;
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // not stuck at playlist end when buffer reached the absolute end of the playlist
   // and current time is in the buffered range
   this.player.tech_.setCurrentTime(159);
   this.player.tech_.buffered = () => videojs.createTimeRange(0, 160);
   Hls.Playlist.playlistEnd = () => 160;
-  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'not stuck at playlist end');
+  assert.ok(!this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'not stuck at playlist end');
 
   // stuck at playlist end when there is no buffer and playhead
   // reached absolute end of playlist
   this.player.tech_.setCurrentTime(160);
-  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'stuck at playlist end');
+  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'stuck at playlist end');
 
   // stuck at playlist end when current time reached the buffer end
   // and buffer has reached absolute end of playlist
@@ -515,12 +632,14 @@ QUnit.test('detects if the player is stuck at the playlist end', function(assert
   this.player.tech_.buffered = () => videojs.createTimeRange(0, 170);
   this.player.tech_.setCurrentTime(170);
   Hls.Playlist.playlistEnd = () => 170;
-  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist), 'stuck at playlist end');
+  assert.ok(this.masterPlaylistController.stuckAtPlaylistEnd_(playlist),
+            'stuck at playlist end');
 
   Hls.Playlist.playlistEnd = playlistCopy;
 });
 
-QUnit.test('blacklists switching from video+audio playlists to audio only', function(assert) {
+QUnit.test('blacklists switching from video+audio playlists to audio only',
+function(assert) {
   let audioPlaylist;
 
   openMediaSource(this.player, this.clock);
@@ -547,7 +666,8 @@ QUnit.test('blacklists switching from video+audio playlists to audio only', func
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1e10, 'bandwidth we set above');
 });
 
-QUnit.test('blacklists switching from audio-only playlists to video+audio', function(assert) {
+QUnit.test('blacklists switching from audio-only playlists to video+audio',
+function(assert) {
   let videoAudioPlaylist;
 
   openMediaSource(this.player, this.clock);
@@ -576,7 +696,8 @@ QUnit.test('blacklists switching from audio-only playlists to video+audio', func
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
 
-QUnit.test('blacklists switching from video-only playlists to video+audio', function(assert) {
+QUnit.test('blacklists switching from video-only playlists to video+audio',
+function(assert) {
   let videoAudioPlaylist;
 
   openMediaSource(this.player, this.clock);
@@ -629,7 +750,9 @@ function(assert) {
               'selected HE-AAC stream');
   alternatePlaylist =
     this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1];
-  assert.equal(alternatePlaylist.excludeUntil, undefined, 'not excluded incompatible playlist');
+  assert.equal(alternatePlaylist.excludeUntil,
+               undefined,
+               'not excluded incompatible playlist');
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
@@ -683,7 +806,8 @@ QUnit.test('updates the combined segment loader on media changes', function(asse
   this.masterPlaylistController.mainSegmentLoader_.playlist = function(update) {
     updates.push(update);
   };
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
 
   this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
@@ -691,6 +815,11 @@ QUnit.test('updates the combined segment loader on media changes', function(asse
   // playlist change
   // segment 0
   this.standardXHRResponse(this.requests.shift());
+  // update the buffer to reflect the appended segment, and have enough buffer to
+  // change playlist
+  this.masterPlaylistController.tech_.buffered = () => {
+    return videojs.createTimeRanges([[0, 30]]);
+  };
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // media
   this.standardXHRResponse(this.requests.shift());
@@ -729,6 +858,202 @@ QUnit.test('selects a playlist after main/combined segment downloads', function(
   assert.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
 });
 
+QUnit.test('re-triggers bandwidthupdate events on the tech', function(assert) {
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  let bandwidthupdateEvents = 0;
+
+  this.player.tech_.on('bandwidthupdate', () => bandwidthupdateEvents++);
+
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+
+  assert.equal(bandwidthupdateEvents, 1, 'triggered bandwidthupdate');
+
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+
+  assert.equal(bandwidthupdateEvents, 2, 'triggered bandwidthupdate');
+});
+
+QUnit.test('switches to lower renditions immediately, higher dependent on buffer',
+function(assert) {
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  let buffered = [];
+  let currentPlaylistBandwidth = 0;
+  let nextPlaylistBandwidth = 0;
+  let mediaChanges = [];
+  let currentTime = 0;
+  let endList = true;
+  let duration = 100;
+
+  this.masterPlaylistController.tech_.currentTime = () => currentTime;
+  this.masterPlaylistController.tech_.buffered = () => videojs.createTimeRanges(buffered);
+  this.masterPlaylistController.duration = () => duration;
+  this.masterPlaylistController.selectPlaylist = () => {
+    return {
+      attributes: {
+        BANDWIDTH: nextPlaylistBandwidth
+      },
+      endList
+    };
+  };
+  this.masterPlaylistController.masterPlaylistLoader_.media = (media) => {
+    if (!media) {
+      return {
+        attributes: {
+          BANDWIDTH: currentPlaylistBandwidth
+        },
+        endList
+      };
+    }
+    mediaChanges.push(media);
+  };
+
+  currentTime = 0;
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 1000;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when no buffer and equal bandwidth playlist');
+  buffered = [[0, 9]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes media when sufficient forward buffer and equal ' +
+               'bandwidth playlist');
+  buffered = [[0, 30]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               3,
+               'changes media when sufficient forward buffer and equal ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  currentTime = 10;
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 1001;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when no buffer and and higher bandwidth playlist');
+  buffered = [[0, 19]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when insufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 20]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when sufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 21]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes media when sufficient forward buffer and higher ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  currentTime = 100;
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 1001;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when no buffer and higher bandwidth playlist');
+  buffered = [[0, 100], [100, 109]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               0,
+               'did not change media when insufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 100], [100, 130]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when sufficient forward buffer and higher ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  buffered = [];
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 999;
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when no buffer but lower bandwidth playlist');
+  buffered = [[100, 109]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes media when insufficient forward buffer but lower ' +
+               'bandwidth playlist');
+  buffered = [[100, 110]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               3,
+               'changes media when sufficient forward buffer and lower ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  endList = false;
+  currentTime = 100;
+  currentPlaylistBandwidth = 1000;
+  nextPlaylistBandwidth = 1001;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes live media when no buffer and higher bandwidth playlist');
+  buffered = [[0, 100], [100, 109]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes live media when insufficient forward buffer and higher ' +
+               'bandwidth playlist');
+  buffered = [[0, 100], [100, 130]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               3,
+               'changes live media when sufficient forward buffer and higher ' +
+               'bandwidth playlist');
+
+  mediaChanges.length = 0;
+
+  endList = true;
+  currentTime = 9;
+  duration = 18;
+  buffered = [];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               1,
+               'changes media when no buffer and duration less than low water line');
+  buffered = [[0, 10]];
+  this.masterPlaylistController.mainSegmentLoader_.trigger('bandwidthupdate');
+  assert.equal(mediaChanges.length,
+               2,
+               'changes media when insufficient forward buffer and duration ' +
+               'less than low water line');
+});
+
 QUnit.test('updates the duration after switching playlists', function(assert) {
   let selectedPlaylist = false;
 
@@ -750,7 +1075,8 @@ QUnit.test('updates the duration after switching playlists', function(assert) {
 
     return this.masterPlaylistController.masterPlaylistLoader_.master.playlists[1];
   };
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // segment 0
@@ -781,12 +1107,14 @@ QUnit.test('playlist selection uses systemBandwidth', function(assert) {
   this.standardXHRResponse(this.requests[1]);
   assert.ok(/media3\.m3u8/i.test(this.requests[1].url), 'Selected the highest rendition');
 
-  // 1ms have passed to upload 1kb that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
+  // 1ms has passed to upload 1kb
+  // that gives us a bandwidth of 1024 / 1 * 8 * 1000 = 8192000
   this.clock.tick(1);
   this.masterPlaylistController.mainSegmentLoader_.mediaIndex = 0;
   // segment 0
   this.standardXHRResponse(this.requests[2]);
-  // 20ms have passed to upload 1kb that gives us a throughput of 1024 / 20 * 8 * 1000 = 409600
+  // 20ms have passed to upload 1kb
+  // that gives us a throughput of 1024 / 20 * 8 * 1000 = 409600
   this.clock.tick(20);
   this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
   // systemBandwidth is 1 / (1 / 8192000 + 1 / 409600) = ~390095
@@ -1088,18 +1416,28 @@ QUnit.test('calls to update cues on media when no master', function(assert) {
 
 QUnit.test('respects useCueTags option', function(assert) {
   let origHlsOptions = videojs.options.hls;
+  let hlsPlaylistCueTagsEvents = 0;
 
   videojs.options.hls = {
     useCueTags: true
   };
 
   this.player = createPlayer();
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-playlist-cue-tags') {
+      hlsPlaylistCueTagsEvents++;
+    }
+  });
   this.player.src({
     src: 'manifest/media.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
-  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
+  this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+  this.standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.equal(hlsPlaylistCueTagsEvents, 1, 'cue tags event has been triggered once');
   assert.ok(this.masterPlaylistController.cueTagsTrack_,
            'creates cueTagsTrack_ if useCueTags is truthy');
   assert.equal(this.masterPlaylistController.cueTagsTrack_.label,
@@ -1145,7 +1483,82 @@ QUnit.test('correctly sets alternate audio track kinds', function(assert) {
                'spanish track\'s kind is "alternative"');
 });
 
+QUnit.test('trigger events when video and audio is demuxed by default', function(assert) {
+  let hlsDemuxedEvents = 0;
+
+  this.requests.length = 0;
+  this.player = createPlayer();
+  this.player.src({
+    src: 'manifest/multipleAudioGroups.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-demuxed') {
+      hlsDemuxedEvents++;
+    }
+  });
+
+  openMediaSource(this.player, this.clock);
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.equal(hlsDemuxedEvents, 1, 'video and audio is demuxed by default');
+});
+
+QUnit.test('trigger events when an AES is detected', function(assert) {
+  let hlsAesEvents = 0;
+  let isAesCopy = Hls.Playlist.isAes;
+
+  Hls.Playlist.isAes = (media) => {
+    return true;
+  };
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-aes') {
+      hlsAesEvents++;
+    }
+  });
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  assert.equal(hlsAesEvents, 1, 'an AES HLS stream is detected');
+  Hls.Playlist.isAes = isAesCopy;
+});
+
+QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
+  let hlsFmp4Events = 0;
+  let isFmp4Copy = Hls.Playlist.isFmp4;
+
+  Hls.Playlist.isFmp4 = (media) => {
+    return true;
+  };
+
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-fmp4') {
+      hlsFmp4Events++;
+    }
+  });
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  assert.equal(hlsFmp4Events, 1, 'an fMP4 stream is detected');
+  Hls.Playlist.isFmp4 = isFmp4Copy;
+});
+
 QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {
+  let hlsWebvttEvents = 0;
+
   this.requests.length = 0;
   this.player = createPlayer();
   this.player.src({
@@ -1153,8 +1566,15 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
     type: 'application/vnd.apple.mpegurl'
   });
 
+  this.player.tech_.on('usage', (event) => {
+    if (event.name === 'hls-webvtt') {
+      hlsWebvttEvents++;
+    }
+  });
+
   const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
+  assert.equal(hlsWebvttEvents, 0, 'there is no webvtt detected');
   assert.equal(this.player.textTracks().length, 1, 'one text track to start');
   assert.equal(this.player.textTracks()[0].label,
                'segment-metadata',
@@ -1183,6 +1603,7 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
   assert.equal(textTracks.length, 3, 'non-forced text tracks were added');
   assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
   assert.equal(textTracks[2].mode, 'disabled', 'track starts disabled');
+  assert.equal(hlsWebvttEvents, 1, 'there is webvtt detected in the rendition');
 });
 
 QUnit.test('switches off subtitles on subtitle errors', function(assert) {
@@ -1632,6 +2053,75 @@ QUnit.test('sets up subtitles', function(assert) {
                'removed subtitle playlist loader');
   assert.ok(masterPlaylistController.subtitleSegmentLoader_,
             'did not remove subtitle segment loader');
+});
+
+QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {
+  const configOld = {
+    GOAL_BUFFER_LENGTH: Config.GOAL_BUFFER_LENGTH,
+    MAX_GOAL_BUFFER_LENGTH: Config.MAX_GOAL_BUFFER_LENGTH,
+    GOAL_BUFFER_LENGTH_RATE: Config.GOAL_BUFFER_LENGTH_RATE
+  };
+  const mpc = this.masterPlaylistController;
+
+  let currentTime = 0;
+
+  Config.GOAL_BUFFER_LENGTH = 30;
+  Config.MAX_GOAL_BUFFER_LENGTH = 60;
+  Config.GOAL_BUFFER_LENGTH_RATE = 0.5;
+
+  mpc.tech_.currentTime = () => currentTime;
+
+  assert.equal(mpc.goalBufferLength(), 30, 'dynamic GBL uses starting value at time 0');
+
+  currentTime = 10;
+
+  assert.equal(mpc.goalBufferLength(), 35, 'dynamic GBL increases by currentTime * rate');
+
+  currentTime = 60;
+
+  assert.equal(mpc.goalBufferLength(), 60, 'dynamic GBL uses max value');
+
+  currentTime = 70;
+
+  assert.equal(mpc.goalBufferLength(), 60, 'dynamic GBL continues to use max value');
+
+  // restore config
+  Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);
+});
+
+QUnit.test('calculates dynamic BUFFER_LOW_WATER_LINE', function(assert) {
+  const configOld = {
+    BUFFER_LOW_WATER_LINE: Config.BUFFER_LOW_WATER_LINE,
+    MAX_BUFFER_LOW_WATER_LINE: Config.MAX_BUFFER_LOW_WATER_LINE,
+    BUFFER_LOW_WATER_LINE_RATE: Config.BUFFER_LOW_WATER_LINE_RATE
+  };
+  const mpc = this.masterPlaylistController;
+
+  let currentTime = 0;
+
+  Config.BUFFER_LOW_WATER_LINE = 0;
+  Config.MAX_BUFFER_LOW_WATER_LINE = 30;
+  Config.BUFFER_LOW_WATER_LINE_RATE = 0.5;
+
+  mpc.tech_.currentTime = () => currentTime;
+
+  assert.equal(mpc.bufferLowWaterLine(), 0, 'dynamic BLWL uses starting value at time 0');
+
+  currentTime = 10;
+
+  assert.equal(mpc.bufferLowWaterLine(), 5,
+    'dynamic BLWL increases by currentTime * rate');
+
+  currentTime = 60;
+
+  assert.equal(mpc.bufferLowWaterLine(), 30, 'dynamic BLWL uses max value');
+
+  currentTime = 70;
+
+  assert.equal(mpc.bufferLowWaterLine(), 30, 'dynamic BLWL continues to use max value');
+
+  // restore config
+  Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);
 });
 
 QUnit.module('Codec to MIME Type Conversion');

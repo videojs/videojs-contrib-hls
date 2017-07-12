@@ -28,7 +28,8 @@ const byterangeStr = function(byterange) {
 /**
  * Defines headers for use in the xhr request for a particular segment.
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  */
 const segmentXhrHeaders = function(segment) {
   let headers = {};
@@ -78,13 +79,12 @@ const getProgressStats = (progressEvent) => {
     roundTripTime: roundTripTime || 0
   };
 
-  if (progressEvent.lengthComputable) {
-    stats.bytesReceived = progressEvent.loaded;
-    // This can result in Infinity if stats.roundTripTime is 0 but that is ok
-    // because we should only use bandwidth stats on progress to determine when
-    // abort a request early due to insufficient bandwidth
-    stats.bandwidth = Math.floor((stats.bytesReceived / stats.roundTripTime) * 8 * 1000);
-  }
+  stats.bytesReceived = progressEvent.loaded;
+  // This can result in Infinity if stats.roundTripTime is 0 but that is ok
+  // because we should only use bandwidth stats on progress to determine when
+  // abort a request early due to insufficient bandwidth
+  stats.bandwidth = Math.floor((stats.bytesReceived / stats.roundTripTime) * 8 * 1000);
+
   return stats;
 };
 
@@ -130,7 +130,8 @@ const handleErrors = (error, request) => {
  * Handle responses for key data and convert the key data to the correct format
  * for the decryption step later
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  * @param {Function} finishProcessingFn - a callback to execute to continue processing
  *                                        this request
  */
@@ -165,16 +166,29 @@ const handleKeyResponse = (segment, finishProcessingFn) => (error, request) => {
 /**
  * Handle init-segment responses
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  * @param {Function} finishProcessingFn - a callback to execute to continue processing
  *                                        this request
  */
 const handleInitSegmentResponse = (segment, finishProcessingFn) => (error, request) => {
+  const response = request.response;
   const errorObj = handleErrors(error, request);
 
   if (errorObj) {
     return finishProcessingFn(errorObj, segment);
   }
+
+  // stop processing if received empty content
+  if (response.byteLength === 0) {
+    return finishProcessingFn({
+      status: request.status,
+      message: 'Empty HLS segment content at URL: ' + request.uri,
+      code: REQUEST_ERRORS.FAILURE,
+      xhr: request
+    }, segment);
+  }
+
   segment.map.bytes = new Uint8Array(request.response);
   return finishProcessingFn(null, segment);
 };
@@ -184,16 +198,29 @@ const handleInitSegmentResponse = (segment, finishProcessingFn) => (error, reque
  * property depending on whether the segment is encryped or not
  * Also records and keeps track of stats that are used for ABR purposes
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  * @param {Function} finishProcessingFn - a callback to execute to continue processing
  *                                        this request
  */
 const handleSegmentResponse = (segment, finishProcessingFn) => (error, request) => {
+  const response = request.response;
   const errorObj = handleErrors(error, request);
 
   if (errorObj) {
     return finishProcessingFn(errorObj, segment);
   }
+
+  // stop processing if received empty content
+  if (response.byteLength === 0) {
+    return finishProcessingFn({
+      status: request.status,
+      message: 'Empty HLS segment content at URL: ' + request.uri,
+      code: REQUEST_ERRORS.FAILURE,
+      xhr: request
+    }, segment);
+  }
+
   segment.stats = getRequestStats(request);
 
   if (segment.key) {
@@ -209,7 +236,8 @@ const handleSegmentResponse = (segment, finishProcessingFn) => (error, request) 
  * Decrypt the segment via the decryption web worker
  *
  * @param {WebWorker} decrypter - a WebWorker interface to AES-128 decryption routines
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
  * @param {Function} doneFn - a callback that is executed after decryption has completed
  */
 const decryptSegment = (decrypter, segment, doneFn) => {
@@ -297,12 +325,20 @@ const waitForCompletion = (activeXhrs, decrypter, doneFn) => {
  * Simple progress event callback handler that gathers some stats before
  * executing a provided callback with the `segment` object
  *
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
- * @param {Function} progressFn - a callback that is executed each time a progress event is received
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
+ * @param {Function} progressFn - a callback that is executed each time a progress event
+ *                                is received
  * @param {Event} event - the progress event object from XMLHttpRequest
  */
 const handleProgress = (segment, progressFn) => (event) => {
-  segment.stats = getProgressStats(event);
+  segment.stats = videojs.mergeOptions(segment.stats, getProgressStats(event));
+
+  // record the time that we receive the first byte of data
+  if (!segment.stats.firstBytesReceivedAt && segment.stats.bytesReceived) {
+    segment.stats.firstBytesReceivedAt = Date.now();
+  }
+
   return progressFn(event, segment);
 };
 
@@ -343,13 +379,23 @@ const handleProgress = (segment, progressFn) => (event) => {
  *
  * @param {Function} xhr - an instance of the xhr wrapper in xhr.js
  * @param {Object} xhrOptions - the base options to provide to all xhr requests
- * @param {WebWorker} decryptionWorker - a WebWorker interface to AES-128 decryption routines
- * @param {Object} segment - a simplified copy of the segmentInfo object from SegmentLoader
- * @param {Function} progressFn - a callback that receives progress events from the main segment's xhr request
- * @param {Function} doneFn - a callback that is executed only once all requests have succeeded or failed
- * @returns {Function} a function that, when invoked, immediately aborts all outstanding requests
+ * @param {WebWorker} decryptionWorker - a WebWorker interface to AES-128
+ *                                       decryption routines
+ * @param {Object} segment - a simplified copy of the segmentInfo object
+ *                           from SegmentLoader
+ * @param {Function} progressFn - a callback that receives progress events from the main
+ *                                segment's xhr request
+ * @param {Function} doneFn - a callback that is executed only once all requests have
+ *                            succeeded or failed
+ * @returns {Function} a function that, when invoked, immediately aborts all
+ *                     outstanding requests
  */
-export const mediaSegmentRequest = (xhr, xhrOptions, decryptionWorker, segment, progressFn, doneFn) => {
+export const mediaSegmentRequest = (xhr,
+                                    xhrOptions,
+                                    decryptionWorker,
+                                    segment,
+                                    progressFn,
+                                    doneFn) => {
   const activeXhrs = [];
   const finishProcessingFn = waitForCompletion(activeXhrs, decryptionWorker, doneFn);
 
@@ -373,7 +419,8 @@ export const mediaSegmentRequest = (xhr, xhrOptions, decryptionWorker, segment, 
       responseType: 'arraybuffer',
       headers: segmentXhrHeaders(segment.map)
     });
-    const initSegmentRequestCallback = handleInitSegmentResponse(segment, finishProcessingFn);
+    const initSegmentRequestCallback = handleInitSegmentResponse(segment,
+                                                                 finishProcessingFn);
     const initSegmentXhr = xhr(initSegmentOptions, initSegmentRequestCallback);
 
     activeXhrs.push(initSegmentXhr);

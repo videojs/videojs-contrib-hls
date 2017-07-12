@@ -105,15 +105,43 @@ QUnit.test('detects time range end-point changed by updates', function(assert) {
 
   // Null input
   edge = Ranges.findSoleUncommonTimeRangesEnd(null, createTimeRanges([[0, 11]]));
-  assert.strictEqual(edge, 11, 'treat null original buffer as an empty TimeRanges object');
+  assert.strictEqual(edge,
+                     11,
+                     'treat null original buffer as an empty TimeRanges object');
 
   edge = Ranges.findSoleUncommonTimeRangesEnd(createTimeRanges([[0, 11]]), null);
-  assert.strictEqual(edge, null, 'treat null update buffer as an empty TimeRanges object');
+  assert.strictEqual(edge,
+                     null,
+                     'treat null update buffer as an empty TimeRanges object');
+});
+
+QUnit.test('properly calculates time left until player rebuffers', function(assert) {
+  let buffered = createTimeRanges([]);
+  let currentTime = 0;
+  let playbackRate = 1;
+
+  let time = Ranges.timeUntilRebuffer(buffered, currentTime, playbackRate);
+
+  assert.equal(time, 0, 'calculates no time until rebuffer with empty buffer');
+
+  buffered = createTimeRanges([[0, 30]]);
+  currentTime = 15;
+
+  time = Ranges.timeUntilRebuffer(buffered, currentTime, playbackRate);
+
+  assert.equal(time, 15, 'calculates time until rebuffer');
+
+  playbackRate = 0.5;
+
+  time = Ranges.timeUntilRebuffer(buffered, currentTime, playbackRate);
+
+  assert.equal(time, 30, 'takes into account playback rate');
 });
 
 QUnit.module('Segment Percent Buffered Calculations');
 
-QUnit.test('calculates the percent buffered for segments in the simple case', function(assert) {
+QUnit.test('calculates the percent buffered for segments in the simple case',
+function(assert) {
   let segmentStart = 10;
   let segmentDuration = 10;
   let currentTime = 0;
@@ -187,7 +215,8 @@ QUnit.test('calculates the percent buffered for segments with multiple buffered 
   assert.equal(percentBuffered, 90, 'calculated the buffered amount correctly');
 });
 
-QUnit.test('calculates the percent buffered as 0 for zero-length segments', function(assert) {
+QUnit.test('calculates the percent buffered as 0 for zero-length segments',
+function(assert) {
   let segmentStart = 10;
   let segmentDuration = 0;
   let currentTime = 0;

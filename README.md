@@ -45,6 +45,9 @@ Maintenance Status: Stable
     - [hls.xhr](#hlsxhr)
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
+  - [HLS Usage Events](#hls-usage-events)
+    - [Presence Stats](#presence-stats)
+    - [Use Stats](#use-stats)
   - [In-Band Metadata](#in-band-metadata)
   - [Segment Metadata](#segment-metadata)
 - [Hosting Considerations](#hosting-considerations)
@@ -441,7 +444,9 @@ player.hls.xhr.beforeRequest = function(options) {
 
 The global `videojs.Hls` also exposes an `xhr` property. Specifying a
 `beforeRequest` function on that will allow you to intercept the options
-for *all* requests in every player on a page.
+for *all* requests in every player on a page. For consistency across
+browsers the video source should be set at runtime once the video player
+is ready.
 
 Example
 ```javascript
@@ -452,6 +457,14 @@ videojs.Hls.xhr.beforeRequest = function(options) {
 
   return options;
 };
+
+var player = videojs('video-player-id');
+player.ready(function() {
+  this.src({
+    src: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8',
+    type: 'application/x-mpegURL',
+  });
+});
 ```
 
 For information on the type of options that you can modify see the
@@ -465,6 +478,54 @@ are triggered on the player object.
 
 Fired after the first segment is downloaded for a playlist. This will not happen
 until playback if video.js's `metadata` setting is `none`
+
+### HLS Usage Events
+
+Usage tracking events are fired when we detect a certain HLS feature, encoding setting,
+or API is used. These can be helpful for analytics, and to pinpoint the cause of HLS errors.
+For instance, if errors are being fired in tandem with a usage event indicating that the
+player was playing an AES encrypted stream, then we have a possible avenue to explore when
+debugging the error.
+
+Note that although these usage events are listed below, they may change at any time without
+a major version change.
+
+HLS usage events are triggered on the tech with the exception of the 3 hls-reload-error
+events, which are triggered on the player.
+
+#### Presence Stats
+
+Each of the following usage events are fired once per source if (and when) detected:
+
+| Name          | Description   |
+| ------------- | ------------- |
+| hls-webvtt    | master manifest has at least one segmented WebVTT playlist |
+| hls-aes       | a playlist is AES encrypted |
+| hls-fmp4      | a playlist used fMP4 segments |
+| hls-demuxed   | audio and video are demuxed by default |
+| hls-alternate-audio | alternate audio available in the master manifest |
+| hls-playlist-cue-tags | a playlist used cue tags (see useCueTags(#usecuetags) for details) |
+
+#### Use Stats
+
+Each of the following usage events are fired per use:
+
+| Name          | Description   |
+| ------------- | ------------- |
+| hls-gap-skip  | player skipped a gap in the buffer |
+| hls-player-access | player.hls was accessed |
+| hls-audio-change | a user selected an alternate audio stream |
+| hls-rendition-disabled | a rendition was disabled |
+| hls-rendition-enabled | a rendition was enabled |
+| hls-rendition-blacklisted | a rendition was blacklisted |
+| hls-timestamp-offset | a timestamp offset was set in HLS (can identify discontinuities) |
+| hls-unknown-waiting | the player stopped for an unknown reason and we seeked to current time try to address it |
+| hls-live-resync | playback fell off the back of a live playlist and we resynced to the live point |
+| hls-video-underflow | we seeked to current time to address video underflow |
+| hls-error-reload-initialized | the reloadSourceOnError plugin was initialized |
+| hls-error-reload | the reloadSourceOnError plugin reloaded a source |
+| hls-error-reload-canceled | an error occurred too soon after the last reload, so we didn't reload again (to prevent error loops) |
+
 
 ### In-Band Metadata
 The HLS tech supports [timed
@@ -522,10 +583,11 @@ if (segmentMetadataTrack) {
     let activeCue = segmentMetadataTrack.activeCues[0];
 
     if (activeCue) {
-      if (previousPlaylist !== activeCue.playlist) {
-        console.log('Switched from rendition' + previousPlaylist + 'to rendition' + activeCue.playlist);
+      if (previousPlaylist !== activeCue.value.playlist) {
+        console.log('Switched from rendition ' + previousPlaylist +
+                    ' to rendition ' + activeCue.value.playlist);
       }
-      previousPlaylist = activeCue.playlist;
+      previousPlaylist = activeCue.value.playlist;
     }
   });
 }

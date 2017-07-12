@@ -7,7 +7,7 @@ import {
 } from '../../test/test-helpers';
 import {Hls} from '../../';
 
-let simulationParams = {
+let simulationDefaults = {
   // number of seconds of video in each segment
   segmentDuration: 10,
   // number of milliseconds to delay the first byte
@@ -24,7 +24,7 @@ let simulationParams = {
 const propagationDelay = 0.5;
 
 // send a mock playlist response
-const playlistResponse = (request) => {
+const playlistResponse = (request, simulationParams) => {
   let match = request.url.match(/(\d+)-(\d+)/);
   let maxBitrate = match[1];
   let avgBitrate = match[2];
@@ -43,25 +43,36 @@ const playlistResponse = (request) => {
   return response;
 };
 
+const clearSourceBufferUpdates = (sourceBuffer) => {
+  while (sourceBuffer.updates_.length) {
+    let update = sourceBuffer.updates_.pop();
+    if (update.append || update.remove) {
+      sourceBuffer.trigger('updateend');
+    }
+  }
+};
+
 // run the simulation
 const runSimulation = function(options, done) {
   let networkTrace = options.networkTrace;
   let traceDurationInMs = networkTrace.reduce((acc, t) => acc + t[1], 0);
+  let simulationParams = Object.create(simulationDefaults);
   simulationParams.segmentCount = Math.floor(traceDurationInMs / 1000 / simulationParams.segmentDuration);
-  simulationParams.duration = simulationParams.segmentCount * simulationParams.segmentDuration;
-  simulationParams.durationInMs = simulationParams.duration * 1000;
 
   // If segments are provided, switch into "simulate movie mode"
   if (options.segments) {
     let key = Object.keys(options.segments)[0];
     if (key && Array.isArray(options.segments[key])) {
-      simulationParams.segmentCount = options.segments[key].length;
+      simulationParams.segmentCount = Math.min(simulationParams.segmentCount, options.segments[key].length);
       simulationParams.dontCountNullSegments = true;
     }
   }
+  simulationParams.duration = simulationParams.segmentCount * simulationParams.segmentDuration;
+  simulationParams.durationInMs = simulationParams.duration * 1000;
 
   Hls.GOAL_BUFFER_LENGTH = options.goalBufferLength;
   Hls.BANDWIDTH_VARIANCE = options.bandwidthVariance;
+  Hls.BUFFER_LOW_WATER_LINE = options.bufferLowWaterLine;
 
   // SETUP
   let results = {
@@ -121,6 +132,8 @@ const runSimulation = function(options, done) {
   };
   player.tech_.buffered = getBuffer;
 
+  player.hls.playbackWatcher_.dispose();
+
   Object.defineProperty(player.tech_, 'time_', {
     get: () => currentTime
   });
@@ -130,7 +143,7 @@ const runSimulation = function(options, done) {
   masterRequest.respond(200, null, master);
 
   let playlistRequest = requests.shift();
-  playlistRequest.respond(200, null, playlistResponse(playlistRequest));
+  playlistRequest.respond(200, null, playlistResponse(playlistRequest, simulationParams));
 
   let sourceBuffer = player.tech_.hls.mediaSource.sourceBuffers[0];
   Object.defineProperty(sourceBuffer, 'buffered', {
@@ -203,7 +216,7 @@ const runSimulation = function(options, done) {
         if (/\.m3u8$/.test(request.url)) {
           setTimeout(() => {
             // for simplicity, playlist responses have zero trasmission time
-            request.respond(200, null, playlistResponse(request));
+            request.respond(200, null, playlistResponse(request, simulationParams));
           }, simulationParams.manifestLatency);
           continue;
         }
@@ -222,7 +235,6 @@ const runSimulation = function(options, done) {
           segmentSize = Math.ceil((segmentAvgBitrate * simulationParams.segmentDuration) / 8);
         }
       }
-
 
       if (segmentRequest) {
         if (segmentDelay <= 0) {
@@ -275,12 +287,12 @@ const runSimulation = function(options, done) {
         if (segmentDownloaded > segmentSize) {
           if (!currentTime ||
                player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.mediaIndex !== null) {
+            buffered += simulationParams.segmentDuration;
+            s++;
+          } else {
             if (!simulationParams.dontCountNullSegments) {
               s++;
             }
-            buffered += simulationParams.segmentDuration;
-          } else {
-            s++;
           }
 
           segmentRequest.response = new Uint8Array(segmentSize);
@@ -288,7 +300,7 @@ const runSimulation = function(options, done) {
 
           console.log('Request for', segmentRequest.uri, 'complete');
           setTimeout((fore) => {
-            sourceBuffer.trigger('updateend');
+            clearSourceBufferUpdates(sourceBuffer);
           }, Math.round(segmentSize / (simulationParams.throughput / 8) * 1000), segmentRequest);
 
           results.playlists.push({
@@ -334,9 +346,9 @@ const runSimulation = function(options, done) {
         buffered -= periodInSeconds;
         currentTime +=  periodInSeconds;
       }
+      player.trigger('timeupdate');
     }
     i += 1;
-    player.trigger('timeupdate');
   }
   console.timeEnd('Simulation Ended');
 
