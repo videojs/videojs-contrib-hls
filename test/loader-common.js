@@ -7,6 +7,7 @@ import {
   useFakeEnvironment,
   useFakeMediaSource
 } from './test-helpers.js';
+import { MasterPlaylistController } from '../src/master-playlist-controller';
 import SyncController from '../src/sync-controller';
 import Decrypter from '../src/decrypter-worker';
 import worker from 'webworkify';
@@ -27,9 +28,19 @@ export const LoaderCommonHooks = {
     };
     this.seeking = false;
     this.hasPlayed = true;
+    this.paused = false;
+    this.playbackRate = 1;
     this.fakeHls = {
-      xhr: xhrFactory()
+      xhr: xhrFactory(),
+      tech_: {
+        paused: () => this.paused,
+        playbackRate: () => this.playbackRate,
+        currentTime: () => this.currentTime
+      }
     };
+    this.tech_ = this.fakeHls.tech_;
+    this.goalBufferLength =
+      MasterPlaylistController.prototype.goalBufferLength.bind(this);
     this.mediaSource = new videojs.MediaSource();
     this.mediaSource.trigger('sourceopen');
     this.syncController = new SyncController();
@@ -60,6 +71,7 @@ export const LoaderCommonSettings = function(settings) {
     seeking: () => this.seeking,
     hasPlayed: () => this.hasPlayed,
     duration: () => this.mediaSource.duration,
+    goalBufferLength: () => this.goalBufferLength(),
     mediaSource: this.mediaSource,
     syncController: this.syncController,
     decrypter: this.decrypter
@@ -273,6 +285,83 @@ export const LoaderCommonFactory = (LoaderConstructor,
 
       this.requests[0].dispatchEvent({ type: 'progress', target: this.requests[0] });
       assert.equal(progressEvents, 1, 'triggered progress');
+    });
+
+    QUnit.test('aborts request at progress events if bandwidth is too low',
+    function(assert) {
+      const playlist1 = playlistWithDuration(10, { uri: 'playlist1.m3u8' });
+      const playlist2 = playlistWithDuration(10, { uri: 'playlist2.m3u8' });
+      const playlist3 = playlistWithDuration(10, { uri: 'playlist3.m3u8' });
+      const playlist4 = playlistWithDuration(10, { uri: 'playlist4.m3u8' });
+      const xhrOptions = {
+        timeout: 15000
+      };
+      let bandwidthupdates = 0;
+      let firstProgress = false;
+
+      playlist1.attributes.BANDWIDTH = 18000;
+      playlist2.attributes.BANDWIDTH = 10000;
+      playlist3.attributes.BANDWIDTH = 8888;
+      playlist4.attributes.BANDWIDTH = 7777;
+
+      loader.hls_.playlists = {
+        master: {
+          playlists: [
+            playlist1,
+            playlist2,
+            playlist3,
+            playlist4
+          ]
+        }
+      };
+
+      const oldHandleProgress = loader.handleProgress_.bind(loader);
+
+      loader.handleProgress_ = (event, simpleSegment) => {
+        if (!firstProgress) {
+          firstProgress = true;
+          assert.equal(simpleSegment.stats.firstBytesReceivedAt, Date.now(),
+            'firstBytesReceivedAt timestamp added on first progress event with bytes');
+        }
+        oldHandleProgress(event, simpleSegment);
+      };
+
+      loader.on('bandwidthupdate', () => bandwidthupdates++);
+      loader.playlist(playlist1, xhrOptions);
+      loader.load();
+
+      this.clock.tick(1);
+
+      this.requests[0].dispatchEvent({
+        type: 'progress',
+        target: this.requests[0],
+        loaded: 1
+      });
+
+      assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
+      assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+
+      this.clock.tick(999);
+
+      this.requests[0].dispatchEvent({
+        type: 'progress',
+        target: this.requests[0],
+        loaded: 2000
+      });
+
+      assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
+      assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+
+      this.clock.tick(2);
+
+      this.requests[0].dispatchEvent({
+        type: 'progress',
+        target: this.requests[0],
+        loaded: 2001
+      });
+
+      assert.equal(bandwidthupdates, 1, 'bandwidth updated');
+      assert.ok(this.requests[0].aborted, 'request aborted');
     });
 
     QUnit.test(
@@ -968,7 +1057,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
       let segmentInfo;
 
       buffered = videojs.createTimeRanges([
-        [0, 15 + Config.GOAL_BUFFER_LENGTH]
+        [0, 30 + Config.GOAL_BUFFER_LENGTH]
       ]);
       segmentInfo = loader.checkBuffer_(buffered,
                                         playlistWithDuration(30),

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<style>
+
+.axis .domain {
+  display: none;
+}
+
+.tooltip {
+  position: absolute;
+  text-align: center;
+  width: auto;
+  height: auto;
+  padding: 2px;
+  font: 16px sans-serif;
+  font-weight: bold;
+  background: lightsteelblue;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+</style>
+<form>
+  <fieldset>
+    <legend>Load Reports</legend>
+    <input type="file" id="reports" multiple />
+  </fieldset>
+</form>
+<p>X axis labels in form of ["Goal Buffer Length", "Buffer Low Water Line", "Bandwidth Variance"]</p>
+<svg id="startTime" width="960" height="500"></svg>
+<svg id="rebufferRatio" width="960" height="500"></svg>
+<svg id="rebufferCount" width="960" height="500"></svg>
+<svg id="indicatedBitrate" width="960" height="500"></svg>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+
+var $ = document.querySelector.bind(document);
+
+var reports = $('#reports');
+var svgstartTime = d3.select("#startTime");
+var svgrebufferRatio= d3.select("#rebufferRatio");
+var svgrebufferCount = d3.select("#rebufferCount");
+var svgindicatedBitrate = d3.select("#indicatedBitrate");
+var tooltip = d3.select("body").append("div")
+  .attr("class", "tooltip")
+  .style("opacity", 0);
+
+var graphs = {
+  startTime: svgstartTime,
+  rebufferRatio: svgrebufferRatio,
+  rebufferCount: svgrebufferCount,
+  indicatedBitrate: svgindicatedBitrate
+};
+
+var quartiles = ['25', '50', '90', '95', '99', 'max']
+var inputNames = ["Goal Buffer Length", "Buffer Low Water Line", "Bandwidth Variance"]
+
+var datas = { };
+
+// Load reports and parse data
+reports.addEventListener('click', function() { reports.value = '' });
+reports.addEventListener('change', function() {
+  var files = reports.files;
+
+  if (!files) {
+    return;
+  }
+
+  datas = {};
+
+  Object.keys(graphs).forEach(function(key) {
+    datas[key] = [];
+  });
+
+  d3.selectAll("svg > *").remove();
+
+  let filePromises = Array.from(files).map(function(file) {
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+
+      reader.onloadend = function() {
+        // parse data and store
+        var report = JSON.parse(reader.result);
+
+        report.forEach(function(rep) {
+          var okrReport = rep.summary;
+
+          Object.keys(datas).forEach(function(key) {
+            var data = okrReport[key];
+
+            data.inputs = rep.inputs.toString();
+
+            datas[key].push(data);
+          });
+        });
+
+        resolve();
+      }
+      reader.readAsText(file);
+    });
+  });
+
+  Promise.all(filePromises).then(function() {
+    renderGraphs();
+  });
+});
+
+var renderGraphs = function() {
+  Object.keys(graphs).forEach(function(graphKey) {
+    var svg = graphs[graphKey],
+      margin = {top: 20, right: 60, bottom: 30, left: 40},
+      width = +svg.attr("width") - margin.left - margin.right,
+      height = +svg.attr("height") - margin.top - margin.bottom,
+      g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    var x0 = d3.scaleBand()
+        .rangeRound([0, width])
+        .paddingInner(0.1);
+
+    var x1 = d3.scaleBand()
+        .padding(0.05);
+
+    var y = d3.scaleLinear()
+        .rangeRound([height, 0]);
+
+    var z = d3.scaleOrdinal()
+        .range(["#98abc5", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+
+    var keys = quartiles.slice(0);
+    var data = datas[graphKey];
+
+    x0.domain(data.map(function(d) { return d.inputs; }));
+    x1.domain(keys).rangeRound([0, x0.bandwidth()]);
+    y.domain([0, d3.max(data, function(d) { return d3.max(keys, function(key) { return d[key]; }); })]).nice();
+
+    g.append("g")
+      .selectAll("g")
+      .data(data)
+      .enter().append("g")
+        .attr("transform", function(d) { return "translate(" + x0(d.inputs) + ",0)"; })
+      .selectAll("rect")
+      .data(function(d) { return keys.map(function(key) { return {key: key, value: d[key]}; }); })
+      .enter().append("rect")
+        .attr("x", function(d) { return x1(d.key); })
+        .attr("y", function(d) { return y(d.value); })
+        .attr("width", x1.bandwidth())
+        .attr("height", function(d) { return height - y(d.value); })
+        .attr("fill", function(d) { return z(d.key); })
+        .on("mouseover", function(d) {
+          tooltip.transition()
+            .duration(200)
+            .style("opacity", 0.9);
+          tooltip.html(d.key + ' percentile<br />' + d.value)
+            .style("left", (d3.event.pageX) + "px")
+            .style("top", (d3.event.pageY - 28) + "px");
+        })
+        .on("mouseout", function(d) {
+          tooltip.transition()
+            .duration(500)
+            .style("opactiy", 0);
+        });
+
+    g.append("g")
+        .attr("class", "axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x0));
+
+    g.append("g")
+        .attr("class", "axis")
+        .call(d3.axisLeft(y).ticks(null, "s"))
+      .append("text")
+        .attr("x", 2)
+        .attr("y", y(y.ticks().pop()) + 0.5)
+        .attr("dy", "0.32em")
+        .attr("fill", "#000")
+        .attr("font-weight", "bold")
+        .attr("text-anchor", "start")
+        .text(graphKey);
+
+    var legend = g.append("g")
+        .attr("font-family", "sans-serif")
+        .attr("font-size", 10)
+        .attr("text-anchor", "end")
+        .attr("transform", "translate(50,0)")
+      .selectAll("g")
+      .data(keys.slice().reverse())
+      .enter().append("g")
+        .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+    legend.append("rect")
+        .attr("x", width - 19)
+        .attr("width", 19)
+        .attr("height", 19)
+        .attr("fill", z);
+
+    legend.append("text")
+        .attr("x", width - 24)
+        .attr("y", 9.5)
+        .attr("dy", "0.32em")
+        .text(function(d) { return d; });
+  });
+}
+
+</script>

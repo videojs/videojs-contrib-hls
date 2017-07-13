@@ -195,6 +195,11 @@ QUnit.module('SegmentLoader', function(hooks) {
     QUnit.test('sets the timestampOffset on timeline change', function(assert) {
       let playlist = playlistWithDuration(40);
       let buffered = videojs.createTimeRanges();
+      let hlsTimestampOffsetEvents = 0;
+
+      loader.on('timestampoffset', () => {
+        hlsTimestampOffsetEvents++;
+      });
 
       loader.buffered_ = () => buffered;
 
@@ -212,6 +217,8 @@ QUnit.module('SegmentLoader', function(hooks) {
       this.updateend();
       this.clock.tick(1);
 
+      assert.equal(hlsTimestampOffsetEvents, 0,
+        'no hls-timestamp-offset event was fired');
       // segment 1, discontinuity
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
@@ -222,6 +229,8 @@ QUnit.module('SegmentLoader', function(hooks) {
       // verify stats
       assert.equal(loader.mediaBytesTransferred, 20, '20 bytes');
       assert.equal(loader.mediaRequests, 2, '2 requests');
+      assert.equal(hlsTimestampOffsetEvents, 1,
+        'an hls-timestamp-offset event was fired');
     });
 
     QUnit.test('tracks segment end times as they are buffered', function(assert) {
@@ -368,12 +377,10 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       loader.mediaSource_ = {
         readyState: 'open',
-        sourceBuffers: this.mediaSource.sourceBuffers,
-        endOfStream() {
-          endOfStreams++;
-          this.readyState = 'ended';
-        }
+        sourceBuffers: this.mediaSource.sourceBuffers
       };
+
+      loader.on('ended', () => endOfStreams++);
 
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
@@ -402,12 +409,10 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       loader.mediaSource_ = {
         readyState: 'open',
-        sourceBuffers: this.mediaSource.sourceBuffers,
-        endOfStream() {
-          endOfStreams++;
-          this.readyState = 'ended';
-        }
+        sourceBuffers: this.mediaSource.sourceBuffers
       };
+
+      loader.on('ended', () => endOfStreams++);
 
       loader.on('bandwidthupdate', () => {
         bandwidthupdates++;
@@ -446,11 +451,10 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       loader.mediaSource_ = {
         readyState: 'open',
-        sourceBuffers: this.mediaSource.sourceBuffers,
-        endOfStream() {
-          endOfStreams++;
-        }
+        sourceBuffers: this.mediaSource.sourceBuffers
       };
+
+      loader.on('ended', () => endOfStreams++);
 
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');

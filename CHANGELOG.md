@@ -2,6 +2,28 @@ CHANGELOG
 =========
 
 --------------------
+## 5.8.1 (2017-07-12)
+* fix: audio only playlists with videojs-contrib-media-sources v4.4.7 [#1195](https://github.com/videojs/videojs-contrib-hls/pull/1195)
+
+--------------------
+## 5.8.0 (2017-07-06)
+* Abr Improvements [#1176](https://github.com/videojs/videojs-contrib-hls/pull/1176)
+  * Use a starting `bandwidth` value of `0.0625 MB/s` on Android devices
+  * Do not allow an up-switch in quality until a certain amount of forward buffer has been filled, `BUFFER_LOW_WATER_LINE`
+  * Dynamically increase the `BUFFER_LOW_WATER_LINE` and `GOAL_BUFFER_LENGTH` from `0 - > 30` and `30 -> 60` respectively during the first 30 seconds of playback
+  * Abort segment requests before completion if bandwidth reported by the XHR `progress` event shows that network conditions are not fast enough to complete the request without causing rebuffering
+
+--------------------
+## 5.7.0 (2017-06-27)
+* update mux.js to 4.1.5 and videojs-contrib-media-sources to 4.4.6 [#1180](https://github.com/videojs/videojs-contrib-hls/pull/1180)
+  * Only flush PES packets from TS parsing front end when they are complete
+    * Complete is defined as any time PES_packet_length matches the data’s length OR is a video packets
+    * Works around an issue with incomplete packets getting sent down the pipeline when the source has audio PES packets split between segments
+* Add hls usage tracking events [#1166](https://github.com/videojs/videojs-contrib-hls/pull/1166)
+  * Usage tracking events are fired when we detect a certain HLS feature, encoding setting, or API is used. Note that although these usage events are listed in the README, they may change at any time without a major version change.
+* Fix endOfStream for demuxed audio and video [#1175](https://github.com/videojs/videojs-contrib-hls/pull/1175)
+
+--------------------
 ## 5.6.0 (2017-06-20)
 * Do not reset segmentloaders when switching media groups [#1155](https://github.com/videojs/videojs-contrib-hls/pull/1155)
   * set loader state to ready on aborts even when loader is paused

@@ -115,6 +115,29 @@ QUnit.test('detects time range end-point changed by updates', function(assert) {
                      'treat null update buffer as an empty TimeRanges object');
 });
 
+QUnit.test('properly calculates time left until player rebuffers', function(assert) {
+  let buffered = createTimeRanges([]);
+  let currentTime = 0;
+  let playbackRate = 1;
+
+  let time = Ranges.timeUntilRebuffer(buffered, currentTime, playbackRate);
+
+  assert.equal(time, 0, 'calculates no time until rebuffer with empty buffer');
+
+  buffered = createTimeRanges([[0, 30]]);
+  currentTime = 15;
+
+  time = Ranges.timeUntilRebuffer(buffered, currentTime, playbackRate);
+
+  assert.equal(time, 15, 'calculates time until rebuffer');
+
+  playbackRate = 0.5;
+
+  time = Ranges.timeUntilRebuffer(buffered, currentTime, playbackRate);
+
+  assert.equal(time, 30, 'takes into account playback rate');
+});
+
 QUnit.module('Segment Percent Buffered Calculations');
 
 QUnit.test('calculates the percent buffered for segments in the simple case',
