@@ -52,7 +52,7 @@
     "watch:test": "npm-run-all -p watch:test:manifest watch:test:js watch:test:webpack watch:test:browserify",
     "watch:test:js": "node scripts/watch-test.js",
     "watch:test:manifest": "node -e \"var b=require('./scripts/manifest-data.js'); b.watch();\"",
-    "prepublish": "npm run build"
+    "prepublish": "not-in-install && npm run build || in-install"
   },
   "keywords": [
     "videojs",
@@ -111,6 +111,7 @@
     "d3": "^3.4.8",
     "doctoc": "^0.15.0",
     "glob": "^6.0.3",
+    "in-publish": "^2.0.0",
     "isparta": "^4.0.0",
     "istanbul": "^0.4.5",
     "jsdoc": "^3.4.0",
