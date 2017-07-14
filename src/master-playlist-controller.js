@@ -1002,6 +1002,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
   setupVideo() {
 
+    const currentMediaUri = this.masterPlaylistLoader_.media().resolvedUri;
+
+    let playlistUri;
     let videoGroup = this.activeVideoGroup();
     let track = videoGroup.filter((videoTrack) => {
       return videoTrack.enabled;
@@ -1014,6 +1017,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
       track.enabled = true;
     }
 
+    playlistUri = track.properties_.resolvedUri;
+    if (!playlistUri || playlistUri === currentMediaUri) {
+      return;
+    }
+
     this.mainSegmentLoader_.pause();
     this.mainSegmentLoader_.abort();
     this.mainSegmentLoader_.resetEverything();
@@ -1023,8 +1031,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.videoPlaylistLoader_.dispose();
       this.videoPlaylistLoader_ = null;
     }
-
-    const playlistUri = track.properties_.resolvedUri || this.masterPlaylistLoader_.media().resolvedUri;
 
     // startup playlist and segment loaders for the enabled video
     // track
