@@ -74,7 +74,8 @@ QUnit.module('MasterPlaylistController', {
     // force the HLS tech to run
     this.origSupportsNativeHls = videojs.Hls.supportsNativeHls;
     videojs.Hls.supportsNativeHls = false;
-    this.oldFirefox = videojs.browser.IS_FIREFOX;
+    this.oldBrowser = videojs.browser;
+    videojs.browser = videojs.mergeOptions({}, videojs.browser);
     this.player = createPlayer();
     this.player.src({
       src: 'manifest/master.m3u8',
@@ -101,7 +102,7 @@ QUnit.module('MasterPlaylistController', {
     this.env.restore();
     this.mse.restore();
     videojs.Hls.supportsNativeHls = this.origSupportsNativeHls;
-    videojs.browser.IS_FIREFOX = this.oldFirefox;
+    videojs.browser = this.oldBrowser;
     this.player.dispose();
   }
 });

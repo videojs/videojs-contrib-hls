@@ -93,8 +93,8 @@ QUnit.module('HLS', {
     videojs.Hls.Decrypter = function() {};
 
     // save and restore browser detection for the Firefox-specific tests
-    this.old.IS_FIREFOX = videojs.browser.IS_FIREFOX;
-    this.old.IE_VERSION = videojs.browser.IE_VERSION;
+    this.old.browser = videojs.browser;
+    videojs.browser = videojs.mergeOptions({}, videojs.browser);
 
     this.standardXHRResponse = (request, data) => {
       standardXHRResponse(request, data);
@@ -120,8 +120,7 @@ QUnit.module('HLS', {
 
     videojs.Hls.supportsNativeHls = this.old.NativeHlsSupport;
     videojs.Hls.Decrypter = this.old.Decrypt;
-    videojs.browser.IS_FIREFOX = this.old.IS_FIREFOX;
-    videojs.browser.IE_VERSION = this.old.IE_VERSION;
+    videojs.browser = this.old.browser;
 
     this.player.dispose();
   }
