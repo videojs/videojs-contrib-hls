@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 5.8.1 (2017-07-12)
+* fix: audio only playlists with videojs-contrib-media-sources v4.4.7 [#1195](https://github.com/videojs/videojs-contrib-hls/pull/1195)
+
+--------------------
 ## 5.8.0 (2017-07-06)
 * Abr Improvements [#1176](https://github.com/videojs/videojs-contrib-hls/pull/1176)
   * Use a starting `bandwidth` value of `0.0625 MB/s` on Android devices

@@ -1,6 +1,6 @@
 {
   "name": "videojs-contrib-hls",
-  "version": "5.8.0",
+  "version": "5.8.1",
   "description": "Play back HLS with video.js, even where it's not natively supported",
   "main": "es5/videojs-contrib-hls.js",
   "engines": {
@@ -95,7 +95,7 @@
     "mux.js": "4.1.5",
     "url-toolkit": "1.0.9",
     "video.js": "^5.19.1",
-    "videojs-contrib-media-sources": "4.4.6",
+    "videojs-contrib-media-sources": "4.4.7",
     "webworkify": "1.0.2"
   },
   "devDependencies": {
