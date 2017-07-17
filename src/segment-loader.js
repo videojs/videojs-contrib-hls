@@ -1104,11 +1104,16 @@ export default class SegmentLoader extends videojs.EventTarget {
 
   addToBufferQualityMap_(segmentInfo) {
 
+    const duration = (segmentInfo.segment.end - segmentInfo.segment.start);
+    const effectiveBitrate = 8 *segmentInfo.bytes.byteLength / duration;
+
     const entry = {
       representationAttributes: segmentInfo.playlist.attributes,
       startTime: segmentInfo.segment.start,
       endTime: segmentInfo.segment.end,
-      timestampOffset: segmentInfo.timestampOffset
+      timestampOffset: segmentInfo.timestampOffset,
+      effectiveBitrate,
+      duration
     };
 
     this.bufferQualityMap_.push(entry)
@@ -1116,8 +1121,8 @@ export default class SegmentLoader extends videojs.EventTarget {
 
   removeFromBufferQualityMap(startTime, endTime) {
     this.bufferQualityMap_ = this.bufferQualityMap_.filter((entry) => {
-      var remove = !(entry.startTime >= startTime && entry.endTime <= endTime);
-      return remove;
+      var remove = (entry.startTime >= startTime && entry.endTime <= endTime);
+      return (!remove);
     });
   }
 
