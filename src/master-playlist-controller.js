@@ -388,6 +388,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       time,
       media
     };
+
     this.switchPlaylistHistory_.push(switchPlaylistEntry);
   }
 
