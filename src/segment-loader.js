@@ -115,6 +115,8 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.mediaSource_.addEventListener('sourceopen', () => this.ended_ = false);
 
+    this.bufferQualityMap_ = [];
+
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
@@ -440,6 +442,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * Delete all the buffered data and reset the SegmentLoader
    */
   resetEverything() {
+    this.bufferQualityMap_ = [];
     this.ended_ = false;
     this.resetLoader();
     this.remove(0, Infinity);
@@ -475,6 +478,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.sourceUpdater_) {
       this.sourceUpdater_.remove(start, end);
     }
+    this.removeFromBufferQualityMap(start, end);
     removeCuesFromTrack(start, end, this.segmentMetadataTrack_);
   }
 
@@ -855,6 +859,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @private
    */
   loadSegment_(segmentInfo) {
+
     this.state = 'WAITING';
     this.pendingSegment_ = segmentInfo;
     this.trimBackBuffer_(segmentInfo);
@@ -1076,6 +1081,8 @@ export default class SegmentLoader extends videojs.EventTarget {
           this.activeInitSegmentId_ !== initId) {
         const initSegment = this.initSegment(segment.map);
 
+        this.addToBufferQualityMap_(initSegment);
+
         this.sourceUpdater_.appendBuffer(initSegment.bytes, () => {
           this.activeInitSegmentId_ = initId;
         });
@@ -1089,8 +1096,44 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.mediaSecondsLoaded += segment.duration;
     }
 
+    this.addToBufferQualityMap_(segmentInfo);
+
     this.sourceUpdater_.appendBuffer(segmentInfo.bytes,
                                      this.handleUpdateEnd_.bind(this));
+  }
+
+  addToBufferQualityMap_(segmentInfo) {
+
+    const entry = {
+      representationAttributes: segmentInfo.playlist.attributes,
+      startTime: segmentInfo.segment.start,
+      endTime: segmentInfo.segment.end,
+      timestampOffset: segmentInfo.timestampOffset
+    };
+
+    this.bufferQualityMap_.push(entry)
+  }
+
+  removeFromBufferQualityMap(startTime, endTime) {
+    this.bufferQualityMap_ = this.bufferQualityMap_.filter((entry) => {
+      var remove = !(entry.startTime >= startTime && entry.endTime <= endTime);
+      return remove;
+    });
+  }
+
+  findRepresentationAttributesAtBufferPosition(playheadTime) {
+    let attributes = null;
+    this.bufferQualityMap_.forEach((entry) => {
+      if (playheadTime <= entry.endTime 
+        && playheadTime >= entry.startTime) {
+
+        if (attributes !== null) {
+          videojs.log.warn('There are two overlapping buffer-quality-map entries');
+        }
+        attributes = entry.representationAttributes;
+      }
+    });
+    return attributes;
   }
 
   /**
