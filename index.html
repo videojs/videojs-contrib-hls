@@ -49,11 +49,20 @@
   <select id="quality-picker"></select>
 
   <p>
-    Current quality attributes:
-    <br>
-    <pre id="current-quality-attr"></pre>
+    Media attributes at playhead:
+    <p><pre id="current-quality-attr">{}</pre></p>
   </p>
 
+  <p>
+    <ul>
+      <li>Trace 0: Recommended BANDWIDTHs of playlists selected</li>
+      <li>Trace 1: Effective bitrates of segments loaded</li>
+    </ul>
+    <div id="quality-graph"></div>
+  </p>
+
+
+  <script src="https://cdn.plot.ly/plotly-1.28.3.min.js"></script>
   <script src="/node_modules/jquery/dist/jquery.js"></script>
   <script src="/node_modules/video.js/dist/video.js"></script>
   <script src="/node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.js"></script>
@@ -63,14 +72,23 @@
 
       var videojsHlsDemo = {
         player: null,
-        url: null
+        url: null,
+        hlsHandler: null
+      };
+
+      var hlsOptions = {
+        debug: true,
+        smoothQualitySwitch: true,
+        disableImmediateQualityChange: true
       };
 
       var playerOptions = {
-        //
+        html5: {
+          hls: hlsOptions
+        }
       };
 
-      var player = videojs('videojs-contrib-hls-player', playerOptions);
+      var player = videojsHlsDemo.player = videojs('videojs-contrib-hls-player', playerOptions);
 
       // hook up the video switcher
       var loadUrl = document.getElementById('load-url');
@@ -84,8 +102,6 @@
         });
         return false;
       });
-
-      videojsHlsDemo.player = player;
 
       window.videojsContribHlsDemo = videojsHlsDemo;
 
@@ -116,7 +132,6 @@
           for (var i = 0; i < qualityLevels.length; i++) {
             var level = qualityLevels[i];
             if (i === Number(e.target.value)) {
-              console.log('enabled:', level);
               level.enabled = true;
             } else {
               level.enabled = false;
@@ -136,6 +151,58 @@
         }
 
       });
+
+      setInterval(function() {
+
+        var hlsHandler = videojsHlsDemo.hlsHandler;
+        if (hlsHandler) {
+          var bufferMap = hlsHandler.getMainBufferPayloadAttributesMap();
+
+          var startTimes = bufferMap.map(function(entry) {
+            return entry.startTime;
+          });
+          var bandwidths = bufferMap.map(function(entry) {
+            return entry.representationAttributes['BANDWIDTH'];
+          });
+          var effectiveBitrates = bufferMap.map(function(entry) {
+            return entry.effectiveBitrate;
+          });
+
+          var graphDiv = $('#quality-graph')[0];
+
+          if (!videojsHlsDemo.isPlotInitialized) {
+            Plotly.purge(graphDiv);
+            Plotly.newPlot(
+              graphDiv,
+              [],
+              {
+                title: 'Buffer state',
+                xaxis: {
+                  title: 'Time [s]'
+                },
+                yaxis: {
+                  title: 'Bitrate [b/s]',
+                }
+              }
+            );
+            videojsHlsDemo.isPlotInitialized = true;
+          }
+
+          videojsHlsDemo.isPlotFilled && Plotly.deleteTraces(graphDiv, 0);
+          videojsHlsDemo.isPlotFilled && Plotly.deleteTraces(graphDiv, 0);
+          Plotly.addTraces(
+            graphDiv,
+            [{
+              x: startTimes,
+              y: bandwidths
+            },{
+              x: startTimes,
+              y: effectiveBitrates
+            }]
+          );
+          videojsHlsDemo.isPlotFilled = true;
+        }
+      }, 1000);
 
   </script>
 </body>
