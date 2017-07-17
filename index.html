@@ -46,24 +46,97 @@
     <li><a href="/examples">Browse Examples</a></li>
   </ul>
 
+  <select id="quality-picker"></select>
+
+  <p>
+    Current quality attributes:
+    <br>
+    <pre id="current-quality-attr"></pre>
+  </p>
+
+  <script src="/node_modules/jquery/dist/jquery.js"></script>
   <script src="/node_modules/video.js/dist/video.js"></script>
+  <script src="/node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.js"></script>
   <script src="/dist/videojs-contrib-hls.js"></script>
   <script>
     (function(window, videojs) {
-      var player = window.player = videojs('videojs-contrib-hls-player');
+
+      var videojsHlsDemo = {
+        player: null,
+        url: null
+      };
+
+      var playerOptions = {
+        //
+      };
+
+      var player = videojs('videojs-contrib-hls-player', playerOptions);
 
       // hook up the video switcher
       var loadUrl = document.getElementById('load-url');
       var url = document.getElementById('url');
       loadUrl.addEventListener('submit', function(event) {
         event.preventDefault();
+        videojsHlsDemo.url = url.value;
         player.src({
           src: url.value,
           type: 'application/x-mpegURL'
         });
         return false;
       });
+
+      videojsHlsDemo.player = player;
+
+      window.videojsContribHlsDemo = videojsHlsDemo;
+
     }(window, window.videojs));
+  </script>
+
+  <script type="text/javascript">
+    
+      var videojsHlsDemo = window.videojsContribHlsDemo;
+      var player = window.videojsContribHlsDemo.player;
+
+      player.on('loadedmetadata', function() {
+
+        videojsHlsDemo.hlsHandler = player.tech_.hls;
+
+        var qualityLevels = player.qualityLevels()
+        for (var i = 0; i < qualityLevels.length; i++) {
+          var level = qualityLevels[i];
+          var description = level.width + ' x ' + level.height + ' - (' + level.bitrate + ' [bits/sec])';
+          $('#quality-picker')
+            .append('<option value="' + i + '">' + description + '</option>');
+        }
+
+        $('#quality-picker').change(function(e) {
+          // Disable ALL quality levels
+          // Enable ONLY selected quality level
+          var qualityLevels = player.qualityLevels()
+          for (var i = 0; i < qualityLevels.length; i++) {
+            var level = qualityLevels[i];
+            if (i === Number(e.target.value)) {
+              console.log('enabled:', level);
+              level.enabled = true;
+            } else {
+              level.enabled = false;
+            }
+          }
+        });
+
+      });
+
+      player.on('timeupdate', function() {
+        var hlsHandler = videojsHlsDemo.hlsHandler;
+        if (hlsHandler) {
+          var attr = hlsHandler.findRepresentationAttributesAtBufferPosition(player.currentTime());
+          if (attr) {
+            $('#current-quality-attr').html(JSON.stringify(attr, null, 2));
+          }
+        }
+
+      });
+
   </script>
 </body>
 </html>
