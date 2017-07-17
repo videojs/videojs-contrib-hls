@@ -1141,6 +1141,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
   }
 
+  smoothQualityChange_() {
+    let media = this.selectPlaylist();
+
+    if (media !== this.masterPlaylistLoader_.media()) {
+      this.masterPlaylistLoader_.media(media);
+    }
+  }
+
   /**
    * Begin playback.
    */
