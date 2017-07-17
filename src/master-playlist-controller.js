@@ -380,6 +380,18 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.masterPlaylistLoader_.load();
+
+    this.switchPlaylistHistory_ = [];
+  }
+
+  addToSwitchPlaylistHistory_(media, isFromQualityChangeFunction = false) {
+    const time = Date.now();
+    const switchPlaylistEntry = {
+      isFromQualityChangeFunction,
+      time,
+      media
+    };
+    this.switchPlaylistHistory_.push(switchPlaylistEntry);
   }
 
   /**
@@ -438,6 +450,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       if (!updatedPlaylist) {
         // select the initial variant
         this.initialMedia_ = this.selectPlaylist();
+        this.addToSwitchPlaylistHistory_(this.initialMedia_);
         this.masterPlaylistLoader_.media(this.initialMedia_);
         return;
       }
@@ -632,6 +645,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
           // ensure we have some buffer before we switch up to prevent us running out of
           // buffer while loading a higher rendition.
           forwardBuffer >= bufferLowWaterLine) {
+        this.addToSwitchPlaylistHistory_(nextPlaylist);
         this.masterPlaylistLoader_.media(nextPlaylist);
       }
 
@@ -1344,10 +1358,22 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let media = this.selectPlaylist();
 
     if (media !== this.masterPlaylistLoader_.media()) {
+
+      this.addToSwitchPlaylistHistory_(media, true);
       this.masterPlaylistLoader_.media(media);
 
       this.mainSegmentLoader_.resetLoader();
       // don't need to reset audio as it is reset when media changes
+    }
+  }
+
+  smoothQualityChange_() {
+    let media = this.selectPlaylist();
+
+    if (media !== this.masterPlaylistLoader_.media()) {
+
+      this.addToSwitchPlaylistHistory_(media, true);
+      this.masterPlaylistLoader_.media(media);
     }
   }
 

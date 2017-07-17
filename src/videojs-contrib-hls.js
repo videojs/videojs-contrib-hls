@@ -515,6 +515,12 @@ class HlsHandler extends Component {
     }
   }
 
+  findRepresentationAttributesAtBufferPosition(playheadTime) {
+
+    return this.masterPlaylistController_.mainSegmentLoader_.findRepresentationAttributesAtBufferPosition(playheadTime);
+
+  }
+
   /**
    * a helper for grabbing the active audio group from MasterPlaylistController
    *
