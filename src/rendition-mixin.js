@@ -30,7 +30,7 @@ const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
   if (enable !== currentlyEnabled && !blacklisted) {
     // Ensure the outside world knows about our changes
     if (changePlaylistFn) {
-      changePlaylistFn();      
+      changePlaylistFn();
     }
     if (enable) {
       loader.trigger('renditionenabled');
@@ -62,7 +62,8 @@ class Representation {
                               .bind(hlsHandler.masterPlaylistController_);
 
     // Select transition function for quality switch
-    let changePlaylistFunc = hlsHandler.options_.smoothQualitySwitch ? smoothChangeFunction : fastChangeFunction;
+    let changePlaylistFunc = hlsHandler.options_.smoothQualitySwitch ?
+        smoothChangeFunction : fastChangeFunction;
 
     if (hlsHandler.options_.disableImmediateQualityChange) {
       changePlaylistFunc = null;
