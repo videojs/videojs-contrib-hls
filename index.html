@@ -46,7 +46,7 @@
     <li><a href="/examples">Browse Examples</a></li>
   </ul>
 
-  <select id="quality-picker"></select>
+  Select variant playlist: <select id="quality-picker"></select>
 
   <p>
     Media attributes at playhead:
@@ -117,6 +117,9 @@
 
         videojsHlsDemo.hlsHandler = player.tech_.hls;
 
+        $('#quality-picker')
+          .append('<option value="-1">Auto</option>');
+
         var qualityLevels = player.qualityLevels()
         for (var i = 0; i < qualityLevels.length; i++) {
           var level = qualityLevels[i];
@@ -131,7 +134,7 @@
           var qualityLevels = player.qualityLevels()
           for (var i = 0; i < qualityLevels.length; i++) {
             var level = qualityLevels[i];
-            if (i === Number(e.target.value)) {
+            if (i === Number(e.target.value) || i === -1) {
               level.enabled = true;
             } else {
               level.enabled = false;
