@@ -265,6 +265,10 @@ class HlsHandler extends Component {
       this.masterPlaylistController_.setupSubtitles();
     };
 
+    this.videoTrackChange_ = () => {
+      this.masterPlaylistController_.setupVideo();
+    };
+
     this.on(this.tech_, 'play', this.play);
   }
 
@@ -440,6 +444,7 @@ class HlsHandler extends Component {
 
     this.masterPlaylistController_.on('sourceopen', () => {
       this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
+      this.tech_.videoTracks().addEventListener('change', this.videoTrackChange_);
       this.tech_.remoteTextTracks().addEventListener('change', this.textTrackChange_);
     });
 
@@ -451,8 +456,16 @@ class HlsHandler extends Component {
     this.masterPlaylistController_.on('audioupdate', () => {
       // clear current audioTracks
       this.tech_.clearTracks('audio');
-      this.masterPlaylistController_.activeAudioGroup().forEach((audioTrack) => {
+      this.activeAudioGroup_().forEach((audioTrack) => {
         this.tech_.audioTracks().addTrack(audioTrack);
+      });
+    });
+
+    this.masterPlaylistController_.on('videoupdate', () => {
+      // clear current videoTracks
+      this.tech_.clearTracks('video');
+      this.activeVideoGroup_().forEach((videoTrack) => {
+        this.tech_.videoTracks().addTrack(videoTrack);
       });
     });
 
@@ -512,6 +525,37 @@ class HlsHandler extends Component {
   }
 
   /**
+   * a helper for grabbing the active video group from MasterPlaylistController
+   *
+   * @private
+   */
+  activeVideoGroup_() {
+    return this.masterPlaylistController_.activeVideoGroup();
+  }
+
+  enableAudioTrack(index) {
+    let activeGroup = this.activeAudioGroup_();
+
+    activeGroup.forEach(function(track) {
+      track.enabled = false;
+    });
+    activeGroup[index].enabled = true;
+
+    this.masterPlaylistController_.setupAudio();
+  }
+
+  enableVideoTrack(index) {
+    let activeGroup = this.activeVideoGroup_();
+
+    activeGroup.forEach(function(track) {
+      track.enabled = false;
+    });
+    activeGroup[index].enabled = true;
+
+    this.masterPlaylistController_.setupVideo();
+  }
+
+  /**
    * Begin playing the video.
    */
   play() {
@@ -553,6 +597,7 @@ class HlsHandler extends Component {
       this.qualityLevels_.dispose();
     }
     this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
+    this.tech_.videoTracks().removeEventListener('change', this.videoTrackChange_);
     this.tech_.remoteTextTracks().removeEventListener('change', this.textTrackChange_);
     super.dispose();
   }
