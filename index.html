@@ -21,6 +21,15 @@
       min-width: 450px;
       padding: 5px;
     }
+    #videojs-contrib-hls-player {
+      width:100%
+    }
+    #quality-graph {
+      width: 50%;
+    }
+    #current-quality-attr {
+      margin-left: 20px;
+    }
   </style>
 
 </head>
@@ -29,7 +38,7 @@
     <p>The video below is an <a href="https://developer.apple.com/library/ios/documentation/networkinginternet/conceptual/streamingmediaguide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008332-CH1-SW1">HTTP Live Stream</a>. On desktop browsers other than Safari, the HLS plugin will polyfill support for the format on top of the video.js Flash tech.</p>
     <p>Due to security restrictions in Flash, you will have to load this page over HTTP(S) to see the example in action.</p>
   </div>
-  <video id="videojs-contrib-hls-player" class="video-js vjs-default-skin" controls>
+  <video id="videojs-contrib-hls-player" class="video-js vjs-default-skin vjs-big-play-centered" controls>
     <source src="https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8" type="application/x-mpegURL">
   </video>
 
@@ -46,14 +55,18 @@
     <li><a href="/examples">Browse Examples</a></li>
   </ul>
 
-  Select variant playlist: <select id="quality-picker"></select>
-
   <p>
-    Media attributes at playhead:
-    <p><pre id="current-quality-attr">{}</pre></p>
+  Select variant playlist:
+    <p><select id="quality-picker"></select></p>
   </p>
 
   <p>
+    Attributes of media at played:
+    <p><pre id="current-quality-attr">{}</pre></p>
+  </p>
+
+  <p id="quality-graph-container">
+    Buffered media bitrate plot:
     <ul>
       <li>Trace 0: Recommended BANDWIDTHs of playlists selected</li>
       <li>Trace 1: Effective bitrates of segments loaded</li>
@@ -61,6 +74,12 @@
     <div id="quality-graph"></div>
   </p>
 
+  <p id="bandwidth-graph-container">
+    Estimated bandwidth / transaction progress plot:
+    <ul>
+    </ul>
+    <div id="bandwidth-graph"></div>
+  </p>
 
   <script src="https://cdn.plot.ly/plotly-1.28.3.min.js"></script>
   <script src="/node_modules/jquery/dist/jquery.js"></script>
