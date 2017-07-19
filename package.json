@@ -12,7 +12,7 @@
   },
   "scripts": {
     "prebuild": "npm run clean",
-    "build": "npm-run-all -p build:*",
+    "build": "npm-run-all -p build:*", 
     "build:js": "npm-run-all build:js:babel build:js:browserify build:js:bannerize build:js:collapse build:js:uglify",
     "build:js:babel": "babel src -d es5",
     "build:js:bannerize": "bannerize dist/videojs-contrib-hls.js --banner=scripts/banner.ejs",
@@ -27,6 +27,7 @@
     "clean": "npm-run-all -p clean:*",
     "clean:build": "node -e \"var s=require('shelljs'),d=['dist','dist-test','es5'];s.rm('-rf',d);s.mkdir('-p',d);\"",
     "clean:test": "node -e \"var b=require('./scripts/manifest-data.js'); b.clean();\"",
+    "dev:build:js": "npm-run-all build:js:babel build:js:browserify", 
     "docs": "npm-run-all docs:*",
     "docs:api": "jsdoc src -r -d docs/api",
     "docs:toc": "doctoc README.md",
