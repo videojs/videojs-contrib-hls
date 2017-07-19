@@ -1002,6 +1002,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
   setupVideo() {
 
+    if (this.hls_.options_.alternateVideoDisabled) {
+      videojs.log.warn('HLS video disabled by option');
+      return;
+    }
+
     const currentMediaUri = this.masterPlaylistLoader_.media().resolvedUri;
 
     let playlistUri;
@@ -1121,6 +1126,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * close to currentTime as possible
    */
   setupAudio() {
+
+    if (this.hls_.options_.alternateAudioDisabled) {
+      videojs.log.warn('HLS audio disabled by option');
+      return;
+    }
+
     let track = this.getActiveAudioTrack_();
 
     this.stopAudioLoaders_();
