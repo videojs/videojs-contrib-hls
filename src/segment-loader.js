@@ -1104,28 +1104,35 @@ export default class SegmentLoader extends videojs.EventTarget {
 
   addToBufferQualityMap_(segmentInfo) {
 
+    const duration = (segmentInfo.segment.end - segmentInfo.segment.start);
+    const effectiveBitrate = 8 * segmentInfo.bytes.byteLength / duration;
+
     const entry = {
       representationAttributes: segmentInfo.playlist.attributes,
       startTime: segmentInfo.segment.start,
       endTime: segmentInfo.segment.end,
-      timestampOffset: segmentInfo.timestampOffset
+      timestampOffset: segmentInfo.timestampOffset,
+      effectiveBitrate,
+      duration
     };
 
-    this.bufferQualityMap_.push(entry)
+    this.bufferQualityMap_.push(entry);
   }
 
   removeFromBufferQualityMap(startTime, endTime) {
     this.bufferQualityMap_ = this.bufferQualityMap_.filter((entry) => {
-      var remove = !(entry.startTime >= startTime && entry.endTime <= endTime);
-      return remove;
+      let remove = (entry.startTime >= startTime && entry.endTime <= endTime);
+
+      return (!remove);
     });
   }
 
   findRepresentationAttributesAtBufferPosition(playheadTime) {
     let attributes = null;
+
     this.bufferQualityMap_.forEach((entry) => {
-      if (playheadTime <= entry.endTime 
-        && playheadTime >= entry.startTime) {
+      if (playheadTime <= entry.endTime &&
+        playheadTime >= entry.startTime) {
 
         if (attributes !== null) {
           videojs.log.warn('There are two overlapping buffer-quality-map entries');
