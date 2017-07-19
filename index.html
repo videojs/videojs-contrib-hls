@@ -60,17 +60,7 @@
   <script src="/dist/videojs-contrib-hls.js"></script>
   <script>
     (function(window, videojs) {
-
-      var videojsHlsDemo = {
-        player: null,
-        url: null
-      };
-
-      var playerOptions = {
-        //
-      };
-
-      var player = videojs('videojs-contrib-hls-player', playerOptions);
+      var player = window.player = videojs('videojs-contrib-hls-player');
 
       // hook up the video switcher
       var loadUrl = document.getElementById('load-url');
@@ -84,11 +74,6 @@
         });
         return false;
       });
-
-      videojsHlsDemo.player = player;
-
-      window.videojsContribHlsDemo = videojsHlsDemo;
-
     }(window, window.videojs));
   </script>
 
