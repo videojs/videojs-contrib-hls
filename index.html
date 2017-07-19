@@ -46,14 +46,35 @@
     <li><a href="/examples">Browse Examples</a></li>
   </ul>
 
+  Select variant playlist: <select id="quality-picker"></select>
+
+  <p>
+    Media attributes at playhead:
+    <p><pre id="current-quality-attr">{}</pre></p>
+  </p>
+
+  <p>
+    <ul>
+      <li>Trace 0: Recommended BANDWIDTHs of playlists selected</li>
+      <li>Trace 1: Effective bitrates of segments loaded</li>
+    </ul>
+    <div id="quality-graph"></div>
+  </p>
+
+  <script src="https://cdn.plot.ly/plotly-1.28.3.min.js"></script>
+  <script src="/node_modules/jquery/dist/jquery.js"></script>
   <script src="/node_modules/video.js/dist/video.js"></script>
+  <script src="/node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.js"></script>
+
   <script src="/dist/videojs-contrib-hls.js"></script>
   <script>
     (function(window, videojs) {
 
+      var videojsHlsDemo;
       var player;
       var hlsMimeType = "application/x-mpegURL";
-      var urlHref = "https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8";
+      //var urlHref = "https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8";
+      var urlHref = "http://ingest0.compuccino.tv/vod/smil:development.smil/playlist.m3u8";
 
       var loadUrl = document.getElementById('load-url');
       var url = document.getElementById('url');
@@ -62,7 +83,9 @@
       var playerOptions = {
         html5: {
           hls: {
-            debug: true
+            debug: true,
+            smoothQualitySwitch: true,
+            disableImmediateQualityChange: true
           }
         }
       };
@@ -87,7 +110,126 @@
         return false;
       });
 
+      player.on('loadedmetadata', function() {
+        videojsHlsDemo.hlsHandler = player.tech_.hls;
+      });
+
+      videojsHlsDemo = window.videojsContribHlsDemo = {
+        player: player,
+        url: urlHref,
+        hlsHandler: null
+      };
+
     }(window, window.videojs));
+  </script>
+
+  <script type="text/javascript">
+
+    (function(window, videojs) {
+
+      var videojsHlsDemo = window.videojsContribHlsDemo;
+      var player = window.videojsContribHlsDemo.player;
+
+      player.on('loadedmetadata', function() {
+
+        initQualityPicker();
+      });
+
+      player.on('timeupdate', function() {
+
+        refreshCurrentQualityAttr();
+
+      });
+
+      setInterval(refreshPlot, 1000);
+
+      function refreshCurrentQualityAttr() {
+        var hlsHandler = videojsHlsDemo.hlsHandler;
+        if (hlsHandler) {
+          var attr = hlsHandler.findRepresentationAttributesAtBufferPosition(player.currentTime());
+          if (attr) {
+            $('#current-quality-attr').html(JSON.stringify(attr, null, 2));
+          }
+        }
+      }
+
+      function initQualityPicker() {
+
+        $('#quality-picker')
+          .append('<option value="-1">Auto</option>');
+        var qualityLevels = player.qualityLevels()
+        for (var i = 0; i < qualityLevels.length; i++) {
+          var level = qualityLevels[i];
+          var description = level.width + ' x ' + level.height + ' - (' + level.bitrate + ' [bits/sec])';
+          $('#quality-picker')
+            .append('<option value="' + i + '">' + description + '</option>');
+        }
+        $('#quality-picker').change(function(e) {
+          // Disable ALL quality levels
+          // Enable ONLY selected quality level
+          var qualityLevels = player.qualityLevels()
+          for (var i = 0; i < qualityLevels.length; i++) {
+            var level = qualityLevels[i];
+            if (i === Number(e.target.value) || i === -1) {
+              level.enabled = true;
+            } else {
+              level.enabled = false;
+            }
+          }
+        });
+
+      }
+
+      function refreshPlot() {
+        var hlsHandler = videojsHlsDemo.hlsHandler;
+        if (hlsHandler) {
+          var bufferMap = hlsHandler.getMainBufferPayloadAttributesMap();
+          var startTimes = bufferMap.map(function(entry) {
+            return entry.startTime;
+          });
+          var bandwidths = bufferMap.map(function(entry) {
+            return entry.representationAttributes['BANDWIDTH'];
+          });
+          var effectiveBitrates = bufferMap.map(function(entry) {
+            return entry.effectiveBitrate;
+          });
+          var graphDiv = $('#quality-graph')[0];
+          if (!videojsHlsDemo.isPlotInitialized) {
+            Plotly.purge(graphDiv);
+            Plotly.newPlot(
+              graphDiv,
+              [],
+              {
+                title: 'Buffer state',
+                xaxis: {
+                  title: 'Time [s]'
+                },
+                yaxis: {
+                  title: 'Bitrate [b/s]',
+                }
+              }
+            );
+            videojsHlsDemo.isPlotInitialized = true;
+          }
+          videojsHlsDemo.isPlotFilled && Plotly.deleteTraces(graphDiv, 0);
+          videojsHlsDemo.isPlotFilled && Plotly.deleteTraces(graphDiv, 0);
+          Plotly.addTraces(
+            graphDiv,
+            [{
+              x: startTimes,
+              y: bandwidths
+            },{
+              x: startTimes,
+              y: effectiveBitrates
+            }]
+          );
+          videojsHlsDemo.isPlotFilled = true;
+        }
+      }
+
+    }(window, window.videojs));
+    
+
   </script>
 </body>
 </html>
