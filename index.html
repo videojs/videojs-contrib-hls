@@ -16,10 +16,27 @@
       padding: 0 5px;
       margin: 20px 0;
     }
+    .menus {
+      background-color: #eee;
+      border: thin solid #333;
+      border-radius: 3px;
+      text-align: center;
+    }
     input {
       margin-top: 15px;
       min-width: 450px;
       padding: 5px;
+    }
+    #videojs-contrib-hls-player {
+      width:100%;
+    }
+
+    #quality-graph {
+      width: 100%;
+    }
+    #current-quality-attr {
+      text-align: left;
+      margin-left: 20px;
     }
   </style>
 
@@ -29,29 +46,38 @@
     <p>The video below is an <a href="https://developer.apple.com/library/ios/documentation/networkinginternet/conceptual/streamingmediaguide/Introduction/Introduction.html#//apple_ref/doc/uid/TP40008332-CH1-SW1">HTTP Live Stream</a>. On desktop browsers other than Safari, the HLS plugin will polyfill support for the format on top of the video.js Flash tech.</p>
     <p>Due to security restrictions in Flash, you will have to load this page over HTTP(S) to see the example in action.</p>
   </div>
-  <video id="videojs-contrib-hls-player" class="video-js vjs-default-skin" controls>
-    <source>
-  </video>
 
-  <form id=load-url>
-    <label>
-      Video URL:
-      <input id=url type=url value="https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8">
-    </label>
-    <button type=submit>Load</button>
-  </form>
   <ul>
     <li><a href="/test/">Run unit tests in browser.</a></li>
     <li><a href="/docs/api/">Read generated docs.</a></li>
     <li><a href="/examples">Browse Examples</a></li>
   </ul>
 
-  Select variant playlist: <select id="quality-picker"></select>
-
   <p>
-    Media attributes at playhead:
-    <p><pre id="current-quality-attr">{}</pre></p>
+    <video id="videojs-contrib-hls-player" class="video-js vjs-default-skin" controls>
+      <source>
+    </video>
   </p>
+
+  <div class="menus">
+    <form id=load-url>
+      <label>
+        Video URL:
+        <input id=url type=url value="https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8">
+      </label>
+      <button type=submit>Load</button>
+    </form>
+
+    <p>Select quality/variant: <select id="quality-menu"></select><p>
+    <p>Select text track: <select id="text-track-menu"></select></p>
+    <p>Select audio track: <select id="audio-track-menu"></select></p>
+    <p>Select video track: <select id="video-track-menu"></select></p>
+
+    <p>
+      Media attributes at playhead:
+      <p><pre id="current-quality-attr">{}</pre></p>
+    </p>
+  </div>
 
   <p>
     <ul>
@@ -123,113 +149,7 @@
     }(window, window.videojs));
   </script>
 
-  <script type="text/javascript">
+  <script src="demo.js"></script>
 
-    (function(window, videojs) {
-
-      var videojsHlsDemo = window.videojsContribHlsDemo;
-      var player = window.videojsContribHlsDemo.player;
-
-      player.on('loadedmetadata', function() {
-
-        initQualityPicker();
-      });
-
-      player.on('timeupdate', function() {
-
-        refreshCurrentQualityAttr();
-
-      });
-
-      setInterval(refreshPlot, 1000);
-
-      function refreshCurrentQualityAttr() {
-        var hlsHandler = videojsHlsDemo.hlsHandler;
-        if (hlsHandler) {
-          var attr = hlsHandler.findRepresentationAttributesAtBufferPosition(player.currentTime());
-          if (attr) {
-            $('#current-quality-attr').html(JSON.stringify(attr, null, 2));
-          }
-        }
-      }
-
-      function initQualityPicker() {
-
-        $('#quality-picker')
-          .append('<option value="-1">Auto</option>');
-        var qualityLevels = player.qualityLevels()
-        for (var i = 0; i < qualityLevels.length; i++) {
-          var level = qualityLevels[i];
-          var description = level.width + ' x ' + level.height + ' - (' + level.bitrate + ' [bits/sec])';
-          $('#quality-picker')
-            .append('<option value="' + i + '">' + description + '</option>');
-        }
-        $('#quality-picker').change(function(e) {
-          // Disable ALL quality levels
-          // Enable ONLY selected quality level
-          var qualityLevels = player.qualityLevels()
-          for (var i = 0; i < qualityLevels.length; i++) {
-            var level = qualityLevels[i];
-            if (i === Number(e.target.value) || i === -1) {
-              level.enabled = true;
-            } else {
-              level.enabled = false;
-            }
-          }
-        });
-
-      }
-
-      function refreshPlot() {
-        var hlsHandler = videojsHlsDemo.hlsHandler;
-        if (hlsHandler) {
-          var bufferMap = hlsHandler.getMainBufferPayloadAttributesMap();
-          var startTimes = bufferMap.map(function(entry) {
-            return entry.startTime;
-          });
-          var bandwidths = bufferMap.map(function(entry) {
-            return entry.representationAttributes['BANDWIDTH'];
-          });
-          var effectiveBitrates = bufferMap.map(function(entry) {
-            return entry.effectiveBitrate;
-          });
-          var graphDiv = $('#quality-graph')[0];
-          if (!videojsHlsDemo.isPlotInitialized) {
-            Plotly.purge(graphDiv);
-            Plotly.newPlot(
-              graphDiv,
-              [],
-              {
-                title: 'Buffer state',
-                xaxis: {
-                  title: 'Time [s]'
-                },
-                yaxis: {
-                  title: 'Bitrate [b/s]',
-                }
-              }
-            );
-            videojsHlsDemo.isPlotInitialized = true;
-          }
-          videojsHlsDemo.isPlotFilled && Plotly.deleteTraces(graphDiv, 0);
-          videojsHlsDemo.isPlotFilled && Plotly.deleteTraces(graphDiv, 0);
-          Plotly.addTraces(
-            graphDiv,
-            [{
-              x: startTimes,
-              y: bandwidths
-            },{
-              x: startTimes,
-              y: effectiveBitrates
-            }]
-          );
-          videojsHlsDemo.isPlotFilled = true;
-        }
-      }
-
-    }(window, window.videojs));
-    
-
-  </script>
 </body>
 </html>
