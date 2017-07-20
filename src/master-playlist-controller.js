@@ -818,8 +818,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     // if we have a optional track set, enable that one
-
-    optionalTrackIndex = this.hls_.options_.videoTrackIndex;
+    optionalTrackIndex = this.hls_.options_.initialVideoTrackIdx;
     if (optionalTrackIndex !== undefined) {
       this.activeVideoGroup()[optionalTrackIndex].enabled = true;
     } else {
