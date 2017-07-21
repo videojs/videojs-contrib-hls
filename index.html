@@ -9,6 +9,17 @@
       font-family: Arial, sans-serif;
       margin: 20px;
     }
+
+    input {
+      margin-top: 15px;
+      min-width: 450px;
+      padding: 5px;
+    }
+
+    button {
+      font-size: 20px;
+    }
+
     .info {
       background-color: #eee;
       border: thin solid #333;
@@ -16,17 +27,14 @@
       padding: 0 5px;
       margin: 20px 0;
     }
+
     .menus {
       background-color: #eee;
       border: thin solid #333;
       border-radius: 3px;
       text-align: center;
     }
-    input {
-      margin-top: 15px;
-      min-width: 450px;
-      padding: 5px;
-    }
+
     #videojs-contrib-hls-player {
       width:100%;
     }
@@ -34,6 +42,7 @@
     #quality-graph {
       width: 100%;
     }
+
     #current-quality-attr {
       text-align: left;
       margin-left: 20px;
@@ -54,7 +63,7 @@
   </ul>
 
   <p>
-    <video id="videojs-contrib-hls-player" class="video-js vjs-default-skin" controls>
+    <video id="videojs-contrib-hls-player" class="video-js vjs-default-skin vjs-big-play-centered" controls>
       <source>
     </video>
   </p>
@@ -111,7 +120,8 @@
           hls: {
             debug: true,
             smoothQualitySwitch: true,
-            disableImmediateQualityChange: true
+            disableImmediateQualityChange: true,
+            initialVideoTrackIdx: 0
           }
         }
       };
