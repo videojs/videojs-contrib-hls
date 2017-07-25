@@ -1224,6 +1224,11 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     const Cue = window.WebKitDataCue || window.VTTCue;
     const value = {
+      bandwidth: segmentInfo.playlist.attributes['BANDWIDTH'],
+      resolution: segmentInfo.playlist.attributes['RESOLUTION'],
+      codecs: segmentInfo.playlist.attributes['CODECS'],
+      bitrate: (8 * segmentInfo.byteLength / (end - start)),
+      byteLength: segmentInfo.byteLength,
       uri: segmentInfo.uri,
       timeline: segmentInfo.timeline,
       playlist: segmentInfo.playlist.uri,
