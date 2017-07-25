@@ -1003,10 +1003,17 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    // the response was a success so set any bandwidth stats the request
-    // generated for ABR purposes
-    this.bandwidth = simpleSegment.stats.bandwidth;
-    this.roundTrip = simpleSegment.stats.roundTripTime;
+    if (!this.segmentFromCache(this.pendingSegment_.segment,
+                               simpleSegment.stats.bandwidth)) {
+      // set bandwidth stats for ABR
+      this.bandwidth = simpleSegment.stats.bandwidth;
+      this.roundTrip = simpleSegment.stats.roundTripTime;
+
+      this.pendingSegment_.segment.lastRequest = {
+        time: Date.now(),
+        bandwidth: this.bandwidth
+      };
+    }
 
     // if this request included an initialization segment, save that data
     // to the initSegment cache
@@ -1015,6 +1022,15 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     this.processSegmentResponse_(simpleSegment);
+  }
+
+  segmentFromCache(segment, bandwidth) {
+    // we've made the request before
+    return segment.lastRequest &&
+      // last request for this segment was within the last 2 minutes
+      Date.now() - segment.lastRequest.time < 60 * 2 * 1000 &&
+      // new bandwidth does not seem too high (double last bandwidth chosen arbitrarily)
+      bandwidth > segment.lastRequest.bandwidth * 2;
   }
 
   /**

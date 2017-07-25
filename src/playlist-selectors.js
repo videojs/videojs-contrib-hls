@@ -128,7 +128,10 @@ export const comparePlaylistResolution = function(left, right) {
  * currently detected bandwidth, accounting for some amount of
  * bandwidth variance
  */
-const simpleSelector = function(master, playerBandwidth, playerWidth, playerHeight) {
+export const simpleSelector = function(master,
+                                       playerBandwidth,
+                                       playerWidth,
+                                       playerHeight) {
   // convert the playlists to an intermediary representation to make comparisons easier
   let sortedPlaylistReps = master.playlists.map((playlist) => {
     let width;

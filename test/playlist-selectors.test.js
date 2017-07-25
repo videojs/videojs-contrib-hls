@@ -1,5 +1,6 @@
 import { module, test } from 'qunit';
 import {
+  simpleSelector,
   movingAverageBandwidthSelector,
   minRebufferMaxBandwidthSelector
 } from '../src/playlist-selectors';
@@ -120,4 +121,17 @@ function(assert) {
 
   assert.equal(result.playlist, master.playlists[0], 'selected the correct playlist');
   assert.equal(result.rebufferingImpact, 1, 'impact on rebuffering is 1 second');
+});
+
+test('simpleSelector switches up even without resolution information', function(assert) {
+  let master = this.hls.playlists.master;
+
+  master.playlists = [
+    { attributes: { BANDWIDTH: 100 } },
+    { attributes: { BANDWIDTH: 1000 } }
+  ];
+
+  const selectedPlaylist = simpleSelector(master, 2000, 1, 1);
+
+  assert.equal(selectedPlaylist, master.playlists[1], 'selected the correct playlist');
 });

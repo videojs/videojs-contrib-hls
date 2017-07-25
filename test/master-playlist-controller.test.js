@@ -1067,6 +1067,190 @@ function(assert) {
                'less than low water line');
 });
 
+QUnit.test('does not get stuck in a loop due to inconsistent network/caching',
+function(assert) {
+  const mediaContents =
+    '#EXTM3U\n' +
+    '#EXTINF:10\n' +
+    '0.ts\n' +
+    '#EXTINF:10\n' +
+    '1.ts\n' +
+    '#EXTINF:10\n' +
+    '2.ts\n' +
+    '#EXTINF:10\n' +
+    '3.ts\n' +
+    '#EXT-X-ENDLIST\n';
+
+  const segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
+
+  // start on lowest bandwidth
+  segmentLoader.bandwidth = 0;
+
+  this.player.tech_.paused = () => false;
+
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  // master
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=10\n' +
+                                'media.m3u8\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=100\n' +
+                                'media1.m3u8\n');
+  // media.m3u8
+  this.requests.shift().respond(200, null, mediaContents);
+
+  let playlistLoader = this.masterPlaylistController.masterPlaylistLoader_;
+  let origMedia = playlistLoader.media.bind(playlistLoader);
+  let mediaChanges = [];
+
+  this.masterPlaylistController.masterPlaylistLoader_.media = (media) => {
+    if (media) {
+      mediaChanges.push(media);
+    }
+    return origMedia(media);
+  };
+
+  let bandwidthupdateEvents = 0;
+
+  this.player.tech_.on('bandwidthupdate', () => bandwidthupdateEvents++);
+
+  this.clock.tick(1);
+
+  let segmentRequest = this.requests[0];
+
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '0.ts',
+               'requested first segment');
+
+  // 100ms for the segment response
+  this.clock.tick(100);
+
+  // 10 bytes in 100ms = 800 bits/s
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+
+  segmentRequest = this.requests[0];
+
+  // walking forwards
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '1.ts',
+               'requested second segment');
+  assert.equal(mediaChanges.length, 0, 'no media changes');
+
+  // 100ms for the segment response
+  this.clock.tick(100);
+
+  // 10 bytes in 100ms = 800 bits/s
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+
+  let mediaRequest = this.requests[0];
+
+  assert.equal(mediaChanges.length, 1, 'changed media');
+  assert.equal(mediaChanges[0].uri, 'media1.m3u8', 'changed to media1');
+  assert.equal(mediaRequest.uri.substring(mediaRequest.uri.length - 'media1.m3u8'.length),
+               'media1.m3u8',
+               'requested media1');
+  assert.equal(bandwidthupdateEvents, 1, 'one bandwidth update event');
+
+  // media1.m3u8
+  this.requests.shift().respond(200, null, mediaContents);
+  this.clock.tick(1);
+
+  segmentRequest = this.requests[0];
+
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '0.ts',
+               'requested first segment');
+
+  // needs a timeout for early abort to occur (we skip the function otherwise, since no
+  // timeout means we are on the last rendition)
+  segmentLoader.xhrOptions_.timeout = 60000;
+
+  // we need to wait 1 second from first byte receieved in order to consider aborting
+  this.requests[0].downloadProgress({
+    target: this.requests[0],
+    total: 100,
+    loaded: 1
+  });
+  this.clock.tick(1000);
+
+  // should abort request early because we don't have enough bandwidth
+  this.requests[0].downloadProgress({
+    target: this.requests[0],
+    total: 100,
+    // 1 bit per second
+    loaded: 2
+  });
+
+  this.clock.tick(1);
+
+  assert.equal(mediaChanges.length, 2, 'changed media');
+  assert.equal(mediaChanges[1].uri, 'media.m3u8', 'changed to media');
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '0.ts',
+               'requested first segment');
+  assert.equal(bandwidthupdateEvents, 2, 'two bandwidth update events');
+
+  // remove aborted request
+  this.requests.shift();
+
+  // 1ms for the cached segment response
+  this.clock.tick(1);
+
+  // 10 bytes in 1ms = 80 kbps
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+
+  assert.equal(segmentLoader.bandwidth,
+               10 * Config.BANDWIDTH_VARIANCE + 1,
+               'bandwidth remains at aborted bandwidth');
+  assert.equal(mediaChanges.length, 2, 'did not change media');
+  assert.equal(bandwidthupdateEvents, 2, 'still two bandwidth update events');
+
+  segmentRequest = this.requests[0];
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '1.ts',
+               'requested second segment');
+
+  // must have two segment requests before we consider upswitching, so mimic another cache
+
+  // 1ms for the cached segment response
+  this.clock.tick(1);
+
+  // 10 bytes in 1ms = 80 kbps
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+
+  segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+
+  assert.equal(segmentLoader.bandwidth,
+               10 * Config.BANDWIDTH_VARIANCE + 1,
+               'bandwidth remains at aborted bandwidth');
+  // Media may be changed, but it should be changed to the same media. In the future, this
+  // can safely not be changed.
+  assert.equal(mediaChanges.length, 3, 'changed media');
+  assert.equal(mediaChanges[2].uri, 'media.m3u8', 'media remains unchanged');
+  // A bandwidthupdate event can still be triggered, but the bandwidth hasn't changed, so
+  // the media should remain unchanged. In the future, this can safely not be triggered.
+  assert.equal(bandwidthupdateEvents, 3, 'triggered a bandwidthupdate');
+
+  segmentRequest = this.requests[0];
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '2.ts',
+               'requested third segment');
+});
+
 QUnit.test('updates the duration after switching playlists', function(assert) {
   let selectedPlaylist = false;
 
