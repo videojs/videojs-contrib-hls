@@ -63,7 +63,7 @@
     <form id=load-url>
       <label>
         Video URL:
-        <input id=url type=url value="https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8">
+        <input id=url type=url>
       </label>
       <button type=submit>Load</button>
     </form>
@@ -88,9 +88,9 @@
   </p>
 
   <script src="https://cdn.plot.ly/plotly-1.28.3.min.js"></script>
-  <script src="/node_modules/jquery/dist/jquery.js"></script>
-  <script src="/node_modules/video.js/dist/video.js"></script>
-  <script src="/node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.js"></script>
+  <script src="node_modules/jquery/dist/jquery.js"></script>
+  <script src="node_modules/video.js/dist/video.js"></script>
+  <script src="node_modules/videojs-contrib-quality-levels/dist/videojs-contrib-quality-levels.js"></script>
 
   <script src="/dist/videojs-contrib-hls.js"></script>
   <script>
@@ -99,8 +99,7 @@
       var videojsHlsDemo;
       var player;
       var hlsMimeType = "application/x-mpegURL";
-      //var urlHref = "https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8";
-      var urlHref = "http://ingest0.compuccino.tv/vod/smil:development.smil/playlist.m3u8";
+      var urlHref = "https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8";
 
       var loadUrl = document.getElementById('load-url');
       var url = document.getElementById('url');
