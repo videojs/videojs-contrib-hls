@@ -330,9 +330,9 @@ class HlsHandler extends Component {
       this.selectPlaylist ?
         this.selectPlaylist.bind(this) : Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
 
-    this.masterPlaylistController_.initialSelectPlaylist =
-      this.selectPlaylist ?
-        this.selectPlaylist.bind(this) : Hls.INITIAL_PLAYLIST_SELECTOR.bind(this);
+    this.masterPlaylistController_.selectInitialPlaylist =
+      this.selectInitialPlaylist ?
+        this.selectInitialPlaylist.bind(this) : Hls.INITIAL_PLAYLIST_SELECTOR.bind(this);
 
     // re-expose some internal objects for backwards compatibility with < v2
     this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;
