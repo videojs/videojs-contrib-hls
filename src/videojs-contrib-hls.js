@@ -21,6 +21,7 @@ import PlaybackWatcher from './playback-watcher';
 import reloadSourceOnError from './reload-source-on-error';
 import {
   lastBandwidthSelector,
+  lowestBitrateCompatibleVariantSelector,
   comparePlaylistBandwidth,
   comparePlaylistResolution
 } from './playlist-selectors.js';
@@ -39,6 +40,7 @@ const Hls = {
   utils,
 
   STANDARD_PLAYLIST_SELECTOR: lastBandwidthSelector,
+  INITIAL_PLAYLIST_SELECTOR: lowestBitrateCompatibleVariantSelector,
   comparePlaylistBandwidth,
   comparePlaylistResolution,
 
@@ -327,6 +329,10 @@ class HlsHandler extends Component {
     this.masterPlaylistController_.selectPlaylist =
       this.selectPlaylist ?
         this.selectPlaylist.bind(this) : Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
+
+    this.masterPlaylistController_.initialSelectPlaylist =
+      this.selectPlaylist ?
+        this.selectPlaylist.bind(this) : Hls.INITIAL_PLAYLIST_SELECTOR.bind(this);
 
     // re-expose some internal objects for backwards compatibility with < v2
     this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;

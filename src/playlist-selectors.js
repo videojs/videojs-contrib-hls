@@ -1,5 +1,6 @@
 import Config from './config';
 import Playlist from './playlist';
+import { parseCodecs } from './util/codecs.js';
 
 // Utilities
 
@@ -355,4 +356,28 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
   stableSort(rebufferingEstimates, (a, b) => a.rebufferingImpact - b.rebufferingImpact);
 
   return rebufferingEstimates[0] || null;
+};
+
+/**
+ * Chooses the appropriate media playlist, which in this case is the lowest bitrate
+ * one with video.  If no renditions with video exist, return the lowest audio rendition.
+ *
+ * @return {Object|null}
+ *         {Object} return.playlist
+ *         The lowest bitrate playlist that contains a video codec.  If no such rendition
+ *         exists pick the lowest audio rendition.
+ */
+export const lowestBitrateCompatibleVariantSelector = function() {
+  const { playlists } = this.playlists.master;
+
+  const playlistsWithVideo =
+    playlists.filter(playlist => parseCodecs(playlist.attributes.CODECS).videoCodec);
+
+  // If there are any items in this playlist with a video codec, return
+  // the one with the lowest bitrate, otherwise return the lowest audio rendition
+  if (playlistsWithVideo.length !== 0) {
+    return playlistsWithVideo[0];
+  }
+
+  return playlists[0];
 };
