@@ -1029,7 +1029,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     return segment.lastRequest &&
       // last request for this segment was within the last 2 minutes
       Date.now() - segment.lastRequest.time < 60 * 2 * 1000 &&
-      // new bandwidth does not seem too high (double last bandwidth chosen arbitrarily)
+      // new bandwidth seems too high (double last bandwidth chosen arbitrarily)
       bandwidth > segment.lastRequest.bandwidth * 2;
   }
 
