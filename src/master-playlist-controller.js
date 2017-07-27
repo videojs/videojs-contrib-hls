@@ -254,7 +254,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       bandwidth,
       externHls,
       useCueTags,
-      blacklistDuration
+      blacklistDuration,
+      enableLowInitialPlaylist
     } = options;
 
     if (!url) {
@@ -269,6 +270,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mode_ = mode;
     this.useCueTags_ = useCueTags;
     this.blacklistDuration = blacklistDuration;
+    this.enableLowInitialPlaylist = enableLowInitialPlaylist;
     if (this.useCueTags_) {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
@@ -401,7 +403,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       if (!updatedPlaylist) {
         // select the initial variant
-        this.initialMedia_ = this.selectInitialPlaylist();
+        const initialPlaylistSelector =
+          this.enableLowInitialPlaylist ?
+            this.selectInitialPlaylist : this.selectPlaylist;
+
+        this.initialMedia_ = initialPlaylistSelector();
         this.masterPlaylistLoader_.media(this.initialMedia_);
         return;
       }
