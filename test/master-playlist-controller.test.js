@@ -212,6 +212,50 @@ QUnit.test('resets SegmentLoader when seeking in flash for both in and out of bu
 
   });
 
+QUnit.only('selects lowest bitrate rendition when enableLowInitialPlaylist is set',
+  function(assert) {
+    this.player = createPlayer({ html5: { hls: { enableLowInitialPlaylist: true } } });
+
+    this.player.src({
+      src: 'manifest/master.m3u8',
+      type: 'application/vnd.apple.mpegurl'
+    });
+
+    this.clock.tick(1);
+
+    const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+    const masterPlaylistLoader = masterPlaylistController.masterPlaylistLoader_;
+
+    let numCallsToSelectInitialPlaylistCalls = 0;
+    let numCallsToSelectPlaylist = 0;
+
+    // master
+    this.standardXHRResponse(this.requests.shift());
+    // media
+    this.standardXHRResponse(this.requests.shift());
+
+    // This shouldn't get called, but if it does we should track it so that
+    // we can catch this failure case.
+    masterPlaylistController.selectPlaylist = () => {
+      numCallsToSelectPlaylist++;
+      return masterPlaylistController.master().playlists[0];
+    };
+
+    masterPlaylistController.selectInitialPlaylist = () => {
+      numCallsToSelectInitialPlaylistCalls++;
+      return masterPlaylistController.master().playlists[0];
+    };
+
+    masterPlaylistController.mediaSource.trigger('sourceopen');
+
+    // Trigger playlist event which should utilize selectInitialPlaylist and
+    // not selectPlaylist
+    masterPlaylistLoader.trigger('loadedplaylist');
+
+    assert.equal(numCallsToSelectInitialPlaylistCalls, 1, 'selectInitialPlaylist');
+    assert.equal(numCallsToSelectPlaylist, 0, 'selectPlaylist');
+  });
+
 QUnit.test('resyncs SegmentLoader for a fast quality change', function(assert) {
   let resyncs = 0;
 
