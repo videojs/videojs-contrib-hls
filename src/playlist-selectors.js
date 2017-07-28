@@ -362,6 +362,8 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
  * Chooses the appropriate media playlist, which in this case is the lowest bitrate
  * one with video.  If no renditions with video exist, return the lowest audio rendition.
  *
+ * Expects to be called within the context of an instance of HlsHandler
+ *
  * @return {Object|null}
  *         {Object} return.playlist
  *         The lowest bitrate playlist that contains a video codec.  If no such rendition

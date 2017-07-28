@@ -249,14 +249,11 @@ QUnit.test('selects lowest bitrate rendition when enableLowInitialPlaylist is se
 
     this.clock.tick(1);
 
-    // Trigger playlist event which should utilize selectInitialPlaylist and
-    // not selectPlaylist
     assert.equal(numCallsToSelectInitialPlaylistCalls, 1, 'selectInitialPlaylist');
     assert.equal(numCallsToSelectPlaylist, 0, 'selectPlaylist');
 
     // Simulate a live reload
     this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
-    this.clock.tick(5);
 
     assert.equal(numCallsToSelectInitialPlaylistCalls, 1, 'selectInitialPlaylist');
     assert.equal(numCallsToSelectPlaylist, 0, 'selectPlaylist');
