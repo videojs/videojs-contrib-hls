@@ -212,8 +212,11 @@ QUnit.test('resets SegmentLoader when seeking in flash for both in and out of bu
 
   });
 
-QUnit.only('selects lowest bitrate rendition when enableLowInitialPlaylist is set',
+QUnit.test('selects lowest bitrate rendition when enableLowInitialPlaylist is set',
   function(assert) {
+    // Set requests.length to 0, otherwise it will use the requests generated in the
+    // beforeEach function
+    this.requests.length = 0;
     this.player = createPlayer({ html5: { hls: { enableLowInitialPlaylist: true } } });
 
     this.player.src({
@@ -223,34 +226,37 @@ QUnit.only('selects lowest bitrate rendition when enableLowInitialPlaylist is se
 
     this.clock.tick(1);
 
-    const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-    const masterPlaylistLoader = masterPlaylistController.masterPlaylistLoader_;
+    this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
     let numCallsToSelectInitialPlaylistCalls = 0;
     let numCallsToSelectPlaylist = 0;
 
+    this.masterPlaylistController.selectPlaylist = () => {
+      numCallsToSelectPlaylist++;
+      return this.masterPlaylistController.master().playlists[0];
+    };
+
+    this.masterPlaylistController.selectInitialPlaylist = () => {
+      numCallsToSelectInitialPlaylistCalls++;
+      return this.masterPlaylistController.master().playlists[0];
+    };
+
+    this.masterPlaylistController.mediaSource.trigger('sourceopen');
     // master
     this.standardXHRResponse(this.requests.shift());
     // media
     this.standardXHRResponse(this.requests.shift());
 
-    // This shouldn't get called, but if it does we should track it so that
-    // we can catch this failure case.
-    masterPlaylistController.selectPlaylist = () => {
-      numCallsToSelectPlaylist++;
-      return masterPlaylistController.master().playlists[0];
-    };
-
-    masterPlaylistController.selectInitialPlaylist = () => {
-      numCallsToSelectInitialPlaylistCalls++;
-      return masterPlaylistController.master().playlists[0];
-    };
-
-    masterPlaylistController.mediaSource.trigger('sourceopen');
+    this.clock.tick(1);
 
     // Trigger playlist event which should utilize selectInitialPlaylist and
     // not selectPlaylist
-    masterPlaylistLoader.trigger('loadedplaylist');
+    assert.equal(numCallsToSelectInitialPlaylistCalls, 1, 'selectInitialPlaylist');
+    assert.equal(numCallsToSelectPlaylist, 0, 'selectPlaylist');
+
+    // Simulate a live reload
+    this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
+    this.clock.tick(5);
 
     assert.equal(numCallsToSelectInitialPlaylistCalls, 1, 'selectInitialPlaylist');
     assert.equal(numCallsToSelectPlaylist, 0, 'selectPlaylist');
@@ -259,11 +265,11 @@ QUnit.only('selects lowest bitrate rendition when enableLowInitialPlaylist is se
 QUnit.test('resyncs SegmentLoader for a fast quality change', function(assert) {
   let resyncs = 0;
 
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
   // master
   this.standardXHRResponse(this.requests.shift());
   // media
   this.standardXHRResponse(this.requests.shift());
-  this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
 

@@ -368,7 +368,7 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
  *         exists pick the lowest audio rendition.
  */
 export const lowestBitrateCompatibleVariantSelector = function() {
-  const { playlists } = this.playlists.master;
+  const playlists = this.playlists.master.playlists.slice();
 
   // Sort ascending by bitrate
   stableSort(playlists,
@@ -377,7 +377,5 @@ export const lowestBitrateCompatibleVariantSelector = function() {
   const playlistsWithVideo =
     playlists.filter(playlist => parseCodecs(playlist.attributes.CODECS).videoCodec);
 
-  const selectedPlaylists = playlistsWithVideo.length !== 0 ? playlistsWithVideo : playlists;
-
-  return selectedPlaylists[0] || null;
+  return playlistsWithVideo[0] || playlists[0];
 };
