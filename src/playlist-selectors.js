@@ -62,11 +62,11 @@ export const comparePlaylistBandwidth = function(left, right) {
   let leftBandwidth;
   let rightBandwidth;
 
-  if (left.attributes && left.attributes.BANDWIDTH) {
+  if (left.attributes.BANDWIDTH) {
     leftBandwidth = left.attributes.BANDWIDTH;
   }
   leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
-  if (right.attributes && right.attributes.BANDWIDTH) {
+  if (right.attributes.BANDWIDTH) {
     rightBandwidth = right.attributes.BANDWIDTH;
   }
   rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
@@ -87,16 +87,14 @@ export const comparePlaylistResolution = function(left, right) {
   let leftWidth;
   let rightWidth;
 
-  if (left.attributes &&
-      left.attributes.RESOLUTION &&
+  if (left.attributes.RESOLUTION &&
       left.attributes.RESOLUTION.width) {
     leftWidth = left.attributes.RESOLUTION.width;
   }
 
   leftWidth = leftWidth || window.Number.MAX_VALUE;
 
-  if (right.attributes &&
-      right.attributes.RESOLUTION &&
+  if (right.attributes.RESOLUTION &&
       right.attributes.RESOLUTION.width) {
     rightWidth = right.attributes.RESOLUTION.width;
   }
@@ -135,11 +133,9 @@ const simpleSelector = function(master, playerBandwidth, playerWidth, playerHeig
     let height;
     let bandwidth;
 
-    if (playlist.attributes) {
-      width = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.width;
-      height = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.height;
-      bandwidth = playlist.attributes.BANDWIDTH;
-    }
+    width = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.width;
+    height = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.height;
+    bandwidth = playlist.attributes.BANDWIDTH;
 
     bandwidth = bandwidth || window.Number.MAX_VALUE;
 

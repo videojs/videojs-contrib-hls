@@ -54,20 +54,15 @@ class Representation {
                               .fastQualityChange_
                               .bind(hlsHandler.masterPlaylistController_);
 
-    // Carefully descend into the playlist's attributes since most
-    // properties are optional
-    if (playlist.attributes) {
-      let attributes = playlist.attributes;
+    // some playlist attributes are optional
+    if (playlist.attributes.RESOLUTION) {
+      let resolution = playlist.attributes.RESOLUTION;
 
-      if (attributes.RESOLUTION) {
-        let resolution = attributes.RESOLUTION;
-
-        this.width = resolution.width;
-        this.height = resolution.height;
-      }
-
-      this.bandwidth = attributes.BANDWIDTH;
+      this.width = resolution.width;
+      this.height = resolution.height;
     }
+
+    this.bandwidth = playlist.attributes.BANDWIDTH;
 
     // The id is simply the ordinality of the media playlist
     // within the master playlist

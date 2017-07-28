@@ -172,6 +172,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     parser.push(xhr.responseText);
     parser.end();
     parser.manifest.uri = url;
+    // m3u8-parser does not attach an attributes property to media playlists so make
+    // sure that the property is attached to avoid undefined reference errors
+    parser.manifest.attributes = parser.manifest.attributes || {};
 
     // merge this playlist into the master
     update = updateMaster(loader.master, parser.manifest);
@@ -250,12 +253,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         return false;
       }
 
-      let bandwidth = 0;
-
-      if (playlist && playlist.attributes) {
-        bandwidth = playlist.attributes.BANDWIDTH;
-      }
-      return bandwidth < currentBandwidth;
+      return (playlist.attributes.BANDWIDTH || 0) < currentBandwidth;
 
     }).length === 0);
   };
@@ -510,6 +508,12 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
           playlist = loader.master.playlists[i];
           loader.master.playlists[playlist.uri] = playlist;
           playlist.resolvedUri = resolveUrl(loader.master.uri, playlist.uri);
+          // Although the spec states an #EXT-X-STREAM-INF tag MUST have a
+          // BANDWIDTH attribute, we can play the stream without it. This means a poorly
+          // formated master playlist may not have an attribute list. An attributes
+          // property is added here to prevent undefined references when we encounter
+          // this scenario.
+          playlist.attributes = playlist.attributes || {};
         }
 
         // resolve any media group URIs
@@ -552,6 +556,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       };
       loader.master.playlists[srcUrl] = loader.master.playlists[0];
       loader.master.playlists[0].resolvedUri = srcUrl;
+      // m3u8-parser does not attach an attributes property to media playlists so make
+      // sure that the property is attached to avoid undefined reference errors
+      loader.master.playlists[0].attributes = loader.master.playlists[0].attributes || {};
       haveMetadata(req, srcUrl);
       return loader.trigger('loadedmetadata');
     });

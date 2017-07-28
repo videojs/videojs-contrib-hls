@@ -8,24 +8,19 @@ const makeMockPlaylist = function(options) {
   options = options || {};
 
   let playlist = {
-    segments: []
+    segments: [],
+    attributes: {}
   };
 
-  if ('bandwidth' in options) {
-    playlist.attributes = playlist.attributes || {};
-
-    playlist.attributes.BANDWIDTH = options.bandwidth;
-  }
+  playlist.attributes.BANDWIDTH = options.bandwidth;
 
   if ('width' in options) {
-    playlist.attributes = playlist.attributes || {};
     playlist.attributes.RESOLUTION = playlist.attributes.RESOLUTION || {};
 
     playlist.attributes.RESOLUTION.width = options.width;
   }
 
   if ('height' in options) {
-    playlist.attributes = playlist.attributes || {};
     playlist.attributes.RESOLUTION = playlist.attributes.RESOLUTION || {};
 
     playlist.attributes.RESOLUTION.height = options.height;

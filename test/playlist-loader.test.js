@@ -91,6 +91,7 @@ function(assert) {
   assert.ok(loader.master, 'infers a master playlist');
   assert.ok(loader.media(), 'sets the media playlist');
   assert.ok(loader.media().uri, 'sets the media playlist URI');
+  assert.ok(loader.media().attributes, 'sets the media playlist attributes');
   assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
   assert.strictEqual(this.requests.length, 0, 'no more requests are made');
   assert.strictEqual(loadedmetadatas, 1, 'fired one loadedmetadata');
@@ -318,6 +319,7 @@ function(assert) {
                               '0.ts\n');
   assert.ok(loader.master, 'infers a master playlist');
   assert.ok(loader.media(), 'sets the media playlist');
+  assert.ok(loader.media().attributes, 'sets the media playlist attributes');
   assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
 });
 
