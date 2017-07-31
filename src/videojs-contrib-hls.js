@@ -273,7 +273,8 @@ class HlsHandler extends Component {
   setOptions_() {
     // defaults
     this.options_.withCredentials = this.options_.withCredentials || false;
-    this.options_.enableLowInitialPlaylist = this.options_.enableLowInitialPlaylist || false;
+    this.options_.enableLowInitialPlaylist =
+      this.options_.enableLowInitialPlaylist || false;
 
     if (typeof this.options_.blacklistDuration !== 'number') {
       this.options_.blacklistDuration = 5 * 60;
