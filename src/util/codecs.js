@@ -1,3 +1,7 @@
+/*
+ * @file codecs.js - Utilities for writing codecs to strings and
+ * anylizing files for their codec information
+ */
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
 import videojs from 'video.js';
 

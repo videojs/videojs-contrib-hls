@@ -1,3 +1,7 @@
+/*
+ * @file object.js - Utilities for javascript objects
+ * /
+
 /**
  * determine if an object a is different from
  * and object b. both only having one dimensional
