@@ -48,6 +48,7 @@ export default class VTTSegmentLoader extends SegmentLoader {
     let start = cues[0].startTime;
     let end = cues[cues.length - 1].startTime;
 
+
     return videojs.createTimeRanges([[start, end]]);
   }
 
@@ -278,9 +279,17 @@ export default class VTTSegmentLoader extends SegmentLoader {
     segmentInfo.byteLength = segmentInfo.bytes.byteLength;
 
     this.mediaSecondsLoaded += segment.duration;
+    
+       /**
+       The below code helps in removing double captions
+       **/
+       let last_cue_endTime = segmentInfo.cues[segmentInfo.cues.length-1].endTime;
+       let first_cue_endTime = segmentInfo.cues[0].endTime;
+       this.remove(first_cue_endTime,last_cue_endTime);
+
 
     segmentInfo.cues.forEach((cue) => {
-      this.subtitlesTrack_.addCue(cue);
+       this.subtitlesTrack_.addCue(cue);
     });
 
     this.handleUpdateEnd_();
