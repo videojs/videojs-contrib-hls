@@ -86,9 +86,13 @@ QUnit.test('logs warning for master playlist with invalid STREAM-INF', function(
                               'video2/media.m3u8\n');
 
   assert.ok(loader.master, 'infers a master playlist');
-  assert.ok(loader.master.playlists[0], 'parsed invalid stream');
-  assert.ok(loader.master.playlists[0].attributes, 'attached attributes property');
+  assert.equal(loader.master.playlists[1].uri, 'video2/media.m3u8',
+    'parsed invalid stream');
+  assert.ok(loader.master.playlists[1].attributes, 'attached attributes property');
   assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+  assert.equal(this.env.log.warn.args[0],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
 });
 
 QUnit.test('jumps to HAVE_METADATA when initialized with a media playlist',
