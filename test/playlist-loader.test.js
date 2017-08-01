@@ -73,6 +73,24 @@ QUnit.test('moves to HAVE_MASTER after loading a master playlist', function(asse
   assert.strictEqual(state, 'HAVE_MASTER', 'the state at loadedplaylist correct');
 });
 
+QUnit.test('logs warning for master playlist with invalid STREAM-INF', function(assert) {
+  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
+
+  loader.load();
+
+  this.requests.pop().respond(200, null,
+                              '#EXTM3U\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                              'video1/media.m3u8\n' +
+                              '#EXT-X-STREAM-INF:\n' +
+                              'video2/media.m3u8\n');
+
+  assert.ok(loader.master, 'infers a master playlist');
+  assert.ok(loader.master.playlists[0], 'parsed invalid stream');
+  assert.ok(loader.master.playlists[0].attributes, 'attached attributes property');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+});
+
 QUnit.test('jumps to HAVE_METADATA when initialized with a media playlist',
 function(assert) {
   let loadedmetadatas = 0;
