@@ -284,6 +284,7 @@ export default class VTTSegmentLoader extends SegmentLoader {
    */
     let lastCueEndTime = segmentInfo.cues[segmentInfo.cues.length - 1].endTime;
     let firstCueEndTime = segmentInfo.cues[0].endTime;
+
     this.remove(firstCueEndTime, lastCueEndTime);
 
     segmentInfo.cues.forEach((cue) => {
