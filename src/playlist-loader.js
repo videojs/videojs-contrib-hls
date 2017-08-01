@@ -517,7 +517,8 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
             // this scenario.
             playlist.attributes = {};
 
-            log.warn('Invalid playlist STREAM-INF detected. Missing attribute list.');
+            log.warn(
+              'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.');
           }
         }
 

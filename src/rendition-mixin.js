@@ -56,7 +56,7 @@ class Representation {
 
     // some playlist attributes are optional
     if (playlist.attributes.RESOLUTION) {
-      let resolution = playlist.attributes.RESOLUTION;
+      const resolution = playlist.attributes.RESOLUTION;
 
       this.width = resolution.width;
       this.height = resolution.height;
