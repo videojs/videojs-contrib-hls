@@ -279,14 +279,9 @@ export default class VTTSegmentLoader extends SegmentLoader {
 
     this.mediaSecondsLoaded += segment.duration;
 
-  /**
-   * The below code helps in removing double captions
-   */
     if (segmentInfo.cues.length) {
-      let lastCueEndTime = segmentInfo.cues[segmentInfo.cues.length - 1].endTime;
-      let firstCueEndTime = segmentInfo.cues[0].endTime;
-
-      this.remove(firstCueEndTime, lastCueEndTime);
+     //remove any overlapping cues to prevent doubling
+      this.remove(segmentInfo.cues[0].endTime, segmentInfo.cues[segmentInfo.cues.length - 1].endTime);
     }
 
     segmentInfo.cues.forEach((cue) => {
