@@ -100,7 +100,9 @@
     "webworkify": "1.0.2"
   },
   "devDependencies": {
-    "babel": "^5.8.0",
+    "babel-cli": "6.24.1",
+    "babel-core": "6.24.0",
+    "babel-preset-env": "1.2.2",
     "babelify": "^6.0.0",
     "bannerize": "^1.0.0",
     "browserify": "^11.0.0",
