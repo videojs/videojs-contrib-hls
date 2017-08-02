@@ -187,6 +187,12 @@ export const useFakeEnvironment = function(assert) {
     this.readyState = 0;
   };
 
+  XMLHttpRequest.prototype.downloadProgress = function downloadProgress(rawEventData) {
+    this.dispatchEvent(new sinon.ProgressEvent('progress',
+                                               rawEventData,
+                                               rawEventData.target));
+  };
+
   fakeEnvironment.requests.length = 0;
   fakeEnvironment.xhr.onCreate = function(xhr) {
     fakeEnvironment.requests.push(xhr);
