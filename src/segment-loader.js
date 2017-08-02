@@ -753,7 +753,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         //       the lowestEnabledRendition.
         !this.xhrOptions_.timeout ||
         // Don't abort if we have no bandwidth information to estimate segment sizes
-        !(this.playlist_.attributes && this.playlist_.attributes.BANDWIDTH)) {
+        !(this.playlist_.attributes.BANDWIDTH)) {
       return false;
     }
 
