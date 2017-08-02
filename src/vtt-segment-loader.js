@@ -280,7 +280,7 @@ export default class VTTSegmentLoader extends SegmentLoader {
     this.mediaSecondsLoaded += segment.duration;
 
     if (segmentInfo.cues.length) {
-     //remove any overlapping cues to prevent doubling
+     // remove any overlapping cues to prevent doubling
       this.remove(segmentInfo.cues[0].endTime, segmentInfo.cues[segmentInfo.cues.length - 1].endTime);
     }
 
