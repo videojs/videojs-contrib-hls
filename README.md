@@ -34,6 +34,7 @@ Maintenance Status: Stable
       - [overrideNative](#overridenative)
       - [blacklistDuration](#blacklistduration)
       - [bandwidth](#bandwidth)
+      - [enableLowInitialPlaylist](#enablelowinitialplaylist)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
