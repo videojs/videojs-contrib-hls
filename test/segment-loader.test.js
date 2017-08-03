@@ -603,31 +603,5 @@ QUnit.module('SegmentLoader', function(hooks) {
       assert.ok(!playlistUpdated.segments[0].end,
                 'no end info for first segment of new playlist');
     });
-
-    QUnit.test('tracks segment bandwidth and request times', function(assert) {
-      let playlist = playlistWithDuration(20);
-
-      loader.syncController_.probeTsSegment_ = function(segmentInfo) {
-        return { start: 0, end: 10 };
-      };
-
-      loader.playlist(playlist);
-      loader.mimeType(this.mimeType);
-      loader.load();
-      this.clock.tick(1);
-
-      this.clock.tick(1000);
-      this.requests[0].response = new Uint8Array(10).buffer;
-      this.requests.shift().respond(200, null, '');
-
-      this.updateend();
-      this.clock.tick(1);
-
-      const segment = playlist.segments[0];
-
-      assert.ok(segment.lastRequest, 'added lastRequest');
-      assert.equal(typeof segment.lastRequest.time, 'number', 'set time');
-      assert.equal(segment.lastRequest.bandwidth, 80, 'set bandwidth');
-    });
   });
 });

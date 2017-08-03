@@ -340,6 +340,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
 
       assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
       assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+      assert.notOk(playlist1.excludeUntil, 'playlist not blacklisted');
 
       this.clock.tick(999);
 
@@ -351,6 +352,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
 
       assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
       assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+      assert.notOk(playlist1.excludeUntil, 'playlist not blacklisted');
 
       this.clock.tick(2);
 
@@ -362,6 +364,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
 
       assert.equal(bandwidthupdates, 1, 'bandwidth updated');
       assert.ok(this.requests[0].aborted, 'request aborted');
+      assert.ok(playlist1.excludeUntil, 'playlist blacklisted');
     });
 
     QUnit.test(

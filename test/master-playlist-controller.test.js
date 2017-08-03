@@ -1083,11 +1083,10 @@ function(assert) {
 
   const segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
 
-  // start on lowest bandwidth
+  // start on lowest bandwidth rendition (will be media.m3u8)
   segmentLoader.bandwidth = 0;
 
   this.player.tech_.paused = () => false;
-
   this.masterPlaylistController.mediaSource.trigger('sourceopen');
   // master
   this.requests.shift().respond(200, null,
@@ -1110,10 +1109,6 @@ function(assert) {
     return origMedia(media);
   };
 
-  let bandwidthupdateEvents = 0;
-
-  this.player.tech_.on('bandwidthupdate', () => bandwidthupdateEvents++);
-
   this.clock.tick(1);
 
   let segmentRequest = this.requests[0];
@@ -1124,17 +1119,15 @@ function(assert) {
 
   // 100ms for the segment response
   this.clock.tick(100);
-
   // 10 bytes in 100ms = 800 bits/s
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
-
   segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
   this.clock.tick(1);
-
   segmentRequest = this.requests[0];
 
-  // walking forwards
+  // should be walking forwards (need two segments before we can switch)
+  assert.equal(segmentLoader.bandwidth, 800, 'bandwidth is correct');
   assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
                '1.ts',
                'requested second segment');
@@ -1142,29 +1135,34 @@ function(assert) {
 
   // 100ms for the segment response
   this.clock.tick(100);
-
-  // 10 bytes in 100ms = 800 bits/s
-  this.requests[0].response = new Uint8Array(10).buffer;
+  // 11 bytes in 100ms = 880 bits/s
+  this.requests[0].response = new Uint8Array(11).buffer;
   this.requests.shift().respond(200, null, '');
-
   segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
   this.clock.tick(1);
 
   let mediaRequest = this.requests[0];
 
+  // after two segments, bandwidth is high enough to switch up to media1.m3u8
+  assert.equal(segmentLoader.bandwidth, 880, 'bandwidth is correct');
   assert.equal(mediaChanges.length, 1, 'changed media');
   assert.equal(mediaChanges[0].uri, 'media1.m3u8', 'changed to media1');
   assert.equal(mediaRequest.uri.substring(mediaRequest.uri.length - 'media1.m3u8'.length),
                'media1.m3u8',
                'requested media1');
-  assert.equal(bandwidthupdateEvents, 1, 'one bandwidth update event');
 
   // media1.m3u8
   this.requests.shift().respond(200, null, mediaContents);
   this.clock.tick(1);
-
   segmentRequest = this.requests[0];
 
+  assert.equal(segmentLoader.playlist_.uri,
+               'media1.m3u8',
+               'segment loader playlist is media1');
+
+  const media1ResolvedPlaylist = segmentLoader.playlist_;
+
+  assert.notOk(media1ResolvedPlaylist.excludeUntil, 'media1 not blacklisted');
   assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
                '0.ts',
                'requested first segment');
@@ -1172,7 +1170,6 @@ function(assert) {
   // needs a timeout for early abort to occur (we skip the function otherwise, since no
   // timeout means we are on the last rendition)
   segmentLoader.xhrOptions_.timeout = 60000;
-
   // we need to wait 1 second from first byte receieved in order to consider aborting
   this.requests[0].downloadProgress({
     target: this.requests[0],
@@ -1180,7 +1177,6 @@ function(assert) {
     loaded: 1
   });
   this.clock.tick(1000);
-
   // should abort request early because we don't have enough bandwidth
   this.requests[0].downloadProgress({
     target: this.requests[0],
@@ -1188,62 +1184,50 @@ function(assert) {
     // 1 bit per second
     loaded: 2
   });
-
   this.clock.tick(1);
 
+  // aborted request, so switched back to lowest rendition
+  assert.equal(segmentLoader.bandwidth,
+               10 * Config.BANDWIDTH_VARIANCE + 1,
+               'bandwidth is correct for abort');
   assert.equal(mediaChanges.length, 2, 'changed media');
   assert.equal(mediaChanges[1].uri, 'media.m3u8', 'changed to media');
+  assert.ok(media1ResolvedPlaylist.excludeUntil, 'blacklisted media1');
   assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
                '0.ts',
                'requested first segment');
-  assert.equal(bandwidthupdateEvents, 2, 'two bandwidth update events');
 
   // remove aborted request
   this.requests.shift();
-
   // 1ms for the cached segment response
   this.clock.tick(1);
-
   // 10 bytes in 1ms = 80 kbps
   this.requests[0].response = new Uint8Array(10).buffer;
   this.requests.shift().respond(200, null, '');
-
   segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
   this.clock.tick(1);
-
-  assert.equal(segmentLoader.bandwidth,
-               10 * Config.BANDWIDTH_VARIANCE + 1,
-               'bandwidth remains at aborted bandwidth');
-  assert.equal(mediaChanges.length, 2, 'did not change media');
-  assert.equal(bandwidthupdateEvents, 2, 'still two bandwidth update events');
-
   segmentRequest = this.requests[0];
+
+  // walking forwards, still need two segments before trying to change rendition
+  assert.equal(segmentLoader.bandwidth, 80000, 'bandwidth is correct');
+  assert.equal(mediaChanges.length, 2, 'did not change media');
   assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
                '1.ts',
                'requested second segment');
 
-  // must have two segment requests before we consider upswitching, so mimic another cache
-
   // 1ms for the cached segment response
   this.clock.tick(1);
-
-  // 10 bytes in 1ms = 80 kbps
-  this.requests[0].response = new Uint8Array(10).buffer;
+  // 11 bytes in 1ms = 88 kbps
+  this.requests[0].response = new Uint8Array(11).buffer;
   this.requests.shift().respond(200, null, '');
-
   segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
   this.clock.tick(1);
 
-  assert.equal(segmentLoader.bandwidth,
-               10 * Config.BANDWIDTH_VARIANCE + 1,
-               'bandwidth remains at aborted bandwidth');
   // Media may be changed, but it should be changed to the same media. In the future, this
   // can safely not be changed.
+  assert.equal(segmentLoader.bandwidth, 88000, 'bandwidth is correct');
   assert.equal(mediaChanges.length, 3, 'changed media');
   assert.equal(mediaChanges[2].uri, 'media.m3u8', 'media remains unchanged');
-  // A bandwidthupdate event can still be triggered, but the bandwidth hasn't changed, so
-  // the media should remain unchanged. In the future, this can safely not be triggered.
-  assert.equal(bandwidthupdateEvents, 3, 'triggered a bandwidthupdate');
 
   segmentRequest = this.requests[0];
   assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
