@@ -364,7 +364,6 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
     function(assert) {
       let playlist = playlistWithDuration(40);
 
-
       window.WebVTT.Parser = () => {
         this.parserCreated = true;
         return {
