@@ -364,6 +364,7 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
     function(assert) {
       let playlist = playlistWithDuration(40);
 
+
       window.WebVTT.Parser = () => {
         this.parserCreated = true;
         return {
@@ -413,6 +414,46 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
                    2,
                    'logged two warnings, one for each invalid cue');
       this.env.log.warn.callCount = 0;
+    });
+
+    QUnit.test('Cues that overlap segment boundaries',
+    function(assert) {
+      let playlist = playlistWithDuration(20);
+
+      loader.parseVTTCues_ = (segmentInfo) => {
+        segmentInfo.cues = [{ startTime: 0, endTime: 5}, { startTime: 5, endTime: 15}];
+        segmentInfo.timestampmap = { MPEGTS: 0, LOCAL: 0 };
+      };
+
+      loader.playlist(playlist);
+      loader.track(this.track);
+      loader.load();
+
+      this.clock.tick(1);
+
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      this.clock.tick(1);
+
+      assert.equal(this.track.cues.length, 2, 'segment length should be 2');
+
+      loader.parseVTTCues_ = (segmentInfo) => {
+        segmentInfo.cues = [{ startTime: 5, endTime: 15}, { startTime: 15, endTime: 20}];
+        segmentInfo.timestampmap = { MPEGTS: 0, LOCAL: 0 };
+      };
+
+      this.clock.tick(1);
+
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      this.clock.tick(1);
+
+      assert.equal(this.track.cues.length, 3, 'segment length should be 3');
+      assert.equal(this.track.cues[0].startTime, 0, 'Start time of first cue should be 0');
+      assert.equal(this.track.cues[1].startTime, 5, 'Start time of second cue should be 5');
+      assert.equal(this.track.cues[2].startTime, 15, 'Start time of third cue should be 15');
     });
 
     QUnit.test('loader does not re-request segments that contain no subtitles',
