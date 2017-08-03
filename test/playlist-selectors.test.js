@@ -136,7 +136,7 @@ test('lowestBitrateCompatibleVariantSelector picks lowest non-audio playlist',
     const expectedPlaylist = this.hls.playlists.master.playlists[2];
     const testPlaylist = lowestBitrateCompatibleVariantSelector.call(this.hls);
 
-    assert.equal(expectedPlaylist, testPlaylist,
+    assert.equal(testPlaylist, expectedPlaylist,
       'Selected lowest compatible playlist with video assets');
   });
 
@@ -148,9 +148,8 @@ test('lowestBitrateCompatibleVariantSelector picks lowest audio rendition if no 
       { attributes: { BANDWIDTH: 100, CODECS: 'mp4a.40.2' } }
     ];
 
-    const expectedPlaylist = this.hls.playlists.master.playlists[1];
     const testPlaylist = lowestBitrateCompatibleVariantSelector.call(this.hls);
 
-    assert.equal(expectedPlaylist, testPlaylist,
+    assert.equal(testPlaylist, null,
       'Selected lowest compatible playlist since no video assets exist');
   });

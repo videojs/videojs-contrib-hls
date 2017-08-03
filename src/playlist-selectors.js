@@ -375,5 +375,5 @@ export const lowestBitrateCompatibleVariantSelector = function() {
   const playlistsWithVideo =
     playlists.filter(playlist => parseCodecs(playlist.attributes.CODECS).videoCodec);
 
-  return playlistsWithVideo[0] || playlists[0];
+  return playlistsWithVideo[0] || null;
 };
