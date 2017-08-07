@@ -450,9 +450,9 @@ QUnit.module('VTTSegmentLoader', function(hooks) {
       this.clock.tick(1);
 
       assert.equal(this.track.cues.length, 3, 'segment length should be 3');
-      assert.equal(this.track.cues[0].startTime, 0, 'Start time of first cue should be 0');
-      assert.equal(this.track.cues[1].startTime, 5, 'Start time of second cue should be 5');
-      assert.equal(this.track.cues[2].startTime, 15, 'Start time of third cue should be 15');
+      assert.equal(this.track.cues[0].startTime, 0, 'First cue starttime should be 0');
+      assert.equal(this.track.cues[1].startTime, 5, 'Second cue starttime should be 5');
+      assert.equal(this.track.cues[2].startTime, 15, 'Third cue starttime should be 15');
     });
 
     QUnit.test('loader does not re-request segments that contain no subtitles',
