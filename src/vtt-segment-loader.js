@@ -281,7 +281,8 @@ export default class VTTSegmentLoader extends SegmentLoader {
 
     if (segmentInfo.cues.length) {
      // remove any overlapping cues to prevent doubling
-      this.remove(segmentInfo.cues[0].endTime, segmentInfo.cues[segmentInfo.cues.length - 1].endTime);
+      this.remove(segmentInfo.cues[0].endTime,
+                  segmentInfo.cues[segmentInfo.cues.length - 1].endTime);
     }
 
     segmentInfo.cues.forEach((cue) => {
