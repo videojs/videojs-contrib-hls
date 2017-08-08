@@ -3931,23 +3931,21 @@ exports.minRebufferMaxBandwidthSelector = minRebufferMaxBandwidthSelector;
  *         exists pick the lowest audio rendition.
  */
 var lowestBitrateCompatibleVariantSelector = function lowestBitrateCompatibleVariantSelector() {
-  var playlists = this.playlists.master.playlists.slice();
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  var playlists = this.playlists.master.playlists.filter(_playlist2['default'].isEnabled);
 
   // Sort ascending by bitrate
   stableSort(playlists, function (a, b) {
     return comparePlaylistBandwidth(a, b);
   });
 
-  // filter out any playlists that have been excluded due to
-  // incompatible configurations or playback errors
-  var enabledPlaylists = playlists.filter(_playlist2['default'].isEnabled);
-
   // Parse and assume that playlists with no video codec have no video
   // (this is not necessarily true, although it is generally true).
   //
   // If an entire manifest has no valid videos everything will get filtered
   // out.
-  var playlistsWithVideo = enabledPlaylists.filter(function (playlist) {
+  var playlistsWithVideo = playlists.filter(function (playlist) {
     return (0, _utilCodecsJs.parseCodecs)(playlist.attributes.CODECS).videoCodec;
   });
 
