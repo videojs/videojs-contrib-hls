@@ -292,6 +292,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     Hls = externHls;
 
+    // `this` in selectPlaylist should be the HlsHandler for backwards
+    // compatibility with < v2
+
+    const playlistSelectorFactory = Hls.STANDARD_PLAYLIST_SELECTOR;
+
+    this.selectPlaylist = playlistSelectorFactory.call(tech.hls).bind(tech.hls);
     this.withCredentials = withCredentials;
     this.tech_ = tech;
     this.hls_ = tech.hls;

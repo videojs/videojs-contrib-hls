@@ -21,14 +21,20 @@ import PlaybackWatcher from './playback-watcher';
 import reloadSourceOnError from './reload-source-on-error';
 import {
   lastBandwidthSelector,
+  movingAverageBandwidthSelector,
+  ewmaBandwidthSelector,
   comparePlaylistBandwidth,
-  comparePlaylistResolution
+  comparePlaylistResolution,
+  computeDecayRateByHalfLife,
+  filterPlaylists
 } from './playlist-selectors.js';
 
 // 0.5 MB/s
 const INITIAL_BANDWIDTH_DESKTOP = 4194304;
 // 0.0625 MB/s
 const INITIAL_BANDWIDTH_MOBILE = 500000;
+
+const STANDARD_PLAYLIST_SELECTOR = lastBandwidthSelector;
 
 const Hls = {
   PlaylistLoader,
@@ -37,10 +43,17 @@ const Hls = {
   AsyncStream,
   decrypt,
   utils,
-
-  STANDARD_PLAYLIST_SELECTOR: lastBandwidthSelector,
+  PlaylistSelectorFactories: {
+    lastBandwidthSelector,
+    movingAverageBandwidthSelector,
+    ewmaBandwidthSelector,
+  },
+  computeDecayRateByHalfLife,
   comparePlaylistBandwidth,
   comparePlaylistResolution,
+  filterPlaylists,
+
+  STANDARD_PLAYLIST_SELECTOR,
 
   xhr: xhrFactory()
 };
@@ -271,6 +284,10 @@ class HlsHandler extends Component {
   setOptions_() {
     // defaults
     this.options_.withCredentials = this.options_.withCredentials || false;
+    this.options_.maxVideoWidth = this.options_.maxVideoWidth || Infinity;
+    this.options_.maxVideoHeight = this.options_.maxVideoHeight || Infinity;
+    this.options_.maxBandwidth = this.options_.maxBandwidth || Infinity;
+    this.options_.autoLimitResolution = this.options_.autoLimitResolution || true;
 
     if (typeof this.options_.blacklistDuration !== 'number') {
       this.options_.blacklistDuration = 5 * 60;
@@ -322,12 +339,6 @@ class HlsHandler extends Component {
       player.error(this.masterPlaylistController_.error);
     });
 
-    // `this` in selectPlaylist should be the HlsHandler for backwards
-    // compatibility with < v2
-    this.masterPlaylistController_.selectPlaylist =
-      this.selectPlaylist ?
-        this.selectPlaylist.bind(this) : Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
-
     // re-expose some internal objects for backwards compatibility with < v2
     this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;
     this.mediaSource = this.masterPlaylistController_.mediaSource;
@@ -351,8 +362,18 @@ class HlsHandler extends Component {
         set(throughput) {
           this.masterPlaylistController_.mainSegmentLoader_.throughput.rate = throughput;
           // By setting `count` to 1 the throughput value becomes the starting value
-          // for the cumulative average
+          // for the cumulative average and the latency indicates an instantaneous
+          // change for statistics taking time-deltas into account
           this.masterPlaylistController_.mainSegmentLoader_.throughput.count = 1;
+          this.masterPlaylistController_.mainSegmentLoader_.throughput.latency = 0;
+        }
+      },
+      throughputLatency: {
+        get() {
+          return this.masterPlaylistController_.mainSegmentLoader_.throughput.latency;
+        },
+        set() {
+          videojs.log.error('The "throughputLatency" property is read-only');
         }
       },
       bandwidth: {
@@ -368,6 +389,14 @@ class HlsHandler extends Component {
             rate: 0,
             count: 0
           };
+        }
+      },
+      bandwidthRtt: {
+        get() {
+          return this.masterPlaylistController_.mainSegmentLoader_.roundTrip;
+        },
+        set() {
+          videojs.log.error('The "bandwidthRtt" property is read-only');
         }
       },
       /**
@@ -404,6 +433,11 @@ class HlsHandler extends Component {
       bandwidth: {
         get: () => this.bandwidth || 0,
         enumerable: true
+      },
+      estimatedBandwidth: {
+        get() {
+          return this.estimatedBandwidth_ || this.bandwidth;
+        }
       },
       mediaRequests: {
         get: () => this.masterPlaylistController_.mediaRequests_() || 0,
@@ -500,6 +534,21 @@ class HlsHandler extends Component {
         handleHlsMediaChange(this.qualityLevels_, this.playlists);
       });
     }
+  }
+
+  /**
+   * Updates a value store for estimators (if arg defined) and returns the stored value.
+   * Accessible read-only via the `estimatedBandwidth` property.
+   *
+   * @method onEstimatedBandwidthUpdate_
+   * @public
+   */
+  setEstimatedBandwidth_(estimatedBandwidth) {
+    this.estimatedBandwidth_ = estimatedBandwidth || this.estimatedBandwidth_;
+    if (estimatedBandwidth) {
+      this.trigger('estimated-bandwidth');
+    }
+    return this.estimatedBandwidth_;
   }
 
   /**

@@ -96,6 +96,7 @@ const getProgressStats = (progressEvent) => {
  * @param {Object} request -  the XHR request that possibly generated the error
  */
 const handleErrors = (error, request) => {
+
   if (request.timedout) {
     return {
       status: request.status,
@@ -208,6 +209,12 @@ const handleSegmentResponse = (segment, finishProcessingFn) => (error, request) 
   const errorObj = handleErrors(error, request);
 
   if (errorObj) {
+
+    segment.stats = videojs.mergeOptions(segment.stats, getProgressStats({
+      target: request,
+      loaded: 0
+    }));
+
     return finishProcessingFn(errorObj, segment);
   }
 
