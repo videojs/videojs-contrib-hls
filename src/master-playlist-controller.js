@@ -402,10 +402,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
       let updatedPlaylist = this.masterPlaylistLoader_.media();
 
       if (!updatedPlaylist) {
-        // select the initial variant
-        this.initialMedia_ = this.enableLowInitialPlaylist ?
-          this.selectInitialPlaylist() : this.selectPlaylist();
+        let selectedMedia;
 
+        if (this.enableLowInitialPlaylist) {
+          selectedMedia = this.selectInitialPlaylist();
+        }
+
+        if (!selectedMedia) {
+          selectedMedia = this.selectPlaylist();
+        }
+
+        this.initialMedia_ = selectedMedia;
         this.masterPlaylistLoader_.media(this.initialMedia_);
         return;
       }

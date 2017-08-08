@@ -26,11 +26,6 @@ import {
   comparePlaylistResolution
 } from './playlist-selectors.js';
 
-// 0.5 MB/s
-const INITIAL_BANDWIDTH_DESKTOP = 4194304;
-// 0.0625 MB/s
-const INITIAL_BANDWIDTH_MOBILE = 500000;
-
 const Hls = {
   PlaylistLoader,
   Playlist,
@@ -46,6 +41,9 @@ const Hls = {
 
   xhr: xhrFactory()
 };
+
+// 0.5 MB/s
+const INITIAL_BANDWIDTH = 4194304;
 
 // Define getter/setters for config properites
 [
@@ -273,8 +271,6 @@ class HlsHandler extends Component {
   setOptions_() {
     // defaults
     this.options_.withCredentials = this.options_.withCredentials || false;
-    this.options_.enableLowInitialPlaylist =
-      this.options_.enableLowInitialPlaylist || false;
 
     if (typeof this.options_.blacklistDuration !== 'number') {
       this.options_.blacklistDuration = 5 * 60;
@@ -283,11 +279,14 @@ class HlsHandler extends Component {
     // start playlist selection at a reasonable bandwidth for
     // broadband internet (0.5 MB/s) or mobile (0.0625 MB/s)
     if (typeof this.options_.bandwidth !== 'number') {
-      // only use Android for mobile because iOS does not support MSE (and uses
-      // native HLS)
-      this.options_.bandwidth =
-        videojs.browser.IS_ANDROID ? INITIAL_BANDWIDTH_MOBILE : INITIAL_BANDWIDTH_DESKTOP;
+      this.options_.bandwidth = INITIAL_BANDWIDTH;
     }
+
+    // If the bandwidth number is unchanged from the initial setting
+    // then this takes precedence over the enableLowInitialPlaylist option
+    this.options_.enableLowInitialPlaylist =
+       this.options_.enableLowInitialPlaylist &&
+       this.options_.bandwidth === INITIAL_BANDWIDTH;
 
     // grab options passed to player.src
     ['withCredentials', 'bandwidth'].forEach((option) => {
@@ -332,9 +331,7 @@ class HlsHandler extends Component {
       this.selectPlaylist ?
         this.selectPlaylist.bind(this) : Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
 
-    this.masterPlaylistController_.selectInitialPlaylist =
-      this.selectInitialPlaylist ?
-        this.selectInitialPlaylist.bind(this) : Hls.INITIAL_PLAYLIST_SELECTOR.bind(this);
+    this.masterPlaylistController_.selectInitialPlaylist = Hls.INITIAL_PLAYLIST_SELECTOR.bind(this);
 
     // re-expose some internal objects for backwards compatibility with < v2
     this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;

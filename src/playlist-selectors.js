@@ -317,7 +317,9 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
   } = settings;
 
   const bandwidthPlaylists =
-    master.playlists.filter(Playlist.hasAttribute.bind(null, 'BANDWIDTH'));
+    master.playlists.filter(playlist =>
+      Playlist.isEnabled(playlist) && Playlist.hasAttribute('BANDWIDTH', playlist)
+    );
 
   const rebufferingEstimates = bandwidthPlaylists.map((playlist) => {
     const syncPoint = syncController.getSyncPoint(playlist,
@@ -372,8 +374,18 @@ export const lowestBitrateCompatibleVariantSelector = function() {
   stableSort(playlists,
     (a, b) => comparePlaylistBandwidth(a, b));
 
-  const playlistsWithVideo =
-    playlists.filter(playlist => parseCodecs(playlist.attributes.CODECS).videoCodec);
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  const enabledPlaylists = playlists.filter(Playlist.isEnabled);
 
-  return playlistsWithVideo[0] || playlists[0];
+  // Parse and assume that playlists with no video codec have no video
+  // (this is not necessarily true, although it is generally true).
+  //
+  // If an entire manifest has no valid videos everything will get filtered
+  // out.
+  const playlistsWithVideo = enabledPlaylists.filter(
+    playlist => parseCodecs(playlist.attributes.CODECS).videoCodec
+  );
+
+  return playlistsWithVideo[0] || null;
 };
