@@ -374,9 +374,7 @@ export const lowestBitrateCompatibleVariantSelector = function() {
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
-  const enabledPlaylists = playlists.filter(
-    playlist => Playlist.isEnabled(playlist)
-  );
+  const enabledPlaylists = playlists.filter(Playlist.isEnabled);
 
   // Parse and assume that playlists with no video codec have no video
   // (this is not necessarily true, although it is generally true).
