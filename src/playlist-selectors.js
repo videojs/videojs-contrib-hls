@@ -368,22 +368,20 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
  *         exists pick the lowest audio rendition.
  */
 export const lowestBitrateCompatibleVariantSelector = function() {
-  const playlists = this.playlists.master.playlists.slice();
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  const playlists = this.playlists.master.playlists.filter(Playlist.isEnabled);
 
   // Sort ascending by bitrate
   stableSort(playlists,
     (a, b) => comparePlaylistBandwidth(a, b));
-
-  // filter out any playlists that have been excluded due to
-  // incompatible configurations or playback errors
-  const enabledPlaylists = playlists.filter(Playlist.isEnabled);
 
   // Parse and assume that playlists with no video codec have no video
   // (this is not necessarily true, although it is generally true).
   //
   // If an entire manifest has no valid videos everything will get filtered
   // out.
-  const playlistsWithVideo = enabledPlaylists.filter(
+  const playlistsWithVideo = playlists.filter(
     playlist => parseCodecs(playlist.attributes.CODECS).videoCodec
   );
 
