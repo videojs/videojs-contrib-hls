@@ -317,7 +317,9 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
   } = settings;
 
   const bandwidthPlaylists =
-    master.playlists.filter(Playlist.hasAttribute.bind(null, 'BANDWIDTH'));
+    master.playlists.filter(playlist =>
+      Playlist.isEnabled(playlist) && Playlist.hasAttribute('BANDWIDTH', playlist)
+    );
 
   const rebufferingEstimates = bandwidthPlaylists.map((playlist) => {
     const syncPoint = syncController.getSyncPoint(playlist,
