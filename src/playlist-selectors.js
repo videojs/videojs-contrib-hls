@@ -128,8 +128,7 @@ export const comparePlaylistResolution = function(left, right) {
  * currently detected bandwidth, accounting for some amount of
  * bandwidth variance
  */
-const simpleSelector = function(master, playerBandwidth, playerWidth, playerHeight) {
-  let fallbackPlaylistRep = null;
+const filterPlaylists = function(master, playerBandwidth, playerWidth, playerHeight) {
   // convert the playlists to an intermediary representation to make comparisons easier
   let sortedPlaylistReps = master.playlists.map((playlist) => {
     let width;
@@ -231,6 +230,24 @@ const simpleSelector = function(master, playerBandwidth, playerWidth, playerHeig
   ).playlist;
 };
 
+const filterMasterPlaylistsWithRestrictions = function(estimatedBandwidth) {
+
+  let autoLimitRes = this.options_.autoLimitResolution;
+
+  let styleWidth = parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10);
+  let styleHeight = parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10);
+
+  let maxWidth = this.options_.maxVideoWidth;
+  let maxHeight = this.options_.maxVideoHeight;
+  let maxBandwidth = this.options_.maxBandwidth;
+
+  let limitWidth = Math.min(autoLimitRes ? styleWidth : Infinity, maxWidth);
+  let limitHeight = Math.min(autoLimitRes ? styleHeight : Infinity, maxHeight);
+  let limitBandwidth = Math.min(estimatedBandwidth, maxBandwidth);
+
+  return filterPlaylists(this.playlists.master, limitBandwidth, limitWidth, limitHeight);
+}
+
 // Playlist Selectors
 
 /**
@@ -244,10 +261,10 @@ const simpleSelector = function(master, playerBandwidth, playerWidth, playerHeig
  * bandwidth variance
  */
 export const lastBandwidthSelector = function() {
-  return simpleSelector(this.playlists.master,
-                        this.systemBandwidth,
-                        parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10),
-                        parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
+  return function() {
+    return filterMasterPlaylistsWithRestrictions.call(this,
+      this.setEstimatedBandwidth_(this.systemBandwidth));
+  }.bind(this);
 };
 
 /**
@@ -277,11 +294,55 @@ export const movingAverageBandwidthSelector = function(decay) {
     }
 
     average = decay * this.systemBandwidth + (1 - decay) * average;
-    return simpleSelector(this.playlists.master,
-                          average,
-                          parseInt(safeGetComputedStyle(this.tech_.el(), 'width'), 10),
-                          parseInt(safeGetComputedStyle(this.tech_.el(), 'height'), 10));
-  };
+
+    return filterMasterPlaylistsWithRestrictions.call(this,
+      this.setEstimatedBandwidth_(average));
+  }.bind(this);
+};
+
+// see http://robowiki.net/wiki/Rolling_Averages
+export const computeDecayRateByHalfLife = function(halfLife) {
+
+  return -1 * Math.log( 0.5 ) / halfLife;
+};
+
+export const timeWeightedRollingAverage = function(newValue, oldValue, deltaTime, decayRate) {
+
+  let weight = Math.exp(-1 * decayRate * deltaTime);
+
+  return weight * oldValue + (1 - w) * newValue;
+};
+
+export const ewma = function(decayRate, initialValue) {
+
+  let oldValue = initialValue;
+
+  return function(newValue, deltaTime) {
+
+    return timeWeightedRollingAverage(newValue, oldValue, deltaTime, decayRate);
+  }
+};
+
+export const ewmaBandwidthSelector = function(fastDecay, slowDecay) {
+
+  let fastEwma = ewma(fastDecay, this.systemBandwidth);
+  let slowEwma = ewma(slowDecay, this.systemBandwidth);
+
+  if (decay < 0 || decay > 1) {
+    throw new Error('Moving average bandwidth decay must be between 0 and 1.');
+  }
+
+  return function() {
+
+    let bandwidth = this.systemBandwidth;
+    let deltaTime = this.bandwidthRtt + this.throughputLatency;
+
+    let average = Math.min(fastEwma(bandwidth, deltaTime),
+      slowEwma(bandwidth, deltaTime));
+
+    return filterMasterPlaylistsWithRestrictions.call(this,
+      this.setEstimatedBandwidth_(average));
+  }.bind(this);
 };
 
 /**
@@ -312,7 +373,7 @@ export const movingAverageBandwidthSelector = function(decay) {
  *         The amount of time in seconds switching to this playlist will rebuffer. A
  *         negative value means that switching will cause zero rebuffering.
  */
-export const minRebufferMaxBandwidthSelector = function(settings) {
+export const minRebufferMaxBandwidthPlaylistFilter = function(settings) {
   const {
     master,
     currentTime,

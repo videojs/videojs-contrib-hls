@@ -67,10 +67,32 @@ QUnit.test('moves to HAVE_MASTER after loading a master playlist', function(asse
   });
   this.requests.pop().respond(200, null,
                               '#EXTM3U\n' +
-                              '#EXT-X-STREAM-INF:\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                               'media.m3u8\n');
   assert.ok(loader.master, 'the master playlist is available');
   assert.strictEqual(state, 'HAVE_MASTER', 'the state at loadedplaylist correct');
+});
+
+QUnit.test('logs warning for master playlist with invalid STREAM-INF', function(assert) {
+  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
+
+  loader.load();
+
+  this.requests.pop().respond(200, null,
+                              '#EXTM3U\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                              'video1/media.m3u8\n' +
+                              '#EXT-X-STREAM-INF:\n' +
+                              'video2/media.m3u8\n');
+
+  assert.ok(loader.master, 'infers a master playlist');
+  assert.equal(loader.master.playlists[1].uri, 'video2/media.m3u8',
+    'parsed invalid stream');
+  assert.ok(loader.master.playlists[1].attributes, 'attached attributes property');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+  assert.equal(this.env.log.warn.args[0],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
 });
 
 QUnit.test('jumps to HAVE_METADATA when initialized with a media playlist',
@@ -91,6 +113,7 @@ function(assert) {
   assert.ok(loader.master, 'infers a master playlist');
   assert.ok(loader.media(), 'sets the media playlist');
   assert.ok(loader.media().uri, 'sets the media playlist URI');
+  assert.ok(loader.media().attributes, 'sets the media playlist attributes');
   assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
   assert.strictEqual(this.requests.length, 0, 'no more requests are made');
   assert.strictEqual(loadedmetadatas, 1, 'fired one loadedmetadata');
@@ -103,7 +126,7 @@ QUnit.test('resolves relative media playlist URIs', function(assert) {
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 'video/media.m3u8\n');
   assert.equal(loader.master.playlists[0].resolvedUri, urlTo('video/media.m3u8'),
               'resolved media URI');
@@ -117,9 +140,9 @@ function(assert) {
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 'video1/media.m3u8\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 'video2/media.m3u8\n');
   assert.equal(loader.enabledPlaylists_(), 2, 'Returned initial amount of playlists');
   loader.master.playlists[0].excludeUntil = Date.now() + 100000;
@@ -133,9 +156,9 @@ QUnit.test('playlist loader detects if we are on lowest rendition', function(ass
   loader.load();
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 'video1/media.m3u8\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 'video2/media.m3u8\n');
   loader.media = function() {
     return {attributes: {BANDWIDTH: 10}};
@@ -182,7 +205,7 @@ QUnit.test('recognizes absolute URIs and requests them unmodified', function(ass
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 'http://example.com/video/media.m3u8\n');
   assert.equal(loader.master.playlists[0].resolvedUri,
               'http://example.com/video/media.m3u8', 'resolved media URI');
@@ -203,7 +226,7 @@ QUnit.test('recognizes domain-relative URLs', function(assert) {
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 '/media.m3u8\n');
   assert.equal(loader.master.playlists[0].resolvedUri,
               window.location.protocol + '//' +
@@ -318,6 +341,7 @@ function(assert) {
                               '0.ts\n');
   assert.ok(loader.master, 'infers a master playlist');
   assert.ok(loader.media(), 'sets the media playlist');
+  assert.ok(loader.media().attributes, 'sets the media playlist attributes');
   assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
 });
 
@@ -336,8 +360,9 @@ QUnit.test('moves to HAVE_METADATA after loading a media playlist', function(ass
   });
   this.requests.pop().respond(200, null,
                               '#EXTM3U\n' +
-                              '#EXT-X-STREAM-INF:\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                               'media.m3u8\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                               'alt.m3u8\n');
   assert.strictEqual(loadedPlaylist, 1, 'fired loadedplaylist once');
   assert.strictEqual(loadedMetadata, 0, 'did not fire loadedmetadata');
@@ -436,7 +461,7 @@ QUnit.test('errors when an initial media playlist request fails', function(asser
   });
   this.requests.pop().respond(200, null,
                               '#EXTM3U\n' +
-                              '#EXT-X-STREAM-INF:\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                               'media.m3u8\n');
 
   assert.strictEqual(errors.length, 0, 'emitted no errors');

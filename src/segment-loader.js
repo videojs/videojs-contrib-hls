@@ -11,7 +11,7 @@ import removeCuesFromTrack from
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 import { TIME_FUDGE_FACTOR, timeUntilRebuffer as timeUntilRebuffer_ } from './ranges';
-import { minRebufferMaxBandwidthSelector } from './playlist-selectors';
+import { minRebufferMaxBandwidthPlaylistFilter } from './playlist-selectors';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -70,7 +70,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // public properties
     this.state = 'INIT';
     this.bandwidth = settings.bandwidth;
-    this.throughput = {rate: 0, count: 0};
+    this.throughput = {rate: 0, latency: 0, count: 0};
     this.roundTrip = NaN;
     this.resetStats_();
     this.mediaIndex = null;
@@ -757,7 +757,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         //       the lowestEnabledRendition.
         !this.xhrOptions_.timeout ||
         // Don't abort if we have no bandwidth information to estimate segment sizes
-        !(this.playlist_.attributes && this.playlist_.attributes.BANDWIDTH)) {
+        !(this.playlist_.attributes.BANDWIDTH)) {
       return false;
     }
 
@@ -791,7 +791,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       return false;
     }
 
-    const switchCandidate = minRebufferMaxBandwidthSelector({
+    const switchCandidate = minRebufferMaxBandwidthPlaylistFilter({
       master: this.hls_.playlists.master,
       currentTime,
       bandwidth: measuredBandwidth,
@@ -995,7 +995,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       if (error.code === REQUEST_ERRORS.TIMEOUT) {
         this.mediaRequestsTimedout += 1;
         this.bandwidth = 1;
-        this.roundTrip = NaN;
+        this.roundTrip = simpleSegment.stats.roundTripTime
         this.trigger('bandwidthupdate');
         return;
       }
@@ -1225,6 +1225,8 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   recordThroughput_(segmentInfo) {
     const rate = this.throughput.rate;
+    const latency = this.throughput.latency;
+    const count = ++this.throughput.count;
     // Add one to the time to ensure that we don't accidentally attempt to divide
     // by zero in the case where the throughput is ridiculously high
     const segmentProcessingTime =
@@ -1236,7 +1238,10 @@ export default class SegmentLoader extends videojs.EventTarget {
     // This is just a cumulative moving average calculation:
     //   newAvg = oldAvg + (sample - oldAvg) / (sampleCount + 1)
     this.throughput.rate +=
-      (segmentProcessingThroughput - rate) / (++this.throughput.count);
+      (segmentProcessingThroughput - rate) / count;
+
+    this.throughput.latency +=
+      (segmentProcessingTime - latency) / count;
   }
 
   /**

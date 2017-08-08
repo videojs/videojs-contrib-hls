@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 5.8.2 (2017-07-12)
+* fix: processing segments when mediaSource is closed [#1201](https://github.com/videojs/videojs-contrib-hls/pull/1201)
+
+--------------------
 ## 5.8.1 (2017-07-12)
 * fix: audio only playlists with videojs-contrib-media-sources v4.4.7 [#1195](https://github.com/videojs/videojs-contrib-hls/pull/1195)
 

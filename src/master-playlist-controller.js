@@ -292,6 +292,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     Hls = externHls;
 
+    // `this` in selectPlaylist should be the HlsHandler for backwards
+    // compatibility with < v2
+
+    const playlistSelectorFactory = Hls.STANDARD_PLAYLIST_SELECTOR;
+
+    this.selectPlaylist = playlistSelectorFactory.call(tech.hls).bind(tech.hls);
     this.withCredentials = withCredentials;
     this.tech_ = tech;
     this.hls_ = tech.hls;
@@ -963,7 +969,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let videoPlaylist = this.masterPlaylistLoader_.media();
     let result;
 
-    if (videoPlaylist.attributes && videoPlaylist.attributes.AUDIO) {
+    if (videoPlaylist.attributes.AUDIO) {
       result = this.audioGroups_[videoPlaylist.attributes.AUDIO];
     }
 
@@ -982,7 +988,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return null;
     }
 
-    if (videoPlaylist.attributes && videoPlaylist.attributes.SUBTITLES) {
+    if (videoPlaylist.attributes.SUBTITLES) {
       result = this.subtitleGroups_.groups[videoPlaylist.attributes.SUBTITLES];
     }
 
@@ -1866,7 +1872,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let videoCodec = null;
     let codecs;
 
-    if (media.attributes && media.attributes.CODECS) {
+    if (media.attributes.CODECS) {
       codecs = parseCodecs(media.attributes.CODECS);
       videoCodec = codecs.videoCodec;
       codecCount = codecs.codecCount;
@@ -1877,7 +1883,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         videoCodec: null
       };
 
-      if (variant.attributes && variant.attributes.CODECS) {
+      if (variant.attributes.CODECS) {
         let codecString = variant.attributes.CODECS;
 
         variantCodecs = parseCodecs(codecString);
