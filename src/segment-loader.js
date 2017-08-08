@@ -442,7 +442,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   resetEverything() {
     this.ended_ = false;
     this.resetLoader();
-    this.remove(0, Infinity);
+    this.remove(0, this.duration_());
   }
 
   /**
