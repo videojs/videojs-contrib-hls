@@ -753,9 +753,17 @@ var MasterPlaylistController = (function (_videojs$EventTarget) {
         var updatedPlaylist = _this2.masterPlaylistLoader_.media();
 
         if (!updatedPlaylist) {
-          // select the initial variant
-          _this2.initialMedia_ = _this2.enableLowInitialPlaylist ? _this2.selectInitialPlaylist() : _this2.selectPlaylist();
+          var selectedMedia = undefined;
 
+          if (_this2.enableLowInitialPlaylist) {
+            selectedMedia = _this2.selectInitialPlaylist();
+          }
+
+          if (!selectedMedia) {
+            selectedMedia = _this2.selectPlaylist();
+          }
+
+          _this2.initialMedia_ = selectedMedia;
           _this2.masterPlaylistLoader_.media(_this2.initialMedia_);
           return;
         }
@@ -3872,7 +3880,9 @@ var minRebufferMaxBandwidthSelector = function minRebufferMaxBandwidthSelector(s
   var currentTimeline = settings.currentTimeline;
   var syncController = settings.syncController;
 
-  var bandwidthPlaylists = master.playlists.filter(_playlist2['default'].hasAttribute.bind(null, 'BANDWIDTH'));
+  var bandwidthPlaylists = master.playlists.filter(function (playlist) {
+    return _playlist2['default'].isEnabled(playlist) && _playlist2['default'].hasAttribute('BANDWIDTH', playlist);
+  });
 
   var rebufferingEstimates = bandwidthPlaylists.map(function (playlist) {
     var syncPoint = syncController.getSyncPoint(playlist, duration, currentTimeline, currentTime);
@@ -3928,11 +3938,20 @@ var lowestBitrateCompatibleVariantSelector = function lowestBitrateCompatibleVar
     return comparePlaylistBandwidth(a, b);
   });
 
-  var playlistsWithVideo = playlists.filter(function (playlist) {
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  var enabledPlaylists = playlists.filter(_playlist2['default'].isEnabled);
+
+  // Parse and assume that playlists with no video codec have no video
+  // (this is not necessarily true, although it is generally true).
+  //
+  // If an entire manifest has no valid videos everything will get filtered
+  // out.
+  var playlistsWithVideo = enabledPlaylists.filter(function (playlist) {
     return (0, _utilCodecsJs.parseCodecs)(playlist.attributes.CODECS).videoCodec;
   });
 
-  return playlistsWithVideo[0] || playlists[0];
+  return playlistsWithVideo[0] || null;
 };
 exports.lowestBitrateCompatibleVariantSelector = lowestBitrateCompatibleVariantSelector;
 },{"./config":3,"./playlist":10,"./util/codecs.js":18}],10:[function(require,module,exports){
@@ -19246,11 +19265,6 @@ var _reloadSourceOnError2 = _interopRequireDefault(_reloadSourceOnError);
 
 var _playlistSelectorsJs = require('./playlist-selectors.js');
 
-// 0.5 MB/s
-var INITIAL_BANDWIDTH_DESKTOP = 4194304;
-// 0.0625 MB/s
-var INITIAL_BANDWIDTH_MOBILE = 500000;
-
 var Hls = {
   PlaylistLoader: _playlistLoader2['default'],
   Playlist: _playlist2['default'],
@@ -19266,6 +19280,9 @@ var Hls = {
 
   xhr: (0, _xhr2['default'])()
 };
+
+// 0.5 MB/s
+var INITIAL_BANDWIDTH = 4194304;
 
 // Define getter/setters for config properites
 ['GOAL_BUFFER_LENGTH', 'MAX_GOAL_BUFFER_LENGTH', 'GOAL_BUFFER_LENGTH_RATE', 'BUFFER_LOW_WATER_LINE', 'MAX_BUFFER_LOW_WATER_LINE', 'BUFFER_LOW_WATER_LINE_RATE', 'BANDWIDTH_VARIANCE'].forEach(function (prop) {
@@ -19492,7 +19509,6 @@ var HlsHandler = (function (_Component) {
 
       // defaults
       this.options_.withCredentials = this.options_.withCredentials || false;
-      this.options_.enableLowInitialPlaylist = this.options_.enableLowInitialPlaylist || false;
 
       if (typeof this.options_.blacklistDuration !== 'number') {
         this.options_.blacklistDuration = 5 * 60;
@@ -19501,10 +19517,12 @@ var HlsHandler = (function (_Component) {
       // start playlist selection at a reasonable bandwidth for
       // broadband internet (0.5 MB/s) or mobile (0.0625 MB/s)
       if (typeof this.options_.bandwidth !== 'number') {
-        // only use Android for mobile because iOS does not support MSE (and uses
-        // native HLS)
-        this.options_.bandwidth = _videoJs2['default'].browser.IS_ANDROID ? INITIAL_BANDWIDTH_MOBILE : INITIAL_BANDWIDTH_DESKTOP;
+        this.options_.bandwidth = INITIAL_BANDWIDTH;
       }
+
+      // If the bandwidth number is unchanged from the initial setting
+      // then this takes precedence over the enableLowInitialPlaylist option
+      this.options_.enableLowInitialPlaylist = this.options_.enableLowInitialPlaylist && this.options_.bandwidth === INITIAL_BANDWIDTH;
 
       // grab options passed to player.src
       ['withCredentials', 'bandwidth'].forEach(function (option) {
@@ -19553,7 +19571,7 @@ var HlsHandler = (function (_Component) {
       // compatibility with < v2
       this.masterPlaylistController_.selectPlaylist = this.selectPlaylist ? this.selectPlaylist.bind(this) : Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
 
-      this.masterPlaylistController_.selectInitialPlaylist = this.selectInitialPlaylist ? this.selectInitialPlaylist.bind(this) : Hls.INITIAL_PLAYLIST_SELECTOR.bind(this);
+      this.masterPlaylistController_.selectInitialPlaylist = Hls.INITIAL_PLAYLIST_SELECTOR.bind(this);
 
       // re-expose some internal objects for backwards compatibility with < v2
       this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;
