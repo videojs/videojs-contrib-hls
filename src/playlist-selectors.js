@@ -372,8 +372,20 @@ export const lowestBitrateCompatibleVariantSelector = function() {
   stableSort(playlists,
     (a, b) => comparePlaylistBandwidth(a, b));
 
-  const playlistsWithVideo =
-    playlists.filter(playlist => parseCodecs(playlist.attributes.CODECS).videoCodec);
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  const enabledPlaylists = playlists.filter(
+    rep => Playlist.isEnabled(rep.playlist)
+  );
+
+  // Parse and assume that playlists with no video codec have no video
+  // (this is not necessarily true, although it is generally true).
+  //
+  // If an entire manifest has no valid videos everything will get filtered
+  // out.
+  const playlistsWithVideo = enabledPlaylists.filter(
+    playlist => parseCodecs(playlist.attributes.CODECS).videoCodec
+  );
 
   return playlistsWithVideo[0] || null;
 };
