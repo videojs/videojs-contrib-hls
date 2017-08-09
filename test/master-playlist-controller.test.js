@@ -1631,6 +1631,16 @@ QUnit.test('adds subtitle tracks when a media playlist is loaded', function(asse
   assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
   assert.equal(textTracks[2].mode, 'disabled', 'track starts disabled');
   assert.equal(hlsWebvttEvents, 1, 'there is webvtt detected in the rendition');
+
+  // change source to make sure tracks are cleaned up
+  this.player.src({
+    src: 'http://example.com/media.mp4',
+    type: 'video/mp4'
+  });
+
+  this.clock.tick(1);
+
+  assert.equal(this.player.textTracks().length, 0, 'text tracks cleaned');
 });
 
 QUnit.test('switches off subtitles on subtitle errors', function(assert) {

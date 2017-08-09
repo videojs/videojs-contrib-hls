@@ -326,7 +326,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
       kind: 'metadata',
       label: 'segment-metadata'
-    }, true).track;
+    }, false).track;
 
     this.decrypter_ = worker(Decrypter);
 
@@ -804,7 +804,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
               enabled: false,
               language: properties.language,
               label
-            }, true).track;
+            }, false).track;
 
             this.subtitleGroups_.tracks[label] = track;
           }
