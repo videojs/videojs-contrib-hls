@@ -654,11 +654,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.mainSegmentLoader_.on('earlyabort', () => {
-      // skip playlist selection since a bandwidthupdate will trigger
       this.blacklistCurrentPlaylist({
-        message: 'Aborted early because we don\'t have the bandwidth to complete the ' +
+        message: 'Aborted early because there isn\'t enough bandwidth to complete the ' +
           'request without rebuffering.'
-      }, ABORT_EARLY_BLACKLIST_SECONDS, true);
+      }, ABORT_EARLY_BLACKLIST_SECONDS);
     });
 
     this.audioSegmentLoader_.on('ended', () => {
@@ -1308,10 +1307,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * to blacklist
    * @param {Number=} blacklistDuration an optional number of seconds to blacklist the
    * playlist
-   * @param {Boolean=} skipPlaylistSelection an optional boolean to skip playlist
-   * selection
    */
-  blacklistCurrentPlaylist(error = {}, blacklistDuration, skipPlaylistSelection = false) {
+  blacklistCurrentPlaylist(error = {}, blacklistDuration) {
     let currentPlaylist;
     let nextPlaylist;
 
@@ -1348,12 +1345,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       (blacklistDuration ? blacklistDuration : this.blacklistDuration) * 1000;
     this.tech_.trigger('blacklistplaylist');
     this.tech_.trigger({type: 'usage', name: 'hls-rendition-blacklisted'});
-
-    if (skipPlaylistSelection) {
-      videojs.log.warn('Problem encountered with the current HLS playlist.' +
-                       (error.message ? ' ' + error.message : ''));
-      return;
-    }
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();

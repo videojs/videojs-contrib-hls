@@ -1096,12 +1096,12 @@ QUnit.test('blacklists playlist on earlyabort', function(assert) {
   this.masterPlaylistController.mainSegmentLoader_.trigger('earlyabort');
 
   assert.ok(currentMedia.excludeUntil > 0, 'playlist blacklisted');
-  assert.equal(mediaChanges.length, 0, 'no media change');
+  assert.equal(mediaChanges.length, 1, 'one media change');
   assert.equal(warnings.length, 1, 'one warning logged');
   assert.equal(warnings[0],
                'Problem encountered with the current HLS playlist. ' +
-                 'Aborted early because we don\'t have the bandwidth to complete the ' +
-                 'request without rebuffering.',
+                 'Aborted early because there isn\'t enough bandwidth to complete the ' +
+                 'request without rebuffering. Switching to another playlist.',
                'warning message is correct');
 
   videojs.log.warn = origWarn;
@@ -1109,6 +1109,22 @@ QUnit.test('blacklists playlist on earlyabort', function(assert) {
 
 QUnit.test('does not get stuck in a loop due to inconsistent network/caching',
 function(assert) {
+  /*
+   * This test is a long one, but it is meant to follow a true path to a possible loop
+   * The steps are as follows:
+   *
+   * 1) Request segment 0 from low bandwidth playlist
+   * 2) Request segment 1 from low bandwidth playlist
+   * 3) Switch up due to good bandwidth (2 segments are required before upswitching)
+   * 4) Request segment 0 from high bandwidth playlist
+   * 5) Abort request early due to low bandwidth
+   * 6) Request segment 0 from low bandwidth playlist
+   * 7) Request segment 1 from low bandwidth playlist
+   * 8) Request segment 2 from low bandwidth playlist, despite enough bandwidth to
+   *    upswitch. This part is the key, as the behavior we want to avoid is an upswitch
+   *    back to the high bandwidth playlist (thus starting a potentially infinite loop).
+   */
+
   const mediaContents =
     '#EXTM3U\n' +
     '#EXTINF:10\n' +

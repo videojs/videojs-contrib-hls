@@ -366,7 +366,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
         loaded: 2001
       });
 
-      assert.equal(bandwidthupdates, 1, 'bandwidth updated');
+      assert.equal(bandwidthupdates, 0, 'bandwidth not updated');
       assert.ok(this.requests[0].aborted, 'request aborted');
       assert.equal(earlyAborts, 1, 'earlyabort event triggered');
     });

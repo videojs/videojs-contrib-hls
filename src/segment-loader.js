@@ -823,11 +823,11 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // set the bandwidth to that of the desired playlist being sure to scale by
     // BANDWIDTH_VARIANCE and add one so the playlist selector does not exclude it
+    // don't trigger a bandwidthupdate as the bandwidth is artifial
     this.bandwidth =
       switchCandidate.playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
     this.abort();
     this.trigger('earlyabort');
-    this.trigger('bandwidthupdate');
     return true;
   }
 
