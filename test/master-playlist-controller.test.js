@@ -1110,7 +1110,9 @@ QUnit.test('blacklists playlist on earlyabort', function(assert) {
 QUnit.test('does not get stuck in a loop due to inconsistent network/caching',
 function(assert) {
   /*
-   * This test is a long one, but it is meant to follow a true path to a possible loop
+   * This test is a long one, but it is meant to follow a true path to a possible loop.
+   * The reason for the loop is due to inconsistent network bandwidth, often caused or
+   * amplified by caching at the browser or edge server level.
    * The steps are as follows:
    *
    * 1) Request segment 0 from low bandwidth playlist
