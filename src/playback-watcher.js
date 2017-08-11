@@ -51,7 +51,7 @@ export default class PlaybackWatcher {
     this.tech_.on('seekablechanged', fixesBadSeeksHandler);
     this.tech_.on('waiting', waitingHandler);
     this.tech_.on(timerCancelEvents, cancelTimerHandler);
-    if (this.tech_.hasStarted_) {
+    if (this.tech_.hasStarted_ || this.tech_.isReady_) {
       this.monitorCurrentTime_();
     }
 
