@@ -15,7 +15,6 @@ import { minRebufferMaxBandwidthSelector } from './playlist-selectors';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
-const ABORT_EARLY_BLACKLIST_MILLIS = 1000 * 60 * 2;
 
 /**
  * Determines if we should call endOfStream on the media source based
@@ -826,8 +825,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     // BANDWIDTH_VARIANCE and add one so the playlist selector does not exclude it
     this.bandwidth =
       switchCandidate.playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
-    this.playlist_.excludeUntil = Date.now() + ABORT_EARLY_BLACKLIST_MILLIS;
     this.abort();
+    this.trigger('earlyabort');
     this.trigger('bandwidthupdate');
     return true;
   }

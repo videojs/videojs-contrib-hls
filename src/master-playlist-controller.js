@@ -13,6 +13,8 @@ import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
 import Config from './config';
 
+const ABORT_EARLY_BLACKLIST_SECONDS = 60 * 2;
+
 let Hls;
 
 // Default codec parameters if none were provided for video and/or audio
@@ -649,6 +651,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.mainSegmentLoader_.on('ended', () => {
       this.onEndOfStream();
+    });
+
+    this.mainSegmentLoader_.on('earlyabort', () => {
+      // skip playlist selection since a bandwidthupdate will trigger
+      this.blacklistCurrentPlaylist({
+        message: 'Aborted early because we don\'t have the bandwidth to complete the ' +
+          'request without rebuffering.'
+      }, ABORT_EARLY_BLACKLIST_SECONDS, true);
     });
 
     this.audioSegmentLoader_.on('ended', () => {
@@ -1296,8 +1306,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
    *
    * @param {Object=} error an optional error that may include the playlist
    * to blacklist
+   * @param {Number=} blacklistDuration an optional number of seconds to blacklist the
+   * playlist
+   * @param {Boolean=} skipPlaylistSelection an optional boolean to skip playlist
+   * selection
    */
-  blacklistCurrentPlaylist(error = {}) {
+  blacklistCurrentPlaylist(error = {}, blacklistDuration, skipPlaylistSelection = false) {
     let currentPlaylist;
     let nextPlaylist;
 
@@ -1330,9 +1344,16 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.masterPlaylistLoader_.load(isFinalRendition);
     }
     // Blacklist this playlist
-    currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
+    currentPlaylist.excludeUntil = Date.now() +
+      (blacklistDuration ? blacklistDuration : this.blacklistDuration) * 1000;
     this.tech_.trigger('blacklistplaylist');
     this.tech_.trigger({type: 'usage', name: 'hls-rendition-blacklisted'});
+
+    if (skipPlaylistSelection) {
+      videojs.log.warn('Problem encountered with the current HLS playlist.' +
+                       (error.message ? ' ' + error.message : ''));
+      return;
+    }
 
     // Select a new playlist
     nextPlaylist = this.selectPlaylist();

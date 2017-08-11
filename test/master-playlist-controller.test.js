@@ -1067,6 +1067,46 @@ function(assert) {
                'less than low water line');
 });
 
+QUnit.test('blacklists playlist on earlyabort', function(assert) {
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  let mediaChanges = [];
+  const playlistLoader = this.masterPlaylistController.masterPlaylistLoader_;
+  const currentMedia = playlistLoader.media();
+  const origMedia = playlistLoader.media.bind(playlistLoader);
+  const origWarn = videojs.log.warn;
+  let warnings = [];
+
+  this.masterPlaylistController.masterPlaylistLoader_.media = (media) => {
+    if (media) {
+      mediaChanges.push(media);
+    }
+    return origMedia(media);
+  };
+
+  videojs.log.warn = (text) => warnings.push(text);
+
+  assert.notOk(currentMedia.excludeUntil > 0, 'playlist not blacklisted');
+  assert.equal(mediaChanges.length, 0, 'no media change');
+
+  this.masterPlaylistController.mainSegmentLoader_.trigger('earlyabort');
+
+  assert.ok(currentMedia.excludeUntil > 0, 'playlist blacklisted');
+  assert.equal(mediaChanges.length, 0, 'no media change');
+  assert.equal(warnings.length, 1, 'one warning logged');
+  assert.equal(warnings[0],
+               'Problem encountered with the current HLS playlist. ' +
+                 'Aborted early because we don\'t have the bandwidth to complete the ' +
+                 'request without rebuffering.',
+               'warning message is correct');
+
+  videojs.log.warn = origWarn;
+});
+
 QUnit.test('does not get stuck in a loop due to inconsistent network/caching',
 function(assert) {
   const mediaContents =
@@ -1233,6 +1273,9 @@ function(assert) {
   assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
                '2.ts',
                'requested third segment');
+
+  assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
+  this.env.log.warn.callCount = 0;
 });
 
 QUnit.test('updates the duration after switching playlists', function(assert) {
