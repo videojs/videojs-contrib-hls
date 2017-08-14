@@ -60,6 +60,7 @@ export default class PlaybackWatcher {
       this.tech_.off('seekablechanged', fixesBadSeeksHandler);
       this.tech_.off('waiting', waitingHandler);
       this.tech_.off(timerCancelEvents, cancelTimerHandler);
+      this.tech_.off('canplay', canPlayHandler);
       if (this.checkCurrentTimeTimeout_) {
         window.clearTimeout(this.checkCurrentTimeTimeout_);
       }
