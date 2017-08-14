@@ -58,6 +58,7 @@ QUnit.test('skips over gap in firefox with waiting event', function(assert) {
   this.clock.tick(1);
   standardXHRResponse(this.requests.shift());
   openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('canplay');
   this.player.tech_.trigger('play');
   this.player.tech_.trigger('playing');
   this.clock.tick(1);
@@ -101,6 +102,7 @@ QUnit.test('skips over gap in chrome without waiting event', function(assert) {
   this.clock.tick(1);
   standardXHRResponse(this.requests.shift());
   openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('canplay');
   this.player.tech_.trigger('play');
   this.player.tech_.trigger('playing');
   this.clock.tick(1);
@@ -217,6 +219,7 @@ QUnit.test('seeks to current time when stuck inside buffered region', function(a
   this.clock.tick(1);
   standardXHRResponse(this.requests.shift());
   openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('canplay');
   this.player.tech_.trigger('play');
   this.player.tech_.trigger('playing');
   this.clock.tick(1);
@@ -304,6 +307,7 @@ QUnit.test('does not seek to current time when stuck near edge of buffered regio
     this.clock.tick(1);
     standardXHRResponse(this.requests.shift());
     openMediaSource(this.player, this.clock);
+    this.player.tech_.trigger('canplay');
     this.player.tech_.trigger('play');
     this.player.tech_.trigger('playing');
     this.clock.tick(1);

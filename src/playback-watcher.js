@@ -44,6 +44,7 @@ export default class PlaybackWatcher {
     }
     this.logger_('initialize');
 
+    let canPlayHandler = () => this.monitorCurrentTime_();
     let waitingHandler = () => this.techWaiting_();
     let cancelTimerHandler = () => this.cancelTimer_();
     let fixesBadSeeksHandler = () => this.fixesBadSeeks_();
@@ -51,9 +52,7 @@ export default class PlaybackWatcher {
     this.tech_.on('seekablechanged', fixesBadSeeksHandler);
     this.tech_.on('waiting', waitingHandler);
     this.tech_.on(timerCancelEvents, cancelTimerHandler);
-    if (this.tech_.hasStarted_ || this.tech_.isReady_) {
-      this.monitorCurrentTime_();
-    }
+    this.tech_.on('canplay', canPlayHandler);
 
     // Define the dispose function to clean up our events
     this.dispose = () => {
