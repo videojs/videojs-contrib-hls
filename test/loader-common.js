@@ -326,6 +326,10 @@ export const LoaderCommonFactory = (LoaderConstructor,
         oldHandleProgress(event, simpleSegment);
       };
 
+      let earlyAborts = 0;
+
+      loader.on('earlyabort', () => earlyAborts++);
+
       loader.on('bandwidthupdate', () => bandwidthupdates++);
       loader.playlist(playlist1, xhrOptions);
       loader.load();
@@ -340,6 +344,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
 
       assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
       assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+      assert.equal(earlyAborts, 0, 'no earlyabort events');
 
       this.clock.tick(999);
 
@@ -351,6 +356,7 @@ export const LoaderCommonFactory = (LoaderConstructor,
 
       assert.equal(bandwidthupdates, 0, 'no bandwidth updates yet');
       assert.notOk(this.requests[0].aborted, 'request not prematurely aborted');
+      assert.equal(earlyAborts, 0, 'no earlyabort events');
 
       this.clock.tick(2);
 
@@ -360,8 +366,9 @@ export const LoaderCommonFactory = (LoaderConstructor,
         loaded: 2001
       });
 
-      assert.equal(bandwidthupdates, 1, 'bandwidth updated');
+      assert.equal(bandwidthupdates, 0, 'bandwidth not updated');
       assert.ok(this.requests[0].aborted, 'request aborted');
+      assert.equal(earlyAborts, 1, 'earlyabort event triggered');
     });
 
     QUnit.test(

@@ -1067,6 +1067,235 @@ function(assert) {
                'less than low water line');
 });
 
+QUnit.test('blacklists playlist on earlyabort', function(assert) {
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+
+  let mediaChanges = [];
+  const playlistLoader = this.masterPlaylistController.masterPlaylistLoader_;
+  const currentMedia = playlistLoader.media();
+  const origMedia = playlistLoader.media.bind(playlistLoader);
+  const origWarn = videojs.log.warn;
+  let warnings = [];
+
+  this.masterPlaylistController.masterPlaylistLoader_.media = (media) => {
+    if (media) {
+      mediaChanges.push(media);
+    }
+    return origMedia(media);
+  };
+
+  videojs.log.warn = (text) => warnings.push(text);
+
+  assert.notOk(currentMedia.excludeUntil > 0, 'playlist not blacklisted');
+  assert.equal(mediaChanges.length, 0, 'no media change');
+
+  this.masterPlaylistController.mainSegmentLoader_.trigger('earlyabort');
+
+  assert.ok(currentMedia.excludeUntil > 0, 'playlist blacklisted');
+  assert.equal(mediaChanges.length, 1, 'one media change');
+  assert.equal(warnings.length, 1, 'one warning logged');
+  assert.equal(warnings[0],
+               'Problem encountered with the current HLS playlist. ' +
+                 'Aborted early because there isn\'t enough bandwidth to complete the ' +
+                 'request without rebuffering. Switching to another playlist.',
+               'warning message is correct');
+
+  videojs.log.warn = origWarn;
+});
+
+QUnit.test('does not get stuck in a loop due to inconsistent network/caching',
+function(assert) {
+  /*
+   * This test is a long one, but it is meant to follow a true path to a possible loop.
+   * The reason for the loop is due to inconsistent network bandwidth, often caused or
+   * amplified by caching at the browser or edge server level.
+   * The steps are as follows:
+   *
+   * 1) Request segment 0 from low bandwidth playlist
+   * 2) Request segment 1 from low bandwidth playlist
+   * 3) Switch up due to good bandwidth (2 segments are required before upswitching)
+   * 4) Request segment 0 from high bandwidth playlist
+   * 5) Abort request early due to low bandwidth
+   * 6) Request segment 0 from low bandwidth playlist
+   * 7) Request segment 1 from low bandwidth playlist
+   * 8) Request segment 2 from low bandwidth playlist, despite enough bandwidth to
+   *    upswitch. This part is the key, as the behavior we want to avoid is an upswitch
+   *    back to the high bandwidth playlist (thus starting a potentially infinite loop).
+   */
+
+  const mediaContents =
+    '#EXTM3U\n' +
+    '#EXTINF:10\n' +
+    '0.ts\n' +
+    '#EXTINF:10\n' +
+    '1.ts\n' +
+    '#EXTINF:10\n' +
+    '2.ts\n' +
+    '#EXTINF:10\n' +
+    '3.ts\n' +
+    '#EXT-X-ENDLIST\n';
+
+  const segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
+
+  // start on lowest bandwidth rendition (will be media.m3u8)
+  segmentLoader.bandwidth = 0;
+
+  this.player.tech_.paused = () => false;
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+  // master
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=10\n' +
+                                'media.m3u8\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=100\n' +
+                                'media1.m3u8\n');
+  // media.m3u8
+  this.requests.shift().respond(200, null, mediaContents);
+
+  let playlistLoader = this.masterPlaylistController.masterPlaylistLoader_;
+  let origMedia = playlistLoader.media.bind(playlistLoader);
+  let mediaChanges = [];
+
+  this.masterPlaylistController.masterPlaylistLoader_.media = (media) => {
+    if (media) {
+      mediaChanges.push(media);
+    }
+    return origMedia(media);
+  };
+
+  this.clock.tick(1);
+
+  let segmentRequest = this.requests[0];
+
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '0.ts',
+               'requested first segment');
+
+  // 100ms for the segment response
+  this.clock.tick(100);
+  // 10 bytes in 100ms = 800 bits/s
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+  segmentRequest = this.requests[0];
+
+  // should be walking forwards (need two segments before we can switch)
+  assert.equal(segmentLoader.bandwidth, 800, 'bandwidth is correct');
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '1.ts',
+               'requested second segment');
+  assert.equal(mediaChanges.length, 0, 'no media changes');
+
+  // 100ms for the segment response
+  this.clock.tick(100);
+  // 11 bytes in 100ms = 880 bits/s
+  this.requests[0].response = new Uint8Array(11).buffer;
+  this.requests.shift().respond(200, null, '');
+  segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+
+  let mediaRequest = this.requests[0];
+
+  // after two segments, bandwidth is high enough to switch up to media1.m3u8
+  assert.equal(segmentLoader.bandwidth, 880, 'bandwidth is correct');
+  assert.equal(mediaChanges.length, 1, 'changed media');
+  assert.equal(mediaChanges[0].uri, 'media1.m3u8', 'changed to media1');
+  assert.equal(mediaRequest.uri.substring(mediaRequest.uri.length - 'media1.m3u8'.length),
+               'media1.m3u8',
+               'requested media1');
+
+  // media1.m3u8
+  this.requests.shift().respond(200, null, mediaContents);
+  this.clock.tick(1);
+  segmentRequest = this.requests[0];
+
+  assert.equal(segmentLoader.playlist_.uri,
+               'media1.m3u8',
+               'segment loader playlist is media1');
+
+  const media1ResolvedPlaylist = segmentLoader.playlist_;
+
+  assert.notOk(media1ResolvedPlaylist.excludeUntil, 'media1 not blacklisted');
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '0.ts',
+               'requested first segment');
+
+  // needs a timeout for early abort to occur (we skip the function otherwise, since no
+  // timeout means we are on the last rendition)
+  segmentLoader.xhrOptions_.timeout = 60000;
+  // we need to wait 1 second from first byte receieved in order to consider aborting
+  this.requests[0].downloadProgress({
+    target: this.requests[0],
+    total: 100,
+    loaded: 1
+  });
+  this.clock.tick(1000);
+  // should abort request early because we don't have enough bandwidth
+  this.requests[0].downloadProgress({
+    target: this.requests[0],
+    total: 100,
+    // 1 bit per second
+    loaded: 2
+  });
+  this.clock.tick(1);
+
+  // aborted request, so switched back to lowest rendition
+  assert.equal(segmentLoader.bandwidth,
+               10 * Config.BANDWIDTH_VARIANCE + 1,
+               'bandwidth is correct for abort');
+  assert.equal(mediaChanges.length, 2, 'changed media');
+  assert.equal(mediaChanges[1].uri, 'media.m3u8', 'changed to media');
+  assert.ok(media1ResolvedPlaylist.excludeUntil, 'blacklisted media1');
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '0.ts',
+               'requested first segment');
+
+  // remove aborted request
+  this.requests.shift();
+  // 1ms for the cached segment response
+  this.clock.tick(1);
+  // 10 bytes in 1ms = 80 kbps
+  this.requests[0].response = new Uint8Array(10).buffer;
+  this.requests.shift().respond(200, null, '');
+  segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+  segmentRequest = this.requests[0];
+
+  // walking forwards, still need two segments before trying to change rendition
+  assert.equal(segmentLoader.bandwidth, 80000, 'bandwidth is correct');
+  assert.equal(mediaChanges.length, 2, 'did not change media');
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '1.ts',
+               'requested second segment');
+
+  // 1ms for the cached segment response
+  this.clock.tick(1);
+  // 11 bytes in 1ms = 88 kbps
+  this.requests[0].response = new Uint8Array(11).buffer;
+  this.requests.shift().respond(200, null, '');
+  segmentLoader.mediaSource_.sourceBuffers[0].trigger('updateend');
+  this.clock.tick(1);
+
+  // Media may be changed, but it should be changed to the same media. In the future, this
+  // can safely not be changed.
+  assert.equal(segmentLoader.bandwidth, 88000, 'bandwidth is correct');
+  assert.equal(mediaChanges.length, 3, 'changed media');
+  assert.equal(mediaChanges[2].uri, 'media.m3u8', 'media remains unchanged');
+
+  segmentRequest = this.requests[0];
+  assert.equal(segmentRequest.uri.substring(segmentRequest.uri.length - 4),
+               '2.ts',
+               'requested third segment');
+
+  assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
+  this.env.log.warn.callCount = 0;
+});
+
 QUnit.test('updates the duration after switching playlists', function(assert) {
   let selectedPlaylist = false;
 
