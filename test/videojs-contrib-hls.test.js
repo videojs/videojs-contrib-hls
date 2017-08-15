@@ -2780,6 +2780,10 @@ QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
   this.clock.tick(1);
   this.player.currentTime(120);
   this.player.tech_.hls.mediaSource.sourceBuffers[0].trigger('updateend');
+  // This requires 2 clock ticks because after updateend monitorBuffer_ is called
+  // to setup fillBuffer on the next tick, but the seek also causes monitorBuffer_ to be
+  // called, which cancels the previously set timeout and sets a new one for the following
+  // tick.
   this.clock.tick(2);
   this.standardXHRResponse(this.requests[3]);
 

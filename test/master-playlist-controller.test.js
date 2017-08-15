@@ -632,7 +632,7 @@ function(assert) {
   assert.notOk(this.masterPlaylistController.mainSegmentLoader_.paused(),
     'segment loader unpaused after a seek');
   assert.equal(ended, 1, 'segment loader did not trigger ended event again yet');
-})
+});
 
 QUnit.test('detects if the player is stuck at the playlist end', function(assert) {
   let playlistCopy = Hls.Playlist.playlistEnd;
