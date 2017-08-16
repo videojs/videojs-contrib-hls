@@ -1,5 +1,6 @@
 import Config from './config';
 import Playlist from './playlist';
+import { parseCodecs } from './util/codecs.js';
 
 // Utilities
 
@@ -319,7 +320,9 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
   } = settings;
 
   const bandwidthPlaylists =
-    master.playlists.filter(Playlist.hasAttribute.bind(null, 'BANDWIDTH'));
+    master.playlists.filter(playlist =>
+      Playlist.isEnabled(playlist) && Playlist.hasAttribute('BANDWIDTH', playlist)
+    );
 
   const rebufferingEstimates = bandwidthPlaylists.map((playlist) => {
     const syncPoint = syncController.getSyncPoint(playlist,
@@ -354,4 +357,36 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
   stableSort(rebufferingEstimates, (a, b) => a.rebufferingImpact - b.rebufferingImpact);
 
   return rebufferingEstimates[0] || null;
+};
+
+/**
+ * Chooses the appropriate media playlist, which in this case is the lowest bitrate
+ * one with video.  If no renditions with video exist, return the lowest audio rendition.
+ *
+ * Expects to be called within the context of an instance of HlsHandler
+ *
+ * @return {Object|null}
+ *         {Object} return.playlist
+ *         The lowest bitrate playlist that contains a video codec.  If no such rendition
+ *         exists pick the lowest audio rendition.
+ */
+export const lowestBitrateCompatibleVariantSelector = function() {
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  const playlists = this.playlists.master.playlists.filter(Playlist.isEnabled);
+
+  // Sort ascending by bitrate
+  stableSort(playlists,
+    (a, b) => comparePlaylistBandwidth(a, b));
+
+  // Parse and assume that playlists with no video codec have no video
+  // (this is not necessarily true, although it is generally true).
+  //
+  // If an entire manifest has no valid videos everything will get filtered
+  // out.
+  const playlistsWithVideo = playlists.filter(
+    playlist => parseCodecs(playlist.attributes.CODECS).videoCodec
+  );
+
+  return playlistsWithVideo[0] || null;
 };

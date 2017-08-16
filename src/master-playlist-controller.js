@@ -12,6 +12,7 @@ import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-u
 import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
 import Config from './config';
+import { parseCodecs } from './util/codecs.js';
 
 const ABORT_EARLY_BLACKLIST_SECONDS = 60 * 2;
 
@@ -65,36 +66,6 @@ const objectChanged = function(a, b) {
     }
   }
   return false;
-};
-
-/**
- * Parses a codec string to retrieve the number of codecs specified,
- * the video codec and object type indicator, and the audio profile.
- *
- * @private
- */
-const parseCodecs = function(codecs) {
-  let result = {
-    codecCount: 0
-  };
-  let parsed;
-
-  result.codecCount = codecs.split(',').length;
-  result.codecCount = result.codecCount || 2;
-
-  // parse the video codec
-  parsed = (/(^|\s|,)+(avc1)([^ ,]*)/i).exec(codecs);
-  if (parsed) {
-    result.videoCodec = parsed[2];
-    result.videoObjectTypeIndicator = parsed[3];
-  }
-
-  // parse the last field of the audio codec
-  result.audioProfile =
-    (/(^|\s|,)+mp4a.[0-9A-Fa-f]+\.([0-9A-Fa-f]+)/i).exec(codecs);
-  result.audioProfile = result.audioProfile && result.audioProfile[2];
-
-  return result;
 };
 
 /**
@@ -285,7 +256,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       bandwidth,
       externHls,
       useCueTags,
-      blacklistDuration
+      blacklistDuration,
+      enableLowInitialPlaylist
     } = options;
 
     if (!url) {
@@ -300,6 +272,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mode_ = mode;
     this.useCueTags_ = useCueTags;
     this.blacklistDuration = blacklistDuration;
+    this.enableLowInitialPlaylist = enableLowInitialPlaylist;
     if (this.useCueTags_) {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
@@ -431,8 +404,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
       let updatedPlaylist = this.masterPlaylistLoader_.media();
 
       if (!updatedPlaylist) {
-        // select the initial variant
-        this.initialMedia_ = this.selectPlaylist();
+        let selectedMedia;
+
+        if (this.enableLowInitialPlaylist) {
+          selectedMedia = this.selectInitialPlaylist();
+        }
+
+        if (!selectedMedia) {
+          selectedMedia = this.selectPlaylist();
+        }
+
+        this.initialMedia_ = selectedMedia;
         this.masterPlaylistLoader_.media(this.initialMedia_);
         return;
       }

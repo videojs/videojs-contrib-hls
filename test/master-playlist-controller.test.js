@@ -212,14 +212,61 @@ QUnit.test('resets SegmentLoader when seeking in flash for both in and out of bu
 
   });
 
+QUnit.test('selects lowest bitrate rendition when enableLowInitialPlaylist is set',
+  function(assert) {
+    // Set requests.length to 0, otherwise it will use the requests generated in the
+    // beforeEach function
+    this.requests.length = 0;
+    this.player = createPlayer({ html5: { hls: { enableLowInitialPlaylist: true } } });
+
+    this.player.src({
+      src: 'manifest/master.m3u8',
+      type: 'application/vnd.apple.mpegurl'
+    });
+
+    this.clock.tick(1);
+
+    this.masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
+
+    let numCallsToSelectInitialPlaylistCalls = 0;
+    let numCallsToSelectPlaylist = 0;
+
+    this.masterPlaylistController.selectPlaylist = () => {
+      numCallsToSelectPlaylist++;
+      return this.masterPlaylistController.master().playlists[0];
+    };
+
+    this.masterPlaylistController.selectInitialPlaylist = () => {
+      numCallsToSelectInitialPlaylistCalls++;
+      return this.masterPlaylistController.master().playlists[0];
+    };
+
+    this.masterPlaylistController.mediaSource.trigger('sourceopen');
+    // master
+    this.standardXHRResponse(this.requests.shift());
+    // media
+    this.standardXHRResponse(this.requests.shift());
+
+    this.clock.tick(1);
+
+    assert.equal(numCallsToSelectInitialPlaylistCalls, 1, 'selectInitialPlaylist');
+    assert.equal(numCallsToSelectPlaylist, 0, 'selectPlaylist');
+
+    // Simulate a live reload
+    this.masterPlaylistController.masterPlaylistLoader_.trigger('loadedplaylist');
+
+    assert.equal(numCallsToSelectInitialPlaylistCalls, 1, 'selectInitialPlaylist');
+    assert.equal(numCallsToSelectPlaylist, 0, 'selectPlaylist');
+  });
+
 QUnit.test('resyncs SegmentLoader for a fast quality change', function(assert) {
   let resyncs = 0;
 
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
   // master
   this.standardXHRResponse(this.requests.shift());
   // media
   this.standardXHRResponse(this.requests.shift());
-  this.masterPlaylistController.mediaSource.trigger('sourceopen');
 
   let segmentLoader = this.masterPlaylistController.mainSegmentLoader_;
 
