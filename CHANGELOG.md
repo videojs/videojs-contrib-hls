@@ -1,5 +1,19 @@
 CHANGELOG
 =========
+
+--------------------
+## 5.9.0 (2017-08-16)
+* Add option to select lowest bitrate video rendition available on startup [#1212](https://github.com/videojs/videojs-contrib-hls/pull/1212)
+* always activate loading in segment loaders after a seek [#1234](https://github.com/videojs/videojs-contrib-hls/pull/1234)
+* Wait for `canplay` event from tech before `PlaybackWatcher` begins monitoring [#1230](https://github.com/videojs/videojs-contrib-hls/pull/1230)
+  * Fixes InvalidStateError in Win10 IE11
+* Blacklist playlist for 2 minutes on early abort to prevent cache loop [#1220](https://github.com/videojs/videojs-contrib-hls/pull/1220)
+  * Prevent rendition switch loop due to inconsistent network/caching
+  * Don't fire bandwidthupdate when aborting early
+* make sure text tracks added by hls are properly disposed [#1228](https://github.com/videojs/videojs-contrib-hls/pull/1228)
+* Fixing Backward Seeking in IE11 Win8.1 [#1225](https://github.com/videojs/videojs-contrib-hls/pull/1225)
+
+--------------------
 ## 5.8.3 (2017-08-07)
 * Fix: Double caption issue [#1219](https://github.com/videojs/videojs-contrib-hls/pull/1219)
 * attach attributes property to playlist objects in cases the m3u8-parser does not[#1214](https://github.com/videojs/videojs-contrib-hls/pull/1214)
