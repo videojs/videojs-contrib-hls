@@ -32,7 +32,7 @@ The [playlist loader](../src/playlist-loader.js) handles all of the details of r
 During VOD playback, the loader will move quickly to the HAVE_METADATA state and then stay there unless a quality switch request sends it to SWITCHING_MEDIA while it fetches an alternate playlist. The loader enters the HAVE_CURRENT_METADATA when a live stream is detected and it's time to refresh the current media playlist to find out about new video segments.
 
 ### HLS Tech
-Currently, the HLS project integrates with [video.js](http://www.videojs.com/) as a [tech](https://github.com/videojs/video.js/blob/master/docs/guides/tech.md). That means it's responsible for providing an interface that closely mirrors the `<video>` element. You can see that implementation in [videojs-hls.js](../src/videojs-hls.js), the primary entry point of the project.
+Currently, the HLS project integrates with [video.js](http://www.videojs.com/) as a [tech](https://github.com/videojs/video.js/blob/master/docs/guides/tech.md). That means it's responsible for providing an interface that closely mirrors the `<video>` element. You can see that implementation in [videojs-contrib-hls.js](../src/videojs-contrib-hls.js), the primary entry point of the project.
 
 ### Transmuxing
 Most browsers don't have support for the file type that HLS video segments are stored in. To get HLS playing back on those browsers, contrib-hls strings together a number of technologies:

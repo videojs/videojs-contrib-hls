@@ -14,6 +14,8 @@ import Decrypter from './decrypter-worker';
 import Config from './config';
 import { parseCodecs } from './util/codecs.js';
 
+const ABORT_EARLY_BLACKLIST_SECONDS = 60 * 2;
+
 let Hls;
 
 // Default codec parameters if none were provided for video and/or audio
@@ -299,7 +301,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
       kind: 'metadata',
       label: 'segment-metadata'
-    }, true).track;
+    }, false).track;
 
     this.decrypter_ = worker(Decrypter);
 
@@ -633,6 +635,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.onEndOfStream();
     });
 
+    this.mainSegmentLoader_.on('earlyabort', () => {
+      this.blacklistCurrentPlaylist({
+        message: 'Aborted early because there isn\'t enough bandwidth to complete the ' +
+          'request without rebuffering.'
+      }, ABORT_EARLY_BLACKLIST_SECONDS);
+    });
+
     this.audioSegmentLoader_.on('ended', () => {
       this.onEndOfStream();
     });
@@ -786,7 +795,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
               enabled: false,
               language: properties.language,
               label
-            }, true).track;
+            }, false).track;
 
             this.subtitleGroups_.tracks[label] = track;
           }
@@ -1278,8 +1287,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
    *
    * @param {Object=} error an optional error that may include the playlist
    * to blacklist
+   * @param {Number=} blacklistDuration an optional number of seconds to blacklist the
+   * playlist
    */
-  blacklistCurrentPlaylist(error = {}) {
+  blacklistCurrentPlaylist(error = {}, blacklistDuration) {
     let currentPlaylist;
     let nextPlaylist;
 
@@ -1312,7 +1323,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.masterPlaylistLoader_.load(isFinalRendition);
     }
     // Blacklist this playlist
-    currentPlaylist.excludeUntil = Date.now() + this.blacklistDuration * 1000;
+    currentPlaylist.excludeUntil = Date.now() +
+      (blacklistDuration ? blacklistDuration : this.blacklistDuration) * 1000;
     this.tech_.trigger('blacklistplaylist');
     this.tech_.trigger({type: 'usage', name: 'hls-rendition-blacklisted'});
 

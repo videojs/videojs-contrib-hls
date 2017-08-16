@@ -1,5 +1,6 @@
 import { module, test } from 'qunit';
 import {
+  simpleSelector,
   movingAverageBandwidthSelector,
   minRebufferMaxBandwidthSelector,
   lowestBitrateCompatibleVariantSelector
@@ -153,3 +154,16 @@ test('lowestBitrateCompatibleVariantSelector return null if no video exists',
     assert.equal(testPlaylist, null,
       'Returned null playlist since no video assets exist');
   });
+
+test('simpleSelector switches up even without resolution information', function(assert) {
+  let master = this.hls.playlists.master;
+
+  master.playlists = [
+    { attributes: { BANDWIDTH: 100 } },
+    { attributes: { BANDWIDTH: 1000 } }
+  ];
+
+  const selectedPlaylist = simpleSelector(master, 2000, 1, 1);
+
+  assert.equal(selectedPlaylist, master.playlists[1], 'selected the correct playlist');
+});

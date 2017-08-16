@@ -1,5 +1,9 @@
 CHANGELOG
 =========
+## 5.8.3 (2017-08-07)
+* Fix: Double caption issue [#1219](https://github.com/videojs/videojs-contrib-hls/pull/1219)
+* attach attributes property to playlist objects in cases the m3u8-parser does not[#1214](https://github.com/videojs/videojs-contrib-hls/pull/1214)
+  * add warning log when missing attribute for stream-inf
 
 --------------------
 ## 5.8.2 (2017-07-12)
