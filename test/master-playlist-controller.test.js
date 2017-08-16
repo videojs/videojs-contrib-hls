@@ -588,6 +588,52 @@ function(assert) {
   assert.equal(MPC.mediaSource.readyState, 'ended', 'Media Source ended');
 });
 
+QUnit.test('Segment loaders are unpaused when seeking after player has ended',
+function(assert) {
+  openMediaSource(this.player, this.clock);
+
+  const videoMedia = '#EXTM3U\n' +
+                     '#EXT-X-VERSION:3\n' +
+                     '#EXT-X-PLAYLIST-TYPE:VOD\n' +
+                     '#EXT-X-MEDIA-SEQUENCE:0\n' +
+                     '#EXT-X-TARGETDURATION:10\n' +
+                     '#EXTINF:10,\n' +
+                     'video-0.ts\n' +
+                     '#EXT-X-ENDLIST\n';
+
+  let ended = 0;
+
+  this.masterPlaylistController.mainSegmentLoader_.on('ended', () => ended++);
+
+  this.player.tech_.trigger('play');
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+
+  // media
+  this.standardXHRResponse(this.requests.shift(), videoMedia);
+
+  // segment
+  this.standardXHRResponse(this.requests.shift());
+
+  assert.notOk(this.masterPlaylistController.mainSegmentLoader_.paused(),
+    'segment loader not yet paused');
+
+  this.masterPlaylistController.mediaSource.sourceBuffers[0].trigger('updateend');
+
+  assert.ok(this.masterPlaylistController.mainSegmentLoader_.paused(),
+    'segment loader is paused after ending');
+  assert.equal(ended, 1, 'segment loader triggered ended event');
+
+  this.player.currentTime(5);
+
+  this.clock.tick(1);
+
+  assert.notOk(this.masterPlaylistController.mainSegmentLoader_.paused(),
+    'segment loader unpaused after a seek');
+  assert.equal(ended, 1, 'segment loader did not trigger ended event again yet');
+});
+
 QUnit.test('detects if the player is stuck at the playlist end', function(assert) {
   let playlistCopy = Hls.Playlist.playlistEnd;
 
@@ -2096,7 +2142,7 @@ QUnit.test('subtitle segment loader resets on seeks', function(assert) {
 
   assert.equal(resetCount, 1, 'reset subtitle segment loader');
   assert.equal(abortCount, 1, 'aborted subtitle segment loader');
-  assert.equal(loadCount, 0, 'did not call load on subtitle segment loader');
+  assert.equal(loadCount, 1, 'called load on subtitle segment loader');
 
   this.player.play();
   resetCount = 0;

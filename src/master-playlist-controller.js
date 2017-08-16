@@ -1413,15 +1413,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.subtitleSegmentLoader_.abort();
     }
 
-    if (!this.tech_.paused()) {
-      this.mainSegmentLoader_.load();
-      if (this.audioPlaylistLoader_) {
-        this.audioSegmentLoader_.load();
-      }
-      if (this.subtitlePlaylistLoader_) {
-        this.subtitleSegmentLoader_.load();
-      }
-    }
+    // start segment loader loading in case they are paused
+    this.load();
   }
 
   /**
