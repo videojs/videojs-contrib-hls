@@ -298,11 +298,17 @@ export const computeDecayRateByHalfLife = function(halfLife) {
   return -1 * Math.log( 0.5 ) / halfLife;
 };
 
+// see http://robowiki.net/wiki/Rolling_Averages
+export const computeDecayRateByHalfLife = function(halfLife) {
+
+  return -1 * Math.log( 0.5 ) / halfLife;
+};
+
 export const timeWeightedRollingAverage = function(newValue, oldValue, deltaTime, decayRate) {
 
   let weight = Math.exp(-1 * decayRate * deltaTime);
 
-  return weight * oldValue + (1 - w) * newValue;
+  return weight * oldValue + (1 - weight) * newValue;
 };
 
 export const ewma = function(decayRate, initialValue) {
@@ -317,12 +323,12 @@ export const ewma = function(decayRate, initialValue) {
 
 export const ewmaBandwidthSelector = function(fastDecay, slowDecay) {
 
-  let fastEwma = ewma(fastDecay, this.systemBandwidth);
-  let slowEwma = ewma(slowDecay, this.systemBandwidth);
-
-  if (decay < 0 || decay > 1) {
+  if (fastDecay < 0 || fastDecay > 1 && slowDecay < 0 || slowDecay > 1) {
     throw new Error('Moving average bandwidth decay must be between 0 and 1.');
   }
+
+  let fastEwma = ewma(fastDecay, this.systemBandwidth);
+  let slowEwma = ewma(slowDecay, this.systemBandwidth);
 
   return function() {
 
