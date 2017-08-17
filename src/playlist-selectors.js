@@ -298,12 +298,6 @@ export const computeDecayRateByHalfLife = function(halfLife) {
   return -1 * Math.log( 0.5 ) / halfLife;
 };
 
-// see http://robowiki.net/wiki/Rolling_Averages
-export const computeDecayRateByHalfLife = function(halfLife) {
-
-  return -1 * Math.log( 0.5 ) / halfLife;
-};
-
 export const timeWeightedRollingAverage = function(newValue, oldValue, deltaTime, decayRate) {
 
   let weight = Math.exp(-1 * decayRate * deltaTime);
