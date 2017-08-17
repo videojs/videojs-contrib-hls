@@ -443,6 +443,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.ended_ = false;
     this.resetLoader();
     this.remove(0, this.duration_());
+    this.trigger('reseteverything');
   }
 
   /**
