@@ -105,6 +105,8 @@
   <script>
     (function(window, videojs) {
 
+      var Hls = videojs.Hls;
+
       var videojsHlsDemo;
       var player;
       var hlsMimeType = "application/x-mpegURL";
@@ -124,6 +126,8 @@
           }
         }
       };
+
+      Hls.STANDARD_PLAYLIST_SELECTOR = Hls.PlaylistSelectorFactories.ewmaBandwidthSelector;
 
       // setup url input
       url.value = urlHref;
