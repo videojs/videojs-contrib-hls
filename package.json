@@ -92,10 +92,10 @@
     "aes-decrypter": "1.0.3",
     "global": "^4.3.0",
     "m3u8-parser": "2.1.0",
-    "mux.js": "4.1.5",
+    "mux.js": "4.2.0",
     "url-toolkit": "1.0.9",
     "video.js": "^5.19.1 || ^6.2.0",
-    "videojs-contrib-media-sources": "4.4.8",
+    "videojs-contrib-media-sources": "4.5.0",
     "webworkify": "1.0.2"
   },
   "devDependencies": {
