@@ -1,6 +1,11 @@
 import Config from './config';
 import Playlist from './playlist';
 
+// takes seconds as input, outputs decay rate (unitless)
+const DEFAULT_EWMA_FAST_DECAY = decayRate(2);
+const DEFAULT_EWMA_SLOW_DECAY = decayRate(5);
+const DEFAULT_MOVING_AVERAGE_DECAY = decayRate(3);
+
 // Utilities
 
 /**
@@ -273,7 +278,9 @@ export const lastBandwidthSelector = function() {
  * playlist selector function.
  * @see https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
  */
-export const movingAverageBandwidthSelector = function(decay) {
+export const movingAverageBandwidthSelector = function() {
+  const decay = this.options_.bandwidthEstimatorDecay || DEFAULT_MOVING_AVERAGE_DECAY;
+
   let average = -1;
 
   if (decay < 0 || decay > 1) {
@@ -292,11 +299,13 @@ export const movingAverageBandwidthSelector = function(decay) {
   }.bind(this);
 };
 
-// see http://robowiki.net/wiki/Rolling_Averages
-export const computeDecayRateByHalfLife = function(halfLife) {
+function decayRate(halfLife) {
 
   return -1 * Math.log( 0.5 ) / halfLife;
 };
+
+// see http://robowiki.net/wiki/Rolling_Averages
+export const computeDecayRateByHalfLife = decayRate;
 
 export const timeWeightedRollingAverage = function(newValue, oldValue, deltaTime, decayRate) {
 
@@ -315,10 +324,13 @@ export const ewma = function(decayRate, initialValue) {
   }
 };
 
-export const ewmaBandwidthSelector = function(fastDecay, slowDecay) {
+export const ewmaBandwidthSelector = function() {
+
+  const fastDecay = this.options_.bandwidthEstimatorFastDecay || DEFAULT_EWMA_FAST_DECAY;
+  const slowDecay = this.options_.bandwidthEstimatorSlowDecay || DEFAULT_EWMA_SLOW_DECAY;
 
   if (fastDecay < 0 || fastDecay > 1 && slowDecay < 0 || slowDecay > 1) {
-    throw new Error('Moving average bandwidth decay must be between 0 and 1.');
+    throw new Error('Moving average decays must be between 0 and 1.');
   }
 
   let fastEwma = ewma(fastDecay, this.systemBandwidth);
@@ -327,7 +339,7 @@ export const ewmaBandwidthSelector = function(fastDecay, slowDecay) {
   return function() {
 
     let bandwidth = this.systemBandwidth;
-    let deltaTime = this.bandwidthRtt + this.throughputLatency;
+    let deltaTime = (this.bandwidthRtt + this.throughputLatency) / 1000;
 
     let average = Math.min(fastEwma(bandwidth, deltaTime),
       slowEwma(bandwidth, deltaTime));
