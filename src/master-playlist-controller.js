@@ -284,7 +284,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       timeout: null
     };
 
-    this.audioGroups_ = {};
+    this.audioGroups_ = { groups: {}, tracks: {} };
     this.subtitleGroups_ = { groups: {}, tracks: {} };
     this.closedCaptionGroups_ = { groups: {}, tracks: {} };
 
@@ -732,22 +732,34 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     for (let mediaGroup in mediaGroups.AUDIO) {
-      if (!this.audioGroups_[mediaGroup]) {
-        this.audioGroups_[mediaGroup] = [];
+      if (!this.audioGroups_.groups[mediaGroup]) {
+        this.audioGroups_.groups[mediaGroup] = [];
       }
 
       for (let label in mediaGroups.AUDIO[mediaGroup]) {
-        let properties = mediaGroups.AUDIO[mediaGroup][label];
-        let track = new videojs.AudioTrack({
-          id: label,
-          kind: this.audioTrackKind_(properties),
-          enabled: false,
-          language: properties.language,
-          label
-        });
+        let properties = videojs.mergeOptions(
+          {
+            id: label,
+            playlistLoader: new PlaylistLoader(properties.resolvedUri,
+                                               this.hls_,
+                                               this.withCredentials)
+          },
+          mediaGroups.AUDIO[mediaGroup][label]
+        );
 
-        track.properties_ = properties;
-        this.audioGroups_[mediaGroup].push(track);
+        this.audioGroups_.groups[mediaGroup].push(properties);
+
+        if (typeof this.audioGroups_.tracks[label] === 'undefined') {
+          let track = new videojs.AudioTrack({
+            id: label,
+            kind: this.audioTrackKind_(properties),
+            enabled: false,
+            language: properties.language,
+            label
+          });
+
+          this.audioGroups_.tracks[label] = (track);
+        }
       }
     }
 
@@ -876,11 +888,15 @@ export class MasterPlaylistController extends videojs.EventTarget {
     let videoPlaylist = this.masterPlaylistLoader_.media();
     let result;
 
-    if (videoPlaylist.attributes.AUDIO) {
-      result = this.audioGroups_[videoPlaylist.attributes.AUDIO];
+    if (!videoPlaylist) {
+      return null;
     }
 
-    return result || this.audioGroups_.main;
+    if (videoPlaylist.attributes.AUDIO) {
+      result = this.audioGroups_.groups[videoPlaylist.attributes.AUDIO];
+    }
+
+    return result || this.audioGroups_.groups.main;
   }
 
   /**
@@ -964,15 +980,24 @@ export class MasterPlaylistController extends videojs.EventTarget {
   getActiveAudioTrack_() {
     // determine whether seperate loaders are required for the audio
     // rendition
-    let audioGroup = this.activeAudioGroup();
-    let track = audioGroup.filter((audioTrack) => {
-      return audioTrack.enabled;
-    })[0];
+    let track;
+
+    for (let trackName in this.audioGroups_.tracks) {
+      if (this.audioGroups_.tracks[trackName].enabled) {
+        track = this.audioGroups_.tracks[trackName];
+        break;
+      }
+    }
 
     if (!track) {
-      track = audioGroup.filter((audioTrack) => {
-        return audioTrack.properties_.default;
-      })[0] || audioGroup[0];
+      for (let trackName in this.audioGroups_.tracks) {
+        if (this.audioGroups_.tracks[trackName].default) {
+          track = this.audioGroups_.tracks[trackName];
+          break;
+        }
+      }
+
+      track = track || this.audioGroups_.tracks.main;
       track.enabled = true;
     }
 
@@ -1043,10 +1068,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       if (!this.tech_.paused() ||
           (audioPlaylist.endList && this.tech_.preload() !== 'none')) {
         this.audioSegmentLoader_.load();
-      }
-
-      if (!audioPlaylist.endList) {
-        this.audioPlaylistLoader_.trigger('firstplay');
       }
     });
 

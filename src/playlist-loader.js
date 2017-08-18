@@ -401,18 +401,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     });
   });
 
-  // setup initial sync info
-  loader.on('firstplay', function() {
-    let playlist = loader.media();
-
-    if (playlist) {
-      playlist.syncInfo = {
-        mediaSequence: playlist.mediaSequence,
-        time: 0
-      };
-    }
-  });
-
   /**
    * pause loading of the playlist
    */
