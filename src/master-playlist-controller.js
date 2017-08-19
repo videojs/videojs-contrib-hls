@@ -286,6 +286,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.audioGroups_ = {};
     this.subtitleGroups_ = { groups: {}, tracks: {} };
+    this.closedCaptionGroups_ = { groups: {}, tracks: {} };
 
     this.mediaSource = new videojs.MediaSource({ mode });
     this.audioinfo_ = null;
@@ -387,6 +388,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.setupSubtitles();
 
       this.triggerPresenceUsage_(this.master(), media);
+      this.fillClosedCaptionTracks_();
 
       try {
         this.setupSourceBuffers_();
@@ -642,6 +644,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }, ABORT_EARLY_BLACKLIST_SECONDS);
     });
 
+    this.mainSegmentLoader_.on('reseteverything', () => {
+      this.tech_.trigger('hls-reset');
+    });
+
     this.audioSegmentLoader_.on('ended', () => {
       this.onEndOfStream();
     });
@@ -804,6 +810,49 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     // Do not enable a default subtitle track. Wait for user interaction instead.
+  }
+
+  /**
+   * fill our internal list of Captions Tracks with data from
+   * the master playlist or use a default
+   *
+   * @private
+   */
+  fillClosedCaptionTracks_() {
+    let master = this.master();
+    let mediaGroups = master.mediaGroups || {};
+
+    for (let mediaGroup in mediaGroups['CLOSED-CAPTIONS']) {
+      if (!this.closedCaptionGroups_.groups[mediaGroup]) {
+        this.closedCaptionGroups_.groups[mediaGroup] = [];
+      }
+
+      for (let label in mediaGroups['CLOSED-CAPTIONS'][mediaGroup]) {
+        let properties = mediaGroups['CLOSED-CAPTIONS'][mediaGroup][label];
+
+        // We only support CEA608 captions for now, so ignore anything that
+        // doesn't use a CCx INSTREAM-ID
+        if (!properties.instreamId.match(/CC\d/)) {
+          continue;
+        }
+
+        this.closedCaptionGroups_.groups[mediaGroup].push(
+          videojs.mergeOptions({ id: label }, properties));
+
+        if (typeof this.closedCaptionGroups_.tracks[label] === 'undefined') {
+          let track = this.tech_.addRemoteTextTrack({
+            id: properties.instreamId,
+            kind: 'captions',
+            enabled: false,
+            language: properties.language,
+            label
+          }, false).track;
+
+          this.closedCaptionGroups_.tracks[label] = track;
+        }
+      }
+    }
+
   }
 
   /**
