@@ -311,7 +311,9 @@ export const timeWeightedRollingAverage = function(newValue, oldValue, deltaTime
 
   let weight = Math.exp(-1 * decayRate * deltaTime);
 
-  return weight * oldValue + (1 - weight) * newValue;
+  let twRollingAvg = weight * oldValue + (1 - weight) * newValue;
+
+  return twRollingAvg;
 };
 
 export const ewma = function(decayRate, initialValue) {
@@ -333,19 +335,22 @@ export const ewmaBandwidthSelector = function() {
     throw new Error('Moving average decays must be between 0 and 1.');
   }
 
-  let fastEwma = ewma(fastDecay, this.systemBandwidth);
-  let slowEwma = ewma(slowDecay, this.systemBandwidth);
+  let fastEwma = ewma(fastDecay, this.bandwidth);
+  let slowEwma = ewma(slowDecay, this.bandwidth);
 
   return function() {
 
-    let bandwidth = this.systemBandwidth;
-    let deltaTime = (this.bandwidthRtt + this.throughputLatency) / 1000;
+
+    let bandwidth = this.bandwidth;
+    let rtt = this.bandwidthRtt || 0;
+    let deltaTime = (rtt + this.throughputLatency) / 1000;
 
     let average = Math.min(fastEwma(bandwidth, deltaTime),
       slowEwma(bandwidth, deltaTime));
 
     return filterMasterPlaylistsWithRestrictions.call(this,
       this.setEstimatedBandwidth_(average));
+
   }.bind(this);
 };
 
