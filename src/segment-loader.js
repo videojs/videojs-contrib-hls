@@ -10,7 +10,7 @@ import removeCuesFromTrack from
   'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
-import { TIME_FUDGE_FACTOR, timeUntilRebuffer as timeUntilRebuffer_ } from './ranges';
+import Ranges from './ranges';
 import { minRebufferMaxBandwidthPlaylistFilter } from './playlist-selectors';
 
 // in ms
@@ -781,7 +781,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
     // if we are only left with less than 1 second when the request completes.
     // A negative timeUntilRebuffering indicates we are already rebuffering
-    const timeUntilRebuffer = timeUntilRebuffer_(this.buffered_(),
+    const timeUntilRebuffer = Ranges.timeUntilRebuffer(this.buffered_(),
                                                  currentTime,
                                                  this.hls_.tech_.playbackRate()) - 1;
 
@@ -815,7 +815,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     // If we are already rebuffering, increase the amount of variance we add to the
     // potential round trip time of the new request so that we are not too aggressive
     // with switching to a playlist that might save us a fraction of a second.
-    if (timeUntilRebuffer <= TIME_FUDGE_FACTOR) {
+    if (timeUntilRebuffer <= Ranges.TIME_FUDGE_FACTOR) {
       minimumTimeSaving = 1;
     }
 
