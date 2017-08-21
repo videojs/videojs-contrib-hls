@@ -439,9 +439,8 @@ class HlsHandler extends Component {
         enumerable: true
       },
       estimatedBandwidth: {
-        get() {
-          return this.estimatedBandwidth_ || this.bandwidth;
-        }
+        get: () => this.estimatedBandwidth_ || this.bandwidth,
+        enumerable: true
       },
       mediaRequests: {
         get: () => this.masterPlaylistController_.mediaRequests_() || 0,
