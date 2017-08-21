@@ -843,7 +843,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // Only consider aborting early if the estimated time to finish the download
     // is larger than the estimated time until the player runs out of forward buffer
-    if (requestTimeRemaining <= timeUntilRebuffer) {
+    if (requestTimeRemaining <= timeUntilRebuffer || this.seeking_()) {
       return false;
     }
 

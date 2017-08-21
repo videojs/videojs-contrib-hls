@@ -280,6 +280,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.seekable_ = videojs.createTimeRanges();
     this.hasPlayed_ = () => false;
+    this.startTime_ = 0;
 
     this.syncController_ = new SyncController(options);
     this.segmentMetadataTrack_ = tech.addRemoteTextTrack({
@@ -932,6 +933,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {TimeRange} the current time
    */
   setCurrentTime(currentTime) {
+    this.startTime_ = currentTime;
+
     let buffered = Ranges.findRange(this.tech_.buffered(), currentTime);
 
     if (!(this.masterPlaylistLoader_ && this.masterPlaylistLoader_.media())) {
@@ -1238,12 +1241,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {Number} Desired forward buffer length in seconds
    */
   goalBufferLength() {
-    const currentTime = this.tech_.currentTime();
+    const elapsedTime = this.elapsedSinceStart();
     const initial = Config.GOAL_BUFFER_LENGTH;
     const rate = Config.GOAL_BUFFER_LENGTH_RATE;
     const max = Math.max(initial, Config.MAX_GOAL_BUFFER_LENGTH);
 
-    return Math.min(initial + currentTime * rate, max);
+    return Math.min(initial + elapsedTime * rate, max);
   }
 
   /**
@@ -1252,11 +1255,23 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {Number} Desired buffer low water line in seconds
    */
   bufferLowWaterLine() {
-    const currentTime = this.tech_.currentTime();
+    const elapsedTime = this.elapsedSinceStart();
     const initial = Config.BUFFER_LOW_WATER_LINE;
     const rate = Config.BUFFER_LOW_WATER_LINE_RATE;
     const max = Math.max(initial, Config.MAX_BUFFER_LOW_WATER_LINE);
 
-    return Math.min(initial + currentTime * rate, max);
+    return Math.min(initial + elapsedTime * rate, max);
+  }
+
+  /**
+   * Calculates the time elapsed since last seek or initial start
+   *
+   * @return {Number} Elapsed time
+   */
+  elapsedSinceStart() {
+    const currentTime = this.tech_.currentTime();
+    const elapsedTime = currentTime - this.startTime_;
+
+    return elapsedTime;
   }
 }
