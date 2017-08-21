@@ -1008,6 +1008,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.bandwidth = simpleSegment.stats.bandwidth;
     this.roundTrip = simpleSegment.stats.roundTripTime;
 
+    this.logger_('measured bandwidth on download:', this.bandwidth, 'bits/sec');
+
     // if this request included an initialization segment, save that data
     // to the initSegment cache
     if (simpleSegment.map) {
