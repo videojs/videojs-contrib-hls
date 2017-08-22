@@ -2,6 +2,14 @@ CHANGELOG
 =========
 
 --------------------
+## 5.10.0 (2017-08-22)
+* CEA608: support for cc2-cc4, special/extended characters, formatting [#1096](https://github.com/videojs/videojs-contrib-hls/pull/1096)
+  * All four CC tracks are now available
+  * If CLOSED-CAPTIONS are specified in the master manifest, the corresponding CC text tracks will be labled appropriately, otherwise will be labled CC1 - CC4
+  * Underline and italics will now be rendered.
+  * Special thanks to @squarebracket
+
+--------------------
 ## 5.9.0 (2017-08-16)
 * Add option to select lowest bitrate video rendition available on startup [#1212](https://github.com/videojs/videojs-contrib-hls/pull/1212)
 * always activate loading in segment loaders after a seek [#1234](https://github.com/videojs/videojs-contrib-hls/pull/1234)
