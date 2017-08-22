@@ -297,7 +297,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     const playlistSelectorFactory = Hls.STANDARD_PLAYLIST_SELECTOR;
 
-    this.selectPlaylist = playlistSelectorFactory.call(tech.hls).bind(tech.hls);
+    this.selectPlaylist_ = playlistSelectorFactory.call(tech.hls).bind(tech.hls);
+
     this.withCredentials = withCredentials;
     this.tech_ = tech;
     this.hls_ = tech.hls;
@@ -576,6 +577,21 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.on('renditionenabled', () => {
       this.tech_.trigger({type: 'usage', name: 'hls-rendition-enabled'});
     });
+  }
+
+  selectPlaylist() {
+
+    if (!this.selectPlaylist_) {
+      throw new Error('MasterPlaylistController selectPlaylist_ not set!');
+    }
+
+    const playlist = this.selectPlaylist_();
+
+    this.lastSelectedPlaylist_ = playlist;
+
+    console.log('MasterPlaylistController.selectPlaylist attributes:', playlist.attributes);
+
+    return playlist;
   }
 
   /**
