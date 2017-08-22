@@ -1,45 +1,4 @@
 import { isBlacklisted, isEnabled } from './playlist.js';
-/**
- * Enable/disable playlist function. It is intended to have the first two
- * arguments partially-applied in order to create the final per-playlist
- * function.
- *
- * @param {PlaylistLoader} playlist - The rendition or media-playlist
- * @param {Function} changePlaylistFn - A function to be called after a
- * playlist's enabled-state has been changed. Will NOT be called if a
- * playlist's enabled-state is unchanged
- * @param {Boolean=} enable - Value to set the playlist enabled-state to
- * or if undefined returns the current enabled-state for the playlist
- * @return {Boolean} The current enabled-state of the playlist
- */
-const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
-  const playlist = loader.master.playlists[playlistUri];
-  const blacklisted = isBlacklisted(playlist);
-  const currentlyEnabled = isEnabled(playlist);
-
-  if (typeof enable === 'undefined') {
-    return currentlyEnabled;
-  }
-
-  if (enable) {
-    delete playlist.disabled;
-  } else {
-    playlist.disabled = true;
-  }
-
-  if (enable !== currentlyEnabled && !blacklisted) {
-    // Ensure the outside world knows about our changes
-    if (changePlaylistFn) {
-      changePlaylistFn();
-    }
-    if (enable) {
-      loader.trigger('renditionenabled');
-    } else {
-      loader.trigger('renditiondisabled');
-    }
-  }
-  return enable;
-};
 
 /**
  * The representation object encapsulates the publicly visible information
@@ -50,24 +9,20 @@ const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
  */
 class Representation {
   constructor(hlsHandler, playlist, id) {
+
+    this.hls_ = hlsHandler;
+    this.playlist_ = playlist;
+
     // Get a reference to a bound version of fastQualityChange_
-    let fastChangeFunction = hlsHandler
+    this.fastChangeFunc_ = hlsHandler
                               .masterPlaylistController_
                               .fastQualityChange_
                               .bind(hlsHandler.masterPlaylistController_);
 
-    let smoothChangeFunction = hlsHandler
+    this.smoothChangeFunc_ = hlsHandler
                               .masterPlaylistController_
                               .smoothQualityChange_
                               .bind(hlsHandler.masterPlaylistController_);
-
-    // Select transition function for quality switch
-    let changePlaylistFunc = hlsHandler.options_.smoothQualitySwitch ?
-        smoothChangeFunction : fastChangeFunction;
-
-    if (hlsHandler.options_.disableImmediateQualityChange) {
-      changePlaylistFunc = null;
-    }
 
     // Carefully descend into the playlist's attributes since most
     // properties are optional
@@ -87,13 +42,65 @@ class Representation {
     // The id is simply the ordinality of the media playlist
     // within the master playlist
     this.id = id;
+  }
 
-    // Partially-apply the enableFunction to create a playlist-
-    // specific variant
-    this.enabled = enableFunction.bind(this,
-                                       hlsHandler.playlists,
-                                       playlist.uri,
-                                       changePlaylistFunc);
+  flush() {
+    this.flushing_ = true;
+  }
+
+  /**
+   * Enable/disable playlist function.
+   *
+   * @return {Boolean} The current enabled-state of the playlist
+   */
+  enabled(enable) {
+
+    const hlsHandler = this.hls_;
+
+    const playlistUri = this.playlist_.uri;
+    const loader = hlsHandler.playlists;
+
+    const playlist = loader.master.playlists[playlistUri];
+    const blacklisted = isBlacklisted(playlist);
+    const currentlyEnabled = isEnabled(playlist);
+    const smoothChangeFunction = this.smoothChangeFunc_;
+    const fastChangeFunction = this.fastChangeFunc_;
+
+    if (typeof enable === 'undefined') {
+      return currentlyEnabled;
+    }
+
+    let changePlaylistFn = hlsHandler.options_.smoothQualitySwitch ?
+        smoothChangeFunction : fastChangeFunction;
+
+    if (hlsHandler.options_.disableImmediateQualityChange) {
+      changePlaylistFn = null;
+    }
+
+    if (this.flushing_) {
+      changePlaylistFn = this.fastChangeFunc_;
+      this.flushing_ = false;
+    }
+
+    if (enable) {
+      delete playlist.disabled;
+    } else {
+      playlist.disabled = true;
+    }
+
+    if (enable !== currentlyEnabled && !blacklisted) {
+      // Ensure the outside world knows about our changes
+      if (changePlaylistFn) {
+        changePlaylistFn();
+      }
+      if (enable) {
+        loader.trigger('renditionenabled');
+      } else {
+        loader.trigger('renditiondisabled');
+      }
+    }
+
+    return enable;
   }
 }
 
