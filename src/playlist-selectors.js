@@ -132,6 +132,7 @@ export const comparePlaylistResolution = function(left, right) {
  * bandwidth variance
  */
 const filterPlaylists = function(master, playerBandwidth, playerWidth, playerHeight) {
+  let fallbackPlaylistRep = null;
   // convert the playlists to an intermediary representation to make comparisons easier
   let sortedPlaylistReps = master.playlists.map((playlist) => {
     let width;
@@ -153,6 +154,9 @@ const filterPlaylists = function(master, playerBandwidth, playerWidth, playerHei
   });
 
   stableSort(sortedPlaylistReps, (left, right) => left.bandwidth - right.bandwidth);
+
+  // in case all playlists are disabled we are keeping this as an ultimate fallback
+  fallbackPlaylistRep = sortedPlaylistReps[0];
 
   // filter out any playlists that have been excluded due to
   // incompatible configurations or playback errors
@@ -223,10 +227,10 @@ const filterPlaylists = function(master, playerBandwidth, playerWidth, playerHei
     resolutionPlusOneRep ||
     resolutionBestRep ||
     bandwidthBestRep ||
-    sortedPlaylistReps[0]
+    sortedPlaylistReps[0] ||
+    fallbackPlaylistRep
   ).playlist;
 };
-
 const filterMasterPlaylistsWithRestrictions = function(estimatedBandwidth) {
 
   let autoLimitRes = this.options_.autoLimitResolution;
