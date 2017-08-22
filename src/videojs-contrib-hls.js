@@ -257,7 +257,7 @@ class HlsHandler extends Component {
     });
 
     this.audioTrackChange_ = () => {
-      this.masterPlaylistController_.setupAudio();
+      this.masterPlaylistController_.audioTrackChanged();
       this.tech_.trigger({type: 'usage', name: 'hls-audio-change'});
     };
 
@@ -452,14 +452,6 @@ class HlsHandler extends Component {
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
       // Add the manual rendition mix-in to HlsHandler
       renditionSelectionMixin(this);
-    });
-
-    this.masterPlaylistController_.on('audioupdate', () => {
-      // clear current audioTracks
-      this.tech_.clearTracks('audio');
-      this.masterPlaylistController_.activeAudioGroup().forEach((audioTrack) => {
-        this.tech_.audioTracks().addTrack(audioTrack);
-      });
     });
 
     // the bandwidth of the primary segment loader is our best
