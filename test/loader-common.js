@@ -57,6 +57,9 @@ export const LoaderCommonHooks = {
     this.mediaSource.trigger('sourceopen');
     this.syncController = new SyncController();
     this.decrypter = worker(Decrypter, resolveDecrypterWorker());
+    this.startTime_ = 0;
+    this.elapsedSinceStart =
+      MasterPlaylistController.prototype.elapsedSinceStart.bind(this);
   },
   afterEach(assert) {
     this.env.restore();
