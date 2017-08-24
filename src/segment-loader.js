@@ -1078,20 +1078,23 @@ export default class SegmentLoader extends videojs.EventTarget {
           this.activeInitSegmentId_ !== initId) {
         const initSegment = this.initSegment(segment.map);
 
-        this.sourceUpdater_.appendBuffer(initSegment.bytes, () => {
+        this.sourceUpdater_.appendBuffer(initSegment.bytes, null, () => {
           this.activeInitSegmentId_ = initId;
         });
       }
     }
 
     segmentInfo.byteLength = segmentInfo.bytes.byteLength;
+
+    let segmentDuration;
+
     if (typeof segment.start === 'number' && typeof segment.end === 'number') {
-      this.mediaSecondsLoaded += segment.end - segment.start;
+      this.mediaSecondsLoaded += segmentDuration = segment.end - segment.start;
     } else {
-      this.mediaSecondsLoaded += segment.duration;
+      this.mediaSecondsLoaded += segmentDuration = segment.duration;
     }
 
-    this.sourceUpdater_.appendBuffer(segmentInfo.bytes,
+    this.sourceUpdater_.appendBuffer(segmentInfo.bytes, segmentDuration,
                                      this.handleUpdateEnd_.bind(this));
   }
 
