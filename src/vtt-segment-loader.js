@@ -118,17 +118,30 @@ export default class VTTSegmentLoader extends SegmentLoader {
   /**
    * Set a subtitle track on the segment loader to add subtitles to
    *
-   * @param {TextTrack} track
+   * @param {TextTrack=} track
    *        The text track to add loaded subtitles to
+   * @return {TextTrack}
+   *        Returns the subtitles track
    */
   track(track) {
+    if (typeof track === 'undefined') {
+      return this.subtitlesTrack_;
+    }
+
     this.subtitlesTrack_ = track;
+
+    console.log('*******');
+    console.log('>>> setting subtitle track', track);
+    console.trace();
+    console.log('*******');
 
     // if we were unpaused but waiting for a sourceUpdater, start
     // buffering now
     if (this.state === 'INIT' && this.couldBeginLoading_()) {
       this.init_();
     }
+
+    return this.subtitlesTrack_;
   }
 
   /**
@@ -217,7 +230,7 @@ export default class VTTSegmentLoader extends SegmentLoader {
    * @private
    */
   handleSegment_() {
-    if (!this.pendingSegment_) {
+    if (!this.pendingSegment_ || !this.subtitlesTrack_) {
       this.state = 'READY';
       return;
     }

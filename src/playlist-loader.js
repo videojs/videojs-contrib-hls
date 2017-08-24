@@ -40,6 +40,10 @@ const updateSegments = function(original, update, offset) {
   return result;
 };
 
+const RID = function() {
+  return 'playlist-loader-request-' + Math.random();
+};
+
 /**
   * Returns a new master playlist that is the result of merging an
   * updated media playlist into the original version. If the
@@ -123,6 +127,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   let mediaUpdateTimeout;
   let request;
   let playlistRequestError;
+  let currentRequestId;
   let haveMetadata;
 
   PlaylistLoader.prototype.constructor.call(this);
@@ -221,6 +226,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       oldRequest.onreadystatechange = null;
       oldRequest.abort();
     }
+    currentRequestId = null;
   };
 
   /**
@@ -346,6 +352,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     if (this.media_) {
       this.trigger('mediachanging');
     }
+
+    let requestId = currentRequestId = RID();
+
     request = this.hls_.xhr({
       uri: resolveUrl(loader.master.uri, playlist.uri),
       withCredentials
@@ -353,6 +362,10 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       // disposed
       if (!request) {
         return;
+      }
+
+      if (requestId !== currentRequestId) {
+        console.log('new request started before this returned');
       }
 
       if (error) {
@@ -381,10 +394,14 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   loader.on('mediaupdatetimeout', function() {
     if (loader.state !== 'HAVE_METADATA') {
       // only refresh the media playlist if no other activity is going on
+      console.log('>>> not refreshing playlist. other activity happening')
       return;
     }
 
     loader.state = 'HAVE_CURRENT_METADATA';
+
+    let requestId = currentRequestId = RID();
+
     request = this.hls_.xhr({
       uri: resolveUrl(loader.master.uri, loader.media().uri),
       withCredentials
@@ -392,6 +409,10 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       // disposed
       if (!request) {
         return;
+      }
+
+      if (requestId !== currentRequestId) {
+        console.log('new request started before this returned');
       }
 
       if (error) {
@@ -411,6 +432,19 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       // If we pause the loader before any data has been retrieved, its as if we never
       // started, so reset to an unstarted state.
       loader.started = false;
+    }
+    // Need to restore state now that no activity is happening
+    if (loader.state === 'SWITCHING_MEDIA') {
+      // if the loader was in the process of switching media, it should either return to
+      // HAVE_MASTER or HAVE_METADATA depending on if the loader has loaded a media
+      // playlist yet. This is determined by the existence of loader.media_
+      if (loader.media_) {
+        loader.state = 'HAVE_METADATA';
+      } else {
+        loader.state = 'HAVE_MASTER';
+      }
+    } else if (loader.state === 'HAVE_CURRENT_METADATA') {
+      loader.state = 'HAVE_METADATA';
     }
   };
 
@@ -445,7 +479,11 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * start loading of the playlist
    */
   loader.start = () => {
+    var startingState = loader.state;
+
     loader.started = true;
+
+    let requestId = currentRequestId = RID();
 
     // request the specified URL
     request = this.hls_.xhr({
@@ -459,6 +497,10 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       // disposed
       if (!request) {
         return;
+      }
+
+      if (requestId !== currentRequestId) {
+        console.log('new request started before this returned');
       }
 
       // clear the loader's request reference

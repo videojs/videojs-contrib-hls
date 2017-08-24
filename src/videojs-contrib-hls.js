@@ -160,26 +160,6 @@ Hls.isSupported = function() {
                           'your player\'s techOrder.');
 };
 
-const USER_AGENT = window.navigator && window.navigator.userAgent || '';
-
-/**
- * Determines whether the browser supports a change in the audio configuration
- * during playback. Currently only Firefox 48 and below do not support this.
- * window.isSecureContext is a propterty that was added to window in firefox 49,
- * so we can use it to detect Firefox 49+.
- *
- * @return {Boolean} Whether the browser supports audio config change during playback
- */
-Hls.supportsAudioInfoChange_ = function() {
-  if (videojs.browser.IS_FIREFOX) {
-    let firefoxVersionMap = (/Firefox\/([\d.]+)/i).exec(USER_AGENT);
-    let version = parseInt(firefoxVersionMap[1], 10);
-
-    return version >= 49;
-  }
-  return true;
-};
-
 const Component = videojs.getComponent('Component');
 
 /**
@@ -255,15 +235,6 @@ class HlsHandler extends Component {
         this.masterPlaylistController_.pauseLoading();
       }
     });
-
-    this.audioTrackChange_ = () => {
-      this.masterPlaylistController_.audioTrackChanged();
-      this.tech_.trigger({type: 'usage', name: 'hls-audio-change'});
-    };
-
-    this.textTrackChange_ = () => {
-      this.masterPlaylistController_.setupSubtitles();
-    };
 
     this.on(this.tech_, 'play', this.play);
   }
@@ -444,11 +415,6 @@ class HlsHandler extends Component {
     this.tech_.one('canplay',
       this.masterPlaylistController_.setupFirstPlay.bind(this.masterPlaylistController_));
 
-    this.masterPlaylistController_.on('sourceopen', () => {
-      this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
-      this.tech_.remoteTextTracks().addEventListener('change', this.textTrackChange_);
-    });
-
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
       // Add the manual rendition mix-in to HlsHandler
       renditionSelectionMixin(this);
@@ -501,15 +467,6 @@ class HlsHandler extends Component {
   }
 
   /**
-   * a helper for grabbing the active audio group from MasterPlaylistController
-   *
-   * @private
-   */
-  activeAudioGroup_() {
-    return this.masterPlaylistController_.activeAudioGroup();
-  }
-
-  /**
    * Begin playing the video.
    */
   play() {
@@ -550,8 +507,6 @@ class HlsHandler extends Component {
     if (this.qualityLevels_) {
       this.qualityLevels_.dispose();
     }
-    this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
-    this.tech_.remoteTextTracks().removeEventListener('change', this.textTrackChange_);
     super.dispose();
   }
 }

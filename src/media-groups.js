@@ -17,9 +17,238 @@ const audioTrackKind_ = (properties) => {
   return kind;
 };
 
+/**
+ * Pause provided segment loader and playlist loader if active
+ *
+ * @param {SegmentLoader} segmentLoader
+ *        SegmentLoader to pause
+ * @param {Object} mediaGroup
+ *        Active media group
+ * @function stopLoaders
+ */
+const stopLoaders = (segmentLoader, mediaGroup) => {
+  segmentLoader.abort();
+  segmentLoader.pause();
+
+  if (segmentLoader.track) {
+    segmentLoader.track(null);
+  }
+
+  if (mediaGroup && mediaGroup.activePlaylistLoader) {
+    console.log('>>> stopping loader for', mediaGroup.activePlaylistLoader.media().resolvedUri);
+    mediaGroup.activePlaylistLoader.pause();
+    mediaGroup.activePlaylistLoader = null;
+  }
+};
+
+/**
+ * Start loading for provided segment loader and playlist loader
+ *
+ * @param {SegmentLoader} segmentLoader
+ *        SegmentLoader to start loading
+ * @param {PlaylistLoader} playlistLoader
+ *        PlaylistLoader to start loading
+ * @param {Object} mediaGroup
+ *        Active media group
+ * @function startLoaders
+ */
+const startLoaders = (segmentLoader, playlistLoader, mediaGroup) => {
+  mediaGroup.activePlaylistLoader = playlistLoader;
+
+  if (playlistLoader.media()) {
+    // only begin loading in the segment loader if the playlist loader has loaded its
+    // media
+    segmentLoader.load();
+    console.log('>>> starting loader for', playlistLoader.media().resolvedUri);
+  }
+
+  playlistLoader.load();
+};
+
+/**
+ * Returns a function to be called when the media group changes. It performs a
+ * non-destructive resync of the SegmentLoader since the playlist has likely changed.
+ *
+ * @param {String} type
+ *        MediaGroup type
+ * @param {Object} settings
+ *        Object containing required information for media groups
+ * @return {Function}
+ *         Handler for a non-destructive resync of SegmentLoader when the active media
+ *         group changes.
+ * @function onGroupChanged
+ */
+const onGroupChanged = (type, settings) => () => {
+  const {
+    segmentLoaders: { [type]: segmentLoader },
+    mediaGroups: { [type]: mediaGroup }
+  } = settings;
+  const activeTrack = mediaGroup.activeTrack();
+  const activeGroup = mediaGroup.activeGroup(activeTrack);
+
+  console.log('>>> onGroupChanged', type);
+
+  stopLoaders(segmentLoader, mediaGroup);
+
+  if (!activeGroup) {
+    // there is no group active so we do not want to restart loaders
+    return;
+  }
+
+  console.log('>>> activeTrack', activeTrack.id);
+  console.log('>>> activeGroup', activeGroup.id);
+
+  // Non-destructive resync
+  segmentLoader.resyncLoader();
+
+  startLoaders(segmentLoader, activeGroup.playlistLoader, mediaGroup);
+};
+
+/**
+ * Returns a function to be called when the media track changes. It performs a
+ * destructive reset of the SegmentLoader to ensure we start loading as close to
+ * currentTime as possible.
+ *
+ * @param {String} type
+ *        MediaGroup type
+ * @param {Object} settings
+ *        Object containing required information for media groups
+ * @return {Function}
+ *         Handler for a destructive reset of SegmentLoader when the active media
+ *         track changes.
+ * @function onTrackChanged
+ */
+const onTrackChanged = (type, settings) => () => {
+  const {
+    segmentLoaders: {
+      [type]: segmentLoader,
+      main: mainSegmentLoader
+    },
+    mediaGroups: { [type]: mediaGroup }
+  } = settings;
+  const activeTrack = mediaGroup.activeTrack();
+  const activeGroup = mediaGroup.activeGroup(activeTrack);
+
+  console.log('>>> onTrackChanged', type);
+
+  stopLoaders(segmentLoader, mediaGroup);
+
+  if (!activeGroup) {
+    // there is no group active so we do not want to restart loaders
+    return;
+  }
+
+  console.log('>>> activeTrack', activeTrack.id);
+  console.log('>>> activeGroup', activeGroup.id);
+
+  if (!activeGroup.playlistLoader) {
+    // when switching from demuxed audio/video to muxed audio/video (noted by no playlist
+    // loader for the audio group), we want to do a destructive reset of the main segment
+    // loader and not restart the audio loaders
+    mainSegmentLoader.resetEverything();
+    return;
+  }
+
+  // destructive reset
+  segmentLoader.resetEverything();
+
+  startLoaders(segmentLoader, activeGroup.playlistLoader, mediaGroup);
+};
+
+const onError = {
+  /**
+   * Returns a function to be called when a SegmentLoader or PlaylistLoader encounters
+   * an error.
+   *
+   * @param {String} type
+   *        MediaGroup type
+   * @param {Object} settings
+   *        Object containing required information for media groups
+   * @return {Function}
+   *         Error handler. Logs warning to console and switches back to default audio
+   *         track.
+   * @function onError.AUDIO
+   */
+  AUDIO: (type, settings) => () => {
+    const {
+      segmentLoaders: { [type]: segmentLoader},
+      mediaGroups: { [type]: mediaGroup },
+      blacklistCurrentPlaylist
+    } = settings;
+
+    segmentLoader.abort();
+
+    stopLoaders(segmentLoader, mediaGroup);
+
+    // switch back to default audio track
+    const activeTrack = mediaGroup.activeTrack();
+    const activeGroup = mediaGroup.activeGroup();
+    const id = (activeGroup.filter(group => group.default)[0] || activeGroup[0]).id;
+    const defaultTrack = mediaGroup.tracks[id];
+
+    if (activeTrack === defaultTrack) {
+      // Default track encountered an error. All we can do now is blacklist the current
+      // rendition and hope another will switch audio groups
+      blacklistCurrentPlaylist({
+        message: 'Problem encountered loading the default audio track.'
+      });
+      return;
+    }
+
+    videojs.log.warn('Problem encountered loading the alternate audio track.' +
+                       'Switching back to default.');
+
+    for (let trackId in mediaGroup.tracks) {
+      mediaGroup.tracks[trackId].enabled = mediaGroup.tracks[trackId] === defaultTrack;
+    }
+
+    mediaGroup.onTrackChanged();
+  },
+  /**
+   * Returns a function to be called when a SegmentLoader or PlaylistLoader encounters
+   * an error.
+   *
+   * @param {String} type
+   *        MediaGroup type
+   * @param {Object} settings
+   *        Object containing required information for media groups
+   * @return {Function}
+   *         Error handler. Logs warning to console and disables the active subtitle track
+   * @function onError.SUBTITLES
+   */
+  SUBTITLES: (type, settings) => () => {
+    const {
+      segmentLoaders: { [type]: segmentLoader},
+      mediaGroups: { [type]: mediaGroup }
+    } = settings;
+
+    videojs.log.warn('Problem encountered loading the subtitle track.' +
+                     'Disabling subtitle track.');
+    segmentLoader.abort();
+
+    stopLoaders(segmentLoader, mediaGroup);
+
+    const track = mediaGroup.activeTrack();
+
+    if (track) {
+      track.mode = 'disabled';
+    }
+
+    mediaGroup.onTrackChanged();
+  }
+};
+
 const setupListeners = {
   /**
    * Setup event listeners for audio playlist loader
+   *
+   * @param {String} type
+   *        MediaGroup type
+   * @param {PlaylistLoader|null} playlistLoader
+   *        PlaylistLoader to register listeners on
+   * @param {Object} settings
+   *        Object containing required information for media groups
+   * @function setupListeners.AUDIO
    */
   AUDIO: (type, playlistLoader, settings) => {
     if (!playlistLoader) {
@@ -49,27 +278,32 @@ const setupListeners = {
       segmentLoader.playlist(playlistLoader.media(), requestOptions);
     });
 
-    playlistLoader.on('error', () => {
-      videojs.log.warn('Problem encountered loading the alternate audio track' +
-                         '. Switching back to default.');
-      segmentLoader.abort();
-    });
+    playlistLoader.on('error', onError[type](type, settings));
   },
   /**
    * Setup event listeners for subtitle playlist loader
+   *
+   * @param {String} type
+   *        MediaGroup type
+   * @param {PlaylistLoader|null} playlistLoader
+   *        PlaylistLoader to register listeners on
+   * @param {Object} settings
+   *        Object containing required information for media groups
+   * @function setupListeners.SUBTITLES
    */
   SUBTITLES: (type, playlistLoader, settings) => {
     const {
       tech,
       requestOptions,
-      segmentLoaders: { [type]: segmentLoader }
+      segmentLoaders: { [type]: segmentLoader },
+      mediaGroups: { [type]: mediaGroup }
     } = settings;
 
     playlistLoader.on('loadedmetadata', () => {
       const media = playlistLoader.media();
 
       segmentLoader.playlist(media, requestOptions);
-      segmentLoader.track(masterPlaylistController.activeSubtitleTrack_());
+      segmentLoader.track(mediaGroup.activeTrack());
 
       // if the video is already playing, or if this isn't a live video and preload
       // permits, start downloading segments
@@ -79,23 +313,37 @@ const setupListeners = {
     });
 
     playlistLoader.on('loadedplaylist', () => {
+      const currentTrack = segmentLoader.track();
+      const activeTrack = mediaGroup.activeTrack();
+
+      if (currentTrack !== activeTrack) {
+        // if this is causing a track change, reset the segment loader first
+        segmentLoader.track(activeTrack);
+        segmentLoader.resetEverything();
+      }
+
       segmentLoader.playlist(playlistLoader.media(), requestOptions);
     });
 
-    playlistLoader.on('error', () => {
-      // masterPlaylistController.handleSubtitleError_();
-    });
+    playlistLoader.on('error', onError[type](type, settings));
   }
 };
 
 const initialize = {
   /**
-   * Setup playlist loaders and tracks for audio groups
+   * Setup PlaylistLoaders and AudioTracks for the audio groups
+   *
+   * @param {String} type
+   *        MediaGroup type
+   * @param {Object} settings
+   *        Object containing required information for media groups
+   * @function initialize.AUDIO
    */
-  AUDIO: (type, settings) => {
+  'AUDIO': (type, settings) => {
     const {
       mode,
       hls,
+      segmentLoaders: { [type]: segmentLoader },
       requestOptions: { withCredentials },
       master: { mediaGroups: masterGroups},
       mediaGroups: {
@@ -154,14 +402,24 @@ const initialize = {
         }
       }
     }
+
+    // setup single error event handler for the segment loader
+    segmentLoader.on('error', onError[type](type, settings));
   },
   /**
-   * Setup playlist loaders and tracks for subtitle groups
+   * Setup PlaylistLoaders and TextTracks for the subtitle groups
+   *
+   * @param {String} type
+   *        MediaGroup type
+   * @param {Object} settings
+   *        Object containing required information for media groups
+   * @function initialize.SUBTITLES
    */
-  SUBTITLES: (type, settings) => {
+  'SUBTITLES': (type, settings) => {
     const {
       tech,
       hls,
+      segmentLoaders: { [type]: segmentLoader },
       requestOptions: { withCredentials },
       master: { mediaGroups: masterGroups},
       mediaGroups: {
@@ -208,9 +466,18 @@ const initialize = {
         }
       }
     }
+
+    // setup single error event handler for the segment loader
+    segmentLoader.on('error', onError[type](type, settings));
   },
   /**
-   * Setup tracks for closed-caption groups
+   * Setup TextTracks for the closed-caption groups
+   *
+   * @param {String} type
+   *        MediaGroup type
+   * @param {Object} settings
+   *        Object containing required information for media groups
+   * @function initialize['CLOSED-CAPTIONS']
    */
   'CLOSED-CAPTIONS': (type, settings) => {
     const {
@@ -238,6 +505,8 @@ const initialize = {
           continue;
         }
 
+        // No PlaylistLoader is required for Closed-Captions because the captions are
+        // embedded within the video stream
         groups[masterGroup].push(videojs.mergeOptions({ id: label }, properties));
 
         if (typeof tracks[label] === 'undefined') {
@@ -258,6 +527,17 @@ const initialize = {
 
 /**
  * Returns a function used to get the active group of type provided
+ *
+ * @param {String} type
+ *        MediaGroup type
+ * @param {Object} settings
+ *        Object containing required information for media groups
+ * @return {Function}
+ *         Function that returns the active media group for the provided type. Takes an
+ *         optional paramter {TextTrack} track. If no track is provided, a list of all
+ *         variants in the group, otherwise the variant corresponding to the provided
+ *         track is returned.
+ * @function activeGroup
  */
 const activeGroup = (type, settings) => (track) => {
   const {
@@ -294,10 +574,19 @@ const activeGroup = (type, settings) => (track) => {
 
 const activeTrack = {
   /**
-   * Returns a function used to get the active audio track
+   * Returns a function used to get the active track of type provided
+   *
+   * @param {String} type
+   *        MediaGroup type
+   * @param {Object} settings
+   *        Object containing required information for media groups
+   * @return {Function}
+   *         Function that returns the active media track for the provided type. Returns
+   *         null if no track is active
+   * @function activeTrack.AUDIO
    */
   AUDIO: (type, settings) => () => {
-    const { mediaGroups: [type]: { tracks } } = settings;
+    const { mediaGroups: { [type]: { tracks } } } = settings;
 
     for (let id in tracks) {
       if (tracks[id].enabled) {
@@ -308,10 +597,19 @@ const activeTrack = {
     return null;
   },
   /**
-   * Returns a function used to get the active audio track
+   * Returns a function used to get the active track of type provided
+   *
+   * @param {String} type
+   *        MediaGroup type
+   * @param {Object} settings
+   *        Object containing required information for media groups
+   * @return {Function}
+   *         Function that returns the active media track for the provided type. Returns
+   *         null if no track is active
+   * @function activeTrack.SUBTITLES
    */
   SUBTITLES: (type, settings) => () => {
-    const { mediaGroups: { [type]: { tracks } } = settings;
+    const { mediaGroups: { [type]: { tracks } } } = settings;
 
     for (let id in tracks) {
       if (tracks[id].mode === 'showing') {
@@ -323,87 +621,39 @@ const activeTrack = {
   }
 };
 
-const stopLoaders = (segmentLoader, mediaGroup) => {
-  segmentLoader.pause();
-
-  if (mediaGroup && mediaGroup.activePlaylistLoader) {
-    mediaGroup.activePlaylistLoader.pause();
-    mediaGroup.activePlaylistLoader = null;
-  }
-};
-
-const startLoaders = (segmentLoader, playlistLoader, mediaGroup) => {
-  mediaGroup.activePlaylistLoader = playlistLoader;
-
-  if (playlistLoader.media()) {
-    // only begin loading in the segment loader if the playlist loader has loaded its
-    // media
-    segmentLoader.load();
-  }
-
-  playlistLoader.load();
-}
-
 /**
- * Non-destructive resync of the segmentLoaders to prepare to continue appending new
- * audio data at the end of the current buffered region
+ * Initialize PlaylistLoaders and Tracks for media groups (Audio, Subtitles,
+ * Closed-Captions) specified in the master manifest.
+ *
+ * @param {Object} settings
+ *        Object containing required information for setting up the media groups
+ * @param {SegmentLoader} settings.segmentLoaders.AUDIO
+ *        Audio segment loader
+ * @param {SegmentLoader} settings.segmentLoaders.SUBTITLES
+ *        Subtitle segment loader
+ * @param {SegmentLoader} settings.segmentLoaders.main
+ *        Main segment loader
+ * @param {Tech} settings.tech
+ *        The tech of the player
+ * @param {Object} settings.requestOptions
+ *        XHR request options used by the segment loaders
+ * @param {PlaylistLoader} settings.masterPlaylistLoader
+ *        PlaylistLoader for the master source
+ * @param {String} mode
+ *        Mode of the hls source handler. Can be 'auto', 'html5', or 'flash'
+ * @param {HlsHandler} settings.hls
+ *        HLS SourceHandler
+ * @param {Object} settings.master
+ *        The parsed master manifest
+ * @param {Object} settings.mediaGroups
+ *        Object to store the loaders, tracks, and utility methods for each media group
+ * @param {Function} settings.blacklistCurrentPlaylist
+ *        Blacklists the current rendition and forces a rendition switch.
+ * @function initializeMediaGroups
  */
-const onGroupChanged = (type, settings) => () => {
-  const {
-    segmentLoaders: { [type]: segmentLoader },
-    mediaGroups: { [type]: mediaGroup }
-  } = settings;
-  const activeTrack = mediaGroup.activeTrack();
-  const activeGroup = mediaGroup.activeGroup(activeTrack);
-
-  stopLoaders(segmentLoader, mediaGroup);
-
-  if (!activeGroup) {
-    // there is no group active so we do not want to restart loaders
-    return;
-  }
-
-  // Non-destructive resync
-  segmentLoader.resyncLoader();
-
-  startLoaders(segmentLoader, activeGroup.playlistLoader, mediaGroup);
-};
-
-const onTrackChanged = (type, settings) => () => {
-  const {
-    segmentLoaders: {
-      [type]: segmentLoader,
-      main: mainSegmentLoader
-    },
-    mediaGroups: { [type]: mediaGroup }
-  } = settings;
-  const activeTrack = mediaGroup.activeTrack();
-  const activeGroup = mediaGroup.activeGroup(activeTrack);
-
-  stopLoaders(segmentLoader, mediaGroup);
-
-  if (!activeGroup) {
-    // there is no group active so we do not want to restart loaders
-    return;
-  }
-
-  if (!activeGroup.playlistLoader) {
-    // when switching from demuxed audio/video to muxed audio/video (noted by no playlist
-    // loader for the audio group), we want to do a destructive reset of the main segment
-    // loader and not restart the audio loaders
-    mainSegmentLoader.resetEverything();
-    return;
-  }
-
-  // destructive reset
-  segmentLoader.resetEverything();
-
-  startLoaders(segmentLoader, activeGroup.playlistLoader, mediaGroup);
-};
-
 const initializeMediaGroups = (settings) => {
   ['AUDIO', 'SUBTITLES', 'CLOSED-CAPTIONS'].forEach((type) => {
-    initialize[type](type, settings)
+    initialize[type](type, settings);
   });
 
   const {

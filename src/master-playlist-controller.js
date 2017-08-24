@@ -43,33 +43,6 @@ const sumLoaderStat = function(stat) {
 };
 
 /**
- * determine if an object a is differnt from
- * and object b. both only having one dimensional
- * properties
- *
- * @param {Object} a object one
- * @param {Object} b object two
- * @return {Boolean} if the object has changed or not
- */
-const objectChanged = function(a, b) {
-  if (typeof a !== typeof b) {
-    return true;
-  }
-  // if we have a different number of elements
-  // something has changed
-  if (Object.keys(a).length !== Object.keys(b).length) {
-    return true;
-  }
-
-  for (let prop in a) {
-    if (a[prop] !== b[prop]) {
-      return true;
-    }
-  }
-  return false;
-};
-
-/**
  * Replace codecs in the codec string with the old apple-style `avc1.<dd>.<dd>` to the
  * standard `avc1.<hhhhhh>`.
  *
@@ -396,16 +369,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
         mode: this.mode_,
         hls: this.hls_,
         master: this.master(),
-        mediaGroups: this.mediaGroups_
+        mediaGroups: this.mediaGroups_,
+        blacklistCurrentPlaylist: this.blacklistCurrentPlaylist.bind(this)
       };
 
       initializeMediaGroups(mediaGroupSettings);
-
-      // let audioGroup = this.activeAudioGroup();
-      // let groupId = (audioGroup.filter(group => group.default)[0] || audioGroup[0]).id;
-
-      // this.audioGroups_.tracks[groupId].enabled = true;
-      this.audioTrackChanged();
 
       this.triggerPresenceUsage_(this.master(), media);
 
@@ -417,7 +385,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
       this.setupFirstPlay();
 
-      this.trigger('audioupdate');
       this.trigger('selectedinitialmedia');
     });
 
@@ -495,8 +462,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.on('mediachange', () => {
       let media = this.masterPlaylistLoader_.media();
       let requestTimeout = (this.masterPlaylistLoader_.targetDuration * 1.5) * 1000;
-      let activeAudioGroup;
-      let activeTrack;
 
       // If we don't have any more available playlists, we don't want to
       // timeout the request.
@@ -512,11 +477,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       // on `loadedplaylist`
       this.mainSegmentLoader_.playlist(media, this.requestOptions_);
       this.mainSegmentLoader_.load();
-
-      // if the audio group has changed, a new audio track has to be
-      // enabled
-      this.audioGroupChanged();
-      this.setupSubtitles();
 
       this.tech_.trigger({
         type: 'mediachange',
@@ -665,15 +625,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.audioSegmentLoader_.on('ended', () => {
       this.onEndOfStream();
     });
-
-    this.audioSegmentLoader_.on('error', () => {
-      videojs.log.warn('Problem encountered with the current alternate audio track' +
-                       '. Switching back to default.');
-      this.audioSegmentLoader_.abort();
-      this.audioTrackChanged();
-    });
-
-    this.subtitleSegmentLoader_.on('error', this.handleSubtitleError_.bind(this));
   }
 
   mediaSecondsLoaded_() {
@@ -686,266 +637,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
    */
   load() {
     this.mainSegmentLoader_.load();
-    if (this.audioGroups_.activePlaylistLoader) {
+    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
       this.audioSegmentLoader_.load();
     }
-    if (this.subtitleGroups_.activePlaylistLoader) {
+    if (this.mediaGroups_.SUBTITLES.activePlaylistLoader) {
       this.subtitleSegmentLoader_.load();
     }
-  }
-
-  /**
-   * Returns the audio group for the currently active primary
-   * media playlist.
-   */
-  activeAudioGroup(activeTrack) {
-    let videoPlaylist = this.masterPlaylistLoader_.media();
-    let result;
-
-    if (!videoPlaylist) {
-      return null;
-    }
-
-    if (videoPlaylist.attributes.AUDIO) {
-      result = this.audioGroups_.groups[videoPlaylist.attributes.AUDIO];
-    }
-
-    result = result || this.audioGroups_.groups.main;
-
-    if (!activeTrack) {
-      return result
-    }
-
-    return result.reduce((final, props) => {
-      return props.id === activeTrack.id ? props : final;
-    }, null);
-  }
-
-  /**
-   * Returns the subtitle group for the currently active primary
-   * media playlist.
-   */
-  activeSubtitleGroup_(activeTrack) {
-    let videoPlaylist = this.masterPlaylistLoader_.media();
-    let result;
-
-    if (!videoPlaylist) {
-      return null;
-    }
-
-    if (videoPlaylist.attributes.SUBTITLES) {
-      result = this.subtitleGroups_.groups[videoPlaylist.attributes.SUBTITLES];
-    }
-
-    result = result || this.subtitleGroups_.groups.main;
-  }
-
-  activeSubtitleTrack_() {
-    for (let trackName in this.subtitleGroups_.tracks) {
-      if (this.subtitleGroups_.tracks[trackName].mode === 'showing') {
-        return this.subtitleGroups_.tracks[trackName];
-      }
-    }
-
-    return null;
-  }
-
-  handleSubtitleError_() {
-    videojs.log.warn('Problem encountered loading the subtitle track' +
-                     '. Switching back to default.');
-
-    this.subtitleSegmentLoader_.abort();
-
-    let track = this.activeSubtitleTrack_();
-
-    if (track) {
-      track.mode = 'disabled';
-    }
-
-    this.setupSubtitles();
-  }
-
-  /**
-   * Determine the correct audio renditions based on the active
-   * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
-   * necessary. This method is only called when the media-group changes
-   * and performs non-destructive 'resync' of the SegmentLoader(s) since
-   * the playlist has likely changed
-   */
-  audioGroupChanged() {
-    this.stopAudioLoaders_();
-    this.resyncAudioLoaders_();
-  }
-
-  /**
-   * Determine the correct audio rendition based on the active
-   * AudioTrack and initialize a PlaylistLoader and SegmentLoader if
-   * necessary. This method is called once automatically before
-   * playback begins to enable the default audio track and should be
-   * invoked again if the track is changed. Performs destructive 'reset'
-   * on the SegmentLoaders(s) to ensure we start loading audio as
-   * close to currentTime as possible
-   */
-  audioTrackChanged() {
-    this.stopAudioLoaders_();
-    this.resetAudioLoaders_();
-  }
-
-  /**
-   * Returns the currently active track or the default track if none
-   * are active
-   */
-  getActiveAudioTrack_() {
-    // determine whether seperate loaders are required for the audio
-    // rendition
-    let track;
-
-    for (let trackName in this.audioGroups_.tracks) {
-      if (this.audioGroups_.tracks[trackName].enabled) {
-        track = this.audioGroups_.tracks[trackName];
-        break;
-      }
-    }
-
-    if (!track) {
-      return null;
-    }
-
-    if (!track) {
-      for (let trackName in this.audioGroups_.tracks) {
-        if (this.audioGroups_.tracks[trackName].default) {
-          track = this.audioGroups_.tracks[trackName];
-          break;
-        }
-      }
-
-      track = track || this.audioGroups_.tracks.main;
-      track.enabled = true;
-    }
-
-    return track;
-  }
-
-  /**
-   * Destroy the PlaylistLoader and pause the SegmentLoader specifically
-   * for audio when switching audio tracks
-   */
-  stopAudioLoaders_() {
-    // stop playlist and segment loading for audio
-    this.audioSegmentLoader_.pause();
-
-    if (this.audioGroups_.activePlaylistLoader) {
-      this.audioGroups_.activePlaylistLoader.pause();
-      this.audioGroups_.activePlaylistLoader = null;
-    }
-  }
-
-  /**
-   * Destructive reset of the mainSegmentLoader (when audio is muxed)
-   * or audioSegmentLoader (when audio is demuxed) to prepare them
-   * to start loading new data right at currentTime
-   */
-  resetAudioLoaders_() {
-    const activeTrack = this.getActiveAudioTrack_();
-
-    if (!activeTrack) {
-      // There should always be an enabled audio track, but because the `change` event is
-      // triggered multiple times when selecting a new audio track, we want to wait until
-      // a track is enabled before continuing.
-      return
-    }
-
-    const activeGroup = this.activeAudioGroup(activeTrack);
-
-
-    if (!activeGroup.resolvedUri) {
-      this.mainSegmentLoader_.resetEverything();
-      return;
-    }
-
-    this.audioSegmentLoader_.resetEverything();
-    this.setupAudioPlaylistLoader_(activeGroup.playlistLoader);
-  }
-
-  /**
-   * Non-destructive resync of the audioSegmentLoader (when audio
-   * is demuxed) to prepare to continue appending new audio data
-   * at the end of the current buffered region
-   */
-  resyncAudioLoaders_() {
-    const activeTrack = this.getActiveAudioTrack_();
-    const activeGroup = this.activeAudioGroup(activeTrack);
-
-    if (!activeGroup.resolvedUri) {
-      return;
-    }
-
-    this.audioSegmentLoader_.resyncLoader();
-    this.setupAudioPlaylistLoader_(activeGroup.playlistLoader);
-  }
-
-  /**
-   * Setup a new audioPlaylistLoader and start the audioSegmentLoader
-   * to begin loading demuxed audio
-   */
-  setupAudioPlaylistLoader_(newPlaylistLoader) {
-    this.audioGroups_.activePlaylistLoader = newPlaylistLoader;
-
-    if (!newPlaylistLoader) {
-      // audio is muxed with video
-      return;
-    }
-
-    if (newPlaylistLoader.media()) {
-      // only begin segment loader loading if the playlistloader has loaded a media
-      this.audioSegmentLoader_.load();
-    }
-
-    newPlaylistLoader.load();
-  }
-
-  /**
-   * Determine the correct subtitle playlist based on the active
-   * SubtitleTrack and initialize a PlaylistLoader and SegmentLoader if
-   * necessary. This method is called once automatically before
-   * playback begins to enable the default subtitle track and should be
-   * invoked again if the track is changed.
-   */
-  setupSubtitles() {
-    const activePlaylistLoader = this.subtitleGroups_.activePlaylistLoader;
-    const subtitleGroup = this.activeSubtitleGroup_();
-    const track = this.activeSubtitleTrack_();
-
-    this.subtitleSegmentLoader_.pause();
-
-    if (activePlaylistLoader) {
-      activePlaylistLoader.pause();
-    }
-
-    if (!track) {
-      this.subtitleGroups_.activePlaylistLoader = null;
-      return;
-    }
-
-    let properties = subtitleGroup.filter((subtitleProperties) => {
-      return subtitleProperties.id === track.id;
-    })[0];
-
-    const newPlaylistLoader = properties.playlistLoader;
-
-    this.subtitleGroups_.activePlaylistLoader = newPlaylistLoader;
-
-    if (!newPlaylistLoader.media() ||
-        newPlaylistLoader.media().resolvedUri !== properties.resolvedUri) {
-
-      // reset the segment loader only when the subtitle playlist is changed instead of
-      // every time setupSubtitles is called since switching subtitle tracks fires
-      // multiple `change` events on the TextTrackList
-      this.subtitleSegmentLoader_.resetEverything();
-    }
-
-    this.subtitleSegmentLoader_.load();
-    newPlaylistLoader.load();
   }
 
   /**
@@ -1066,7 +763,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   onEndOfStream() {
     let isEndOfStream = this.mainSegmentLoader_.ended_;
 
-    if (this.audioGroups_.activePlaylistLoader) {
+    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
       // if the audio playlist loader exists, then alternate audio is active, so we need
       // to wait for both the main and audio segment loaders to call endOfStream
       isEndOfStream = isEndOfStream && this.audioSegmentLoader_.ended_;
@@ -1177,10 +874,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
    */
   pauseLoading() {
     this.mainSegmentLoader_.pause();
-    if (this.audioGroups_.activePlaylistLoader) {
+    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
       this.audioSegmentLoader_.pause();
     }
-    if (this.subtitleGroups_.activePlaylistLoader) {
+    if (this.mediaGroups_.SUBTITLES.activePlaylistLoader) {
       this.subtitleSegmentLoader_.pause();
     }
   }
@@ -1221,11 +918,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // location
     this.mainSegmentLoader_.resetEverything();
     this.mainSegmentLoader_.abort();
-    if (this.audioGroups_.activePlaylistLoader) {
+    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
       this.audioSegmentLoader_.resetEverything();
       this.audioSegmentLoader_.abort();
     }
-    if (this.subtitleGroups_.activePlaylistLoader) {
+    if (this.mediaGroups_.SUBTITLES.activePlaylistLoader) {
       this.subtitleSegmentLoader_.resetEverything();
       this.subtitleSegmentLoader_.abort();
     }
@@ -1287,8 +984,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    if (this.audioGroups_.activePlaylistLoader) {
-      media = this.audioGroups_.activePlaylistLoader.media();
+    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
+      media = this.mediaGroups_.AUDIO.activePlaylistLoader.media();
       expired = this.syncController_.getExpiredTime(media, this.mediaSource.duration);
 
       if (expired === null) {
@@ -1360,17 +1057,16 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.masterPlaylistLoader_.dispose();
     this.mainSegmentLoader_.dispose();
 
-    for (let groupLabel in this.audioGroups_.groups) {
-      if (this.audioGroups_.groups[groupLabel].playlistLoader) {
-        this.audioGroups_.groups[groupLabel].playlistLoader.dispose();
-      }
-    }
+    ['AUDIO', 'SUBTITLES'].forEach((type) => {
+      const groups = this.mediaGroups_[type].groups;
 
-    for (let groupLabel in this.subtitleGroups_.groups) {
-      if (this.subtitleGroups_.groups[groupLabel].playlistLoader) {
-        this.subtitleGroups_.groups[groupLabel].playlistLoader.dispose();
+      for (let id in groups) {
+        if (groups[id].playlistLoader) {
+          groups[id].playlistLoader.dispose();
+        }
       }
-    }
+    });
+
     this.audioSegmentLoader_.dispose();
     this.subtitleSegmentLoader_.dispose();
   }
