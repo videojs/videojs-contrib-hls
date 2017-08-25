@@ -57,46 +57,29 @@ export default class SourceUpdater {
   }
 
   appendToBufferInfoQueue_(timestampOffset, duration, byteLength) {
-    const timestamOffset = this.sourceBuffer_.timestampOffset;
+    const timestamOffset = this.timestampOffset_;
     const bufferedTimeRanges = this.sourceBuffer_.buffered;
-    const bufferedEnd = bufferedTimeRanges.length ? bufferedTimeRanges.end(bufferedTimeRanges.length - 1) : 0;
+    const bufferedEnd = bufferedTimeRanges.length ?
+        bufferedTimeRanges.end(bufferedTimeRanges.length - 1) : 0;
 
     const bufferItem = {
-      bufferedEnd,
-      timestampOffset,
+      start: bufferedEnd + timestampOffset,
       duration,
       byteLength,
       removed: false
     };
 
     this.bufferItemsList_.push(bufferItem);
-
-    console.log('appendToBufferInfoQueue_', this.bufferItemsList_);
-
-    console.log('totalBytesInBuffer:', this.totalBytesInBuffer());
   }
 
   removeFromBufferInfoQueue_(start, end) {
 
-    console.log('removeFromBufferInfoQueue_', 'start:', start, 'end:', end);
-
-    this.sourceBuffer_.buffered.length && console.log('buffered:', this.sourceBuffer_.buffered.start(0), this.sourceBuffer_.buffered.end(0))
-
-    let offset = null;
-    let walkThroughBuffer;
     this.bufferItemsList_.forEach((bufferItem) => {
 
-      if (offset !== bufferItem.timestampOffset) {
-        offset = bufferItem.timestampOffset;
-        walkThroughBuffer = bufferItem.bufferedEnd + offset;
+      if (start <= bufferItem.start
+        && end >= bufferItem.start + bufferItem.duration) {
+        bufferItem.removed = true; // flag for removal
       }
-
-      if (start <= walkThroughBuffer
-        && end >= walkThroughBuffer + bufferItem.duration) {
-        bufferItem.removed = true;
-      }
-
-      walkThroughBuffer += bufferItem.duration;
 
     });
 
@@ -104,10 +87,6 @@ export default class SourceUpdater {
       this.bufferItemsList_.filter(
         (bufferItem) => ! bufferItem.removed
       );
-
-    console.log('removeFromBufferInfoQueue_', this.bufferItemsList_);
-
-    console.log('totalBytesInBuffer:', this.totalBytesInBuffer());
   }
 
   totalBytesInBuffer() {
@@ -174,9 +153,7 @@ export default class SourceUpdater {
     if (this.processedAppend_) {
       this.queueCallback_(() => {
         this.sourceBuffer_.remove(start, end);
-
         this.removeFromBufferInfoQueue_(start, end);
-
       }, noop);
     }
   }
@@ -196,8 +173,6 @@ export default class SourceUpdater {
    * @return {Number} the timestamp offset
    */
   timestampOffset(offset) {
-
-    console.log('timestampOffset:', offset);
 
     if (typeof offset !== 'undefined') {
       this.queueCallback_(() => {
