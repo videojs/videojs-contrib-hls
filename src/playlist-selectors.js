@@ -437,6 +437,8 @@ export const minRebufferMaxBandwidthPlaylistFilter = function(settings) {
   return rebufferingEstimates[0] || null;
 };
 
+// FIXME: adapt this to the other Selectors interface/signature
+
 /**
  * Chooses the appropriate media playlist, which in this case is the lowest bitrate
  * one with video.  If no renditions with video exist, return the lowest audio rendition.
