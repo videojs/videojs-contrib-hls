@@ -30,10 +30,6 @@ const stopLoaders = (segmentLoader, mediaGroup) => {
   segmentLoader.abort();
   segmentLoader.pause();
 
-  if (segmentLoader.track) {
-    segmentLoader.track(null);
-  }
-
   if (mediaGroup && mediaGroup.activePlaylistLoader) {
     console.log('>>> stopping loader for', mediaGroup.activePlaylistLoader.media().resolvedUri);
     mediaGroup.activePlaylistLoader.pause();
@@ -58,6 +54,7 @@ const startLoaders = (segmentLoader, playlistLoader, mediaGroup) => {
   if (playlistLoader.media()) {
     // only begin loading in the segment loader if the playlist loader has loaded its
     // media
+    segmentLoader.playlist(playlistLoader.media());
     segmentLoader.load();
     console.log('>>> starting loader for', playlistLoader.media().resolvedUri);
   }
@@ -128,6 +125,7 @@ const onTrackChanged = (type, settings) => () => {
   } = settings;
   const activeTrack = mediaGroup.activeTrack();
   const activeGroup = mediaGroup.activeGroup(activeTrack);
+  const previousActiveLoader = mediaGroup.activePlaylistLoader;
 
   console.log('>>> onTrackChanged', type);
 
@@ -138,15 +136,24 @@ const onTrackChanged = (type, settings) => () => {
     return;
   }
 
-  console.log('>>> activeTrack', activeTrack.id);
-  console.log('>>> activeGroup', activeGroup.id);
-
   if (!activeGroup.playlistLoader) {
     // when switching from demuxed audio/video to muxed audio/video (noted by no playlist
     // loader for the audio group), we want to do a destructive reset of the main segment
     // loader and not restart the audio loaders
     mainSegmentLoader.resetEverything();
     return;
+  }
+
+  if (previousActiveLoader === activeGroup.playlistLoader) {
+    // Nothing has actually changed. This can happen because track change events can fire
+    // multiple times for a "single" change. One for enabling the new active track, and
+    // one for disabling the track that was active
+    startLoaders(segmentLoader, activeGroup.playlistLoader, mediaGroup);
+  }
+
+  if (segmentLoader.track) {
+    // For WebVTT, set the new text track in the segmentloader
+    segmentLoader.track(activeTrack);
   }
 
   // destructive reset
@@ -276,6 +283,13 @@ const setupListeners = {
 
     playlistLoader.on('loadedplaylist', () => {
       segmentLoader.playlist(playlistLoader.media(), requestOptions);
+
+      // If the player isn't paused, ensure that the segment loader is running,
+      // as it is possible that it was temporarily stopped while waiting for
+      // a playlist (e.g., in case the playlist errored and we re-requested it).
+      if (!tech.paused()) {
+        segmentLoader.load();
+      }
     });
 
     playlistLoader.on('error', onError[type](type, settings));
@@ -313,16 +327,14 @@ const setupListeners = {
     });
 
     playlistLoader.on('loadedplaylist', () => {
-      const currentTrack = segmentLoader.track();
-      const activeTrack = mediaGroup.activeTrack();
-
-      if (currentTrack !== activeTrack) {
-        // if this is causing a track change, reset the segment loader first
-        segmentLoader.track(activeTrack);
-        segmentLoader.resetEverything();
-      }
-
       segmentLoader.playlist(playlistLoader.media(), requestOptions);
+
+      // If the player isn't paused, ensure that the segment loader is running,
+      // as it is possible that it was temporarily stopped while waiting for
+      // a playlist (e.g., in case the playlist errored and we re-requested it).
+      if (!tech.paused()) {
+        segmentLoader.load();
+      }
     });
 
     playlistLoader.on('error', onError[type](type, settings));
