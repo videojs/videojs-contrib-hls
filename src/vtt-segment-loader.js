@@ -130,11 +130,6 @@ export default class VTTSegmentLoader extends SegmentLoader {
 
     this.subtitlesTrack_ = track;
 
-    console.log('*******');
-    console.log('>>> setting subtitle track', track);
-    console.trace();
-    console.log('*******');
-
     // if we were unpaused but waiting for a sourceUpdater, start
     // buffering now
     if (this.state === 'INIT' && this.couldBeginLoading_()) {

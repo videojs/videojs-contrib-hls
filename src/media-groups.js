@@ -31,7 +31,6 @@ const stopLoaders = (segmentLoader, mediaGroup) => {
   segmentLoader.pause();
 
   if (mediaGroup && mediaGroup.activePlaylistLoader) {
-    console.log('>>> stopping loader for', mediaGroup.activePlaylistLoader.media().resolvedUri);
     mediaGroup.activePlaylistLoader.pause();
     mediaGroup.activePlaylistLoader = null;
   }
@@ -56,7 +55,6 @@ const startLoaders = (segmentLoader, playlistLoader, mediaGroup) => {
     // media
     segmentLoader.playlist(playlistLoader.media());
     segmentLoader.load();
-    console.log('>>> starting loader for', playlistLoader.media().resolvedUri);
   }
 
   playlistLoader.load();
@@ -83,17 +81,12 @@ const onGroupChanged = (type, settings) => () => {
   const activeTrack = mediaGroup.activeTrack();
   const activeGroup = mediaGroup.activeGroup(activeTrack);
 
-  console.log('>>> onGroupChanged', type);
-
   stopLoaders(segmentLoader, mediaGroup);
 
   if (!activeGroup) {
     // there is no group active so we do not want to restart loaders
     return;
   }
-
-  console.log('>>> activeTrack', activeTrack.id);
-  console.log('>>> activeGroup', activeGroup.id);
 
   // Non-destructive resync
   segmentLoader.resyncLoader();
@@ -126,8 +119,6 @@ const onTrackChanged = (type, settings) => () => {
   const activeTrack = mediaGroup.activeTrack();
   const activeGroup = mediaGroup.activeGroup(activeTrack);
   const previousActiveLoader = mediaGroup.activePlaylistLoader;
-
-  console.log('>>> onTrackChanged', type);
 
   stopLoaders(segmentLoader, mediaGroup);
 
