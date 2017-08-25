@@ -1,4 +1,5 @@
 export default {
+  BACK_BUFFER_LENGTH: 30,
   GOAL_BUFFER_LENGTH: 30,
   MAX_GOAL_BUFFER_LENGTH: 60,
   GOAL_BUFFER_LENGTH_RATE: 1,
@@ -8,5 +9,6 @@ export default {
   // How much of the buffer must be filled before we consider upswitching
   BUFFER_LOW_WATER_LINE: 0,
   MAX_BUFFER_LOW_WATER_LINE: 30,
-  BUFFER_LOW_WATER_LINE_RATE: 1
+  BUFFER_LOW_WATER_LINE_RATE: 1,
+  MAX_SOURCE_BUFFER_OCCUPATION_BYTES: 128 * 1e6 // per SegmentLoader / SourceUpdater
 };
