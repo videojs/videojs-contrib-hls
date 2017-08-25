@@ -595,9 +595,34 @@ export default class SegmentLoader extends videojs.EventTarget {
       lastBufferedEnd = buffered.end(buffered.length - 1);
     }
 
-    let bufferedTime = Math.max(0, lastBufferedEnd - currentTime);
+    const bufferedBytes = this.sourceUpdater_.totalBytesInBuffer();
+    const bufferedTime = Math.max(0, lastBufferedEnd - currentTime);
 
     if (!playlist.segments.length) {
+      return null;
+    }
+
+    console.log('Total Mbytes in SourceBuffer:', (bufferedBytes / 1e6).toFixed(2));
+
+    // With high-bitrate streams (like 4K etc, up to 16-20 Mbit/s)
+    // we can reach a QuotaExceeded error easily within just 60 seconds
+    // of buffer. Therefore we need to actively check the exact number
+    // of bytes occupied in the buffer.
+    // If we reach the limit, we are triming pre-emptively, enqueuing this action
+    // to the source-updater before any further loading can happen.
+    // Even if the back-buffer is alrady trimmed
+    //
+    // We also monitor the bytes in buffer (see checkBuffer_())
+    // and drive the loading / triming actively
+    // to make sure we do not reach this limit.
+    if (bufferedBytes >= Config.MAX_SOURCE_BUFFER_OCCUPATION_BYTES) {
+      // If we reached the limit let's trim the buffer already
+      // to make sure we free some space up, in case we reach some kind
+      // of jamming situation.
+      // We keep some back-buffer but reduce the allowed size significantly
+      // compared to the initial configuration.
+      this.logger_('SourceBuffer occupation exceeds limit, triming back-buffer and deferring further loading');
+      this.trimBackBuffer_(Config.BACK_BUFFER_LENGTH / 3);
       return null;
     }
 
@@ -859,7 +884,18 @@ export default class SegmentLoader extends videojs.EventTarget {
   loadSegment_(segmentInfo) {
     this.state = 'WAITING';
     this.pendingSegment_ = segmentInfo;
-    this.trimBackBuffer_(segmentInfo);
+
+    // Chrome has a hard limit of 150MB of
+    // buffer and a very conservative "garbage collector"
+    // We manually clear out the old buffer to ensure
+    // we don't trigger the QuotaExceeded error
+    // on the source buffer during subsequent appends
+    //
+    // We also monitor the bytes in buffer (see checkBuffer_())
+    // and drive the loading / triming actively
+    // to make sure we do not reach this limit.
+
+    this.trimBackBuffer_();
 
     segmentInfo.abortRequests = mediaSegmentRequest(this.hls_.xhr,
       this.xhrOptions_,
@@ -874,20 +910,14 @@ export default class SegmentLoader extends videojs.EventTarget {
    * trim the back buffer so that we don't have too much data
    * in the source buffer
    *
+   * @param {number} backBufferLength - optional parameter to set the desired max-back-buffer (seconds)
    * @private
    *
-   * @param {Object} segmentInfo - the current segment
    */
-  trimBackBuffer_(segmentInfo) {
+  trimBackBuffer_(backBufferLength) {
     const seekable = this.seekable_();
     const currentTime = this.currentTime_();
     let removeToTime = 0;
-
-    // Chrome has a hard limit of 150MB of
-    // buffer and a very conservative "garbage collector"
-    // We manually clear out the old buffer to ensure
-    // we don't trigger the QuotaExceeded error
-    // on the source buffer during subsequent appends
 
     // If we have a seekable range use that as the limit for what can be removed safely
     // otherwise remove anything older than 30 seconds before the current play head
@@ -896,7 +926,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         seekable.start(0) < currentTime) {
       removeToTime = seekable.start(0);
     } else {
-      removeToTime = currentTime - 30;
+      removeToTime = currentTime - (backBufferLength || Config.BACK_BUFFER_LENGTH);
     }
 
     if (removeToTime > 0) {
