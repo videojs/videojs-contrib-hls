@@ -58,6 +58,9 @@ const Hls = {
   xhr: xhrFactory()
 };
 
+// 0.5 MB/s
+const INITIAL_BANDWIDTH = 4194304;
+
 // Define getter/setters for config properites
 [
   'GOAL_BUFFER_LENGTH',
@@ -306,6 +309,12 @@ class HlsHandler extends Component {
         videojs.browser.IS_ANDROID ? INITIAL_BANDWIDTH_MOBILE : INITIAL_BANDWIDTH_DESKTOP;
     }
 
+    // If the bandwidth number is unchanged from the initial setting
+    // then this takes precedence over the enableLowInitialPlaylist option
+    this.options_.enableLowInitialPlaylist =
+       this.options_.enableLowInitialPlaylist &&
+       this.options_.bandwidth === INITIAL_BANDWIDTH;
+
     // grab options passed to player.src
     ['withCredentials', 'bandwidth'].forEach((option) => {
       if (typeof this.source_[option] !== 'undefined') {
@@ -489,7 +498,7 @@ class HlsHandler extends Component {
     this.masterPlaylistController_.on('audioupdate', () => {
       // clear current audioTracks
       this.tech_.clearTracks('audio');
-      this.activeAudioGroup_().forEach((audioTrack) => {
+      this.masterPlaylistController_.activeAudioGroup().forEach((audioTrack) => {
         this.tech_.audioTracks().addTrack(audioTrack);
       });
     });

@@ -47,11 +47,52 @@ export default class SourceUpdater {
     this.mediaSource = mediaSource;
     this.processedAppend_ = false;
 
+    this.bufferItemsList_ = [];
+
     if (mediaSource.readyState === 'closed') {
       mediaSource.addEventListener('sourceopen', createSourceBuffer);
     } else {
       createSourceBuffer();
     }
+  }
+
+  appendToBufferInfoQueue_(timestampOffset, duration, byteLength) {
+    const timestamOffset = this.timestampOffset_;
+    const bufferedTimeRanges = this.sourceBuffer_.buffered;
+    const bufferedEnd = bufferedTimeRanges.length ?
+        bufferedTimeRanges.end(bufferedTimeRanges.length - 1) : 0;
+
+    const bufferItem = {
+      start: bufferedEnd + timestampOffset,
+      duration,
+      byteLength,
+      removed: false
+    };
+
+    this.bufferItemsList_.push(bufferItem);
+  }
+
+  removeFromBufferInfoQueue_(start, end) {
+
+    this.bufferItemsList_.forEach((bufferItem) => {
+
+      if (start <= bufferItem.start
+        && end >= bufferItem.start + bufferItem.duration) {
+        bufferItem.removed = true; // flag for removal
+      }
+
+    });
+
+    this.bufferItemsList_ =
+      this.bufferItemsList_.filter(
+        (bufferItem) => ! bufferItem.removed
+      );
+  }
+
+  totalBytesInBuffer() {
+    return this.bufferItemsList_.reduce((sum, bufferItem) => {
+      return sum + bufferItem.byteLength;
+    }, 0);
   }
 
   /**
@@ -72,14 +113,24 @@ export default class SourceUpdater {
    * Queue an update to append an ArrayBuffer.
    *
    * @param {ArrayBuffer} bytes
+   * @param {number} duration the media duration of this piece of buffer
    * @param {Function} done the function to call when done
    * @see http://www.w3.org/TR/media-source/#widl-SourceBuffer-appendBuffer-void-ArrayBuffer-data
    */
-  appendBuffer(bytes, done) {
+  appendBuffer(bytes, duration, done) {
     this.processedAppend_ = true;
 
     this.queueCallback_(() => {
+
+      // we don't want to track initialization segments
+      // only payload with actual media duration
+      if (duration !== null) {
+        this.appendToBufferInfoQueue_(this.sourceBuffer_.timestampOffset,
+          duration, bytes.byteLength);
+      }
+
       this.sourceBuffer_.appendBuffer(bytes);
+
     }, done);
   }
 
@@ -106,6 +157,7 @@ export default class SourceUpdater {
     if (this.processedAppend_) {
       this.queueCallback_(() => {
         this.sourceBuffer_.remove(start, end);
+        this.removeFromBufferInfoQueue_(start, end);
       }, noop);
     }
   }
@@ -125,6 +177,7 @@ export default class SourceUpdater {
    * @return {Number} the timestamp offset
    */
   timestampOffset(offset) {
+
     if (typeof offset !== 'undefined') {
       this.queueCallback_(() => {
         this.sourceBuffer_.timestampOffset = offset;

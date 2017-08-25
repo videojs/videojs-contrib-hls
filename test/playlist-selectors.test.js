@@ -1,7 +1,9 @@
 import { module, test } from 'qunit';
 import {
+  simpleSelector,
   movingAverageBandwidthSelector,
-  minRebufferMaxBandwidthSelector
+  minRebufferMaxBandwidthSelector,
+  lowestBitrateCompatibleVariantSelector
 } from '../src/playlist-selectors';
 import Config from '../src/config';
 
@@ -120,4 +122,48 @@ function(assert) {
 
   assert.equal(result.playlist, master.playlists[0], 'selected the correct playlist');
   assert.equal(result.rebufferingImpact, 1, 'impact on rebuffering is 1 second');
+});
+
+test('lowestBitrateCompatibleVariantSelector picks lowest non-audio playlist',
+  function(assert) {
+    // Set this up out of order to make sure that the function sorts all
+    // playlists by bandwidth
+    this.hls.playlists.master.playlists = [
+      { attributes: { BANDWIDTH: 10, CODECS: 'mp4a.40.2' } },
+      { attributes: { BANDWIDTH: 100, CODECS: 'mp4a.40.2, avc1.4d400d' } },
+      { attributes: { BANDWIDTH: 50, CODECS: 'mp4a.40.2, avc1.4d400d' } }
+    ];
+
+    const expectedPlaylist = this.hls.playlists.master.playlists[2];
+    const testPlaylist = lowestBitrateCompatibleVariantSelector.call(this.hls);
+
+    assert.equal(testPlaylist, expectedPlaylist,
+      'Selected lowest compatible playlist with video assets');
+  });
+
+test('lowestBitrateCompatibleVariantSelector return null if no video exists',
+  function(assert) {
+    this.hls.playlists.master.playlists = [
+      { attributes: { BANDWIDTH: 50, CODECS: 'mp4a.40.2' } },
+      { attributes: { BANDWIDTH: 10, CODECS: 'mp4a.40.2' } },
+      { attributes: { BANDWIDTH: 100, CODECS: 'mp4a.40.2' } }
+    ];
+
+    const testPlaylist = lowestBitrateCompatibleVariantSelector.call(this.hls);
+
+    assert.equal(testPlaylist, null,
+      'Returned null playlist since no video assets exist');
+  });
+
+test('simpleSelector switches up even without resolution information', function(assert) {
+  let master = this.hls.playlists.master;
+
+  master.playlists = [
+    { attributes: { BANDWIDTH: 100 } },
+    { attributes: { BANDWIDTH: 1000 } }
+  ];
+
+  const selectedPlaylist = simpleSelector(master, 2000, 1, 1);
+
+  assert.equal(selectedPlaylist, master.playlists[1], 'selected the correct playlist');
 });

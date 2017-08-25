@@ -34,6 +34,7 @@ Maintenance Status: Stable
       - [overrideNative](#overridenative)
       - [blacklistDuration](#blacklistduration)
       - [bandwidth](#bandwidth)
+      - [enableLowInitialPlaylist](#enablelowinitialplaylist)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -308,6 +309,14 @@ by the user.
 When the `bandwidth` property is set (bits per second), it will be used in
 the calculation for initial playlist selection, before more bandwidth
 information is seen by the player.
+
+##### enableLowInitialPlaylist
+* Type: `boolean`
+* can be used as an initialization option
+
+When `enableLowInitialPlaylist` is set to true, it will be used to select
+the lowest bitrate playlist initially.  This helps to decrease playback start time.
+This setting is `false` by default.
 
 ### Runtime Properties
 Runtime properties are attached to the tech object when HLS is in

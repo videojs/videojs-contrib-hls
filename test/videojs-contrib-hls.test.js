@@ -1291,6 +1291,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
   // continue loading the final remaining playlist after it wasn't blacklisted
   // when half the segment duaration passed
   assert.strictEqual(4, this.requests.length, 'one more request was made');
+
   assert.strictEqual(this.requests[3].url,
                      absoluteUrl('manifest/media1.m3u8'),
                      'media playlist requested');
@@ -1756,7 +1757,7 @@ QUnit.test('uses default bandwidth option if non-numerical value provided', func
   assert.equal(this.player.tech_.hls.bandwidth, 4194304, 'set bandwidth to default');
 });
 
-QUnit.test('uses mobile default bandwidth if browser is Android', function(assert) {
+QUnit.test('uses default bandwidth if browser is Android', function(assert) {
   this.player.dispose();
 
   const origIsAndroid = videojs.browser.IS_ANDROID;
@@ -1786,7 +1787,7 @@ QUnit.test('uses mobile default bandwidth if browser is Android', function(asser
   openMediaSource(this.player, this.clock);
 
   assert.equal(this.player.tech_.hls.bandwidth,
-               500000,
+               4194304,
                'set bandwidth to mobile default');
 
   videojs.browser.IS_ANDROID = origIsAndroid;
@@ -2780,7 +2781,11 @@ QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
   this.clock.tick(1);
   this.player.currentTime(120);
   this.player.tech_.hls.mediaSource.sourceBuffers[0].trigger('updateend');
-  this.clock.tick(1);
+  // This requires 2 clock ticks because after updateend monitorBuffer_ is called
+  // to setup fillBuffer on the next tick, but the seek also causes monitorBuffer_ to be
+  // called, which cancels the previously set timeout and sets a new one for the following
+  // tick.
+  this.clock.tick(2);
   this.standardXHRResponse(this.requests[3]);
 
   assert.strictEqual(this.requests[0].url, 'manifest/master.m3u8',
