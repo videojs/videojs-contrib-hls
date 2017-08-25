@@ -610,9 +610,10 @@ export default class SegmentLoader extends videojs.EventTarget {
     // of bytes occupied in the buffer.
     // If we reach the limit, we are triming pre-emptively, enqueuing this action
     // to the source-updater before any further loading can happen.
-    // Even if the back-buffer is alrady trimmed
+    // Even if the back-buffer is alrady trimmed, we should wait before
+    // we append more data if the buffer is still too occupied.
     //
-    // We also monitor the bytes in buffer (see checkBuffer_())
+    // We monitor the bytes in buffer (see checkBuffer_())
     // and drive the loading / triming actively
     // to make sure we do not reach this limit.
     if (bufferedBytes >= Config.MAX_SOURCE_BUFFER_OCCUPATION_BYTES) {
