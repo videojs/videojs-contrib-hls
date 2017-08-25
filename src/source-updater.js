@@ -122,8 +122,12 @@ export default class SourceUpdater {
 
     this.queueCallback_(() => {
 
-      this.appendToBufferInfoQueue_(this.sourceBuffer_.timestampOffset,
-        duration, bytes.byteLength);
+      // we don't want to track initialization segments
+      // only payload with actual media duration
+      if (duration !== null) {
+        this.appendToBufferInfoQueue_(this.sourceBuffer_.timestampOffset,
+          duration, bytes.byteLength);
+      }
 
       this.sourceBuffer_.appendBuffer(bytes);
 
