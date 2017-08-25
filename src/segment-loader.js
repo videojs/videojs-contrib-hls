@@ -602,7 +602,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       return null;
     }
 
-    console.log('Total Mbytes in SourceBuffer:', (bufferedBytes / 1e6).toFixed(2));
+    this.logger_('Total Mbytes in SourceBuffer:', (bufferedBytes / 1e6).toFixed(2));
 
     // With high-bitrate streams (like 4K etc, up to 16-20 Mbit/s)
     // we can reach a QuotaExceeded error easily within just 60 seconds
