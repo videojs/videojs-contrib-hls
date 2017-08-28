@@ -2461,148 +2461,6 @@ QUnit.test('adds audio tracks if we have parsed some from a playlist', function(
   assert.equal(vjsAudioTracks[0].enabled, false, 'main track is disabled');
 });
 
-QUnit.test('when audioinfo changes on an independent audio track in Firefox 48 & below, the enabled track is blacklisted and removed', function(assert) {
-  let audioTracks = this.player.audioTracks();
-  let oldLabel;
-
-  videojs.browser.IS_FIREFOX = true;
-  let origSupportsAudioInfoChange_ = videojs.Hls.supportsAudioInfoChange_;
-
-  videojs.Hls.supportsAudioInfoChange_ = () => false;
-
-  this.player.src({
-    src: 'manifest/multipleAudioGroups.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  this.clock.tick(1);
-
-  let hls = this.player.tech_.hls;
-  let mpc = hls.masterPlaylistController_;
-
-  openMediaSource(this.player, this.clock);
-
-  // master
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-  assert.equal(audioTracks.length, 3, 'three audio track after load');
-
-  let defaultTrack = mpc.activeAudioGroup().filter((track) => {
-    return track.properties_.default;
-  })[0];
-
-  // initial audio info
-  hls.mediaSource.trigger({ type: 'audioinfo', info: { foo: 'bar' }});
-  oldLabel = audioTracks[1].label;
-
-  // simulate audio info change and mock things
-  audioTracks[1].enabled = true;
-  hls.mediaSource.trigger({ type: 'audioinfo', info: { bar: 'foo' }});
-
-  assert.equal(audioTracks.length, 2, 'two audio tracks after bad audioinfo change');
-  assert.notEqual(audioTracks[1].label, oldLabel, 'audio track at index 1 is not the same');
-  assert.equal(defaultTrack.enabled, true, 'default track is enabled again');
-  assert.equal(this.env.log.warn.calls, 1, 'firefox issue warning logged');
-  videojs.Hls.supportsAudioInfoChange_ = origSupportsAudioInfoChange_;
-});
-
-QUnit.test('audioinfo changes with one track, blacklist playlist on Firefox 48 & below', function(assert) {
-  let audioTracks = this.player.audioTracks();
-
-  videojs.browser.IS_FIREFOX = true;
-  let origSupportsAudioInfoChange_ = videojs.Hls.supportsAudioInfoChange_;
-
-  videojs.Hls.supportsAudioInfoChange_ = () => false;
-
-  this.player.src({
-    src: 'manifest/master.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  this.clock.tick(1);
-
-  assert.equal(audioTracks.length, 0, 'zero audio tracks at load time');
-  openMediaSource(this.player, this.clock);
-  this.standardXHRResponse(this.requests.shift());
-  this.standardXHRResponse(this.requests.shift());
-  assert.equal(audioTracks.length, 1, 'one audio track after load');
-
-  let mpc = this.player.tech_.hls.masterPlaylistController_;
-  let oldMedia = mpc.media();
-
-  // initial audio info
-  mpc.mediaSource.trigger({type: 'audioinfo', info: { foo: 'bar' }});
-
-  // simulate audio info change in main track
-  mpc.mediaSource.trigger({type: 'audioinfo', info: { bar: 'foo' }});
-
-  assert.equal(audioTracks.length, 1, 'still have one audio track');
-  assert.ok(oldMedia.excludeUntil > 0, 'blacklisted old playlist');
-  assert.equal(this.env.log.warn.calls, 2, 'firefox issue warning logged');
-  videojs.Hls.supportsAudioInfoChange_ = origSupportsAudioInfoChange_;
-});
-
-QUnit.test('changing audioinfo for muxed audio blacklists the current playlist in Firefox', function(assert) {
-  let audioTracks = this.player.audioTracks();
-
-  videojs.browser.IS_FIREFOX = true;
-  let origSupportsAudioInfoChange_ = videojs.Hls.supportsAudioInfoChange_;
-
-  videojs.Hls.supportsAudioInfoChange_ = () => false;
-
-  this.player.src({
-    src: 'manifest/multipleAudioGroupsCombinedMain.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  this.clock.tick(1);
-
-  assert.equal(audioTracks.length, 0, 'zero audio tracks at load time');
-  openMediaSource(this.player, this.clock);
-  let hls = this.player.tech_.hls;
-  let mpc = hls.masterPlaylistController_;
-
-  // master
-  this.standardXHRResponse(this.requests.shift());
-  // video media
-  this.standardXHRResponse(this.requests.shift());
-  // video segments
-  this.standardXHRResponse(this.requests.shift());
-  this.standardXHRResponse(this.requests.shift());
-  // audio media
-  this.standardXHRResponse(this.requests.shift());
-  // ignore audio requests
-  this.requests.length = 0;
-  assert.equal(audioTracks.length, 3, 'three audio track after load');
-
-  // force audio group with combined audio to enabled
-  mpc.masterPlaylistLoader_.media(mpc.master().playlists[0]);
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXTINF:10,\n' +
-                                '0.ts\n' +
-                                '#EXT-X-ENDLIST\n');
-
-  let defaultTrack = mpc.activeAudioGroup().filter((track) => {
-    return track.properties_.default;
-  })[0];
-  let oldPlaylist = mpc.media();
-
-  // initial audio info
-  mpc.mediaSource.trigger({type: 'audioinfo', info: { foo: 'bar' }});
-
-  // simulate audio info change
-  mpc.mediaSource.trigger({type: 'audioinfo', info: { bar: 'foo' }});
-
-  audioTracks = this.player.audioTracks();
-  assert.equal(audioTracks.length, 3, 'three audio tracks after bad audioinfo change');
-  assert.equal(defaultTrack.enabled, true, 'default audio still enabled');
-  assert.ok(oldPlaylist.excludeUntil > 0, 'blacklisted the old playlist');
-  assert.equal(this.env.log.warn.calls, 2, 'firefox issue warning logged');
-  videojs.Hls.supportsAudioInfoChange_ = origSupportsAudioInfoChange_;
-});
-
 QUnit.test('cleans up the buffer when loading live segments', function(assert) {
   let removes = [];
   let seekable = videojs.createTimeRanges([[0, 70]]);
@@ -2839,9 +2697,10 @@ QUnit.test('when mediaGroup changes enabled track should not change', function(a
 
   assert.notEqual(oldMediaGroup, hls.playlists.media().attributes.AUDIO, 'selected a new playlist');
   audioTracks = this.player.audioTracks();
+  let activeGroup = mpc.mediaGroups_.AUDIO.activeGroup(audioTracks[0]);
 
   assert.equal(audioTracks.length, 3, 'three audio tracks after changing mediaGroup');
-  assert.ok(audioTracks[0].properties_.default, 'track one should be the default');
+  assert.ok(activeGroup.default, 'track one should be the default');
   assert.ok(audioTracks[0].enabled, 'enabled the default track');
   assert.notOk(audioTracks[1].enabled, 'disabled track two');
   assert.notOk(audioTracks[2].enabled, 'disabled track three');
@@ -2864,7 +2723,6 @@ QUnit.test('when mediaGroup changes enabled track should not change', function(a
 
   assert.equal(hlsAudioChangeEvents, 1, 'an hls-audio-change event was fired');
   assert.equal(audioTracks.length, 3, 'three audio tracks after reverting mediaGroup');
-  assert.ok(audioTracks[0].properties_.default, 'track one should be the default');
   assert.notOk(audioTracks[0].enabled, 'the default track is still disabled');
   assert.ok(audioTracks[1].enabled, 'track two is still enabled');
   assert.notOk(audioTracks[2].enabled, 'track three is still disabled');

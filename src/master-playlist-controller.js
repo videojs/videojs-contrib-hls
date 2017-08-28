@@ -13,7 +13,7 @@ import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
 import Config from './config';
 import { parseCodecs } from './util/codecs.js';
-import initializeMediaGroups from './media-groups';
+import { createMediaGroups, setupMediaGroups } from './media-groups';
 
 const ABORT_EARLY_BLACKLIST_SECONDS = 60 * 2;
 
@@ -258,15 +258,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       timeout: null
     };
 
-    this.mediaGroups_ = {};
-
-    ['AUDIO', 'SUBTITLES', 'CLOSED-CAPTIONS'].forEach((type) => {
-      this.mediaGroups_[type] = {
-        groups: {},
-        tracks: {},
-        activePlaylistLoader: null
-      };
-    });
+    this.mediaGroups_ = createMediaGroups();
 
     this.mediaSource = new videojs.MediaSource({ mode });
 
@@ -373,7 +365,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         blacklistCurrentPlaylist: this.blacklistCurrentPlaylist.bind(this)
       };
 
-      initializeMediaGroups(mediaGroupSettings);
+      setupMediaGroups(mediaGroupSettings);
 
       this.triggerPresenceUsage_(this.master(), media);
 
@@ -1061,9 +1053,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
       const groups = this.mediaGroups_[type].groups;
 
       for (let id in groups) {
-        if (groups[id].playlistLoader) {
-          groups[id].playlistLoader.dispose();
-        }
+        groups[id].forEach((group) => {
+          if (group.playlistLoader) {
+            group.playlistLoader.dispose();
+          }
+        });
       }
     });
 

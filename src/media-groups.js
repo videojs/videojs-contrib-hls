@@ -2,6 +2,11 @@ import videojs from 'video.js';
 import PlaylistLoader from './playlist-loader';
 
 /**
+ * No-op function
+ */
+const noop = () => {};
+
+/**
  * Convert the properties of an HLS track into an audioTrackKind.
  *
  * @private
@@ -75,17 +80,31 @@ const startLoaders = (segmentLoader, playlistLoader, mediaGroup) => {
  */
 const onGroupChanged = (type, settings) => () => {
   const {
-    segmentLoaders: { [type]: segmentLoader },
+    segmentLoaders: {
+      [type]: segmentLoader,
+      main: mainSegmentLoader
+    },
     mediaGroups: { [type]: mediaGroup }
   } = settings;
   const activeTrack = mediaGroup.activeTrack();
   const activeGroup = mediaGroup.activeGroup(activeTrack);
+  const previousActiveLoader = mediaGroup.activePlaylistLoader;
 
   stopLoaders(segmentLoader, mediaGroup);
 
-  if (!activeGroup || !activeGroup.playlistLoader) {
-    // there is no group active or the group does not have a PlaylistLoader (e.g. audio
-    // muxed with video) so we do not want to restart loaders
+  if (!activeGroup) {
+    // there is no group active
+    return;
+  }
+
+  if (!activeGroup.playlistLoader) {
+    if (previousActiveLoader) {
+      // The previous group had a playlist loader but the new active group does not
+      // this means we are switching from demuxed to muxed audio. In this case we want to
+      // do a destructive reset of the main segment loader and not restart the audio
+      // loaders.
+      mainSegmentLoader.resetEverything();
+    }
     return;
   }
 
@@ -505,7 +524,7 @@ const initialize = {
 
         // We only support CEA608 captions for now, so ignore anything that
         // doesn't use a CCx INSTREAM-ID
-        if (properties.instreamId.match(/CC\d/)) {
+        if (!properties.instreamId.match(/CC\d/)) {
           continue;
         }
 
@@ -626,7 +645,7 @@ const activeTrack = {
 };
 
 /**
- * Initialize PlaylistLoaders and Tracks for media groups (Audio, Subtitles,
+ * Setup PlaylistLoaders and Tracks for media groups (Audio, Subtitles,
  * Closed-Captions) specified in the master manifest.
  *
  * @param {Object} settings
@@ -653,9 +672,9 @@ const activeTrack = {
  *        Object to store the loaders, tracks, and utility methods for each media group
  * @param {Function} settings.blacklistCurrentPlaylist
  *        Blacklists the current rendition and forces a rendition switch.
- * @function initializeMediaGroups
+ * @function setupMediaGroups
  */
-const initializeMediaGroups = (settings) => {
+const setupMediaGroups = (settings) => {
   ['AUDIO', 'SUBTITLES', 'CLOSED-CAPTIONS'].forEach((type) => {
     initialize[type](type, settings);
   });
@@ -712,4 +731,33 @@ const initializeMediaGroups = (settings) => {
   }
 };
 
-export default initializeMediaGroups;
+/**
+ * Creates skeleton object used to store the loaders, tracks, and utility methods for each
+ * media group
+ *
+ * @return {Object}
+ *         Object to store the loaders, tracks, and utility methods for each media group
+ * @function createMediaGroups
+ */
+const createMediaGroups = () => {
+  const mediaGroups = {};
+
+  ['AUDIO', 'SUBTITLES', 'CLOSED-CAPTIONS'].forEach((type) => {
+    mediaGroups[type] = {
+      groups: {},
+      tracks: {},
+      activePlaylistLoader: null,
+      activeGroup: noop,
+      activeTrack: noop,
+      onGroupChanged: noop,
+      onTrackChanged: noop
+    };
+  });
+
+  return mediaGroups;
+};
+
+export default {
+  createMediaGroups,
+  setupMediaGroups
+};
