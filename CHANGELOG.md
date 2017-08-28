@@ -2,6 +2,10 @@ CHANGELOG
 =========
 
 --------------------
+## 5.10.1 (2017-08-28)
+* fix: flv metadata tags now appened when audio info changes [#1245](https://github.com/videojs/videojs-contrib-hls/pull/1245)
+
+--------------------
 ## 5.10.0 (2017-08-22)
 * CEA608: support for cc2-cc4, special/extended characters, formatting [#1096](https://github.com/videojs/videojs-contrib-hls/pull/1096)
   * All four CC tracks are now available
