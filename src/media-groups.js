@@ -83,8 +83,9 @@ const onGroupChanged = (type, settings) => () => {
 
   stopLoaders(segmentLoader, mediaGroup);
 
-  if (!activeGroup) {
-    // there is no group active so we do not want to restart loaders
+  if (!activeGroup || !activeGroup.playlistLoader) {
+    // there is no group active or the group does not have a PlaylistLoader (e.g. audio
+    // muxed with video) so we do not want to restart loaders
     return;
   }
 
