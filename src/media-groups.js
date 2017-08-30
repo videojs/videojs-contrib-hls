@@ -31,7 +31,7 @@ const audioTrackKind_ = (properties) => {
  *        Active media group
  * @function stopLoaders
  */
-const stopLoaders = (segmentLoader, mediaGroup) => {
+export const stopLoaders = (segmentLoader, mediaGroup) => {
   segmentLoader.abort();
   segmentLoader.pause();
 
@@ -52,7 +52,7 @@ const stopLoaders = (segmentLoader, mediaGroup) => {
  *        Active media group
  * @function startLoaders
  */
-const startLoaders = (segmentLoader, playlistLoader, mediaGroup) => {
+export const startLoaders = (segmentLoader, playlistLoader, mediaGroup) => {
   mediaGroup.activePlaylistLoader = playlistLoader;
 
   if (playlistLoader.media()) {
@@ -78,7 +78,7 @@ const startLoaders = (segmentLoader, playlistLoader, mediaGroup) => {
  *         group changes.
  * @function onGroupChanged
  */
-const onGroupChanged = (type, settings) => () => {
+export const onGroupChanged = (type, settings) => () => {
   const {
     segmentLoaders: {
       [type]: segmentLoader,
@@ -128,7 +128,7 @@ const onGroupChanged = (type, settings) => () => {
  *         track changes.
  * @function onTrackChanged
  */
-const onTrackChanged = (type, settings) => () => {
+export const onTrackChanged = (type, settings) => () => {
   const {
     segmentLoaders: {
       [type]: segmentLoader,
@@ -160,6 +160,7 @@ const onTrackChanged = (type, settings) => () => {
     // multiple times for a "single" change. One for enabling the new active track, and
     // one for disabling the track that was active
     startLoaders(segmentLoader, activeGroup.playlistLoader, mediaGroup);
+    return;
   }
 
   if (segmentLoader.track) {
@@ -173,7 +174,7 @@ const onTrackChanged = (type, settings) => () => {
   startLoaders(segmentLoader, activeGroup.playlistLoader, mediaGroup);
 };
 
-const onError = {
+export const onError = {
   /**
    * Returns a function to be called when a SegmentLoader or PlaylistLoader encounters
    * an error.
@@ -193,8 +194,6 @@ const onError = {
       mediaGroups: { [type]: mediaGroup },
       blacklistCurrentPlaylist
     } = settings;
-
-    segmentLoader.abort();
 
     stopLoaders(segmentLoader, mediaGroup);
 
@@ -242,7 +241,6 @@ const onError = {
 
     videojs.log.warn('Problem encountered loading the subtitle track.' +
                      'Disabling subtitle track.');
-    segmentLoader.abort();
 
     stopLoaders(segmentLoader, mediaGroup);
 
@@ -256,7 +254,7 @@ const onError = {
   }
 };
 
-const setupListeners = {
+export const setupListeners = {
   /**
    * Setup event listeners for audio playlist loader
    *
@@ -352,7 +350,7 @@ const setupListeners = {
   }
 };
 
-const initialize = {
+export const initialize = {
   /**
    * Setup PlaylistLoaders and AudioTracks for the audio groups
    *
@@ -383,7 +381,7 @@ const initialize = {
     if (!masterGroups[type] ||
         Object.keys(masterGroups[type]).length === 0 ||
         mode !== 'html5') {
-      masterGroups[type] = { main: { default: { defualt: true } } };
+      masterGroups[type] = { main: { default: { default: true } } };
     }
 
     for (let masterGroup in masterGroups[type]) {
@@ -562,7 +560,7 @@ const initialize = {
  *         track is returned.
  * @function activeGroup
  */
-const activeGroup = (type, settings) => (track) => {
+export const activeGroup = (type, settings) => (track) => {
   const {
     masterPlaylistLoader,
     mediaGroups: { [type]: { groups } }
@@ -574,7 +572,7 @@ const activeGroup = (type, settings) => (track) => {
     return null;
   }
 
-  let result;
+  let result = null;
 
   if (media.attributes[type]) {
     result = groups[media.attributes[type]];
@@ -595,7 +593,7 @@ const activeGroup = (type, settings) => (track) => {
   return result.reduce((final, props) => props.id === track.id ? props : final, null);
 };
 
-const activeTrack = {
+export const activeTrack = {
   /**
    * Returns a function used to get the active track of type provided
    *
@@ -674,7 +672,7 @@ const activeTrack = {
  *        Blacklists the current rendition and forces a rendition switch.
  * @function setupMediaGroups
  */
-const setupMediaGroups = (settings) => {
+export const setupMediaGroups = (settings) => {
   ['AUDIO', 'SUBTITLES', 'CLOSED-CAPTIONS'].forEach((type) => {
     initialize[type](type, settings);
   });
@@ -739,7 +737,7 @@ const setupMediaGroups = (settings) => {
  *         Object to store the loaders, tracks, and utility methods for each media group
  * @function createMediaGroups
  */
-const createMediaGroups = () => {
+export const createMediaGroups = () => {
   const mediaGroups = {};
 
   ['AUDIO', 'SUBTITLES', 'CLOSED-CAPTIONS'].forEach((type) => {
@@ -755,9 +753,4 @@ const createMediaGroups = () => {
   });
 
   return mediaGroups;
-};
-
-export default {
-  createMediaGroups,
-  setupMediaGroups
 };

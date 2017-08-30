@@ -123,7 +123,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   let mediaUpdateTimeout;
   let request;
   let playlistRequestError;
-  let currentRequestId;
   let haveMetadata;
 
   PlaylistLoader.prototype.constructor.call(this);
@@ -222,7 +221,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       oldRequest.onreadystatechange = null;
       oldRequest.abort();
     }
-    currentRequestId = null;
   };
 
   /**
@@ -463,8 +461,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
    * start loading of the playlist
    */
   loader.start = () => {
-    var startingState = loader.state;
-
     loader.started = true;
 
     // request the specified URL
