@@ -13,7 +13,7 @@ import worker from 'webworkify';
 import Decrypter from './decrypter-worker';
 import Config from './config';
 import { parseCodecs } from './util/codecs.js';
-import { createMediaGroups, setupMediaGroups } from './media-groups';
+import { createMediaTypes, setupMediaGroups } from './media-groups';
 
 const ABORT_EARLY_BLACKLIST_SECONDS = 60 * 2;
 
@@ -258,7 +258,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       timeout: null
     };
 
-    this.mediaGroups_ = createMediaGroups();
+    this.mediaTypes_ = createMediaTypes();
 
     this.mediaSource = new videojs.MediaSource({ mode });
 
@@ -349,7 +349,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         this.mainSegmentLoader_.load();
       }
 
-      const mediaGroupSettings = {
+      setupMediaGroups({
         segmentLoaders: {
           AUDIO: this.audioSegmentLoader_,
           SUBTITLES: this.subtitleSegmentLoader_,
@@ -361,11 +361,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
         mode: this.mode_,
         hls: this.hls_,
         master: this.master(),
-        mediaGroups: this.mediaGroups_,
+        mediaTypes: this.mediaTypes_,
         blacklistCurrentPlaylist: this.blacklistCurrentPlaylist.bind(this)
-      };
-
-      setupMediaGroups(mediaGroupSettings);
+      });
 
       this.triggerPresenceUsage_(this.master(), media);
 
@@ -629,10 +627,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
    */
   load() {
     this.mainSegmentLoader_.load();
-    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
+    if (this.mediaTypes_.AUDIO.activePlaylistLoader) {
       this.audioSegmentLoader_.load();
     }
-    if (this.mediaGroups_.SUBTITLES.activePlaylistLoader) {
+    if (this.mediaTypes_.SUBTITLES.activePlaylistLoader) {
       this.subtitleSegmentLoader_.load();
     }
   }
@@ -755,7 +753,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   onEndOfStream() {
     let isEndOfStream = this.mainSegmentLoader_.ended_;
 
-    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
+    if (this.mediaTypes_.AUDIO.activePlaylistLoader) {
       // if the audio playlist loader exists, then alternate audio is active, so we need
       // to wait for both the main and audio segment loaders to call endOfStream
       isEndOfStream = isEndOfStream && this.audioSegmentLoader_.ended_;
@@ -866,10 +864,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
    */
   pauseLoading() {
     this.mainSegmentLoader_.pause();
-    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
+    if (this.mediaTypes_.AUDIO.activePlaylistLoader) {
       this.audioSegmentLoader_.pause();
     }
-    if (this.mediaGroups_.SUBTITLES.activePlaylistLoader) {
+    if (this.mediaTypes_.SUBTITLES.activePlaylistLoader) {
       this.subtitleSegmentLoader_.pause();
     }
   }
@@ -910,11 +908,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // location
     this.mainSegmentLoader_.resetEverything();
     this.mainSegmentLoader_.abort();
-    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
+    if (this.mediaTypes_.AUDIO.activePlaylistLoader) {
       this.audioSegmentLoader_.resetEverything();
       this.audioSegmentLoader_.abort();
     }
-    if (this.mediaGroups_.SUBTITLES.activePlaylistLoader) {
+    if (this.mediaTypes_.SUBTITLES.activePlaylistLoader) {
       this.subtitleSegmentLoader_.resetEverything();
       this.subtitleSegmentLoader_.abort();
     }
@@ -976,8 +974,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
 
-    if (this.mediaGroups_.AUDIO.activePlaylistLoader) {
-      media = this.mediaGroups_.AUDIO.activePlaylistLoader.media();
+    if (this.mediaTypes_.AUDIO.activePlaylistLoader) {
+      media = this.mediaTypes_.AUDIO.activePlaylistLoader.media();
       expired = this.syncController_.getExpiredTime(media, this.mediaSource.duration);
 
       if (expired === null) {
@@ -1050,7 +1048,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_.dispose();
 
     ['AUDIO', 'SUBTITLES'].forEach((type) => {
-      const groups = this.mediaGroups_[type].groups;
+      const groups = this.mediaTypes_[type].groups;
 
       for (let id in groups) {
         groups[id].forEach((group) => {

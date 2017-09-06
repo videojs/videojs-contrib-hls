@@ -15,10 +15,10 @@ QUnit.module('MediaGroups', {
   }
 });
 
-QUnit.test('createMediaGroups creates skeleton object for all supported media groups',
+QUnit.test('createMediaTypes creates skeleton object for all supported media groups',
 function(assert) {
   const noopToString = 'function noop() {}';
-  const result = MediaGroups.createMediaGroups();
+  const result = MediaGroups.createMediaTypes();
 
   assert.ok(result.AUDIO, 'created AUDIO media group object');
   assert.equal(JSON.stringify(result.AUDIO.groups), '{}',
@@ -82,22 +82,22 @@ function(assert) {
   const playlistLoader = {
     pause: () => playlistLoaderPauseCalls++
   };
-  const mediaGroup = { activePlaylistLoader: null };
+  const mediaType = { activePlaylistLoader: null };
 
-  MediaGroups.stopLoaders(segmentLoader, mediaGroup);
+  MediaGroups.stopLoaders(segmentLoader, mediaType);
 
   assert.equal(segmentLoaderAbortCalls, 1, 'aborted segment loader');
   assert.equal(segmentLoaderPauseCalls, 1, 'paused segment loader');
   assert.equal(playlistLoaderPauseCalls, 0, 'no pause when no active playlist loader');
 
-  mediaGroup.activePlaylistLoader = playlistLoader;
+  mediaType.activePlaylistLoader = playlistLoader;
 
-  MediaGroups.stopLoaders(segmentLoader, mediaGroup);
+  MediaGroups.stopLoaders(segmentLoader, mediaType);
 
   assert.equal(segmentLoaderAbortCalls, 2, 'aborted segment loader');
   assert.equal(segmentLoaderPauseCalls, 2, 'paused segment loader');
   assert.equal(playlistLoaderPauseCalls, 1, 'pause active playlist loader');
-  assert.equal(mediaGroup.activePlaylistLoader, null,
+  assert.equal(mediaType.activePlaylistLoader, null,
     'clears active playlist loader for media group');
 });
 
@@ -116,34 +116,34 @@ function(assert) {
     load: () => playlistLoaderLoadCalls++,
     media: () => media
   };
-  const mediaGroup = { activePlaylistLoader: null };
+  const mediaType = { activePlaylistLoader: null };
 
-  MediaGroups.startLoaders(segmentLoader, playlistLoader, mediaGroup);
+  MediaGroups.startLoaders(segmentLoader, playlistLoader, mediaType);
 
   assert.equal(playlistLoaderLoadCalls, 1, 'called load on playlist loader');
   assert.equal(segmentLoaderLoadCalls, 0,
     'did not call load on segment loader when no media yet on playlist loader');
   assert.equal(typeof segmentLoaderPlaylist, 'undefined',
     'no playlist set on segment loader when no media yet on playlist loader');
-  assert.strictEqual(mediaGroup.activePlaylistLoader, playlistLoader,
+  assert.strictEqual(mediaType.activePlaylistLoader, playlistLoader,
     'set active playlist loader for media group');
 
-  mediaGroup.activePlaylistLoader = null;
+  mediaType.activePlaylistLoader = null;
   media = { uri: 'index.m3u8' };
 
-  MediaGroups.startLoaders(segmentLoader, playlistLoader, mediaGroup);
+  MediaGroups.startLoaders(segmentLoader, playlistLoader, mediaType);
 
   assert.equal(playlistLoaderLoadCalls, 2, 'called load on playlist loader');
   assert.equal(segmentLoaderLoadCalls, 1, 'called load on segment loader');
   assert.strictEqual(segmentLoaderPlaylist, media, 'set playlist on segment loader');
-  assert.strictEqual(mediaGroup.activePlaylistLoader, playlistLoader,
+  assert.strictEqual(mediaType.activePlaylistLoader, playlistLoader,
     'set active playlist loader for media group');
 });
 
 QUnit.test('activeTrack returns the correct audio track', function(assert) {
   const type = 'AUDIO';
-  const settings = { mediaGroups: MediaGroups.createMediaGroups() };
-  const tracks = settings.mediaGroups[type].tracks;
+  const settings = { mediaTypes: MediaGroups.createMediaTypes() };
+  const tracks = settings.mediaTypes[type].tracks;
   const activeTrack = MediaGroups.activeTrack[type](type, settings);
 
   assert.equal(activeTrack(), null, 'returns null when empty track list');
@@ -167,8 +167,8 @@ QUnit.test('activeTrack returns the correct audio track', function(assert) {
 
 QUnit.test('activeTrack returns the correct subtitle track', function(assert) {
   const type = 'SUBTITLES';
-  const settings = { mediaGroups: MediaGroups.createMediaGroups() };
-  const tracks = settings.mediaGroups[type].tracks;
+  const settings = { mediaTypes: MediaGroups.createMediaTypes() };
+  const tracks = settings.mediaTypes[type].tracks;
   const activeTrack = MediaGroups.activeTrack[type](type, settings);
 
   assert.equal(activeTrack(), null, 'returns null when empty track list');
@@ -194,13 +194,13 @@ QUnit.test('activeGroup returns the correct audio group', function(assert) {
   const type = 'AUDIO';
   let media = null;
   const settings = {
-    mediaGroups: MediaGroups.createMediaGroups(),
+    mediaTypes: MediaGroups.createMediaTypes(),
     masterPlaylistLoader: {
       media: () => media
     }
   };
-  const groups = settings.mediaGroups[type].groups;
-  const tracks = settings.mediaGroups[type].tracks;
+  const groups = settings.mediaTypes[type].groups;
+  const tracks = settings.mediaTypes[type].tracks;
   const activeTrack = MediaGroups.activeTrack[type](type, settings);
   const activeGroup = MediaGroups.activeGroup(type, settings);
 
@@ -234,13 +234,13 @@ QUnit.test('activeGroup returns the correct subtitle group', function(assert) {
   const type = 'SUBTITLES';
   let media = null;
   const settings = {
-    mediaGroups: MediaGroups.createMediaGroups(),
+    mediaTypes: MediaGroups.createMediaTypes(),
     masterPlaylistLoader: {
       media: () => media
     }
   };
-  const groups = settings.mediaGroups[type].groups;
-  const tracks = settings.mediaGroups[type].tracks;
+  const groups = settings.mediaTypes[type].groups;
+  const tracks = settings.mediaTypes[type].tracks;
   const activeTrack = MediaGroups.activeTrack[type](type, settings);
   const activeGroup = MediaGroups.activeGroup(type, settings);
 
@@ -298,12 +298,12 @@ function(assert) {
       AUDIO: segmentLoader,
       main: mainSegmentLoader
     },
-    mediaGroups: MediaGroups.createMediaGroups(),
+    mediaTypes: MediaGroups.createMediaTypes(),
     masterPlaylistLoader
   };
-  const mediaGroup = settings.mediaGroups[type];
-  const groups = mediaGroup.groups;
-  const tracks = mediaGroup.tracks;
+  const mediaType = settings.mediaTypes[type];
+  const groups = mediaType.groups;
+  const tracks = mediaType.tracks;
 
   groups.main = [
     { id: 'en', playlistLoader: null },
@@ -313,8 +313,8 @@ function(assert) {
   tracks.en = { id: 'en', enabled: false };
   tracks.fr = { id: 'fr', enabled: false };
   tracks.es = { id: 'es', enabled: false };
-  mediaGroup.activeTrack = MediaGroups.activeTrack[type](type, settings);
-  mediaGroup.activeGroup = MediaGroups.activeGroup(type, settings);
+  mediaType.activeTrack = MediaGroups.activeTrack[type](type, settings);
+  mediaType.activeGroup = MediaGroups.activeGroup(type, settings);
 
   const onGroupChanged = MediaGroups.onGroupChanged(type, settings);
 
@@ -334,7 +334,7 @@ function(assert) {
   assert.equal(segmentLoaderResyncCalls, 0,
     'no resync changing to group with no playlist loader');
 
-  mediaGroup.activePlaylistLoader = groups.main[1].playlistLoader;
+  mediaType.activePlaylistLoader = groups.main[1].playlistLoader;
 
   onGroupChanged();
 
@@ -346,7 +346,7 @@ function(assert) {
 
   tracks.en.enabled = false;
   tracks.fr.enabled = true;
-  mediaGroup.activePlaylistLoader = groups.main[2].playlistLoader;
+  mediaType.activePlaylistLoader = groups.main[2].playlistLoader;
 
   onGroupChanged();
 
@@ -355,7 +355,7 @@ function(assert) {
     'no reset changing to group with playlist loader');
   assert.equal(segmentLoaderResyncCalls, 1,
     'resync changing to group with playlist loader');
-  assert.strictEqual(mediaGroup.activePlaylistLoader, groups.main[1].playlistLoader,
+  assert.strictEqual(mediaType.activePlaylistLoader, groups.main[1].playlistLoader,
     'sets the correct active playlist loader');
 });
 
@@ -390,12 +390,12 @@ function(assert) {
       AUDIO: segmentLoader,
       main: mainSegmentLoader
     },
-    mediaGroups: MediaGroups.createMediaGroups(),
+    mediaTypes: MediaGroups.createMediaTypes(),
     masterPlaylistLoader
   };
-  const mediaGroup = settings.mediaGroups[type];
-  const groups = mediaGroup.groups;
-  const tracks = mediaGroup.tracks;
+  const mediaType = settings.mediaTypes[type];
+  const groups = mediaType.groups;
+  const tracks = mediaType.tracks;
 
   groups.main = [
     { id: 'en', playlistLoader: null },
@@ -405,8 +405,8 @@ function(assert) {
   tracks.en = { id: 'en', enabled: false };
   tracks.fr = { id: 'fr', enabled: false };
   tracks.es = { id: 'es', enabled: false };
-  mediaGroup.activeTrack = MediaGroups.activeTrack[type](type, settings);
-  mediaGroup.activeGroup = MediaGroups.activeGroup(type, settings);
+  mediaType.activeTrack = MediaGroups.activeTrack[type](type, settings);
+  mediaType.activeGroup = MediaGroups.activeGroup(type, settings);
 
   const onTrackChanged = MediaGroups.onTrackChanged(type, settings);
 
@@ -430,7 +430,7 @@ function(assert) {
 
   tracks.en.enabled = false;
   tracks.fr.enabled = true;
-  mediaGroup.activePlaylistLoader = groups.main[1].playlistLoader;
+  mediaType.activePlaylistLoader = groups.main[1].playlistLoader;
 
   onTrackChanged();
 
@@ -440,10 +440,10 @@ function(assert) {
   assert.equal(segmentLoaderResetCalls, 0,
     'no reset when active group hasnt changed');
   assert.equal(segmentLoaderLoadCalls, 1, 'loaders restarted');
-  assert.strictEqual(mediaGroup.activePlaylistLoader, groups.main[1].playlistLoader,
+  assert.strictEqual(mediaType.activePlaylistLoader, groups.main[1].playlistLoader,
     'sets the correct active playlist loader');
 
-  mediaGroup.activePlaylistLoader = groups.main[2].playlistLoader;
+  mediaType.activePlaylistLoader = groups.main[2].playlistLoader;
 
   onTrackChanged();
 
@@ -453,14 +453,14 @@ function(assert) {
   assert.equal(segmentLoaderResetCalls, 1,
     'reset on track change');
   assert.equal(segmentLoaderLoadCalls, 2, 'loaders restarted');
-  assert.strictEqual(mediaGroup.activePlaylistLoader, groups.main[1].playlistLoader,
+  assert.strictEqual(mediaType.activePlaylistLoader, groups.main[1].playlistLoader,
     'sets the correct active playlist loader');
 
   // setting the track on the segment loader only applies to the SUBTITLES case.
   // even though this test is testing type AUDIO, aside from this difference of setting
   // the track, the functionality between the types is the same.
   segmentLoader.track = (track) => segmentLoaderTrack = track;
-  mediaGroup.activePlaylistLoader = groups.main[2].playlistLoader;
+  mediaType.activePlaylistLoader = groups.main[2].playlistLoader;
 
   onTrackChanged();
 
@@ -470,7 +470,7 @@ function(assert) {
   assert.equal(segmentLoaderResetCalls, 2,
     'reset on track change');
   assert.equal(segmentLoaderLoadCalls, 3, 'loaders restarted');
-  assert.strictEqual(mediaGroup.activePlaylistLoader, groups.main[1].playlistLoader,
+  assert.strictEqual(mediaType.activePlaylistLoader, groups.main[1].playlistLoader,
     'sets the correct active playlist loader');
   assert.strictEqual(segmentLoaderTrack, tracks.fr,
     'set the correct track on the segment loader');
@@ -490,17 +490,17 @@ function(assert) {
   };
   const settings = {
     segmentLoaders: { AUDIO: segmentLoader },
-    mediaGroups: MediaGroups.createMediaGroups(),
+    mediaTypes: MediaGroups.createMediaTypes(),
     blacklistCurrentPlaylist: () => blacklistCurrentPlaylistCalls++,
     masterPlaylistLoader
   };
-  const mediaGroup = settings.mediaGroups[type];
-  const groups = mediaGroup.groups;
-  const tracks = mediaGroup.tracks;
+  const mediaType = settings.mediaTypes[type];
+  const groups = mediaType.groups;
+  const tracks = mediaType.tracks;
 
-  mediaGroup.activeTrack = MediaGroups.activeTrack[type](type, settings);
-  mediaGroup.activeGroup = MediaGroups.activeGroup(type, settings);
-  mediaGroup.onTrackChanged = () => onTrackChangedCalls++;
+  mediaType.activeTrack = MediaGroups.activeTrack[type](type, settings);
+  mediaType.activeGroup = MediaGroups.activeGroup(type, settings);
+  mediaType.onTrackChanged = () => onTrackChangedCalls++;
 
   const onError = MediaGroups.onError[type](type, settings);
 
@@ -535,13 +535,13 @@ QUnit.test('disables subtitle track when an error is encountered', function(asse
   const segmentLoader = { abort() {}, pause() {} };
   const settings = {
     segmentLoaders: { SUBTITLES: segmentLoader },
-    mediaGroups: MediaGroups.createMediaGroups()
+    mediaTypes: MediaGroups.createMediaTypes()
   };
-  const mediaGroup = settings.mediaGroups[type];
-  const tracks = mediaGroup.tracks;
+  const mediaType = settings.mediaTypes[type];
+  const tracks = mediaType.tracks;
 
-  mediaGroup.activeTrack = MediaGroups.activeTrack[type](type, settings);
-  mediaGroup.onTrackChanged = () => onTrackChangedCalls++;
+  mediaType.activeTrack = MediaGroups.activeTrack[type](type, settings);
+  mediaType.onTrackChanged = () => onTrackChangedCalls++;
 
   const onError = MediaGroups.onError[type](type, settings);
 
@@ -565,7 +565,7 @@ QUnit.test('setupListeners adds correct playlist loader listeners', function(ass
 
 QUnit.module('MediaGroups - initialize', {
   beforeEach(assert) {
-    this.mediaGroups = MediaGroups.createMediaGroups();
+    this.mediaTypes = MediaGroups.createMediaTypes();
     this.master = {
       mediaGroups: {
         'AUDIO': {},
@@ -587,7 +587,7 @@ QUnit.module('MediaGroups - initialize', {
       },
       requestOptions: { withCredentials: false, timeout: 10 },
       master: this.master,
-      mediaGroups: this.mediaGroups,
+      mediaTypes: this.mediaTypes,
       blacklistCurrentPlaylist() {}
     };
   }
@@ -601,10 +601,10 @@ function(assert) {
 
   assert.deepEqual(this.master.mediaGroups[type],
     { main: { default: { default: true } } }, 'forced default audio group');
-  assert.deepEqual(this.mediaGroups[type].groups,
+  assert.deepEqual(this.mediaTypes[type].groups,
     { main: [ { id: 'default', playlistLoader: null, default: true } ] },
     'creates group properites and no playlist loader');
-  assert.ok(this.mediaGroups[type].tracks.default, 'created default track');
+  assert.ok(this.mediaTypes[type].tracks.default, 'created default track');
 });
 
 QUnit.test('initialize audio correctly generates tracks and playlist loaders',
@@ -623,7 +623,7 @@ function(assert) {
   MediaGroups.initialize[type](type, this.settings);
 
   assert.notOk(this.master.mediaGroups[type].main, 'no default main group added');
-  assert.deepEqual(this.mediaGroups[type].groups,
+  assert.deepEqual(this.mediaTypes[type].groups,
     {
       aud1: [
         { id: 'en', default: true, language: 'en', playlistLoader: null },
@@ -631,7 +631,7 @@ function(assert) {
           // just so deepEqual passes since there is no other way to get the object
           // reference for the playlist loader. Assertions below will confirm that this is
           // not null.
-          playlistLoader: this.mediaGroups[type].groups.aud1[1].playlistLoader }
+          playlistLoader: this.mediaTypes[type].groups.aud1[1].playlistLoader }
       ],
       aud2: [
         { id: 'en', default: true, language: 'en', playlistLoader: null },
@@ -639,15 +639,15 @@ function(assert) {
           // just so deepEqual passes since there is no other way to get the object
           // reference for the playlist loader. Assertions below will confirm that this is
           // not null.
-          playlistLoader: this.mediaGroups[type].groups.aud2[1].playlistLoader }
+          playlistLoader: this.mediaTypes[type].groups.aud2[1].playlistLoader }
       ]
     }, 'creates group properites');
-  assert.ok(this.mediaGroups[type].groups.aud1[1].playlistLoader,
+  assert.ok(this.mediaTypes[type].groups.aud1[1].playlistLoader,
     'playlistLoader created for non muxed audio group');
-  assert.ok(this.mediaGroups[type].groups.aud2[1].playlistLoader,
+  assert.ok(this.mediaTypes[type].groups.aud2[1].playlistLoader,
     'playlistLoader created for non muxed audio group');
-  assert.ok(this.mediaGroups[type].tracks.en, 'created audio track');
-  assert.ok(this.mediaGroups[type].tracks.fr, 'created audio track');
+  assert.ok(this.mediaTypes[type].tracks.en, 'created audio track');
+  assert.ok(this.mediaTypes[type].tracks.fr, 'created audio track');
 });
 
 QUnit.test('initialize subtitles correctly generates tracks and playlist loaders',
@@ -667,31 +667,31 @@ function(assert) {
 
   MediaGroups.initialize[type](type, this.settings);
 
-  assert.deepEqual(this.mediaGroups[type].groups,
+  assert.deepEqual(this.mediaTypes[type].groups,
     {
       sub1: [
         { id: 'en', language: 'en', resolvedUri: 'sub1/en.m3u8',
-          playlistLoader: this.mediaGroups[type].groups.sub1[0].playlistLoader },
+          playlistLoader: this.mediaTypes[type].groups.sub1[0].playlistLoader },
         { id: 'fr', language: 'fr', resolvedUri: 'sub1/fr.m3u8',
-          playlistLoader: this.mediaGroups[type].groups.sub1[1].playlistLoader }
+          playlistLoader: this.mediaTypes[type].groups.sub1[1].playlistLoader }
       ],
       sub2: [
         { id: 'en', language: 'en', resolvedUri: 'sub2/en.m3u8',
-          playlistLoader: this.mediaGroups[type].groups.sub2[0].playlistLoader },
+          playlistLoader: this.mediaTypes[type].groups.sub2[0].playlistLoader },
         { id: 'fr', language: 'fr', resolvedUri: 'sub2/fr.m3u8',
-          playlistLoader: this.mediaGroups[type].groups.sub2[1].playlistLoader }
+          playlistLoader: this.mediaTypes[type].groups.sub2[1].playlistLoader }
       ]
     }, 'creates group properites');
-  assert.ok(this.mediaGroups[type].groups.sub1[0].playlistLoader,
+  assert.ok(this.mediaTypes[type].groups.sub1[0].playlistLoader,
     'playlistLoader created');
-  assert.ok(this.mediaGroups[type].groups.sub1[1].playlistLoader,
+  assert.ok(this.mediaTypes[type].groups.sub1[1].playlistLoader,
     'playlistLoader created');
-  assert.ok(this.mediaGroups[type].groups.sub2[0].playlistLoader,
+  assert.ok(this.mediaTypes[type].groups.sub2[0].playlistLoader,
     'playlistLoader created');
-  assert.ok(this.mediaGroups[type].groups.sub2[1].playlistLoader,
+  assert.ok(this.mediaTypes[type].groups.sub2[1].playlistLoader,
     'playlistLoader created');
-  assert.ok(this.mediaGroups[type].tracks.en, 'created text track');
-  assert.ok(this.mediaGroups[type].tracks.fr, 'created text track');
+  assert.ok(this.mediaTypes[type].tracks.en, 'created text track');
+  assert.ok(this.mediaTypes[type].tracks.fr, 'created text track');
 });
 
 QUnit.test('initialize closed-captions correctly generates tracks and NO laoders',
@@ -707,13 +707,13 @@ function(assert) {
 
   MediaGroups.initialize[type](type, this.settings);
 
-  assert.deepEqual(this.mediaGroups[type].groups,
+  assert.deepEqual(this.mediaTypes[type].groups,
     {
       CCs: [
         { id: 'en608', language: 'en', instreamId: 'CC1' },
         { id: 'fr608', language: 'fr', instreamId: 'CC3' }
       ]
     }, 'creates group properites');
-  assert.ok(this.mediaGroups[type].tracks.en608, 'created text track');
-  assert.ok(this.mediaGroups[type].tracks.fr608, 'created text track');
+  assert.ok(this.mediaTypes[type].tracks.en608, 'created text track');
+  assert.ok(this.mediaTypes[type].tracks.fr608, 'created text track');
 });

@@ -2697,7 +2697,7 @@ QUnit.test('when mediaGroup changes enabled track should not change', function(a
 
   assert.notEqual(oldMediaGroup, hls.playlists.media().attributes.AUDIO, 'selected a new playlist');
   audioTracks = this.player.audioTracks();
-  let activeGroup = mpc.mediaGroups_.AUDIO.activeGroup(audioTracks[0]);
+  let activeGroup = mpc.mediaTypes_.AUDIO.activeGroup(audioTracks[0]);
 
   assert.equal(audioTracks.length, 3, 'three audio tracks after changing mediaGroup');
   assert.ok(activeGroup.default, 'track one should be the default');
