@@ -14,7 +14,7 @@ import Ranges from './ranges';
 import { minRebufferMaxBandwidthPlaylistFilter } from './playlist-selectors';
 
 // in ms
-const CHECK_BUFFER_DELAY = 500;
+const CHECK_BUFFER_DELAY = 1000;
 
 /**
  * Determines if we should call endOfStream on the media source based
