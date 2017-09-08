@@ -56,14 +56,14 @@ export default class SourceUpdater {
     }
   }
 
-  appendToBufferInfoQueue_(timestampOffset, duration, byteLength) {
+  appendToBufferInfoQueue_(duration, byteLength) {
     const timestamOffset = this.timestampOffset_;
     const bufferedTimeRanges = this.sourceBuffer_.buffered;
     const bufferedEnd = bufferedTimeRanges.length ?
         bufferedTimeRanges.end(bufferedTimeRanges.length - 1) : 0;
 
     const bufferItem = {
-      start: bufferedEnd + timestampOffset,
+      start: bufferedEnd,
       duration,
       byteLength,
       removed: false
@@ -125,8 +125,7 @@ export default class SourceUpdater {
       // we don't want to track initialization segments
       // only payload with actual media duration
       if (duration !== null) {
-        this.appendToBufferInfoQueue_(this.sourceBuffer_.timestampOffset,
-          duration, bytes.byteLength);
+        this.appendToBufferInfoQueue_(duration, bytes.byteLength);
       }
 
       this.sourceBuffer_.appendBuffer(bytes);
