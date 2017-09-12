@@ -21,9 +21,9 @@ function(assert) {
   const result = MediaGroups.createMediaTypes();
 
   assert.ok(result.AUDIO, 'created AUDIO media group object');
-  assert.equal(JSON.stringify(result.AUDIO.groups), '{}',
+  assert.deepEqual(result.AUDIO.groups, {},
     'created empty object for AUDIO groups');
-  assert.equal(JSON.stringify(result.AUDIO.tracks), '{}',
+  assert.deepEqual(result.AUDIO.tracks, {},
     'created empty object for AUDIO tracks');
   assert.equal(result.AUDIO.activePlaylistLoader, null,
     'AUDIO activePlaylistLoader is null');
@@ -37,9 +37,9 @@ function(assert) {
     'created noop function for AUDIO onTrackChanged');
 
   assert.ok(result.SUBTITLES, 'created SUBTITLES media group object');
-  assert.equal(JSON.stringify(result.SUBTITLES.groups), '{}',
+  assert.deepEqual(result.SUBTITLES.groups, {},
     'created empty object for SUBTITLES groups');
-  assert.equal(JSON.stringify(result.SUBTITLES.tracks), '{}',
+  assert.deepEqual(result.SUBTITLES.tracks, {},
     'created empty object for SUBTITLES tracks');
   assert.equal(result.SUBTITLES.activePlaylistLoader, null,
     'SUBTITLES activePlaylistLoader is null');
@@ -53,9 +53,9 @@ function(assert) {
     'created noop function for SUBTITLES onTrackChanged');
 
   assert.ok(result['CLOSED-CAPTIONS'], 'created CLOSED-CAPTIONS media group object');
-  assert.equal(JSON.stringify(result['CLOSED-CAPTIONS'].groups), '{}',
+  assert.deepEqual(result['CLOSED-CAPTIONS'].groups, {},
     'created empty object for CLOSED-CAPTIONS groups');
-  assert.equal(JSON.stringify(result['CLOSED-CAPTIONS'].tracks), '{}',
+  assert.deepEqual(result['CLOSED-CAPTIONS'].tracks, {},
     'created empty object for CLOSED-CAPTIONS tracks');
   assert.equal(result['CLOSED-CAPTIONS'].activePlaylistLoader, null,
     'CLOSED-CAPTIONS activePlaylistLoader is null');
@@ -163,6 +163,14 @@ QUnit.test('activeTrack returns the correct audio track', function(assert) {
   // video.js treats the first enabled track in the track list as the active track
   // so we want the same behavior here
   assert.strictEqual(activeTrack(), tracks.track1, 'returns first active track');
+
+  tracks.track1.enabled = false;
+
+  assert.strictEqual(activeTrack(), tracks.track3, 'returns active track');
+
+  tracks.track3.enabled = false;
+
+  assert.equal(activeTrack(), null, 'returns null when no active tracks');
 });
 
 QUnit.test('activeTrack returns the correct subtitle track', function(assert) {
@@ -188,6 +196,14 @@ QUnit.test('activeTrack returns the correct subtitle track', function(assert) {
   // video.js treats the first enabled track in the track list as the active track
   // so we want the same behavior here
   assert.strictEqual(activeTrack(), tracks.track1, 'returns first active track');
+
+  tracks.track1.mode = 'disabled';
+
+  assert.strictEqual(activeTrack(), tracks.track3, 'returns active track');
+
+  tracks.track3.mode = 'hidden';
+
+  assert.equal(activeTrack(), null, 'returns null when no active tracks');
 });
 
 QUnit.test('activeGroup returns the correct audio group', function(assert) {
@@ -438,7 +454,7 @@ function(assert) {
   assert.equal(mainSegmentLoaderResetCalls, 1,
     'no main reset changing to group with playlist loader');
   assert.equal(segmentLoaderResetCalls, 0,
-    'no reset when active group hasnt changed');
+    'no reset when active group hasn\'t changed');
   assert.equal(segmentLoaderLoadCalls, 1, 'loaders restarted');
   assert.strictEqual(mediaType.activePlaylistLoader, groups.main[1].playlistLoader,
     'sets the correct active playlist loader');
@@ -512,7 +528,7 @@ function(assert) {
   onError();
 
   assert.equal(blacklistCurrentPlaylistCalls, 0, 'did not blacklist current playlist');
-  assert.equal(onTrackChangedCalls, 1, 'called onTrackChanged after chaging to default');
+  assert.equal(onTrackChangedCalls, 1, 'called onTrackChanged after changing to default');
   assert.equal(tracks.en.enabled, true, 'enabled default track');
   assert.equal(tracks.fr.enabled, false, 'disabled active track');
   assert.equal(tracks.es.enabled, false, 'disabled track still disabled');
@@ -560,7 +576,49 @@ QUnit.test('disables subtitle track when an error is encountered', function(asse
 });
 
 QUnit.test('setupListeners adds correct playlist loader listeners', function(assert) {
+  const settings = {
+    tech: {},
+    requestOptions: {},
+    segmentLoaders: {
+      AUDIO: {},
+      SUBTITLES: {}
+    },
+    mediaTypes: MediaGroups.createMediaTypes()
+  };
+  const listeners = [];
+  const on = (event, cb) => listeners.push([event, cb]);
+  const playlistLoader = { on };
+  let type = 'SUBTITLES';
 
+  MediaGroups.setupListeners[type](type, playlistLoader, settings);
+
+  assert.equal(listeners.length, 3, 'setup 3 event listeners');
+  assert.equal(listeners[0][0], 'loadedmetadata', 'setup loadedmetadata listener');
+  assert.equal(typeof listeners[0][1], 'function', 'setup loadedmetadata listener');
+  assert.equal(listeners[1][0], 'loadedplaylist', 'setup loadedmetadata listener');
+  assert.equal(typeof listeners[1][1], 'function', 'setup loadedmetadata listener');
+  assert.equal(listeners[2][0], 'error', 'setup loadedmetadata listener');
+  assert.equal(typeof listeners[2][1], 'function', 'setup loadedmetadata listener');
+
+  listeners.length = 0;
+
+  type = 'AUDIO';
+
+  MediaGroups.setupListeners[type](type, playlistLoader, settings);
+
+  assert.equal(listeners.length, 3, 'setup 3 event listeners');
+  assert.equal(listeners[0][0], 'loadedmetadata', 'setup loadedmetadata listener');
+  assert.equal(typeof listeners[0][1], 'function', 'setup loadedmetadata listener');
+  assert.equal(listeners[1][0], 'loadedplaylist', 'setup loadedmetadata listener');
+  assert.equal(typeof listeners[1][1], 'function', 'setup loadedmetadata listener');
+  assert.equal(listeners[2][0], 'error', 'setup loadedmetadata listener');
+  assert.equal(typeof listeners[2][1], 'function', 'setup loadedmetadata listener');
+
+  listeners.length = 0;
+
+  MediaGroups.setupListeners[type](type, null, settings);
+
+  assert.equal(listeners.length, 0, 'no event listeners setup when no playlist loader');
 });
 
 QUnit.module('MediaGroups - initialize', {
@@ -603,7 +661,7 @@ function(assert) {
     { main: { default: { default: true } } }, 'forced default audio group');
   assert.deepEqual(this.mediaTypes[type].groups,
     { main: [ { id: 'default', playlistLoader: null, default: true } ] },
-    'creates group properites and no playlist loader');
+    'creates group properties and no playlist loader');
   assert.ok(this.mediaTypes[type].tracks.default, 'created default track');
 });
 
@@ -641,7 +699,7 @@ function(assert) {
           // not null.
           playlistLoader: this.mediaTypes[type].groups.aud2[1].playlistLoader }
       ]
-    }, 'creates group properites');
+    }, 'creates group properties');
   assert.ok(this.mediaTypes[type].groups.aud1[1].playlistLoader,
     'playlistLoader created for non muxed audio group');
   assert.ok(this.mediaTypes[type].groups.aud2[1].playlistLoader,
@@ -681,7 +739,7 @@ function(assert) {
         { id: 'fr', language: 'fr', resolvedUri: 'sub2/fr.m3u8',
           playlistLoader: this.mediaTypes[type].groups.sub2[1].playlistLoader }
       ]
-    }, 'creates group properites');
+    }, 'creates group properties');
   assert.ok(this.mediaTypes[type].groups.sub1[0].playlistLoader,
     'playlistLoader created');
   assert.ok(this.mediaTypes[type].groups.sub1[1].playlistLoader,
@@ -694,7 +752,7 @@ function(assert) {
   assert.ok(this.mediaTypes[type].tracks.fr, 'created text track');
 });
 
-QUnit.test('initialize closed-captions correctly generates tracks and NO laoders',
+QUnit.test('initialize closed-captions correctly generates tracks and NO loaders',
 function(assert) {
   const type = 'CLOSED-CAPTIONS';
 
@@ -713,7 +771,7 @@ function(assert) {
         { id: 'en608', language: 'en', instreamId: 'CC1' },
         { id: 'fr608', language: 'fr', instreamId: 'CC3' }
       ]
-    }, 'creates group properites');
+    }, 'creates group properties');
   assert.ok(this.mediaTypes[type].tracks.en608, 'created text track');
   assert.ok(this.mediaTypes[type].tracks.fr608, 'created text track');
 });

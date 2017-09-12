@@ -2227,65 +2227,6 @@ QUnit.test('subtitle segment loader resets on seeks', function(assert) {
   assert.equal(loadCount, 1, 'called load on subtitle segment loader');
 });
 
-QUnit.test('can get active subtitle group', function(assert) {
-  this.requests.length = 0;
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master-subtitles.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  this.clock.tick(1);
-
-  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  assert.notOk(masterPlaylistController.mediaTypes_.SUBTITLES.activeGroup(),
-               'no active subtitle group');
-
-  // master, contains media groups for subtitles
-  this.standardXHRResponse(this.requests.shift());
-
-  assert.notOk(masterPlaylistController.mediaTypes_.SUBTITLES.activeGroup(),
-               'no active subtitle group');
-
-  // media
-  this.standardXHRResponse(this.requests.shift());
-
-  assert.ok(masterPlaylistController.mediaTypes_.SUBTITLES.activeGroup(),
-    'active subtitle group');
-});
-
-QUnit.test('can get active subtitle track', function(assert) {
-  this.requests.length = 0;
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master-subtitles.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  this.clock.tick(1);
-
-  // master, contains media groups for subtitles
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-
-  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  assert.notOk(masterPlaylistController.mediaTypes_.SUBTITLES.activeTrack(),
-               'no active subtitle track');
-
-  const textTracks = this.player.textTracks();
-
-  // enable first subtitle text track
-  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
-  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
-  textTracks[1].mode = 'showing';
-
-  assert.ok(masterPlaylistController.mediaTypes_.SUBTITLES.activeTrack(),
-    'active subtitle track');
-});
-
 QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {
   const configOld = {
     GOAL_BUFFER_LENGTH: Config.GOAL_BUFFER_LENGTH,
