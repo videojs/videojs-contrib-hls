@@ -612,6 +612,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.tech_.trigger('hls-reset');
     });
 
+    this.mainSegmentLoader_.on('segmenttimemapping', (event) => {
+      this.tech_.trigger({
+        type: 'hls-segment-time-mapping',
+        mapping: event.mapping
+      });
+    });
+
     this.audioSegmentLoader_.on('ended', () => {
       this.onEndOfStream();
     });

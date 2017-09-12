@@ -360,6 +360,7 @@ export default class SyncController extends videojs.EventTarget {
   probeSegmentInfo(segmentInfo) {
     const segment = segmentInfo.segment;
     const playlist = segmentInfo.playlist;
+    let hasMapping = false;
     let timingInfo;
 
     if (segment.map) {
@@ -380,8 +381,12 @@ export default class SyncController extends videojs.EventTarget {
             time: segment.start
           };
         }
+
+        hasMapping = true;
       }
     }
+
+    timingInfo.hasMapping = hasMapping;
 
     return timingInfo;
   }
