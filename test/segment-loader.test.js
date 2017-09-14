@@ -603,5 +603,125 @@ QUnit.module('SegmentLoader', function(hooks) {
       assert.ok(!playlistUpdated.segments[0].end,
                 'no end info for first segment of new playlist');
     });
+
+    QUnit.test('errors when trying to switch from audio and video to audio only',
+    function(assert) {
+      const playlist = playlistWithDuration(40);
+      const errors = [];
+
+      loader.on('error', () => errors.push(loader.error()));
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 0,
+          end: 10,
+          source: 'video'
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+      loader.buffered_ = () => videojs.createTimeRanges([[0, 10]]);
+      this.updateend();
+      this.clock.tick(1);
+
+      assert.equal(errors.length, 0, 'no errors');
+
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 10,
+          end: 20,
+          source: 'audio'
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(errors.length, 1, 'one error');
+      assert.equal(errors[0].message,
+                   'Only audio in segment when we expected video (this could be due to' +
+                   ' a lack of codecs specified in the manifest).',
+                   'correct error message');
+    });
+
+    QUnit.test('does not error when audio only', function(assert) {
+      const playlist = playlistWithDuration(40);
+      const errors = [];
+
+      loader.on('error', () => errors.push(loader.error()));
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 0,
+          end: 10,
+          source: 'audio'
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+      loader.buffered_ = () => videojs.createTimeRanges([[0, 10]]);
+      this.updateend();
+      this.clock.tick(1);
+
+      assert.equal(errors.length, 0, 'no errors');
+
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 10,
+          end: 20,
+          source: 'audio'
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(errors.length, 0, 'no errors');
+    });
+
+    QUnit.test('does not error when going from audio only to avoid and video',
+    function(assert) {
+      const playlist = playlistWithDuration(40);
+      const errors = [];
+
+      loader.on('error', () => errors.push(loader.error()));
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 0,
+          end: 10,
+          source: 'audio'
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+      loader.buffered_ = () => videojs.createTimeRanges([[0, 10]]);
+      this.updateend();
+      this.clock.tick(1);
+
+      assert.equal(errors.length, 0, 'no errors');
+
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 10,
+          end: 20,
+          source: 'video'
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(errors.length, 0, 'no errors');
+    });
   });
 });

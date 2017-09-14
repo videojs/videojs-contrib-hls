@@ -372,6 +372,8 @@ export default class SyncController extends videojs.EventTarget {
         this.saveDiscontinuitySyncInfo_(segmentInfo);
       }
     }
+
+    return timingInfo;
   }
 
   /**
@@ -409,6 +411,7 @@ export default class SyncController extends videojs.EventTarget {
     let timeInfo = tsprobe(segmentInfo.bytes, this.inspectCache_);
     let segmentStartTime;
     let segmentEndTime;
+    let source;
 
     if (!timeInfo) {
       return null;
@@ -418,15 +421,18 @@ export default class SyncController extends videojs.EventTarget {
       this.inspectCache_ = timeInfo.video[1].dts;
       segmentStartTime = timeInfo.video[0].dtsTime;
       segmentEndTime = timeInfo.video[1].dtsTime;
+      source = 'video';
     } else if (timeInfo.audio && timeInfo.audio.length === 2) {
       this.inspectCache_ = timeInfo.audio[1].dts;
       segmentStartTime = timeInfo.audio[0].dtsTime;
       segmentEndTime = timeInfo.audio[1].dtsTime;
+      source = 'audio';
     }
 
     return {
       start: segmentStartTime,
-      end: segmentEndTime
+      end: segmentEndTime,
+      source
     };
   }
 

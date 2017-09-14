@@ -84,6 +84,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mediaSource_ = settings.mediaSource;
     this.hls_ = settings.hls;
     this.loaderType_ = settings.loaderType;
+    this.isUsingVideo_ = void 0;
     this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
     this.goalBufferLength_ = settings.goalBufferLength;
 
@@ -1048,12 +1049,35 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    this.state = 'APPENDING';
-
     const segmentInfo = this.pendingSegment_;
     const segment = segmentInfo.segment;
+    const timingInfo = this.syncController_.probeSegmentInfo(segmentInfo);
 
-    this.syncController_.probeSegmentInfo(segmentInfo);
+    // Since video timing takes priority over audio, when we have our first timing info,
+    // determine whether this loader is dealing with video. Although we're maintaining
+    // extra state, it helps to preserve the separation of segment loader from the actual
+    // source buffers.
+    if (typeof this.isUsingVideo_ === 'undefined' && timingInfo) {
+      this.isUsingVideo_ = timingInfo.source === 'video';
+    }
+
+    // Although we support starting on audio only, and continuing playback from there, we
+    // don't support switching from audio and video to audio only. If the codecs were in
+    // the master manifest, then the renditions incompatible with the first rendition
+    // would already be blacklisted.
+    if (this.isUsingVideo_ &&
+        timingInfo &&
+        timingInfo.source === 'audio' &&
+        this.loaderType_ === 'main') {
+      this.error({
+        message: 'Only audio in segment when we expected video (this could be due to a' +
+          ' lack of codecs specified in the manifest).'
+      });
+      this.trigger('error');
+      return;
+    }
+
+    this.state = 'APPENDING';
 
     if (segmentInfo.isSyncRequest) {
       this.trigger('syncinfoupdate');
