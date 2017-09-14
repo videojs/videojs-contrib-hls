@@ -26,11 +26,18 @@ export default class SourceUpdater {
       // events fire
       this.onUpdateendCallback_ = () => {
         let pendingCallback = this.pendingCallback_;
-
+        console.log('>>> updateend callback happening now');
         this.pendingCallback_ = null;
 
         if (pendingCallback) {
+          if (pendingCallback.fnName_) {
+            console.log('>>> pendingCallback', pendingCallback.fnName_);
+          } else {
+            console.log('>>> pendingCallback', pendingCallback.toString());
+          }
           pendingCallback();
+        } else {
+          console.log('pendingCallback undefined');
         }
 
         this.runCallback_();
@@ -77,7 +84,7 @@ export default class SourceUpdater {
    */
   appendBuffer(bytes, done) {
     this.processedAppend_ = true;
-
+    done.fnName_ = 'handleUpdateEnd_';
     this.queueCallback_(() => {
       this.sourceBuffer_.appendBuffer(bytes);
     }, done);

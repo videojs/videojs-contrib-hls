@@ -1120,7 +1120,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     }
 
     if (timingInfo.hasMapping) {
-      // successful probe of segment
       this.trigger({
         type: 'segmenttimemapping',
         mapping: this.syncController_.timelines[segmentInfo.timeline].mapping
