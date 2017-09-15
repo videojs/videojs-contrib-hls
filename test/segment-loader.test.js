@@ -685,7 +685,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       assert.equal(errors.length, 0, 'no errors');
     });
 
-    QUnit.test('does not error when going from audio only to avoid and video',
+    QUnit.test('does not error when going from audio only to audio and video',
     function(assert) {
       const playlist = playlistWithDuration(40);
       const errors = [];
