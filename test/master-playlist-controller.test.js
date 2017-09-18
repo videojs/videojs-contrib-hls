@@ -546,7 +546,8 @@ function(assert) {
                '1024 bytes downloaded');
 });
 
-QUnit.test('updates the enabled track when switching audio groups', function(assert) {
+QUnit.test('updates the active loader when switching from unmuxed to muxed audio group',
+function(assert) {
   openMediaSource(this.player, this.clock);
   // master
   this.requests.shift().respond(200, null,
@@ -565,6 +566,9 @@ QUnit.test('updates the enabled track when switching audio groups', function(ass
   let mpc = this.masterPlaylistController;
   let combinedPlaylist = mpc.master().playlists[0];
 
+  assert.ok(mpc.mediaTypes_.AUDIO.activePlaylistLoader,
+    'starts with an active playlist loader');
+
   mpc.masterPlaylistLoader_.media(combinedPlaylist);
   // updated media
   this.requests.shift().respond(200, null,
@@ -573,8 +577,8 @@ QUnit.test('updates the enabled track when switching audio groups', function(ass
                                 '0.ts\n' +
                                 '#EXT-X-ENDLIST\n');
 
-  assert.ok(mpc.activeAudioGroup().filter((track) => track.enabled)[0],
-           'enabled a track in the new audio group');
+  assert.notOk(mpc.mediaTypes_.AUDIO.activePlaylistLoader,
+    'enabled a track in the new audio group');
 });
 
 QUnit.test('waits for both main and audio loaders to finish before calling endOfStream',
@@ -862,40 +866,6 @@ function(assert) {
   // verify stats
   assert.equal(this.player.tech_.hls.stats.bandwidth, 1, 'bandwidth we set above');
 });
-
-QUnit.test('blacklists the current playlist when audio changes in Firefox 48 & below',
-  function(assert) {
-    videojs.browser.IS_FIREFOX = true;
-
-    let origSupportsAudioInfoChange_ = videojs.Hls.supportsAudioInfoChange_;
-
-    videojs.Hls.supportsAudioInfoChange_ = () => false;
-
-    // master
-    this.standardXHRResponse(this.requests.shift());
-    // media
-    this.standardXHRResponse(this.requests.shift());
-
-    let media = this.masterPlaylistController.media();
-
-    // initial audio config
-    this.masterPlaylistController.mediaSource.trigger({
-      type: 'audioinfo',
-      info: {}
-    });
-    // updated audio config
-
-    this.masterPlaylistController.mediaSource.trigger({
-      type: 'audioinfo',
-      info: {
-        different: true
-      }
-    });
-    assert.ok(media.excludeUntil > 0, 'blacklisted the old playlist');
-    assert.equal(this.env.log.warn.callCount, 2, 'logged two warnings');
-    this.env.log.warn.callCount = 0;
-    videojs.Hls.supportsAudioInfoChange_ = origSupportsAudioInfoChange_;
-  });
 
 QUnit.test('updates the combined segment loader on media changes', function(assert) {
   let updates = [];
@@ -1563,7 +1533,7 @@ function(assert) {
                         videojs.createTimeRanges([[0, 10]]),
                         'main when no audio');
 
-  mpc.audioPlaylistLoader_ = {
+  mpc.mediaTypes_.AUDIO.activePlaylistLoader = {
     media: () => audioMedia,
     dispose() {},
     expired_: 0
@@ -1903,7 +1873,8 @@ QUnit.test('trigger events when an fMP4 stream is detected', function(assert) {
   Hls.Playlist.isFmp4 = isFmp4Copy;
 });
 
-QUnit.test('adds only CEA608 closed-caption tracks when a master playlist is loaded', function(assert) {
+QUnit.test('adds only CEA608 closed-caption tracks when a master playlist is loaded',
+function(assert) {
   this.requests.length = 0;
   this.player = createPlayer();
   this.player.src({
@@ -1934,7 +1905,7 @@ QUnit.test('adds only CEA608 closed-caption tracks when a master playlist is loa
   const master = masterPlaylistController.masterPlaylistLoader_.master;
   const caps = master.mediaGroups['CLOSED-CAPTIONS'].CCs;
   const capsArr = Object.keys(caps).map(key => Object.assign({name: key}, caps[key]));
-  const addedCaps = masterPlaylistController.closedCaptionGroups_.groups.CCs
+  const addedCaps = masterPlaylistController.mediaTypes_['CLOSED-CAPTIONS'].groups.CCs
     .map(cap => Object.assign({name: cap.id}, cap));
 
   assert.equal(capsArr.length, 4, '4 closed-caption tracks defined in playlist');
@@ -1947,10 +1918,14 @@ QUnit.test('adds only CEA608 closed-caption tracks when a master playlist is loa
   assert.equal(textTracks.length, 3, '2 text tracks were added');
   assert.equal(textTracks[1].mode, 'disabled', 'track starts disabled');
   assert.equal(textTracks[2].mode, 'disabled', 'track starts disabled');
-  assert.equal(textTracks[1].id, addedCaps[0].instreamId, 'text track 1\'s id is CC\'s instreamId');
-  assert.equal(textTracks[2].id, addedCaps[1].instreamId, 'text track 2\'s id is CC\'s instreamId');
-  assert.equal(textTracks[1].label, addedCaps[0].name, 'text track 1\'s label is CC\'s name');
-  assert.equal(textTracks[2].label, addedCaps[1].name, 'text track 2\'s label is CC\'s name');
+  assert.equal(textTracks[1].id, addedCaps[0].instreamId,
+    'text track 1\'s id is CC\'s instreamId');
+  assert.equal(textTracks[2].id, addedCaps[1].instreamId,
+    'text track 2\'s id is CC\'s instreamId');
+  assert.equal(textTracks[1].label, addedCaps[0].name,
+    'text track 1\'s label is CC\'s name');
+  assert.equal(textTracks[2].label, addedCaps[1].name,
+    'text track 2\'s label is CC\'s name');
 });
 
 QUnit.test('adds subtitle tracks when a media playlist is loaded', function(assert) {
@@ -2139,7 +2114,7 @@ QUnit.test('disposes subtitle loaders on dispose', function(assert) {
 
   let masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
 
-  assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
+  assert.notOk(masterPlaylistController.mediaTypes_.SUBTITLES.activePlaylistLoader,
                'does not start with a subtitle playlist loader');
   assert.ok(masterPlaylistController.subtitleSegmentLoader_,
             'starts with a subtitle segment loader');
@@ -2179,7 +2154,7 @@ QUnit.test('disposes subtitle loaders on dispose', function(assert) {
   assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
   textTracks[1].mode = 'showing';
 
-  assert.ok(masterPlaylistController.subtitlePlaylistLoader_,
+  assert.ok(masterPlaylistController.mediaTypes_.SUBTITLES.activePlaylistLoader,
             'has a subtitle playlist loader');
   assert.ok(masterPlaylistController.subtitleSegmentLoader_,
             'has a subtitle segment loader');
@@ -2188,7 +2163,7 @@ QUnit.test('disposes subtitle loaders on dispose', function(assert) {
 
   segmentLoaderDisposeCount = 0;
 
-  masterPlaylistController.subtitlePlaylistLoader_.dispose =
+  masterPlaylistController.mediaTypes_.SUBTITLES.activePlaylistLoader.dispose =
     () => playlistLoaderDisposeCount++;
   masterPlaylistController.subtitleSegmentLoader_.dispose =
     () => segmentLoaderDisposeCount++;
@@ -2250,236 +2225,6 @@ QUnit.test('subtitle segment loader resets on seeks', function(assert) {
   assert.equal(resetCount, 1, 'reset subtitle segment loader');
   assert.equal(abortCount, 1, 'aborted subtitle segment loader');
   assert.equal(loadCount, 1, 'called load on subtitle segment loader');
-});
-
-QUnit.test('can get active subtitle group', function(assert) {
-  this.requests.length = 0;
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master-subtitles.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  this.clock.tick(1);
-
-  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  assert.notOk(masterPlaylistController.activeSubtitleGroup_(),
-               'no active subtitle group');
-
-  // master, contains media groups for subtitles
-  this.standardXHRResponse(this.requests.shift());
-
-  assert.notOk(masterPlaylistController.activeSubtitleGroup_(),
-               'no active subtitle group');
-
-  // media
-  this.standardXHRResponse(this.requests.shift());
-
-  assert.ok(masterPlaylistController.activeSubtitleGroup_(), 'active subtitle group');
-});
-
-QUnit.test('can get active subtitle track', function(assert) {
-  this.requests.length = 0;
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master-subtitles.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  this.clock.tick(1);
-
-  // master, contains media groups for subtitles
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-
-  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  assert.notOk(masterPlaylistController.activeSubtitleTrack_(),
-               'no active subtitle track');
-
-  const textTracks = this.player.textTracks();
-
-  // enable first subtitle text track
-  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
-  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
-  textTracks[1].mode = 'showing';
-
-  assert.ok(masterPlaylistController.activeSubtitleTrack_(), 'active subtitle track');
-});
-
-QUnit.test('handles subtitle errors appropriately', function(assert) {
-  this.requests.length = 0;
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master-subtitles.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  this.clock.tick(1);
-
-  // master, contains media groups for subtitles
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-
-  const textTracks = this.player.textTracks();
-
-  // enable first subtitle text track
-  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
-  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
-  textTracks[1].mode = 'showing';
-
-  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-  let abortCalls = 0;
-  let setupSubtitlesCalls = 0;
-
-  masterPlaylistController.subtitleSegmentLoader_.abort = () => abortCalls++;
-  masterPlaylistController.setupSubtitles = () => setupSubtitlesCalls++;
-
-  masterPlaylistController.handleSubtitleError_();
-
-  assert.equal(textTracks[1].mode, 'disabled', 'set text track to disabled');
-  assert.equal(abortCalls, 1, 'aborted subtitle segment loader');
-  assert.equal(setupSubtitlesCalls, 1, 'setup subtitles');
-  assert.equal(this.env.log.warn.callCount, 1, 'logged a warning');
-
-  this.env.log.warn.callCount = 0;
-});
-
-QUnit.test('sets up subtitles', function(assert) {
-  this.requests.length = 0;
-  this.player = createPlayer();
-  this.player.src({
-    src: 'manifest/master-subtitles.m3u8',
-    type: 'application/vnd.apple.mpegurl'
-  });
-
-  this.clock.tick(1);
-
-  // master, contains media groups for subtitles
-  this.standardXHRResponse(this.requests.shift());
-  // media
-  this.standardXHRResponse(this.requests.shift());
-
-  const masterPlaylistController = this.player.tech_.hls.masterPlaylistController_;
-
-  // sets up listener for text track changes
-  masterPlaylistController.trigger('sourceopen');
-
-  const segmentLoader = masterPlaylistController.subtitleSegmentLoader_;
-
-  let segmentDisposeCalls = 0;
-  let segmentLoadCalls = 0;
-  let segmentPauseCalls = 0;
-  let segmentResetCalls = 0;
-
-  segmentLoader.load = () => segmentLoadCalls++;
-  segmentLoader.dispose = () => segmentDisposeCalls++;
-  segmentLoader.pause = () => segmentPauseCalls++;
-  segmentLoader.resetEverything = () => segmentResetCalls++;
-
-  assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
-               'no subtitle playlist loader');
-
-  // no active text track
-  masterPlaylistController.setupSubtitles();
-
-  assert.equal(segmentDisposeCalls, 0, 'did not dispose subtitles segment loader');
-  assert.equal(segmentLoadCalls, 0, 'did not load subtitles segment loader');
-  assert.equal(segmentPauseCalls, 1, 'paused subtitles segment loader');
-  assert.equal(segmentResetCalls, 0, 'did not reset subtitle segment loader');
-  assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
-               'no subtitle playlist loader');
-  assert.ok(masterPlaylistController.subtitleSegmentLoader_,
-            'did not remove subtitle segment loader');
-
-  const textTracks = this.player.textTracks();
-
-  // enable first subtitle text track
-  assert.notEqual(textTracks[0].kind, 'subtitles', 'kind is not subtitles');
-  assert.equal(textTracks[1].kind, 'subtitles', 'kind is subtitles');
-  textTracks[1].mode = 'showing';
-
-  assert.ok(masterPlaylistController.subtitlePlaylistLoader_,
-            'added a new subtitle playlist loader');
-  assert.equal(segmentLoader,
-               masterPlaylistController.subtitleSegmentLoader_,
-               'did not change subtitle segment loader');
-  assert.equal(segmentLoadCalls, 0, 'did not load subtitles segment loader');
-  assert.equal(segmentResetCalls, 1, 'reset subtitle segment loader');
-
-  let playlistLoader = masterPlaylistController.subtitlePlaylistLoader_;
-  let playlistLoadCalls = 0;
-
-  playlistLoader.load = () => playlistLoadCalls++;
-
-  // same active text track, haven't yet gotten a response from webvtt
-  masterPlaylistController.setupSubtitles();
-
-  assert.equal(this.requests.length, 2, 'total of two requests');
-
-  let oldRequest = this.requests.shift();
-
-  // tracking playlist loader dispose calls by checking request aborted status
-  assert.ok(oldRequest.aborted, 'aborted the old request');
-  assert.notEqual(playlistLoader,
-                  masterPlaylistController.subtitlePlaylistLoader_,
-                 'changed subtitle playlist loader');
-
-  let playlistDisposeCalls = 0;
-
-  playlistLoader = masterPlaylistController.subtitlePlaylistLoader_;
-  playlistLoadCalls = 0;
-
-  playlistLoader.load = () => playlistLoadCalls++;
-  playlistLoader.dispose = () => playlistDisposeCalls++;
-
-  this.requests.shift().respond(200, null, `
-		#EXTM3U
-		#EXT-X-TARGETDURATION:10
-		#EXT-X-MEDIA-SEQUENCE:0
-		#EXTINF:10
-		0.webvtt
-		#EXT-X-ENDLIST
-  `);
-
-  segmentLoadCalls = 0;
-
-  // same active text track, got a response from webvtt playlist
-  masterPlaylistController.setupSubtitles();
-
-  assert.equal(playlistLoader,
-               masterPlaylistController.subtitlePlaylistLoader_,
-              'did not change subtitle playlist loader');
-  assert.equal(segmentLoader,
-               masterPlaylistController.subtitleSegmentLoader_,
-               'did not change subtitle segment loader');
-  assert.equal(playlistDisposeCalls, 0, 'did not dispose subtitles playlist loader');
-  assert.equal(playlistLoadCalls, 0, 'did not load subtitles playlist loader');
-  assert.equal(segmentLoadCalls, 1, 'loaded subtitles segment loader');
-
-  playlistDisposeCalls = 0;
-  segmentDisposeCalls = 0;
-  playlistLoadCalls = 0;
-  segmentLoadCalls = 0;
-  segmentPauseCalls = 0;
-  segmentResetCalls = 0;
-
-  // turn off active subtitle text track
-  textTracks[1].mode = 'disabled';
-
-  assert.equal(playlistDisposeCalls, 1, 'disposed subtitles playlist loader');
-  assert.equal(segmentDisposeCalls, 0, 'did not dispose subtitles segment loader');
-  assert.equal(playlistLoadCalls, 0, 'did not load subtitles playlist loader');
-  assert.equal(segmentLoadCalls, 0, 'did not load subtitles segment loader');
-  assert.equal(segmentPauseCalls, 1, 'paused subtitles segment loader');
-  assert.equal(segmentResetCalls, 0, 'did not reset subtitle segment loader');
-  assert.notOk(masterPlaylistController.subtitlePlaylistLoader_,
-               'removed subtitle playlist loader');
-  assert.ok(masterPlaylistController.subtitleSegmentLoader_,
-            'did not remove subtitle segment loader');
 });
 
 QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {

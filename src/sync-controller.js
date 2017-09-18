@@ -358,7 +358,8 @@ export default class SyncController extends videojs.EventTarget {
    * @param {SegmentInfo} segmentInfo - The current active request information
    */
   probeSegmentInfo(segmentInfo) {
-    let segment = segmentInfo.segment;
+    const segment = segmentInfo.segment;
+    const playlist = segmentInfo.playlist;
     let timingInfo;
 
     if (segment.map) {
@@ -370,6 +371,15 @@ export default class SyncController extends videojs.EventTarget {
     if (timingInfo) {
       if (this.calculateSegmentTimeMapping_(segmentInfo, timingInfo)) {
         this.saveDiscontinuitySyncInfo_(segmentInfo);
+
+        // If the playlist does not have sync information yet, record that information
+        // now with segment timing information
+        if (!playlist.syncInfo) {
+          playlist.syncInfo = {
+            mediaSequence: playlist.mediaSequence + segmentInfo.mediaIndex,
+            time: segment.start
+          };
+        }
       }
     }
   }

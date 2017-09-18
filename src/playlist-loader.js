@@ -346,6 +346,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     if (this.media_) {
       this.trigger('mediachanging');
     }
+
     request = this.hls_.xhr({
       uri: resolveUrl(loader.master.uri, playlist.uri),
       withCredentials
@@ -385,6 +386,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     }
 
     loader.state = 'HAVE_CURRENT_METADATA';
+
     request = this.hls_.xhr({
       uri: resolveUrl(loader.master.uri, loader.media().uri),
       withCredentials
@@ -397,20 +399,9 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       if (error) {
         return playlistRequestError(request, loader.media().uri, 'HAVE_METADATA');
       }
+
       haveMetadata(request, loader.media().uri);
     });
-  });
-
-  // setup initial sync info
-  loader.on('firstplay', function() {
-    let playlist = loader.media();
-
-    if (playlist) {
-      playlist.syncInfo = {
-        mediaSequence: playlist.mediaSequence,
-        time: 0
-      };
-    }
   });
 
   /**
@@ -423,6 +414,19 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       // If we pause the loader before any data has been retrieved, its as if we never
       // started, so reset to an unstarted state.
       loader.started = false;
+    }
+    // Need to restore state now that no activity is happening
+    if (loader.state === 'SWITCHING_MEDIA') {
+      // if the loader was in the process of switching media, it should either return to
+      // HAVE_MASTER or HAVE_METADATA depending on if the loader has loaded a media
+      // playlist yet. This is determined by the existence of loader.media_
+      if (loader.media_) {
+        loader.state = 'HAVE_METADATA';
+      } else {
+        loader.state = 'HAVE_MASTER';
+      }
+    } else if (loader.state === 'HAVE_CURRENT_METADATA') {
+      loader.state = 'HAVE_METADATA';
     }
   };
 
