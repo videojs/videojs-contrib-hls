@@ -41,24 +41,16 @@ export const stopLoaders = (segmentLoader, mediaType) => {
 /**
  * Start loading provided segment loader and playlist loader
  *
- * @param {SegmentLoader} segmentLoader
- *        SegmentLoader to start loading
  * @param {PlaylistLoader} playlistLoader
  *        PlaylistLoader to start loading
  * @param {Object} mediaType
  *        Active media type
  * @function startLoaders
  */
-export const startLoaders = (segmentLoader, playlistLoader, mediaType) => {
+export const startLoaders = (playlistLoader, mediaType) => {
+  // Segment loader will be started after `loadedmetadata` or `loadedplaylist` from the
+  // playlist loader
   mediaType.activePlaylistLoader = playlistLoader;
-
-  if (playlistLoader.media()) {
-    // only begin loading in the segment loader if the playlist loader has loaded its
-    // media
-    segmentLoader.playlist(playlistLoader.media());
-    segmentLoader.load();
-  }
-
   playlistLoader.load();
 };
 
@@ -110,7 +102,7 @@ export const onGroupChanged = (type, settings) => () => {
   // Non-destructive resync
   segmentLoader.resyncLoader();
 
-  startLoaders(segmentLoader, activeGroup.playlistLoader, mediaType);
+  startLoaders(activeGroup.playlistLoader, mediaType);
 };
 
 /**
@@ -158,7 +150,7 @@ export const onTrackChanged = (type, settings) => () => {
     // Nothing has actually changed. This can happen because track change events can fire
     // multiple times for a "single" change. One for enabling the new active track, and
     // one for disabling the track that was active
-    startLoaders(segmentLoader, activeGroup.playlistLoader, mediaType);
+    startLoaders(activeGroup.playlistLoader, mediaType);
     return;
   }
 
@@ -170,7 +162,7 @@ export const onTrackChanged = (type, settings) => () => {
   // destructive reset
   segmentLoader.resetEverything();
 
-  startLoaders(segmentLoader, activeGroup.playlistLoader, mediaType);
+  startLoaders(activeGroup.playlistLoader, mediaType);
 };
 
 export const onError = {
@@ -292,9 +284,7 @@ export const setupListeners = {
     playlistLoader.on('loadedplaylist', () => {
       segmentLoader.playlist(playlistLoader.media(), requestOptions);
 
-      // If the player isn't paused, ensure that the segment loader is running,
-      // as it is possible that it was temporarily stopped while waiting for
-      // a playlist (e.g., in case the playlist errored and we re-requested it).
+      // If the player isn't paused, ensure that the segment loader is running
       if (!tech.paused()) {
         segmentLoader.load();
       }
@@ -337,9 +327,7 @@ export const setupListeners = {
     playlistLoader.on('loadedplaylist', () => {
       segmentLoader.playlist(playlistLoader.media(), requestOptions);
 
-      // If the player isn't paused, ensure that the segment loader is running,
-      // as it is possible that it was temporarily stopped while waiting for
-      // a playlist (e.g., in case the playlist errored and we re-requested it).
+      // If the player isn't paused, ensure that the segment loader is running
       if (!tech.paused()) {
         segmentLoader.load();
       }

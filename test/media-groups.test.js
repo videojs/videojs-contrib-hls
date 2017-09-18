@@ -101,41 +101,20 @@ function(assert) {
     'clears active playlist loader for media group');
 });
 
-QUnit.test('startLoaders starts playlist loader and segment loader when appropriate',
+QUnit.test('startLoaders starts playlist loader when appropriate',
 function(assert) {
-  let segmentLoaderLoadCalls = 0;
   let playlistLoaderLoadCalls = 0;
   let media = null;
-  let segmentLoaderPlaylist;
 
-  const segmentLoader = {
-    playlist: (playlist) => segmentLoaderPlaylist = playlist,
-    load: () => segmentLoaderLoadCalls++
-  };
   const playlistLoader = {
     load: () => playlistLoaderLoadCalls++,
     media: () => media
   };
   const mediaType = { activePlaylistLoader: null };
 
-  MediaGroups.startLoaders(segmentLoader, playlistLoader, mediaType);
+  MediaGroups.startLoaders(playlistLoader, mediaType);
 
   assert.equal(playlistLoaderLoadCalls, 1, 'called load on playlist loader');
-  assert.equal(segmentLoaderLoadCalls, 0,
-    'did not call load on segment loader when no media yet on playlist loader');
-  assert.equal(typeof segmentLoaderPlaylist, 'undefined',
-    'no playlist set on segment loader when no media yet on playlist loader');
-  assert.strictEqual(mediaType.activePlaylistLoader, playlistLoader,
-    'set active playlist loader for media group');
-
-  mediaType.activePlaylistLoader = null;
-  media = { uri: 'index.m3u8' };
-
-  MediaGroups.startLoaders(segmentLoader, playlistLoader, mediaType);
-
-  assert.equal(playlistLoaderLoadCalls, 2, 'called load on playlist loader');
-  assert.equal(segmentLoaderLoadCalls, 1, 'called load on segment loader');
-  assert.strictEqual(segmentLoaderPlaylist, media, 'set playlist on segment loader');
   assert.strictEqual(mediaType.activePlaylistLoader, playlistLoader,
     'set active playlist loader for media group');
 });
@@ -380,7 +359,6 @@ function(assert) {
   let mainSegmentLoaderResetCalls = 0;
   let segmentLoaderResetCalls = 0;
   let segmentLoaderPauseCalls = 0;
-  let segmentLoaderLoadCalls = 0;
   let segmentLoaderTrack;
 
   const type = 'AUDIO';
@@ -389,7 +367,7 @@ function(assert) {
   const segmentLoader = {
     abort() {},
     pause: () => segmentLoaderPauseCalls++,
-    load: () => segmentLoaderLoadCalls++,
+    load: () => {},
     playlist() {},
     resetEverything: () => segmentLoaderResetCalls++
   };
@@ -431,7 +409,6 @@ function(assert) {
   assert.equal(segmentLoaderPauseCalls, 1, 'loaders paused on track change');
   assert.equal(mainSegmentLoaderResetCalls, 0, 'no main reset when no active group');
   assert.equal(segmentLoaderResetCalls, 0, 'no reset when no active group');
-  assert.equal(segmentLoaderLoadCalls, 0, 'loaders not restarted');
 
   tracks.en.enabled = true;
 
@@ -442,7 +419,6 @@ function(assert) {
     'main reset changing to group with no playlist loader');
   assert.equal(segmentLoaderResetCalls, 0,
     'no reset changing to group with no playlist loader');
-  assert.equal(segmentLoaderLoadCalls, 0, 'loaders not restarted');
 
   tracks.en.enabled = false;
   tracks.fr.enabled = true;
@@ -455,7 +431,6 @@ function(assert) {
     'no main reset changing to group with playlist loader');
   assert.equal(segmentLoaderResetCalls, 0,
     'no reset when active group hasn\'t changed');
-  assert.equal(segmentLoaderLoadCalls, 1, 'loaders restarted');
   assert.strictEqual(mediaType.activePlaylistLoader, groups.main[1].playlistLoader,
     'sets the correct active playlist loader');
 
@@ -468,7 +443,6 @@ function(assert) {
     'no main reset changing to group with playlist loader');
   assert.equal(segmentLoaderResetCalls, 1,
     'reset on track change');
-  assert.equal(segmentLoaderLoadCalls, 2, 'loaders restarted');
   assert.strictEqual(mediaType.activePlaylistLoader, groups.main[1].playlistLoader,
     'sets the correct active playlist loader');
 
@@ -485,7 +459,6 @@ function(assert) {
     'no main reset changing to group with playlist loader');
   assert.equal(segmentLoaderResetCalls, 2,
     'reset on track change');
-  assert.equal(segmentLoaderLoadCalls, 3, 'loaders restarted');
   assert.strictEqual(mediaType.activePlaylistLoader, groups.main[1].playlistLoader,
     'sets the correct active playlist loader');
   assert.strictEqual(segmentLoaderTrack, tracks.fr,
