@@ -12,7 +12,7 @@
   },
   "scripts": {
     "prebuild": "npm run clean",
-    "build": "npm-run-all -p build:*",
+    "build": "npm-run-all -s build:*",
     "build:js": "npm-run-all build:js:babel build:js:browserify build:js:bannerize build:js:collapse build:js:uglify",
     "build:js:babel": "babel src -d es5",
     "build:js:bannerize": "bannerize dist/videojs-contrib-hls.js --banner=scripts/banner.ejs",
