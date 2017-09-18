@@ -367,7 +367,6 @@ function(assert) {
   const segmentLoader = {
     abort() {},
     pause: () => segmentLoaderPauseCalls++,
-    load: () => {},
     playlist() {},
     resetEverything: () => segmentLoaderResetCalls++
   };
