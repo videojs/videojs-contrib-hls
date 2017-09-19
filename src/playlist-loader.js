@@ -26,15 +26,13 @@ import window from 'global/window';
   * playlists.
   * @return a list of merged segment objects
   */
-export const updateSegments = function(original, update, offset) {
-  let result = update.slice();
-  let length;
-  let i;
+export const updateSegments = (original, update, offset) => {
+  const result = update.slice();
 
   offset = offset || 0;
-  length = Math.min(original.length, update.length + offset);
+  const length = Math.min(original.length, update.length + offset);
 
-  for (i = offset; i < length; i++) {
+  for (let i = offset; i < length; i++) {
     result[i - offset] = mergeOptions(original[i], result[i - offset]);
   }
   return result;
