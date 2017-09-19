@@ -26,7 +26,7 @@ import window from 'global/window';
   * playlists.
   * @return a list of merged segment objects
   */
-const updateSegments = function(original, update, offset) {
+export const updateSegments = function(original, update, offset) {
   let result = update.slice();
   let length;
   let i;

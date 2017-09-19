@@ -1,5 +1,8 @@
 import QUnit from 'qunit';
-import PlaylistLoader from '../src/playlist-loader';
+import {
+  default as PlaylistLoader,
+  updateSegments
+} from '../src/playlist-loader';
 import xhrFactory from '../src/xhr';
 import { useFakeEnvironment } from './test-helpers';
 import window from 'global/window';
@@ -26,6 +29,59 @@ QUnit.module('Playlist Loader', {
   afterEach() {
     this.env.restore();
   }
+});
+
+QUnit.test('updateSegments copies over properties', function(assert) {
+  assert.deepEqual(
+    [
+      { uri: 'test-uri-0', attributes: { BANDWIDTH: 100 } },
+      { uri: 'test-uri-1', attributes: { BANDWIDTH: 99, height: 4 } }
+    ],
+    updateSegments(
+      [
+        { uri: 'test-uri-0' },
+        { uri: 'test-uri-1', attributes: { BANDWIDTH: 1 } }
+      ],
+      [
+        { uri: 'test-uri-0', attributes: { BANDWIDTH: 100 } },
+        { uri: 'test-uri-1', attributes: { BANDWIDTH: 99, height: 4 } }
+      ],
+      0),
+    'copies over/overwrites properties without offset');
+
+  assert.deepEqual(
+    [
+      { uri: 'test-uri-1', attributes: { BANDWIDTH: 1 } },
+      { uri: 'test-uri-2', attributes: { BANDWIDTH: 100, width: 2 } }
+    ],
+    updateSegments(
+      [
+        { uri: 'test-uri-0' },
+        { uri: 'test-uri-1', attributes: { BANDWIDTH: 1 } }
+      ],
+      [
+        { uri: 'test-uri-1' },
+        { uri: 'test-uri-2', attributes: { BANDWIDTH: 100, width: 2 } }
+      ],
+      1),
+    'copies over/overwrites properties with offset of 1');
+
+  assert.deepEqual(
+    [
+      { uri: 'test-uri-2' },
+      { uri: 'test-uri-3', attributes: { BANDWIDTH: 100, width: 2 } }
+    ],
+    updateSegments(
+      [
+        { uri: 'test-uri-0' },
+        { uri: 'test-uri-1', attributes: { BANDWIDTH: 1 } }
+      ],
+      [
+        { uri: 'test-uri-2' },
+        { uri: 'test-uri-3', attributes: { BANDWIDTH: 100, width: 2 } }
+      ],
+      2),
+    'copies over/overwrites properties with offset of 2');
 });
 
 QUnit.test('throws if the playlist url is empty or undefined', function(assert) {
