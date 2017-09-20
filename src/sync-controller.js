@@ -382,6 +382,8 @@ export default class SyncController extends videojs.EventTarget {
         }
       }
     }
+
+    return timingInfo;
   }
 
   /**
@@ -436,7 +438,9 @@ export default class SyncController extends videojs.EventTarget {
 
     return {
       start: segmentStartTime,
-      end: segmentEndTime
+      end: segmentEndTime,
+      containsVideo: timeInfo.video && timeInfo.video.length === 2,
+      containsAudio: timeInfo.audio && timeInfo.audio.length === 2
     };
   }
 
