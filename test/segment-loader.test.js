@@ -50,8 +50,9 @@ QUnit.test('illegalMediaSwitch detects illegal media switches', function(assert)
   startingMedia = { containsAudio: true, containsVideo: false };
   newSegmentMedia = { containsAudio: true, containsVideo: true };
   assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
-               'Audio and video found in segment when we expected audio only.' +
-               ' We can\'t switch since we started on audio only.' +
+               'Video found in segment when we expected only audio.' +
+               ' We can\'t switch to a stream with video from a stream that only had' +
+               ' audio.' +
                ' To get rid of this message, please add codec information to the' +
                ' manifest.',
                'error when audio only to muxed');
@@ -59,8 +60,8 @@ QUnit.test('illegalMediaSwitch detects illegal media switches', function(assert)
   startingMedia = { containsAudio: true, containsVideo: true };
   newSegmentMedia = { containsAudio: true, containsVideo: false };
   assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
-               'Only audio found in segment when we expected audio and video.' +
-               ' We can\'t switch to audio only from audio and video.' +
+               'Only audio found in segment when we expected video.' +
+               ' We can\'t switch to audio only from a stream that had video.' +
                ' To get rid of this message, please add codec information to the' +
                ' manifest.',
                'error when muxed to audio only');
@@ -74,8 +75,9 @@ QUnit.test('illegalMediaSwitch detects illegal media switches', function(assert)
   startingMedia = { containsAudio: true, containsVideo: false };
   newSegmentMedia = { containsAudio: false, containsVideo: true };
   assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
-               'Only video found in segment when we expected audio only.' +
-               ' We can\'t switch since we started on audio only.' +
+               'Video found in segment when we expected only audio.' +
+               ' We can\'t switch to a stream with video from a stream that only had' +
+               ' audio.' +
                ' To get rid of this message, please add codec information to the' +
                ' manifest.',
                'error when audio only to video only');
@@ -83,8 +85,8 @@ QUnit.test('illegalMediaSwitch detects illegal media switches', function(assert)
   startingMedia = { containsAudio: false, containsVideo: true };
   newSegmentMedia = { containsAudio: true, containsVideo: false };
   assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
-               'Only audio found in segment when we expected video only.' +
-               ' We can\'t switch to audio only from video only.' +
+               'Only audio found in segment when we expected video.' +
+               ' We can\'t switch to audio only from a stream that had video.' +
                ' To get rid of this message, please add codec information to the' +
                ' manifest.',
                'error when video only to audio only');
@@ -714,8 +716,8 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       assert.equal(errors.length, 1, 'one error');
       assert.equal(errors[0].message,
-                   'Only audio found in segment when we expected audio and video.' +
-                   ' We can\'t switch to audio only from audio and video.' +
+                   'Only audio found in segment when we expected video.' +
+                   ' We can\'t switch to audio only from a stream that had video.' +
                    ' To get rid of this message, please add codec information to the' +
                    ' manifest.',
                    'correct error message');

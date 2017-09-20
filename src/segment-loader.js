@@ -58,36 +58,16 @@ export const illegalMediaSwitch = (loaderType, startingMedia, newSegmentMedia) =
     return 'Neither audio nor video found in segment.';
   }
 
-  if (startingMedia.containsAudio && startingMedia.containsVideo &&
-      newSegmentMedia.containsAudio && !newSegmentMedia.containsVideo) {
-    return 'Only audio found in segment when we expected audio and video.' +
-      ' We can\'t switch to audio only from audio and video.' +
+  if (startingMedia.containsVideo && !newSegmentMedia.containsVideo) {
+    return 'Only audio found in segment when we expected video.' +
+      ' We can\'t switch to audio only from a stream that had video.' +
       ' To get rid of this message, please add codec information to the manifest.';
   }
 
-  if (!startingMedia.containsAudio && startingMedia.containsVideo &&
-      newSegmentMedia.containsAudio && !newSegmentMedia.containsVideo) {
-    return 'Only audio found in segment when we expected video only.' +
-      ' We can\'t switch to audio only from video only.' +
+  if (!startingMedia.containsVideo && newSegmentMedia.containsVideo) {
+    return 'Video found in segment when we expected only audio.' +
+      ' We can\'t switch to a stream with video from a stream that only had audio.' +
       ' To get rid of this message, please add codec information to the manifest.';
-  }
-
-  if (startingMedia.containsAudio && !startingMedia.containsVideo) {
-    let errorMessage;
-
-    if (newSegmentMedia.containsAudio && newSegmentMedia.containsVideo) {
-      errorMessage = 'Audio and video found in segment when we expected audio only.';
-    }
-
-    if (!newSegmentMedia.containsAudio && newSegmentMedia.containsVideo) {
-      errorMessage =
-        'Only video found in segment when we expected audio only.';
-    }
-
-    if (errorMessage) {
-      return errorMessage + ' We can\'t switch since we started on audio only.' +
-        ' To get rid of this message, please add codec information to the manifest.';
-    }
   }
 };
 
