@@ -465,7 +465,7 @@ QUnit.test('fixes bad seeks', function(assert) {
   assert.equal(seeks.length, 2, 'did not seek');
 });
 
-QUnit.test('seeks to live point if we try to seek outside of seekable', function(assert) {
+QUnit.test('corrects seek outside of seekable', function(assert) {
   // set an arbitrary live source
   this.player.src({
     src: 'liveStart30sBefore.m3u8',

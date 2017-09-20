@@ -154,33 +154,31 @@ export default class PlaybackWatcher {
    * @private
    */
   fixesBadSeeks_() {
-    let seekable = this.seekable();
-    let currentTime = this.tech_.currentTime();
+    const seeking = this.tech_.seeking();
+    const seekable = this.seekable();
+    const seekableStart = seekable.start(0);
+    const seekableEnd = seekable.end(seekable.length - 1);
+    const currentTime = this.tech_.currentTime();
+    let seekTo;
 
-    if (this.tech_.seeking()) {
-      if (this.afterSeekableWindow_(seekable, currentTime)) {
-        let seekableEnd = seekable.end(seekable.length - 1);
+    if (seeking && this.afterSeekableWindow_(seekable, currentTime)) {
+      // sync to live point (if VOD, our seekable was updated and we're simply adjusting)
+      seekTo = seekableEnd;
+    }
 
-        // sync to live point (if VOD, our seekable was updated and we're simply adjusting)
-        this.logger_(`Trying to seek outside of seekable at time ${currentTime} with ` +
-                    `seekable range ${Ranges.printableRange(seekable)}. Seeking to ` +
-                    `${seekableEnd}.`);
-        this.tech_.setCurrentTime(seekableEnd);
-        return true;
-      }
+    if (seeking && this.beforeSeekableWindow_(seekable, currentTime)) {
+      // sync to the beginning of the live window
+      // provide a buffer of .1 seconds to handle rounding/imprecise numbers
+      seekTo = seekableStart + 0.1;
+    }
 
-      if (this.beforeSeekableWindow_(seekable, currentTime)) {
-        let seekableStart = seekable.start(0);
+    if (typeof seekTo !== 'undefined') {
+      this.logger_(`Trying to seek outside of seekable at time ${currentTime} with ` +
+                  `seekable range ${Ranges.printableRange(seekable)}. Seeking to ` +
+                  `${seekTo}.`);
 
-        // sync to the beginning of the live window
-        this.logger_(`Trying to seek outside of seekable at time ${currentTime} with ` +
-                    `seekable range ${Ranges.printableRange(seekable)}. Seeking to ` +
-                    `${seekableStart}.`);
-
-        // provide a buffer of .1 seconds to handle rounding/imprecise numbers
-        this.tech_.setCurrentTime(seekableStart + 0.1);
-        return true;
-      }
+      this.tech_.setCurrentTime(seekTo);
+      return true;
     }
 
     return false;
