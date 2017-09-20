@@ -59,6 +59,18 @@ QUnit.test('illegalMediaSwitch detects illegal media switches', function(assert)
                'error when neither audio nor video');
 
   startingMedia = { containsAudio: true, containsVideo: false };
+  newSegmentMedia = { containsAudio: false, containsVideo: false };
+  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'Neither audio nor video found in segment.',
+               'error when audio only to neither audio nor video');
+
+  startingMedia = { containsAudio: false, containsVideo: true };
+  newSegmentMedia = { containsAudio: false, containsVideo: false };
+  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'Neither audio nor video found in segment.',
+               'error when video only to neither audio nor video');
+
+  startingMedia = { containsAudio: true, containsVideo: false };
   newSegmentMedia = { containsAudio: true, containsVideo: true };
   assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
                'Video found in segment when we expected only audio.' +
@@ -75,12 +87,6 @@ QUnit.test('illegalMediaSwitch detects illegal media switches', function(assert)
                ' To get rid of this message, please add codec information to the' +
                ' manifest.',
                'error when muxed to audio only');
-
-  startingMedia = { containsAudio: true, containsVideo: true };
-  newSegmentMedia = { containsAudio: false, containsVideo: false };
-  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
-               'Neither audio nor video found in segment.',
-               'error when muxed to neither audio nor video');
 
   startingMedia = { containsAudio: true, containsVideo: false };
   newSegmentMedia = { containsAudio: false, containsVideo: true };

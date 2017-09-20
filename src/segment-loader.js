@@ -51,7 +51,7 @@ export const illegalMediaSwitch = (loaderType, startingMedia, newSegmentMedia) =
   // Although these checks should most likely cover non 'main' types, for now it narrows
   // the scope of our checks.
   if (loaderType !== 'main' || !startingMedia || !newSegmentMedia) {
-    return;
+    return null;
   }
 
   if (!newSegmentMedia.containsAudio && !newSegmentMedia.containsVideo) {
@@ -69,6 +69,8 @@ export const illegalMediaSwitch = (loaderType, startingMedia, newSegmentMedia) =
       ' We can\'t switch to a stream with video from an audio only stream.' +
       ' To get rid of this message, please add codec information to the manifest.';
   }
+
+  return null;
 };
 
 /**
