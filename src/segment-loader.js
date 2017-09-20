@@ -66,7 +66,7 @@ export const illegalMediaSwitch = (loaderType, startingMedia, newSegmentMedia) =
 
   if (!startingMedia.containsVideo && newSegmentMedia.containsVideo) {
     return 'Video found in segment when we expected only audio.' +
-      ' We can\'t switch to a stream with video from a stream that only had audio.' +
+      ' We can\'t switch to a stream with video from an audio only stream.' +
       ' To get rid of this message, please add codec information to the manifest.';
   }
 };
@@ -1091,7 +1091,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       };
     }
 
-    let illegalMediaSwitchError =
+    const illegalMediaSwitchError =
       illegalMediaSwitch(this.loaderType_, this.startingMedia_, timingInfo);
 
     if (illegalMediaSwitchError) {
