@@ -411,7 +411,8 @@ export default class SyncController extends videojs.EventTarget {
     let timeInfo = tsprobe(segmentInfo.bytes, this.inspectCache_);
     let segmentStartTime;
     let segmentEndTime;
-    let source;
+    let containsAudio = false;
+    let containsVideo = false;
 
     if (!timeInfo) {
       return null;
@@ -421,18 +422,19 @@ export default class SyncController extends videojs.EventTarget {
       this.inspectCache_ = timeInfo.video[1].dts;
       segmentStartTime = timeInfo.video[0].dtsTime;
       segmentEndTime = timeInfo.video[1].dtsTime;
-      source = 'video';
+      containsVideo = true;
     } else if (timeInfo.audio && timeInfo.audio.length === 2) {
       this.inspectCache_ = timeInfo.audio[1].dts;
       segmentStartTime = timeInfo.audio[0].dtsTime;
       segmentEndTime = timeInfo.audio[1].dtsTime;
-      source = 'audio';
+      containsAudio = true;
     }
 
     return {
       start: segmentStartTime,
       end: segmentEndTime,
-      source
+      containsAudio,
+      containsVideo
     };
   }
 
