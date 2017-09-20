@@ -156,17 +156,19 @@ export default class PlaybackWatcher {
   fixesBadSeeks_() {
     const seeking = this.tech_.seeking();
     const seekable = this.seekable();
-    const seekableStart = seekable.start(0);
-    const seekableEnd = seekable.end(seekable.length - 1);
     const currentTime = this.tech_.currentTime();
     let seekTo;
 
     if (seeking && this.afterSeekableWindow_(seekable, currentTime)) {
+      const seekableEnd = seekable.end(seekable.length - 1);
+
       // sync to live point (if VOD, our seekable was updated and we're simply adjusting)
       seekTo = seekableEnd;
     }
 
     if (seeking && this.beforeSeekableWindow_(seekable, currentTime)) {
+      const seekableStart = seekable.start(0);
+
       // sync to the beginning of the live window
       // provide a buffer of .1 seconds to handle rounding/imprecise numbers
       seekTo = seekableStart + 0.1;
