@@ -2,6 +2,16 @@ CHANGELOG
 =========
 
 --------------------
+## 5.11.0 (2017-09-20)
+* Update videojs-contrib-media-sources to 4.5.2 [#1262](https://github.com/videojs/videojs-contrib-hls/pull/1262)
+  * let video.js remoteTextTrack auto cleanup take care of text track cleanup
+* Blacklist incompatible playlists on probe if codec information not in master manifest [#1257](https://github.com/videojs/videojs-contrib-hls/pull/1257)
+* Seek to seekable start when seeking before the seekable window [#1260](https://github.com/videojs/videojs-contrib-hls/pull/1260)
+* MediaGroups: various bug fixes and refactor [#1243](https://github.com/videojs/videojs-contrib-hls/pull/1243)
+  * Removes the Firefox 48 check for for supporting a change in audio info
+  * Fix delayed switching between audio tracks and intermittent desync.
+
+--------------------
 ## 5.10.1 (2017-08-28)
 * fix: flv metadata tags now appened when audio info changes [#1245](https://github.com/videojs/videojs-contrib-hls/pull/1245)
 
