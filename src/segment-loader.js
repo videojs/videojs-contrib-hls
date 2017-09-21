@@ -1119,7 +1119,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       this.trigger('timestampoffset');
     }
 
-    if (timingInfo.hasMapping) {
+    if (timingInfo && timingInfo.hasMapping) {
       this.trigger({
         type: 'segmenttimemapping',
         mapping: this.syncController_.timelines[segmentInfo.timeline].mapping

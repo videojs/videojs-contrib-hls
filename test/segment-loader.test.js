@@ -349,9 +349,9 @@ QUnit.module('SegmentLoader', function(hooks) {
     function(assert) {
       let playlist = playlistWithDuration(20);
       let segmenttimemappings = 0;
-      let probeSuccess = false;
+      let timingInfo = { hasMapping: false };
 
-      this.syncController.probeSegmentInfo = () => probeSuccess;
+      this.syncController.probeSegmentInfo = () => timingInfo;
 
       loader.on('segmenttimemapping', function() {
         segmenttimemappings++;
@@ -376,7 +376,7 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       assert.equal(segmenttimemappings, 0, 'no events before segment downloaded');
 
-      probeSuccess = true;
+      timingInfo.hasMapping = true;
       this.syncController.timelines[0] = { mapping: 0 };
 
       // some time passes and a response is received
