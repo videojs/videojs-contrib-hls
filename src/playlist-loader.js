@@ -50,7 +50,7 @@ export const updateSegments = (original, update, offset) => {
   * master playlist with the updated media playlist merged in, or
   * null if the merge produced no change.
   */
-const updateMaster = function(master, media) {
+export const updateMaster = function(master, media) {
   let changed = false;
   let result = mergeOptions(master, {});
   let i = master.playlists.length;
