@@ -87,7 +87,7 @@ QUnit.test('updateSegments copies over properties', function(assert) {
 
 QUnit.test('updateMaster returns null when no playlists', function(assert) {
   const master = {
-    playlists: {}
+    playlists: []
   };
   const media = {};
 

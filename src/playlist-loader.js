@@ -51,58 +51,57 @@ export const updateSegments = (original, update, offset) => {
   * null if the merge produced no change.
   */
 export const updateMaster = function(master, media) {
-  let changed = false;
-  let result = mergeOptions(master, {});
-  let i = master.playlists.length;
-  let playlist;
-  let segment;
-  let j;
+  const result = mergeOptions(master, {});
+  const playlist = result.playlists.filter((p) => p.uri === media.uri)[0];
 
-  while (i--) {
-    playlist = result.playlists[i];
-    if (playlist.uri === media.uri) {
-      // consider the playlist unchanged if the number of segments
-      // are equal and the media sequence number is unchanged
-      if (playlist.segments &&
-          media.segments &&
-          playlist.segments.length === media.segments.length &&
-          playlist.mediaSequence === media.mediaSequence) {
-        continue;
-      }
+  if (!playlist) {
+    return null;
+  }
 
-      result.playlists[i] = mergeOptions(playlist, media);
-      result.playlists[media.uri] = result.playlists[i];
+  // consider the playlist unchanged if the number of segments is equal and the media
+  // sequence number is unchanged
+  if (playlist.segments &&
+      media.segments &&
+      playlist.segments.length === media.segments.length &&
+      playlist.mediaSequence === media.mediaSequence) {
+    return null;
+  }
 
-      // if the update could overlap existing segment information,
-      // merge the two lists
-      if (playlist.segments) {
-        result.playlists[i].segments = updateSegments(
-          playlist.segments,
-          media.segments,
-          media.mediaSequence - playlist.mediaSequence
-        );
-      }
-      // resolve any missing segment and key URIs
-      j = 0;
-      if (result.playlists[i].segments) {
-        j = result.playlists[i].segments.length;
-      }
-      while (j--) {
-        segment = result.playlists[i].segments[j];
-        if (!segment.resolvedUri) {
-          segment.resolvedUri = resolveUrl(playlist.resolvedUri, segment.uri);
-        }
-        if (segment.key && !segment.key.resolvedUri) {
-          segment.key.resolvedUri = resolveUrl(playlist.resolvedUri, segment.key.uri);
-        }
-        if (segment.map && !segment.map.resolvedUri) {
-          segment.map.resolvedUri = resolveUrl(playlist.resolvedUri, segment.map.uri);
-        }
-      }
-      changed = true;
+  const mergedPlaylist = mergeOptions(playlist, media);
+
+  // if the update could overlap existing segment information, merge the two segment lists
+  if (playlist.segments) {
+    mergedPlaylist.segments = updateSegments(
+      playlist.segments,
+      media.segments,
+      media.mediaSequence - playlist.mediaSequence
+    );
+  }
+
+  // resolve any segment URIs to prevent us from having to do it later
+  mergedPlaylist.segments.forEach((segment) => {
+    if (!segment.resolvedUri) {
+      segment.resolvedUri = resolveUrl(mergedPlaylist.resolvedUri, segment.uri);
+    }
+    if (segment.key && !segment.key.resolvedUri) {
+      segment.key.resolvedUri = resolveUrl(mergedPlaylist.resolvedUri, segment.key.uri);
+    }
+    if (segment.map && !segment.map.resolvedUri) {
+      segment.map.resolvedUri = resolveUrl(mergedPlaylist.resolvedUri, segment.map.uri);
+    }
+  });
+
+  // TODO Right now in the playlists array there are two references to each playlist, one
+  // that is referenced by index, and one by URI. The index reference may no longer be
+  // necessary.
+  for (let i = 0; i < result.playlists.length; i++) {
+    if (result.playlists[i].uri === media.uri) {
+      result.playlists[i] = mergedPlaylist;
     }
   }
-  return changed ? result : null;
+  result.playlists[media.uri] = mergedPlaylist;
+
+  return result;
 };
 
 /**
