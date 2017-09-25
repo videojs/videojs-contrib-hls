@@ -35,6 +35,28 @@ QUnit.module('Playlist Loader', {
 QUnit.test('updateSegments copies over properties', function(assert) {
   assert.deepEqual(
     [
+      { uri: 'test-uri-0', startTime: 0, endTime: 10 },
+      {
+        uri: 'test-uri-1',
+        startTime: 10,
+        endTime: 20,
+        attributes: { BANDWIDTH: 99, height: 4 }
+      }
+    ],
+    updateSegments(
+      [
+        { uri: 'test-uri-0', startTime: 0, endTime: 10 },
+        { uri: 'test-uri-1', startTime: 10, endTime: 20, attributes: { BANDWIDTH: 1 } }
+      ],
+      [
+        { uri: 'test-uri-0' },
+        { uri: 'test-uri-1', attributes: { BANDWIDTH: 99, height: 4 } }
+      ],
+      0),
+    'retains properties from original segment');
+
+  assert.deepEqual(
+    [
       { uri: 'test-uri-0', attributes: { BANDWIDTH: 100 } },
       { uri: 'test-uri-1', attributes: { BANDWIDTH: 99, height: 4 } }
     ],
@@ -379,6 +401,56 @@ QUnit.test('updateMaster changes old values', function(assert) {
       }]
     },
     'changes old values');
+});
+
+QUnit.test('updateMaster retains saved segment values', function(assert) {
+  const master = {
+    playlists: [{
+      mediaSequence: 0,
+      uri: 'playlist-0-uri',
+      resolvedUri: urlTo('playlist-0-uri'),
+      segments: [{
+        duration: 10,
+        uri: 'segment-0-uri',
+        resolvedUri: urlTo('segment-0-uri'),
+        startTime: 0,
+        endTime: 10
+      }]
+    }]
+  };
+  const media = {
+    mediaSequence: 0,
+    uri: 'playlist-0-uri',
+    segments: [{
+      duration: 8,
+      uri: 'segment-0-uri'
+    }, {
+      duration: 10,
+      uri: 'segment-1-uri'
+    }]
+  };
+
+  assert.deepEqual(
+    updateMaster(master, media),
+    {
+      playlists: [{
+        mediaSequence: 0,
+        uri: 'playlist-0-uri',
+        resolvedUri: urlTo('playlist-0-uri'),
+        segments: [{
+          duration: 8,
+          uri: 'segment-0-uri',
+          resolvedUri: urlTo('segment-0-uri'),
+          startTime: 0,
+          endTime: 10
+        }, {
+          duration: 10,
+          uri: 'segment-1-uri',
+          resolvedUri: urlTo('segment-1-uri')
+        }]
+      }]
+    },
+    'retains saved segment values');
 });
 
 QUnit.test('updateMaster resolves key and map URIs', function(assert) {
