@@ -2,7 +2,8 @@ import QUnit from 'qunit';
 import {
   default as PlaylistLoader,
   updateSegments,
-  updateMaster
+  updateMaster,
+  setupMediaPlaylists
 } from '../src/playlist-loader';
 import xhrFactory from '../src/xhr';
 import { useFakeEnvironment } from './test-helpers';
@@ -538,6 +539,96 @@ QUnit.test('updateMaster resolves key and map URIs', function(assert) {
       }]
     },
     'resolves key and map URIs');
+});
+
+QUnit.test('setupMediaPlaylists does nothing if no playlists', function(assert) {
+  const master = {
+    playlists: []
+  };
+
+  setupMediaPlaylists(master);
+
+  assert.deepEqual(master, {
+    playlists: []
+  }, 'master remains unchanged');
+});
+
+QUnit.test('setupMediaPlaylists adds URI keys for each playlist', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [{
+      uri: 'uri-0'
+    }, {
+      uri: 'uri-1'
+    }]
+  };
+  const expectedPlaylist0 = {
+    attributes: {},
+    resolvedUri: urlTo('uri-0'),
+    uri: 'uri-0'
+  };
+  const expectedPlaylist1 = {
+    attributes: {},
+    resolvedUri: urlTo('uri-1'),
+    uri: 'uri-1'
+  };
+
+  setupMediaPlaylists(master);
+
+  assert.deepEqual(master.playlists[0], expectedPlaylist0, 'retained playlist indices');
+  assert.deepEqual(master.playlists[1], expectedPlaylist1, 'retained playlist indices');
+  assert.deepEqual(master.playlists['uri-0'], expectedPlaylist0, 'added playlist key');
+  assert.deepEqual(master.playlists['uri-1'], expectedPlaylist1, 'added playlist key');
+
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+  assert.equal(this.env.log.warn.args[0],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
+  assert.equal(this.env.log.warn.args[1],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
+});
+
+QUnit.test('setupMediaPlaylists adds attributes objects if missing', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [{
+      uri: 'uri-0'
+    }, {
+      uri: 'uri-1'
+    }]
+  };
+
+  setupMediaPlaylists(master);
+
+  assert.ok(master.playlists[0].attributes, 'added attributes object');
+  assert.ok(master.playlists[1].attributes, 'added attributes object');
+
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+  assert.equal(this.env.log.warn.args[0],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
+  assert.equal(this.env.log.warn.args[1],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
+});
+
+QUnit.test('setupMediaPlaylists resolves playlist URIs', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [{
+      attributes: { BANDWIDTH: 10 },
+      uri: 'uri-0'
+    }, {
+      attributes: { BANDWIDTH: 100 },
+      uri: 'uri-1'
+    }]
+  };
+
+  setupMediaPlaylists(master);
+
+  assert.equal(master.playlists[0].resolvedUri, urlTo('uri-0'), 'resolves URI');
+  assert.equal(master.playlists[1].resolvedUri, urlTo('uri-1'), 'resolves URI');
 });
 
 QUnit.test('throws if the playlist url is empty or undefined', function(assert) {

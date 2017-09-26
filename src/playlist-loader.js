@@ -104,6 +104,30 @@ export const updateMaster = function(master, media) {
   return result;
 };
 
+export const setupMediaPlaylists = (master) => {
+  // setup by-URI lookups and resolve media playlist URIs
+  let i = master.playlists.length;
+
+  while (i--) {
+    let playlist = master.playlists[i];
+
+    master.playlists[playlist.uri] = playlist;
+    playlist.resolvedUri = resolveUrl(master.uri, playlist.uri);
+
+    if (!playlist.attributes) {
+      // Although the spec states an #EXT-X-STREAM-INF tag MUST have a
+      // BANDWIDTH attribute, we can play the stream without it. This means a poorly
+      // formatted master playlist may not have an attribute list. An attributes
+      // property is added here to prevent undefined references when we encounter
+      // this scenario.
+      playlist.attributes = {};
+
+      log.warn(
+        'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.');
+    }
+  }
+};
+
 /**
  * Load a playlist from a remote location
  *
@@ -466,8 +490,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       withCredentials
     }, function(error, req) {
       let parser;
-      let playlist;
-      let i;
 
       // disposed
       if (!request) {
@@ -503,25 +525,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
       if (parser.manifest.playlists) {
         loader.master = parser.manifest;
 
-        // setup by-URI lookups and resolve media playlist URIs
-        i = loader.master.playlists.length;
-        while (i--) {
-          playlist = loader.master.playlists[i];
-          loader.master.playlists[playlist.uri] = playlist;
-          playlist.resolvedUri = resolveUrl(loader.master.uri, playlist.uri);
-
-          if (!playlist.attributes) {
-            // Although the spec states an #EXT-X-STREAM-INF tag MUST have a
-            // BANDWIDTH attribute, we can play the stream without it. This means a poorly
-            // formatted master playlist may not have an attribute list. An attributes
-            // property is added here to prevent undefined references when we encounter
-            // this scenario.
-            playlist.attributes = {};
-
-            log.warn(
-              'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.');
-          }
-        }
+        setupMediaPlaylists(loader.master);
 
         // resolve any media group URIs
         ['AUDIO', 'SUBTITLES'].forEach((mediaType) => {
