@@ -3,7 +3,8 @@ import {
   default as PlaylistLoader,
   updateSegments,
   updateMaster,
-  setupMediaPlaylists
+  setupMediaPlaylists,
+  resolveMediaGroupUris
 } from '../src/playlist-loader';
 import xhrFactory from '../src/xhr';
 import { useFakeEnvironment } from './test-helpers';
@@ -629,6 +630,163 @@ QUnit.test('setupMediaPlaylists resolves playlist URIs', function(assert) {
 
   assert.equal(master.playlists[0].resolvedUri, urlTo('uri-0'), 'resolves URI');
   assert.equal(master.playlists[1].resolvedUri, urlTo('uri-1'), 'resolves URI');
+});
+
+QUnit.test('resolveMediaGroupUris does nothing when no media groups', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [],
+    mediaGroups: []
+  };
+
+  resolveMediaGroupUris(master);
+  assert.deepEqual(master, {
+    uri: 'master-uri',
+    playlists: [],
+    mediaGroups: []
+  }, 'does nothing when no media groups');
+});
+
+QUnit.test('resolveMediaGroupUris resolves media group URIs', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [{
+      attributes: { BANDWIDTH: 10 },
+      uri: 'playlist-0'
+    }],
+    mediaGroups: {
+      ULTRACLEAR: {
+        ULTRACLEAR1: {
+          LOW: {
+            uri: 'ultraclear-1-low-uri'
+          },
+          HIGH: {
+            uri: 'ultraclear-1-high-uri'
+          }
+        }
+      },
+      AUDIO: {
+        AUDIO1: {
+          LOW: {
+            uri: 'audio-1-low-uri'
+          },
+          HIGH: {
+            uri: 'audio-1-high-uri'
+          }
+        },
+        AUDIO2: {
+          LOW: {
+            uri: 'audio-2-low-uri'
+          },
+          HIGH: {
+            uri: 'audio-2-high-uri'
+          }
+        }
+      },
+      SUBTITLES: {
+        SUBTITLES1: {
+          LOW: {
+            uri: 'subtitles-1-low-uri'
+          },
+          HIGH: {
+            uri: 'subtitles-1-high-uri'
+          }
+        },
+        SUBTITLES2: {
+          LOW: {
+            uri: 'subtitles-2-low-uri'
+          },
+          HIGH: {
+            uri: 'subtitles-2-high-uri'
+          }
+        },
+        SUBTITLES3: {
+          LOW: {
+            uri: 'subtitles-3-low-uri'
+          },
+          HIGH: {
+            uri: 'subtitles-3-high-uri'
+          }
+        }
+      }
+    }
+  };
+
+  resolveMediaGroupUris(master);
+
+  assert.deepEqual(master, {
+    uri: 'master-uri',
+    playlists: [{
+      attributes: { BANDWIDTH: 10 },
+      uri: 'playlist-0'
+    }],
+    mediaGroups: {
+      ULTRACLEAR: {
+        ULTRACLEAR1: {
+          LOW: {
+            uri: 'ultraclear-1-low-uri'
+          },
+          HIGH: {
+            uri: 'ultraclear-1-high-uri'
+          }
+        }
+      },
+      AUDIO: {
+        AUDIO1: {
+          LOW: {
+            uri: 'audio-1-low-uri',
+            resolvedUri: urlTo('audio-1-low-uri')
+          },
+          HIGH: {
+            uri: 'audio-1-high-uri',
+            resolvedUri: urlTo('audio-1-high-uri')
+          }
+        },
+        AUDIO2: {
+          LOW: {
+            uri: 'audio-2-low-uri',
+            resolvedUri: urlTo('audio-2-low-uri')
+          },
+          HIGH: {
+            uri: 'audio-2-high-uri',
+            resolvedUri: urlTo('audio-2-high-uri')
+          }
+        }
+      },
+      SUBTITLES: {
+        SUBTITLES1: {
+          LOW: {
+            uri: 'subtitles-1-low-uri',
+            resolvedUri: urlTo('subtitles-1-low-uri')
+          },
+          HIGH: {
+            uri: 'subtitles-1-high-uri',
+            resolvedUri: urlTo('subtitles-1-high-uri')
+          }
+        },
+        SUBTITLES2: {
+          LOW: {
+            uri: 'subtitles-2-low-uri',
+            resolvedUri: urlTo('subtitles-2-low-uri')
+          },
+          HIGH: {
+            uri: 'subtitles-2-high-uri',
+            resolvedUri: urlTo('subtitles-2-high-uri')
+          }
+        },
+        SUBTITLES3: {
+          LOW: {
+            uri: 'subtitles-3-low-uri',
+            resolvedUri: urlTo('subtitles-3-low-uri')
+          },
+          HIGH: {
+            uri: 'subtitles-3-high-uri',
+            resolvedUri: urlTo('subtitles-3-high-uri')
+          }
+        }
+      }
+    }
+  }, 'resolved URIs of certain media groups');
 });
 
 QUnit.test('throws if the playlist url is empty or undefined', function(assert) {

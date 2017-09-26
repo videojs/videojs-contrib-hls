@@ -50,7 +50,7 @@ export const updateSegments = (original, update, offset) => {
   * master playlist with the updated media playlist merged in, or
   * null if the merge produced no change.
   */
-export const updateMaster = function(master, media) {
+export const updateMaster = (master, media) => {
   const result = mergeOptions(master, {});
   const playlist = result.playlists.filter((p) => p.uri === media.uri)[0];
 
@@ -122,10 +122,23 @@ export const setupMediaPlaylists = (master) => {
       // this scenario.
       playlist.attributes = {};
 
-      log.warn(
-        'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.');
+      log.warn('Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.');
     }
   }
+};
+
+export const resolveMediaGroupUris = (master) => {
+  ['AUDIO', 'SUBTITLES'].forEach((mediaType) => {
+    for (let groupKey in master.mediaGroups[mediaType]) {
+      for (let labelKey in master.mediaGroups[mediaType][groupKey]) {
+        let mediaProperties = master.mediaGroups[mediaType][groupKey][labelKey];
+
+        if (mediaProperties.uri) {
+          mediaProperties.resolvedUri = resolveUrl(master.uri, mediaProperties.uri);
+        }
+      }
+    }
+  });
 };
 
 /**
@@ -526,21 +539,7 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         loader.master = parser.manifest;
 
         setupMediaPlaylists(loader.master);
-
-        // resolve any media group URIs
-        ['AUDIO', 'SUBTITLES'].forEach((mediaType) => {
-          for (let groupKey in loader.master.mediaGroups[mediaType]) {
-            for (let labelKey in loader.master.mediaGroups[mediaType][groupKey]) {
-              let mediaProperties =
-                loader.master.mediaGroups[mediaType][groupKey][labelKey];
-
-              if (mediaProperties.uri) {
-                mediaProperties.resolvedUri =
-                  resolveUrl(loader.master.uri, mediaProperties.uri);
-              }
-            }
-          }
-        });
+        resolveMediaGroupUris(loader.master);
 
         loader.trigger('loadedplaylist');
         if (!request) {
