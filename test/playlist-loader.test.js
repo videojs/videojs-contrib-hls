@@ -655,57 +655,50 @@ QUnit.test('resolveMediaGroupUris resolves media group URIs', function(assert) {
       uri: 'playlist-0'
     }],
     mediaGroups: {
-      ULTRACLEAR: {
-        ULTRACLEAR1: {
-          LOW: {
-            uri: 'ultraclear-1-low-uri'
-          },
-          HIGH: {
-            uri: 'ultraclear-1-high-uri'
+      // CLOSED-CAPTIONS will never have a URI
+      'CLOSED-CAPTIONS': {
+        cc1: {
+          English: {}
+        }
+      },
+      'AUDIO': {
+        low: {
+          // audio doesn't need a URI if it is a label for muxed
+          main: {},
+          commentary: {
+            uri: 'audio-low-commentary-uri'
+          }
+        },
+        high: {
+          main: {},
+          commentary: {
+            uri: 'audio-high-commentary-uri'
           }
         }
       },
-      AUDIO: {
-        AUDIO1: {
-          LOW: {
-            uri: 'audio-1-low-uri'
+      'SUBTITLES': {
+        sub1: {
+          english: {
+            uri: 'subtitles-1-english-uri'
           },
-          HIGH: {
-            uri: 'audio-1-high-uri'
+          spanish: {
+            uri: 'subtitles-1-spanish-uri'
           }
         },
-        AUDIO2: {
-          LOW: {
-            uri: 'audio-2-low-uri'
+        sub2: {
+          english: {
+            uri: 'subtitles-2-english-uri'
           },
-          HIGH: {
-            uri: 'audio-2-high-uri'
-          }
-        }
-      },
-      SUBTITLES: {
-        SUBTITLES1: {
-          LOW: {
-            uri: 'subtitles-1-low-uri'
-          },
-          HIGH: {
-            uri: 'subtitles-1-high-uri'
+          spanish: {
+            uri: 'subtitles-2-spanish-uri'
           }
         },
-        SUBTITLES2: {
-          LOW: {
-            uri: 'subtitles-2-low-uri'
+        sub3: {
+          english: {
+            uri: 'subtitles-3-english-uri'
           },
-          HIGH: {
-            uri: 'subtitles-2-high-uri'
-          }
-        },
-        SUBTITLES3: {
-          LOW: {
-            uri: 'subtitles-3-low-uri'
-          },
-          HIGH: {
-            uri: 'subtitles-3-high-uri'
+          spanish: {
+            uri: 'subtitles-3-spanish-uri'
           }
         }
       }
@@ -721,67 +714,58 @@ QUnit.test('resolveMediaGroupUris resolves media group URIs', function(assert) {
       uri: 'playlist-0'
     }],
     mediaGroups: {
-      ULTRACLEAR: {
-        ULTRACLEAR1: {
-          LOW: {
-            uri: 'ultraclear-1-low-uri'
-          },
-          HIGH: {
-            uri: 'ultraclear-1-high-uri'
+      // CLOSED-CAPTIONS will never have a URI
+      'CLOSED-CAPTIONS': {
+        cc1: {
+          English: {}
+        }
+      },
+      'AUDIO': {
+        low: {
+          // audio doesn't need a URI if it is a label for muxed
+          main: {},
+          commentary: {
+            uri: 'audio-low-commentary-uri',
+            resolvedUri: urlTo('audio-low-commentary-uri')
+          }
+        },
+        high: {
+          main: {},
+          commentary: {
+            uri: 'audio-high-commentary-uri',
+            resolvedUri: urlTo('audio-high-commentary-uri')
           }
         }
       },
-      AUDIO: {
-        AUDIO1: {
-          LOW: {
-            uri: 'audio-1-low-uri',
-            resolvedUri: urlTo('audio-1-low-uri')
+      'SUBTITLES': {
+        sub1: {
+          english: {
+            uri: 'subtitles-1-english-uri',
+            resolvedUri: urlTo('subtitles-1-english-uri')
           },
-          HIGH: {
-            uri: 'audio-1-high-uri',
-            resolvedUri: urlTo('audio-1-high-uri')
+          spanish: {
+            uri: 'subtitles-1-spanish-uri',
+            resolvedUri: urlTo('subtitles-1-spanish-uri')
           }
         },
-        AUDIO2: {
-          LOW: {
-            uri: 'audio-2-low-uri',
-            resolvedUri: urlTo('audio-2-low-uri')
+        sub2: {
+          english: {
+            uri: 'subtitles-2-english-uri',
+            resolvedUri: urlTo('subtitles-2-english-uri')
           },
-          HIGH: {
-            uri: 'audio-2-high-uri',
-            resolvedUri: urlTo('audio-2-high-uri')
-          }
-        }
-      },
-      SUBTITLES: {
-        SUBTITLES1: {
-          LOW: {
-            uri: 'subtitles-1-low-uri',
-            resolvedUri: urlTo('subtitles-1-low-uri')
-          },
-          HIGH: {
-            uri: 'subtitles-1-high-uri',
-            resolvedUri: urlTo('subtitles-1-high-uri')
+          spanish: {
+            uri: 'subtitles-2-spanish-uri',
+            resolvedUri: urlTo('subtitles-2-spanish-uri')
           }
         },
-        SUBTITLES2: {
-          LOW: {
-            uri: 'subtitles-2-low-uri',
-            resolvedUri: urlTo('subtitles-2-low-uri')
+        sub3: {
+          english: {
+            uri: 'subtitles-3-english-uri',
+            resolvedUri: urlTo('subtitles-3-english-uri')
           },
-          HIGH: {
-            uri: 'subtitles-2-high-uri',
-            resolvedUri: urlTo('subtitles-2-high-uri')
-          }
-        },
-        SUBTITLES3: {
-          LOW: {
-            uri: 'subtitles-3-low-uri',
-            resolvedUri: urlTo('subtitles-3-low-uri')
-          },
-          HIGH: {
-            uri: 'subtitles-3-high-uri',
-            resolvedUri: urlTo('subtitles-3-high-uri')
+          spanish: {
+            uri: 'subtitles-3-spanish-uri',
+            resolvedUri: urlTo('subtitles-3-spanish-uri')
           }
         }
       }
