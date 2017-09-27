@@ -168,8 +168,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
   }
 
   playlistRequestError = function(xhr, url, startingState) {
-    loader.setBandwidth(request || xhr);
-
     // any in-flight request is now finished
     request = null;
 
@@ -194,8 +192,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
     let parser;
     let refreshDelay;
     let update;
-
-    loader.setBandwidth(request || xhr);
 
     // any in-flight request is now finished
     request = null;
@@ -403,13 +399,6 @@ const PlaylistLoader = function(srcUrl, hls, withCredentials) {
         loader.trigger('mediachange');
       }
     });
-  };
-
-  /**
-   * set the bandwidth on an xhr to the bandwidth on the playlist
-   */
-  loader.setBandwidth = function(xhr) {
-    loader.bandwidth = xhr.bandwidth;
   };
 
   // live playlist staleness timeout
