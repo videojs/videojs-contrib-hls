@@ -698,6 +698,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
         // 3) the player has not started playing
         !this.hasPlayed_()) {
 
+      let setHasPlayed = false;
+
       // when the video is a live stream
       if (!media.endList) {
         this.trigger('firstplay');
@@ -705,10 +707,32 @@ export class MasterPlaylistController extends videojs.EventTarget {
         // seek to the latest media position for live videos
         seekable = this.seekable();
         if (seekable.length) {
-          this.tech_.setCurrentTime(seekable.end(0));
+          if (videojs.browser.IE_VERSION &&
+              this.mode_ === 'html5' &&
+              this.tech_.readyState() === 0) {
+            // IE11 throws an InvalidStateError if you try to set currentTime while the
+            // readyState is 0, so it must be delayed.
+            this.tech_.one('loadedmetadata', () => {
+              // we hold off on setting hasPlayed on true until after we seek to prevent
+              // segment loaders from requesting more than 1 segment before the seek to
+              // live point
+              this.tech_.setCurrentTime(seekable.end(0));
+              this.hasPlayed_ = () => true;
+            });
+          } else {
+            setHasPlayed = true;
+            this.tech_.setCurrentTime(seekable.end(0));
+          }
         }
+      } else {
+        // always set hasPlayed to true for first play of VOD
+        setHasPlayed = true;
       }
-      this.hasPlayed_ = () => true;
+
+      if (setHasPlayed) {
+        this.hasPlayed_ = () => true;
+      }
+
       // now that we are ready, load the segment
       this.load();
       return true;
@@ -893,14 +917,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     // In flash playback, the segment loaders should be reset on every seek, even
-    // in buffer seeks
-    const isFlash =
-      (this.mode_ === 'flash') ||
-      (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
-
-    // if the seek location is already buffered, continue buffering as
+    // in buffer seeks. If the seek location is already buffered, continue buffering as
     // usual
-    if (buffered && buffered.length && !isFlash) {
+    if (buffered && buffered.length && this.mode_ !== 'flash') {
       return currentTime;
     }
 
