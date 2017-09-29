@@ -19,6 +19,7 @@ import { Hls } from '../src/videojs-contrib-hls';
 /* eslint-enable no-unused-vars */
 import Playlist from '../src/playlist';
 import Config from '../src/config';
+import { isLowestEnabledRendition } from '../src/playlist-loader';
 
 const generateMedia = function(isMaat, isMuxed, hasVideoCodec, hasAudioCodec, isFMP4) {
   const codec = (hasVideoCodec ? 'avc1.deadbeef' : '') +
@@ -1453,9 +1454,10 @@ function(assert) {
               1000,
               'default request timeout');
 
-  assert.ok(!this.masterPlaylistController
-            .masterPlaylistLoader_
-            .isLowestEnabledRendition_(), 'Not lowest rendition');
+  assert.ok(!isLowestEnabledRendition(
+              this.masterPlaylistController.masterPlaylistLoader_.master,
+              this.masterPlaylistController.masterPlaylistLoader_.media()),
+            'not on lowest rendition');
 
   // Cause segment to timeout to force player into lowest rendition
   this.requests[2].timedout = true;
@@ -1466,8 +1468,10 @@ function(assert) {
   // Download new segment after media change
   this.standardXHRResponse(this.requests[3]);
 
-  assert.ok(this.masterPlaylistController
-            .masterPlaylistLoader_.isLowestEnabledRendition_(), 'On lowest rendition');
+  assert.ok(isLowestEnabledRendition(
+              this.masterPlaylistController.masterPlaylistLoader_.master,
+              this.masterPlaylistController.masterPlaylistLoader_.media()),
+            'on lowest rendition');
 
   assert.equal(this.masterPlaylistController.requestOptions_.timeout, 0,
               'request timeout 0');

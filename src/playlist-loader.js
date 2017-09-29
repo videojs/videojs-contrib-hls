@@ -38,6 +38,18 @@ export const updateSegments = (original, update, offset) => {
   return result;
 };
 
+export const resolveSegmentUris = (segment, baseUri) => {
+  if (!segment.resolvedUri) {
+    segment.resolvedUri = resolveUrl(baseUri, segment.uri);
+  }
+  if (segment.key && !segment.key.resolvedUri) {
+    segment.key.resolvedUri = resolveUrl(baseUri, segment.key.uri);
+  }
+  if (segment.map && !segment.map.resolvedUri) {
+    segment.map.resolvedUri = resolveUrl(baseUri, segment.map.uri);
+  }
+};
+
 /**
   * Returns a new master playlist that is the result of merging an
   * updated media playlist into the original version. If the
@@ -80,15 +92,7 @@ export const updateMaster = (master, media) => {
 
   // resolve any segment URIs to prevent us from having to do it later
   mergedPlaylist.segments.forEach((segment) => {
-    if (!segment.resolvedUri) {
-      segment.resolvedUri = resolveUrl(mergedPlaylist.resolvedUri, segment.uri);
-    }
-    if (segment.key && !segment.key.resolvedUri) {
-      segment.key.resolvedUri = resolveUrl(mergedPlaylist.resolvedUri, segment.key.uri);
-    }
-    if (segment.map && !segment.map.resolvedUri) {
-      segment.map.resolvedUri = resolveUrl(mergedPlaylist.resolvedUri, segment.map.uri);
-    }
+    resolveSegmentUris(segment, mergedPlaylist.resolvedUri);
   });
 
   // TODO Right now in the playlists array there are two references to each playlist, one
@@ -163,6 +167,28 @@ export const refreshDelay = (media, update) => {
     delay = (media.targetDuration || 10) * 500;
   }
   return delay;
+};
+
+/*
+ * Returns whether the current playlist is the lowest rendition
+ *
+ * @return {Boolean} true if on lowest rendition
+ */
+export const isLowestEnabledRendition = (master, media) => {
+  if (master.playlists.length === 1) {
+    return true;
+  }
+
+  const currentBandwidth = media.attributes.BANDWIDTH || Number.MAX_VALUE;
+
+  return (master.playlists.filter((playlist) => {
+    if (!isEnabled(playlist)) {
+      return false;
+    }
+
+    return (playlist.attributes.BANDWIDTH || 0) < currentBandwidth;
+
+  }).length === 0);
 };
 
 /**
@@ -291,46 +317,6 @@ export default class PlaylistLoader extends EventTarget {
       oldRequest.onreadystatechange = null;
       oldRequest.abort();
     }
-  }
-
-  /**
-   * Returns the number of enabled playlists on the master playlist object
-   *
-   * @return {Number} number of eneabled playlists
-   */
-  enabledPlaylists_() {
-    return this.master.playlists.filter(isEnabled).length;
-  }
-
-  /**
-   * Returns whether the current playlist is the lowest rendition
-   *
-   * @return {Boolean} true if on lowest rendition
-   */
-  isLowestEnabledRendition_() {
-    if (this.master.playlists.length === 1) {
-      return true;
-    }
-
-    const currentBandwidth = this.media().attributes.BANDWIDTH || Number.MAX_VALUE;
-
-    return (this.master.playlists.filter((playlist) => {
-      if (!isEnabled(playlist)) {
-        return false;
-      }
-
-      return (playlist.attributes.BANDWIDTH || 0) < currentBandwidth;
-
-    }).length === 0);
-  }
-
-  /**
-   * Returns whether the current playlist is the final available rendition
-   *
-   * @return {Boolean} true if on final rendition
-   */
-  isFinalRendition_() {
-    return (this.master.playlists.filter(isEnabled).length === 1);
   }
 
    /**
