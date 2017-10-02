@@ -42,51 +42,51 @@ QUnit.test('updateSegments copies over properties', function(assert) {
         uri: 'test-uri-1',
         startTime: 10,
         endTime: 20,
-        attributes: { BANDWIDTH: 99, height: 4 }
+        map: { someProp: 99, uri: '4' }
       }
     ],
     updateSegments(
       [
         { uri: 'test-uri-0', startTime: 0, endTime: 10 },
-        { uri: 'test-uri-1', startTime: 10, endTime: 20, attributes: { BANDWIDTH: 1 } }
+        { uri: 'test-uri-1', startTime: 10, endTime: 20, map: { someProp: 1 } }
       ],
       [
         { uri: 'test-uri-0' },
-        { uri: 'test-uri-1', attributes: { BANDWIDTH: 99, height: 4 } }
+        { uri: 'test-uri-1', map: { someProp: 99, uri: '4' } }
       ],
       0),
     'retains properties from original segment');
 
   assert.deepEqual(
     [
-      { uri: 'test-uri-0', attributes: { BANDWIDTH: 100 } },
-      { uri: 'test-uri-1', attributes: { BANDWIDTH: 99, height: 4 } }
+      { uri: 'test-uri-0', map: { someProp: 100 } },
+      { uri: 'test-uri-1', map: { someProp: 99, uri: '4' } }
     ],
     updateSegments(
       [
         { uri: 'test-uri-0' },
-        { uri: 'test-uri-1', attributes: { BANDWIDTH: 1 } }
+        { uri: 'test-uri-1', map: { someProp: 1 } }
       ],
       [
-        { uri: 'test-uri-0', attributes: { BANDWIDTH: 100 } },
-        { uri: 'test-uri-1', attributes: { BANDWIDTH: 99, height: 4 } }
+        { uri: 'test-uri-0', map: { someProp: 100 } },
+        { uri: 'test-uri-1', map: { someProp: 99, uri: '4' } }
       ],
       0),
     'copies over/overwrites properties without offset');
 
   assert.deepEqual(
     [
-      { uri: 'test-uri-1', attributes: { BANDWIDTH: 1 } },
-      { uri: 'test-uri-2', attributes: { BANDWIDTH: 100, width: 2 } }
+      { uri: 'test-uri-1', map: { someProp: 1 } },
+      { uri: 'test-uri-2', map: { someProp: 100, uri: '2' } }
     ],
     updateSegments(
       [
         { uri: 'test-uri-0' },
-        { uri: 'test-uri-1', attributes: { BANDWIDTH: 1 } }
+        { uri: 'test-uri-1', map: { someProp: 1 } }
       ],
       [
         { uri: 'test-uri-1' },
-        { uri: 'test-uri-2', attributes: { BANDWIDTH: 100, width: 2 } }
+        { uri: 'test-uri-2', map: { someProp: 100, uri: '2' } }
       ],
       1),
     'copies over/overwrites properties with offset of 1');
@@ -94,16 +94,16 @@ QUnit.test('updateSegments copies over properties', function(assert) {
   assert.deepEqual(
     [
       { uri: 'test-uri-2' },
-      { uri: 'test-uri-3', attributes: { BANDWIDTH: 100, width: 2 } }
+      { uri: 'test-uri-3', map: { someProp: 100, uri: '2' } }
     ],
     updateSegments(
       [
         { uri: 'test-uri-0' },
-        { uri: 'test-uri-1', attributes: { BANDWIDTH: 1 } }
+        { uri: 'test-uri-1', map: { someProp: 1 } }
       ],
       [
         { uri: 'test-uri-2' },
-        { uri: 'test-uri-3', attributes: { BANDWIDTH: 100, width: 2 } }
+        { uri: 'test-uri-3', map: { someProp: 100, uri: '2' } }
       ],
       2),
     'copies over/overwrites properties with offset of 2');
