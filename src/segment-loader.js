@@ -1098,7 +1098,8 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (illegalMediaSwitchError) {
       this.error({
-        message: illegalMediaSwitchError
+        message: illegalMediaSwitchError,
+        blacklistDuration: Infinity
       });
       this.trigger('error');
       return;

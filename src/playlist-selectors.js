@@ -154,14 +154,29 @@ export const simpleSelector = function(master,
   stableSort(sortedPlaylistReps, (left, right) => left.bandwidth - right.bandwidth);
 
   // filter out any playlists that have been excluded due to
-  // incompatible configurations or playback errors
+  // incompatible configurations
   sortedPlaylistReps = sortedPlaylistReps.filter(
+    (rep) => !Playlist.isIncompatible(rep.playlist)
+  );
+
+  // filter out any playlists that have been disabled manually through the representations
+  // api or blacklisted temporarily due to playback errors.
+  let enabledPlaylistReps = sortedPlaylistReps.filter(
     (rep) => Playlist.isEnabled(rep.playlist)
   );
 
+  if (!enabledPlaylistReps.length) {
+    // if there are no enabled playlists, then they have all been blacklisted or disabled
+    // by the user through the representations api. In this case, ignore blacklisting and
+    // fallback to what the user wants by using playlists the user has not disabled.
+    enabledPlaylistReps = sortedPlaylistReps.filter(
+      (rep) => !Playlist.isDisabled(rep.playlist)
+    );
+  }
+
   // filter out any variant that has greater effective bitrate
   // than the current estimated bandwidth
-  let bandwidthPlaylistReps = sortedPlaylistReps.filter(
+  let bandwidthPlaylistReps = enabledPlaylistReps.filter(
     (rep) => rep.bandwidth * Config.BANDWIDTH_VARIANCE < playerBandwidth
   );
 
@@ -218,12 +233,15 @@ export const simpleSelector = function(master,
   }
 
   // fallback chain of variants
-  return (
+  let chosenRep = (
     resolutionPlusOneRep ||
     resolutionBestRep ||
     bandwidthBestRep ||
+    enabledPlaylistReps[0] ||
     sortedPlaylistReps[0]
-  ).playlist;
+  );
+
+  return chosenRep ? chosenRep.playlist : null;
 };
 
 // Playlist Selectors
@@ -319,10 +337,25 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
     syncController
   } = settings;
 
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations
+  const compatiblePlaylists = master.playlists.filter(
+    playlist => !Playlist.isIncompatible(playlist));
+
+  // filter out any playlists that have been disabled manually through the representations
+  // api or blacklisted temporarily due to playback errors.
+  let enabledPlaylists = compatiblePlaylists.filter(Playlist.isEnabled);
+
+  if (!enabledPlaylists.length) {
+    // if there are no enabled playlists, then they have all been blacklisted or disabled
+    // by the user through the representations api. In this case, ignore blacklisting and
+    // fallback to what the user wants by using playlists the user has not disabled.
+    enabledPlaylists = compatiblePlaylists.filter(
+      playlist => !Playlist.isDisabled(playlist));
+  }
+
   const bandwidthPlaylists =
-    master.playlists.filter(playlist =>
-      Playlist.isEnabled(playlist) && Playlist.hasAttribute('BANDWIDTH', playlist)
-    );
+    enabledPlaylists.filter(Playlist.hasAttribute.bind(null, 'BANDWIDTH'));
 
   const rebufferingEstimates = bandwidthPlaylists.map((playlist) => {
     const syncPoint = syncController.getSyncPoint(playlist,

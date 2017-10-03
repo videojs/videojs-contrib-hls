@@ -686,6 +686,95 @@ QUnit.test('estimates segment request time based on bandwidth', function(assert)
   assert.equal(estimate, 8, 'takes into account bytes already received from download');
 });
 
+QUnit.module('Playlist enabled states', {
+  beforeEach(assert) {
+    this.env = useFakeEnvironment(assert);
+    this.clock = this.env.clock;
+  },
+  afterEach() {
+    this.env.restore();
+  }
+});
+
+QUnit.test('determines if a playlist is incompatible', function(assert) {
+  // incompatible means that the playlist was blacklisted due to incompatible
+  // configuration e.g. audio only stream when trying to playback audio and video.
+  // incompaatibility is denoted by a blacklist of Infinity.
+  const playlist = {};
+
+  assert.notOk(Playlist.isIncompatible(playlist),
+    'playlist not incompatible if no excludeUntil');
+
+  playlist.excludeUntil = 1;
+  assert.notOk(Playlist.isIncompatible(playlist),
+    'playlist not incompatible if expired blacklist');
+
+  playlist.excludeUntil = Date.now() + 9999;
+  assert.notOk(Playlist.isIncompatible(playlist),
+    'playlist not incompatible if temporarily blacklisted');
+
+  playlist.excludeUntil = Infinity;
+  assert.ok(Playlist.isIncompatible(playlist),
+    'playlist is incompatible if excludeUntil is Infinity');
+});
+
+QUnit.test('determines if a playlist is blacklisted', function(assert) {
+  const playlist = {};
+
+  assert.notOk(Playlist.isBlacklisted(playlist),
+    'playlist not blacklisted if no excludeUntil');
+
+  playlist.excludeUntil = Date.now() - 1;
+  assert.notOk(Playlist.isBlacklisted(playlist),
+    'playlist not blacklisted if expired excludeUntil');
+
+  playlist.excludeUntil = Date.now() + 9999;
+  assert.ok(Playlist.isBlacklisted(playlist),
+    'playlist is blacklisted');
+
+  playlist.excludeUntil = Infinity;
+  assert.ok(Playlist.isBlacklisted(playlist),
+    'playlist is blacklisted if excludeUntil is Infinity');
+});
+
+QUnit.test('determines if a playlist is disabled', function(assert) {
+  const playlist = {};
+
+  assert.notOk(Playlist.isDisabled(playlist), 'playlist not disabled');
+
+  playlist.disabled = true;
+  assert.ok(Playlist.isDisabled(playlist), 'playlist is disabled');
+});
+
+QUnit.test('determines if a playlist is enabled', function(assert) {
+  // enabled means not blacklisted and not disabled
+  const playlist = {};
+
+  assert.ok(Playlist.isEnabled(playlist), 'playlist is enabled');
+
+  playlist.excludeUntil = Date.now() - 1;
+  assert.ok(Playlist.isEnabled(playlist), 'playlist is enabled');
+
+  playlist.excludeUntil = Date.now() + 9999;
+  assert.notOk(Playlist.isEnabled(playlist), 'playlist is not enabled');
+
+  playlist.excludeUntil = Infinity;
+  assert.notOk(Playlist.isEnabled(playlist), 'playlist is not enabled');
+
+  delete playlist.excludeUntil;
+  playlist.disabled = true;
+  assert.notOk(Playlist.isEnabled(playlist), 'playlist is not enabled');
+
+  playlist.excludeUntil = 1;
+  assert.notOk(Playlist.isEnabled(playlist), 'playlist is not enabled');
+
+  playlist.excludeUntil = Date.now() + 9999;
+  assert.notOk(Playlist.isEnabled(playlist), 'playlist is not enabled');
+
+  playlist.excludeUntil = Infinity;
+  assert.notOk(Playlist.isEnabled(playlist), 'playlist is not enabled');
+});
+
 QUnit.module('Playlist isAes and isFmp4', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
