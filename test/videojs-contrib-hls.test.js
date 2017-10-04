@@ -275,7 +275,37 @@ QUnit.test('autoplay seeks to the live point after media source open', function(
   assert.notEqual(currentTime, 0, 'seeked on autoplay');
 });
 
-QUnit.test('duration is set when the source opens after the playlist is loaded', function(assert) {
+QUnit.test('autoplay seeks to the live point after tech fires loadedmetadata in ie11',
+function(assert) {
+  videojs.browser.IE_VERSION = 11;
+  let currentTime = 0;
+
+  this.player.autoplay(true);
+  this.player.on('seeking', () => {
+    currentTime = this.player.currentTime();
+  });
+  this.player.src({
+    src: 'liveStart30sBefore.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  this.clock.tick(1);
+
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.standardXHRResponse(this.requests.shift());
+  this.clock.tick(1);
+
+  assert.equal(currentTime, 0, 'have not played yet');
+
+  this.player.tech_.trigger('loadedmetadata');
+  this.clock.tick(1);
+
+  assert.notEqual(currentTime, 0, 'seeked after tech is ready');
+});
+
+QUnit.test('duration is set when the source opens after the playlist is loaded',
+function(assert) {
   this.player.src({
     src: 'media.m3u8',
     type: 'application/vnd.apple.mpegurl'
