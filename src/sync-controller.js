@@ -380,8 +380,6 @@ export default class SyncController extends videojs.EventTarget {
             time: segment.start
           };
         }
-
-        timingInfo.hasMapping = true;
       }
     }
 
@@ -451,6 +449,13 @@ export default class SyncController extends videojs.EventTarget {
       return null;
     }
     return this.timelines[timeline].time;
+  }
+
+  mappingForTimeline(timeline) {
+    if (typeof this.timelines[timeline] === 'undefined') {
+      return null;
+    }
+    return this.timelines[timeline].mapping;
   }
 
   /**
