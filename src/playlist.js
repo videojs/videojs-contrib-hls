@@ -220,6 +220,33 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
 };
 
 /**
+ * Determines the media index of the segment corresponding to the safe edge of the live
+ * window which is 3 times target duration.
+ *
+ * @param {Object} playlist
+ *        a media playlist object;
+ * @return {Number}
+ *         The media index of the segment
+ * @function safeLiveIndex
+ */
+export const safeLiveIndex = function(playlist) {
+  const safeDistance = playlist.targetDuration * Playlist.UNSAFE_LIVE_SEGMENTS;
+
+  let i = playlist.segments.length;
+  let distanceFromEnd = 0;
+
+  while (i--) {
+    distanceFromEnd += playlist.segments[i].duration;
+
+    if (distanceFromEnd >= safeDistance) {
+      break;
+    }
+  }
+
+  return Math.max(0, i);
+};
+
+/**
  * Calculates the playlist end time
  *
  * @param {Object} playlist a media playlist object
@@ -246,9 +273,7 @@ export const playlistEnd = function(playlist, expired, useSafeLiveEnd) {
 
   expired = expired || 0;
 
-  let endSequence = useSafeLiveEnd ?
-    Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
-    Math.max(0, playlist.segments.length);
+  let endSequence = useSafeLiveEnd ? safeLiveIndex(playlist) : playlist.segments.length;
 
   return intervalDuration(playlist,
                           playlist.mediaSequence + endSequence,
@@ -508,6 +533,7 @@ export const estimateSegmentRequestTime = function(segmentDuration,
 
 Playlist.duration = duration;
 Playlist.seekable = seekable;
+Playlist.safeLiveIndex = safeLiveIndex;
 Playlist.getMediaInfoForTime = getMediaInfoForTime;
 Playlist.isEnabled = isEnabled;
 Playlist.isDisabled = isDisabled;

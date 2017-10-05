@@ -451,6 +451,7 @@ QUnit.test('translates seekable by the starting time for live playlists', functi
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
                                 '#EXT-X-MEDIA-SEQUENCE:15\n' +
+                                '#EXT-X-TARGETDURATION:10\n' +
                                 '#EXTINF:10,\n' +
                                 '0.ts\n' +
                                 '#EXTINF:10,\n' +

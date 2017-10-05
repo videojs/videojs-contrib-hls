@@ -385,9 +385,90 @@ function(assert) {
 
   assert.equal(seekable.start(0), 0, 'starts at the earliest available segment');
   assert.equal(seekable.end(0),
-              9 - (2 + 2 + 1),
-              'allows seeking no further than three segments from the end');
+              9 - (2 + 2 + 1 + 2),
+              'allows seeking no further than three times target duration from the end');
   assert.equal(playlistEnd, 9, 'playlist end at the last segment');
+});
+
+QUnit.test('safeLiveIndex returns the correct media index for the safe live point',
+function(assert) {
+  const playlist = {
+    targetDuration: 6,
+    mediaSequence: 10,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 10
+    },
+    segments: [
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      }
+    ]
+  };
+
+  let expected = 3;
+  let actual = Playlist.safeLiveIndex(playlist);
+
+  assert.equal(actual, expected, 'correct media index for standard durations');
+
+  playlist.segments = [
+    {
+      duration: 6
+    },
+    {
+      duration: 4
+    },
+    {
+      duration: 5
+    },
+    {
+      duration: 6
+    },
+    {
+      duration: 3
+    },
+    {
+      duration: 4
+    },
+    {
+      duration: 3
+    }
+  ];
+
+  expected = 2;
+  actual = Playlist.safeLiveIndex(playlist);
+  assert.equal(actual, expected, 'correct media index for variable segment durations');
+
+  playlist.segments = [
+    {
+      duration: 6
+    },
+    {
+      duration: 6
+    },
+    {
+      duration: 3
+    }
+  ];
+  expected = 0;
+  actual = Playlist.safeLiveIndex(playlist);
+  assert.equal(actual, expected,
+    'returns media index 0 when playlist has no safe live point');
 });
 
 QUnit.test(
