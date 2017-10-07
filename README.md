@@ -74,7 +74,7 @@ npm install --save videojs-contrib-hls
 ```
 
 ### CDN
-Select a version of HLS from the [CDN](https://cdnjs.com/libraries/videojs-contrib-hls)
+Select a version of HLS from [cdnjs](https://cdnjs.com/libraries/videojs-contrib-hls) or [jsDelivr](https://www.jsdelivr.com/package/npm/videojs-contrib-hls)
 
 ### Releases
 Download a release of [videojs-contrib-hls](https://github.com/videojs/videojs-contrib-hls/releases)
