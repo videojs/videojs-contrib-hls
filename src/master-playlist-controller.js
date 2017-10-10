@@ -686,34 +686,51 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * player and video are loaded and initialized.
    */
   setupFirstPlay() {
-    let seekable;
     let media = this.masterPlaylistLoader_.media();
 
-    // check that everything is ready to begin buffering in the live
-    // scenario
-    // 1) the active media playlist is available
-    if (media &&
-        // 2) the player is not paused
-        !this.tech_.paused() &&
-        // 3) the player has not started playing
-        !this.hasPlayed_()) {
-
-      // when the video is a live stream
-      if (!media.endList) {
-        this.trigger('firstplay');
-
-        // seek to the latest media position for live videos
-        seekable = this.seekable();
-        if (seekable.length) {
-          this.tech_.setCurrentTime(seekable.end(0));
-        }
-      }
-      this.hasPlayed_ = () => true;
-      // now that we are ready, load the segment
-      this.load();
-      return true;
+    // Check that everything is ready to begin buffering for the first call to play
+    //  If 1) there is no active media
+    //     2) the player is paused
+    //     3) the first play has already been setup
+    // then exit early
+    if (!media || this.tech_.paused() || this.hasPlayed_()) {
+      return false;
     }
-    return false;
+
+    // when the video is a live stream
+    if (!media.endList) {
+      const seekable = this.seekable();
+
+      if (!seekable.length) {
+        // without a seekable range, the player cannot seek to begin buffering at the live
+        // point
+        return false;
+      }
+
+      if (videojs.browser.IE_VERSION &&
+          this.mode_ === 'html5' &&
+          this.tech_.readyState() === 0) {
+        // IE11 throws an InvalidStateError if you try to set currentTime while the
+        // readyState is 0, so it must be delayed until the tech fires loadedmetadata.
+        this.tech_.one('loadedmetadata', () => {
+          this.trigger('firstplay');
+          this.tech_.setCurrentTime(seekable.end(0));
+          this.hasPlayed_ = () => true;
+        });
+
+        return false;
+      }
+
+      // trigger firstplay to inform the source handler to ignore the next seek event
+      this.trigger('firstplay');
+      // seek to the live point
+      this.tech_.setCurrentTime(seekable.end(0));
+    }
+
+    this.hasPlayed_ = () => true;
+    // we can begin loading now that everything is ready
+    this.load();
+    return true;
   }
 
   /**
@@ -893,14 +910,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     // In flash playback, the segment loaders should be reset on every seek, even
-    // in buffer seeks
-    const isFlash =
-      (this.mode_ === 'flash') ||
-      (this.mode_ === 'auto' && !videojs.MediaSource.supportsNativeMediaSources());
-
-    // if the seek location is already buffered, continue buffering as
+    // in buffer seeks. If the seek location is already buffered, continue buffering as
     // usual
-    if (buffered && buffered.length && !isFlash) {
+    if (buffered && buffered.length && this.mode_ !== 'flash') {
       return currentTime;
     }
 
