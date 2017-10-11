@@ -2,6 +2,13 @@ CHANGELOG
 =========
 
 --------------------
+## 5.11.1 (2017-10-11)
+* update videojs-contrib-media-sources to 4.5.3 [#1278](https://github.com/videojs/videojs-contrib-hls/pull/1278)
+  * update mux.js to 4.2.2
+    * Use the first audio and video tracks in the PMT
+* fix InvalidStateError for live playback in IE11 [#1266](https://github.com/videojs/videojs-contrib-hls/pull/1266)
+
+--------------------
 ## 5.11.0 (2017-09-20)
 * Update videojs-contrib-media-sources to 4.5.2 [#1262](https://github.com/videojs/videojs-contrib-hls/pull/1262)
   * let video.js remoteTextTrack auto cleanup take care of text track cleanup
