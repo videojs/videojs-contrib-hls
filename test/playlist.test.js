@@ -393,8 +393,7 @@ function(assert) {
   assert.equal(playlistEnd, 9, 'playlist end at the last segment');
 });
 
-QUnit.test('safeLiveIndex returns the correct media index for the safe live point',
-function(assert) {
+QUnit.test('safeLiveIndex is correct for standard segment durations', function(assert) {
   const playlist = {
     targetDuration: 6,
     mediaSequence: 10,
@@ -424,52 +423,75 @@ function(assert) {
     ]
   };
 
-  let expected = 3;
-  let actual = Playlist.safeLiveIndex(playlist);
+  const expected = 3;
+  const actual = Playlist.safeLiveIndex(playlist);
 
   assert.equal(actual, expected, 'correct media index for standard durations');
+});
 
-  playlist.segments = [
-    {
-      duration: 6
+QUnit.test('safeLiveIndex is correct for variable segment durations', function(assert) {
+  const playlist = {
+    targetDuration: 6,
+    mediaSequence: 10,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 10
     },
-    {
-      duration: 4
-    },
-    {
-      duration: 5
-    },
-    {
-      duration: 6
-    },
-    {
-      duration: 3
-    },
-    {
-      duration: 4
-    },
-    {
-      duration: 3
-    }
-  ];
+    segments: [
+      {
+        duration: 6
+      },
+      {
+        duration: 4
+      },
+      {
+        duration: 5
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 3
+      },
+      {
+        duration: 4
+      },
+      {
+        duration: 3
+      }
+    ]
+  };
 
-  expected = 2;
-  actual = Playlist.safeLiveIndex(playlist);
+  const expected = 2;
+  const actual = Playlist.safeLiveIndex(playlist);
+
   assert.equal(actual, expected, 'correct media index for variable segment durations');
+});
 
-  playlist.segments = [
-    {
-      duration: 6
+QUnit.test('safeLiveIndex is 0 when no safe live point', function(assert) {
+  const playlist = {
+    targetDuration: 6,
+    mediaSequence: 10,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 10
     },
-    {
-      duration: 6
-    },
-    {
-      duration: 3
-    }
-  ];
-  expected = 0;
-  actual = Playlist.safeLiveIndex(playlist);
+    segments: [
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 3
+      }
+    ]
+  };
+
+  const expected = 0;
+  const actual = Playlist.safeLiveIndex(playlist);
+
   assert.equal(actual, expected,
     'returns media index 0 when playlist has no safe live point');
 });
