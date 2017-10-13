@@ -356,7 +356,7 @@ function(assert) {
 
 QUnit.test('seekable end and playlist end account for non-standard target durations',
 function(assert) {
-  let playlist = {
+  const playlist = {
     targetDuration: 2,
     mediaSequence: 0,
     syncInfo: {
@@ -385,8 +385,11 @@ function(assert) {
 
   assert.equal(seekable.start(0), 0, 'starts at the earliest available segment');
   assert.equal(seekable.end(0),
-              9 - (2 + 2 + 1 + 2),
-              'allows seeking no further than three times target duration from the end');
+               // Playlist duration is 9s. Target duration 2s. Seekable end should be at
+               // least 6s from end. Adding segment durations starting from the end to get
+               // that 6s target
+               9 - (2 + 2 + 1 + 2),
+               'allows seeking no further than three times target duration from the end');
   assert.equal(playlistEnd, 9, 'playlist end at the last segment');
 });
 

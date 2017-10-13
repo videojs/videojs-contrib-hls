@@ -6,15 +6,13 @@
 import {createTimeRange} from 'video.js';
 import window from 'global/window';
 
-let Playlist = {
-  /**
-   * The number of segments that are unsafe to start playback at in
-   * a live stream. Changing this value can cause playback stalls.
-   * See HTTP Live Streaming, "Playing the Media Playlist File"
-   * https://tools.ietf.org/html/draft-pantos-http-live-streaming-18#section-6.3.3
-   */
-  UNSAFE_LIVE_SEGMENTS: 3
-};
+/**
+ * The number of segments (with duration of EXT-X-TARGETDURAION) that are unsafe to start
+ * playback at in a live stream. Changing this value can cause playback stalls.
+ * See HTTP Live Streaming, "Playing the Media Playlist File"
+ * https://tools.ietf.org/html/draft-pantos-http-live-streaming-23#section-6.3.3
+ */
+const UNSAFE_LIVE_SEGMENTS = 3;
 
 /**
  * walk backward until we find a duration we can use
@@ -230,7 +228,7 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
  * @function safeLiveIndex
  */
 export const safeLiveIndex = function(playlist) {
-  const safeDistance = playlist.targetDuration * Playlist.UNSAFE_LIVE_SEGMENTS;
+  const safeDistance = playlist.targetDuration * UNSAFE_LIVE_SEGMENTS;
 
   let i = playlist.segments.length;
   let distanceFromEnd = 0;
@@ -273,7 +271,7 @@ export const playlistEnd = function(playlist, expired, useSafeLiveEnd) {
 
   expired = expired || 0;
 
-  let endSequence = useSafeLiveEnd ? safeLiveIndex(playlist) : playlist.segments.length;
+  const endSequence = useSafeLiveEnd ? safeLiveIndex(playlist) : playlist.segments.length;
 
   return intervalDuration(playlist,
                           playlist.mediaSequence + endSequence,
@@ -531,19 +529,20 @@ export const estimateSegmentRequestTime = function(segmentDuration,
   return (size - (bytesReceived * 8)) / bandwidth;
 };
 
-Playlist.duration = duration;
-Playlist.seekable = seekable;
-Playlist.safeLiveIndex = safeLiveIndex;
-Playlist.getMediaInfoForTime = getMediaInfoForTime;
-Playlist.isEnabled = isEnabled;
-Playlist.isDisabled = isDisabled;
-Playlist.isBlacklisted = isBlacklisted;
-Playlist.isIncompatible = isIncompatible;
-Playlist.playlistEnd = playlistEnd;
-Playlist.isAes = isAes;
-Playlist.isFmp4 = isFmp4;
-Playlist.hasAttribute = hasAttribute;
-Playlist.estimateSegmentRequestTime = estimateSegmentRequestTime;
-
 // exports
-export default Playlist;
+export default {
+  duration,
+  seekable,
+  safeLiveIndex,
+  getMediaInfoForTime,
+  isEnabled,
+  isDisabled
+  isBlacklisted,
+  isIncompatible,
+  playlistEnd,
+  isAes,
+  isFmp4,
+  hasAttribute,
+  estimateSegmentRequestTime,
+  UNSAFE_LIVE_SEGMENTS
+};
