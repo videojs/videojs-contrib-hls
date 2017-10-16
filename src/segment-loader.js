@@ -47,6 +47,32 @@ const detectEndOfStream = function(playlist, mediaSource, segmentIndex) {
 
 const finite = (num) => typeof num === 'number' && isFinite(num);
 
+export const illegalMediaSwitch = (loaderType, startingMedia, newSegmentMedia) => {
+  // Although these checks should most likely cover non 'main' types, for now it narrows
+  // the scope of our checks.
+  if (loaderType !== 'main' || !startingMedia || !newSegmentMedia) {
+    return null;
+  }
+
+  if (!newSegmentMedia.containsAudio && !newSegmentMedia.containsVideo) {
+    return 'Neither audio nor video found in segment.';
+  }
+
+  if (startingMedia.containsVideo && !newSegmentMedia.containsVideo) {
+    return 'Only audio found in segment when we expected video.' +
+      ' We can\'t switch to audio only from a stream that had video.' +
+      ' To get rid of this message, please add codec information to the manifest.';
+  }
+
+  if (!startingMedia.containsVideo && newSegmentMedia.containsVideo) {
+    return 'Video found in segment when we expected only audio.' +
+      ' We can\'t switch to a stream with video from an audio only stream.' +
+      ' To get rid of this message, please add codec information to the manifest.';
+  }
+
+  return null;
+};
+
 /**
  * An object that manages segment loading and appending.
  *
@@ -84,6 +110,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mediaSource_ = settings.mediaSource;
     this.hls_ = settings.hls;
     this.loaderType_ = settings.loaderType;
+    this.startingMedia_ = void 0;
     this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
     this.goalBufferLength_ = settings.goalBufferLength;
 
@@ -442,7 +469,8 @@ export default class SegmentLoader extends videojs.EventTarget {
   resetEverything() {
     this.ended_ = false;
     this.resetLoader();
-    this.remove(0, Infinity);
+    this.remove(0, this.duration_());
+    this.trigger('reseteverything');
   }
 
   /**
@@ -753,7 +781,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         //       the lowestEnabledRendition.
         !this.xhrOptions_.timeout ||
         // Don't abort if we have no bandwidth information to estimate segment sizes
-        !(this.playlist_.attributes && this.playlist_.attributes.BANDWIDTH)) {
+        !(this.playlist_.attributes.BANDWIDTH)) {
       return false;
     }
 
@@ -823,10 +851,11 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     // set the bandwidth to that of the desired playlist being sure to scale by
     // BANDWIDTH_VARIANCE and add one so the playlist selector does not exclude it
+    // don't trigger a bandwidthupdate as the bandwidth is artifial
     this.bandwidth =
       switchCandidate.playlist.attributes.BANDWIDTH * Config.BANDWIDTH_VARIANCE + 1;
     this.abort();
-    this.trigger('bandwidthupdate');
+    this.trigger('earlyabort');
     return true;
   }
 
@@ -1046,12 +1075,36 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    this.state = 'APPENDING';
-
     const segmentInfo = this.pendingSegment_;
     const segment = segmentInfo.segment;
+    const timingInfo = this.syncController_.probeSegmentInfo(segmentInfo);
 
-    this.syncController_.probeSegmentInfo(segmentInfo);
+    // When we have our first timing info, determine what media types this loader is
+    // dealing with. Although we're maintaining extra state, it helps to preserve the
+    // separation of segment loader from the actual source buffers.
+    if (typeof this.startingMedia_ === 'undefined' &&
+        timingInfo &&
+        // Guard against cases where we're not getting timing info at all until we are
+        // certain that all streams will provide it.
+        (timingInfo.containsAudio || timingInfo.containsVideo)) {
+      this.startingMedia_ = {
+        containsAudio: timingInfo.containsAudio,
+        containsVideo: timingInfo.containsVideo
+      };
+    }
+
+    const illegalMediaSwitchError =
+      illegalMediaSwitch(this.loaderType_, this.startingMedia_, timingInfo);
+
+    if (illegalMediaSwitchError) {
+      this.error({
+        message: illegalMediaSwitchError
+      });
+      this.trigger('error');
+      return;
+    }
+
+    this.state = 'APPENDING';
 
     if (segmentInfo.isSyncRequest) {
       this.trigger('syncinfoupdate');

@@ -21,14 +21,10 @@ import PlaybackWatcher from './playback-watcher';
 import reloadSourceOnError from './reload-source-on-error';
 import {
   lastBandwidthSelector,
+  lowestBitrateCompatibleVariantSelector,
   comparePlaylistBandwidth,
   comparePlaylistResolution
 } from './playlist-selectors.js';
-
-// 0.5 MB/s
-const INITIAL_BANDWIDTH_DESKTOP = 4194304;
-// 0.0625 MB/s
-const INITIAL_BANDWIDTH_MOBILE = 500000;
 
 const Hls = {
   PlaylistLoader,
@@ -39,11 +35,15 @@ const Hls = {
   utils,
 
   STANDARD_PLAYLIST_SELECTOR: lastBandwidthSelector,
+  INITIAL_PLAYLIST_SELECTOR: lowestBitrateCompatibleVariantSelector,
   comparePlaylistBandwidth,
   comparePlaylistResolution,
 
   xhr: xhrFactory()
 };
+
+// 0.5 MB/s
+const INITIAL_BANDWIDTH = 4194304;
 
 // Define getter/setters for config properites
 [
@@ -160,26 +160,6 @@ Hls.isSupported = function() {
                           'your player\'s techOrder.');
 };
 
-const USER_AGENT = window.navigator && window.navigator.userAgent || '';
-
-/**
- * Determines whether the browser supports a change in the audio configuration
- * during playback. Currently only Firefox 48 and below do not support this.
- * window.isSecureContext is a propterty that was added to window in firefox 49,
- * so we can use it to detect Firefox 49+.
- *
- * @return {Boolean} Whether the browser supports audio config change during playback
- */
-Hls.supportsAudioInfoChange_ = function() {
-  if (videojs.browser.IS_FIREFOX) {
-    let firefoxVersionMap = (/Firefox\/([\d.]+)/i).exec(USER_AGENT);
-    let version = parseInt(firefoxVersionMap[1], 10);
-
-    return version >= 49;
-  }
-  return true;
-};
-
 const Component = videojs.getComponent('Component');
 
 /**
@@ -256,15 +236,6 @@ class HlsHandler extends Component {
       }
     });
 
-    this.audioTrackChange_ = () => {
-      this.masterPlaylistController_.setupAudio();
-      this.tech_.trigger({type: 'usage', name: 'hls-audio-change'});
-    };
-
-    this.textTrackChange_ = () => {
-      this.masterPlaylistController_.setupSubtitles();
-    };
-
     this.on(this.tech_, 'play', this.play);
   }
 
@@ -279,11 +250,14 @@ class HlsHandler extends Component {
     // start playlist selection at a reasonable bandwidth for
     // broadband internet (0.5 MB/s) or mobile (0.0625 MB/s)
     if (typeof this.options_.bandwidth !== 'number') {
-      // only use Android for mobile because iOS does not support MSE (and uses
-      // native HLS)
-      this.options_.bandwidth =
-        videojs.browser.IS_ANDROID ? INITIAL_BANDWIDTH_MOBILE : INITIAL_BANDWIDTH_DESKTOP;
+      this.options_.bandwidth = INITIAL_BANDWIDTH;
     }
+
+    // If the bandwidth number is unchanged from the initial setting
+    // then this takes precedence over the enableLowInitialPlaylist option
+    this.options_.enableLowInitialPlaylist =
+       this.options_.enableLowInitialPlaylist &&
+       this.options_.bandwidth === INITIAL_BANDWIDTH;
 
     // grab options passed to player.src
     ['withCredentials', 'bandwidth'].forEach((option) => {
@@ -327,6 +301,9 @@ class HlsHandler extends Component {
     this.masterPlaylistController_.selectPlaylist =
       this.selectPlaylist ?
         this.selectPlaylist.bind(this) : Hls.STANDARD_PLAYLIST_SELECTOR.bind(this);
+
+    this.masterPlaylistController_.selectInitialPlaylist =
+      Hls.INITIAL_PLAYLIST_SELECTOR.bind(this);
 
     // re-expose some internal objects for backwards compatibility with < v2
     this.playlists = this.masterPlaylistController_.masterPlaylistLoader_;
@@ -438,22 +415,9 @@ class HlsHandler extends Component {
     this.tech_.one('canplay',
       this.masterPlaylistController_.setupFirstPlay.bind(this.masterPlaylistController_));
 
-    this.masterPlaylistController_.on('sourceopen', () => {
-      this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
-      this.tech_.remoteTextTracks().addEventListener('change', this.textTrackChange_);
-    });
-
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
       // Add the manual rendition mix-in to HlsHandler
       renditionSelectionMixin(this);
-    });
-
-    this.masterPlaylistController_.on('audioupdate', () => {
-      // clear current audioTracks
-      this.tech_.clearTracks('audio');
-      this.masterPlaylistController_.activeAudioGroup().forEach((audioTrack) => {
-        this.tech_.audioTracks().addTrack(audioTrack);
-      });
     });
 
     // the bandwidth of the primary segment loader is our best
@@ -503,15 +467,6 @@ class HlsHandler extends Component {
   }
 
   /**
-   * a helper for grabbing the active audio group from MasterPlaylistController
-   *
-   * @private
-   */
-  activeAudioGroup_() {
-    return this.masterPlaylistController_.activeAudioGroup();
-  }
-
-  /**
    * Begin playing the video.
    */
   play() {
@@ -552,8 +507,6 @@ class HlsHandler extends Component {
     if (this.qualityLevels_) {
       this.qualityLevels_.dispose();
     }
-    this.tech_.audioTracks().removeEventListener('change', this.audioTrackChange_);
-    this.tech_.remoteTextTracks().removeEventListener('change', this.textTrackChange_);
     super.dispose();
   }
 }

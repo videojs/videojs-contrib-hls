@@ -2,6 +2,61 @@ CHANGELOG
 =========
 
 --------------------
+## 5.11.1 (2017-10-11)
+* update videojs-contrib-media-sources to 4.5.3 [#1278](https://github.com/videojs/videojs-contrib-hls/pull/1278)
+  * update mux.js to 4.2.2
+    * Use the first audio and video tracks in the PMT
+* fix InvalidStateError for live playback in IE11 [#1266](https://github.com/videojs/videojs-contrib-hls/pull/1266)
+
+--------------------
+## 5.11.0 (2017-09-20)
+* Update videojs-contrib-media-sources to 4.5.2 [#1262](https://github.com/videojs/videojs-contrib-hls/pull/1262)
+  * let video.js remoteTextTrack auto cleanup take care of text track cleanup
+* Blacklist incompatible playlists on probe if codec information not in master manifest [#1257](https://github.com/videojs/videojs-contrib-hls/pull/1257)
+* Seek to seekable start when seeking before the seekable window [#1260](https://github.com/videojs/videojs-contrib-hls/pull/1260)
+* MediaGroups: various bug fixes and refactor [#1243](https://github.com/videojs/videojs-contrib-hls/pull/1243)
+  * Removes the Firefox 48 check for for supporting a change in audio info
+  * Fix delayed switching between audio tracks and intermittent desync.
+
+--------------------
+## 5.10.1 (2017-08-28)
+* fix: flv metadata tags now appened when audio info changes [#1245](https://github.com/videojs/videojs-contrib-hls/pull/1245)
+
+--------------------
+## 5.10.0 (2017-08-22)
+* CEA608: support for cc2-cc4, special/extended characters, formatting [#1096](https://github.com/videojs/videojs-contrib-hls/pull/1096)
+  * All four CC tracks are now available
+  * If CLOSED-CAPTIONS are specified in the master manifest, the corresponding CC text tracks will be labled appropriately, otherwise will be labled CC1 - CC4
+  * Underline and italics will now be rendered.
+  * Special thanks to @squarebracket
+
+--------------------
+## 5.9.0 (2017-08-16)
+* Add option to select lowest bitrate video rendition available on startup [#1212](https://github.com/videojs/videojs-contrib-hls/pull/1212)
+* always activate loading in segment loaders after a seek [#1234](https://github.com/videojs/videojs-contrib-hls/pull/1234)
+* Wait for `canplay` event from tech before `PlaybackWatcher` begins monitoring [#1230](https://github.com/videojs/videojs-contrib-hls/pull/1230)
+  * Fixes InvalidStateError in Win10 IE11
+* Blacklist playlist for 2 minutes on early abort to prevent cache loop [#1220](https://github.com/videojs/videojs-contrib-hls/pull/1220)
+  * Prevent rendition switch loop due to inconsistent network/caching
+  * Don't fire bandwidthupdate when aborting early
+* make sure text tracks added by hls are properly disposed [#1228](https://github.com/videojs/videojs-contrib-hls/pull/1228)
+* Fixing Backward Seeking in IE11 Win8.1 [#1225](https://github.com/videojs/videojs-contrib-hls/pull/1225)
+
+--------------------
+## 5.8.3 (2017-08-07)
+* Fix: Double caption issue [#1219](https://github.com/videojs/videojs-contrib-hls/pull/1219)
+* attach attributes property to playlist objects in cases the m3u8-parser does not[#1214](https://github.com/videojs/videojs-contrib-hls/pull/1214)
+  * add warning log when missing attribute for stream-inf
+
+--------------------
+## 5.8.2 (2017-07-12)
+* fix: processing segments when mediaSource is closed [#1201](https://github.com/videojs/videojs-contrib-hls/pull/1201)
+
+--------------------
+## 5.8.1 (2017-07-12)
+* fix: audio only playlists with videojs-contrib-media-sources v4.4.7 [#1195](https://github.com/videojs/videojs-contrib-hls/pull/1195)
+
+--------------------
 ## 5.8.0 (2017-07-06)
 * Abr Improvements [#1176](https://github.com/videojs/videojs-contrib-hls/pull/1176)
   * Use a starting `bandwidth` value of `0.0625 MB/s` on Android devices

@@ -1,5 +1,6 @@
 import Config from './config';
 import Playlist from './playlist';
+import { parseCodecs } from './util/codecs.js';
 
 // Utilities
 
@@ -62,11 +63,11 @@ export const comparePlaylistBandwidth = function(left, right) {
   let leftBandwidth;
   let rightBandwidth;
 
-  if (left.attributes && left.attributes.BANDWIDTH) {
+  if (left.attributes.BANDWIDTH) {
     leftBandwidth = left.attributes.BANDWIDTH;
   }
   leftBandwidth = leftBandwidth || window.Number.MAX_VALUE;
-  if (right.attributes && right.attributes.BANDWIDTH) {
+  if (right.attributes.BANDWIDTH) {
     rightBandwidth = right.attributes.BANDWIDTH;
   }
   rightBandwidth = rightBandwidth || window.Number.MAX_VALUE;
@@ -87,16 +88,14 @@ export const comparePlaylistResolution = function(left, right) {
   let leftWidth;
   let rightWidth;
 
-  if (left.attributes &&
-      left.attributes.RESOLUTION &&
+  if (left.attributes.RESOLUTION &&
       left.attributes.RESOLUTION.width) {
     leftWidth = left.attributes.RESOLUTION.width;
   }
 
   leftWidth = leftWidth || window.Number.MAX_VALUE;
 
-  if (right.attributes &&
-      right.attributes.RESOLUTION &&
+  if (right.attributes.RESOLUTION &&
       right.attributes.RESOLUTION.width) {
     rightWidth = right.attributes.RESOLUTION.width;
   }
@@ -128,18 +127,19 @@ export const comparePlaylistResolution = function(left, right) {
  * currently detected bandwidth, accounting for some amount of
  * bandwidth variance
  */
-const simpleSelector = function(master, playerBandwidth, playerWidth, playerHeight) {
+export const simpleSelector = function(master,
+                                       playerBandwidth,
+                                       playerWidth,
+                                       playerHeight) {
   // convert the playlists to an intermediary representation to make comparisons easier
   let sortedPlaylistReps = master.playlists.map((playlist) => {
     let width;
     let height;
     let bandwidth;
 
-    if (playlist.attributes) {
-      width = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.width;
-      height = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.height;
-      bandwidth = playlist.attributes.BANDWIDTH;
-    }
+    width = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.width;
+    height = playlist.attributes.RESOLUTION && playlist.attributes.RESOLUTION.height;
+    bandwidth = playlist.attributes.BANDWIDTH;
 
     bandwidth = bandwidth || window.Number.MAX_VALUE;
 
@@ -320,7 +320,9 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
   } = settings;
 
   const bandwidthPlaylists =
-    master.playlists.filter(Playlist.hasAttribute.bind(null, 'BANDWIDTH'));
+    master.playlists.filter(playlist =>
+      Playlist.isEnabled(playlist) && Playlist.hasAttribute('BANDWIDTH', playlist)
+    );
 
   const rebufferingEstimates = bandwidthPlaylists.map((playlist) => {
     const syncPoint = syncController.getSyncPoint(playlist,
@@ -355,4 +357,36 @@ export const minRebufferMaxBandwidthSelector = function(settings) {
   stableSort(rebufferingEstimates, (a, b) => a.rebufferingImpact - b.rebufferingImpact);
 
   return rebufferingEstimates[0] || null;
+};
+
+/**
+ * Chooses the appropriate media playlist, which in this case is the lowest bitrate
+ * one with video.  If no renditions with video exist, return the lowest audio rendition.
+ *
+ * Expects to be called within the context of an instance of HlsHandler
+ *
+ * @return {Object|null}
+ *         {Object} return.playlist
+ *         The lowest bitrate playlist that contains a video codec.  If no such rendition
+ *         exists pick the lowest audio rendition.
+ */
+export const lowestBitrateCompatibleVariantSelector = function() {
+  // filter out any playlists that have been excluded due to
+  // incompatible configurations or playback errors
+  const playlists = this.playlists.master.playlists.filter(Playlist.isEnabled);
+
+  // Sort ascending by bitrate
+  stableSort(playlists,
+    (a, b) => comparePlaylistBandwidth(a, b));
+
+  // Parse and assume that playlists with no video codec have no video
+  // (this is not necessarily true, although it is generally true).
+  //
+  // If an entire manifest has no valid videos everything will get filtered
+  // out.
+  const playlistsWithVideo = playlists.filter(
+    playlist => parseCodecs(playlist.attributes.CODECS).videoCodec
+  );
+
+  return playlistsWithVideo[0] || null;
 };
