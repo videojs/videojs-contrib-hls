@@ -1180,6 +1180,27 @@ QUnit.test('returns to HAVE_METADATA after refreshing the playlist', function(as
   assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
 });
 
+QUnit.test('refreshes the playlist after last segment duration', function(assert) {
+  let loader = new PlaylistLoader('live.m3u8', this.fakeHls);
+  let refreshes = 0;
+
+  loader.on('mediaupdatetimeout', () => refreshes++);
+
+  loader.load();
+
+  this.requests.pop().respond(200, null,
+                              '#EXTM3U\n' +
+                              '#EXT-X-TARGETDURATION:10\n' +
+                              '#EXTINF:10,\n' +
+                              '0.ts\n' +
+                              '#EXTINF:4\n' +
+                              '1.ts\n');
+  // 4s, last segment duration
+  this.clock.tick(4 * 1000);
+
+  assert.equal(refreshes, 1, 'refreshed playlist after last segment duration');
+});
+
 QUnit.test('emits an error when an initial playlist request fails', function(assert) {
   let errors = [];
   let loader = new PlaylistLoader('master.m3u8', this.fakeHls);

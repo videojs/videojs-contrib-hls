@@ -448,6 +448,7 @@ QUnit.test('safeLiveIndex is correct for variable segment durations', function(a
         duration: 5
       },
       {
+        // this segment is 16 seconds from the end of playlist, the safe live point
         duration: 6
       },
       {
@@ -462,7 +463,8 @@ QUnit.test('safeLiveIndex is correct for variable segment durations', function(a
     ]
   };
 
-  const expected = 2;
+  // safe live point is no less than 15 seconds (3s + 2 * 6s) from the end of the playlist
+  const expected = 3;
   const actual = Playlist.safeLiveIndex(playlist);
 
   assert.equal(actual, expected, 'correct media index for variable segment durations');
@@ -481,7 +483,7 @@ QUnit.test('safeLiveIndex is 0 when no safe live point', function(assert) {
         duration: 6
       },
       {
-        duration: 6
+        duration: 3
       },
       {
         duration: 3

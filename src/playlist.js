@@ -7,14 +7,6 @@ import {createTimeRange} from 'video.js';
 import window from 'global/window';
 
 /**
- * The number of segments (with duration of EXT-X-TARGETDURAION) that are unsafe to start
- * playback at in a live stream. Changing this value can cause playback stalls.
- * See HTTP Live Streaming, "Playing the Media Playlist File"
- * https://tools.ietf.org/html/draft-pantos-http-live-streaming-23#section-6.3.3
- */
-const UNSAFE_LIVE_SEGMENTS = 3;
-
-/**
  * walk backward until we find a duration we can use
  * or return a failure
  *
@@ -219,7 +211,8 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
 
 /**
  * Determines the media index of the segment corresponding to the safe edge of the live
- * window which is 3 times target duration.
+ * window which is the duration of the last segment plus 2 target durations from the end
+ * of the playlist.
  *
  * @param {Object} playlist
  *        a media playlist object;
@@ -228,10 +221,13 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
  * @function safeLiveIndex
  */
 export const safeLiveIndex = function(playlist) {
-  const safeDistance = playlist.targetDuration * UNSAFE_LIVE_SEGMENTS;
+  if (!playlist.segments.length) {
+    return 0;
+  }
 
-  let i = playlist.segments.length;
-  let distanceFromEnd = 0;
+  let i = playlist.segments.length - 1;
+  let distanceFromEnd = playlist.segments[i].duration || playlist.targetDuration;
+  const safeDistance = distanceFromEnd + playlist.targetDuration * 2;
 
   while (i--) {
     distanceFromEnd += playlist.segments[i].duration;
@@ -543,6 +539,5 @@ export default {
   isAes,
   isFmp4,
   hasAttribute,
-  estimateSegmentRequestTime,
-  UNSAFE_LIVE_SEGMENTS
+  estimateSegmentRequestTime
 };
