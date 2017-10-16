@@ -839,6 +839,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // out-of-date in this scenario
     currentPlaylist = error.playlist || this.masterPlaylistLoader_.media();
 
+    blacklistDuration = blacklistDuration ||
+                        error.blacklistDuration ||
+                        this.blacklistDuration;
+
     // If there is no current playlist, then an error occurred while we were
     // trying to load the master OR while we were disposing of the tech
     if (!currentPlaylist) {
@@ -862,8 +866,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.masterPlaylistLoader_.load(isFinalRendition);
     }
     // Blacklist this playlist
-    currentPlaylist.excludeUntil = Date.now() +
-      (blacklistDuration ? blacklistDuration : this.blacklistDuration) * 1000;
+    currentPlaylist.excludeUntil = Date.now() + (blacklistDuration * 1000);
     this.tech_.trigger('blacklistplaylist');
     this.tech_.trigger({type: 'usage', name: 'hls-rendition-blacklisted'});
 
