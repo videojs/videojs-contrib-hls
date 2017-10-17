@@ -908,6 +908,12 @@ export default class SegmentLoader extends videojs.EventTarget {
   trimBackBuffer_(segmentInfo) {
     const seekable = this.seekable_();
     const currentTime = this.currentTime_();
+    const targetDuration = this.playlist_.targetDuration || 10;
+
+    // Don't allow removing from the buffer within target duration of current time
+    // to avoid the possibility of removing the GOP currently being played which could
+    // cause playback stalls.
+    const safeRemoveToTimeLimit = currentTime - targetDuration;
     let removeToTime = 0;
 
     // Chrome has a hard limit of 150MB of
@@ -925,6 +931,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     } else {
       removeToTime = currentTime - 30;
     }
+
+    removeToTime = Math.min(removeToTime, safeRemoveToTimeLimit);
 
     if (removeToTime > 0) {
       this.remove(0, removeToTime);
