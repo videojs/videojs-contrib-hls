@@ -1105,8 +1105,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    this.state = 'APPENDING';
-
     if (segmentInfo.isSyncRequest) {
       this.trigger('syncinfoupdate');
       this.pendingSegment_ = null;
@@ -1120,6 +1118,17 @@ export default class SegmentLoader extends videojs.EventTarget {
       // fired when a timestamp offset is set in HLS (can also identify discontinuities)
       this.trigger('timestampoffset');
     }
+
+    const timelineMapping = this.syncController_.mappingForTimeline(segmentInfo.timeline);
+
+    if (timelineMapping !== null) {
+      this.trigger({
+        type: 'segmenttimemapping',
+        mapping: timelineMapping
+      });
+    }
+
+    this.state = 'APPENDING';
 
     // if the media initialization segment is changing, append it
     // before the content segment

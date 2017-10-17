@@ -345,6 +345,48 @@ QUnit.module('SegmentLoader', function(hooks) {
       assert.equal(loader.mediaRequests, 1, '1 request');
     });
 
+    QUnit.test('loader triggers segmenttimemapping before appending segment',
+    function(assert) {
+      let playlist = playlistWithDuration(20);
+      let segmenttimemappings = 0;
+      let timingInfo = { hasMapping: false };
+
+      this.syncController.probeSegmentInfo = () => timingInfo;
+
+      loader.on('segmenttimemapping', function() {
+        segmenttimemappings++;
+      });
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+
+      assert.equal(segmenttimemappings, 0, 'no events before segment downloaded');
+
+      // some time passes and a response is received
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(segmenttimemappings, 0,
+        'did not trigger segmenttimemappings with unsuccessful probe');
+
+      this.updateend();
+      this.clock.tick(1);
+
+      assert.equal(segmenttimemappings, 0, 'no events before segment downloaded');
+
+      timingInfo.hasMapping = true;
+      this.syncController.timelines[0] = { mapping: 0 };
+
+      // some time passes and a response is received
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(segmenttimemappings, 1,
+        'triggered segmenttimemappings with successful probe');
+    });
+
     QUnit.test('adds cues with segment information to the segment-metadata track ' +
                'as they are buffered',
       function(assert) {

@@ -451,6 +451,13 @@ export default class SyncController extends videojs.EventTarget {
     return this.timelines[timeline].time;
   }
 
+  mappingForTimeline(timeline) {
+    if (typeof this.timelines[timeline] === 'undefined') {
+      return null;
+    }
+    return this.timelines[timeline].mapping;
+  }
+
   /**
    * Use the "media time" for a segment to generate a mapping to "display time" and
    * save that display time to the segment.
