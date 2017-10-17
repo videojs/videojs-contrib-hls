@@ -215,9 +215,10 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
  * of the playlist.
  *
  * @param {Object} playlist
- *        a media playlist object;
+ *        a media playlist object
  * @return {Number}
- *         The media index of the segment
+ *         The media index of the segment at the safe live point. 0 if there is no "safe"
+ *         point.
  * @function safeLiveIndex
  */
 export const safeLiveIndex = function(playlist) {
