@@ -532,7 +532,7 @@ export default {
   safeLiveIndex,
   getMediaInfoForTime,
   isEnabled,
-  isDisabled
+  isDisabled,
   isBlacklisted,
   isIncompatible,
   playlistEnd,
