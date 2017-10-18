@@ -233,26 +233,26 @@ export default class PlaylistLoader extends EventTarget {
 
     this.targetDuration = parser.manifest.targetDuration;
 
-    // if the playlist is unchanged since the last reload or last segment duration cannot
-    // be determined, try again after half the target duration
-    let refreshDelay = (this.targetDuration || 10) * 500;
-
     if (update) {
       this.master = update;
       this.media_ = this.master.playlists[parser.manifest.uri];
-
-      // the client MUST wait for at least the duration of the last segment in the
-      // Playlist before attempting to reload the Playlist file again
-      if (this.media_.segments.length) {
-        refreshDelay = this.media_.segments[this.media_.segments.length - 1].duration;
-        refreshDelay *= 1000;
-      }
     } else {
       this.trigger('playlistunchanged');
     }
 
     // refresh live playlists after a target duration passes
     if (!this.media().endList) {
+      const lastSegment = this.media_.segments[this.media_.segments.length - 1];
+      let refreshDelay;
+
+      if (update && lastSegment && lastSegment.duration) {
+        refreshDelay = lastSegment.duration * 1000;
+      } else {
+        // if the playlist is unchanged since the last reload or last segment duration
+        // cannot be determined, try again after half the target duration
+        refreshDelay = (this.targetDuration || 10) * 500;
+      }
+
       window.clearTimeout(this.mediaUpdateTimeout);
       this.mediaUpdateTimeout = window.setTimeout(() => {
         this.trigger('mediaupdatetimeout');

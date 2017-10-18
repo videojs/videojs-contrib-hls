@@ -423,10 +423,8 @@ QUnit.test('safeLiveIndex is correct for standard segment durations', function(a
     ]
   };
 
-  const expected = 3;
-  const actual = Playlist.safeLiveIndex(playlist);
-
-  assert.equal(actual, expected, 'correct media index for standard durations');
+  assert.equal(Playlist.safeLiveIndex(playlist), 3,
+    'correct media index for standard durations');
 });
 
 QUnit.test('safeLiveIndex is correct for variable segment durations', function(assert) {
@@ -464,10 +462,8 @@ QUnit.test('safeLiveIndex is correct for variable segment durations', function(a
   };
 
   // safe live point is no less than 15 seconds (3s + 2 * 6s) from the end of the playlist
-  const expected = 3;
-  const actual = Playlist.safeLiveIndex(playlist);
-
-  assert.equal(actual, expected, 'correct media index for variable segment durations');
+  assert.equal(Playlist.safeLiveIndex(playlist), 3,
+    'correct media index for variable segment durations');
 });
 
 QUnit.test('safeLiveIndex is 0 when no safe live point', function(assert) {
@@ -491,10 +487,7 @@ QUnit.test('safeLiveIndex is 0 when no safe live point', function(assert) {
     ]
   };
 
-  const expected = 0;
-  const actual = Playlist.safeLiveIndex(playlist);
-
-  assert.equal(actual, expected,
+  assert.equal(Playlist.safeLiveIndex(playlist), 0,
     'returns media index 0 when playlist has no safe live point');
 });
 
