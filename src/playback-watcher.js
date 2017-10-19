@@ -107,7 +107,8 @@ export default class PlaybackWatcher {
     let buffered = this.tech_.buffered();
 
     if (this.lastRecordedTime === currentTime &&
-        (!buffered.length || currentTime + 0.1 >= buffered.end(buffered.length - 1))) {
+        (!buffered.length ||
+         currentTime + Ranges.SAFE_TIME_DELTA >= buffered.end(buffered.length - 1))) {
       // If current time is at the end of the final buffered region, then any playback
       // stall is most likely caused by buffering in a low bandwidth environment. The tech
       // should fire a `waiting` event in this scenario, but due to browser and tech
@@ -171,7 +172,7 @@ export default class PlaybackWatcher {
 
       // sync to the beginning of the live window
       // provide a buffer of .1 seconds to handle rounding/imprecise numbers
-      seekTo = seekableStart + 0.1;
+      seekTo = seekableStart + Ranges.SAFE_TIME_DELTA;
     }
 
     if (typeof seekTo !== 'undefined') {
@@ -298,8 +299,7 @@ export default class PlaybackWatcher {
       return false;
     }
 
-    // provide a buffer of .1 seconds to handle rounding/imprecise numbers
-    if (currentTime > seekable.end(seekable.length - 1) + 0.1) {
+    if (currentTime > seekable.end(seekable.length - 1) + Ranges.SAFE_TIME_DELTA) {
       return true;
     }
 
@@ -310,8 +310,7 @@ export default class PlaybackWatcher {
     if (seekable.length &&
         // can't fall before 0 and 0 seekable start identifies VOD stream
         seekable.start(0) > 0 &&
-        // provide a buffer of .1 seconds to handle rounding/imprecise numbers
-        currentTime < seekable.start(0) - 0.1) {
+        currentTime < seekable.start(0) - Ranges.SAFE_TIME_DELTA) {
       return true;
     }
 

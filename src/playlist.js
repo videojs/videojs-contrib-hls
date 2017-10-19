@@ -6,16 +6,6 @@
 import {createTimeRange} from 'video.js';
 import window from 'global/window';
 
-let Playlist = {
-  /**
-   * The number of segments that are unsafe to start playback at in
-   * a live stream. Changing this value can cause playback stalls.
-   * See HTTP Live Streaming, "Playing the Media Playlist File"
-   * https://tools.ietf.org/html/draft-pantos-http-live-streaming-18#section-6.3.3
-   */
-  UNSAFE_LIVE_SEGMENTS: 3
-};
-
 /**
  * walk backward until we find a duration we can use
  * or return a failure
@@ -220,6 +210,38 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
 };
 
 /**
+ * Determines the media index of the segment corresponding to the safe edge of the live
+ * window which is the duration of the last segment plus 2 target durations from the end
+ * of the playlist.
+ *
+ * @param {Object} playlist
+ *        a media playlist object
+ * @return {Number}
+ *         The media index of the segment at the safe live point. 0 if there is no "safe"
+ *         point.
+ * @function safeLiveIndex
+ */
+export const safeLiveIndex = function(playlist) {
+  if (!playlist.segments.length) {
+    return 0;
+  }
+
+  let i = playlist.segments.length - 1;
+  let distanceFromEnd = playlist.segments[i].duration || playlist.targetDuration;
+  const safeDistance = distanceFromEnd + playlist.targetDuration * 2;
+
+  while (i--) {
+    distanceFromEnd += playlist.segments[i].duration;
+
+    if (distanceFromEnd >= safeDistance) {
+      break;
+    }
+  }
+
+  return Math.max(0, i);
+};
+
+/**
  * Calculates the playlist end time
  *
  * @param {Object} playlist a media playlist object
@@ -246,9 +268,7 @@ export const playlistEnd = function(playlist, expired, useSafeLiveEnd) {
 
   expired = expired || 0;
 
-  let endSequence = useSafeLiveEnd ?
-    Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
-    Math.max(0, playlist.segments.length);
+  const endSequence = useSafeLiveEnd ? safeLiveIndex(playlist) : playlist.segments.length;
 
   return intervalDuration(playlist,
                           playlist.mediaSequence + endSequence,
@@ -506,18 +526,19 @@ export const estimateSegmentRequestTime = function(segmentDuration,
   return (size - (bytesReceived * 8)) / bandwidth;
 };
 
-Playlist.duration = duration;
-Playlist.seekable = seekable;
-Playlist.getMediaInfoForTime = getMediaInfoForTime;
-Playlist.isEnabled = isEnabled;
-Playlist.isDisabled = isDisabled;
-Playlist.isBlacklisted = isBlacklisted;
-Playlist.isIncompatible = isIncompatible;
-Playlist.playlistEnd = playlistEnd;
-Playlist.isAes = isAes;
-Playlist.isFmp4 = isFmp4;
-Playlist.hasAttribute = hasAttribute;
-Playlist.estimateSegmentRequestTime = estimateSegmentRequestTime;
-
 // exports
-export default Playlist;
+export default {
+  duration,
+  seekable,
+  safeLiveIndex,
+  getMediaInfoForTime,
+  isEnabled,
+  isDisabled,
+  isBlacklisted,
+  isIncompatible,
+  playlistEnd,
+  isAes,
+  isFmp4,
+  hasAttribute,
+  estimateSegmentRequestTime
+};

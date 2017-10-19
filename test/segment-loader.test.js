@@ -1,7 +1,8 @@
 import QUnit from 'qunit';
 import {
   default as SegmentLoader,
-  illegalMediaSwitch
+  illegalMediaSwitch,
+  safeBackBufferTrimTime
 } from '../src/segment-loader';
 import videojs from 'video.js';
 import mp4probe from 'mux.js/lib/mp4/probe';
@@ -105,6 +106,27 @@ QUnit.test('illegalMediaSwitch detects illegal media switches', function(assert)
                ' To get rid of this message, please add codec information to the' +
                ' manifest.',
                'error when video only to audio only');
+});
+
+QUnit.test('safeBackBufferTrimTime determines correct safe removeToTime',
+function(assert) {
+  let seekable = videojs.createTimeRanges([[75, 120]]);
+  let targetDuration = 10;
+  let currentTime = 70;
+
+  assert.equal(safeBackBufferTrimTime(seekable, currentTime, targetDuration), 40,
+    'uses 30s before current time if currentTime is before seekable start');
+
+  currentTime = 110;
+
+  assert.equal(safeBackBufferTrimTime(seekable, currentTime, targetDuration), 75,
+    'uses seekable start if currentTime is after seekable start');
+
+  currentTime = 80;
+
+  assert.equal(safeBackBufferTrimTime(seekable, currentTime, targetDuration), 70,
+    'uses target duration before currentTime if currentTime is after seekable but' +
+    'within target duration');
 });
 
 QUnit.module('SegmentLoader', function(hooks) {

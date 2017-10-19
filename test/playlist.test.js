@@ -356,7 +356,7 @@ function(assert) {
 
 QUnit.test('seekable end and playlist end account for non-standard target durations',
 function(assert) {
-  let playlist = {
+  const playlist = {
     targetDuration: 2,
     mediaSequence: 0,
     syncInfo: {
@@ -385,9 +385,111 @@ function(assert) {
 
   assert.equal(seekable.start(0), 0, 'starts at the earliest available segment');
   assert.equal(seekable.end(0),
-              9 - (2 + 2 + 1),
-              'allows seeking no further than three segments from the end');
+               // Playlist duration is 9s. Target duration 2s. Seekable end should be at
+               // least 6s from end. Adding segment durations starting from the end to get
+               // that 6s target
+               9 - (2 + 2 + 1 + 2),
+               'allows seeking no further than the start of the segment 2 target' +
+               'durations back from the beginning of the last segment');
   assert.equal(playlistEnd, 9, 'playlist end at the last segment');
+});
+
+QUnit.test('safeLiveIndex is correct for standard segment durations', function(assert) {
+  const playlist = {
+    targetDuration: 6,
+    mediaSequence: 10,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 10
+    },
+    segments: [
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      },
+      {
+        duration: 6
+      }
+    ]
+  };
+
+  assert.equal(Playlist.safeLiveIndex(playlist), 3,
+    'correct media index for standard durations');
+});
+
+QUnit.test('safeLiveIndex is correct for variable segment durations', function(assert) {
+  const playlist = {
+    targetDuration: 6,
+    mediaSequence: 10,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 10
+    },
+    segments: [
+      {
+        duration: 6
+      },
+      {
+        duration: 4
+      },
+      {
+        duration: 5
+      },
+      {
+        // this segment is 16 seconds from the end of playlist, the safe live point
+        duration: 6
+      },
+      {
+        duration: 3
+      },
+      {
+        duration: 4
+      },
+      {
+        duration: 3
+      }
+    ]
+  };
+
+  // safe live point is no less than 15 seconds (3s + 2 * 6s) from the end of the playlist
+  assert.equal(Playlist.safeLiveIndex(playlist), 3,
+    'correct media index for variable segment durations');
+});
+
+QUnit.test('safeLiveIndex is 0 when no safe live point', function(assert) {
+  const playlist = {
+    targetDuration: 6,
+    mediaSequence: 10,
+    syncInfo: {
+      time: 0,
+      mediaSequence: 10
+    },
+    segments: [
+      {
+        duration: 6
+      },
+      {
+        duration: 3
+      },
+      {
+        duration: 3
+      }
+    ]
+  };
+
+  assert.equal(Playlist.safeLiveIndex(playlist), 0,
+    'returns media index 0 when playlist has no safe live point');
 });
 
 QUnit.test(

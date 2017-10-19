@@ -4,7 +4,8 @@ import {
   updateSegments,
   updateMaster,
   setupMediaPlaylists,
-  resolveMediaGroupUris
+  resolveMediaGroupUris,
+  refreshDelay
 } from '../src/playlist-loader';
 import xhrFactory from '../src/xhr';
 import { useFakeEnvironment } from './test-helpers';
@@ -773,6 +774,23 @@ QUnit.test('resolveMediaGroupUris resolves media group URIs', function(assert) {
   }, 'resolved URIs of certain media groups');
 });
 
+QUnit.test('uses last segment duration for refresh delay', function(assert) {
+  const media = { targetDuration: 7, segments: [] };
+
+  assert.equal(refreshDelay(media, true), 3500,
+    'used half targetDuration when no segments');
+
+  media.segments = [ { duration: 6}, { duration: 4 }, { } ];
+  assert.equal(refreshDelay(media, true), 3500,
+    'used half targetDuration when last segment duration cannot be determined');
+
+  media.segments = [ { duration: 6}, { duration: 4}, { duration: 5 } ];
+  assert.equal(refreshDelay(media, true), 5000, 'used last segment duration for delay');
+
+  assert.equal(refreshDelay(media, false), 3500,
+    'used half targetDuration when update is false');
+});
+
 QUnit.test('throws if the playlist url is empty or undefined', function(assert) {
   assert.throws(function() {
     PlaylistLoader();
@@ -1178,6 +1196,27 @@ QUnit.test('returns to HAVE_METADATA after refreshing the playlist', function(as
                               '#EXTINF:10,\n' +
                               '1.ts\n');
   assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
+});
+
+QUnit.test('refreshes the playlist after last segment duration', function(assert) {
+  let loader = new PlaylistLoader('live.m3u8', this.fakeHls);
+  let refreshes = 0;
+
+  loader.on('mediaupdatetimeout', () => refreshes++);
+
+  loader.load();
+
+  this.requests.pop().respond(200, null,
+                              '#EXTM3U\n' +
+                              '#EXT-X-TARGETDURATION:10\n' +
+                              '#EXTINF:10,\n' +
+                              '0.ts\n' +
+                              '#EXTINF:4\n' +
+                              '1.ts\n');
+  // 4s, last segment duration
+  this.clock.tick(4 * 1000);
+
+  assert.equal(refreshes, 1, 'refreshed playlist after last segment duration');
 });
 
 QUnit.test('emits an error when an initial playlist request fails', function(assert) {
