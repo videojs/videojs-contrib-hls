@@ -2,6 +2,20 @@ CHANGELOG
 =========
 
 --------------------
+## 5.12.0 (2017-10-19)
+* use `lastSegmentDuration + 2 * targetDuration` for safe live point instead of 3 segments [#1271](https://github.com/videojs/videojs-contrib-hls/pull/1271)
+  * do not let back buffer trimming remove within target duration of current time
+  * increase threshold for stuck playlist checking
+* Fix video corruption on rendition switches in IE11 Win 8.1+ and Edge [#1259](https://github.com/videojs/videojs-contrib-hls/pull/1259)
+  * segment-time-mapping event
+  * update contrib-media-sources to 4.6.0
+* prioritize user enabled playlists over blacklist [#1269](https://github.com/videojs/videojs-contrib-hls/pull/1269)
+  * never allow playlist selector to select a playlist that has been permanently blacklisted due to incompatible configuration
+  * When filtering playlists within the playlist selectors, if there are no enabled playlists (i.e. not blacklisted internally AND not disabled by the user) available, then fall back to using the list of playlists not disabled by the user regardless of blacklist state.
+  * make sure playlists blacklisted from an illegal media switch is permanently blacklisted, as there is no reason to try it again at a later time.
+  * The representation api will return a list that filters out just incompatible playlists instead of both incompatible playlists and temporary blacklisted playlists.
+
+--------------------
 ## 5.11.1 (2017-10-11)
 * update videojs-contrib-media-sources to 4.5.3 [#1278](https://github.com/videojs/videojs-contrib-hls/pull/1278)
   * update mux.js to 4.2.2
