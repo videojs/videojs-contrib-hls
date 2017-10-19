@@ -389,7 +389,8 @@ function(assert) {
                // least 6s from end. Adding segment durations starting from the end to get
                // that 6s target
                9 - (2 + 2 + 1 + 2),
-               'allows seeking no further than three times target duration from the end');
+               'allows seeking no further than the start of the segment 2 target' +
+               'durations back from the beginning of the last segment');
   assert.equal(playlistEnd, 9, 'playlist end at the last segment');
 });
 

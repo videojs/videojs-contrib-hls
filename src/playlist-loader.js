@@ -142,6 +142,30 @@ export const resolveMediaGroupUris = (master) => {
 };
 
 /**
+ * Calculates the time to wait before refreshing a live playlist
+ *
+ * @param {Object} media
+ *        The current media
+ * @param {Boolean} update
+ *        True if there were any updates from the last refresh, false otherwise
+ * @return {Number}
+ *         The time in ms to wait before refreshing the live playlist
+ */
+export const refreshDelay = (media, update) => {
+  const lastSegment = media.segments[media.segments.length - 1];
+  let delay;
+
+  if (update && lastSegment && lastSegment.duration) {
+    delay = lastSegment.duration * 1000;
+  } else {
+    // if the playlist is unchanged since the last reload or last segment duration
+    // cannot be determined, try again after half the target duration
+    delay = (media.targetDuration || 10) * 500;
+  }
+  return delay;
+};
+
+/**
  * Load a playlist from a remote location
  *
  * @class PlaylistLoader
@@ -242,21 +266,10 @@ export default class PlaylistLoader extends EventTarget {
 
     // refresh live playlists after a target duration passes
     if (!this.media().endList) {
-      const lastSegment = this.media_.segments[this.media_.segments.length - 1];
-      let refreshDelay;
-
-      if (update && lastSegment && lastSegment.duration) {
-        refreshDelay = lastSegment.duration * 1000;
-      } else {
-        // if the playlist is unchanged since the last reload or last segment duration
-        // cannot be determined, try again after half the target duration
-        refreshDelay = (this.targetDuration || 10) * 500;
-      }
-
       window.clearTimeout(this.mediaUpdateTimeout);
       this.mediaUpdateTimeout = window.setTimeout(() => {
         this.trigger('mediaupdatetimeout');
-      }, refreshDelay);
+      }, refreshDelay(this.media(), !!update));
     }
 
     this.trigger('loadedplaylist');
@@ -458,9 +471,9 @@ export default class PlaylistLoader extends EventTarget {
     const media = this.media();
 
     if (isFinalRendition) {
-      const refreshDelay = media ? (media.targetDuration / 2) * 1000 : 5 * 1000;
+      const delay = media ? (media.targetDuration / 2) * 1000 : 5 * 1000;
 
-      this.mediaUpdateTimeout = window.setTimeout(() => this.load(), refreshDelay);
+      this.mediaUpdateTimeout = window.setTimeout(() => this.load(), delay);
       return;
     }
 

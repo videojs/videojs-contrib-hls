@@ -14,7 +14,7 @@ const TIME_FUDGE_FACTOR = 1 / 30;
 // aligned audio and video, which can cause values to be slightly off from what you would
 // expect. This value is what we consider to be safe to use in such comparisons to account
 // for these scenarios.
-const SAFE_TIME_DELTA = 0.1;
+const SAFE_TIME_DELTA = TIME_FUDGE_FACTOR * 3;
 
 /**
  * Clamps a value to within a range

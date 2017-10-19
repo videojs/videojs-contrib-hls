@@ -820,12 +820,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     if (!buffered.length) {
       // return true if the playhead reached the absolute end of the playlist
-      return absolutePlaylistEnd - currentTime <= 0.1;
+      return absolutePlaylistEnd - currentTime <= Ranges.SAFE_TIME_DELTA;
     }
     let bufferedEnd = buffered.end(buffered.length - 1);
 
     // return true if there is too little buffer left and buffer has reached absolute
-    // end of playlist.
+    // end of playlist
     return bufferedEnd - currentTime <= Ranges.SAFE_TIME_DELTA &&
            absolutePlaylistEnd - bufferedEnd <= Ranges.SAFE_TIME_DELTA;
   }

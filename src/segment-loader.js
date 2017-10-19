@@ -74,6 +74,46 @@ export const illegalMediaSwitch = (loaderType, startingMedia, newSegmentMedia) =
 };
 
 /**
+ * Calculates a time value that is safe to remove from the back buffer without interupting
+ * playback.
+ *
+ * @param {TimeRange} seekable
+ *        The current seekable range
+ * @param {Number} currentTime
+ *        The current time of the player
+ * @param {Number} targetDuration
+ *        The target duration of the current playlist
+ * @return {Number}
+ *         Time that is safe to remove from the back buffer without interupting playback
+ */
+export const safeBackBufferTrimTime = (seekable, currentTime, targetDuration) => {
+  // Don't allow removing from the buffer within target duration of current time
+  // to avoid the possibility of removing the GOP currently being played which could
+  // cause playback stalls.
+  const safeRemoveToTimeLimit = currentTime - targetDuration;
+
+  // Chrome has a hard limit of 150MB of
+  // buffer and a very conservative "garbage collector"
+  // We manually clear out the old buffer to ensure
+  // we don't trigger the QuotaExceeded error
+  // on the source buffer during subsequent appends
+
+  let removeToTime;
+
+  if (seekable.length &&
+      seekable.start(0) > 0 &&
+      seekable.start(0) < currentTime) {
+    // If we have a seekable range use that as the limit for what can be removed safely
+    removeToTime = seekable.start(0);
+  } else {
+    // otherwise remove anything older than 30 seconds before the current play head
+    removeToTime = currentTime - 30;
+  }
+
+  return Math.min(removeToTime, safeRemoveToTimeLimit);
+};
+
+/**
  * An object that manages segment loading and appending.
  *
  * @class SegmentLoader
@@ -906,33 +946,9 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @param {Object} segmentInfo - the current segment
    */
   trimBackBuffer_(segmentInfo) {
-    const seekable = this.seekable_();
-    const currentTime = this.currentTime_();
-    const targetDuration = this.playlist_.targetDuration || 10;
-
-    // Don't allow removing from the buffer within target duration of current time
-    // to avoid the possibility of removing the GOP currently being played which could
-    // cause playback stalls.
-    const safeRemoveToTimeLimit = currentTime - targetDuration;
-    let removeToTime = 0;
-
-    // Chrome has a hard limit of 150MB of
-    // buffer and a very conservative "garbage collector"
-    // We manually clear out the old buffer to ensure
-    // we don't trigger the QuotaExceeded error
-    // on the source buffer during subsequent appends
-
-    // If we have a seekable range use that as the limit for what can be removed safely
-    // otherwise remove anything older than 30 seconds before the current play head
-    if (seekable.length &&
-        seekable.start(0) > 0 &&
-        seekable.start(0) < currentTime) {
-      removeToTime = seekable.start(0);
-    } else {
-      removeToTime = currentTime - 30;
-    }
-
-    removeToTime = Math.min(removeToTime, safeRemoveToTimeLimit);
+    const removeToTime = safeBackBufferTrimTime(this.seekable_(),
+                                                this.currentTime_(),
+                                                this.playlist_.targetDuration || 10);
 
     if (removeToTime > 0) {
       this.remove(0, removeToTime);
