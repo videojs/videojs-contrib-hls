@@ -87,17 +87,6 @@ export const illegalMediaSwitch = (loaderType, startingMedia, newSegmentMedia) =
  *         Time that is safe to remove from the back buffer without interupting playback
  */
 export const safeBackBufferTrimTime = (seekable, currentTime, targetDuration) => {
-  // Don't allow removing from the buffer within target duration of current time
-  // to avoid the possibility of removing the GOP currently being played which could
-  // cause playback stalls.
-  const safeRemoveToTimeLimit = currentTime - targetDuration;
-
-  // Chrome has a hard limit of 150MB of
-  // buffer and a very conservative "garbage collector"
-  // We manually clear out the old buffer to ensure
-  // we don't trigger the QuotaExceeded error
-  // on the source buffer during subsequent appends
-
   let removeToTime;
 
   if (seekable.length &&
@@ -110,7 +99,10 @@ export const safeBackBufferTrimTime = (seekable, currentTime, targetDuration) =>
     removeToTime = currentTime - 30;
   }
 
-  return Math.min(removeToTime, safeRemoveToTimeLimit);
+  // Don't allow removing from the buffer within target duration of current time
+  // to avoid the possibility of removing the GOP currently being played which could
+  // cause playback stalls.
+  return Math.min(removeToTime, currentTime - targetDuration);
 };
 
 /**
@@ -949,6 +941,12 @@ export default class SegmentLoader extends videojs.EventTarget {
     const removeToTime = safeBackBufferTrimTime(this.seekable_(),
                                                 this.currentTime_(),
                                                 this.playlist_.targetDuration || 10);
+
+    // Chrome has a hard limit of 150MB of
+    // buffer and a very conservative "garbage collector"
+    // We manually clear out the old buffer to ensure
+    // we don't trigger the QuotaExceeded error
+    // on the source buffer during subsequent appends
 
     if (removeToTime > 0) {
       this.remove(0, removeToTime);
