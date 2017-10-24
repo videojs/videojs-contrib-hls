@@ -3,6 +3,10 @@ CHANGELOG
 
 --------------------
 ## HEAD (Unreleased)
+_(none)_
+
+--------------------
+## 5.12.1 (2017-10-24)
 * update contrib-media-sources to 4.6.1 [#1284](https://github.com/videojs/videojs-contrib-hls/pull/1284)
   * update mux.js to 4.3.1
     * Set active data channel per-field instead of globally for CEA-608
