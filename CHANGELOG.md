@@ -2,6 +2,13 @@ CHANGELOG
 =========
 
 --------------------
+## HEAD (Unreleased)
+* update contrib-media-sources to 4.6.1 [#1284](https://github.com/videojs/videojs-contrib-hls/pull/1284)
+  * update mux.js to 4.3.1
+    * Set active data channel per-field instead of globally for CEA-608
+    * Fixed an issue with captions being placed in the wrong CC
+
+--------------------
 ## 5.12.0 (2017-10-19)
 * use `lastSegmentDuration + 2 * targetDuration` for safe live point instead of 3 segments [#1271](https://github.com/videojs/videojs-contrib-hls/pull/1271)
   * do not let back buffer trimming remove within target duration of current time
