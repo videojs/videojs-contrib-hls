@@ -1,11 +1,8 @@
 /**
  * @file master-playlist-controller.js
  */
-import {
-  default as PlaylistLoader,
-  isLowestEnabledRendition
-} from './playlist-loader';
-import { isEnabled } from './playlist.js';
+import PlaylistLoader from './playlist-loader';
+import { isEnabled, isLowestEnabledRendition } from './playlist.js';
 import SegmentLoader from './segment-loader';
 import VTTSegmentLoader from './vtt-segment-loader';
 import Ranges from './ranges';

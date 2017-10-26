@@ -7,7 +7,6 @@
  */
 import resolveUrl from './resolve-url';
 import { mergeOptions, EventTarget, log } from 'video.js';
-import { isEnabled } from './playlist.js';
 import m3u8 from 'm3u8-parser';
 import window from 'global/window';
 
@@ -167,28 +166,6 @@ export const refreshDelay = (media, update) => {
     delay = (media.targetDuration || 10) * 500;
   }
   return delay;
-};
-
-/*
- * Returns whether the current playlist is the lowest rendition
- *
- * @return {Boolean} true if on lowest rendition
- */
-export const isLowestEnabledRendition = (master, media) => {
-  if (master.playlists.length === 1) {
-    return true;
-  }
-
-  const currentBandwidth = media.attributes.BANDWIDTH || Number.MAX_VALUE;
-
-  return (master.playlists.filter((playlist) => {
-    if (!isEnabled(playlist)) {
-      return false;
-    }
-
-    return (playlist.attributes.BANDWIDTH || 0) < currentBandwidth;
-
-  }).length === 0);
 };
 
 /**

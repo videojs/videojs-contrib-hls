@@ -5,9 +5,11 @@ import {
   updateMaster,
   setupMediaPlaylists,
   resolveMediaGroupUris,
-  refreshDelay,
-  isLowestEnabledRendition
+  refreshDelay
 } from '../src/playlist-loader';
+import {
+  isLowestEnabledRendition
+} from '../src/playlist';
 import xhrFactory from '../src/xhr';
 import { useFakeEnvironment } from './test-helpers';
 import window from 'global/window';
