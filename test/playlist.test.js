@@ -863,62 +863,6 @@ function(assert) {
     'disabled playlist with permanent blacklist is not enabled');
 });
 
-QUnit.test('isBlacklisted returns if a playlist is blacklisted', function(assert) {
-  assert.ok(!Playlist.isBlacklisted({}), 'not blacklisted if empty object');
-  assert.ok(!Playlist.isBlacklisted({
-    disabled: true,
-    enabled: false
-  }), 'not blacklisted if no excludeUntil');
-  assert.ok(!Playlist.isBlacklisted({
-    disabled: true,
-    enabled: false,
-    uri: 'test-uri',
-    duration: 4
-  }), 'not blacklisted if no excludeUntil');
-  assert.ok(!Playlist.isBlacklisted({
-    disabled: true,
-    enabled: false,
-    uri: 'test-uri',
-    duration: 4
-  }), 'not blacklisted if no excludeUntil');
-  assert.ok(!Playlist.isBlacklisted({
-    disabled: true,
-    enabled: false,
-    uri: 'test-uri',
-    duration: 4,
-    excludeUntil: Date.now()
-  }), 'not blacklisted if excludeUntil is not in future');
-  assert.ok(Playlist.isBlacklisted({
-    disabled: true,
-    enabled: false,
-    uri: 'test-uri',
-    duration: 4,
-    excludeUntil: Date.now() + 1
-  }), 'blacklisted if excludeUntil is in future');
-});
-
-QUnit.test('isEnabled returns if a playlist is enabled', function(assert) {
-  assert.ok(Playlist.isEnabled({}), 'is enabled if empty object');
-  assert.ok(Playlist.isEnabled({
-    disabled: false
-  }), 'is enabled if disabled is false');
-  assert.ok(!Playlist.isEnabled({
-    disabled: true
-  }), 'is not enabled if disabled is true');
-  assert.ok(Playlist.isEnabled({
-    disabled: false,
-    excludeUntil: Date.now()
-  }), 'is enabled if not currently blacklisted');
-  assert.ok(!Playlist.isEnabled({
-    disabled: false,
-    excludeUntil: Date.now() + 1
-  }), 'is not enabled if excludeUntil is in future');
-  assert.ok(!Playlist.isEnabled({
-    disabled: true,
-    excludeUntil: Date.now() + 1
-  }), 'is not enabled if excludeUntil is in future and disabled');
-});
-
 QUnit.test('isLowestEnabledRendition detects if we are on lowest rendition',
 function(assert) {
   assert.ok(
