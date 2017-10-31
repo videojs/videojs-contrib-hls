@@ -7,9 +7,6 @@ import {
   resolveMediaGroupUris,
   refreshDelay
 } from '../src/playlist-loader';
-import {
-  isLowestEnabledRendition
-} from '../src/playlist';
 import xhrFactory from '../src/xhr';
 import { useFakeEnvironment } from './test-helpers';
 import window from 'global/window';
@@ -792,43 +789,6 @@ QUnit.test('uses last segment duration for refresh delay', function(assert) {
 
   assert.equal(refreshDelay(media, false), 3500,
     'used half targetDuration when update is false');
-});
-
-QUnit.test('isLowestEnabledRendition detects if we are on lowest rendition',
-function(assert) {
-  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
-
-  loader.load();
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
-                                'video1/media.m3u8\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
-                                'video2/media.m3u8\n');
-  loader.media = function() {
-    return {attributes: {BANDWIDTH: 10}};
-  };
-
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 20}}];
-  assert.ok(isLowestEnabledRendition(loader.master, loader.media()),
-            'Detected on lowest rendition');
-
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 20}}];
-  assert.ok(isLowestEnabledRendition(loader.master, loader.media()),
-            'Detected on lowest rendition');
-
-  loader.media = function() {
-    return {attributes: {BANDWIDTH: 20}};
-  };
-
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 20}}];
-  assert.ok(!isLowestEnabledRendition(loader.master, loader.media()),
-            'Detected not on lowest rendition');
 });
 
 QUnit.test('throws if the playlist url is empty or undefined', function(assert) {
