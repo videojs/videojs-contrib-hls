@@ -5,11 +5,9 @@ var basePath  = path.resolve(__dirname, '..');
 var testDataDir = path.join(basePath,'test');
 var manifestDir = path.join(basePath, 'utils', 'manifest');
 var manifestFilepath = path.join(testDataDir, 'test-manifests.js');
-var expectedFilepath = path.join(testDataDir, 'test-expected.js');
 
 var build = function() {
   var manifests = 'export default {\n';
-  var expected = 'export default {\n';
 
   var files = fs.readdirSync(manifestDir);
   while (files.length > 0) {
@@ -28,11 +26,6 @@ var build = function() {
         // strip leading spaces and the trailing '+'
         .slice(4, -3);
       manifests += ',\n';
-    } else if (extname === '.js') {
-      // append the expected parse
-      expected += '  "' + path.basename(file, '.js') + '": ';
-      expected += fs.readFileSync(file, 'utf8');
-      expected += ',\n';
     } else {
       console.log('Unknown file ' + file + ' found in manifest dir ' + manifestDir);
     }
@@ -42,13 +35,9 @@ var build = function() {
   // clean up and close the objects
   manifests = manifests.slice(0, -2);
   manifests += '\n};\n';
-  expected = expected.slice(0, -2);
-  expected += '\n};\n';
 
   fs.writeFileSync(manifestFilepath, manifests);
-  fs.writeFileSync(expectedFilepath, expected);
   console.log('Wrote test data file ' + manifestFilepath);
-  console.log('Wrote test data file ' + expectedFilepath);
 };
 
 var watch = function() {
@@ -62,11 +51,6 @@ var watch = function() {
 var clean = function() {
   try {
     fs.unlinkSync(manifestFilepath);
-  } catch(e) {
-    console.log(e);
-  }
-  try {
-    fs.unlinkSync(expectedFilepath);
   } catch(e) {
     console.log(e);
   }
