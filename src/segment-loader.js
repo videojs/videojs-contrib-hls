@@ -648,9 +648,11 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
     let lastBufferedEnd = 0;
+    let lastBufferedStart = 0;
     let startOfSegment;
 
     if (buffered.length) {
+      lastBufferedStart = buffered.start(buffered.length - 1);
       lastBufferedEnd = buffered.end(buffered.length - 1);
     }
 
