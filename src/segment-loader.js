@@ -1134,14 +1134,21 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    if (segmentInfo.timestampOffset !== null &&
-        segmentInfo.timestampOffset !== this.sourceUpdater_.timestampOffset()) {
-      this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
+    const timelineMapping = this.syncController_.mappingForTimeline(segmentInfo.timeline);
+    const absoluteTimestampOffset = segmentInfo.timestampOffset - timelineMapping;
+
+    ///*
+    if (segmentInfo.timestampOffset !== null 
+      //&& this.sourceUpdater_.timestampOffset() !== 0
+      && absoluteTimestampOffset !== this.sourceUpdater_.timestampOffset()) {
+
+      console.log('setting timestamp offset (resolved to timeline):', absoluteTimestampOffset);
+
+      this.sourceUpdater_.timestampOffset(absoluteTimestampOffset);
       // fired when a timestamp offset is set in HLS (can also identify discontinuities)
       this.trigger('timestampoffset');
     }
-
-    const timelineMapping = this.syncController_.mappingForTimeline(segmentInfo.timeline);
+    //*/
 
     if (timelineMapping !== null) {
       this.trigger({
