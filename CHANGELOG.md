@@ -3,6 +3,13 @@ CHANGELOG
 
 --------------------
 ## HEAD (Unreleased)
+_(none)_
+
+--------------------
+## 5.12.2 (2017-11-06)
+* Remove unused expected manifest js files [#1289](https://github.com/videojs/videojs-contrib-hls/pull/1289)
+* Remove extraneous methods from PlaylistLoader [#1286](https://github.com/videojs/videojs-contrib-hls/pull/1286)
+  * Move isLowestEnabledRendition to playlist module
 * update contrib-media-sources to 4.6.2 [#1291](https://github.com/videojs/videojs-contrib-hls/pull/1291)
   * update mux.js to 4.3.2
     * flush pes packets when there is enough data
