@@ -895,57 +895,6 @@ QUnit.test('resolves relative media playlist URIs', function(assert) {
               'resolved media URI');
 });
 
-QUnit.test('playlist loader returns the correct amount of enabled playlists',
-function(assert) {
-  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
-
-  loader.load();
-
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
-                                'video1/media.m3u8\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
-                                'video2/media.m3u8\n');
-  assert.equal(loader.enabledPlaylists_(), 2, 'Returned initial amount of playlists');
-  loader.master.playlists[0].excludeUntil = Date.now() + 100000;
-  this.clock.tick(1000);
-  assert.equal(loader.enabledPlaylists_(), 1, 'Returned one less playlist');
-});
-
-QUnit.test('playlist loader detects if we are on lowest rendition', function(assert) {
-  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
-
-  loader.load();
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
-                                'video1/media.m3u8\n' +
-                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
-                                'video2/media.m3u8\n');
-  loader.media = function() {
-    return {attributes: {BANDWIDTH: 10}};
-  };
-
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 20}}];
-  assert.ok(loader.isLowestEnabledRendition_(), 'Detected on lowest rendition');
-
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 20}}];
-  assert.ok(loader.isLowestEnabledRendition_(), 'Detected on lowest rendition');
-
-  loader.media = function() {
-    return {attributes: {BANDWIDTH: 20}};
-  };
-
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 20}}];
-  assert.ok(!loader.isLowestEnabledRendition_(), 'Detected not on lowest rendition');
-});
-
 QUnit.test('resolves media initialization segment URIs', function(assert) {
   let loader = new PlaylistLoader('video/fmp4.m3u8', this.fakeHls);
 

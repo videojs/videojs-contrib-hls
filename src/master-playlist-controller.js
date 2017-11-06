@@ -2,6 +2,7 @@
  * @file master-playlist-controller.js
  */
 import PlaylistLoader from './playlist-loader';
+import { isEnabled, isLowestEnabledRendition } from './playlist.js';
 import SegmentLoader from './segment-loader';
 import VTTSegmentLoader from './vtt-segment-loader';
 import Ranges from './ranges';
@@ -336,7 +337,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       // If we don't have any more available playlists, we don't want to
       // timeout the request.
-      if (this.masterPlaylistLoader_.isLowestEnabledRendition_()) {
+      if (isLowestEnabledRendition(
+            this.masterPlaylistLoader_.master, this.masterPlaylistLoader_.media())) {
         this.requestOptions_.timeout = 0;
       } else {
         this.requestOptions_.timeout = requestTimeout;
@@ -455,7 +457,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       // If we don't have any more available playlists, we don't want to
       // timeout the request.
-      if (this.masterPlaylistLoader_.isLowestEnabledRendition_()) {
+      if (isLowestEnabledRendition(
+            this.masterPlaylistLoader_.master, this.masterPlaylistLoader_.media())) {
         this.requestOptions_.timeout = 0;
       } else {
         this.requestOptions_.timeout = requestTimeout;
@@ -866,7 +869,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       }
     }
 
-    let isFinalRendition = this.masterPlaylistLoader_.isFinalRendition_();
+    let isFinalRendition =
+      this.masterPlaylistLoader_.master.playlists.filter(isEnabled).length === 1;
 
     if (isFinalRendition) {
       // Never blacklisting this playlist because it's final rendition

@@ -526,6 +526,28 @@ export const estimateSegmentRequestTime = function(segmentDuration,
   return (size - (bytesReceived * 8)) / bandwidth;
 };
 
+/*
+ * Returns whether the current playlist is the lowest rendition
+ *
+ * @return {Boolean} true if on lowest rendition
+ */
+export const isLowestEnabledRendition = (master, media) => {
+  if (master.playlists.length === 1) {
+    return true;
+  }
+
+  const currentBandwidth = media.attributes.BANDWIDTH || Number.MAX_VALUE;
+
+  return (master.playlists.filter((playlist) => {
+    if (!isEnabled(playlist)) {
+      return false;
+    }
+
+    return (playlist.attributes.BANDWIDTH || 0) < currentBandwidth;
+
+  }).length === 0);
+};
+
 // exports
 export default {
   duration,
@@ -540,5 +562,6 @@ export default {
   isAes,
   isFmp4,
   hasAttribute,
-  estimateSegmentRequestTime
+  estimateSegmentRequestTime,
+  isLowestEnabledRendition
 };

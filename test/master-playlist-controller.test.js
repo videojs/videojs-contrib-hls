@@ -1453,9 +1453,10 @@ function(assert) {
               1000,
               'default request timeout');
 
-  assert.ok(!this.masterPlaylistController
-            .masterPlaylistLoader_
-            .isLowestEnabledRendition_(), 'Not lowest rendition');
+  assert.ok(!Playlist.isLowestEnabledRendition(
+              this.masterPlaylistController.masterPlaylistLoader_.master,
+              this.masterPlaylistController.masterPlaylistLoader_.media()),
+            'not on lowest rendition');
 
   // Cause segment to timeout to force player into lowest rendition
   this.requests[2].timedout = true;
@@ -1466,8 +1467,10 @@ function(assert) {
   // Download new segment after media change
   this.standardXHRResponse(this.requests[3]);
 
-  assert.ok(this.masterPlaylistController
-            .masterPlaylistLoader_.isLowestEnabledRendition_(), 'On lowest rendition');
+  assert.ok(Playlist.isLowestEnabledRendition(
+              this.masterPlaylistController.masterPlaylistLoader_.master,
+              this.masterPlaylistController.masterPlaylistLoader_.media()),
+            'on lowest rendition');
 
   assert.equal(this.masterPlaylistController.requestOptions_.timeout, 0,
               'request timeout 0');

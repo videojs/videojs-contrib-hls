@@ -863,6 +863,44 @@ function(assert) {
     'disabled playlist with permanent blacklist is not enabled');
 });
 
+QUnit.test('isLowestEnabledRendition detects if we are on lowest rendition',
+function(assert) {
+  assert.ok(
+    Playlist.isLowestEnabledRendition(
+      {
+        playlists: [
+          {attributes: {BANDWIDTH: 10}},
+          {attributes: {BANDWIDTH: 20}}
+        ]
+      },
+      {attributes: {BANDWIDTH: 10}}),
+    'Detected on lowest rendition');
+
+  assert.ok(
+    Playlist.isLowestEnabledRendition(
+      {
+        playlists: [
+          {attributes: {BANDWIDTH: 10}},
+          {attributes: {BANDWIDTH: 10}},
+          {attributes: {BANDWIDTH: 10}},
+          {attributes: {BANDWIDTH: 20}}
+        ]
+      },
+      {attributes: {BANDWIDTH: 10}}),
+    'Detected on lowest rendition');
+
+  assert.notOk(
+    Playlist.isLowestEnabledRendition(
+      {
+        playlists: [
+          {attributes: {BANDWIDTH: 10}},
+          {attributes: {BANDWIDTH: 20}}
+        ]
+      },
+      {attributes: {BANDWIDTH: 20}}),
+    'Detected not on lowest rendition');
+});
+
 QUnit.module('Playlist isAes and isFmp4', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
