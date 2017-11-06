@@ -3,6 +3,9 @@ dist: trusty
 language: node_js
 node_js:
   - 'node'
+cache:
+  directories:
+    - node_modules
 notifications:
   hipchat:
     rooms:
