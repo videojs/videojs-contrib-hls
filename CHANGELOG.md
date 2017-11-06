@@ -3,7 +3,9 @@ CHANGELOG
 
 --------------------
 ## HEAD (Unreleased)
-_(none)_
+* update contrib-media-sources to 4.6.2 [#1291](https://github.com/videojs/videojs-contrib-hls/pull/1291)
+  * update mux.js to 4.3.2
+    * flush pes packets when there is enough data
 
 --------------------
 ## 5.12.1 (2017-10-24)
