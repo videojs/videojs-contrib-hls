@@ -592,10 +592,12 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @returns {Object} a segment request object that describes the segment to load
    */
   checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
+    let lastBufferedStart = 0;
     let lastBufferedEnd = 0;
     let startOfSegment;
 
     if (buffered.length) {
+      lastBufferedStart = buffered.start(buffered.length - 1);
       lastBufferedEnd = buffered.end(buffered.length - 1);
     }
 
@@ -650,6 +652,20 @@ export default class SegmentLoader extends videojs.EventTarget {
       'syncPoint:', syncPoint,
       'fetchAtBuffer:', this.fetchAtBuffer_,
       'bufferedTime:', bufferedTime);
+
+    let syncPointError = 0;
+    if (currentTime < lastBufferedStart) {
+
+      syncPointError = lastBufferedStart - currentTime;
+
+      videojs.log.warn('We are slightly off the trail. Your playlist might be having a gap or the initial sync-point was bad for another reason.', 
+        'Sync-error is:', syncPointError
+      );
+
+      // try to enforce loading at sync-point
+      mediaIndex = null;
+      currentTime = lastBufferedEnd = syncPoint.time;
+    }
 
     // When the syncPoint is null, there is no way of determining a good
     // conservative segment index to fetch from
