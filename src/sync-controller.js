@@ -285,7 +285,7 @@ export default class SyncController extends videojs.EventTarget {
     let bestDistance = Math.abs(syncPoints[0].syncPoint[target.key] - target.value);
     let bestStrategy = syncPoints[0].strategy;
 
-    for (let i = 1; i < syncPoints.length; i++) {
+    for (let i = 0; i < syncPoints.length; i++) {
       let newDistance = Math.abs(syncPoints[i].syncPoint[target.key] - target.value);
 
       if (newDistance < bestDistance) {
