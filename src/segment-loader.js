@@ -647,8 +647,8 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @returns {Object} a segment request object that describes the segment to load
    */
   checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
-    let lastBufferedEnd = 0;
     let lastBufferedStart = 0;
+    let lastBufferedEnd = 0;
     let startOfSegment;
 
     if (buffered.length) {
