@@ -682,8 +682,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       'fetchAtBuffer:', this.fetchAtBuffer_,
       'bufferedTime:', bufferedTime);
 
-    console.log('lastBufferedStart:', lastBufferedStart)
-
     let syncPointError = 0;
     if (currentTime < lastBufferedStart) {
 
