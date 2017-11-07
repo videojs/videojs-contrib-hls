@@ -685,24 +685,17 @@ export default class SegmentLoader extends videojs.EventTarget {
     console.log('lastBufferedStart:', lastBufferedStart)
 
     let syncPointError = 0;
-    if (currentTime < syncPoint.time) {
-      console.warn('Sync-point is beyond currentTime!');
+    if (currentTime < lastBufferedStart) {
 
-      syncPointError = syncPoint.time - currentTime;
+      syncPointError = lastBufferedStart - currentTime;
 
-      if (currentTime < lastBufferedStart) {
-        console.log('We are slightly off the trail (your playlist might be missing a segment).', 
-          'Sync-error is:', syncPointError,
-          'Last buffered start delta to current time:', lastBufferedStart - currentTime
-        );
-        
-        // NICE hack but stalls everything 1 out of 5 times
-        // fix it or otherwise: trigger event to master-controller to seek after sync-point
-        mediaIndex = null;
-        currentTime -= playlist.targetDuration;
-        this.fetchAtBuffer_ = false;
-      } 
+      videojs.log.warn('We are slightly off the trail. Your playlist might be having a gap or the initial sync-point was bad for another reason.', 
+        'Sync-error is:', syncPointError
+      );
 
+      // try to enforce loading at sync-point
+      mediaIndex = null;
+      currentTime = lastBufferedEnd = syncPoint.time;
     }
 
     // When the syncPoint is null, there is no way of determining a good
