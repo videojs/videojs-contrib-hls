@@ -687,7 +687,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       syncPointError = lastBufferedStart - currentTime;
 
-      videojs.log.warn('We are slightly off the trail. Your playlist might be having a gap or the initial sync-point was bad for another reason.', 
+      videojs.log.warn('Your playlist might be having a gap or the initial sync-point was bad for another reason.', 
         'Sync-error is:', syncPointError
       );
 
