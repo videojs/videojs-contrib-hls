@@ -687,9 +687,11 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       syncPointError = lastBufferedStart - currentTime;
 
-      videojs.log.warn('Your playlist might be having a gap or the initial sync-point was bad for another reason.', 
-        'Sync-error is:', syncPointError
-      );
+      videojs.log.warn('The playlist might have an unexpected gap.', 
+        'Seek point is behind buffered time-range start by:', 
+        syncPointError,
+        'seconds.',
+        'Trying to correct buffering range based on current sync-point.');
 
       // try to enforce loading at sync-point
       mediaIndex = null;
