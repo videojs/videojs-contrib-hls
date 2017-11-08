@@ -1152,13 +1152,16 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     const timelineMapping = this.syncController_.mappingForTimeline(segmentInfo.timeline);
     const absoluteTimestampOffset = segmentInfo.timestampOffset - timelineMapping;
+    // resolve to absolute offset only for live playlists
+    const resolvedTimestampOffset = this.playlist_.endList ? segmentInfo.timestampOffset : absoluteTimestampOffset;
 
     if (segmentInfo.timestampOffset !== null 
-      && absoluteTimestampOffset !== this.sourceUpdater_.timestampOffset()) {
+      && resolvedTimestampOffset !== this.sourceUpdater_.timestampOffset()) {
+
 
       console.log('setting timestamp offset (resolved to timeline):', absoluteTimestampOffset);
+      this.sourceUpdater_.timestampOffset(resolvedTimestampOffset);
 
-      this.sourceUpdater_.timestampOffset(absoluteTimestampOffset);
       // fired when a timestamp offset is set in HLS (can also identify discontinuities)
       this.trigger('timestampoffset');
     }
