@@ -304,6 +304,72 @@ function(assert) {
   assert.notEqual(currentTime, 0, 'seeked after tech is ready');
 });
 
+QUnit.test('autoplay seeks to the start point after playlist load', function(assert) {
+  let currentTime = 0;
+
+  this.player.autoplay(true);
+  this.player.on('seeking', () => {
+    currentTime = this.player.currentTime();
+  });
+  this.player.src({
+    src: 'start.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  this.clock.tick(1);
+
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.standardXHRResponse(this.requests.shift());
+  this.clock.tick(1);
+
+  assert.strictEqual(currentTime, 10.3, 'seeked on autoplay');
+});
+
+QUnit.test('autoplay seeks to the start point after playlist load for live stream', function(assert) {
+  let currentTime = 0;
+
+  this.player.autoplay(true);
+  this.player.on('seeking', () => {
+    currentTime = this.player.currentTime();
+  });
+  this.player.src({
+    src: 'startLiveStream.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  this.clock.tick(1);
+
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.standardXHRResponse(this.requests.shift());
+  this.clock.tick(1);
+
+  assert.strictEqual(currentTime, 0, 'seeked on autoplay');
+});
+
+QUnit.test('autoplay seeks to the offset point after playlist load', function(assert) {
+  let currentTime = 0;
+
+  this.player.autoplay(true);
+  this.player.on('seeking', () => {
+    currentTime = this.player.currentTime();
+  });
+  this.player.src({
+    src: 'startOffset.m3u8',
+    type: 'application/vnd.apple.mpegurl'
+  });
+
+  this.clock.tick(1);
+
+  openMediaSource(this.player, this.clock);
+  this.player.tech_.trigger('play');
+  this.standardXHRResponse(this.requests.shift());
+  this.clock.tick(1);
+
+  assert.strictEqual(currentTime, 35, 'seeked on autoplay');
+});
+
 QUnit.test('duration is set when the source opens after the playlist is loaded',
 function(assert) {
   this.player.src({

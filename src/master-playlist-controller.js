@@ -741,7 +741,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         const offset = media.start.timeOffset;
 
         if (offset < 0) {
-          startTime -= offset;
+          startTime += offset;
         } else {
           startTime = offset;
         }
