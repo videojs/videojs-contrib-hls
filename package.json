@@ -114,7 +114,7 @@
     "isparta": "^4.0.0",
     "istanbul": "^0.4.5",
     "jsdoc": "^3.4.0",
-    "karma": "^0.13.0",
+    "karma": "^1.7.1",
     "karma-browserify": "^4.4.0",
     "karma-chrome-launcher": "^2.2.0",
     "karma-coverage": "^1.1.1",
