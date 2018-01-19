@@ -1,5 +1,12 @@
 import QUnit from 'qunit';
-import PlaylistLoader from '../src/playlist-loader';
+import {
+  default as PlaylistLoader,
+  updateSegments,
+  updateMaster,
+  setupMediaPlaylists,
+  resolveMediaGroupUris,
+  refreshDelay
+} from '../src/playlist-loader';
 import xhrFactory from '../src/xhr';
 import { useFakeEnvironment } from './test-helpers';
 import window from 'global/window';
@@ -26,6 +33,762 @@ QUnit.module('Playlist Loader', {
   afterEach() {
     this.env.restore();
   }
+});
+
+QUnit.test('updateSegments copies over properties', function(assert) {
+  assert.deepEqual(
+    [
+      { uri: 'test-uri-0', startTime: 0, endTime: 10 },
+      {
+        uri: 'test-uri-1',
+        startTime: 10,
+        endTime: 20,
+        map: { someProp: 99, uri: '4' }
+      }
+    ],
+    updateSegments(
+      [
+        { uri: 'test-uri-0', startTime: 0, endTime: 10 },
+        { uri: 'test-uri-1', startTime: 10, endTime: 20, map: { someProp: 1 } }
+      ],
+      [
+        { uri: 'test-uri-0' },
+        { uri: 'test-uri-1', map: { someProp: 99, uri: '4' } }
+      ],
+      0),
+    'retains properties from original segment');
+
+  assert.deepEqual(
+    [
+      { uri: 'test-uri-0', map: { someProp: 100 } },
+      { uri: 'test-uri-1', map: { someProp: 99, uri: '4' } }
+    ],
+    updateSegments(
+      [
+        { uri: 'test-uri-0' },
+        { uri: 'test-uri-1', map: { someProp: 1 } }
+      ],
+      [
+        { uri: 'test-uri-0', map: { someProp: 100 } },
+        { uri: 'test-uri-1', map: { someProp: 99, uri: '4' } }
+      ],
+      0),
+    'copies over/overwrites properties without offset');
+
+  assert.deepEqual(
+    [
+      { uri: 'test-uri-1', map: { someProp: 1 } },
+      { uri: 'test-uri-2', map: { someProp: 100, uri: '2' } }
+    ],
+    updateSegments(
+      [
+        { uri: 'test-uri-0' },
+        { uri: 'test-uri-1', map: { someProp: 1 } }
+      ],
+      [
+        { uri: 'test-uri-1' },
+        { uri: 'test-uri-2', map: { someProp: 100, uri: '2' } }
+      ],
+      1),
+    'copies over/overwrites properties with offset of 1');
+
+  assert.deepEqual(
+    [
+      { uri: 'test-uri-2' },
+      { uri: 'test-uri-3', map: { someProp: 100, uri: '2' } }
+    ],
+    updateSegments(
+      [
+        { uri: 'test-uri-0' },
+        { uri: 'test-uri-1', map: { someProp: 1 } }
+      ],
+      [
+        { uri: 'test-uri-2' },
+        { uri: 'test-uri-3', map: { someProp: 100, uri: '2' } }
+      ],
+      2),
+    'copies over/overwrites properties with offset of 2');
+});
+
+QUnit.test('updateMaster returns null when no playlists', function(assert) {
+  const master = {
+    playlists: []
+  };
+  const media = {};
+
+  assert.deepEqual(updateMaster(master, media), null, 'returns null when no playlists');
+});
+
+QUnit.test('updateMaster returns null when no change', function(assert) {
+  const master = {
+    playlists: [{
+      mediaSequence: 0,
+      attributes: {
+        BANDWIDTH: 9
+      },
+      uri: 'playlist-0-uri',
+      resolvedUri: urlTo('playlist-0-uri'),
+      segments: [{
+        duration: 10,
+        uri: 'segment-0-uri',
+        resolvedUri: urlTo('segment-0-uri')
+      }]
+    }]
+  };
+  const media = {
+    mediaSequence: 0,
+    attributes: {
+      BANDWIDTH: 9
+    },
+    uri: 'playlist-0-uri',
+    segments: [{
+      duration: 10,
+      uri: 'segment-0-uri'
+    }]
+  };
+
+  assert.deepEqual(updateMaster(master, media), null, 'returns null');
+});
+
+QUnit.test('updateMaster updates master when new media sequence', function(assert) {
+  const master = {
+    playlists: [{
+      mediaSequence: 0,
+      attributes: {
+        BANDWIDTH: 9
+      },
+      uri: 'playlist-0-uri',
+      resolvedUri: urlTo('playlist-0-uri'),
+      segments: [{
+        duration: 10,
+        uri: 'segment-0-uri',
+        resolvedUri: urlTo('segment-0-uri')
+      }]
+    }]
+  };
+  const media = {
+    mediaSequence: 1,
+    attributes: {
+      BANDWIDTH: 9
+    },
+    uri: 'playlist-0-uri',
+    segments: [{
+      duration: 10,
+      uri: 'segment-0-uri'
+    }]
+  };
+
+  assert.deepEqual(
+    updateMaster(master, media),
+    {
+      playlists: [{
+        mediaSequence: 1,
+        attributes: {
+          BANDWIDTH: 9
+        },
+        uri: 'playlist-0-uri',
+        resolvedUri: urlTo('playlist-0-uri'),
+        segments: [{
+          duration: 10,
+          uri: 'segment-0-uri',
+          resolvedUri: urlTo('segment-0-uri')
+        }]
+      }]
+    },
+    'updates master when new media sequence');
+});
+
+QUnit.test('updateMaster retains top level values in master', function(assert) {
+  const master = {
+    mediaGroups: {
+      AUDIO: {
+        'GROUP-ID': {
+          default: true,
+          uri: 'audio-uri'
+        }
+      }
+    },
+    playlists: [{
+      mediaSequence: 0,
+      attributes: {
+        BANDWIDTH: 9
+      },
+      uri: 'playlist-0-uri',
+      resolvedUri: urlTo('playlist-0-uri'),
+      segments: [{
+        duration: 10,
+        uri: 'segment-0-uri',
+        resolvedUri: urlTo('segment-0-uri')
+      }]
+    }]
+  };
+  const media = {
+    mediaSequence: 1,
+    attributes: {
+      BANDWIDTH: 9
+    },
+    uri: 'playlist-0-uri',
+    segments: [{
+      duration: 10,
+      uri: 'segment-0-uri'
+    }]
+  };
+
+  assert.deepEqual(
+    updateMaster(master, media),
+    {
+      mediaGroups: {
+        AUDIO: {
+          'GROUP-ID': {
+            default: true,
+            uri: 'audio-uri'
+          }
+        }
+      },
+      playlists: [{
+        mediaSequence: 1,
+        attributes: {
+          BANDWIDTH: 9
+        },
+        uri: 'playlist-0-uri',
+        resolvedUri: urlTo('playlist-0-uri'),
+        segments: [{
+          duration: 10,
+          uri: 'segment-0-uri',
+          resolvedUri: urlTo('segment-0-uri')
+        }]
+      }]
+    },
+    'retains top level values in master');
+});
+
+QUnit.test('updateMaster adds new segments to master', function(assert) {
+  const master = {
+    mediaGroups: {
+      AUDIO: {
+        'GROUP-ID': {
+          default: true,
+          uri: 'audio-uri'
+        }
+      }
+    },
+    playlists: [{
+      mediaSequence: 0,
+      attributes: {
+        BANDWIDTH: 9
+      },
+      uri: 'playlist-0-uri',
+      resolvedUri: urlTo('playlist-0-uri'),
+      segments: [{
+        duration: 10,
+        uri: 'segment-0-uri',
+        resolvedUri: urlTo('segment-0-uri')
+      }]
+    }]
+  };
+  const media = {
+    mediaSequence: 1,
+    attributes: {
+      BANDWIDTH: 9
+    },
+    uri: 'playlist-0-uri',
+    segments: [{
+      duration: 10,
+      uri: 'segment-0-uri'
+    }, {
+      duration: 9,
+      uri: 'segment-1-uri'
+    }]
+  };
+
+  assert.deepEqual(
+    updateMaster(master, media),
+    {
+      mediaGroups: {
+        AUDIO: {
+          'GROUP-ID': {
+            default: true,
+            uri: 'audio-uri'
+          }
+        }
+      },
+      playlists: [{
+        mediaSequence: 1,
+        attributes: {
+          BANDWIDTH: 9
+        },
+        uri: 'playlist-0-uri',
+        resolvedUri: urlTo('playlist-0-uri'),
+        segments: [{
+          duration: 10,
+          uri: 'segment-0-uri',
+          resolvedUri: urlTo('segment-0-uri')
+        }, {
+          duration: 9,
+          uri: 'segment-1-uri',
+          resolvedUri: urlTo('segment-1-uri')
+        }]
+      }]
+    },
+    'adds new segment to master');
+});
+
+QUnit.test('updateMaster changes old values', function(assert) {
+  const master = {
+    mediaGroups: {
+      AUDIO: {
+        'GROUP-ID': {
+          default: true,
+          uri: 'audio-uri'
+        }
+      }
+    },
+    playlists: [{
+      mediaSequence: 0,
+      attributes: {
+        BANDWIDTH: 9
+      },
+      uri: 'playlist-0-uri',
+      resolvedUri: urlTo('playlist-0-uri'),
+      segments: [{
+        duration: 10,
+        uri: 'segment-0-uri',
+        resolvedUri: urlTo('segment-0-uri')
+      }]
+    }]
+  };
+  const media = {
+    mediaSequence: 1,
+    attributes: {
+      BANDWIDTH: 8,
+      newField: 1
+    },
+    uri: 'playlist-0-uri',
+    segments: [{
+      duration: 8,
+      uri: 'segment-0-uri'
+    }, {
+      duration: 10,
+      uri: 'segment-1-uri'
+    }]
+  };
+
+  assert.deepEqual(
+    updateMaster(master, media),
+    {
+      mediaGroups: {
+        AUDIO: {
+          'GROUP-ID': {
+            default: true,
+            uri: 'audio-uri'
+          }
+        }
+      },
+      playlists: [{
+        mediaSequence: 1,
+        attributes: {
+          BANDWIDTH: 8,
+          newField: 1
+        },
+        uri: 'playlist-0-uri',
+        resolvedUri: urlTo('playlist-0-uri'),
+        segments: [{
+          duration: 8,
+          uri: 'segment-0-uri',
+          resolvedUri: urlTo('segment-0-uri')
+        }, {
+          duration: 10,
+          uri: 'segment-1-uri',
+          resolvedUri: urlTo('segment-1-uri')
+        }]
+      }]
+    },
+    'changes old values');
+});
+
+QUnit.test('updateMaster retains saved segment values', function(assert) {
+  const master = {
+    playlists: [{
+      mediaSequence: 0,
+      uri: 'playlist-0-uri',
+      resolvedUri: urlTo('playlist-0-uri'),
+      segments: [{
+        duration: 10,
+        uri: 'segment-0-uri',
+        resolvedUri: urlTo('segment-0-uri'),
+        startTime: 0,
+        endTime: 10
+      }]
+    }]
+  };
+  const media = {
+    mediaSequence: 0,
+    uri: 'playlist-0-uri',
+    segments: [{
+      duration: 8,
+      uri: 'segment-0-uri'
+    }, {
+      duration: 10,
+      uri: 'segment-1-uri'
+    }]
+  };
+
+  assert.deepEqual(
+    updateMaster(master, media),
+    {
+      playlists: [{
+        mediaSequence: 0,
+        uri: 'playlist-0-uri',
+        resolvedUri: urlTo('playlist-0-uri'),
+        segments: [{
+          duration: 8,
+          uri: 'segment-0-uri',
+          resolvedUri: urlTo('segment-0-uri'),
+          startTime: 0,
+          endTime: 10
+        }, {
+          duration: 10,
+          uri: 'segment-1-uri',
+          resolvedUri: urlTo('segment-1-uri')
+        }]
+      }]
+    },
+    'retains saved segment values');
+});
+
+QUnit.test('updateMaster resolves key and map URIs', function(assert) {
+  const master = {
+    playlists: [{
+      mediaSequence: 0,
+      attributes: {
+        BANDWIDTH: 9
+      },
+      uri: 'playlist-0-uri',
+      resolvedUri: urlTo('playlist-0-uri'),
+      segments: [{
+        duration: 10,
+        uri: 'segment-0-uri',
+        resolvedUri: urlTo('segment-0-uri')
+      }, {
+        duration: 10,
+        uri: 'segment-1-uri',
+        resolvedUri: urlTo('segment-1-uri')
+      }]
+    }]
+  };
+  const media = {
+    mediaSequence: 3,
+    attributes: {
+      BANDWIDTH: 9
+    },
+    uri: 'playlist-0-uri',
+    segments: [{
+      duration: 9,
+      uri: 'segment-2-uri',
+      key: {
+        uri: 'key-2-uri'
+      },
+      map: {
+        uri: 'map-2-uri'
+      }
+    }, {
+      duration: 11,
+      uri: 'segment-3-uri',
+      key: {
+        uri: 'key-3-uri'
+      },
+      map: {
+        uri: 'map-3-uri'
+      }
+    }]
+  };
+
+  assert.deepEqual(
+    updateMaster(master, media),
+    {
+      playlists: [{
+        mediaSequence: 3,
+        attributes: {
+          BANDWIDTH: 9
+        },
+        uri: 'playlist-0-uri',
+        resolvedUri: urlTo('playlist-0-uri'),
+        segments: [{
+          duration: 9,
+          uri: 'segment-2-uri',
+          resolvedUri: urlTo('segment-2-uri'),
+          key: {
+            uri: 'key-2-uri',
+            resolvedUri: urlTo('key-2-uri')
+          },
+          map: {
+            uri: 'map-2-uri',
+            resolvedUri: urlTo('map-2-uri')
+          }
+        }, {
+          duration: 11,
+          uri: 'segment-3-uri',
+          resolvedUri: urlTo('segment-3-uri'),
+          key: {
+            uri: 'key-3-uri',
+            resolvedUri: urlTo('key-3-uri')
+          },
+          map: {
+            uri: 'map-3-uri',
+            resolvedUri: urlTo('map-3-uri')
+          }
+        }]
+      }]
+    },
+    'resolves key and map URIs');
+});
+
+QUnit.test('setupMediaPlaylists does nothing if no playlists', function(assert) {
+  const master = {
+    playlists: []
+  };
+
+  setupMediaPlaylists(master);
+
+  assert.deepEqual(master, {
+    playlists: []
+  }, 'master remains unchanged');
+});
+
+QUnit.test('setupMediaPlaylists adds URI keys for each playlist', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [{
+      uri: 'uri-0'
+    }, {
+      uri: 'uri-1'
+    }]
+  };
+  const expectedPlaylist0 = {
+    attributes: {},
+    resolvedUri: urlTo('uri-0'),
+    uri: 'uri-0'
+  };
+  const expectedPlaylist1 = {
+    attributes: {},
+    resolvedUri: urlTo('uri-1'),
+    uri: 'uri-1'
+  };
+
+  setupMediaPlaylists(master);
+
+  assert.deepEqual(master.playlists[0], expectedPlaylist0, 'retained playlist indices');
+  assert.deepEqual(master.playlists[1], expectedPlaylist1, 'retained playlist indices');
+  assert.deepEqual(master.playlists['uri-0'], expectedPlaylist0, 'added playlist key');
+  assert.deepEqual(master.playlists['uri-1'], expectedPlaylist1, 'added playlist key');
+
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+  assert.equal(this.env.log.warn.args[0],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
+  assert.equal(this.env.log.warn.args[1],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
+});
+
+QUnit.test('setupMediaPlaylists adds attributes objects if missing', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [{
+      uri: 'uri-0'
+    }, {
+      uri: 'uri-1'
+    }]
+  };
+
+  setupMediaPlaylists(master);
+
+  assert.ok(master.playlists[0].attributes, 'added attributes object');
+  assert.ok(master.playlists[1].attributes, 'added attributes object');
+
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+  assert.equal(this.env.log.warn.args[0],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
+  assert.equal(this.env.log.warn.args[1],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
+});
+
+QUnit.test('setupMediaPlaylists resolves playlist URIs', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [{
+      attributes: { BANDWIDTH: 10 },
+      uri: 'uri-0'
+    }, {
+      attributes: { BANDWIDTH: 100 },
+      uri: 'uri-1'
+    }]
+  };
+
+  setupMediaPlaylists(master);
+
+  assert.equal(master.playlists[0].resolvedUri, urlTo('uri-0'), 'resolves URI');
+  assert.equal(master.playlists[1].resolvedUri, urlTo('uri-1'), 'resolves URI');
+});
+
+QUnit.test('resolveMediaGroupUris does nothing when no media groups', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [],
+    mediaGroups: []
+  };
+
+  resolveMediaGroupUris(master);
+  assert.deepEqual(master, {
+    uri: 'master-uri',
+    playlists: [],
+    mediaGroups: []
+  }, 'does nothing when no media groups');
+});
+
+QUnit.test('resolveMediaGroupUris resolves media group URIs', function(assert) {
+  const master = {
+    uri: 'master-uri',
+    playlists: [{
+      attributes: { BANDWIDTH: 10 },
+      uri: 'playlist-0'
+    }],
+    mediaGroups: {
+      // CLOSED-CAPTIONS will never have a URI
+      'CLOSED-CAPTIONS': {
+        cc1: {
+          English: {}
+        }
+      },
+      'AUDIO': {
+        low: {
+          // audio doesn't need a URI if it is a label for muxed
+          main: {},
+          commentary: {
+            uri: 'audio-low-commentary-uri'
+          }
+        },
+        high: {
+          main: {},
+          commentary: {
+            uri: 'audio-high-commentary-uri'
+          }
+        }
+      },
+      'SUBTITLES': {
+        sub1: {
+          english: {
+            uri: 'subtitles-1-english-uri'
+          },
+          spanish: {
+            uri: 'subtitles-1-spanish-uri'
+          }
+        },
+        sub2: {
+          english: {
+            uri: 'subtitles-2-english-uri'
+          },
+          spanish: {
+            uri: 'subtitles-2-spanish-uri'
+          }
+        },
+        sub3: {
+          english: {
+            uri: 'subtitles-3-english-uri'
+          },
+          spanish: {
+            uri: 'subtitles-3-spanish-uri'
+          }
+        }
+      }
+    }
+  };
+
+  resolveMediaGroupUris(master);
+
+  assert.deepEqual(master, {
+    uri: 'master-uri',
+    playlists: [{
+      attributes: { BANDWIDTH: 10 },
+      uri: 'playlist-0'
+    }],
+    mediaGroups: {
+      // CLOSED-CAPTIONS will never have a URI
+      'CLOSED-CAPTIONS': {
+        cc1: {
+          English: {}
+        }
+      },
+      'AUDIO': {
+        low: {
+          // audio doesn't need a URI if it is a label for muxed
+          main: {},
+          commentary: {
+            uri: 'audio-low-commentary-uri',
+            resolvedUri: urlTo('audio-low-commentary-uri')
+          }
+        },
+        high: {
+          main: {},
+          commentary: {
+            uri: 'audio-high-commentary-uri',
+            resolvedUri: urlTo('audio-high-commentary-uri')
+          }
+        }
+      },
+      'SUBTITLES': {
+        sub1: {
+          english: {
+            uri: 'subtitles-1-english-uri',
+            resolvedUri: urlTo('subtitles-1-english-uri')
+          },
+          spanish: {
+            uri: 'subtitles-1-spanish-uri',
+            resolvedUri: urlTo('subtitles-1-spanish-uri')
+          }
+        },
+        sub2: {
+          english: {
+            uri: 'subtitles-2-english-uri',
+            resolvedUri: urlTo('subtitles-2-english-uri')
+          },
+          spanish: {
+            uri: 'subtitles-2-spanish-uri',
+            resolvedUri: urlTo('subtitles-2-spanish-uri')
+          }
+        },
+        sub3: {
+          english: {
+            uri: 'subtitles-3-english-uri',
+            resolvedUri: urlTo('subtitles-3-english-uri')
+          },
+          spanish: {
+            uri: 'subtitles-3-spanish-uri',
+            resolvedUri: urlTo('subtitles-3-spanish-uri')
+          }
+        }
+      }
+    }
+  }, 'resolved URIs of certain media groups');
+});
+
+QUnit.test('uses last segment duration for refresh delay', function(assert) {
+  const media = { targetDuration: 7, segments: [] };
+
+  assert.equal(refreshDelay(media, true), 3500,
+    'used half targetDuration when no segments');
+
+  media.segments = [ { duration: 6}, { duration: 4 }, { } ];
+  assert.equal(refreshDelay(media, true), 3500,
+    'used half targetDuration when last segment duration cannot be determined');
+
+  media.segments = [ { duration: 6}, { duration: 4}, { duration: 5 } ];
+  assert.equal(refreshDelay(media, true), 5000, 'used last segment duration for delay');
+
+  assert.equal(refreshDelay(media, false), 3500,
+    'used half targetDuration when update is false');
 });
 
 QUnit.test('throws if the playlist url is empty or undefined', function(assert) {
@@ -67,13 +830,36 @@ QUnit.test('moves to HAVE_MASTER after loading a master playlist', function(asse
   });
   this.requests.pop().respond(200, null,
                               '#EXTM3U\n' +
-                              '#EXT-X-STREAM-INF:\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                               'media.m3u8\n');
   assert.ok(loader.master, 'the master playlist is available');
   assert.strictEqual(state, 'HAVE_MASTER', 'the state at loadedplaylist correct');
 });
 
-QUnit.test('jumps to HAVE_METADATA when initialized with a media playlist', function(assert) {
+QUnit.test('logs warning for master playlist with invalid STREAM-INF', function(assert) {
+  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
+
+  loader.load();
+
+  this.requests.pop().respond(200, null,
+                              '#EXTM3U\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                              'video1/media.m3u8\n' +
+                              '#EXT-X-STREAM-INF:\n' +
+                              'video2/media.m3u8\n');
+
+  assert.ok(loader.master, 'infers a master playlist');
+  assert.equal(loader.master.playlists[1].uri, 'video2/media.m3u8',
+    'parsed invalid stream');
+  assert.ok(loader.master.playlists[1].attributes, 'attached attributes property');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+  assert.equal(this.env.log.warn.args[0],
+    'Invalid playlist STREAM-INF detected. Missing BANDWIDTH attribute.',
+    'logged a warning');
+});
+
+QUnit.test('jumps to HAVE_METADATA when initialized with a media playlist',
+function(assert) {
   let loadedmetadatas = 0;
   let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
 
@@ -90,6 +876,7 @@ QUnit.test('jumps to HAVE_METADATA when initialized with a media playlist', func
   assert.ok(loader.master, 'infers a master playlist');
   assert.ok(loader.media(), 'sets the media playlist');
   assert.ok(loader.media().uri, 'sets the media playlist URI');
+  assert.ok(loader.media().attributes, 'sets the media playlist attributes');
   assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
   assert.strictEqual(this.requests.length, 0, 'no more requests are made');
   assert.strictEqual(loadedmetadatas, 1, 'fired one loadedmetadata');
@@ -102,60 +889,10 @@ QUnit.test('resolves relative media playlist URIs', function(assert) {
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 'video/media.m3u8\n');
   assert.equal(loader.master.playlists[0].resolvedUri, urlTo('video/media.m3u8'),
               'resolved media URI');
-});
-
-QUnit.test('playlist loader returns the correct amount of enabled playlists', function(assert) {
-  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
-
-  loader.load();
-
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
-                                'video1/media.m3u8\n' +
-                                '#EXT-X-STREAM-INF:\n' +
-                                'video2/media.m3u8\n');
-  assert.equal(loader.enabledPlaylists_(), 2, 'Returned initial amount of playlists');
-  loader.master.playlists[0].excludeUntil = Date.now() + 100000;
-  this.clock.tick(1000);
-  assert.equal(loader.enabledPlaylists_(), 1, 'Returned one less playlist');
-});
-
-QUnit.test('playlist loader detects if we are on lowest rendition', function(assert) {
-  let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
-
-  loader.load();
-  this.requests.shift().respond(200, null,
-                                '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
-                                'video1/media.m3u8\n' +
-                                '#EXT-X-STREAM-INF:\n' +
-                                'video2/media.m3u8\n');
-  loader.media = function() {
-    return {attributes: {BANDWIDTH: 10}};
-  };
-
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 20}}];
-  assert.ok(loader.isLowestEnabledRendition_(), 'Detected on lowest rendition');
-
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 20}}];
-  assert.ok(loader.isLowestEnabledRendition_(), 'Detected on lowest rendition');
-
-  loader.media = function() {
-    return {attributes: {BANDWIDTH: 20}};
-  };
-
-  loader.master.playlists = [{attributes: {BANDWIDTH: 10}},
-                              {attributes: {BANDWIDTH: 20}}];
-  assert.ok(!loader.isLowestEnabledRendition_(), 'Detected not on lowest rendition');
 });
 
 QUnit.test('resolves media initialization segment URIs', function(assert) {
@@ -180,7 +917,7 @@ QUnit.test('recognizes absolute URIs and requests them unmodified', function(ass
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 'http://example.com/video/media.m3u8\n');
   assert.equal(loader.master.playlists[0].resolvedUri,
               'http://example.com/video/media.m3u8', 'resolved media URI');
@@ -201,7 +938,7 @@ QUnit.test('recognizes domain-relative URLs', function(assert) {
 
   this.requests.shift().respond(200, null,
                                 '#EXTM3U\n' +
-                                '#EXT-X-STREAM-INF:\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                                 '/media.m3u8\n');
   assert.equal(loader.master.playlists[0].resolvedUri,
               window.location.protocol + '//' +
@@ -316,6 +1053,7 @@ function(assert) {
                               '0.ts\n');
   assert.ok(loader.master, 'infers a master playlist');
   assert.ok(loader.media(), 'sets the media playlist');
+  assert.ok(loader.media().attributes, 'sets the media playlist attributes');
   assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
 });
 
@@ -334,8 +1072,9 @@ QUnit.test('moves to HAVE_METADATA after loading a media playlist', function(ass
   });
   this.requests.pop().respond(200, null,
                               '#EXTM3U\n' +
-                              '#EXT-X-STREAM-INF:\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                               'media.m3u8\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                               'alt.m3u8\n');
   assert.strictEqual(loadedPlaylist, 1, 'fired loadedplaylist once');
   assert.strictEqual(loadedMetadata, 0, 'did not fire loadedmetadata');
@@ -371,7 +1110,8 @@ QUnit.test('defaults missing media groups for a media playlist', function(assert
   assert.ok(loader.master.mediaGroups.SUBTITLES, 'defaulted subtitles');
 });
 
-QUnit.test('moves to HAVE_CURRENT_METADATA when refreshing the playlist', function(assert) {
+QUnit.test('moves to HAVE_CURRENT_METADATA when refreshing the playlist',
+function(assert) {
   let loader = new PlaylistLoader('live.m3u8', this.fakeHls);
 
   loader.load();
@@ -407,6 +1147,27 @@ QUnit.test('returns to HAVE_METADATA after refreshing the playlist', function(as
   assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is correct');
 });
 
+QUnit.test('refreshes the playlist after last segment duration', function(assert) {
+  let loader = new PlaylistLoader('live.m3u8', this.fakeHls);
+  let refreshes = 0;
+
+  loader.on('mediaupdatetimeout', () => refreshes++);
+
+  loader.load();
+
+  this.requests.pop().respond(200, null,
+                              '#EXTM3U\n' +
+                              '#EXT-X-TARGETDURATION:10\n' +
+                              '#EXTINF:10,\n' +
+                              '0.ts\n' +
+                              '#EXTINF:4\n' +
+                              '1.ts\n');
+  // 4s, last segment duration
+  this.clock.tick(4 * 1000);
+
+  assert.equal(refreshes, 1, 'refreshed playlist after last segment duration');
+});
+
 QUnit.test('emits an error when an initial playlist request fails', function(assert) {
   let errors = [];
   let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
@@ -433,7 +1194,7 @@ QUnit.test('errors when an initial media playlist request fails', function(asser
   });
   this.requests.pop().respond(200, null,
                               '#EXTM3U\n' +
-                              '#EXT-X-STREAM-INF:\n' +
+                              '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
                               'media.m3u8\n');
 
   assert.strictEqual(errors.length, 0, 'emitted no errors');
@@ -622,7 +1383,8 @@ QUnit.test('switches media playlists when requested', function(assert) {
                     'updated the active media');
 });
 
-QUnit.test('can switch playlists immediately after the master is downloaded', function(assert) {
+QUnit.test('can switch playlists immediately after the master is downloaded',
+function(assert) {
   let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
 
   loader.load();
@@ -691,7 +1453,9 @@ QUnit.test('aborts in-flight playlist refreshes when switching', function(assert
   assert.strictEqual(this.requests[0].aborted, true, 'aborted refresh request');
   assert.ok(!this.requests[0].onreadystatechange,
            'onreadystatechange handlers should be removed on abort');
-  assert.strictEqual(loader.state, 'HAVE_METADATA', 'the state is set accoring to the startingState');
+  assert.strictEqual(loader.state,
+                     'HAVE_METADATA',
+                     'the state is set accoring to the startingState');
 });
 
 QUnit.test('switching to the active playlist is a no-op', function(assert) {
@@ -737,7 +1501,8 @@ QUnit.test('switching to the active live playlist is a no-op', function(assert) 
   assert.strictEqual(this.requests.length, 0, 'no requests are sent');
 });
 
-QUnit.test('switches back to loaded playlists without re-requesting them', function(assert) {
+QUnit.test('switches back to loaded playlists without re-requesting them',
+function(assert) {
   let loader = new PlaylistLoader('master.m3u8', this.fakeHls);
 
   loader.load();
@@ -964,7 +1729,8 @@ QUnit.test('triggers an event when the active media changes', function(assert) {
   assert.strictEqual(mediaChanges, 2, 'ignored a no-op media change');
 });
 
-QUnit.test('does not misintrepret playlists missing newlines at the end', function(assert) {
+QUnit.test('does not misintrepret playlists missing newlines at the end',
+function(assert) {
   let loader = new PlaylistLoader('media.m3u8', this.fakeHls);
 
   loader.load();

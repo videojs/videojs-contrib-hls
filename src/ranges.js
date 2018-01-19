@@ -9,6 +9,12 @@ import videojs from 'video.js';
 
 // Fudge factor to account for TimeRanges rounding
 const TIME_FUDGE_FACTOR = 1 / 30;
+// Comparisons between time values such as current time and the end of the buffered range
+// can be misleading because of precision differences or when the current media has poorly
+// aligned audio and video, which can cause values to be slightly off from what you would
+// expect. This value is what we consider to be safe to use in such comparisons to account
+// for these scenarios.
+const SAFE_TIME_DELTA = TIME_FUDGE_FACTOR * 3;
 
 /**
  * Clamps a value to within a range
@@ -338,6 +344,26 @@ const printableRange = (range) => {
   return strArr.join(', ');
 };
 
+/**
+ * Calculates the amount of time left in seconds until the player hits the end of the
+ * buffer and causes a rebuffer
+ *
+ * @param {TimeRange} buffered
+ *        The state of the buffer
+ * @param {Numnber} currentTime
+ *        The current time of the player
+ * @param {Number} playbackRate
+ *        The current playback rate of the player. Defaults to 1.
+ * @return {Number}
+ *         Time until the player has to start rebuffering in seconds.
+ * @function timeUntilRebuffer
+ */
+const timeUntilRebuffer = function(buffered, currentTime, playbackRate = 1) {
+  const bufferedEnd = buffered.length ? buffered.end(buffered.length - 1) : 0;
+
+  return (bufferedEnd - currentTime) / playbackRate;
+};
+
 export default {
   findRange,
   findNextRange,
@@ -345,5 +371,7 @@ export default {
   findSoleUncommonTimeRangesEnd,
   getSegmentBufferedPercent,
   TIME_FUDGE_FACTOR,
-  printableRange
+  SAFE_TIME_DELTA,
+  printableRange,
+  timeUntilRebuffer
 };

@@ -137,7 +137,7 @@ export const useFakeEnvironment = function(assert) {
       ['warn', 'error'].forEach((level) => {
         if (this.log && this.log[level] && this.log[level].restore) {
           if (assert) {
-            let calls = this.log[level].args.map((args) => {
+            let calls = (this.log[level].args || []).map((args) => {
               return args.join(', ');
             }).join('\n  ');
 
@@ -185,6 +185,12 @@ export const useFakeEnvironment = function(assert) {
     }
 
     this.readyState = 0;
+  };
+
+  XMLHttpRequest.prototype.downloadProgress = function downloadProgress(rawEventData) {
+    this.dispatchEvent(new sinon.ProgressEvent('progress',
+                                               rawEventData,
+                                               rawEventData.target));
   };
 
   fakeEnvironment.requests.length = 0;
@@ -263,7 +269,7 @@ export const mockTech = function(tech) {
   };
 };
 
-export const createPlayer = function(options, src) {
+export const createPlayer = function(options, src, clock) {
   let video;
   let player;
 
@@ -292,6 +298,11 @@ export const createPlayer = function(options, src) {
   player.buffered = function() {
     return videojs.createTimeRange(0, 0);
   };
+
+  if (clock) {
+    clock.tick(1);
+  }
+
   mockTech(player.tech_);
 
   return player;
@@ -364,7 +375,9 @@ export const playlistWithDuration = function(time, conf) {
     segments: [],
     endList: conf && typeof conf.endList !== 'undefined' ? !!conf.endList : true,
     uri: conf && typeof conf.uri !== 'undefined' ? conf.uri : 'playlist.m3u8',
-    discontinuitySequence: conf && conf.discontinuitySequence ? conf.discontinuitySequence : 0
+    discontinuitySequence:
+      conf && conf.discontinuitySequence ? conf.discontinuitySequence : 0,
+    attributes: {}
   };
   let count = Math.floor(time / 10);
   let remainder = time % 10;

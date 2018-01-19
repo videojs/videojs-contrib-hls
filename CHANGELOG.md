@@ -2,6 +2,123 @@ CHANGELOG
 =========
 
 --------------------
+## HEAD (Unreleased)
+_(none)_
+
+--------------------
+## 5.12.2 (2017-11-06)
+* Remove unused expected manifest js files [#1289](https://github.com/videojs/videojs-contrib-hls/pull/1289)
+* Remove extraneous methods from PlaylistLoader [#1286](https://github.com/videojs/videojs-contrib-hls/pull/1286)
+  * Move isLowestEnabledRendition to playlist module
+* update contrib-media-sources to 4.6.2 [#1291](https://github.com/videojs/videojs-contrib-hls/pull/1291)
+  * update mux.js to 4.3.2
+    * flush pes packets when there is enough data
+
+--------------------
+## 5.12.1 (2017-10-24)
+* update contrib-media-sources to 4.6.1 [#1284](https://github.com/videojs/videojs-contrib-hls/pull/1284)
+  * update mux.js to 4.3.1
+    * Set active data channel per-field instead of globally for CEA-608
+    * Fixed an issue with captions being placed in the wrong CC
+
+--------------------
+## 5.12.0 (2017-10-19)
+* use `lastSegmentDuration + 2 * targetDuration` for safe live point instead of 3 segments [#1271](https://github.com/videojs/videojs-contrib-hls/pull/1271)
+  * do not let back buffer trimming remove within target duration of current time
+  * increase threshold for stuck playlist checking
+* Fix video corruption on rendition switches in IE11 Win 8.1+ and Edge [#1259](https://github.com/videojs/videojs-contrib-hls/pull/1259)
+  * segment-time-mapping event
+  * update contrib-media-sources to 4.6.0
+* prioritize user enabled playlists over blacklist [#1269](https://github.com/videojs/videojs-contrib-hls/pull/1269)
+  * never allow playlist selector to select a playlist that has been permanently blacklisted due to incompatible configuration
+  * When filtering playlists within the playlist selectors, if there are no enabled playlists (i.e. not blacklisted internally AND not disabled by the user) available, then fall back to using the list of playlists not disabled by the user regardless of blacklist state.
+  * make sure playlists blacklisted from an illegal media switch is permanently blacklisted, as there is no reason to try it again at a later time.
+  * The representation api will return a list that filters out just incompatible playlists instead of both incompatible playlists and temporary blacklisted playlists.
+
+--------------------
+## 5.11.1 (2017-10-11)
+* update videojs-contrib-media-sources to 4.5.3 [#1278](https://github.com/videojs/videojs-contrib-hls/pull/1278)
+  * update mux.js to 4.2.2
+    * Use the first audio and video tracks in the PMT
+* fix InvalidStateError for live playback in IE11 [#1266](https://github.com/videojs/videojs-contrib-hls/pull/1266)
+
+--------------------
+## 5.11.0 (2017-09-20)
+* Update videojs-contrib-media-sources to 4.5.2 [#1262](https://github.com/videojs/videojs-contrib-hls/pull/1262)
+  * let video.js remoteTextTrack auto cleanup take care of text track cleanup
+* Blacklist incompatible playlists on probe if codec information not in master manifest [#1257](https://github.com/videojs/videojs-contrib-hls/pull/1257)
+* Seek to seekable start when seeking before the seekable window [#1260](https://github.com/videojs/videojs-contrib-hls/pull/1260)
+* MediaGroups: various bug fixes and refactor [#1243](https://github.com/videojs/videojs-contrib-hls/pull/1243)
+  * Removes the Firefox 48 check for for supporting a change in audio info
+  * Fix delayed switching between audio tracks and intermittent desync.
+
+--------------------
+## 5.10.1 (2017-08-28)
+* fix: flv metadata tags now appened when audio info changes [#1245](https://github.com/videojs/videojs-contrib-hls/pull/1245)
+
+--------------------
+## 5.10.0 (2017-08-22)
+* CEA608: support for cc2-cc4, special/extended characters, formatting [#1096](https://github.com/videojs/videojs-contrib-hls/pull/1096)
+  * All four CC tracks are now available
+  * If CLOSED-CAPTIONS are specified in the master manifest, the corresponding CC text tracks will be labled appropriately, otherwise will be labled CC1 - CC4
+  * Underline and italics will now be rendered.
+  * Special thanks to @squarebracket
+
+--------------------
+## 5.9.0 (2017-08-16)
+* Add option to select lowest bitrate video rendition available on startup [#1212](https://github.com/videojs/videojs-contrib-hls/pull/1212)
+* always activate loading in segment loaders after a seek [#1234](https://github.com/videojs/videojs-contrib-hls/pull/1234)
+* Wait for `canplay` event from tech before `PlaybackWatcher` begins monitoring [#1230](https://github.com/videojs/videojs-contrib-hls/pull/1230)
+  * Fixes InvalidStateError in Win10 IE11
+* Blacklist playlist for 2 minutes on early abort to prevent cache loop [#1220](https://github.com/videojs/videojs-contrib-hls/pull/1220)
+  * Prevent rendition switch loop due to inconsistent network/caching
+  * Don't fire bandwidthupdate when aborting early
+* make sure text tracks added by hls are properly disposed [#1228](https://github.com/videojs/videojs-contrib-hls/pull/1228)
+* Fixing Backward Seeking in IE11 Win8.1 [#1225](https://github.com/videojs/videojs-contrib-hls/pull/1225)
+
+--------------------
+## 5.8.3 (2017-08-07)
+* Fix: Double caption issue [#1219](https://github.com/videojs/videojs-contrib-hls/pull/1219)
+* attach attributes property to playlist objects in cases the m3u8-parser does not[#1214](https://github.com/videojs/videojs-contrib-hls/pull/1214)
+  * add warning log when missing attribute for stream-inf
+
+--------------------
+## 5.8.2 (2017-07-12)
+* fix: processing segments when mediaSource is closed [#1201](https://github.com/videojs/videojs-contrib-hls/pull/1201)
+
+--------------------
+## 5.8.1 (2017-07-12)
+* fix: audio only playlists with videojs-contrib-media-sources v4.4.7 [#1195](https://github.com/videojs/videojs-contrib-hls/pull/1195)
+
+--------------------
+## 5.8.0 (2017-07-06)
+* Abr Improvements [#1176](https://github.com/videojs/videojs-contrib-hls/pull/1176)
+  * Use a starting `bandwidth` value of `0.0625 MB/s` on Android devices
+  * Do not allow an up-switch in quality until a certain amount of forward buffer has been filled, `BUFFER_LOW_WATER_LINE`
+  * Dynamically increase the `BUFFER_LOW_WATER_LINE` and `GOAL_BUFFER_LENGTH` from `0 - > 30` and `30 -> 60` respectively during the first 30 seconds of playback
+  * Abort segment requests before completion if bandwidth reported by the XHR `progress` event shows that network conditions are not fast enough to complete the request without causing rebuffering
+
+--------------------
+## 5.7.0 (2017-06-27)
+* update mux.js to 4.1.5 and videojs-contrib-media-sources to 4.4.6 [#1180](https://github.com/videojs/videojs-contrib-hls/pull/1180)
+  * Only flush PES packets from TS parsing front end when they are complete
+    * Complete is defined as any time PES_packet_length matches the data’s length OR is a video packets
+    * Works around an issue with incomplete packets getting sent down the pipeline when the source has audio PES packets split between segments
+* Add hls usage tracking events [#1166](https://github.com/videojs/videojs-contrib-hls/pull/1166)
+  * Usage tracking events are fired when we detect a certain HLS feature, encoding setting, or API is used. Note that although these usage events are listed in the README, they may change at any time without a major version change.
+* Fix endOfStream for demuxed audio and video [#1175](https://github.com/videojs/videojs-contrib-hls/pull/1175)
+
+--------------------
+## 5.6.0 (2017-06-20)
+* Do not reset segmentloaders when switching media groups [#1155](https://github.com/videojs/videojs-contrib-hls/pull/1155)
+  * set loader state to ready on aborts even when loader is paused
+* don't crash when segment metadata cues can't be created [#1167](https://github.com/videojs/videojs-contrib-hls/pull/1167)
+* Allow overrideNative to be set as a player-level option [#1156](https://github.com/videojs/videojs-contrib-hls/pull/1156)
+* Create a moving-average playlist selector [#1125](https://github.com/videojs/videojs-contrib-hls/pull/1125)
+  * Define a variant of the standard playlist selector that calculates a moving average of bandwidth and uses that to select a playlist.
+* Trigger bandwidthupdate events on the tech [#1122](https://github.com/videojs/videojs-contrib-hls/pull/1122)
+
+--------------------
 ## 5.5.3 (2017-05-16)
 * update mux.js to 4.1.4 and videojs-contrib-media-sources to 4.4.5 [#1117](https://github.com/videojs/videojs-contrib-hls/pull/1117)
   * ts probe searches packets for first it can successfully parse

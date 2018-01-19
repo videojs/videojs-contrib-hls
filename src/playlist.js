@@ -6,16 +6,6 @@
 import {createTimeRange} from 'video.js';
 import window from 'global/window';
 
-let Playlist = {
-  /**
-   * The number of segments that are unsafe to start playback at in
-   * a live stream. Changing this value can cause playback stalls.
-   * See HTTP Live Streaming, "Playing the Media Playlist File"
-   * https://tools.ietf.org/html/draft-pantos-http-live-streaming-18#section-6.3.3
-   */
-  UNSAFE_LIVE_SEGMENTS: 3
-};
-
 /**
  * walk backward until we find a duration we can use
  * or return a failure
@@ -220,15 +210,47 @@ export const sumDurations = function(playlist, startIndex, endIndex) {
 };
 
 /**
+ * Determines the media index of the segment corresponding to the safe edge of the live
+ * window which is the duration of the last segment plus 2 target durations from the end
+ * of the playlist.
+ *
+ * @param {Object} playlist
+ *        a media playlist object
+ * @return {Number}
+ *         The media index of the segment at the safe live point. 0 if there is no "safe"
+ *         point.
+ * @function safeLiveIndex
+ */
+export const safeLiveIndex = function(playlist) {
+  if (!playlist.segments.length) {
+    return 0;
+  }
+
+  let i = playlist.segments.length - 1;
+  let distanceFromEnd = playlist.segments[i].duration || playlist.targetDuration;
+  const safeDistance = distanceFromEnd + playlist.targetDuration * 2;
+
+  while (i--) {
+    distanceFromEnd += playlist.segments[i].duration;
+
+    if (distanceFromEnd >= safeDistance) {
+      break;
+    }
+  }
+
+  return Math.max(0, i);
+};
+
+/**
  * Calculates the playlist end time
  *
  * @param {Object} playlist a media playlist object
  * @param {Number=} expired the amount of time that has
  *                  dropped off the front of the playlist in a live scenario
- * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the playlist
- *                        end calculation should consider the safe live end (truncate the playlist
- *                        end by three segments). This is normally used for calculating the end of
- *                        the playlist's seekable range.
+ * @param {Boolean|false} useSafeLiveEnd a boolean value indicating whether or not the
+ *                        playlist end calculation should consider the safe live end
+ *                        (truncate the playlist end by three segments). This is normally
+ *                        used for calculating the end of the playlist's seekable range.
  * @returns {Number} the end time of playlist
  * @function playlistEnd
  */
@@ -246,8 +268,7 @@ export const playlistEnd = function(playlist, expired, useSafeLiveEnd) {
 
   expired = expired || 0;
 
-  let endSequence = useSafeLiveEnd ? Math.max(0, playlist.segments.length - Playlist.UNSAFE_LIVE_SEGMENTS) :
-                                     Math.max(0, playlist.segments.length);
+  const endSequence = useSafeLiveEnd ? safeLiveIndex(playlist) : playlist.segments.length;
 
   return intervalDuration(playlist,
                           playlist.mediaSequence + endSequence,
@@ -317,7 +338,10 @@ const floorLeastSignificantDigit = roundSignificantDigit.bind(null, -1);
  * @param {Number} startTime
  * @return {Object}
  */
-export const getMediaInfoForTime_ = function(playlist, currentTime, startIndex, startTime) {
+export const getMediaInfoForTime = function(playlist,
+                                            currentTime,
+                                            startIndex,
+                                            startTime) {
   let i;
   let segment;
   let numSegments = playlist.segments.length;
@@ -395,6 +419,18 @@ export const isBlacklisted = function(playlist) {
 };
 
 /**
+ * Check whether the playlist is compatible with current playback configuration or has
+ * been blacklisted permanently for being incompatible.
+ *
+ * @param {Object} playlist the media playlist object
+ * @return {boolean} whether the playlist is incompatible or not
+ * @function isIncompatible
+ */
+export const isIncompatible = function(playlist) {
+  return playlist.excludeUntil && playlist.excludeUntil === Infinity;
+};
+
+/**
  * Check whether the playlist is enabled or not.
  *
  * @param {Object} playlist the media playlist object
@@ -407,12 +443,125 @@ export const isEnabled = function(playlist) {
   return (!playlist.disabled && !blacklisted);
 };
 
-Playlist.duration = duration;
-Playlist.seekable = seekable;
-Playlist.getMediaInfoForTime_ = getMediaInfoForTime_;
-Playlist.isEnabled = isEnabled;
-Playlist.isBlacklisted = isBlacklisted;
-Playlist.playlistEnd = playlistEnd;
+/**
+ * Check whether the playlist has been manually disabled through the representations api.
+ *
+ * @param {Object} playlist the media playlist object
+ * @return {boolean} whether the playlist is disabled manually or not
+ * @function isDisabled
+ */
+export const isDisabled = function(playlist) {
+  return playlist.disabled;
+};
+
+/**
+ * Returns whether the current playlist is an AES encrypted HLS stream
+ *
+ * @return {Boolean} true if it's an AES encrypted HLS stream
+ */
+export const isAes = function(media) {
+  for (let i = 0; i < media.segments.length; i++) {
+    if (media.segments[i].key) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Returns whether the current playlist contains fMP4
+ *
+ * @return {Boolean} true if the playlist contains fMP4
+ */
+export const isFmp4 = function(media) {
+  for (let i = 0; i < media.segments.length; i++) {
+    if (media.segments[i].map) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * Checks if the playlist has a value for the specified attribute
+ *
+ * @param {String} attr
+ *        Attribute to check for
+ * @param {Object} playlist
+ *        The media playlist object
+ * @return {Boolean}
+ *         Whether the playlist contains a value for the attribute or not
+ * @function hasAttribute
+ */
+export const hasAttribute = function(attr, playlist) {
+  return playlist.attributes && playlist.attributes[attr];
+};
+
+/**
+ * Estimates the time required to complete a segment download from the specified playlist
+ *
+ * @param {Number} segmentDuration
+ *        Duration of requested segment
+ * @param {Number} bandwidth
+ *        Current measured bandwidth of the player
+ * @param {Object} playlist
+ *        The media playlist object
+ * @param {Number=} bytesReceived
+ *        Number of bytes already received for the request. Defaults to 0
+ * @return {Number|NaN}
+ *         The estimated time to request the segment. NaN if bandwidth information for
+ *         the given playlist is unavailable
+ * @function estimateSegmentRequestTime
+ */
+export const estimateSegmentRequestTime = function(segmentDuration,
+                                                   bandwidth,
+                                                   playlist,
+                                                   bytesReceived = 0) {
+  if (!hasAttribute('BANDWIDTH', playlist)) {
+    return NaN;
+  }
+
+  const size = segmentDuration * playlist.attributes.BANDWIDTH;
+
+  return (size - (bytesReceived * 8)) / bandwidth;
+};
+
+/*
+ * Returns whether the current playlist is the lowest rendition
+ *
+ * @return {Boolean} true if on lowest rendition
+ */
+export const isLowestEnabledRendition = (master, media) => {
+  if (master.playlists.length === 1) {
+    return true;
+  }
+
+  const currentBandwidth = media.attributes.BANDWIDTH || Number.MAX_VALUE;
+
+  return (master.playlists.filter((playlist) => {
+    if (!isEnabled(playlist)) {
+      return false;
+    }
+
+    return (playlist.attributes.BANDWIDTH || 0) < currentBandwidth;
+
+  }).length === 0);
+};
 
 // exports
-export default Playlist;
+export default {
+  duration,
+  seekable,
+  safeLiveIndex,
+  getMediaInfoForTime,
+  isEnabled,
+  isDisabled,
+  isBlacklisted,
+  isIncompatible,
+  playlistEnd,
+  isAes,
+  isFmp4,
+  hasAttribute,
+  estimateSegmentRequestTime,
+  isLowestEnabledRendition
+};

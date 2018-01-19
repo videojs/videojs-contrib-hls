@@ -4,10 +4,12 @@
 import SegmentLoader from './segment-loader';
 import videojs from 'video.js';
 import window from 'global/window';
-import removeCuesFromTrack from 'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
+import removeCuesFromTrack from
+  'videojs-contrib-media-sources/es5/remove-cues-from-track.js';
 import { initSegmentId } from './bin-utils';
 
-const VTT_LINE_TERMINATORS = new Uint8Array('\n\n'.split('').map(char => char.charCodeAt(0)));
+const VTT_LINE_TERMINATORS =
+  new Uint8Array('\n\n'.split('').map(char => char.charCodeAt(0)));
 
 const uintToString = function(uintArray) {
   return String.fromCharCode.apply(null, uintArray);
@@ -21,8 +23,8 @@ const uintToString = function(uintArray) {
  * @extends videojs.EventTarget
  */
 export default class VTTSegmentLoader extends SegmentLoader {
-  constructor(options) {
-    super(options);
+  constructor(settings, options = {}) {
+    super(settings, options);
 
     // SegmentLoader requires a MediaSource be specified or it will throw an error;
     // however, VTTSegmentLoader has no need of a media source, so delete the reference
@@ -70,8 +72,8 @@ export default class VTTSegmentLoader extends SegmentLoader {
     if (set && !storedMap && map.bytes) {
       // append WebVTT line terminators to the media initialization segment if it exists
       // to follow the WebVTT spec (https://w3c.github.io/webvtt/#file-structure) that
-      // requires two or more WebVTT line terminators between the WebVTT header and the rest
-      // of the file
+      // requires two or more WebVTT line terminators between the WebVTT header and the
+      // rest of the file
       const combinedByteLength = VTT_LINE_TERMINATORS.byteLength + map.bytes.byteLength;
       const combinedSegment = new Uint8Array(combinedByteLength);
 
@@ -116,10 +118,16 @@ export default class VTTSegmentLoader extends SegmentLoader {
   /**
    * Set a subtitle track on the segment loader to add subtitles to
    *
-   * @param {TextTrack} track
+   * @param {TextTrack=} track
    *        The text track to add loaded subtitles to
+   * @return {TextTrack}
+   *        Returns the subtitles track
    */
   track(track) {
+    if (typeof track === 'undefined') {
+      return this.subtitlesTrack_;
+    }
+
     this.subtitlesTrack_ = track;
 
     // if we were unpaused but waiting for a sourceUpdater, start
@@ -127,6 +135,8 @@ export default class VTTSegmentLoader extends SegmentLoader {
     if (this.state === 'INIT' && this.couldBeginLoading_()) {
       this.init_();
     }
+
+    return this.subtitlesTrack_;
   }
 
   /**
@@ -200,10 +210,11 @@ export default class VTTSegmentLoader extends SegmentLoader {
    */
   skipEmptySegments_(segmentInfo) {
     while (segmentInfo && segmentInfo.segment.empty) {
-      segmentInfo = this.generateSegmentInfo_(segmentInfo.playlist,
-                                              segmentInfo.mediaIndex + 1,
-                                              segmentInfo.startOfSegment + segmentInfo.duration,
-                                              segmentInfo.isSyncRequest);
+      segmentInfo = this.generateSegmentInfo_(
+        segmentInfo.playlist,
+        segmentInfo.mediaIndex + 1,
+        segmentInfo.startOfSegment + segmentInfo.duration,
+        segmentInfo.isSyncRequest);
     }
     return segmentInfo;
   }
@@ -214,7 +225,7 @@ export default class VTTSegmentLoader extends SegmentLoader {
    * @private
    */
   handleSegment_() {
-    if (!this.pendingSegment_) {
+    if (!this.pendingSegment_ || !this.subtitlesTrack_) {
       this.state = 'READY';
       return;
     }
@@ -275,6 +286,12 @@ export default class VTTSegmentLoader extends SegmentLoader {
     segmentInfo.byteLength = segmentInfo.bytes.byteLength;
 
     this.mediaSecondsLoaded += segment.duration;
+
+    if (segmentInfo.cues.length) {
+     // remove any overlapping cues to prevent doubling
+      this.remove(segmentInfo.cues[0].endTime,
+                  segmentInfo.cues[segmentInfo.cues.length - 1].endTime);
+    }
 
     segmentInfo.cues.forEach((cue) => {
       this.subtitlesTrack_.addCue(cue);
