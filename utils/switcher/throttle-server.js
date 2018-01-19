@@ -95,8 +95,8 @@ const writeSlowly = (req, res, data) => {
 // maps file extention to MIME type
 // we only care about these two types
 const map = {
-  '.ts': 'application/vnd.apple.mpegurl',
-  '.m3u8': 'video/MP2T'
+  '.ts': 'video/MP2T',
+  '.m3u8': 'application/x-mpegurl'
 };
 
 const setHeaders = (res, ext) => {
