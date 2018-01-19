@@ -96,7 +96,7 @@ const writeSlowly = (req, res, data) => {
 // we only care about these two types
 const map = {
   '.ts': 'application/vnd.apple.mpegurl',
-  '.m3u8': 'application/x-mpegurl'
+  '.m3u8': 'video/MP2T'
 };
 
 const setHeaders = (res, ext) => {
