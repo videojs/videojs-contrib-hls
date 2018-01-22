@@ -25,9 +25,9 @@ QUnit.module('PlaybackWatcher', {
   },
 
   afterEach() {
+    this.player.dispose();
     this.env.restore();
     this.mse.restore();
-    this.player.dispose();
   }
 });
 
