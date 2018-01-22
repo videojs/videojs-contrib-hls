@@ -1948,6 +1948,10 @@ QUnit.test('remove event handlers on dispose', function(assert) {
   this.standardXHRResponse(this.requests[0]);
   this.standardXHRResponse(this.requests[1]);
 
+  this.clock.tick(1);
+
+  assert.ok(unscoped > 0, 'has unscoped handlers');
+
   player.dispose();
 
   assert.ok(unscoped <= 0, 'no unscoped handlers');
