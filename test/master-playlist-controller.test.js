@@ -2124,6 +2124,8 @@ QUnit.test('disposes subtitle loaders on dispose', function(assert) {
 
   let segmentLoaderDisposeCount = 0;
 
+  const origDispose = masterPlaylistController.subtitleSegmentLoader_.dispose;
+
   masterPlaylistController.subtitleSegmentLoader_.dispose =
     () => segmentLoaderDisposeCount++;
 
@@ -2175,6 +2177,9 @@ QUnit.test('disposes subtitle loaders on dispose', function(assert) {
 
   assert.equal(playlistLoaderDisposeCount, 1, 'disposed the subtitle playlist loader');
   assert.equal(segmentLoaderDisposeCount, 1, 'disposed the subtitle segment loader');
+
+  // allow proper cleanup
+  masterPlaylistController.subtitleSegmentLoader_.dispose = origDispose;
 });
 
 QUnit.test('subtitle segment loader resets on seeks', function(assert) {
