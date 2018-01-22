@@ -190,6 +190,7 @@ function(assert) {
   this.clock.tick(1);
 
   this.player.currentTime(0);
+  this.clock.tick(1);
 
   let seeks = [];
 
