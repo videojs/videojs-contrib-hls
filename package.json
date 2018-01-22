@@ -134,7 +134,7 @@
     "shelljs": "^0.5.3",
     "sinon": "1.10.2",
     "uglify-js": "^2.5.0",
-    "videojs-contrib-quality-levels": "^2.0.2",
+    "videojs-contrib-quality-levels": "^2.0.4",
     "videojs-flash": "^2.0.0",
     "videojs-standard": "^4.0.3",
     "videojs-swf": "^5.2.0",
