@@ -14,19 +14,12 @@ module.exports = function(config) {
         console.log("Disabled Safari as it was/is not supported");
       }
 
-      var chromeIndex = availableBrowsers.indexOf('Chrome');
-
-      if (chromeIndex !== -1) {
-        availableBrowsers.splice(chromeIndex, 1);
-        availableBrowsers.push('ChromeHeadless');
-      }
-
       return availableBrowsers;
     }
   };
 
   if (process.env.TRAVIS) {
-    config.browsers = ['ChromeNoSandbox'];
+    config.browsers = ['travisChrome'];
   }
 
   // If no browsers are specified, we enable `karma-detect-browsers`
@@ -75,7 +68,7 @@ module.exports = function(config) {
       }
     },
     customLaunchers: {
-      ChromeNoSandbox: {
+      travisChrome: {
         base: 'Chrome',
         flags: ['--no-sandbox']
       }
