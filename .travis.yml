@@ -1,6 +1,8 @@
 sudo: false
 dist: trusty
 language: node_js
+node_js:
+  - node
 notifications:
   hipchat:
     rooms:
@@ -15,7 +17,9 @@ before_script:
   - export CHROME_BIN=/usr/bin/google-chrome
   - export DISPLAY=:99.0
   - sh -e /etc/init.d/xvfb start
-env: "VJS=6"
+env:
+  - "VJS=5"
+  - "VJS=6"
 addons:
   apt:
     sources:
