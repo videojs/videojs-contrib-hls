@@ -16,6 +16,6 @@ before_script:
   - npm i "video.js@$VJS";
 env:
   - VJS=5
-  - VJS=6.6.0
+  - VJS=6.5.1
 addons:
   chrome: stable
