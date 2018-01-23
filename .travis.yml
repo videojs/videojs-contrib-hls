@@ -19,7 +19,7 @@ before_script:
   - sh -e /etc/init.d/xvfb start
 env:
   - VJS=5
-  - VJS=6
+  - VJS=6.2.5
 addons:
   firefox: latest
   apt:
