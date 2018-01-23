@@ -93,7 +93,7 @@
     "m3u8-parser": "2.1.0",
     "mux.js": "4.3.2",
     "url-toolkit": "1.0.9",
-    "video.js": "^5.19.1 || 6.4.0",
+    "video.js": "^5.19.1 || 6.5.0",
     "videojs-contrib-media-sources": "4.6.2",
     "webworkify": "1.0.2"
   },
@@ -132,7 +132,7 @@
     "qunitjs": "^2.0.1",
     "serve-static": "^1.10.0",
     "shelljs": "^0.5.3",
-    "sinon": "1.10.2",
+    "sinon": "1.10.3",
     "uglify-js": "^2.5.0",
     "videojs-contrib-quality-levels": "^2.0.4",
     "videojs-flash": "^2.0.0",
