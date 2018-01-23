@@ -13,12 +13,20 @@ module.exports = function(config) {
         availableBrowsers.splice(safariIndex, 1);
         console.log("Disabled Safari as it was/is not supported");
       }
+
+      var chromeIndex = availableBrowsers.indexOf('Chrome');
+
+      if (chromeIndex !== -1) {
+        availableBrowsers.splice(chromeIndex, 1);
+        availableBrowsers.push('ChromeHeadless');
+      }
+
       return availableBrowsers;
     }
   };
 
   if (process.env.TRAVIS) {
-    config.browsers = ['ChromeHeadlessNoSandbox'];
+    config.browsers = ['ChromeNoSandbox'];
   }
 
   // If no browsers are specified, we enable `karma-detect-browsers`
@@ -67,8 +75,8 @@ module.exports = function(config) {
       }
     },
     customLaunchers: {
-      ChromeHeadlessNoSandbox: {
-        base: 'ChromeHeadless',
+      ChromeNoSandbox: {
+        base: 'Chrome',
         flags: ['--no-sandbox']
       }
     },
