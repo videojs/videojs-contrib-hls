@@ -15,8 +15,6 @@ notifications:
 before_script:
   # always install the appropriate version of video.js for the environment
   - npm i "video.js@$VJS";
-env:
-  - VJS=5
-  - VJS=6
+env: "VJS=6"
 addons:
   chrome: stable
