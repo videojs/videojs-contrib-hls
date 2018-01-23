@@ -25,7 +25,6 @@ QUnit.module('PlaybackWatcher', {
   },
 
   afterEach() {
-    this.clock.tick(1);
     this.env.restore();
     this.mse.restore();
     this.player.dispose();
@@ -190,7 +189,6 @@ function(assert) {
   this.clock.tick(1);
 
   this.player.currentTime(0);
-  this.clock.tick(1);
 
   let seeks = [];
 

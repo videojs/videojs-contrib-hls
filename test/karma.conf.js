@@ -13,7 +13,6 @@ module.exports = function(config) {
         availableBrowsers.splice(safariIndex, 1);
         console.log("Disabled Safari as it was/is not supported");
       }
-
       return availableBrowsers;
     }
   };
