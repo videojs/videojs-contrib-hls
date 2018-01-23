@@ -69,7 +69,7 @@ module.exports = function(config) {
     },
     customLaunchers: {
       travisChrome: {
-        base: 'Chrome',
+        base: 'ChromeHeadless',
         flags: ['--no-sandbox']
       }
     },
