@@ -15,6 +15,9 @@ notifications:
 before_script:
   # always install the appropriate version of video.js for the environment
   - npm i "video.js@$VJS";
+  - export CHROME_BIN=/usr/bin/google-chrome
+  - export DISPLAY=:99.0
+  - sh -e /etc/init.d/xvfb start
 env: "VJS=6"
 addons:
   chrome: stable
