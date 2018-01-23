@@ -1,9 +1,6 @@
 sudo: false
 dist: trusty
 language: node_js
-cache:
-  directories:
-    - node_modules
 notifications:
   hipchat:
     rooms:
