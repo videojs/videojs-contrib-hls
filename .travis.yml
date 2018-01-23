@@ -2,7 +2,7 @@ sudo: false
 dist: trusty
 language: node_js
 node_js:
-  - node
+  - 'node'
 notifications:
   hipchat:
     rooms:
@@ -18,9 +18,10 @@ before_script:
   - export DISPLAY=:99.0
   - sh -e /etc/init.d/xvfb start
 env:
-  - "VJS=5"
-  - "VJS=6"
+  - VJS=5
+  - VJS=6
 addons:
+  - firefox: latest
   apt:
     sources:
     - google-chrome
