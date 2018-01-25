@@ -5,7 +5,7 @@ const http = require('http');
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
-const networkTrace = 'network-trace.txt';
+let networkTrace = 'network-trace.txt';
 const port = 9000;
 let firstRequestTime;
 
@@ -95,7 +95,7 @@ const writeSlowly = (req, res, data) => {
 // maps file extention to MIME type
 // we only care about these two types
 const map = {
-  '.ts': 'application/octet-stream',
+  '.ts': 'video/MP2T',
   '.m3u8': 'application/x-mpegurl'
 };
 
