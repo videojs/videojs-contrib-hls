@@ -1926,15 +1926,21 @@ QUnit.test('remove event handlers on dispose', function(assert) {
   let unscoped = 0;
 
   player = createPlayer();
-  player.on = function(owner) {
-    if (typeof owner !== 'object') {
+
+  const origPlayerOn = player.on.bind(player);
+  const origPlayerOff = player.off.bind(player);
+
+  player.on = function(...args) {
+    if (typeof args[0] !== 'object') {
       unscoped++;
     }
+    origPlayerOn(...args);
   };
-  player.off = function(owner) {
-    if (typeof owner !== 'object') {
+  player.off = function(...args) {
+    if (typeof args[0] !== 'object') {
       unscoped--;
     }
+    origPlayerOff(...args);
   };
   player.src({
     src: 'manifest/master.m3u8',
@@ -1947,6 +1953,8 @@ QUnit.test('remove event handlers on dispose', function(assert) {
 
   this.standardXHRResponse(this.requests[0]);
   this.standardXHRResponse(this.requests[1]);
+
+  assert.ok(unscoped > 0, 'has unscoped handlers');
 
   player.dispose();
 
