@@ -79,10 +79,7 @@ module.exports = function(config) {
     autoWatch: false,
     singleRun: true,
     concurrency: Infinity,
-    captureTimeout: 300000,
-    browserNoActivityTimeout: 300000,
-    browserDisconnectTimeout: 300000,
-    browserDisconnectTolerance: 3
+    browserDisconnectTolerance: 5
   });
 
   // Coverage reporting
