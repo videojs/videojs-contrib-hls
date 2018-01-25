@@ -54,7 +54,6 @@ Maintenance Status: Stable
 - [Hosting Considerations](#hosting-considerations)
 - [Known Issues](#known-issues)
   - [IE10 and Below](#ie10-and-below)
-  - [IE11](#ie11)
   - [Fragmented MP4 Support](#fragmented-mp4-support)
   - [Testing](#testing)
 - [Release History](#release-history)
@@ -619,12 +618,6 @@ help find a solution that would be appreciated!
 
 ### IE10 and Below
 As of version 5.0.0, IE10 and below are no longer supported.
-
-### IE11
-In some IE11 setups there are issues working with its native HTML
-SourceBuffers functionality. This leads to various issues, such as
-videos stopping playback with media decode errors. The known workaround
-for this issues is to force the player to use flash when running on IE11.
 
 ### Fragmented MP4 Support
 Edge has native support for HLS but only in the MPEG2-TS container. If
