@@ -35,6 +35,7 @@ Maintenance Status: Stable
       - [blacklistDuration](#blacklistduration)
       - [bandwidth](#bandwidth)
       - [useBandwidthFromLocalStorage](#usebandwidthfromlocalstorage)
+      - [enableLowInitialPlaylist](#enablelowinitialplaylist)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -46,12 +47,14 @@ Maintenance Status: Stable
     - [hls.xhr](#hlsxhr)
   - [Events](#events)
     - [loadedmetadata](#loadedmetadata)
+  - [HLS Usage Events](#hls-usage-events)
+    - [Presence Stats](#presence-stats)
+    - [Use Stats](#use-stats)
   - [In-Band Metadata](#in-band-metadata)
   - [Segment Metadata](#segment-metadata)
 - [Hosting Considerations](#hosting-considerations)
 - [Known Issues](#known-issues)
   - [IE10 and Below](#ie10-and-below)
-  - [IE11](#ie11)
   - [Fragmented MP4 Support](#fragmented-mp4-support)
   - [Testing](#testing)
 - [Release History](#release-history)
@@ -71,7 +74,7 @@ npm install --save videojs-contrib-hls
 ```
 
 ### CDN
-Select a version of HLS from the [CDN](https://cdnjs.com/libraries/videojs-contrib-hls)
+Select a version of HLS from [cdnjs](https://cdnjs.com/libraries/videojs-contrib-hls) or [jsDelivr](https://www.jsdelivr.com/package/npm/videojs-contrib-hls)
 
 ### Releases
 Download a release of [videojs-contrib-hls](https://github.com/videojs/videojs-contrib-hls/releases)
@@ -307,17 +310,21 @@ When the `bandwidth` property is set (bits per second), it will be used in
 the calculation for initial playlist selection, before more bandwidth
 information is seen by the player.
 
-* Type: `boolean`
-* can be used as an initialization option
-
-If true, `bandwidth` and `throughput` values are stored in local storage.
-
 ##### useBandwidthFromLocalStorage
 * Type: `boolean`
 * can be used as an initialization option
 
 If true, `bandwidth` and `throughput` values are stored in and retrieved from local
 storage on startup (for initial rendition selection).
+
+##### enableLowInitialPlaylist
+* Type: `boolean`
+* can be used as an initialization option
+
+When `enableLowInitialPlaylist` is set to true, it will be used to select
+the lowest bitrate playlist initially.  This helps to decrease playback start time.
+This setting is `false` by default.
+
 
 ### Runtime Properties
 Runtime properties are attached to the tech object when HLS is in
@@ -456,7 +463,7 @@ The global `videojs.Hls` also exposes an `xhr` property. Specifying a
 `beforeRequest` function on that will allow you to intercept the options
 for *all* requests in every player on a page. For consistency across
 browsers the video source should be set at runtime once the video player
-is ready. 
+is ready.
 
 Example
 ```javascript
@@ -488,6 +495,54 @@ are triggered on the player object.
 
 Fired after the first segment is downloaded for a playlist. This will not happen
 until playback if video.js's `metadata` setting is `none`
+
+### HLS Usage Events
+
+Usage tracking events are fired when we detect a certain HLS feature, encoding setting,
+or API is used. These can be helpful for analytics, and to pinpoint the cause of HLS errors.
+For instance, if errors are being fired in tandem with a usage event indicating that the
+player was playing an AES encrypted stream, then we have a possible avenue to explore when
+debugging the error.
+
+Note that although these usage events are listed below, they may change at any time without
+a major version change.
+
+HLS usage events are triggered on the tech with the exception of the 3 hls-reload-error
+events, which are triggered on the player.
+
+#### Presence Stats
+
+Each of the following usage events are fired once per source if (and when) detected:
+
+| Name          | Description   |
+| ------------- | ------------- |
+| hls-webvtt    | master manifest has at least one segmented WebVTT playlist |
+| hls-aes       | a playlist is AES encrypted |
+| hls-fmp4      | a playlist used fMP4 segments |
+| hls-demuxed   | audio and video are demuxed by default |
+| hls-alternate-audio | alternate audio available in the master manifest |
+| hls-playlist-cue-tags | a playlist used cue tags (see useCueTags(#usecuetags) for details) |
+
+#### Use Stats
+
+Each of the following usage events are fired per use:
+
+| Name          | Description   |
+| ------------- | ------------- |
+| hls-gap-skip  | player skipped a gap in the buffer |
+| hls-player-access | player.hls was accessed |
+| hls-audio-change | a user selected an alternate audio stream |
+| hls-rendition-disabled | a rendition was disabled |
+| hls-rendition-enabled | a rendition was enabled |
+| hls-rendition-blacklisted | a rendition was blacklisted |
+| hls-timestamp-offset | a timestamp offset was set in HLS (can identify discontinuities) |
+| hls-unknown-waiting | the player stopped for an unknown reason and we seeked to current time try to address it |
+| hls-live-resync | playback fell off the back of a live playlist and we resynced to the live point |
+| hls-video-underflow | we seeked to current time to address video underflow |
+| hls-error-reload-initialized | the reloadSourceOnError plugin was initialized |
+| hls-error-reload | the reloadSourceOnError plugin reloaded a source |
+| hls-error-reload-canceled | an error occurred too soon after the last reload, so we didn't reload again (to prevent error loops) |
+
 
 ### In-Band Metadata
 The HLS tech supports [timed
@@ -572,12 +627,6 @@ help find a solution that would be appreciated!
 
 ### IE10 and Below
 As of version 5.0.0, IE10 and below are no longer supported.
-
-### IE11
-In some IE11 setups there are issues working with its native HTML
-SourceBuffers functionality. This leads to various issues, such as
-videos stopping playback with media decode errors. The known workaround
-for this issues is to force the player to use flash when running on IE11.
 
 ### Fragmented MP4 Support
 Edge has native support for HLS but only in the MPEG2-TS container. If
