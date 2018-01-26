@@ -8,24 +8,19 @@ const makeMockPlaylist = function(options) {
   options = options || {};
 
   let playlist = {
-    segments: []
+    segments: [],
+    attributes: {}
   };
 
-  if ('bandwidth' in options) {
-    playlist.attributes = playlist.attributes || {};
-
-    playlist.attributes.BANDWIDTH = options.bandwidth;
-  }
+  playlist.attributes.BANDWIDTH = options.bandwidth;
 
   if ('width' in options) {
-    playlist.attributes = playlist.attributes || {};
     playlist.attributes.RESOLUTION = playlist.attributes.RESOLUTION || {};
 
     playlist.attributes.RESOLUTION.width = options.width;
   }
 
   if ('height' in options) {
-    playlist.attributes = playlist.attributes || {};
     playlist.attributes.RESOLUTION = playlist.attributes.RESOLUTION || {};
 
     playlist.attributes.RESOLUTION.height = options.height;
@@ -66,7 +61,8 @@ const makeMockHlsHandler = function(playlistOptions) {
     hlsHandler.playlists.master.playlists[i] = makeMockPlaylist(playlist);
 
     if (playlist.uri) {
-      hlsHandler.playlists.master.playlists[playlist.uri] = hlsHandler.playlists.master.playlists[i];
+      hlsHandler.playlists.master.playlists[playlist.uri] =
+        hlsHandler.playlists.master.playlists[i];
     }
   });
 
@@ -82,7 +78,8 @@ QUnit.test('adds the representations API to HlsHandler', function(assert) {
 
   RenditionMixin(hlsHandler);
 
-  assert.equal(typeof hlsHandler.representations, 'function', 'added the representations API');
+  assert.equal(typeof hlsHandler.representations, 'function',
+    'added the representations API');
 });
 
 QUnit.test('returns proper number of representations', function(assert) {
@@ -148,7 +145,8 @@ QUnit.test('returns representations with width and height if present', function(
   assert.equal(renditions[2].height, undefined, 'rendition has a height of undefined');
 });
 
-QUnit.test('blacklisted playlists are not included in the representations list', function(assert) {
+QUnit.test('incompatible playlists are not included in the representations list',
+function(assert) {
   let hlsHandler = makeMockHlsHandler([
     {
       bandwidth: 0,
@@ -180,13 +178,15 @@ QUnit.test('blacklisted playlists are not included in the representations list',
 
   let renditions = hlsHandler.representations();
 
-  assert.equal(renditions.length, 3, 'blacklisted rendition not added');
+  assert.equal(renditions.length, 4, 'incompatible rendition not added');
   assert.equal(renditions[0].id, 'media1.m3u8', 'rendition is enabled');
-  assert.equal(renditions[1].id, 'media3.m3u8', 'rendition is enabled');
-  assert.equal(renditions[2].id, 'media4.m3u8', 'rendition is enabled');
+  assert.equal(renditions[1].id, 'media2.m3u8', 'rendition is enabled');
+  assert.equal(renditions[2].id, 'media3.m3u8', 'rendition is enabled');
+  assert.equal(renditions[3].id, 'media4.m3u8', 'rendition is enabled');
 });
 
-QUnit.test('setting a representation to disabled sets disabled to true', function(assert) {
+QUnit.test('setting a representation to disabled sets disabled to true',
+function(assert) {
   let renditiondisabled = 0;
   let hlsHandler = makeMockHlsHandler([
     {
@@ -216,11 +216,14 @@ QUnit.test('setting a representation to disabled sets disabled to true', functio
   assert.equal(renditiondisabled, 1, 'renditiondisabled event has been triggered');
   assert.equal(playlists[0].disabled, true, 'rendition has been disabled');
   assert.equal(playlists[1].disabled, undefined, 'rendition has not been disabled');
-  assert.equal(playlists[0].excludeUntil, 0, 'excludeUntil not touched when disabling a rendition');
-  assert.equal(playlists[1].excludeUntil, 0, 'excludeUntil not touched when disabling a rendition');
+  assert.equal(playlists[0].excludeUntil, 0,
+    'excludeUntil not touched when disabling a rendition');
+  assert.equal(playlists[1].excludeUntil, 0,
+    'excludeUntil not touched when disabling a rendition');
 });
 
-QUnit.test('changing the enabled state of a representation calls fastQualityChange_', function(assert) {
+QUnit.test('changing the enabled state of a representation calls fastQualityChange_',
+function(assert) {
   let renditionEnabledEvents = 0;
   let hlsHandler = makeMockHlsHandler([
     {
@@ -244,12 +247,14 @@ QUnit.test('changing the enabled state of a representation calls fastQualityChan
   let renditions = hlsHandler.representations();
 
   assert.equal(mpc.fastQualityChange_.calls, 0, 'fastQualityChange_ was never called');
-  assert.equal(renditionEnabledEvents, 0, 'renditionenabled event has not been triggered');
+  assert.equal(renditionEnabledEvents, 0,
+    'renditionenabled event has not been triggered');
 
   renditions[0].enabled(true);
 
   assert.equal(mpc.fastQualityChange_.calls, 1, 'fastQualityChange_ was called once');
-  assert.equal(renditionEnabledEvents, 1, 'renditionenabled event has been triggered once');
+  assert.equal(renditionEnabledEvents, 1,
+    'renditionenabled event has been triggered once');
 
   renditions[1].enabled(false);
 

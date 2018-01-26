@@ -1,5 +1,9 @@
 import QUnit from 'qunit';
-import SegmentLoader from '../src/segment-loader';
+import {
+  default as SegmentLoader,
+  illegalMediaSwitch,
+  safeBackBufferTrimTime
+} from '../src/segment-loader';
 import videojs from 'video.js';
 import mp4probe from 'mux.js/lib/mp4/probe';
 import {
@@ -19,6 +23,111 @@ import sinon from 'sinon';
 const ogAddSegmentMetadataCue_ = SegmentLoader.prototype.addSegmentMetadataCue_;
 
 SegmentLoader.prototype.addSegmentMetadataCue_ = function() {};
+
+QUnit.module('SegmentLoader Isolated Functions');
+
+QUnit.test('illegalMediaSwitch detects illegal media switches', function(assert) {
+  let startingMedia = { containsAudio: true, containsVideo: true };
+  let newSegmentMedia = { containsAudio: true, containsVideo: true };
+
+  assert.notOk(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'no error when muxed to muxed');
+
+  startingMedia = { containsAudio: true, containsVideo: true };
+  newSegmentMedia = { containsAudio: false, containsVideo: false };
+  assert.notOk(illegalMediaSwitch('audio', startingMedia, newSegmentMedia),
+               'no error when not main loader type');
+
+  startingMedia = { containsAudio: true, containsVideo: false };
+  newSegmentMedia = { containsAudio: true, containsVideo: false };
+  assert.notOk(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'no error when audio only to audio only');
+
+  startingMedia = { containsAudio: false, containsVideo: true };
+  newSegmentMedia = { containsAudio: false, containsVideo: true };
+  assert.notOk(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'no error when video only to video only');
+
+  startingMedia = { containsAudio: false, containsVideo: true };
+  newSegmentMedia = { containsAudio: true, containsVideo: true };
+  assert.notOk(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'no error when video only to muxed');
+
+  startingMedia = { containsAudio: true, containsVideo: true };
+  newSegmentMedia = { containsAudio: false, containsVideo: false };
+  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'Neither audio nor video found in segment.',
+               'error when neither audio nor video');
+
+  startingMedia = { containsAudio: true, containsVideo: false };
+  newSegmentMedia = { containsAudio: false, containsVideo: false };
+  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'Neither audio nor video found in segment.',
+               'error when audio only to neither audio nor video');
+
+  startingMedia = { containsAudio: false, containsVideo: true };
+  newSegmentMedia = { containsAudio: false, containsVideo: false };
+  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'Neither audio nor video found in segment.',
+               'error when video only to neither audio nor video');
+
+  startingMedia = { containsAudio: true, containsVideo: false };
+  newSegmentMedia = { containsAudio: true, containsVideo: true };
+  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'Video found in segment when we expected only audio.' +
+               ' We can\'t switch to a stream with video from an audio only stream.' +
+               ' To get rid of this message, please add codec information to the' +
+               ' manifest.',
+               'error when audio only to muxed');
+
+  startingMedia = { containsAudio: true, containsVideo: true };
+  newSegmentMedia = { containsAudio: true, containsVideo: false };
+  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'Only audio found in segment when we expected video.' +
+               ' We can\'t switch to audio only from a stream that had video.' +
+               ' To get rid of this message, please add codec information to the' +
+               ' manifest.',
+               'error when muxed to audio only');
+
+  startingMedia = { containsAudio: true, containsVideo: false };
+  newSegmentMedia = { containsAudio: false, containsVideo: true };
+  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'Video found in segment when we expected only audio.' +
+               ' We can\'t switch to a stream with video from an audio only stream.' +
+               ' To get rid of this message, please add codec information to the' +
+               ' manifest.',
+               'error when audio only to video only');
+
+  startingMedia = { containsAudio: false, containsVideo: true };
+  newSegmentMedia = { containsAudio: true, containsVideo: false };
+  assert.equal(illegalMediaSwitch('main', startingMedia, newSegmentMedia),
+               'Only audio found in segment when we expected video.' +
+               ' We can\'t switch to audio only from a stream that had video.' +
+               ' To get rid of this message, please add codec information to the' +
+               ' manifest.',
+               'error when video only to audio only');
+});
+
+QUnit.test('safeBackBufferTrimTime determines correct safe removeToTime',
+function(assert) {
+  let seekable = videojs.createTimeRanges([[75, 120]]);
+  let targetDuration = 10;
+  let currentTime = 70;
+
+  assert.equal(safeBackBufferTrimTime(seekable, currentTime, targetDuration), 40,
+    'uses 30s before current time if currentTime is before seekable start');
+
+  currentTime = 110;
+
+  assert.equal(safeBackBufferTrimTime(seekable, currentTime, targetDuration), 75,
+    'uses seekable start if currentTime is after seekable start');
+
+  currentTime = 80;
+
+  assert.equal(safeBackBufferTrimTime(seekable, currentTime, targetDuration), 70,
+    'uses target duration before currentTime if currentTime is after seekable but' +
+    'within target duration');
+});
 
 QUnit.module('SegmentLoader', function(hooks) {
   hooks.beforeEach(LoaderCommonHooks.beforeEach);
@@ -217,7 +326,8 @@ QUnit.module('SegmentLoader', function(hooks) {
       this.updateend();
       this.clock.tick(1);
 
-      assert.equal(hlsTimestampOffsetEvents, 0, 'no hls-timestamp-offset event was fired');
+      assert.equal(hlsTimestampOffsetEvents, 0,
+        'no hls-timestamp-offset event was fired');
       // segment 1, discontinuity
       this.requests[0].response = new Uint8Array(10).buffer;
       this.requests.shift().respond(200, null, '');
@@ -228,7 +338,8 @@ QUnit.module('SegmentLoader', function(hooks) {
       // verify stats
       assert.equal(loader.mediaBytesTransferred, 20, '20 bytes');
       assert.equal(loader.mediaRequests, 2, '2 requests');
-      assert.equal(hlsTimestampOffsetEvents, 1, 'an hls-timestamp-offset event was fired');
+      assert.equal(hlsTimestampOffsetEvents, 1,
+        'an hls-timestamp-offset event was fired');
     });
 
     QUnit.test('tracks segment end times as they are buffered', function(assert) {
@@ -254,6 +365,48 @@ QUnit.module('SegmentLoader', function(hooks) {
       // verify stats
       assert.equal(loader.mediaBytesTransferred, 10, '10 bytes');
       assert.equal(loader.mediaRequests, 1, '1 request');
+    });
+
+    QUnit.test('loader triggers segmenttimemapping before appending segment',
+    function(assert) {
+      let playlist = playlistWithDuration(20);
+      let segmenttimemappings = 0;
+      let timingInfo = { hasMapping: false };
+
+      this.syncController.probeSegmentInfo = () => timingInfo;
+
+      loader.on('segmenttimemapping', function() {
+        segmenttimemappings++;
+      });
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+
+      assert.equal(segmenttimemappings, 0, 'no events before segment downloaded');
+
+      // some time passes and a response is received
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(segmenttimemappings, 0,
+        'did not trigger segmenttimemappings with unsuccessful probe');
+
+      this.updateend();
+      this.clock.tick(1);
+
+      assert.equal(segmenttimemappings, 0, 'no events before segment downloaded');
+
+      timingInfo.hasMapping = true;
+      this.syncController.timelines[0] = { mapping: 0 };
+
+      // some time passes and a response is received
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(segmenttimemappings, 1,
+        'triggered segmenttimemappings with successful probe');
     });
 
     QUnit.test('adds cues with segment information to the segment-metadata track ' +
@@ -600,6 +753,140 @@ QUnit.module('SegmentLoader', function(hooks) {
                 'no start info for first segment of new playlist');
       assert.ok(!playlistUpdated.segments[0].end,
                 'no end info for first segment of new playlist');
+    });
+
+    QUnit.test('errors when trying to switch from audio and video to audio only',
+    function(assert) {
+      const playlist = playlistWithDuration(40);
+      const errors = [];
+
+      loader.on('error', () => errors.push(loader.error()));
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 0,
+          end: 10,
+          containsAudio: true,
+          containsVideo: true
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+      loader.buffered_ = () => videojs.createTimeRanges([[0, 10]]);
+      this.updateend();
+      this.clock.tick(1);
+
+      assert.equal(errors.length, 0, 'no errors');
+
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 10,
+          end: 20,
+          containsAudio: true,
+          containsVideo: false
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(errors.length, 1, 'one error');
+      assert.equal(errors[0].message,
+                   'Only audio found in segment when we expected video.' +
+                   ' We can\'t switch to audio only from a stream that had video.' +
+                   ' To get rid of this message, please add codec information to the' +
+                   ' manifest.',
+                   'correct error message');
+    });
+
+    QUnit.test('errors when trying to switch from audio only to audio and video',
+    function(assert) {
+      const playlist = playlistWithDuration(40);
+      const errors = [];
+
+      loader.on('error', () => errors.push(loader.error()));
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 0,
+          end: 10,
+          containsAudio: true,
+          containsVideo: false
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+      loader.buffered_ = () => videojs.createTimeRanges([[0, 10]]);
+      this.updateend();
+      this.clock.tick(1);
+
+      assert.equal(errors.length, 0, 'no errors');
+
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 10,
+          end: 20,
+          containsAudio: true,
+          containsVideo: true
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(errors.length, 1, 'one error');
+      assert.equal(errors[0].message,
+                   'Video found in segment when we expected only audio.' +
+                   ' We can\'t switch to a stream with video from an audio only stream.' +
+                   ' To get rid of this message, please add codec information to the' +
+                   ' manifest.',
+                   'correct error message');
+    });
+
+    QUnit.test('no error when not switching from audio and video', function(assert) {
+      const playlist = playlistWithDuration(40);
+      const errors = [];
+
+      loader.on('error', () => errors.push(loader.error()));
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 0,
+          end: 10,
+          containsAudio: true,
+          containsVideo: true
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+      loader.buffered_ = () => videojs.createTimeRanges([[0, 10]]);
+      this.updateend();
+      this.clock.tick(1);
+
+      assert.equal(errors.length, 0, 'no errors');
+
+      loader.syncController_.probeSegmentInfo = () => {
+        return {
+          start: 10,
+          end: 20,
+          containsAudio: true,
+          containsVideo: true
+        };
+      };
+      this.requests[0].response = new Uint8Array(10).buffer;
+      this.requests.shift().respond(200, null, '');
+
+      assert.equal(errors.length, 0, 'no errors');
     });
   });
 });

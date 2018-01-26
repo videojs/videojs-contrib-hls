@@ -44,6 +44,7 @@ export default class PlaybackWatcher {
     }
     this.logger_('initialize');
 
+    let canPlayHandler = () => this.monitorCurrentTime_();
     let waitingHandler = () => this.techWaiting_();
     let cancelTimerHandler = () => this.cancelTimer_();
     let fixesBadSeeksHandler = () => this.fixesBadSeeks_();
@@ -51,7 +52,7 @@ export default class PlaybackWatcher {
     this.tech_.on('seekablechanged', fixesBadSeeksHandler);
     this.tech_.on('waiting', waitingHandler);
     this.tech_.on(timerCancelEvents, cancelTimerHandler);
-    this.monitorCurrentTime_();
+    this.tech_.on('canplay', canPlayHandler);
 
     // Define the dispose function to clean up our events
     this.dispose = () => {
@@ -59,6 +60,7 @@ export default class PlaybackWatcher {
       this.tech_.off('seekablechanged', fixesBadSeeksHandler);
       this.tech_.off('waiting', waitingHandler);
       this.tech_.off(timerCancelEvents, cancelTimerHandler);
+      this.tech_.off('canplay', canPlayHandler);
       if (this.checkCurrentTimeTimeout_) {
         window.clearTimeout(this.checkCurrentTimeTimeout_);
       }
@@ -105,7 +107,8 @@ export default class PlaybackWatcher {
     let buffered = this.tech_.buffered();
 
     if (this.lastRecordedTime === currentTime &&
-        (!buffered.length || currentTime + 0.1 >= buffered.end(buffered.length - 1))) {
+        (!buffered.length ||
+         currentTime + Ranges.SAFE_TIME_DELTA >= buffered.end(buffered.length - 1))) {
       // If current time is at the end of the final buffered region, then any playback
       // stall is most likely caused by buffering in a low bandwidth environment. The tech
       // should fire a `waiting` event in this scenario, but due to browser and tech
@@ -152,18 +155,32 @@ export default class PlaybackWatcher {
    * @private
    */
   fixesBadSeeks_() {
-    let seekable = this.seekable();
-    let currentTime = this.tech_.currentTime();
+    const seeking = this.tech_.seeking();
+    const seekable = this.seekable();
+    const currentTime = this.tech_.currentTime();
+    let seekTo;
 
-    if (this.tech_.seeking() &&
-        this.outsideOfSeekableWindow_(seekable, currentTime)) {
-      let seekableEnd = seekable.end(seekable.length - 1);
+    if (seeking && this.afterSeekableWindow_(seekable, currentTime)) {
+      const seekableEnd = seekable.end(seekable.length - 1);
 
       // sync to live point (if VOD, our seekable was updated and we're simply adjusting)
+      seekTo = seekableEnd;
+    }
+
+    if (seeking && this.beforeSeekableWindow_(seekable, currentTime)) {
+      const seekableStart = seekable.start(0);
+
+      // sync to the beginning of the live window
+      // provide a buffer of .1 seconds to handle rounding/imprecise numbers
+      seekTo = seekableStart + Ranges.SAFE_TIME_DELTA;
+    }
+
+    if (typeof seekTo !== 'undefined') {
       this.logger_(`Trying to seek outside of seekable at time ${currentTime} with ` +
-                   `seekable range ${Ranges.printableRange(seekable)}. Seeking to ` +
-                   `${seekableEnd}.`);
-      this.tech_.setCurrentTime(seekableEnd);
+                  `seekable range ${Ranges.printableRange(seekable)}. Seeking to ` +
+                  `${seekTo}.`);
+
+      this.tech_.setCurrentTime(seekTo);
       return true;
     }
 
@@ -229,7 +246,7 @@ export default class PlaybackWatcher {
       return true;
     }
 
-    if (this.fellOutOfLiveWindow_(seekable, currentTime)) {
+    if (this.beforeSeekableWindow_(seekable, currentTime)) {
       let livePoint = seekable.end(seekable.length - 1);
 
       this.logger_(`Fell out of live window at time ${currentTime}. Seeking to ` +
@@ -276,26 +293,24 @@ export default class PlaybackWatcher {
     return false;
   }
 
-  outsideOfSeekableWindow_(seekable, currentTime) {
+  afterSeekableWindow_(seekable, currentTime) {
     if (!seekable.length) {
       // we can't make a solid case if there's no seekable, default to false
       return false;
     }
 
-    // provide a buffer of .1 seconds to handle rounding/imprecise numbers
-    if (currentTime < seekable.start(0) - 0.1 ||
-        currentTime > seekable.end(seekable.length - 1) + 0.1) {
+    if (currentTime > seekable.end(seekable.length - 1) + Ranges.SAFE_TIME_DELTA) {
       return true;
     }
 
     return false;
   }
 
-  fellOutOfLiveWindow_(seekable, currentTime) {
+  beforeSeekableWindow_(seekable, currentTime) {
     if (seekable.length &&
         // can't fall before 0 and 0 seekable start identifies VOD stream
         seekable.start(0) > 0 &&
-        currentTime < seekable.start(0)) {
+        currentTime < seekable.start(0) - Ranges.SAFE_TIME_DELTA) {
       return true;
     }
 

@@ -46,7 +46,7 @@ export const syncPointStrategies = [
   {
     name: 'Segment',
     run: (syncController, playlist, duration, currentTimeline, currentTime) => {
-      let segments = playlist.segments;
+      let segments = playlist.segments || [];
       let syncPoint = null;
       let lastDistance = null;
 
@@ -87,7 +87,7 @@ export const syncPointStrategies = [
 
       currentTime = currentTime || 0;
 
-      if (playlist.discontinuityStarts.length) {
+      if (playlist.discontinuityStarts && playlist.discontinuityStarts.length) {
         let lastDistance = null;
 
         for (let i = 0; i < playlist.discontinuityStarts.length; i++) {
@@ -358,7 +358,8 @@ export default class SyncController extends videojs.EventTarget {
    * @param {SegmentInfo} segmentInfo - The current active request information
    */
   probeSegmentInfo(segmentInfo) {
-    let segment = segmentInfo.segment;
+    const segment = segmentInfo.segment;
+    const playlist = segmentInfo.playlist;
     let timingInfo;
 
     if (segment.map) {
@@ -370,8 +371,19 @@ export default class SyncController extends videojs.EventTarget {
     if (timingInfo) {
       if (this.calculateSegmentTimeMapping_(segmentInfo, timingInfo)) {
         this.saveDiscontinuitySyncInfo_(segmentInfo);
+
+        // If the playlist does not have sync information yet, record that information
+        // now with segment timing information
+        if (!playlist.syncInfo) {
+          playlist.syncInfo = {
+            mediaSequence: playlist.mediaSequence + segmentInfo.mediaIndex,
+            time: segment.start
+          };
+        }
       }
     }
+
+    return timingInfo;
   }
 
   /**
@@ -426,7 +438,9 @@ export default class SyncController extends videojs.EventTarget {
 
     return {
       start: segmentStartTime,
-      end: segmentEndTime
+      end: segmentEndTime,
+      containsVideo: timeInfo.video && timeInfo.video.length === 2,
+      containsAudio: timeInfo.audio && timeInfo.audio.length === 2
     };
   }
 
@@ -435,6 +449,13 @@ export default class SyncController extends videojs.EventTarget {
       return null;
     }
     return this.timelines[timeline].time;
+  }
+
+  mappingForTimeline(timeline) {
+    if (typeof this.timelines[timeline] === 'undefined') {
+      return null;
+    }
+    return this.timelines[timeline].mapping;
   }
 
   /**

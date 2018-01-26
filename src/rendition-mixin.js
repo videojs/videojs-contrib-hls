@@ -1,20 +1,20 @@
-import { isBlacklisted, isEnabled } from './playlist.js';
+import { isIncompatible, isEnabled } from './playlist.js';
+
 /**
- * Enable/disable playlist function. It is intended to have the first two
- * arguments partially-applied in order to create the final per-playlist
- * function.
+ * Returns a function that acts as the Enable/disable playlist function.
  *
- * @param {PlaylistLoader} playlist - The rendition or media-playlist
+ * @param {PlaylistLoader} loader - The master playlist loader
+ * @param {String} playlistUri - uri of the playlist
  * @param {Function} changePlaylistFn - A function to be called after a
  * playlist's enabled-state has been changed. Will NOT be called if a
  * playlist's enabled-state is unchanged
  * @param {Boolean=} enable - Value to set the playlist enabled-state to
  * or if undefined returns the current enabled-state for the playlist
- * @return {Boolean} The current enabled-state of the playlist
+ * @return {Function} Function for setting/getting enabled
  */
-const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
+const enableFunction = (loader, playlistUri, changePlaylistFn) => (enable) => {
   const playlist = loader.master.playlists[playlistUri];
-  const blacklisted = isBlacklisted(playlist);
+  const incompatible = isIncompatible(playlist);
   const currentlyEnabled = isEnabled(playlist);
 
   if (typeof enable === 'undefined') {
@@ -27,7 +27,7 @@ const enableFunction = (loader, playlistUri, changePlaylistFn, enable) => {
     playlist.disabled = true;
   }
 
-  if (enable !== currentlyEnabled && !blacklisted) {
+  if (enable !== currentlyEnabled && !incompatible) {
     // Ensure the outside world knows about our changes
     changePlaylistFn();
     if (enable) {
@@ -54,20 +54,15 @@ class Representation {
                               .fastQualityChange_
                               .bind(hlsHandler.masterPlaylistController_);
 
-    // Carefully descend into the playlist's attributes since most
-    // properties are optional
-    if (playlist.attributes) {
-      let attributes = playlist.attributes;
+    // some playlist attributes are optional
+    if (playlist.attributes.RESOLUTION) {
+      const resolution = playlist.attributes.RESOLUTION;
 
-      if (attributes.RESOLUTION) {
-        let resolution = attributes.RESOLUTION;
-
-        this.width = resolution.width;
-        this.height = resolution.height;
-      }
-
-      this.bandwidth = attributes.BANDWIDTH;
+      this.width = resolution.width;
+      this.height = resolution.height;
     }
+
+    this.bandwidth = playlist.attributes.BANDWIDTH;
 
     // The id is simply the ordinality of the media playlist
     // within the master playlist
@@ -75,10 +70,9 @@ class Representation {
 
     // Partially-apply the enableFunction to create a playlist-
     // specific variant
-    this.enabled = enableFunction.bind(this,
-                                       hlsHandler.playlists,
-                                       playlist.uri,
-                                       fastChangeFunction);
+    this.enabled = enableFunction(hlsHandler.playlists,
+                                  playlist.uri,
+                                  fastChangeFunction);
   }
 }
 
@@ -96,7 +90,7 @@ let renditionSelectionMixin = function(hlsHandler) {
     return playlists
       .master
       .playlists
-      .filter((media) => !isBlacklisted(media))
+      .filter((media) => !isIncompatible(media))
       .map((e, i) => new Representation(hlsHandler, e, e.uri));
   };
 };

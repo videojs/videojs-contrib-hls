@@ -30,6 +30,8 @@ const options = [{
   alt: 555
 }];
 
+const CONFIG_KEYS = Object.keys(Config);
+
 QUnit.module('Configuration - Deprication', {
   beforeEach(assert) {
     this.env = useFakeEnvironment(assert);
@@ -37,14 +39,16 @@ QUnit.module('Configuration - Deprication', {
     this.mse = useFakeMediaSource();
     this.clock = this.env.clock;
     this.old = {};
-    this.old.GOAL_BUFFER_LENGTH = Config.GOAL_BUFFER_LENGTH;
+
+    CONFIG_KEYS.forEach((key) => this.old[key] = Config[key]);
+
     // force the HLS tech to run
     this.old.NativeHlsSupport = videojs.Hls.supportsNativeHls;
     videojs.Hls.supportsNativeHls = false;
   },
 
   afterEach() {
-    Config.GOAL_BUFFER_LENGTH = this.old.GOAL_BUFFER_LENGTH;
+    CONFIG_KEYS.forEach((key) => Config[key] = this.old[key]);
 
     this.env.restore();
     this.mse.restore();
@@ -72,10 +76,152 @@ QUnit.test('GOAL_BUFFER_LENGTH set warning and invalid', function(assert) {
 
   assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
 
-  Hls.GOAL_BUFFER_LENGTH = 0;
+  Hls.GOAL_BUFFER_LENGTH = -1;
   assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
 
   assert.equal(Config.GOAL_BUFFER_LENGTH, 30, 'default');
+});
+
+QUnit.test('MAX_GOAL_BUFFER_LENGTH get warning', function(assert) {
+  assert.equal(Hls.MAX_GOAL_BUFFER_LENGTH,
+              Config.MAX_GOAL_BUFFER_LENGTH,
+              'Hls.MAX_GOAL_BUFFER_LENGTH returns the default');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+});
+
+QUnit.test('MAX_GOAL_BUFFER_LENGTH set warning', function(assert) {
+  Hls.MAX_GOAL_BUFFER_LENGTH = 10;
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+
+  assert.equal(Config.MAX_GOAL_BUFFER_LENGTH, 10, 'returns what we set it to');
+});
+
+QUnit.test('MAX_GOAL_BUFFER_LENGTH set warning and invalid', function(assert) {
+  Hls.MAX_GOAL_BUFFER_LENGTH = 'nope';
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.MAX_GOAL_BUFFER_LENGTH, 60, 'default');
+
+  Hls.MAX_GOAL_BUFFER_LENGTH = -1;
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.MAX_GOAL_BUFFER_LENGTH, 60, 'default');
+});
+
+QUnit.test('GOAL_BUFFER_LENGTH_RATE get warning', function(assert) {
+  assert.equal(Hls.GOAL_BUFFER_LENGTH_RATE,
+              Config.GOAL_BUFFER_LENGTH_RATE,
+              'Hls.GOAL_BUFFER_LENGTH_RATE returns the default');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+});
+
+QUnit.test('GOAL_BUFFER_LENGTH_RATE set warning', function(assert) {
+  Hls.GOAL_BUFFER_LENGTH_RATE = 10;
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+
+  assert.equal(Config.GOAL_BUFFER_LENGTH_RATE, 10, 'returns what we set it to');
+});
+
+QUnit.test('GOAL_BUFFER_LENGTH_RATE set warning and invalid', function(assert) {
+  Hls.GOAL_BUFFER_LENGTH_RATE = 'nope';
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.GOAL_BUFFER_LENGTH_RATE, 1, 'default');
+
+  Hls.GOAL_BUFFER_LENGTH_RATE = -1;
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.GOAL_BUFFER_LENGTH_RATE, 1, 'default');
+});
+
+QUnit.test('BUFFER_LOW_WATER_LINE get warning', function(assert) {
+  assert.equal(Hls.BUFFER_LOW_WATER_LINE,
+              Config.BUFFER_LOW_WATER_LINE,
+              'Hls.BUFFER_LOW_WATER_LINE returns the default');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+});
+
+QUnit.test('BUFFER_LOW_WATER_LINE set warning', function(assert) {
+  Hls.BUFFER_LOW_WATER_LINE = 20;
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 20, 'returns what we set it to');
+
+  // Allow setting to 0
+  Hls.BUFFER_LOW_WATER_LINE = 0;
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'returns what we set it to');
+});
+
+QUnit.test('BUFFER_LOW_WATER_LINE set warning and invalid', function(assert) {
+  Hls.BUFFER_LOW_WATER_LINE = 'nope';
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
+
+  Hls.BUFFER_LOW_WATER_LINE = -1;
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE, 0, 'default');
+});
+
+QUnit.test('MAX_BUFFER_LOW_WATER_LINE get warning', function(assert) {
+  assert.equal(Hls.MAX_BUFFER_LOW_WATER_LINE,
+              Config.MAX_BUFFER_LOW_WATER_LINE,
+              'Hls.MAX_BUFFER_LOW_WATER_LINE returns the default');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+});
+
+QUnit.test('MAX_BUFFER_LOW_WATER_LINE set warning', function(assert) {
+  Hls.MAX_BUFFER_LOW_WATER_LINE = 20;
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+
+  assert.equal(Config.MAX_BUFFER_LOW_WATER_LINE, 20, 'returns what we set it to');
+
+  // Allow setting to 0
+  Hls.MAX_BUFFER_LOW_WATER_LINE = 0;
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+
+  assert.equal(Config.MAX_BUFFER_LOW_WATER_LINE, 0, 'returns what we set it to');
+});
+
+QUnit.test('MAX_BUFFER_LOW_WATER_LINE set warning and invalid', function(assert) {
+  Hls.MAX_BUFFER_LOW_WATER_LINE = 'nope';
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.MAX_BUFFER_LOW_WATER_LINE, 30, 'default');
+
+  Hls.MAX_BUFFER_LOW_WATER_LINE = -1;
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.MAX_BUFFER_LOW_WATER_LINE, 30, 'default');
+});
+
+QUnit.test('BUFFER_LOW_WATER_LINE_RATE get warning', function(assert) {
+  assert.equal(Hls.BUFFER_LOW_WATER_LINE_RATE,
+              Config.BUFFER_LOW_WATER_LINE_RATE,
+              'Hls.BUFFER_LOW_WATER_LINE_RATE returns the default');
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+});
+
+QUnit.test('BUFFER_LOW_WATER_LINE_RATE set warning', function(assert) {
+  Hls.BUFFER_LOW_WATER_LINE_RATE = 10;
+  assert.equal(this.env.log.warn.calls, 1, 'logged a warning');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE_RATE, 10, 'returns what we set it to');
+});
+
+QUnit.test('BUFFER_LOW_WATER_LINE_RATE set warning and invalid', function(assert) {
+  Hls.BUFFER_LOW_WATER_LINE_RATE = 'nope';
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE_RATE, 1, 'default');
+
+  Hls.BUFFER_LOW_WATER_LINE_RATE = -1;
+  assert.equal(this.env.log.warn.calls, 2, 'logged two warnings');
+
+  assert.equal(Config.BUFFER_LOW_WATER_LINE_RATE, 1, 'default');
 });
 
 QUnit.module('Configuration - Options', {
@@ -110,9 +256,10 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    openMediaSource(this.player, this.clock);
+
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.default,
                 `${opt.name} should be default`);
@@ -126,9 +273,10 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    openMediaSource(this.player, this.clock);
+
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to global`);
@@ -144,9 +292,10 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    openMediaSource(this.player, this.clock);
+
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourceHandler Option`);
@@ -162,9 +311,10 @@ options.forEach((opt) => {
     this.player = createPlayer();
     this.player.src(srcOptions);
 
+    openMediaSource(this.player, this.clock);
+
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to src option`);
@@ -181,9 +331,10 @@ options.forEach((opt) => {
       type: 'application/vnd.apple.mpegurl'
     });
 
+    openMediaSource(this.player, this.clock);
+
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourchHandler option`);
@@ -201,9 +352,10 @@ options.forEach((opt) => {
     this.player = createPlayer(sourceHandlerOptions);
     this.player.src(srcOptions);
 
+    openMediaSource(this.player, this.clock);
+
     let hls = this.player.tech_.hls;
 
-    openMediaSource(this.player, this.clock);
     assert.equal(hls.options_[opt.name],
                 opt.test,
                 `${opt.name} should be equal to sourchHandler option`);

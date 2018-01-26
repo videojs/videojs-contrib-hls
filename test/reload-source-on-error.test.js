@@ -131,7 +131,8 @@ QUnit.test('by default, only allows a retry once every 30 seconds', function(ass
 
   assert.equal(hlsErrorReloadInitializedEvents, 0, 'the plugin has not been initialized');
   assert.equal(hlsErrorReloadEvents, 0, 'no source was set');
-  assert.equal(hlsErrorReloadCanceledEvents, 0, 'reload canceled event has not been triggered');
+  assert.equal(hlsErrorReloadCanceledEvents, 0,
+    'reload canceled event has not been triggered');
 
   this.player.reloadSourceOnError();
   this.player.trigger('error', -2);
@@ -153,7 +154,8 @@ QUnit.test('by default, only allows a retry once every 30 seconds', function(ass
   this.player.trigger('error', -2);
   this.player.trigger('loadedmetadata');
 
-  assert.equal(hlsErrorReloadCanceledEvents, 1, 'did not reload the source because not enough time has elapsed');
+  assert.equal(hlsErrorReloadCanceledEvents, 1,
+    'did not reload the source because not enough time has elapsed');
   assert.equal(this.player.src.calledWith.length, 2, 'player.src was called twice');
 });
 

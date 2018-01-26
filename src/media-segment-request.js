@@ -79,13 +79,12 @@ const getProgressStats = (progressEvent) => {
     roundTripTime: roundTripTime || 0
   };
 
-  if (progressEvent.lengthComputable) {
-    stats.bytesReceived = progressEvent.loaded;
-    // This can result in Infinity if stats.roundTripTime is 0 but that is ok
-    // because we should only use bandwidth stats on progress to determine when
-    // abort a request early due to insufficient bandwidth
-    stats.bandwidth = Math.floor((stats.bytesReceived / stats.roundTripTime) * 8 * 1000);
-  }
+  stats.bytesReceived = progressEvent.loaded;
+  // This can result in Infinity if stats.roundTripTime is 0 but that is ok
+  // because we should only use bandwidth stats on progress to determine when
+  // abort a request early due to insufficient bandwidth
+  stats.bandwidth = Math.floor((stats.bytesReceived / stats.roundTripTime) * 8 * 1000);
+
   return stats;
 };
 
@@ -333,7 +332,13 @@ const waitForCompletion = (activeXhrs, decrypter, doneFn) => {
  * @param {Event} event - the progress event object from XMLHttpRequest
  */
 const handleProgress = (segment, progressFn) => (event) => {
-  segment.stats = getProgressStats(event);
+  segment.stats = videojs.mergeOptions(segment.stats, getProgressStats(event));
+
+  // record the time that we receive the first byte of data
+  if (!segment.stats.firstBytesReceivedAt && segment.stats.bytesReceived) {
+    segment.stats.firstBytesReceivedAt = Date.now();
+  }
+
   return progressFn(event, segment);
 };
 

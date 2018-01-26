@@ -118,10 +118,16 @@ export default class VTTSegmentLoader extends SegmentLoader {
   /**
    * Set a subtitle track on the segment loader to add subtitles to
    *
-   * @param {TextTrack} track
+   * @param {TextTrack=} track
    *        The text track to add loaded subtitles to
+   * @return {TextTrack}
+   *        Returns the subtitles track
    */
   track(track) {
+    if (typeof track === 'undefined') {
+      return this.subtitlesTrack_;
+    }
+
     this.subtitlesTrack_ = track;
 
     // if we were unpaused but waiting for a sourceUpdater, start
@@ -129,6 +135,8 @@ export default class VTTSegmentLoader extends SegmentLoader {
     if (this.state === 'INIT' && this.couldBeginLoading_()) {
       this.init_();
     }
+
+    return this.subtitlesTrack_;
   }
 
   /**
@@ -217,7 +225,7 @@ export default class VTTSegmentLoader extends SegmentLoader {
    * @private
    */
   handleSegment_() {
-    if (!this.pendingSegment_) {
+    if (!this.pendingSegment_ || !this.subtitlesTrack_) {
       this.state = 'READY';
       return;
     }
@@ -278,6 +286,12 @@ export default class VTTSegmentLoader extends SegmentLoader {
     segmentInfo.byteLength = segmentInfo.bytes.byteLength;
 
     this.mediaSecondsLoaded += segment.duration;
+
+    if (segmentInfo.cues.length) {
+     // remove any overlapping cues to prevent doubling
+      this.remove(segmentInfo.cues[0].endTime,
+                  segmentInfo.cues[segmentInfo.cues.length - 1].endTime);
+    }
 
     segmentInfo.cues.forEach((cue) => {
       this.subtitlesTrack_.addCue(cue);

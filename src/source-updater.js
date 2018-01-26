@@ -77,7 +77,6 @@ export default class SourceUpdater {
    */
   appendBuffer(bytes, done) {
     this.processedAppend_ = true;
-
     this.queueCallback_(() => {
       this.sourceBuffer_.appendBuffer(bytes);
     }, done);

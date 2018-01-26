@@ -34,6 +34,7 @@ Maintenance Status: Stable
       - [overrideNative](#overridenative)
       - [blacklistDuration](#blacklistduration)
       - [bandwidth](#bandwidth)
+      - [enableLowInitialPlaylist](#enablelowinitialplaylist)
   - [Runtime Properties](#runtime-properties)
     - [hls.playlists.master](#hlsplaylistsmaster)
     - [hls.playlists.media](#hlsplaylistsmedia)
@@ -53,7 +54,6 @@ Maintenance Status: Stable
 - [Hosting Considerations](#hosting-considerations)
 - [Known Issues](#known-issues)
   - [IE10 and Below](#ie10-and-below)
-  - [IE11](#ie11)
   - [Fragmented MP4 Support](#fragmented-mp4-support)
   - [Testing](#testing)
 - [Release History](#release-history)
@@ -73,7 +73,7 @@ npm install --save videojs-contrib-hls
 ```
 
 ### CDN
-Select a version of HLS from the [CDN](https://cdnjs.com/libraries/videojs-contrib-hls)
+Select a version of HLS from [cdnjs](https://cdnjs.com/libraries/videojs-contrib-hls) or [jsDelivr](https://www.jsdelivr.com/package/npm/videojs-contrib-hls)
 
 ### Releases
 Download a release of [videojs-contrib-hls](https://github.com/videojs/videojs-contrib-hls/releases)
@@ -308,6 +308,14 @@ by the user.
 When the `bandwidth` property is set (bits per second), it will be used in
 the calculation for initial playlist selection, before more bandwidth
 information is seen by the player.
+
+##### enableLowInitialPlaylist
+* Type: `boolean`
+* can be used as an initialization option
+
+When `enableLowInitialPlaylist` is set to true, it will be used to select
+the lowest bitrate playlist initially.  This helps to decrease playback start time.
+This setting is `false` by default.
 
 ### Runtime Properties
 Runtime properties are attached to the tech object when HLS is in
@@ -610,12 +618,6 @@ help find a solution that would be appreciated!
 
 ### IE10 and Below
 As of version 5.0.0, IE10 and below are no longer supported.
-
-### IE11
-In some IE11 setups there are issues working with its native HTML
-SourceBuffers functionality. This leads to various issues, such as
-videos stopping playback with media decode errors. The known workaround
-for this issues is to force the player to use flash when running on IE11.
 
 ### Fragmented MP4 Support
 Edge has native support for HLS but only in the MPEG2-TS container. If
