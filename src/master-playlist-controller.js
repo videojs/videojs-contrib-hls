@@ -607,7 +607,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mainSegmentLoader_.on('earlyabort', () => {
       this.blacklistCurrentPlaylist({
         message: 'Aborted early because there isn\'t enough bandwidth to complete the ' +
-          'request without rebuffering.'
+          'request without rebuffering'
       }, ABORT_EARLY_BLACKLIST_SECONDS);
     });
 
@@ -882,11 +882,12 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.masterPlaylistLoader_.load(isFinalRendition);
     }
     if (isFinalRendition) {
-      // Since we're on the final non-blacklisted playlist, and we're about to blacklist it,
-      // instead of erring the player or retrying this playlist, we clear out the current blacklist
-      // so the other playlists may be attempted in case any have been fixed.
-      videojs.log.warn('Removing all playlists from the blacklist because the last rendition ' +
-                       'is about to be blacklisted.');
+      // Since we're on the final non-blacklisted playlist, and we're about to blacklist
+      // it, instead of erring the player or retrying this playlist, clear out the current
+      // blacklist. This allows other playlists to be attempted in case any have been
+      // fixed.
+      videojs.log.warn('Removing all playlists from the blacklist because the last ' +
+                       'rendition is about to be blacklisted.');
       playlists.forEach((playlist) => {
         delete playlist.excludeUntil;
       });

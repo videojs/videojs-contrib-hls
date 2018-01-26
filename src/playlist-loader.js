@@ -319,12 +319,13 @@ export default class PlaylistLoader extends EventTarget {
       throw new Error('Cannot switch media playlist from ' + this.state);
     }
 
-    window.clearTimeout(mediaUpdateTimeout);
+    window.clearTimeout(this.mediaUpdateTimeout);
 
     if (isFinalRendition) {
-      let refreshDelay = (playlist.targetDuration / 2) * 1000 || 5 * 1000;
+      const delay = (playlist.targetDuration / 2) * 1000 || 5 * 1000;
 
-      mediaUpdateTimeout = window.setTimeout(this.media.bind(this, playlist, false), refreshDelay);
+      this.mediaUpdateTimeout =
+        window.setTimeout(this.media.bind(this, playlist, false), delay);
       return;
     }
 
