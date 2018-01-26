@@ -325,7 +325,6 @@ When `enableLowInitialPlaylist` is set to true, it will be used to select
 the lowest bitrate playlist initially.  This helps to decrease playback start time.
 This setting is `false` by default.
 
-
 ### Runtime Properties
 Runtime properties are attached to the tech object when HLS is in
 use. You can get a reference to the HLS source handler like this:

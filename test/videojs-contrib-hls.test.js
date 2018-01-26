@@ -3011,6 +3011,7 @@ QUnit.test('retrieves bandwidth and throughput from localStorage', function(asse
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  openMediaSource(this.player, this.clock);
 
   assert.equal(this.player.tech_.hls.bandwidth,
                4194304,
@@ -3029,6 +3030,7 @@ QUnit.test('retrieves bandwidth and throughput from localStorage', function(asse
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
   });
+  openMediaSource(this.player, this.clock);
 
   assert.equal(this.player.tech_.hls.bandwidth, 33, 'retrieved stored bandwidth');
   assert.equal(this.player.tech_.hls.throughput, 44, 'retrieved stored throughput');

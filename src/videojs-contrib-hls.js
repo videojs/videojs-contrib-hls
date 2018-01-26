@@ -262,12 +262,12 @@ class HlsHandler extends Component {
           this.options_.throughput = parseInt(storedThroughput, 10);
         }
       }
+    }
 
-    // start playlist selection at a reasonable bandwidth for
-    // broadband internet (0.5 MB/s) or mobile (0.0625 MB/s)
+    // if bandwidth was not set by options or pulled from local storage, start playlist
+    // selection at a reasonable bandwidth
     if (typeof this.options_.bandwidth !== 'number') {
       this.options_.bandwidth = INITIAL_BANDWIDTH;
-      }
     }
 
     // If the bandwidth number is unchanged from the initial setting
@@ -449,11 +449,6 @@ class HlsHandler extends Component {
           // No need to perform any operation.
         }
       }
-    });
-
-    this.masterPlaylistController_.on('sourceopen', () => {
-      this.tech_.audioTracks().addEventListener('change', this.audioTrackChange_);
-      this.tech_.remoteTextTracks().addEventListener('change', this.textTrackChange_);
     });
 
     this.masterPlaylistController_.on('selectedinitialmedia', () => {
