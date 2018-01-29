@@ -84,12 +84,41 @@ export default class SourceUpdater {
     createSourceBufferDeferred =
       (() => setTimeout(createSourceBuffer, ADD_SOURCE_BUFFER_RETRY_DEFER_MS));
 
+    /**
+     * @private
+     * @member {Array<function>}
+     */
     this.callbacks_ = [];
+
+    /**
+     * @private
+     * @member {function}
+     */
     this.pendingCallback_ = null;
+
+    /**
+     * @private
+     * @member {number}
+     */
     this.timestampOffset_ = 0;
+
+    /**
+     * @public
+     * @member {MediaSource}
+     */
     this.mediaSource = mediaSource;
+
+    /**
+     * @public
+     * @member {boolean}
+     */
     this.processedAppend_ = false;
 
+    /**
+     * @private
+     * @member {SourceBuffer} sourceBuffer_
+     */
+    this.sourceBuffer_ = null;
 
     if (mediaSource.readyState === 'ended') {
       throw new Error('Cant create SourceBuffers on ended MediaSource');
