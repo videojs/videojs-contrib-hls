@@ -5,6 +5,8 @@ import videojs from 'video.js';
 
 const noop = function() {};
 
+const ADD_SOURCE_BUFFER_RETRY_DEFER_MS = 40;
+
 /**
  * A queue of callbacks to be serialized and applied when a
  * MediaSource and its associated SourceBuffers are not in the
@@ -19,8 +21,36 @@ const noop = function() {};
  */
 export default class SourceUpdater {
   constructor(mediaSource, mimeType) {
-    let createSourceBuffer = () => {
-      this.sourceBuffer_ = mediaSource.addSourceBuffer(mimeType);
+
+    let createSourceBufferDeferred;
+
+    const createSourceBuffer = () => {
+
+      if (this.sourceBuffer_) {
+        videojs.log.
+          warn('SourceBuffer creation attempt blocked:',
+            'already called `addSourceBuffer` for this SourceUpdater');
+        return;
+      }
+
+      try {
+        this.sourceBuffer_ = mediaSource.addSourceBuffer(mimeType);
+      } catch (e) {
+        // notify about failed attempt
+        videojs.log.warn('Failed attempt to call `addSourceBuffer` (not fatal)',
+          e.message, e);
+        // make sure this is reset to initial value
+        this.sourceBuffer_ = null;
+        // try again asap
+        // It seems the underlying virtual MediaSource is sometimes
+        // unreliable in the way it advertises it's readiness.
+        // The only way we can deal with this here to make our
+        // task fulfillment reliable is by having a layer of retrial
+        // that will re-schedule this is a reasonable frequency.
+        // See comment below on issue #963.
+        createSourceBufferDeferred();
+        return;
+      }
 
       // run completion handlers and process callbacks as updateend
       // events fire
@@ -41,16 +71,37 @@ export default class SourceUpdater {
       this.runCallback_();
     };
 
+    // Fixes https://github.com/videojs/videojs-contrib-hls/issues/963
+    // We run this on the next tick as it seems
+    // that sometimes when the `sourceopen` event is triggered, or when
+    // the readyState indicates open, the
+    // MediaSource is actually not ready yet to accept
+    // calls to its `addSourceBuffer` method.
+    // This seems to happen especially for when we need to create SourceBuffers
+    // for seperate audio streams (A/V not muxed into the "main" stream).
+    // However when state is settled on the next tick,
+    // it seems safe to do so.
+    createSourceBufferDeferred =
+      (() => setTimeout(createSourceBuffer, ADD_SOURCE_BUFFER_RETRY_DEFER_MS));
+
     this.callbacks_ = [];
     this.pendingCallback_ = null;
     this.timestampOffset_ = 0;
     this.mediaSource = mediaSource;
     this.processedAppend_ = false;
 
-    if (mediaSource.readyState === 'closed') {
-      mediaSource.addEventListener('sourceopen', createSourceBuffer);
+
+    if (mediaSource.readyState === 'ended') {
+      throw new Error('Cant create SourceBuffers on ended MediaSource');
+    }
+
+    if (mediaSource.readyState === 'open') {
+      // Deferring fixes issue #963
+      createSourceBufferDeferred();
+    } else if (mediaSource.readyState === 'closed') {
+      mediaSource.addEventListener('sourceopen', createSourceBufferDeferred);
     } else {
-      createSourceBuffer();
+      throw new Error('MediaSource in illegal ready-state: ' + mediaSource.readyState)
     }
   }
 
