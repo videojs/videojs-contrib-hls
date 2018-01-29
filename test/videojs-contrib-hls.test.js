@@ -2934,9 +2934,8 @@ QUnit.test('populates quality levels list when available', function(assert) {
   assert.ok(this.player.tech_.hls.qualityLevels_, 'added quality levels from video with source');
 });
 
-QUnit.test('stores bandwidth and throughput in localStorage', function(assert) {
-  const origHlsOptions = videojs.options.hls;
-
+QUnit.test('stores bandwidth and throughput in localStorage when option is true',
+function(assert) {
   videojs.options.hls = {
     useBandwidthFromLocalStorage: true
   };
@@ -2969,11 +2968,10 @@ QUnit.test('stores bandwidth and throughput in localStorage', function(assert) {
     parseInt(window.localStorage.getItem('videojs-contrib-hls-throughput'), 10),
     22,
     'set throughput');
+});
 
-  window.localStorage.clear();
-
-  videojs.options.hls = origHlsOptions;
-
+QUnit.test('does not store bandwidth and throughput in localStorage by default',
+function(assert) {
   this.player = createPlayer();
   this.player.src({
     src: 'manifest/master.m3u8',
