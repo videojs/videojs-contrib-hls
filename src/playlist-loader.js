@@ -319,6 +319,15 @@ export default class PlaylistLoader extends EventTarget {
       throw new Error('Cannot switch media playlist from ' + this.state);
     }
 
+    // find the playlist object if the target playlist has been
+    // specified by URI
+    if (typeof playlist === 'string') {
+      if (!this.master.playlists[playlist]) {
+        throw new Error('Unknown playlist URI: ' + playlist);
+      }
+      playlist = this.master.playlists[playlist];
+    }
+
     window.clearTimeout(this.mediaUpdateTimeout);
 
     if (isFinalRendition) {
@@ -330,16 +339,6 @@ export default class PlaylistLoader extends EventTarget {
     }
 
     const startingState = this.state;
-
-    // find the playlist object if the target playlist has been
-    // specified by URI
-    if (typeof playlist === 'string') {
-      if (!this.master.playlists[playlist]) {
-        throw new Error('Unknown playlist URI: ' + playlist);
-      }
-      playlist = this.master.playlists[playlist];
-    }
-
     const mediaChange = !this.media_ || playlist.uri !== this.media_.uri;
 
     // switch to fully loaded playlists immediately
