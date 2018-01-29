@@ -130,7 +130,7 @@ export default class SourceUpdater {
     } else if (mediaSource.readyState === 'closed') {
       mediaSource.addEventListener('sourceopen', createSourceBufferDeferred);
     } else {
-      throw new Error('MediaSource in illegal ready-state: ' + mediaSource.readyState)
+      throw new Error('MediaSource in illegal ready-state: ' + mediaSource.readyState);
     }
   }
 
