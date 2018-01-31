@@ -1269,9 +1269,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {Number} Elapsed time
    */
   elapsedSinceStart() {
-    const currentTime = this.tech_.currentTime();
-    const elapsedTime = currentTime - this.startTime_;
-
-    return elapsedTime;
+    return this.tech_.currentTime() - this.startTime_;
   }
 }
