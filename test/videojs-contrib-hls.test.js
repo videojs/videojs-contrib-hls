@@ -1314,7 +1314,7 @@ QUnit.test('playlist 404 should blacklist media', function(assert) {
               'Problem encountered with the current HLS playlist. HLS playlist request error at URL: media1.m3u8. ' +
               'Switching to another playlist.',
               'log generic error message');
-  assert.equal(retryplaylist, 0, 'haven\'t retried any playlist');
+  assert.equal(retryplaylist, 1, 'fired a retryplaylist event');
   assert.equal(blacklistplaylist, 2, 'media1 is blacklisted');
 
   this.clock.tick(2 * 1000);

@@ -891,6 +891,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
       playlists.forEach((playlist) => {
         delete playlist.excludeUntil;
       });
+      // Technically we are retrying a playlist, in that we are simply retrying a previous
+      // playlist. This is needed for users relying on the retryplaylist event to catch a
+      // case where the player might be stuck and looping through "dead" playlists.
+      this.tech_.trigger('retryplaylist');
     }
     // Blacklist this playlist
     currentPlaylist.excludeUntil = Date.now() + (blacklistDuration * 1000);
