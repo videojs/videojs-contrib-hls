@@ -249,9 +249,9 @@ class HlsHandler extends Component {
 
     if (typeof this.options_.bandwidth !== 'number') {
       if (this.options_.useBandwidthFromLocalStorage && window.localStorage) {
-        let storedBandwidth =
+        const storedBandwidth =
           window.localStorage.getItem('videojs-contrib-hls-bandwidth');
-        let storedThroughput =
+        const storedThroughput =
           window.localStorage.getItem('videojs-contrib-hls-throughput');
 
         if (storedBandwidth) {
