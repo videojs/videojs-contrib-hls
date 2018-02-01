@@ -556,6 +556,11 @@ will have this structure
 
 ```javascript
 cue.value = {
+  byteLength, // The size of the segment in bytes
+  bitrate, // The bitrate calculated from byteLength, start, and end
+  bandwidth, // The peak bitrate reported by the segment's playlist
+  resolution, // The resolution reported by the segment's playlist
+  codecs, // The codecs reported by the segment's playlist
   uri, // The Segment uri
   timeline, // Timeline of the segment for detecting discontinuities
   playlist, // The Playlist uri
