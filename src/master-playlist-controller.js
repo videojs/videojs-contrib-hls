@@ -10,7 +10,7 @@ import videojs from 'video.js';
 import AdCueTags from './ad-cue-tags';
 import SyncController from './sync-controller';
 import { translateLegacyCodecs } from 'videojs-contrib-media-sources/es5/codec-utils';
-import worker from 'webworkify';
+import worker from 'webwackify';
 import Decrypter from './decrypter-worker';
 import Config from './config';
 import { parseCodecs } from './util/codecs.js';
@@ -41,6 +41,18 @@ const loaderStats = [
 const sumLoaderStat = function(stat) {
   return this.audioSegmentLoader_[stat] +
          this.mainSegmentLoader_[stat];
+};
+
+const resolveDecrypterWorker = () => {
+  let result;
+
+  try {
+    result = require.resolve('./decrypter-worker');
+  } catch (e) {
+    // no result
+  }
+
+  return result;
 };
 
 /**
@@ -275,7 +287,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       label: 'segment-metadata'
     }, false).track;
 
-    this.decrypter_ = worker(Decrypter);
+    this.decrypter_ = worker(Decrypter, resolveDecrypterWorker());
 
     const segmentLoaderSettings = {
       hls: this.hls_,
