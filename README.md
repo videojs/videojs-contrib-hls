@@ -315,7 +315,7 @@ information is seen by the player.
 * can be used as an initialization option
 
 If true, `bandwidth` and `throughput` values are stored in and retrieved from local
-storage on startup (for initial rendition selection).
+storage on startup (for initial rendition selection). This setting is `false` by default.
 
 ##### enableLowInitialPlaylist
 * Type: `boolean`
