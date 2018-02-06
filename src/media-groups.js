@@ -352,7 +352,7 @@ export const initialize = {
       mode,
       hls,
       segmentLoaders: { [type]: segmentLoader },
-      requestOptions: { withCredentials },
+      requestOptions,
       master: { mediaGroups },
       mediaTypes: {
         [type]: {
@@ -383,7 +383,7 @@ export const initialize = {
         if (properties.resolvedUri) {
           playlistLoader = new PlaylistLoader(properties.resolvedUri,
                                               hls,
-                                              withCredentials);
+                                              requestOptions);
         } else {
           // no resolvedUri means the audio is muxed with the video when using this
           // audio track
@@ -429,7 +429,7 @@ export const initialize = {
       tech,
       hls,
       segmentLoaders: { [type]: segmentLoader },
-      requestOptions: { withCredentials },
+      requestOptions,
       master: { mediaGroups },
       mediaTypes: {
         [type]: {
@@ -463,7 +463,7 @@ export const initialize = {
           id: variantLabel,
           playlistLoader: new PlaylistLoader(properties.resolvedUri,
                                              hls,
-                                             withCredentials)
+                                             requestOptions)
         }, properties);
 
         setupListeners[type](type, properties.playlistLoader, settings);

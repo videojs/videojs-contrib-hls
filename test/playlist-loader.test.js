@@ -957,7 +957,9 @@ QUnit.test('recognizes domain-relative URLs', function(assert) {
 });
 
 QUnit.test('recognizes redirect, when manifest requested', function(assert) {
-  let loader = new PlaylistLoader('manifest/media.m3u8', this.fakeHls);
+  let loader = new PlaylistLoader('manifest/media.m3u8', this.fakeHls, {
+    handleManifestRedirects: true
+  });
 
   loader.load();
 
@@ -986,7 +988,9 @@ QUnit.test('recognizes redirect, when manifest requested', function(assert) {
 });
 
 QUnit.test('recognizes redirect, when media requested', function(assert) {
-  let loader = new PlaylistLoader('manifest/media.m3u8', this.fakeHls);
+  let loader = new PlaylistLoader('manifest/media.m3u8', this.fakeHls, {
+    handleManifestRedirects: true
+  });
 
   loader.load();
 
@@ -1012,32 +1016,6 @@ QUnit.test('recognizes redirect, when media requested', function(assert) {
               window.location.protocol + '//' +
               'foo-bar.com/00001.ts',
               'resolved segment URI');
-});
-
-QUnit.test('it warn, when browser does not support redirects', function(assert) {
-  let loader = new PlaylistLoader('manifest/media.m3u8', this.fakeHls);
-
-  loader.load();
-
-  const manifestRequest = this.requests.shift();
-
-  // emulate IE11's xhr
-  delete manifestRequest.responseURL;
-
-  manifestRequest.respond(200, null,
-                          '#EXTM3U\n' +
-                          '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
-                          '/media.m3u8\n');
-  assert.equal(loader.master.playlists[0].resolvedUri,
-              window.location.protocol + '//' +
-              window.location.host + '/media.m3u8',
-              'resolved media URI');
-
-  this.requests.shift().respond(404);
-
-  assert.equal(this.env.log.warn.calls, 1, 'warning logged');
-  assert.equal(this.env.log.warn.firstCall.args[0],
-               'Current browser does not support redirects for playlist requests.');
 });
 
 QUnit.test('recognizes key URLs relative to master and playlist', function(assert) {

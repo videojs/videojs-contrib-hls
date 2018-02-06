@@ -260,7 +260,7 @@ class HlsHandler extends Component {
        this.options_.bandwidth === INITIAL_BANDWIDTH;
 
     // grab options passed to player.src
-    ['withCredentials', 'bandwidth'].forEach((option) => {
+    ['withCredentials', 'bandwidth', 'handleManifestRedirects'].forEach((option) => {
       if (typeof this.source_[option] !== 'undefined') {
         this.options_[option] = this.source_[option];
       }
