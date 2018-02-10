@@ -2299,6 +2299,21 @@ QUnit.test('calculates dynamic BUFFER_LOW_WATER_LINE', function(assert) {
   Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);
 });
 
+QUnit.test('Exception in play promise should be caught', function(assert) {
+  const mpc = this.masterPlaylistController;
+
+  mpc.setupSourceBuffers = () => true;
+  mpc.tech_ = {
+    autoplay: () => true,
+    play: () => new Promise(function(resolve, reject) {
+      reject(new DOMException());
+    })
+  };
+  mpc.handleSourceOpen_();
+
+  assert.ok(true, 'rejects dom exception');
+});
+
 QUnit.module('Codec to MIME Type Conversion');
 
 const testMimeTypes = function(assert, isFMP4) {
