@@ -1021,10 +1021,17 @@ function(assert) {
 
   assert.equal(Playlist.getMediaInfoForTime(media, 4, 0, 0).mediaIndex, 0,
     'rounds down exact matches');
+  assert.equal(Playlist.getMediaInfoForTime(media, 4, 1, 4).mediaIndex, 0,
+    'rounds down exact matches on sync points');
   assert.equal(Playlist.getMediaInfoForTime(media, 3.7, 0, 0).mediaIndex, 0,
     'rounds down');
   assert.equal(Playlist.getMediaInfoForTime(media, 4.5, 0, 0).mediaIndex, 1,
     'rounds up at 0.5');
+  // Sync points should be accurate, and though we may want to consider a fudge factor in
+  // the future, if we do, this function should not manage the fudge. This function should
+  // provide as accurate an answer as reasonable.
+  assert.equal(Playlist.getMediaInfoForTime(media, 4.01, 1, 4).mediaIndex, 1,
+    'does not account for any fudge factor');
 });
 
 QUnit.test(

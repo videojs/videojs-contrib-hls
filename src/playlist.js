@@ -348,7 +348,9 @@ export const getMediaInfoForTime = function(playlist,
 
   let time = currentTime - startTime;
 
-  if (time < 0) {
+  // when the time is an exact match, this will choose the previous segment in order to be
+  // conservative
+  if (time <= 0) {
     // Walk backward from startIndex in the playlist, adding durations
     // until we find a segment that contains `time` and return it
     if (startIndex > 0) {
