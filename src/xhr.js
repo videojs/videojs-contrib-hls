@@ -74,6 +74,11 @@ const xhrFactory = function() {
       request.aborted = true;
       return originalAbort.apply(request, arguments);
     };
+    if (options.headers){
+      Object.keys(options).forEach(function(key){
+        request.setRequestHeader(key, options[key]);
+      });
+    };
     request.uri = options.uri;
     request.requestTime = Date.now();
     return request;
