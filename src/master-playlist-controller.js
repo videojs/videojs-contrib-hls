@@ -771,7 +771,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       // Catch/silence error when a pause interrupts a play request
       // on browsers which return a promise
-      if (playPromise !== undefined && typeof playPromise.then === 'function') {
+      if (typeof playPromise !== 'undefined' && typeof playPromise.then === 'function') {
         playPromise.then(null, (e) => {});
       }
     }
