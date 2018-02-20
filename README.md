@@ -2,6 +2,7 @@
 
 [![Build Status][travis-icon]][travis-link]
 [![Slack Status][slack-icon]][slack-link]
+[![Greenkeeper badge][greenkeeper-icon]][greenkeeper-link]
 
 
 Play back HLS with video.js, even where it's not natively supported.
@@ -661,3 +662,5 @@ npm run <command>
 [slack-link]: http://slack.videojs.com
 [travis-icon]: https://travis-ci.org/videojs/videojs-contrib-hls.svg?branch=master
 [travis-link]: https://travis-ci.org/videojs/videojs-contrib-hls
+[greenkeeper-icon]: https://badges.greenkeeper.io/videojs/videojs-contrib-hls.svg
+[greenkeeper-link]: https://greenkeeper.io/
