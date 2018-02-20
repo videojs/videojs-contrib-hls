@@ -1,5 +1,7 @@
 # video.js HLS Source Handler
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/videojs/videojs-contrib-hls.svg)](https://greenkeeper.io/)
+
 [![Build Status][travis-icon]][travis-link]
 [![Slack Status][slack-icon]][slack-link]
 
