@@ -133,7 +133,7 @@
     "serve-static": "^1.10.0",
     "shelljs": "^0.5.3",
     "sinon": "1.10.3",
-    "uglify-js": "^2.5.0",
+    "uglify-js": "^3.3.12",
     "videojs-contrib-quality-levels": "^2.0.4",
     "videojs-flash": "^2.0.0",
     "videojs-standard": "^4.0.3",
