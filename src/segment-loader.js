@@ -177,9 +177,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
-    // Temporary hack to not abort/downswitch post-seek
-    this.noAbortsUntil_ = 0;
-
     if (options.debug) {
       this.logger_ = videojs.log.bind(videojs, 'segment-loader', this.loaderType_, '->');
     }
@@ -843,16 +840,6 @@ export default class SegmentLoader extends videojs.EventTarget {
     const timeUntilRebuffer = timeUntilRebuffer_(this.buffered_(),
                                                  currentTime,
                                                  this.hls_.tech_.playbackRate()) - 1;
-
-    // Temporary hack to not abort/downswitch post-seek
-    // Should be removed in favour of just aborting on seek when a better
-    // solution is found
-    if (this.seeking_()) {
-      this.noAbortsUntil_ = Date.now() + (segmentDuration * 1000);
-      return false;
-    } else if (Date.now() < this.noAbortsUntil_) {
-      return false;
-    }
 
     // Only consider aborting early if the estimated time to finish the download
     // is larger than the estimated time until the player runs out of forward buffer
