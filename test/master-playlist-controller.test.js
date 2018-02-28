@@ -2230,23 +2230,23 @@ QUnit.test('subtitle segment loader resets on seeks', function(assert) {
   assert.equal(loadCount, 1, 'called load on subtitle segment loader');
 });
 
-QUnit.test('elapsedSinceStart() works', function(assert) {
+QUnit.test('elapsedTime() works', function(assert) {
   const mpc = this.masterPlaylistController;
   let currentTime = 0;
 
   mpc.tech_.currentTime = () => currentTime;
 
-  assert.equal(mpc.elapsedSinceStart(), 0, 'returns 0 at initial play');
+  assert.equal(mpc.elapsedTime(), 0, 'returns 0 at initial play');
 
   currentTime = 15;
-  assert.equal(mpc.elapsedSinceStart(), 15, 'returns 15 after playing for 15s');
+  assert.equal(mpc.elapsedTime(), 15, 'returns 15 after playing for 15s');
 
   mpc.setCurrentTime(30);
   currentTime = 30;
-  assert.equal(mpc.elapsedSinceStart(), 0, 'returns 0 immediately after seek');
+  assert.equal(mpc.elapsedTime(), 0, 'returns 0 immediately after seek');
 
   currentTime = 45;
-  assert.equal(mpc.elapsedSinceStart(), 15, 'returns 15 after playing for 15s post-seek');
+  assert.equal(mpc.elapsedTime(), 15, 'returns 15 after playing for 15s post-seek');
 });
 
 QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {
@@ -2269,7 +2269,7 @@ QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {
 
   currentTime = 10;
 
-  assert.equal(mpc.goalBufferLength(), 35, 'dynamic GBL increases by elapsedSinceStart() * rate');
+  assert.equal(mpc.goalBufferLength(), 35, 'dynamic GBL increases by elapsedTime() * rate');
 
   currentTime = 60;
 
@@ -2286,7 +2286,7 @@ QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {
 
   currentTime = 130;
 
-  assert.equal(mpc.goalBufferLength(), 35, 'dynamic GBL increases by elapsedSinceStart() * rate');
+  assert.equal(mpc.goalBufferLength(), 35, 'dynamic GBL increases by elapsedTime() * rate');
 
   currentTime = 180;
 
@@ -2321,7 +2321,7 @@ QUnit.test('calculates dynamic BUFFER_LOW_WATER_LINE', function(assert) {
   currentTime = 10;
 
   assert.equal(mpc.bufferLowWaterLine(), 5,
-    'dynamic BLWL increases by elapsedSinceStart() * rate');
+    'dynamic BLWL increases by elapsedTime() * rate');
 
   currentTime = 60;
 
@@ -2339,7 +2339,7 @@ QUnit.test('calculates dynamic BUFFER_LOW_WATER_LINE', function(assert) {
   currentTime = 130;
 
   assert.equal(mpc.bufferLowWaterLine(), 5,
-    'dynamic BLWL increases by elapsedSinceStart() * rate');
+    'dynamic BLWL increases by elapsedTime() * rate');
 
   currentTime = 180;
 

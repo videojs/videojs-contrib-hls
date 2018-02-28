@@ -1241,7 +1241,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {Number} Desired forward buffer length in seconds
    */
   goalBufferLength() {
-    const elapsedTime = this.elapsedSinceStart();
+    const elapsedTime = this.elapsedTime();
     const initial = Config.GOAL_BUFFER_LENGTH;
     const rate = Config.GOAL_BUFFER_LENGTH_RATE;
     const max = Math.max(initial, Config.MAX_GOAL_BUFFER_LENGTH);
@@ -1255,7 +1255,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {Number} Desired buffer low water line in seconds
    */
   bufferLowWaterLine() {
-    const elapsedTime = this.elapsedSinceStart();
+    const elapsedTime = this.elapsedTime();
     const initial = Config.BUFFER_LOW_WATER_LINE;
     const rate = Config.BUFFER_LOW_WATER_LINE_RATE;
     const max = Math.max(initial, Config.MAX_BUFFER_LOW_WATER_LINE);
@@ -1268,7 +1268,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    *
    * @return {Number} Elapsed time
    */
-  elapsedSinceStart() {
+  elapsedTime() {
     return this.tech_.currentTime() - this.startTime_;
   }
 }
