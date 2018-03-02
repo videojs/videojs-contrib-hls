@@ -256,10 +256,12 @@ class HlsHandler extends Component {
 
         if (storedBandwidth) {
           this.options_.bandwidth = parseInt(storedBandwidth, 10);
+          this.tech_.trigger({type: 'usage', name: 'hls-bandwidth-from-local-storage'});
         }
 
         if (storedThroughput) {
           this.options_.throughput = parseInt(storedThroughput, 10);
+          this.tech_.trigger({type: 'usage', name: 'hls-throughput-from-local-storage'});
         }
       }
     }

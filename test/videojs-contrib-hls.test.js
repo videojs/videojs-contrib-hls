@@ -3043,8 +3043,20 @@ QUnit.test('retrieves bandwidth and throughput from localStorage', function(asse
   window.localStorage.setItem('videojs-contrib-hls-bandwidth', 33);
   window.localStorage.setItem('videojs-contrib-hls-throughput', 44);
 
+  let bandwidthUsageEvents = 0;
+  let throughputUsageEvents = 0;
+  const usageListener = (event) => {
+    if (event.name === 'hls-bandwidth-from-local-storage') {
+      bandwidthUsageEvents++;
+    }
+    if (event.name === 'hls-throughput-from-local-storage') {
+      throughputUsageEvents++;
+    }
+  };
+
   // values must be stored before player is created, otherwise defaults are provided
   this.player = createPlayer();
+  this.player.tech_.on('usage', usageListener);
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -3056,6 +3068,8 @@ QUnit.test('retrieves bandwidth and throughput from localStorage', function(asse
                'uses default bandwidth when no option to use stored bandwidth');
   assert.notOk(this.player.tech_.hls.throughput,
                'no throughput when no option to use stored throughput');
+  assert.equal(bandwidthUsageEvents, 0, 'no bandwidth usage event');
+  assert.equal(throughputUsageEvents, 0, 'no throughput usage event');
 
   const origHlsOptions = videojs.options.hls;
 
@@ -3064,6 +3078,7 @@ QUnit.test('retrieves bandwidth and throughput from localStorage', function(asse
   };
 
   this.player = createPlayer();
+  this.player.tech_.on('usage', usageListener);
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'
@@ -3072,6 +3087,8 @@ QUnit.test('retrieves bandwidth and throughput from localStorage', function(asse
 
   assert.equal(this.player.tech_.hls.bandwidth, 33, 'retrieved stored bandwidth');
   assert.equal(this.player.tech_.hls.throughput, 44, 'retrieved stored throughput');
+  assert.equal(bandwidthUsageEvents, 1, 'one bandwidth usage event');
+  assert.equal(throughputUsageEvents, 1, 'one throughput usage event');
 
   videojs.options.hls = origHlsOptions;
 });

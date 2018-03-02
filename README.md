@@ -521,6 +521,8 @@ Each of the following usage events are fired once per source if (and when) detec
 | hls-demuxed   | audio and video are demuxed by default |
 | hls-alternate-audio | alternate audio available in the master manifest |
 | hls-playlist-cue-tags | a playlist used cue tags (see useCueTags(#usecuetags) for details) |
+| hls-bandwidth-from-local-storage | starting bandwidth was retrieved from local storage (see useBandwidthFromLocalStorage(#useBandwidthFromLocalStorage) for details) |
+| hls-throughput-from-local-storage | starting throughput was retrieved from local storage (see useBandwidthFromLocalStorage(#useBandwidthFromLocalStorage) for details) |
 
 #### Use Stats
 
