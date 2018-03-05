@@ -205,7 +205,7 @@ videojs(video, {flash: {
 // or
 
 var options = {hls: {
-  withCredentials: true;
+  withCredentials: true
 }};
 
 videojs(video, {flash: options, html5: options});
