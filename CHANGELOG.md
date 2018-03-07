@@ -6,6 +6,21 @@ CHANGELOG
 _(none)_
 
 --------------------
+## 5.13.0 (2018-03-07)
+* use webwackify for webworkers to support webpack bundle ([#1363](https://github.com/videojs/videojs-contrib-hls/pull/1363))
+* Fix tech.play() throwing unresolved promise errors on Chrome ([#1338](https://github.com/videojs/videojs-contrib-hls/pull/1338))
+* update url-toolkit to ^2.1.3 ([#1327](https://github.com/videojs/videojs-contrib-hls/pull/1327))
+* Add jsDelivr link ([#1274](https://github.com/videojs/videojs-contrib-hls/pull/1274))
+* Update karma reconnect configuration to match video.js' ([#1323](https://github.com/videojs/videojs-contrib-hls/pull/1323))
+  * Increase karma's browserDisconnectTolerance to 3
+* Add nvmrc and update travis' chrome reference ([#1322](https://github.com/videojs/videojs-contrib-hls/pull/1322))
+  * Update karma-chrome-launcher to ^2.2.0
+  * Update karma to ^1.7.1 and remove firefox from travis configuration
+  * enable node_modules caching on travis
+  * Update videojs-contrib-quality-levels to ^2.0.4
+  * Fix test for event handler cleanup on dispose by calling event handling methods
+
+--------------------
 ## 5.12.2 (2017-11-06)
 * Remove unused expected manifest js files [#1289](https://github.com/videojs/videojs-contrib-hls/pull/1289)
 * Remove extraneous methods from PlaylistLoader [#1286](https://github.com/videojs/videojs-contrib-hls/pull/1286)
