@@ -132,7 +132,7 @@
     "qunitjs": "^2.0.1",
     "serve-static": "^1.10.0",
     "shelljs": "^0.5.3",
-    "sinon": "1.10.3",
+    "sinon": "4.4.0",
     "uglify-js": "^2.5.0",
     "videojs-contrib-quality-levels": "^2.0.4",
     "videojs-flash": "^2.0.0",
