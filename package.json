@@ -101,7 +101,7 @@
     "babel": "^5.8.0",
     "babelify": "^6.0.0",
     "bannerize": "^1.0.0",
-    "browserify": "^11.0.0",
+    "browserify": "^16.1.1",
     "browserify-istanbul": "^2.0.0",
     "browserify-shim": "^3.0.0",
     "bundle-collapser": "^1.2.1",
