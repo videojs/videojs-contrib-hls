@@ -140,5 +140,14 @@
     "videojs-swf": "^5.2.0",
     "watchify": "^3.6.0",
     "webpack": "^1.13.2"
+  },
+  "greenkeeper": {
+    "ignore": [
+      "browserify",
+      "qunitjs",
+      "sinon",
+      "webpack",
+      "uglify-js"
+    ]
   }
 }
