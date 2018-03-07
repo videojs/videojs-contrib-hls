@@ -10,7 +10,19 @@ import {
 import { MasterPlaylistController } from '../src/master-playlist-controller';
 import SyncController from '../src/sync-controller';
 import Decrypter from '../src/decrypter-worker';
-import worker from 'webworkify';
+import worker from 'webwackify';
+
+const resolveDecrypterWorker = () => {
+  let result;
+
+  try {
+    result = require.resolve('../src/decrypter-worker');
+  } catch (e) {
+    // no result
+  }
+
+  return result;
+};
 
 /**
  * beforeEach and afterEach hooks that should be run segment loader tests regardless of
@@ -44,7 +56,7 @@ export const LoaderCommonHooks = {
     this.mediaSource = new videojs.MediaSource();
     this.mediaSource.trigger('sourceopen');
     this.syncController = new SyncController();
-    this.decrypter = worker(Decrypter);
+    this.decrypter = worker(Decrypter, resolveDecrypterWorker());
   },
   afterEach(assert) {
     this.env.restore();

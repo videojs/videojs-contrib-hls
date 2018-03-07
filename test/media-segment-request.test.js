@@ -3,7 +3,19 @@ import {mediaSegmentRequest, REQUEST_ERRORS} from '../src/media-segment-request'
 import xhrFactory from '../src/xhr';
 import {useFakeEnvironment} from './test-helpers';
 import Decrypter from '../src/decrypter-worker';
-import worker from 'webworkify';
+import worker from 'webwackify';
+
+const resolveDecrypterWorker = () => {
+  let result;
+
+  try {
+    result = require.resolve('../src/decrypter-worker');
+  } catch (e) {
+    // no result
+  }
+
+  return result;
+};
 
 QUnit.module('Media Segment Request', {
   beforeEach(assert) {
@@ -11,7 +23,7 @@ QUnit.module('Media Segment Request', {
     this.clock = this.env.clock;
     this.requests = this.env.requests;
     this.xhr = xhrFactory();
-    this.realDecrypter = worker(Decrypter);
+    this.realDecrypter = worker(Decrypter, resolveDecrypterWorker());
     this.mockDecrypter = {
       listeners: [],
       postMessage(message) {
