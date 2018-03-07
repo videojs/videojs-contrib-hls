@@ -144,7 +144,6 @@
   "greenkeeper": {
     "ignore": [
       "browserify",
-      "qunitjs",
       "sinon",
       "webpack",
       "uglify-js"
