@@ -241,8 +241,8 @@ export default class PlaybackWatcher {
       return true;
     }
 
-    if (this.tech_.seeking() || this.timer_ !== null) {
-      // Tech is seeking or already waiting on another action, no action needed
+    if (this.tech_.seeking() || this.tech_.playbackRate() === 0 || this.timer_ !== null) {
+      // Tech is seeking, filling buffer post-seek, or already waiting on another action; no action needed
       return true;
     }
 

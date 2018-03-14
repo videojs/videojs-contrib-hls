@@ -497,7 +497,8 @@ QUnit.test('corrects seek outside of seekable', function(assert) {
     currentTime: () => currentTime,
     // mocked out
     paused: () => false,
-    buffered: () => videojs.createTimeRanges()
+    buffered: () => videojs.createTimeRanges(),
+    playbackRate: () => {}
   };
 
   // waiting

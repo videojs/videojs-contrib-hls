@@ -1216,6 +1216,14 @@ export default class SegmentLoader extends videojs.EventTarget {
     // point would mean that this was the perfect segment to fetch
     this.trigger('syncinfoupdate');
 
+    if (this.loaderType_ === 'main' && this.hls_.tech_.playbackRate() === 0) {
+      let buffered = this.buffered_();
+
+      if ((buffered.end(0) - this.currentTime_()) >= this.playlist_.targetDuration) {
+        this.trigger('buffered');
+      }
+    }
+
     // If we previously appended a segment that ends more than 3 targetDurations before
     // the currentTime_ that means that our conservative guess was too conservative.
     // In that case, reset the loader state so that we try to use any information gained

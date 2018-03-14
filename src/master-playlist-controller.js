@@ -643,6 +643,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.audioSegmentLoader_.on('ended', () => {
       this.onEndOfStream();
     });
+
+    this.mainSegmentLoader_.on('buffered', (event) => {
+      this.tech_.setPlaybackRate(this.playbackRate);
+    });
   }
 
   mediaSecondsLoaded_() {
@@ -953,6 +957,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     if (buffered && buffered.length && this.mode_ !== 'flash') {
       return currentTime;
     }
+
+    this.playbackRate = this.tech_.playbackRate();
+    this.tech_.setPlaybackRate(0);
 
     // cancel outstanding requests so we begin buffering at the new
     // location
