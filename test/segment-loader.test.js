@@ -299,8 +299,7 @@ QUnit.module('SegmentLoader', function(hooks) {
           bandwidth: 3500000,
           resolution: '1920x1080',
           codecs: 'mp4a.40.5,avc1.42001e',
-          byteLength: 10,
-          bitrate: 8.421052631578947
+          byteLength: 10
         };
 
         assert.equal(track.cues.length, 1, 'one cue added for segment');
@@ -321,8 +320,7 @@ QUnit.module('SegmentLoader', function(hooks) {
           bandwidth: 3500000,
           resolution: '1920x1080',
           codecs: 'mp4a.40.5,avc1.42001e',
-          byteLength: 10,
-          bitrate: 8.298755186721992
+          byteLength: 10
         };
 
         assert.equal(track.cues.length, 2, 'one cue added for segment');
@@ -343,8 +341,7 @@ QUnit.module('SegmentLoader', function(hooks) {
           bandwidth: 3500000,
           resolution: '1920x1080',
           codecs: 'mp4a.40.5,avc1.42001e',
-          byteLength: 10,
-          bitrate: 8.205128205128204
+          byteLength: 10
         };
 
         assert.equal(track.cues.length, 3, 'one cue added for segment');
@@ -367,8 +364,7 @@ QUnit.module('SegmentLoader', function(hooks) {
           bandwidth: 3500000,
           resolution: '1920x1080',
           codecs: 'mp4a.40.5,avc1.42001e',
-          byteLength: 10,
-          bitrate: 8.18833162743091
+          byteLength: 10
         };
 
         assert.equal(track.cues.length, 3, 'overlapped cue removed, new one added');
