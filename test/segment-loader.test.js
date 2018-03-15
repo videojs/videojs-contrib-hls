@@ -413,7 +413,12 @@ QUnit.module('SegmentLoader', function(hooks) {
                'as they are buffered',
       function(assert) {
         const track = loader.segmentMetadataTrack_;
-        let playlist = playlistWithDuration(50);
+        const attributes = {
+          BANDWIDTH: 3500000,
+          RESOLUTION: '1920x1080',
+          CODECS: 'mp4a.40.5,avc1.42001e'
+        };
+        let playlist = playlistWithDuration(50, {attributes});
         let probeResponse;
         let expectedCue;
 
@@ -441,7 +446,11 @@ QUnit.module('SegmentLoader', function(hooks) {
           timeline: 0,
           playlist: 'playlist.m3u8',
           start: 0,
-          end: 9.5
+          end: 9.5,
+          bandwidth: 3500000,
+          resolution: '1920x1080',
+          codecs: 'mp4a.40.5,avc1.42001e',
+          byteLength: 10
         };
 
         assert.equal(track.cues.length, 1, 'one cue added for segment');
@@ -458,7 +467,11 @@ QUnit.module('SegmentLoader', function(hooks) {
           timeline: 0,
           playlist: 'playlist.m3u8',
           start: 9.56,
-          end: 19.2
+          end: 19.2,
+          bandwidth: 3500000,
+          resolution: '1920x1080',
+          codecs: 'mp4a.40.5,avc1.42001e',
+          byteLength: 10
         };
 
         assert.equal(track.cues.length, 2, 'one cue added for segment');
@@ -475,7 +488,11 @@ QUnit.module('SegmentLoader', function(hooks) {
           timeline: 0,
           playlist: 'playlist.m3u8',
           start: 19.24,
-          end: 28.99
+          end: 28.99,
+          bandwidth: 3500000,
+          resolution: '1920x1080',
+          codecs: 'mp4a.40.5,avc1.42001e',
+          byteLength: 10
         };
 
         assert.equal(track.cues.length, 3, 'one cue added for segment');
@@ -494,7 +511,11 @@ QUnit.module('SegmentLoader', function(hooks) {
           timeline: 0,
           playlist: 'playlist.m3u8',
           start: 19.21,
-          end: 28.98
+          end: 28.98,
+          bandwidth: 3500000,
+          resolution: '1920x1080',
+          codecs: 'mp4a.40.5,avc1.42001e',
+          byteLength: 10
         };
 
         assert.equal(track.cues.length, 3, 'overlapped cue removed, new one added');

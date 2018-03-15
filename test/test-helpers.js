@@ -377,7 +377,7 @@ export const playlistWithDuration = function(time, conf) {
     uri: conf && typeof conf.uri !== 'undefined' ? conf.uri : 'playlist.m3u8',
     discontinuitySequence:
       conf && conf.discontinuitySequence ? conf.discontinuitySequence : 0,
-    attributes: {}
+    attributes: conf && typeof conf.attributes !== 'undefined' ? conf.attributes : {}
   };
   let count = Math.floor(time / 10);
   let remainder = time % 10;
