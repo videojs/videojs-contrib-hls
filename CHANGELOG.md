@@ -6,6 +6,11 @@ CHANGELOG
 _(none)_
 
 --------------------
+## 5.14.0 (2018-03-15)
+* update videojs-contrib-media-sources to 4.7.1 and webwackify to 0.1.5 ([#1376](https://github.com/videojs/videojs-contrib-hls/pull/1376))
+* More useful info in segment-metadata cue (bandwidth/resolution/codecs/byte-length) ([#1210](https://github.com/videojs/videojs-contrib-hls/pull/1210))
+
+--------------------
 ## 5.13.0 (2018-03-07)
 * use webwackify for webworkers to support webpack bundle ([#1363](https://github.com/videojs/videojs-contrib-hls/pull/1363))
 * Fix tech.play() throwing unresolved promise errors on Chrome ([#1338](https://github.com/videojs/videojs-contrib-hls/pull/1338))
