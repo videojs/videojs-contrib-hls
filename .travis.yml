@@ -15,9 +15,9 @@ notifications:
 before_install:
   - npm install -g greenkeeper-lockfile@1
 before_script:
+  - greenkeeper-lockfile-update
   # always install the appropriate version of video.js for the environment
   - npm i "video.js@$VJS";
-  - greenkeeper-lockfile-update
 after_script: greenkeeper-lockfile-upload
 
 env:
