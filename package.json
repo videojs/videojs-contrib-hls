@@ -91,7 +91,7 @@
     "aes-decrypter": "1.0.3",
     "global": "^4.3.0",
     "m3u8-parser": "2.1.0",
-    "mux.js": "4.3.2",
+    "mux.js": "4.4.1",
     "url-toolkit": "^2.1.3",
     "video.js": "^5.19.1 || ^6.2.0",
     "videojs-contrib-media-sources": "4.7.0",
