@@ -1219,7 +1219,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     if (this.loaderType_ === 'main' && this.hls_.tech_.playbackRate() === 0) {
       let buffered = this.buffered_();
 
-      if ((buffered.end(0) - this.currentTime_()) >= this.playlist_.targetDuration) {
+      if ((buffered.end(0) - this.currentTime_()) >= (this.roundTrip / 1000) + 1) {
         this.trigger('buffered');
       }
     }
