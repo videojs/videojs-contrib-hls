@@ -253,6 +253,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     Hls = externHls;
 
+    this.dtsSync_ = null;
     this.withCredentials = withCredentials;
     this.tech_ = tech;
     this.hls_ = tech.hls;
@@ -638,8 +639,24 @@ export class MasterPlaylistController extends videojs.EventTarget {
       });
     });
 
+    this.mainSegmentLoader_.on('firststarttime', this.handleFirstStartTime_.bind(this));
+    this.audioSegmentLoader_.on('firststarttime', this.handleFirstStartTime_.bind(this));
+    this.subtitleSegmentLoader_.on('firststarttime', this.handleFirstStartTime_.bind(this));
+
     this.audioSegmentLoader_.on('ended', () => {
       this.onEndOfStream();
+    });
+  }
+
+  handleFirstStartTime_(event) {
+    if (this.dtsSync_ === null) {
+      this.dtsSync_ = event.start;
+    }
+    event.dtsSync = this.dtsSync_;
+    event.target.trigger({
+      dtsSync: this.dtsSync_,
+      start: event.start,
+      type: 'dtsSync',
     });
   }
 

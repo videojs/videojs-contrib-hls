@@ -154,6 +154,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mimeType_ = null;
     this.sourceUpdater_ = null;
     this.xhrOptions_ = null;
+    this.timestampOffsetFromReference_ = null;
 
     // Fragmented mp4 playback
     this.activeInitSegmentId_ = null;
@@ -174,12 +175,17 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.mediaSource_.addEventListener('sourceopen', () => this.ended_ = false);
 
+    this.on('dtsSync', (event) => {
+      this.timestampOffsetFromReference_ = event.dtsSync - event.start;
+    });
+
     // ...for determining the fetch location
     this.fetchAtBuffer_ = false;
 
     if (options.debug) {
       this.logger_ = videojs.log.bind(videojs, 'segment-loader', this.loaderType_, '->');
     }
+
   }
 
   /**
@@ -1101,6 +1107,14 @@ export default class SegmentLoader extends videojs.EventTarget {
     const segment = segmentInfo.segment;
     const timingInfo = this.syncController_.probeSegmentInfo(segmentInfo);
 
+    if (this.timestampOffsetFromReference_ === null) {
+      this.trigger({
+        start: timingInfo.start,
+        target: this,
+        type: 'firststarttime'
+      });
+    }
+
     // When we have our first timing info, determine what media types this loader is
     // dealing with. Although we're maintaining extra state, it helps to preserve the
     // separation of segment loader from the actual source buffers.
@@ -1136,7 +1150,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     if (segmentInfo.timestampOffset !== null &&
         segmentInfo.timestampOffset !== this.sourceUpdater_.timestampOffset()) {
-      this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset);
+      this.sourceUpdater_.timestampOffset(segmentInfo.timestampOffset - this.timestampOffsetFromReference_);
       // fired when a timestamp offset is set in HLS (can also identify discontinuities)
       this.trigger('timestampoffset');
     }
