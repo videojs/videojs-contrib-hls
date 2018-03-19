@@ -494,6 +494,10 @@ class HlsHandler extends Component {
     return this.masterPlaylistController_.seekable();
   }
 
+  seeking() {
+    return this.masterPlaylistController_.seeking();
+  }
+
   /**
   * Abort all outstanding work and cleanup.
   */

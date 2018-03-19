@@ -281,6 +281,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.mediaSource.addEventListener('sourceopen', this.handleSourceOpen_.bind(this));
 
     this.seekable_ = videojs.createTimeRanges();
+    this.seeking_ = false;
     this.hasPlayed_ = () => false;
 
     this.syncController_ = new SyncController(options);
@@ -645,6 +646,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     });
 
     this.mainSegmentLoader_.on('buffered', (event) => {
+      this.seeking_ = false;
       this.tech_.setPlaybackRate(this.playbackRate);
     });
   }
@@ -938,6 +940,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {TimeRange} the current time
    */
   setCurrentTime(currentTime) {
+    this.seeking_ = true;
     let buffered = Ranges.findRange(this.tech_.buffered(), currentTime);
 
     if (!(this.masterPlaylistLoader_ && this.masterPlaylistLoader_.media())) {
@@ -1002,6 +1005,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
    */
   seekable() {
     return this.seekable_;
+  }
+
+  seeking() {
+    return this.seeking_;
   }
 
   onSyncInfoUpdate_() {
