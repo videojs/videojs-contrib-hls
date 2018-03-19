@@ -631,6 +631,10 @@ export default class SegmentLoader extends videojs.EventTarget {
       segmentInfo.timestampOffset = segmentInfo.startOfSegment;
     }
 
+    if (this.seeking_()) {
+      this.seekStartedAt_ = new Date();
+    }
+
     this.loadSegment_(segmentInfo);
   }
 
@@ -834,12 +838,21 @@ export default class SegmentLoader extends videojs.EventTarget {
                                           this.playlist_,
                                           stats.bytesReceived);
 
-    // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
-    // if we are only left with less than 1 second when the request completes.
-    // A negative timeUntilRebuffering indicates we are already rebuffering
-    const timeUntilRebuffer = timeUntilRebuffer_(this.buffered_(),
-                                                 currentTime,
-                                                 this.hls_.tech_.playbackRate()) - 1;
+    let timeUntilRebuffer;
+    if (this.seeking_() && this.seekStartedAt_) {
+      timeUntilRebuffer = this.pendingSegment_.duration - ((new Date() - this.seekStartedAt_) / 1000);
+    } else {
+      // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
+      // if we are only left with less than 1 second when the request completes.
+      // A negative timeUntilRebuffering indicates we are already rebuffering
+      timeUntilRebuffer = timeUntilRebuffer_(this.buffered_(),
+                                                   currentTime,
+                                                   this.hls_.tech_.playbackRate()) - 1;
+    }
+
+    if (timeUntilRebuffer < 0) {
+      return;
+    }
 
     // Only consider aborting early if the estimated time to finish the download
     // is larger than the estimated time until the player runs out of forward buffer

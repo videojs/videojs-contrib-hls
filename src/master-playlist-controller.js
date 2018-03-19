@@ -297,7 +297,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       mediaSource: this.mediaSource,
       currentTime: this.tech_.currentTime.bind(this.tech_),
       seekable: () => this.seekable(),
-      seeking: () => this.tech_.seeking(),
+      seeking: () => this.seeking(),
       duration: () => this.mediaSource.duration,
       hasPlayed: () => this.hasPlayed_(),
       goalBufferLength: () => this.goalBufferLength(),
@@ -941,6 +941,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
    */
   setCurrentTime(currentTime) {
     this.seeking_ = true;
+
     let buffered = Ranges.findRange(this.tech_.buffered(), currentTime);
 
     if (!(this.masterPlaylistLoader_ && this.masterPlaylistLoader_.media())) {
