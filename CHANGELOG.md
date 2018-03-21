@@ -6,6 +6,12 @@ CHANGELOG
 _(none)_
 
 --------------------
+## 5.14.1 (2018-03-21)
+* Fixed the minified dist file
+  * update webwackify to 0.1.6 ([#1380](https://github.com/videojs/videojs-contrib-hls/pull/1380))
+  * update videojs-contrib-media-sources to 4.7.2 ([#1382](https://github.com/videojs/videojs-contrib-hls/pull/1382))
+
+--------------------
 ## 5.14.0 (2018-03-15)
 * update videojs-contrib-media-sources to 4.7.1 and webwackify to 0.1.5 ([#1376](https://github.com/videojs/videojs-contrib-hls/pull/1376))
 * More useful info in segment-metadata cue (bandwidth/resolution/codecs/byte-length) ([#1210](https://github.com/videojs/videojs-contrib-hls/pull/1210))
