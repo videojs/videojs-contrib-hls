@@ -11,7 +11,8 @@ import {
   createPlayer,
   openMediaSource,
   standardXHRResponse,
-  absoluteUrl
+  absoluteUrl,
+  MockTextTrack
 } from './test-helpers.js';
 /* eslint-disable no-unused-vars */
 // we need this so that it can register hls with videojs
@@ -96,8 +97,8 @@ QUnit.module('HLS', {
     this.old.browser = videojs.browser;
     videojs.browser = videojs.mergeOptions({}, videojs.browser);
 
-    this.standardXHRResponse = (request, data) => {
-      standardXHRResponse(request, data);
+    this.standardXHRResponse = (request, data, size) => {
+      standardXHRResponse(request, data, size);
 
       // Because SegmentLoader#fillBuffer_ is now scheduled asynchronously
       // we have to use clock.tick to get the expected side effects of
@@ -2563,11 +2564,13 @@ QUnit.test('cleans up the buffer when loading live segments', function(assert) {
     this.resetLoader();
   };
 
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.segmentMetadataTrack_ = new MockTextTrack();
+
   this.player.tech_.hls.mediaSource.addSourceBuffer = () => {
     let buffer = new (videojs.extend(videojs.EventTarget, {
       constructor() {},
       abort() {},
-      buffered: videojs.createTimeRange(),
+      buffered: seekable,
       appendBuffer() {},
       remove(start, end) {
         removes.push([start, end]);
@@ -2591,6 +2594,16 @@ QUnit.test('cleans up the buffer when loading live segments', function(assert) {
 
   // request first playable segment
   this.standardXHRResponse(this.requests[1]);
+  // Add segment metadata cue so that trimBackBuffer has something to remove
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.segmentMetadataTrack_.addCue({
+    startTime: 0,
+    // default backBufferLength of 30
+    endTime: seekable.end(0) - 30,
+    value: {
+      byteLength: 1
+    }
+  });
+
   this.clock.tick(1);
   this.player.tech_.hls.mediaSource.sourceBuffers[0].trigger('updateend');
 
@@ -2602,7 +2615,7 @@ QUnit.test('cleans up the buffer when loading live segments', function(assert) {
   assert.strictEqual(this.requests[0].url, 'liveStart30sBefore.m3u8',
                     'master playlist requested');
   assert.equal(removes.length, 1, 'remove called');
-  // segment-loader removes at currentTime - 30
+  // segment-loader removes at currentTime - backBufferLength
   assert.deepEqual(removes[0], [0, 40],
                   'remove called with the right range');
 
@@ -2634,7 +2647,7 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
     let buffer = new (videojs.extend(videojs.EventTarget, {
       constructor() {},
       abort() {},
-      buffered: videojs.createTimeRange(),
+      buffered: seekable,
       appendBuffer() {},
       remove(start, end) {
         removes.push([start, end]);
@@ -2660,6 +2673,15 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
 
   // request first playable segment
   this.standardXHRResponse(this.requests[1]);
+  // Add segment metadata cue so that trimBackBuffer has something to remove
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.segmentMetadataTrack_.addCue({
+    startTime: 0,
+    // default backBufferLength of 30
+    endTime: seekable.end(0) - 30,
+    value: {
+      byteLength: 1
+    }
+  });
 
   this.clock.tick(1);
   this.player.tech_.hls.mediaSource.sourceBuffers[0].trigger('updateend');
@@ -2680,6 +2702,7 @@ QUnit.test('cleans up the buffer based on currentTime when loading a live segmen
 
 QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
   let removes = [];
+  let buffered = videojs.createTimeRange();
 
   this.player.src({
     src: 'manifest/master.m3u8',
@@ -2699,24 +2722,38 @@ QUnit.test('cleans up the buffer when loading VOD segments', function(assert) {
     let buffer = new (videojs.extend(videojs.EventTarget, {
       constructor() {},
       abort() {},
-      buffered: videojs.createTimeRange(),
       appendBuffer() {},
       remove(start, end) {
         removes.push([start, end]);
       }
     }))();
 
+    Object.defineProperty(buffer, 'buffered', {
+      get() {
+        return buffered;
+      }
+    });
     this.player.tech_.hls.mediaSource.sourceBuffers = [buffer];
     return buffer;
 
   };
+
   this.player.width(640);
   this.player.height(360);
   this.player.tech_.hls.bandwidth = 20e10;
   this.standardXHRResponse(this.requests[0]);
   this.standardXHRResponse(this.requests[1]);
   this.standardXHRResponse(this.requests[2]);
+  // Add segment metadata cue so that trimBackBuffer has something to remove
+  this.player.tech_.hls.masterPlaylistController_.mainSegmentLoader_.segmentMetadataTrack_.addCue({
+    startTime: 0,
+    endTime: 90,
+    value: {
+      byteLength: 1
+    }
+  });
   this.clock.tick(1);
+  buffered = videojs.createTimeRange([[0, 90]]);
   this.player.currentTime(120);
   this.player.tech_.hls.mediaSource.sourceBuffers[0].trigger('updateend');
   // This requires 2 clock ticks because after updateend monitorBuffer_ is called

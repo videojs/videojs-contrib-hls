@@ -83,10 +83,12 @@ export const illegalMediaSwitch = (loaderType, startingMedia, newSegmentMedia) =
  *        The current time of the player
  * @param {Number} targetDuration
  *        The target duration of the current playlist
+ * @param {Number} backBufferLength
+ *        The amount of back buffer to preserve
  * @return {Number}
  *         Time that is safe to remove from the back buffer without interupting playback
  */
-export const safeBackBufferTrimTime = (seekable, currentTime, targetDuration) => {
+export const safeBackBufferTrimTime = (seekable, currentTime, targetDuration, backBufferLength) => {
   let removeToTime;
 
   if (seekable.length &&
@@ -95,8 +97,8 @@ export const safeBackBufferTrimTime = (seekable, currentTime, targetDuration) =>
     // If we have a seekable range use that as the limit for what can be removed safely
     removeToTime = seekable.start(0);
   } else {
-    // otherwise remove anything older than 30 seconds before the current play head
-    removeToTime = currentTime - 30;
+    // otherwise remove anything older than the back buffer
+    removeToTime = currentTime - backBufferLength;
   }
 
   // Don't allow removing from the buffer within target duration of current time
@@ -145,6 +147,8 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.startingMedia_ = void 0;
     this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
     this.goalBufferLength_ = settings.goalBufferLength;
+    this.maxGoalBufferLength_ = settings.maxGoalBufferLength;
+    this.backBufferLength_ = settings.backBufferLength;
 
     // private instance variables
     this.checkBufferTimeout_ = null;
@@ -154,6 +158,15 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.mimeType_ = null;
     this.sourceUpdater_ = null;
     this.xhrOptions_ = null;
+    this.nextSegmentSize_ = null;
+    if (videojs.browser.IS_ANY_SAFARI) {
+      // Safari doesn't throw QuotaExceededErrors. Instead it just drops frames
+      // from the buffer. Here we set a 250MB cap, which _should_ prevent any
+      // dropped frames
+      this.maxBytes_ = 250000000;
+    } else {
+      this.maxBytes_ = Infinity;
+    }
 
     // Fragmented mp4 playback
     this.activeInitSegmentId_ = null;
@@ -372,6 +385,9 @@ export default class SegmentLoader extends videojs.EventTarget {
   init_() {
     this.state = 'READY';
     this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, this.mimeType_);
+    this.sourceUpdater_.on('adjustBuffers', () => this.adjustBuffers_(true));
+    this.sourceUpdater_.on('bufferMaxed', (event) => this.handleBufferMaxed_(event));
+
     this.resetEverything();
     return this.monitorBuffer_();
   }
@@ -390,6 +406,10 @@ export default class SegmentLoader extends videojs.EventTarget {
     let segmentInfo = this.pendingSegment_;
 
     this.playlist_ = newPlaylist;
+    if (this.playlist_.attributes.BANDWIDTH) {
+      this.nextSegmentSize_ = (this.playlist_.targetDuration *
+        this.playlist_.attributes.BANDWIDTH) / 8;
+    }
     this.xhrOptions_ = options;
 
     // when we haven't started playing yet, the start of a live playlist
@@ -648,10 +668,12 @@ export default class SegmentLoader extends videojs.EventTarget {
    */
   checkBuffer_(buffered, playlist, mediaIndex, hasPlayed, currentTime, syncPoint) {
     let lastBufferedEnd = 0;
+    let backBuffered = 0;
     let startOfSegment;
 
     if (buffered.length) {
       lastBufferedEnd = buffered.end(buffered.length - 1);
+      backBuffered = currentTime - buffered.start(0);
     }
 
     let bufferedTime = Math.max(0, lastBufferedEnd - currentTime);
@@ -663,6 +685,33 @@ export default class SegmentLoader extends videojs.EventTarget {
     // if there is plenty of content buffered, and the video has
     // been played before relax for awhile
     if (bufferedTime >= this.goalBufferLength_()) {
+      return null;
+    }
+
+    let bufferedBytes = this.maxBufferedBytes();
+
+    // If the next segment request is too large to fit into the current buffer,
+    // trim the back buffer and don't request a segment
+    if ((bufferedBytes + this.nextSegmentSize_) >= this.maxBytes_) {
+      this.logger_('checkBuffer_', 'Next segment may exceed SourceBuffer limit; ' +
+        'trimming back-buffer and deferring further loading',
+        'bufferedBytes:', bufferedBytes,
+        'nextSegmentSize:', this.nextSegmentSize_,
+        'max bytes:', this.maxBytes_,
+        'fwdBuffer:', bufferedTime,
+        'goalBufferLength:', this.goalBufferLength_(),
+        'backBuffered:', backBuffered,
+        'backBufferLength:', this.backBufferLength_());
+      this.trimBackBuffer_();
+      // if we're streaming a feed that increases in quality over time, we
+      // end up in a situation where we have too much back buffer compared
+      // to the forward buffer. in that situation, we should try to readjust
+      // the buffer sizes so that we can continue loading data and reach
+      // the target forward and back buffer
+      if (backBuffered > bufferedTime) {
+        this.logger_('checkBuffer_', 'buffers are lopsided, trying to readjust');
+        this.adjustBuffers_(false);
+      }
       return null;
     }
 
@@ -918,7 +967,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   loadSegment_(segmentInfo) {
     this.state = 'WAITING';
     this.pendingSegment_ = segmentInfo;
-    this.trimBackBuffer_(segmentInfo);
+    this.trimBackBuffer_();
 
     segmentInfo.abortRequests = mediaSegmentRequest(this.hls_.xhr,
       this.xhrOptions_,
@@ -934,23 +983,17 @@ export default class SegmentLoader extends videojs.EventTarget {
    * in the source buffer
    *
    * @private
-   *
-   * @param {Object} segmentInfo - the current segment
    */
-  trimBackBuffer_(segmentInfo) {
-    const removeToTime = safeBackBufferTrimTime(this.seekable_(),
+  trimBackBuffer_() {
+    let removeToTime = safeBackBufferTrimTime(this.seekable_(),
                                                 this.currentTime_(),
-                                                this.playlist_.targetDuration || 10);
+                                                this.playlist_.targetDuration || 10,
+                                                this.backBufferLength_());
 
-    // Chrome has a hard limit of 150MB of
-    // buffer and a very conservative "garbage collector"
-    // We manually clear out the old buffer to ensure
-    // we don't trigger the QuotaExceeded error
-    // on the source buffer during subsequent appends
+    // We want accurate counts of what's in the buffer, so we only want to
+    // remove data if we can remove entire segments
+    this.removeWholeSegments(removeToTime);
 
-    if (removeToTime > 0) {
-      this.remove(0, removeToTime);
-    }
   }
 
   /**
@@ -1179,6 +1222,187 @@ export default class SegmentLoader extends videojs.EventTarget {
   }
 
   /**
+   * Adjust forward and backward buffers based on amount of time and bytes
+   * currently in the buffer
+   *
+   * @private
+   *
+   * @param {Boolean=} setByteLimit
+   *                   Whether we should set maxBytes or just the buffer sizes
+   */
+  adjustBuffers_(setByteLimit) {
+    if (this.mediaRequests === 1) {
+      // we failed on the first request, so don't adjust buffers
+      return;
+    }
+    this.removeNonBufferedSegmentCues();
+    let buffered = this.buffered_();
+    let forwardBuffer = this.maxGoalBufferLength_();
+    let reverseBuffer = this.backBufferLength_();
+    let configTotalBuffer = forwardBuffer + reverseBuffer;
+    let bytesInBuffer = 0;
+    let secondsInBuffer = 0;
+    let maxForwardBuffer;
+    let maxReverseBuffer;
+    let i;
+    let loggerMsg;
+
+    bytesInBuffer = this.minBufferedBytes();
+    for (i = 0; i < buffered.length; i++) {
+      secondsInBuffer += buffered.end(i) - buffered.start(i);
+    }
+    if (!this.playlist_.attributes || !this.playlist_.attributes.BANDWIDTH) {
+      // we're downloading a single rate (and don't know what that rate is)
+      // so we just use the seconds in the buffer to calculate the new buffer
+      // sizes.
+      maxForwardBuffer = Math.max((forwardBuffer / configTotalBuffer) * secondsInBuffer,
+        this.playlist_.targetDuration);
+      maxReverseBuffer = secondsInBuffer - maxForwardBuffer;
+    } else {
+      // since we potentially have more than one rate in the buffer, we use
+      // the amount of bytes in the buffer to calculate the upper limit on
+      // the equivalent time at the current rate
+      let upperTimeLimit = (bytesInBuffer * 8) / this.playlist_.attributes.BANDWIDTH;
+
+      maxForwardBuffer = (forwardBuffer / configTotalBuffer) * upperTimeLimit;
+      maxReverseBuffer = (reverseBuffer / configTotalBuffer) * upperTimeLimit;
+    }
+
+    maxForwardBuffer = Math.min(forwardBuffer, maxForwardBuffer);
+    maxReverseBuffer = Math.min(reverseBuffer, maxReverseBuffer);
+
+    loggerMsg = '\n\tbytes in buffer: ' + bytesInBuffer +
+      ', seconds in buffer: ' + secondsInBuffer +
+      '\n\tforward buffer: ' + forwardBuffer + ' => ' + maxForwardBuffer +
+      '\n\treverse buffer: ' + reverseBuffer + ' => ' + maxReverseBuffer;
+
+    if (setByteLimit) {
+      loggerMsg += '\n\tbyte limit: ' + this.maxBytes_ + ' => ' + bytesInBuffer;
+      this.maxBytes_ = Math.min(this.maxBytes_, bytesInBuffer);
+    }
+    this.logger_('adjustBuffers_', loggerMsg);
+
+    this.goalBufferLength_(maxForwardBuffer);
+    this.backBufferLength_(maxReverseBuffer);
+  }
+
+  /**
+   * handler to run when a call to appendBuffer fails because the source
+   * buffer can't hold any more information
+   *
+   * @private
+   *
+   * @param {Object} event
+   * @param {Function} event.done The callback to run when the append finally succeeds
+   * @param {Number=} event.safeRemovePoint The most recent GOP start time, if we have it
+   * @param {Object} event.segment The Uint8Array for the segment
+   * @param {Object} event.target The SourceBuffer that caused the error
+   */
+  handleBufferMaxed_(event) {
+    let bytesTried = event.segment.byteLength;
+    let segmentBytes = event.segment;
+    let sourceBuffer = event.target;
+    let safeRemovePoint = event.safeRemovePoint;
+    let pendingAppend = true;
+    let callback = event.done;
+
+    // if we fail on the first request, it's probably a glitch, and
+    // we should just slice the segment up into small bits and append
+    if (this.mediaRequests === 1) {
+      let slices = [];
+      let start = 0;
+      let end = 0;
+      let sliceAppend = () => {
+        if (slices.length) {
+          sourceBuffer.appendBuffer(slices.shift());
+        } else {
+          sourceBuffer.removeEventListener('updateend', sliceAppend);
+          callback();
+        }
+      };
+
+      while (start < bytesTried) {
+        end += 5000000;
+        if (end > bytesTried) {
+          end = bytesTried;
+        }
+        slices.push(segmentBytes.slice(start, end));
+        start += 5000000;
+      }
+      sourceBuffer.addEventListener('updateend', sliceAppend);
+      sourceBuffer.appendBuffer(slices.shift());
+      return;
+    }
+
+    let bytesTrimmable;
+    let removeToTime;
+    let timeupdateHandler;
+    let tryAppend = () => {
+      if (!pendingAppend) {
+        return;
+      }
+      this.hls_.tech_.off('timeupdate', timeupdateHandler);
+      this.logger_('Appended deferred segment with ' +
+        (this.buffered_().end(0) - this.currentTime_()) + ' to spare...');
+      // we don't want this to be called again
+      sourceBuffer.removeEventListener('updateend', tryAppend);
+      try {
+        sourceBuffer.appendBuffer(segmentBytes);
+        callback();
+        pendingAppend = false;
+      } catch (error) {
+        videojs.error('QuoteExceededError');
+      }
+    };
+
+    sourceBuffer.addEventListener('updateend', tryAppend);
+
+    if (safeRemovePoint) {
+      removeToTime = safeRemovePoint;
+    } else {
+      removeToTime = safeBackBufferTrimTime(this.seekable_(),
+                                              this.currentTime_(),
+                                              this.playlist_.targetDuration || 10,
+                                              this.backBufferLength_());
+    }
+
+    bytesTrimmable = this.minBufferedBytes(0, removeToTime);
+
+    if (bytesTrimmable >= bytesTried) {
+      this.removeWholeSegments(removeToTime);
+    } else {
+      let waitUntil = this.currentTime_() + this.playlist_.targetDuration;
+      let buffered = this.buffered_();
+      let dangerZone = buffered.end(buffered.length - 1) - 2;
+
+      timeupdateHandler = () => {
+        let currentTime = this.currentTime_();
+
+        if (currentTime < waitUntil) {
+          return;
+        } else if (currentTime > dangerZone) {
+          this.removeWholeSegments(currentTime - this.playlist_.targetDuration);
+          return;
+        }
+        removeToTime = safeBackBufferTrimTime(this.seekable_(),
+                                                currentTime,
+                                                this.playlist_.targetDuration || 10,
+                                                this.backBufferLength_());
+        bytesTrimmable = this.minBufferedBytes(0, removeToTime);
+        if (bytesTrimmable >= bytesTried) {
+          this.removeWholeSegments(removeToTime);
+        }
+      };
+      this.hls_.tech_.on('timeupdate', timeupdateHandler);
+      this.on('reseteverything', () => {
+        pendingAppend = false;
+        this.state = 'READY';
+        this.hls_.tech_.off('timeupdate', timeupdateHandler);
+      });
+    }
+  }
+
+  /**
    * callback to run when appendBuffer is finished. detects if we are
    * in a good state to do things with the data we got, or if we need
    * to wait for more
@@ -1203,6 +1427,16 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.pendingSegment_ = null;
     this.recordThroughput_(segmentInfo);
     this.addSegmentMetadataCue_(segmentInfo);
+    if (!this.playlist_.attributes.BANDWIDTH) {
+      if (!this.nextSegmentSize_) {
+        this.nextSegmentSize_ = segmentInfo.byteLength;
+      } else {
+        this.nextSegmentSize_ -= this.nextSegmentSize_ /
+          this.segmentMetadataTrack_.cues.length;
+        this.nextSegmentSize_ += segmentInfo.byteLength /
+          this.segmentMetadataTrack_.cues.length;
+      }
+    }
 
     this.state = 'READY';
 
@@ -1328,4 +1562,144 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     this.segmentMetadataTrack_.addCue(cue);
   }
+
+  // TODO: documentation
+  maxBufferedBytes(start, end) {
+    if (!this.segmentMetadataTrack_) {
+      return 0;
+    }
+
+    let i;
+    let j;
+    let cue;
+    let cmpStart;
+    let cmpEnd;
+    let bytes = 0;
+    let buffered = this.buffered_();
+
+    start = start === undefined ? 0 : start;
+    end = end === undefined ? Infinity : end;
+
+    for (i = 0; i < this.segmentMetadataTrack_.cues.length; i++) {
+      cue = this.segmentMetadataTrack_.cues[i];
+      for (j = 0; j < buffered.length; j++) {
+        cmpStart = (start > buffered.start(j)) ? start : buffered.start(j);
+        cmpEnd = (end < buffered.end(j)) ? end : buffered.end(j);
+        if (cue.startTime <= cmpEnd && cue.endTime >= cmpStart) {
+          bytes += cue.value.byteLength;
+          // we only want to count the bytes once, so break now
+          break;
+        }
+      }
+    }
+
+    return bytes;
+  }
+
+  // TODO: documentation
+  minBufferedBytes(start, end) {
+    if (!this.segmentMetadataTrack_) {
+      return 0;
+    }
+    if (end < start) {
+      return 0;
+    }
+
+    let i;
+    let j;
+    let cue;
+    let cmpStart;
+    let cmpEnd;
+    let bytes = 0;
+    let buffered = this.buffered_();
+
+    start = start === undefined ? 0 : start;
+    end = end === undefined ? Infinity : end;
+
+    for (i = 0; i < this.segmentMetadataTrack_.cues.length; i++) {
+      cue = this.segmentMetadataTrack_.cues[i];
+
+      for (j = 0; j < buffered.length; j++) {
+        cmpStart = start > buffered.start(j) ? start : buffered.start(j);
+        cmpEnd = end < buffered.end(j) ? end : buffered.end(j);
+
+        if (cue.endTime <= cmpEnd && cue.startTime >= cmpStart - 0.1) {
+          bytes += cue.value.byteLength;
+          break;
+        }
+      }
+    }
+
+    return bytes;
+  }
+
+  removeNonBufferedSegmentCues() {
+    if (!this.segmentMetadataTrack_) {
+      return 0;
+    }
+
+    let i;
+    let j;
+    let cue;
+    let cmpStart;
+    let cmpEnd;
+    let keep = true;
+    let removeCues = [];
+    let buffered = this.buffered_();
+
+    for (i = 0; i < this.segmentMetadataTrack_.cues.length; i++) {
+      cue = this.segmentMetadataTrack_.cues[i];
+      keep = false;
+
+      for (j = 0; j < buffered.length; j++) {
+        cmpStart = buffered.start(j);
+        cmpEnd = buffered.end(j);
+
+        if (cue.startTime <= cmpEnd && cue.endTime >= cmpStart) {
+          keep = true;
+          break;
+        }
+      }
+
+      if (!keep) {
+        removeCues.push(cue);
+      }
+    }
+
+    removeCues.forEach((cueToRemove) => {
+      this.segmentMetadataTrack_.removeCue(cueToRemove);
+    });
+  }
+
+  removeWholeSegments(end) {
+    if (!this.segmentMetadataTrack_) {
+      return [];
+    }
+
+    let i;
+    let j;
+    let cue;
+    let cmpEnd;
+    let buffered = this.buffered_();
+    let matchingCues = [];
+
+    end = end === undefined ? Infinity : end;
+
+    for (i = 0; i < this.segmentMetadataTrack_.cues.length; i++) {
+      cue = this.segmentMetadataTrack_.cues[i];
+
+      for (j = 0; j < buffered.length; j++) {
+        cmpEnd = end < buffered.end(j) ? end : buffered.end(j);
+
+        if (cue.endTime <= cmpEnd) {
+          matchingCues.push(cue);
+          break;
+        }
+      }
+    }
+    matchingCues.forEach((matchingCue) => {
+      this.remove(0, matchingCue.endTime);
+    });
+  }
+
 }

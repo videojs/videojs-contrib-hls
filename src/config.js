@@ -8,5 +8,6 @@ export default {
   // How much of the buffer must be filled before we consider upswitching
   BUFFER_LOW_WATER_LINE: 0,
   MAX_BUFFER_LOW_WATER_LINE: 30,
-  BUFFER_LOW_WATER_LINE_RATE: 1
+  BUFFER_LOW_WATER_LINE_RATE: 1,
+  BACK_BUFFER_LENGTH: 30
 };

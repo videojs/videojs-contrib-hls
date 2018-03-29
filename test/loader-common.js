@@ -3,6 +3,7 @@ import videojs from 'video.js';
 import xhrFactory from '../src/xhr';
 import Config from '../src/config';
 import {
+  MockTextTrack,
   playlistWithDuration,
   useFakeEnvironment,
   useFakeMediaSource
@@ -51,8 +52,13 @@ export const LoaderCommonHooks = {
       }
     };
     this.tech_ = this.fakeHls.tech_;
+    this.goalBufferLength_ = Config.GOAL_BUFFER_LENGTH;
+    this.maxGoalBufferLength_ = Config.MAX_GOAL_BUFFER_LENGTH;
+    this.backBufferLength_ = Config.BACK_BUFFER_LENGTH;
     this.goalBufferLength =
       MasterPlaylistController.prototype.goalBufferLength.bind(this);
+    this.backBufferLength =
+      MasterPlaylistController.prototype.backBufferLength.bind(this);
     this.mediaSource = new videojs.MediaSource();
     this.mediaSource.trigger('sourceopen');
     this.syncController = new SyncController();
@@ -83,10 +89,13 @@ export const LoaderCommonSettings = function(settings) {
     seeking: () => this.seeking,
     hasPlayed: () => this.hasPlayed,
     duration: () => this.mediaSource.duration,
-    goalBufferLength: () => this.goalBufferLength(),
+    goalBufferLength: (val) => this.goalBufferLength(val),
+    maxGoalBufferLength: () => this.maxGoalBufferLength_,
+    backBufferLength: (val) => this.backBufferLength(val),
     mediaSource: this.mediaSource,
     syncController: this.syncController,
-    decrypter: this.decrypter
+    decrypter: this.decrypter,
+    segmentMetadataTrack: new MockTextTrack()
   }, settings);
 };
 
@@ -114,6 +123,13 @@ export const LoaderCommonFactory = (LoaderConstructor,
       loader = new LoaderConstructor(LoaderCommonSettings.call(this, loaderSettings), {});
 
       loaderBeforeEach(loader);
+
+      // noop addSegmentMetadataCue_ since most test segments dont have real
+      // timing information
+      // save the original function to a variable to patch it back in for the
+      // metadata cue specific tests
+      this.ogAddSegmentMetadataCue_ = loader.addSegmentMetadataCue_;
+      loader.addSegmentMetadataCue_ = () => {};
 
       // shim updateend trigger to be a noop if the loader has no media source
       this.updateend = function() {
@@ -891,10 +907,9 @@ export const LoaderCommonFactory = (LoaderConstructor,
     QUnit.test('checks the goal buffer configuration every loading opportunity',
     function(assert) {
       let playlist = playlistWithDuration(20);
-      let defaultGoal = Config.GOAL_BUFFER_LENGTH;
       let segmentInfo;
 
-      Config.GOAL_BUFFER_LENGTH = 1;
+      this.goalBufferLength(1);
       loader.playlist(playlist);
 
       loader.load();
@@ -906,7 +921,6 @@ export const LoaderCommonFactory = (LoaderConstructor,
                                         0,
                                         null);
       assert.ok(!segmentInfo, 'no request generated');
-      Config.GOAL_BUFFER_LENGTH = defaultGoal;
     });
 
     QUnit.test(

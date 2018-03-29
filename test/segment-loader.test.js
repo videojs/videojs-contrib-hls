@@ -17,13 +17,6 @@ import {
 } from './loader-common.js';
 import sinon from 'sinon';
 
-// noop addSegmentMetadataCue_ since most test segments dont have real timing information
-// save the original function to a variable to patch it back in for the metadata cue
-// specific tests
-const ogAddSegmentMetadataCue_ = SegmentLoader.prototype.addSegmentMetadataCue_;
-
-SegmentLoader.prototype.addSegmentMetadataCue_ = function() {};
-
 QUnit.module('SegmentLoader Isolated Functions');
 
 QUnit.test('illegalMediaSwitch detects illegal media switches', function(assert) {
@@ -112,21 +105,39 @@ QUnit.test('safeBackBufferTrimTime determines correct safe removeToTime',
 function(assert) {
   let seekable = videojs.createTimeRanges([[75, 120]]);
   let targetDuration = 10;
+  let backBufferLength = 30;
   let currentTime = 70;
 
-  assert.equal(safeBackBufferTrimTime(seekable, currentTime, targetDuration), 40,
-    'uses 30s before current time if currentTime is before seekable start');
+  assert.equal(
+    safeBackBufferTrimTime(seekable, currentTime, targetDuration, backBufferLength),
+    40,
+    'uses currentTime - backBufferLength if currentTime is before seekable start'
+  );
+
+  backBufferLength = 10;
+
+  assert.equal(
+    safeBackBufferTrimTime(seekable, currentTime, targetDuration, backBufferLength),
+    60,
+    'uses currentTime - backBufferLength if currentTime is before seekable start'
+  );
 
   currentTime = 110;
 
-  assert.equal(safeBackBufferTrimTime(seekable, currentTime, targetDuration), 75,
-    'uses seekable start if currentTime is after seekable start');
+  assert.equal(
+    safeBackBufferTrimTime(seekable, currentTime, targetDuration, backBufferLength),
+    75,
+    'uses seekable start if currentTime is after seekable start'
+  );
 
   currentTime = 80;
 
-  assert.equal(safeBackBufferTrimTime(seekable, currentTime, targetDuration), 70,
+  assert.equal(
+    safeBackBufferTrimTime(seekable, currentTime, targetDuration, backBufferLength),
+    70,
     'uses target duration before currentTime if currentTime is after seekable but' +
-    'within target duration');
+    'within target duration'
+  );
 });
 
 QUnit.module('SegmentLoader', function(hooks) {
@@ -150,6 +161,12 @@ QUnit.module('SegmentLoader', function(hooks) {
         loaderType: 'main',
         segmentMetadataTrack: this.segmentMetadataTrack
       }), {});
+
+      // noop addSegmentMetadataCue_ since most test segments dont have real timing information
+      // save the original function to a variable to patch it back in for the metadata cue
+      // specific tests
+      this.ogAddSegmentMetadataCue_ = loader.addSegmentMetadataCue_;
+      loader.addSegmentMetadataCue_ = () => {};
 
       // shim updateend trigger to be a noop if the loader has no media source
       this.updateend = function() {
@@ -422,7 +439,7 @@ QUnit.module('SegmentLoader', function(hooks) {
         let probeResponse;
         let expectedCue;
 
-        loader.addSegmentMetadataCue_ = ogAddSegmentMetadataCue_;
+        loader.addSegmentMetadataCue_ = this.ogAddSegmentMetadataCue_;
         loader.syncController_.probeTsSegment_ = function(segmentInfo) {
           return probeResponse;
         };
@@ -501,7 +518,7 @@ QUnit.module('SegmentLoader', function(hooks) {
 
         // append overlapping segment, emmulating segment-loader fetching behavior on
         // rendtion switch
-        probeResponse = { start: 19.21, end: 28.98 };
+        probeResponse = { start: 19.24, end: 28.99 };
         this.requests[0].response = new Uint8Array(10).buffer;
         this.requests.shift().respond(200, null, '');
         this.updateend();
@@ -510,8 +527,8 @@ QUnit.module('SegmentLoader', function(hooks) {
           uri: '3.ts',
           timeline: 0,
           playlist: 'playlist.m3u8',
-          start: 19.21,
-          end: 28.98,
+          start: 19.24,
+          end: 28.99,
           bandwidth: 3500000,
           resolution: '1920x1080',
           codecs: 'mp4a.40.5,avc1.42001e',
@@ -577,6 +594,7 @@ QUnit.module('SegmentLoader', function(hooks) {
       loader.playlist(playlistWithDuration(20));
       loader.mimeType(this.mimeType);
       loader.load();
+      loader.segmentMetadataTrack_.cues_ = loader.segmentMetadataTrack_.cues;
       this.clock.tick(1);
 
       loader.mediaSource_ = {
@@ -909,5 +927,432 @@ QUnit.module('SegmentLoader', function(hooks) {
 
       assert.equal(errors.length, 0, 'no errors');
     });
+
+    QUnit.test('adjusts buffers when playing media playlist', function(assert) {
+      const playlist = playlistWithDuration(60);
+      let buffered = videojs.createTimeRanges();
+      let bufferedBytes = 100000000;
+
+      loader.buffered_ = () => buffered;
+      loader.minBufferedBytes = () => bufferedBytes;
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+
+      buffered = videojs.createTimeRanges([[0, 30]]);
+
+      loader.mediaRequests = 2;
+      loader.adjustBuffers_(false);
+
+      assert.equal(loader.goalBufferLength_(), 20,
+        'goalBufferLength set to 2/3 buffer time');
+      assert.equal(loader.backBufferLength_(), 10,
+        'backBufferLength set to 1/3 buffer time');
+      assert.equal(loader.maxBytes_, Infinity,
+        'maxBytes not changed with setBytes=false');
+
+      // amount of bytes in buffer doesn't affect buffer lengths when
+      // playing only a media playlist
+      bufferedBytes = 50000000;
+      loader.adjustBuffers_(true);
+      assert.equal(loader.goalBufferLength_(), 20,
+        'goalBufferLength set to 2/3 buffer time');
+      assert.equal(loader.backBufferLength_(), 10,
+        'backBufferLength set to 1/3 buffer time');
+      assert.equal(loader.maxBytes_, 50000000,
+        'maxBytes set to 50000000');
+
+      buffered = videojs.createTimeRanges([[40, 64]]);
+      loader.adjustBuffers_(true);
+
+      assert.equal(loader.goalBufferLength_(), 16,
+        'goalBufferLength set to 2/3 buffer time');
+      assert.equal(loader.backBufferLength_(), 8,
+        'backBufferLength set to 1/3 buffer time');
+      assert.equal(loader.maxBytes_, 50000000,
+        'maxBytes set to 50000000');
+
+      buffered = videojs.createTimeRanges([[70, 100]]);
+      loader.adjustBuffers_(true);
+
+      assert.equal(loader.goalBufferLength_(), 16,
+        'goalBufferLength not changed');
+      assert.equal(loader.backBufferLength_(), 8,
+        'backBufferLength not changed');
+      assert.equal(loader.maxBytes_, 50000000,
+        'maxBytes not changed');
+    });
+
+    QUnit.test('adjusts buffers when playing master playlist', function(assert) {
+      const attributes = {
+        BANDWIDTH: 24000000
+      };
+      const playlist = playlistWithDuration(60, {attributes});
+      let buffered = videojs.createTimeRanges();
+      let bufferedBytes = 72000000;
+
+      loader.buffered_ = () => buffered;
+      loader.minBufferedBytes = () => bufferedBytes;
+
+      loader.playlist(playlist);
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+
+      buffered = videojs.createTimeRanges([[0, 30]]);
+
+      loader.mediaRequests = 2;
+      loader.adjustBuffers_(false);
+
+      assert.equal(loader.goalBufferLength_(), 16,
+        'goalBufferLength set to 16');
+      assert.equal(loader.backBufferLength_(), 8,
+        'backBufferLength set to 8');
+      assert.equal(loader.maxBytes_, Infinity,
+        'maxBytes not changed');
+
+      buffered = videojs.createTimeRanges([[40, 64]]);
+      loader.adjustBuffers_(true);
+      assert.equal(loader.goalBufferLength_(), 16,
+        'goalBufferLength set to 16');
+      assert.equal(loader.backBufferLength_(), 8,
+        'backBufferLength set to 8');
+      assert.equal(loader.maxBytes_, 72000000,
+        'maxBytes set to 72000000');
+
+      bufferedBytes = 63000000;
+      loader.adjustBuffers_(true);
+      assert.equal(loader.goalBufferLength_(), 14,
+        'goalBufferLength set to 14');
+      assert.equal(loader.backBufferLength_(), 7,
+        'backBufferLength set to 7');
+      assert.equal(loader.maxBytes_, 63000000,
+        'maxBytes set to 63000000');
+
+      bufferedBytes = 72000000;
+      loader.adjustBuffers_(true);
+      assert.equal(loader.goalBufferLength_(), 14,
+        'goalBufferLength not changed');
+      assert.equal(loader.backBufferLength_(), 7,
+        'backBufferLength not changed');
+      assert.equal(loader.maxBytes_, 63000000,
+        'maxBytes not changed');
+    });
+
+    QUnit.test('minBufferedBytes and maxBufferedBytes', function(assert) {
+      let cues = [{
+        start: 1.0,
+        end: 2.96,
+        byteLength: 1
+      }, {
+        start: 3.0,
+        end: 5.96,
+        byteLength: 2
+      }, {
+        start: 6.0,
+        end: 7.96,
+        byteLength: 3
+      }];
+      let buffered = videojs.createTimeRanges([[0, 10]]);
+
+      cues.forEach((cue) => {
+        loader.segmentMetadataTrack_.cues.push({
+          startTime: cue.start,
+          endTime: cue.end,
+          value: cue
+        });
+      });
+
+      loader.buffered_ = () => buffered;
+
+      assert.equal(loader.minBufferedBytes(0, 2), 0, 'minBufferedBytes returns 0');
+      assert.equal(loader.minBufferedBytes(0, 3), 1, 'minBufferedBytes returns 1');
+      assert.equal(loader.minBufferedBytes(2, 4), 0, 'minBufferedBytes returns 0');
+      assert.equal(loader.minBufferedBytes(3, 5.96), 2, 'minBufferedBytes returns 2');
+      assert.equal(loader.minBufferedBytes(1, 8), 6, 'minBufferedBytes returns 6');
+
+      assert.equal(loader.maxBufferedBytes(0, 2), 1, 'maxBufferedBytes returns 1');
+      assert.equal(loader.maxBufferedBytes(0, 3), 3, 'maxBufferedBytes returns 3');
+      assert.equal(loader.maxBufferedBytes(2, 4), 3, 'maxBufferedBytes returns 3');
+      assert.equal(loader.maxBufferedBytes(3, 5.96), 2, 'maxBufferedBytes returns 2');
+
+      buffered = videojs.createTimeRanges([[1.5, 7]]);
+
+      assert.equal(loader.minBufferedBytes(0, 3), 0, 'minBufferedBytes returns 0');
+      assert.equal(loader.minBufferedBytes(1, 8), 2, 'minBufferedBytes returns 2');
+
+      assert.equal(loader.maxBufferedBytes(0, 2), 1, 'maxBufferedBytes returns 1');
+      assert.equal(loader.maxBufferedBytes(0, 3), 3, 'maxBufferedBytes returns 3');
+      assert.equal(loader.maxBufferedBytes(2, 4), 3, 'maxBufferedBytes returns 3');
+      assert.equal(loader.maxBufferedBytes(3, 5.96), 2, 'maxBufferedBytes returns 2');
+    });
+
+    QUnit.test('sets nextSegmentSize if we load a playlist with BANDWIDTH attribute',
+    function(assert) {
+      loader.playlist(playlistWithDuration(10, {attributes: {BANDWIDTH: 8000000}}));
+
+      assert.equal(loader.nextSegmentSize_, 10000000,
+        'nextSegmentSize is (BANDWIDTH * targetDuration) / 8');
+    });
+
+    QUnit.test('calculates nextSegmentSize from segment sizes when playlist has' +
+    'no BANDWIDTH attribute', function(assert) {
+      let probeResponse;
+
+      // unstub addSegmentMetadataCue_
+      loader.addSegmentMetadataCue_ = this.ogAddSegmentMetadataCue_;
+      loader.syncController_.probeTsSegment_ = function(segmentInfo) {
+        return probeResponse;
+      };
+
+      loader.playlist(playlistWithDuration(60));
+
+      loader.load();
+      loader.mimeType(this.mimeType);
+      this.clock.tick(1);
+
+      // some time passes and a response is received
+      probeResponse = { start: 0, end: 9.5 };
+      this.requests[0].response = new Uint8Array(1000).buffer;
+      this.requests[0].respond(200, null, '');
+      this.updateend();
+      assert.equal(loader.nextSegmentSize_, 1000,
+        'calculated nextSegmentSize after 1 segment');
+      this.clock.tick(1);
+
+      probeResponse = { start: 10, end: 19.5 };
+      this.requests[1].response = new Uint8Array(2000).buffer;
+      this.requests[1].respond(200, null, '');
+      this.updateend();
+      assert.equal(loader.nextSegmentSize_, 1500,
+        'calculated nextSegmentSize after 2 segments');
+      this.clock.tick(1);
+
+      probeResponse = { start: 20, end: 29.5 };
+      this.requests[2].response = new Uint8Array(1500).buffer;
+      this.requests[2].respond(200, null, '');
+      this.updateend();
+      assert.equal(loader.nextSegmentSize_, 1500,
+        'calculated nextSegmentSize after 3 segments');
+      this.clock.tick(1);
+
+      loader.remove(0, 19.5);
+      this.updateend();
+
+      probeResponse = { start: 30, end: 39.5 };
+      this.requests[3].response = new Uint8Array(2000).buffer;
+      this.requests[3].respond(200, null, '');
+      this.updateend();
+      assert.equal(loader.nextSegmentSize_, 1750,
+        'calculated nextSegmentSize after 2 removals');
+      this.clock.tick(1);
+
+    });
+
+    QUnit.test('does not download the next segment if it would bust the buffer',
+    function(assert) {
+      let buffered;
+      let segmentInfo;
+      let backBufferTrims = 0;
+      let probeResponse;
+      const attributes = {
+        BANDWIDTH: 24000000
+      };
+      const playlist = playlistWithDuration(60, {attributes});
+
+      loader.playlist_ = playlist;
+      loader.trimBackBuffer_ = function() {
+        backBufferTrims++;
+      };
+      loader.addSegmentMetadataCue_ = this.ogAddSegmentMetadataCue_;
+      loader.syncController_.probeTsSegment_ = function() {
+        return probeResponse;
+      };
+      loader.maxBufferedBytes = () => {
+        return 100000000;
+      };
+      loader.maxBytes_ = 102000000;
+      loader.nextSegmentSize_ = 30000000;
+
+      buffered = videojs.createTimeRanges([[0, loader.goalBufferLength_() - 1]]);
+
+      segmentInfo = loader.checkBuffer_(buffered,
+                                        playlist,
+                                        null,
+                                        true,
+                                        15,
+                                        { segmentIndex: 0, time: 0 });
+
+      assert.ok(!segmentInfo, 'no segment request generated');
+      assert.equal(backBufferTrims, 1, 'back buffer was trimmed');
+    });
+
+    QUnit.test('handle QuotaExceededError on first segment', function(assert) {
+      let failedAppends = 0;
+      let successfulAppends = [];
+      let bufferedBytes = 0;
+
+      loader.addSegmentMetadataCue_ = this.ogAddSegmentMetadataCue_;
+
+      this.mediaSource.addSourceBuffer = () => {
+        let buffer = new (videojs.extend(videojs.EventTarget, {
+          constructor() {},
+          abort() {},
+          buffered: videojs.createTimeRange(),
+          appendBuffer(segment) {
+            if (bufferedBytes + segment.byteLength > 5000000) {
+              failedAppends++;
+              throw new DOMException();
+            } else {
+              successfulAppends.push(segment.byteLength);
+            }
+          }
+        }))();
+
+        this.mediaSource.sourceBuffers = [buffer];
+        return buffer;
+
+      };
+
+      loader.playlist(playlistWithDuration(60));
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+
+      this.requests[0].response = new Uint8Array(10000001).buffer;
+      this.requests[0].respond(200, null, '');
+
+      assert.equal(failedAppends, 1, 'failed when first segment too large');
+      assert.equal(this.env.log.warn.calls, 1, 'warning logged');
+      assert.equal(this.env.log.warn.args[0],
+        'SourceBuffer exceeded quota; attempting to recover', 'warning logged');
+      assert.equal(successfulAppends.length, 1, 'appended first slice right away');
+      assert.equal(successfulAppends[0], 5000000, 'first slice is 5MB');
+
+      this.updateend();
+
+      assert.equal(successfulAppends.length, 2,
+        'appended second slice after successfully appending first slice');
+      assert.equal(successfulAppends[1], 5000000, 'second slice is 5MB');
+
+      this.updateend();
+      assert.equal(successfulAppends.length, 3,
+        'appended third slice after successfully appending second slice');
+      assert.equal(successfulAppends[2], 1, 'third slice is 1 byte');
+
+      assert.equal(failedAppends, 1, 'no other append failures in the mean time');
+    });
+
+    QUnit.test('handle QuotaExceededError on non-first segment', function(assert) {
+      let currentTime = 0;
+      let probeResponse;
+      let buffered = videojs.createTimeRanges();
+      let timeupdateHandler;
+      let removes = [];
+
+      loader.addSegmentMetadataCue_ = this.ogAddSegmentMetadataCue_;
+      loader.syncController_.probeTsSegment_ = (segmentInfo) => probeResponse;
+      loader.currentTime_ = () => currentTime;
+      loader.buffered_ = () => buffered;
+      loader.hls_.tech_.on = (event, handler) => {
+        if (event === 'timeupdate') {
+          timeupdateHandler = handler;
+        }
+      };
+      loader.hls_.tech_.off = (event, handler) => {
+        if (event === 'timeupdate' && handler === timeupdateHandler) {
+          timeupdateHandler = () => 'removed';
+        }
+      };
+
+      let failedAppends = 0;
+      let successfulAppends = [];
+      let bufferedBytes = 0;
+
+      this.mediaSource.addSourceBuffer = () => {
+        let buffer = new (videojs.extend(videojs.EventTarget, {
+          constructor() {},
+          abort() {},
+          buffered: videojs.createTimeRange(),
+          appendBuffer(segment) {
+            if (bufferedBytes + segment.byteLength > 100000000) {
+              failedAppends++;
+              throw new DOMException();
+            } else {
+              bufferedBytes += segment.byteLength;
+              successfulAppends.push(segment.byteLength);
+            }
+          },
+          remove(start, end) {
+            removes.push([start, end]);
+            bufferedBytes -= successfulAppends[0];
+          }
+        }))();
+
+        this.mediaSource.sourceBuffers = [buffer];
+        return buffer;
+
+      };
+
+      loader.playlist(playlistWithDuration(60));
+      loader.mimeType(this.mimeType);
+      loader.load();
+      this.clock.tick(1);
+
+      probeResponse = { start: 0, end: 9.5 };
+      this.requests[0].response = new Uint8Array(30000000).buffer;
+      this.requests[0].respond(200, null, '');
+
+      assert.equal(successfulAppends.length, 1, 'first 30MB segment succeeds');
+      this.updateend();
+      this.clock.tick(1);
+
+      probeResponse = { start: 10, end: 19.5 };
+      this.requests[1].response = new Uint8Array(30000000).buffer;
+      this.requests[1].respond(200, null, '');
+
+      assert.equal(successfulAppends.length, 2, 'second 30MB segment succeeds');
+      this.updateend();
+      this.clock.tick(1);
+
+      probeResponse = { start: 20, end: 29.5 };
+      this.requests[2].response = new Uint8Array(30000000).buffer;
+      this.requests[2].respond(200, null, '');
+
+      assert.equal(successfulAppends.length, 3, 'third 30MB segment succeeds');
+      this.updateend();
+      this.clock.tick(1);
+
+      buffered = videojs.createTimeRanges([[0, 29.5]]);
+      probeResponse = { start: 30, end: 39.5 };
+      this.requests[3].response = new Uint8Array(30000000).buffer;
+      this.requests[3].respond(200, null, '');
+      this.clock.tick(1);
+
+      assert.equal(failedAppends, 1, 'fourth segment append failed');
+      assert.equal(this.env.log.warn.calls, 1, 'warning logged');
+      assert.equal(this.env.log.warn.args[0],
+        'SourceBuffer exceeded quota; attempting to recover', 'warning logged');
+      assert.equal(successfulAppends.length, 3, 'no further successes');
+
+      currentTime = 18;
+      timeupdateHandler();
+      assert.equal(removes.length, 0, 'remove not called yet');
+
+      currentTime = 21;
+      timeupdateHandler();
+      assert.equal(removes.length, 1, 'remove called');
+      assert.deepEqual(removes[0], [0, 9.5], 'remove called with right range');
+      assert.equal(bufferedBytes, 60000000, 'first segment removed from buffer');
+
+      this.updateend();
+      this.clock.tick(1);
+      assert.equal(timeupdateHandler(), 'removed', 'timeupdate handler was removed');
+      assert.equal(successfulAppends.length, 4, 'fourth segment eventually appended');
+
+    });
+
   });
 });

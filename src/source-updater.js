@@ -17,8 +17,9 @@ const noop = function() {};
  * @param {String} mimeType the desired MIME type of the underlying
  * SourceBuffer
  */
-export default class SourceUpdater {
+export default class SourceUpdater extends videojs.EventTarget {
   constructor(mediaSource, mimeType) {
+    super();
     let createSourceBuffer = () => {
       this.sourceBuffer_ = mediaSource.addSourceBuffer(mimeType);
 
@@ -37,12 +38,16 @@ export default class SourceUpdater {
       };
 
       this.sourceBuffer_.addEventListener('updateend', this.onUpdateendCallback_);
+      this.sourceBuffer_.addEventListener('bufferMaxed', (event) => {
+        this.handleBufferMaxed_(event);
+      });
 
       this.runCallback_();
     };
 
     this.callbacks_ = [];
     this.pendingCallback_ = null;
+    this.deferredCallback_ = null;
     this.timestampOffset_ = 0;
     this.mediaSource = mediaSource;
     this.processedAppend_ = false;
@@ -78,7 +83,15 @@ export default class SourceUpdater {
   appendBuffer(bytes, done) {
     this.processedAppend_ = true;
     this.queueCallback_(() => {
-      this.sourceBuffer_.appendBuffer(bytes);
+      try {
+        this.sourceBuffer_.appendBuffer(bytes);
+      } catch (error) {
+        this.sourceBuffer_.trigger({
+          segment: bytes,
+          target: this.sourceBuffer_,
+          type: 'bufferMaxed'
+        });
+      }
     }, done);
   }
 
@@ -164,4 +177,18 @@ export default class SourceUpdater {
       this.sourceBuffer_.abort();
     }
   }
+
+  handleBufferMaxed_(event) {
+    videojs.log.warn('SourceBuffer exceeded quota; attempting to recover');
+    this.deferredCallback_ = this.pendingCallback_;
+    this.pendingCallback_ = null;
+
+    this.trigger('adjustBuffers');
+    event.done = () => {
+      this.deferredCallback_();
+      this.runCallback_();
+    };
+    this.trigger(event);
+  }
+
 }

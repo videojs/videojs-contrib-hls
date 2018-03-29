@@ -342,7 +342,7 @@ export const openMediaSource = function(player, clock) {
   clock.tick(1);
 };
 
-export const standardXHRResponse = function(request, data) {
+export const standardXHRResponse = function(request, data, size) {
   if (!request.url) {
     return;
   }
@@ -367,7 +367,11 @@ export const standardXHRResponse = function(request, data) {
     data = testDataManifests[manifestName];
   }
 
-  request.response = new Uint8Array(1024).buffer;
+  if (!size) {
+    size = 1024;
+  }
+
+  request.response = new Uint8Array(size).buffer;
   request.respond(200, {'Content-Type': contentType}, data);
 };
 

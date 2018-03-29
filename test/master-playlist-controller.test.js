@@ -2250,7 +2250,8 @@ QUnit.test('subtitle segment loader resets on seeks', function(assert) {
   assert.equal(loadCount, 1, 'called load on subtitle segment loader');
 });
 
-QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {
+QUnit.test('calculates (and sets) dynamic GOAL_BUFFER_LENGTH and MAX_GOAL_BUFFER_LENGTH',
+function(assert) {
   const configOld = {
     GOAL_BUFFER_LENGTH: Config.GOAL_BUFFER_LENGTH,
     MAX_GOAL_BUFFER_LENGTH: Config.MAX_GOAL_BUFFER_LENGTH,
@@ -2280,6 +2281,60 @@ QUnit.test('calculates dynamic GOAL_BUFFER_LENGTH', function(assert) {
 
   assert.equal(mpc.goalBufferLength(), 60, 'dynamic GBL continues to use max value');
 
+  mpc.goalBufferLength(45);
+
+  currentTime = 0;
+
+  assert.equal(mpc.goalBufferLength(), 30, 'dynamic GBL uses starting value at time 0');
+
+  currentTime = 10;
+
+  assert.equal(mpc.goalBufferLength(), 35, 'dynamic GBL increases by currentTime * rate');
+
+  currentTime = 30;
+
+  assert.equal(mpc.goalBufferLength(), 45, 'dynamic GBL uses max value');
+
+  currentTime = 40;
+
+  assert.equal(mpc.goalBufferLength(), 45, 'dynamic GBL continues to use max value');
+
+  mpc.goalBufferLength(20);
+
+  currentTime = 0;
+
+  assert.equal(mpc.goalBufferLength(), 20, 'dynamic GBL uses starting value at time 0');
+
+  currentTime = 10;
+
+  assert.equal(mpc.goalBufferLength(), 20, 'dynamic GBL uses max value');
+
+  currentTime = 20;
+
+  assert.equal(mpc.goalBufferLength(), 20, 'dynamic GBL continues to use max value');
+
+  // restore config
+  Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);
+});
+
+QUnit.test('sets and returns BACK_BUFFER_LENGTH', function(assert) {
+  const configOld = {
+    BACK_BUFFER_LENGTH: Config.BACK_BUFFER_LENGTH
+  };
+  const mpc = this.masterPlaylistController;
+
+  let currentTime = 0;
+
+  Config.BACK_BUFFER_LENGTH = 30;
+
+  mpc.tech_.currentTime = () => currentTime;
+
+  assert.equal(mpc.backBufferLength(), 30, 'BBL returns initial config before being set');
+
+  mpc.backBufferLength(20);
+
+  assert.equal(mpc.backBufferLength(), 20, 'BBL returns value set by MPC');
+
   // restore config
   Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);
 });
@@ -2288,15 +2343,17 @@ QUnit.test('calculates dynamic BUFFER_LOW_WATER_LINE', function(assert) {
   const configOld = {
     BUFFER_LOW_WATER_LINE: Config.BUFFER_LOW_WATER_LINE,
     MAX_BUFFER_LOW_WATER_LINE: Config.MAX_BUFFER_LOW_WATER_LINE,
-    BUFFER_LOW_WATER_LINE_RATE: Config.BUFFER_LOW_WATER_LINE_RATE
+    BUFFER_LOW_WATER_LINE_RATE: Config.BUFFER_LOW_WATER_LINE_RATE,
+    GOAL_BUFFER_LENGTH: Config.GOAL_BUFFER_LENGTH
   };
   const mpc = this.masterPlaylistController;
 
   let currentTime = 0;
 
   Config.BUFFER_LOW_WATER_LINE = 0;
-  Config.MAX_BUFFER_LOW_WATER_LINE = 30;
   Config.BUFFER_LOW_WATER_LINE_RATE = 0.5;
+  Config.MAX_BUFFER_LOW_WATER_LINE = 30;
+  Config.GOAL_BUFFER_LENGTH = 30;
 
   mpc.tech_.currentTime = () => currentTime;
 
@@ -2314,6 +2371,25 @@ QUnit.test('calculates dynamic BUFFER_LOW_WATER_LINE', function(assert) {
   currentTime = 70;
 
   assert.equal(mpc.bufferLowWaterLine(), 30, 'dynamic BLWL continues to use max value');
+
+  mpc.goalBufferLength(20);
+
+  currentTime = 0;
+
+  assert.equal(mpc.bufferLowWaterLine(), 0, 'dynamic BLWL uses starting value at time 0');
+
+  currentTime = 10;
+
+  assert.equal(mpc.bufferLowWaterLine(), 5,
+    'dynamic BLWL increases by currentTime * rate');
+
+  currentTime = 40;
+
+  assert.equal(mpc.bufferLowWaterLine(), 20, 'dynamic BLWL uses max value');
+
+  currentTime = 50;
+
+  assert.equal(mpc.bufferLowWaterLine(), 20, 'dynamic BLWL continues to use max value');
 
   // restore config
   Object.keys(configOld).forEach((key) => Config[key] = configOld[key]);

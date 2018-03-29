@@ -260,6 +260,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.useCueTags_ = useCueTags;
     this.blacklistDuration = blacklistDuration;
     this.enableLowInitialPlaylist = enableLowInitialPlaylist;
+    this.goalBufferLength_ = Config.GOAL_BUFFER_LENGTH;
+    this.maxGoalBufferLength_ = Config.MAX_GOAL_BUFFER_LENGTH;
+    this.backBufferLength_ = Config.BACK_BUFFER_LENGTH;
 
     if (this.useCueTags_) {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
@@ -299,7 +302,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
       seeking: () => this.tech_.seeking(),
       duration: () => this.mediaSource.duration,
       hasPlayed: () => this.hasPlayed_(),
-      goalBufferLength: () => this.goalBufferLength(),
+      goalBufferLength: this.goalBufferLength.bind(this),
+      maxGoalBufferLength: () => this.maxGoalBufferLength_,
+      backBufferLength: this.backBufferLength.bind(this),
       bandwidth,
       syncController: this.syncController_,
       decrypter: this.decrypter_
@@ -584,6 +589,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       if (!currentPlaylist.endList ||
           // For the same reason as LIVE, we ignore the low water line when the VOD
           // duration is below the max potential low water line
+        // TODO: This probably needs changing? Not sure what to change it to though.
+        // Maybe just this.bufferLowWaterLine() ?
           this.duration() < Config.MAX_BUFFER_LOW_WATER_LINE ||
           // we want to switch down to lower resolutions quickly to continue playback, but
           nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH ||
@@ -1235,17 +1242,35 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
-   * Calculates the desired forward buffer length based on current time
+   * Calculates or sets the desired forward buffer length based on current time
    *
-   * @return {Number} Desired forward buffer length in seconds
+   * @param {Number=} Desired forward buffer length in seconds
+   * @return {Number} Current forward buffer target length
    */
-  goalBufferLength() {
-    const currentTime = this.tech_.currentTime();
-    const initial = Config.GOAL_BUFFER_LENGTH;
-    const rate = Config.GOAL_BUFFER_LENGTH_RATE;
-    const max = Math.max(initial, Config.MAX_GOAL_BUFFER_LENGTH);
+  goalBufferLength(value) {
+    if (value === undefined) {
+      const currentTime = this.tech_.currentTime();
+      const initial = this.goalBufferLength_;
+      const rate = Config.GOAL_BUFFER_LENGTH_RATE;
+      const max = Math.max(initial, this.maxGoalBufferLength_);
 
-    return Math.min(initial + currentTime * rate, max);
+      return Math.min(initial + currentTime * rate, max);
+    }
+    this.goalBufferLength_ = Math.min(this.goalBufferLength_, value);
+    this.maxGoalBufferLength_ = Math.min(this.maxGoalBufferLength_, value);
+  }
+
+  /**
+   * Set or return the back buffer length
+   *
+   * @param {Number=} Desired back buffer length in seconds
+   * @return {Number} Current back buffer target length
+   */
+  backBufferLength(value) {
+    if (value === undefined) {
+      return this.backBufferLength_;
+    }
+    this.backBufferLength_ = Math.min(this.backBufferLength_, value);
   }
 
   /**
@@ -1259,6 +1284,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
     const rate = Config.BUFFER_LOW_WATER_LINE_RATE;
     const max = Math.max(initial, Config.MAX_BUFFER_LOW_WATER_LINE);
 
-    return Math.min(initial + currentTime * rate, max);
+    return Math.min(initial + currentTime * rate, max, this.goalBufferLength());
   }
 }
