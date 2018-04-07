@@ -645,10 +645,27 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.onEndOfStream();
     });
 
-    this.mainSegmentLoader_.on('buffered', (event) => {
-      this.seeking_ = false;
-      this.tech_.setPlaybackRate(this.playbackRate);
+    this.mainSegmentLoader_.on('buffered', this.seeked_.bind(this));
+    this.tech_.on('seeked', () => {
+      if (this.seeking_ && !this.tech_.seeking()) {
+        // we've got an old version of videojs that doesn't support deferring
+        // seeking to the source handler, so resume immediately
+        this.seeked_();
+      }
     });
+  }
+
+  /**
+   * Restore playback rate and set seeking to false
+   *
+   * @private
+   */
+  seeked_() {
+    if (!this.seeking_) {
+      return;
+    }
+    this.seeking_ = false;
+    this.tech_.setPlaybackRate(this.playbackRate_);
   }
 
   mediaSecondsLoaded_() {
