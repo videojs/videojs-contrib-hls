@@ -1026,7 +1026,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   seeking() {
-    return this.seeking_;
+    return this.tech_.el_.seeking || this.seeking_;
   }
 
   onSyncInfoUpdate_() {
