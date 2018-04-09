@@ -261,7 +261,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.useCueTags_ = useCueTags;
     this.blacklistDuration = blacklistDuration;
     this.enableLowInitialPlaylist = enableLowInitialPlaylist;
-    this.timeout_ = timeout || null;
+    this.timeout_ = timeout || null;
     if (this.useCueTags_) {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
@@ -270,7 +270,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     this.requestOptions_ = {
       withCredentials: this.withCredentials,
-      timeout: this.timeout_,
+      timeout: this.timeout_
     };
 
     this.mediaTypes_ = createMediaTypes();
