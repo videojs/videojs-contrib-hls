@@ -266,6 +266,10 @@ class HlsHandler extends Component {
       }
     });
 
+    if (typeof this.options_.seekDeadline !== 'number') {
+      this.options_.seekDeadline = 5;
+    }
+
     this.bandwidth = this.options_.bandwidth;
   }
   /**

@@ -11,7 +11,7 @@ import removeCuesFromTrack from
 import { initSegmentId } from './bin-utils';
 import {mediaSegmentRequest, REQUEST_ERRORS} from './media-segment-request';
 import { TIME_FUDGE_FACTOR, timeUntilRebuffer as timeUntilRebuffer_ } from './ranges';
-import { minRebufferMaxBandwidthSelector } from './playlist-selectors';
+import { maxBandwidthForDeadlineSelector } from './playlist-selectors';
 
 // in ms
 const CHECK_BUFFER_DELAY = 500;
@@ -145,6 +145,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.startingMedia_ = void 0;
     this.segmentMetadataTrack_ = settings.segmentMetadataTrack;
     this.goalBufferLength_ = settings.goalBufferLength;
+    this.seekDeadline_ = options.seekDeadline;
 
     // private instance variables
     this.checkBufferTimeout_ = null;
@@ -512,6 +513,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * Useful for fast quality changes
    */
   resetLoader() {
+    this.logger_('resetLoader');
     this.fetchAtBuffer_ = false;
     this.resyncLoader();
   }
@@ -521,6 +523,7 @@ export default class SegmentLoader extends videojs.EventTarget {
    * before returning to the simple walk-forward method
    */
   resyncLoader() {
+    this.logger_('resyncLoader');
     this.mediaIndex = null;
     this.syncPoint_ = null;
     this.abort();
@@ -838,35 +841,32 @@ export default class SegmentLoader extends videojs.EventTarget {
                                           this.playlist_,
                                           stats.bytesReceived);
 
-    let timeUntilRebuffer;
+    let deadline;
+
     if (this.seeking_() && this.seekStartedAt_) {
-      timeUntilRebuffer = this.pendingSegment_.duration - ((new Date() - this.seekStartedAt_) / 1000);
+      deadline = this.seekDeadline_ - ((new Date() - this.seekStartedAt_) / 1000);
     } else {
       // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
       // if we are only left with less than 1 second when the request completes.
       // A negative timeUntilRebuffering indicates we are already rebuffering
-      timeUntilRebuffer = timeUntilRebuffer_(this.buffered_(),
+      deadline = timeUntilRebuffer_(this.buffered_(),
                                                    currentTime,
                                                    this.hls_.tech_.playbackRate()) - 1;
     }
 
-    if (timeUntilRebuffer < 0) {
-      return;
-    }
-
     // Only consider aborting early if the estimated time to finish the download
     // is larger than the estimated time until the player runs out of forward buffer
-    if (requestTimeRemaining <= timeUntilRebuffer) {
+    if (requestTimeRemaining <= deadline) {
       return false;
     }
 
-    const switchCandidate = minRebufferMaxBandwidthSelector({
+    const switchCandidate = maxBandwidthForDeadlineSelector({
       master: this.hls_.playlists.master,
       currentTime,
       bandwidth: measuredBandwidth,
       duration: this.duration_(),
       segmentDuration,
-      timeUntilRebuffer,
+      deadline,
       currentTimeline: this.currentTimeline_,
       syncController: this.syncController_
     });
@@ -875,16 +875,14 @@ export default class SegmentLoader extends videojs.EventTarget {
       return;
     }
 
-    const rebufferingImpact = requestTimeRemaining - timeUntilRebuffer;
-
-    const timeSavedBySwitching = rebufferingImpact - switchCandidate.rebufferingImpact;
+    const timeSavedBySwitching = requestTimeRemaining - switchCandidate.requestTimeEstimate;
 
     let minimumTimeSaving = 0.5;
 
     // If we are already rebuffering, increase the amount of variance we add to the
     // potential round trip time of the new request so that we are not too aggressive
     // with switching to a playlist that might save us a fraction of a second.
-    if (timeUntilRebuffer <= TIME_FUDGE_FACTOR) {
+    if (deadline <= TIME_FUDGE_FACTOR) {
       minimumTimeSaving = 1;
     }
 

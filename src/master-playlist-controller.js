@@ -2,7 +2,7 @@
  * @file master-playlist-controller.js
  */
 import PlaylistLoader from './playlist-loader';
-import { isEnabled, isLowestEnabledRendition } from './playlist.js';
+import { isEnabled, isLowestEnabledRendition, getMediaInfoForTime } from './playlist.js';
 import SegmentLoader from './segment-loader';
 import VTTSegmentLoader from './vtt-segment-loader';
 import Ranges from './ranges';
@@ -15,6 +15,7 @@ import Decrypter from './decrypter-worker';
 import Config from './config';
 import { parseCodecs } from './util/codecs.js';
 import { createMediaTypes, setupMediaGroups } from './media-groups';
+import { maxBandwidthForDeadlineSelector } from './playlist-selectors';
 
 const ABORT_EARLY_BLACKLIST_SECONDS = 60 * 2;
 
@@ -245,7 +246,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       externHls,
       useCueTags,
       blacklistDuration,
-      enableLowInitialPlaylist
+      enableLowInitialPlaylist,
+      seekDeadline
     } = options;
 
     if (!url) {
@@ -260,12 +262,14 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.useCueTags_ = useCueTags;
     this.blacklistDuration = blacklistDuration;
     this.enableLowInitialPlaylist = enableLowInitialPlaylist;
+    this.seekDeadline_ = seekDeadline;
 
     if (this.useCueTags_) {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
       this.cueTagsTrack_.inBandMetadataTrackDispatchType = '';
     }
+    this.lastPlaybackRate_ = null;
 
     this.requestOptions_ = {
       withCredentials,
@@ -665,7 +669,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return;
     }
     this.seeking_ = false;
-    this.tech_.setPlaybackRate(this.playbackRate_);
+    this.tech_.setPlaybackRate(this.lastPlaybackRate_);
+    this.lastPlaybackRate_ = null;
   }
 
   mediaSecondsLoaded_() {
@@ -687,15 +692,17 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
-   * Re-tune playback quality level for the current player
-   * conditions. This method may perform destructive actions, like
-   * removing already buffered content, to readjust the currently
-   * active playlist quickly.
+   * Re-tune playback quality level for either the current player
+   * conditions or the explicitly passed playlist. This method may
+   * perform destructive actions, like removing already buffered
+   * content, to readjust the currently active playlist quickly.
+   *
+   * @param {Playlist=} nextPlaylist Force quality switch to this playlist
    *
    * @private
    */
-  fastQualityChange_() {
-    let media = this.selectPlaylist();
+  fastQualityChange_(nextPlaylist) {
+    let media = nextPlaylist || this.selectPlaylist();
 
     if (media !== this.masterPlaylistLoader_.media()) {
       this.masterPlaylistLoader_.media(media);
@@ -957,7 +964,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
    * @return {TimeRange} the current time
    */
   setCurrentTime(currentTime) {
-    this.seeking_ = true;
 
     let buffered = Ranges.findRange(this.tech_.buffered(), currentTime);
 
@@ -968,7 +974,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // it's clearly an edge-case but don't thrown an error if asked to
     // seek within an empty playlist
-    if (!this.masterPlaylistLoader_.media().segments) {
+    if (!this.masterPlaylistLoader_.media().segments.length) {
       return 0;
     }
 
@@ -979,8 +985,45 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return currentTime;
     }
 
-    this.playbackRate = this.tech_.playbackRate();
+    // If we get here, we're taking control of the seeking process
+    this.seeking_ = true;
+    this.lastPlaybackRate_ = this.tech_.playbackRate();
     this.tech_.setPlaybackRate(0);
+
+    let media = this.masterPlaylistLoader_.media();
+
+    let syncPoint = this.syncController_.getSyncPoint(
+      media,
+      this.duration(),
+      undefined,
+      currentTime);
+
+    let mediaSourceInfo = getMediaInfoForTime(
+      media,
+      currentTime,
+      syncPoint.segmentIndex,
+      syncPoint.time
+    );
+
+    let segmentDuration = media.segments[mediaSourceInfo.mediaIndex].duration;
+    let bufferedAfterSeek = (mediaSourceInfo.startTime + segmentDuration) - currentTime;
+    let extraRequests = 0;
+
+    if (bufferedAfterSeek < (this.mainSegmentLoader_.roundTrip / 1000)) {
+      extraRequests++;
+    }
+
+    let nextPlaylist = maxBandwidthForDeadlineSelector({
+      master: this.master(),
+      currentTime,
+      bandwidth: this.mainSegmentLoader_.bandwidth,
+      duration: this.duration(),
+      segmentDuration,
+      deadline: this.seekDeadline_,
+      currentTimeline: this.mainSegmentLoader_.currentTimeline_,
+      syncController: this.syncController_,
+      extraRequests: 1
+    });
 
     // cancel outstanding requests so we begin buffering at the new
     // location
@@ -993,6 +1036,11 @@ export class MasterPlaylistController extends videojs.EventTarget {
     if (this.mediaTypes_.SUBTITLES.activePlaylistLoader) {
       this.subtitleSegmentLoader_.resetEverything();
       this.subtitleSegmentLoader_.abort();
+    }
+
+    if (nextPlaylist && media.uri !== nextPlaylist.playlist.uri) {
+      this.fastQualityChange_(nextPlaylist.playlist);
+      return;
     }
 
     // start segment loader loading in case they are paused
