@@ -513,7 +513,6 @@ export default class SegmentLoader extends videojs.EventTarget {
    * Useful for fast quality changes
    */
   resetLoader() {
-    this.logger_('resetLoader');
     this.fetchAtBuffer_ = false;
     this.resyncLoader();
   }
@@ -523,7 +522,6 @@ export default class SegmentLoader extends videojs.EventTarget {
    * before returning to the simple walk-forward method
    */
   resyncLoader() {
-    this.logger_('resyncLoader');
     this.mediaIndex = null;
     this.syncPoint_ = null;
     this.abort();
