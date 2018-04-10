@@ -1,9 +1,10 @@
+# Notice: The next version of this project can be found at [videojs-http-streaming](https://github.com/videojs/http-streaming)
+
 # video.js HLS Source Handler
 
 [![Build Status][travis-icon]][travis-link]
 [![Slack Status][slack-icon]][slack-link]
 [![Greenkeeper badge][greenkeeper-icon]][greenkeeper-link]
-
 
 Play back HLS with video.js, even where it's not natively supported.
 
