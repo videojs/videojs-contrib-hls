@@ -655,6 +655,46 @@ export class MasterPlaylistController extends videojs.EventTarget {
         // we've got an old version of videojs that doesn't support deferring
         // seeking to the source handler, so resume immediately
         this.seeked_();
+
+        // if we seeked close to the end of a segment, we'll run out of buffer
+        // before we can download the next segment. when we're rebuffering,
+        // there should be a spinner over the video, but this requires a bit
+        // of finagling for some browsers.
+        if (videojs.browser.IS_EDGE || videojs.browser.IE_VERSION) {
+          // on IE/edge, no `waiting` is fired when you're rebuffering. also,
+          // `timeupdate`s constantly fire. so we simply check to see if our
+          // current time advances at all and fire waiting events for a period
+          // of time after seeking
+          let lastTime = this.tech_.currentTime();
+          let waitingChecker = () => {
+            if (lastTime === this.tech_.currentTime() && !this.tech_.paused()) {
+              this.tech_.trigger('waiting');
+            }
+            lastTime = this.tech_.currentTime();
+          };
+
+          this.tech_.on('timeupdate', waitingChecker);
+          setTimeout(() => {
+            this.tech_.off('timeupdate', waitingChecker);
+          }, this.masterPlaylistLoader_.targetDuration * 1000);
+
+        } else if (videojs.browser.IS_CHROME) {
+          // on chrome, a `waiting` event will fire, but will also have a
+          // `timeupdate` fire right after (while still rebuffering). this
+          // causes the spinner to clear because of the code in video.js. to
+          // work around this, we re-trigger a `waiting` if the current time
+          // at the first `waiting` and the subsequent `timeupdate` are the
+          // same.
+          this.tech_.one('waiting', () => {
+            let currentTime = this.tech_.currentTime();
+
+            this.tech_.one('timeupdate', () => {
+              if (this.tech_.currentTime() === currentTime) {
+                this.tech_.trigger('waiting');
+              }
+            });
+          });
+        }
       }
     });
   }
