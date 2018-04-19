@@ -72,6 +72,7 @@ function(assert) {
   let segmentDuration = 10;
   let deadline = 5;
   let currentTimeline = 0;
+  let extraRequests = 0;
   let syncController = {
     getSyncPoint: (playlist) => playlist.syncPoint
   };
@@ -85,7 +86,8 @@ function(assert) {
       segmentDuration,
       deadline,
       currentTimeline,
-      syncController
+      syncController,
+      extraRequests
     };
   };
 
@@ -99,12 +101,13 @@ function(assert) {
 
   let result = maxBandwidthForDeadlineSelector(settings());
 
-  assert.equal(result.playlist, master.playlists[1], 'selected the correct playlist');
+  assert.equal(result.playlist, master.playlists[1], 'selected 500kbps ' +
+    'playlist (no sync point, 2000kbps bandwidth, 5s deadline)');
   assert.equal(deadline - result.requestTimeEstimate, 0, 'playlist will finish exactly at deadline');
 
   master.playlists = [
     { attributes: { BANDWIDTH: 100 }, syncPoint: false },
-    { attributes: { BANDWIDTH: 500 }, syncPoint: false },
+    { attributes: { BANDWIDTH: 500 }, syncPoint: true },
     { attributes: { BANDWIDTH: 1000 }, syncPoint: true },
     { attributes: { BANDWIDTH: 2000 }, syncPoint: true },
     { attributes: { BANDWIDTH: 5000 }, syncPoint: false }
@@ -112,15 +115,25 @@ function(assert) {
 
   result = maxBandwidthForDeadlineSelector(settings());
 
-  assert.equal(result.playlist, master.playlists[2], 'selected the corerct playlist');
+  assert.equal(result.playlist, master.playlists[2], 'selected 1000kbps ' +
+    'playlist (sync point, 2000kbps bandwidth, 5s deadline)');
   assert.equal(deadline - result.requestTimeEstimate, 0, 'playlist will finish exactly at deadline');
 
+  extraRequests = 1;
+  result = maxBandwidthForDeadlineSelector(settings());
+
+  assert.equal(result.playlist, master.playlists[1], 'selected 500kbps ' +
+    'playlist (sync point, 2000kbps bandwidth, 5s deadline, 1 extra request)');
+  assert.equal(deadline - result.requestTimeEstimate, 0, 'playlist will finish exactly at deadline');
+
+  extraRequests = 0;
   bandwidth = 500;
   deadline = 3;
 
   result = maxBandwidthForDeadlineSelector(settings());
 
-  assert.equal(result.playlist, master.playlists[0], 'selected the correct playlist');
+  assert.equal(result.playlist, master.playlists[0], 'selected 100kbps ' +
+    'playlist (sync point, 500kbps bandwidth, 3s deadline)');
   assert.equal(deadline - result.requestTimeEstimate, -1, 'playlist will take 1s longer than deadline');
 });
 
