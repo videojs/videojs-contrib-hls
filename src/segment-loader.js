@@ -632,7 +632,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       segmentInfo.timestampOffset = segmentInfo.startOfSegment;
     }
 
-    if (this.seeking_()) {
+    if (this.seeking_() && !this.seekStartedAt_) {
       this.seekStartedAt_ = new Date();
     }
 
@@ -1230,6 +1230,7 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       if ((buffered.end(0) - this.currentTime_()) >= (this.roundTrip / 1000) + 1) {
         this.trigger('buffered');
+        this.seekStartedAt_ = null;
       }
     }
 
