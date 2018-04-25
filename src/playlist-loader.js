@@ -335,11 +335,8 @@ export default class PlaylistLoader extends EventTarget {
     // switch to fully loaded playlists immediately
     if (this.master.playlists[playlist.uri].endList) {
       // abort outstanding playlist requests
-      if (this.request) {
-        this.request.onreadystatechange = null;
-        this.request.abort();
-        this.request = null;
-      }
+      this.stopRequest();
+      
       this.state = 'HAVE_METADATA';
       this.media_ = playlist;
 
@@ -365,9 +362,7 @@ export default class PlaylistLoader extends EventTarget {
         // has no effect after the first
         return;
       }
-      this.request.onreadystatechange = null;
-      this.request.abort();
-      this.request = null;
+      this.stopRequest();
     }
 
     // request the new playlist
