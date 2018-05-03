@@ -38,6 +38,7 @@ QUnit.test('Advanced Bip Bop', function(assert) {
   let player = this.player;
 
   player.autoplay(true);
+  player.muted(true);
 
   playFor(player, 2, function() {
     assert.ok(true, 'played for at least two seconds');
@@ -60,6 +61,7 @@ QUnit.test('Advanced Bip Bop preload=none', function(assert) {
 
   player.autoplay(true);
   player.preload('none');
+  player.muted(true);
 
   playFor(player, 2, function() {
     assert.ok(true, 'played for at least two seconds');

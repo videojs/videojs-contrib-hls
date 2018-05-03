@@ -4,22 +4,23 @@ var isparta = require('isparta');
 module.exports = function(config) {
 
   var detectBrowsers = {
-    enabled: false,
     usePhantomJS: false,
+    // detect what browsers are installed on the system and
+    // use headless mode and flags to allow for playback
     postDetection: function(availableBrowsers) {
-      var safariIndex = availableBrowsers.indexOf('Safari');
+      for (let index in availableBrowsers) {
+        let browser = availableBrowsers[index];
 
-      if(safariIndex !== -1) {
-        availableBrowsers.splice(safariIndex, 1);
-        console.log("Disabled Safari as it was/is not supported");
+        if (/^(Chromium.*|Chrome.*)/.test(browser)) {
+          availableBrowsers[index] = browser + 'HeadlessWithFlags';
+        }
+        if (/^Firefox.*/.test(browser)) {
+          availableBrowsers[index] = browser + 'Headless';
+        }
       }
       return availableBrowsers;
     }
   };
-
-  if (process.env.TRAVIS) {
-    config.browsers = ['ChromeHeadlessNoSandbox'];
-  }
 
   // If no browsers are specified, we enable `karma-detect-browsers`
   // this will detect all browsers that are available for testing
@@ -30,6 +31,13 @@ module.exports = function(config) {
   config.set({
     basePath: '..',
     frameworks: ['qunit', 'browserify', 'detectBrowsers'],
+    client: {
+      clearContext: false,
+      qunit: {
+        showUI: true,
+        testTimeout: 30000
+      }
+    },
     files: [
       'node_modules/sinon/pkg/sinon.js',
       'node_modules/sinon/pkg/sinon-ie.js',
@@ -67,9 +75,17 @@ module.exports = function(config) {
       }
     },
     customLaunchers: {
-      ChromeHeadlessNoSandbox: {
+      ChromeHeadlessWithFlags: {
         base: 'ChromeHeadless',
-        flags: ['--no-sandbox']
+        flags: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required']
+      },
+      ChromeCanaryHeadlessWithFlags: {
+        base: 'ChromeCanaryHeadless',
+        flags: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required']
+      },
+      ChromiumHeadlessWithFlags: {
+        base: 'ChromiumHeadless',
+        flags: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required']
       }
     },
     detectBrowsers: detectBrowsers,
@@ -78,7 +94,10 @@ module.exports = function(config) {
     colors: true,
     autoWatch: false,
     singleRun: true,
-    concurrency: Infinity,
+    concurrency: 1,
+    captureTimeout: 300000,
+    browserNoActivityTimeout: 300000,
+    browserDisconnectTimeout: 300000,
     browserDisconnectTolerance: 3
   });
 
