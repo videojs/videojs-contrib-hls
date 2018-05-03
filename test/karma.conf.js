@@ -5,17 +5,14 @@ module.exports = function(config) {
 
   var detectBrowsers = {
     usePhantomJS: false,
-    // detect what browsers are installed on the system and
-    // use headless mode and flags to allow for playback
+    // use headless mode automatically for browsers that support it
+    preferHeadless: true,
+    // replace chrome headless with one that is suitable for automatic testing
     postDetection: function(availableBrowsers) {
       for (let index in availableBrowsers) {
-        let browser = availableBrowsers[index];
-
+        var browser = availableBrowsers[index];
         if (/^(Chromium.*|Chrome.*)/.test(browser)) {
-          availableBrowsers[index] = browser + 'HeadlessWithFlags';
-        }
-        if (/^Firefox.*/.test(browser)) {
-          availableBrowsers[index] = browser + 'Headless';
+          availableBrowsers[index] = browser + 'WithFlags';
         }
       }
       return availableBrowsers;
