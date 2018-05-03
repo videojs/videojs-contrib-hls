@@ -25,3 +25,4 @@ env:
   - VJS=6
 addons:
   chrome: stable
+  firefox: latest
