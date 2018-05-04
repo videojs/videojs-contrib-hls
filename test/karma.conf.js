@@ -3,6 +3,14 @@ var isparta = require('isparta');
 
 module.exports = function(config) {
 
+  // Only run chrome in no sandbox mode
+  var customLaunchers = {};
+  ['Chrome', 'ChromeCanary', 'Chromium'].forEach((browser) => {
+    customLaunchers[browser + 'WithFlags'] = {base: browser, flags: ['--no-sandbox']}
+    customLaunchers[browser + 'HeadlessWithFlags'] =
+      {base: browser + 'Headless', flags: ['--no-sandbox']}
+  });
+
   var detectBrowsers = {
     usePhantomJS: false,
     // use headless mode automatically for browsers that support it
@@ -71,20 +79,7 @@ module.exports = function(config) {
         return file.originalPath;
       }
     },
-    customLaunchers: {
-      ChromeHeadlessWithFlags: {
-        base: 'ChromeHeadless',
-        flags: ['--no-sandbox']
-      },
-      ChromeCanaryHeadlessWithFlags: {
-        base: 'ChromeCanaryHeadless',
-        flags: ['--no-sandbox']
-      },
-      ChromiumHeadlessWithFlags: {
-        base: 'ChromiumHeadless',
-        flags: ['--no-sandbox']
-      }
-    },
+    customLaunchers,
     detectBrowsers: detectBrowsers,
     reporters: ['dots'],
     port: 9876,
