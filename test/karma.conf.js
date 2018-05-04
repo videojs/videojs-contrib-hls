@@ -74,15 +74,15 @@ module.exports = function(config) {
     customLaunchers: {
       ChromeHeadlessWithFlags: {
         base: 'ChromeHeadless',
-        flags: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required']
+        flags: ['--no-sandbox']
       },
       ChromeCanaryHeadlessWithFlags: {
         base: 'ChromeCanaryHeadless',
-        flags: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required']
+        flags: ['--no-sandbox']
       },
       ChromiumHeadlessWithFlags: {
         base: 'ChromiumHeadless',
-        flags: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required']
+        flags: ['--no-sandbox']
       }
     },
     detectBrowsers: detectBrowsers,

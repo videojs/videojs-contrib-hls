@@ -26,7 +26,7 @@ QUnit.module('Playback', {
     video.width = 600;
     video.height = 300;
     document.querySelector('#qunit-fixture').appendChild(video);
-    this.player = videojs(video);
+    this.player = videojs(video, { muted: true });
     this.player.ready(done);
   }
 });
@@ -38,7 +38,6 @@ QUnit.test('Advanced Bip Bop', function(assert) {
   let player = this.player;
 
   player.autoplay(true);
-  player.muted(true);
 
   playFor(player, 2, function() {
     assert.ok(true, 'played for at least two seconds');
@@ -61,7 +60,6 @@ QUnit.test('Advanced Bip Bop preload=none', function(assert) {
 
   player.autoplay(true);
   player.preload('none');
-  player.muted(true);
 
   playFor(player, 2, function() {
     assert.ok(true, 'played for at least two seconds');
