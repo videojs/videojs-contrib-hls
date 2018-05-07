@@ -4,26 +4,37 @@ var isparta = require('isparta');
 module.exports = function(config) {
 
   // Only run chrome in no sandbox mode
-  var customLaunchers = {};
+  let customLaunchers = {};
+
   ['Chrome', 'ChromeCanary', 'Chromium'].forEach((browser) => {
-    customLaunchers[browser + 'WithFlags'] = {base: browser, flags: ['--no-sandbox']}
-    customLaunchers[browser + 'HeadlessWithFlags'] =
-      {base: browser + 'Headless', flags: ['--no-sandbox']}
+    customLaunchers[browser + 'WithFlags'] = {
+      base: browser,
+      flags: ['--no-sandbox']
+    };
+    customLaunchers[browser + 'HeadlessWithFlags'] = {
+      base: browser + 'Headless',
+      flags: ['--no-sandbox']
+    };
   });
 
-  var detectBrowsers = {
+  let detectBrowsers = {
     usePhantomJS: false,
     // use headless mode automatically for browsers that support it
     preferHeadless: true,
     // replace chrome headless with one that is suitable for automatic testing
     postDetection: function(availableBrowsers) {
+      let browsers = [];
+
       for (let index in availableBrowsers) {
-        var browser = availableBrowsers[index];
+        let browser = availableBrowsers[index];
+
         if (/^(Chromium.*|Chrome.*)/.test(browser)) {
-          availableBrowsers[index] = browser + 'WithFlags';
+          browsers.push(browser + 'WithFlags');
+        } else if (!/Safari/.test(browser)) {
+          browsers.push(browser);
         }
       }
-      return availableBrowsers;
+      return browsers;
     }
   };
 
