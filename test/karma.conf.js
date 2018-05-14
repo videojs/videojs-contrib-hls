@@ -3,23 +3,40 @@ var isparta = require('isparta');
 
 module.exports = function(config) {
 
-  var detectBrowsers = {
-    enabled: false,
-    usePhantomJS: false,
-    postDetection: function(availableBrowsers) {
-      var safariIndex = availableBrowsers.indexOf('Safari');
+  // Only run chrome in no sandbox mode
+  let customLaunchers = {};
 
-      if(safariIndex !== -1) {
-        availableBrowsers.splice(safariIndex, 1);
-        console.log("Disabled Safari as it was/is not supported");
+  ['Chrome', 'ChromeCanary', 'Chromium'].forEach((browser) => {
+    customLaunchers[browser + 'WithFlags'] = {
+      base: browser,
+      flags: ['--no-sandbox']
+    };
+    customLaunchers[browser + 'HeadlessWithFlags'] = {
+      base: browser + 'Headless',
+      flags: ['--no-sandbox']
+    };
+  });
+
+  let detectBrowsers = {
+    usePhantomJS: false,
+    // use headless mode automatically for browsers that support it
+    preferHeadless: true,
+    // replace chrome headless with one that is suitable for automatic testing
+    postDetection: function(availableBrowsers) {
+      let browsers = [];
+
+      for (let index in availableBrowsers) {
+        let browser = availableBrowsers[index];
+
+        if (/^(Chromium.*|Chrome.*)/.test(browser)) {
+          browsers.push(browser + 'WithFlags');
+        } else if (!/Safari/.test(browser)) {
+          browsers.push(browser);
+        }
       }
-      return availableBrowsers;
+      return browsers;
     }
   };
-
-  if (process.env.TRAVIS) {
-    config.browsers = ['ChromeHeadlessNoSandbox'];
-  }
 
   // If no browsers are specified, we enable `karma-detect-browsers`
   // this will detect all browsers that are available for testing
@@ -30,6 +47,13 @@ module.exports = function(config) {
   config.set({
     basePath: '..',
     frameworks: ['qunit', 'browserify', 'detectBrowsers'],
+    client: {
+      clearContext: false,
+      qunit: {
+        showUI: true,
+        testTimeout: 30000
+      }
+    },
     files: [
       'node_modules/sinon/pkg/sinon.js',
       'node_modules/sinon/pkg/sinon-ie.js',
@@ -66,19 +90,17 @@ module.exports = function(config) {
         return file.originalPath;
       }
     },
-    customLaunchers: {
-      ChromeHeadlessNoSandbox: {
-        base: 'ChromeHeadless',
-        flags: ['--no-sandbox']
-      }
-    },
+    customLaunchers,
     detectBrowsers: detectBrowsers,
     reporters: ['dots'],
     port: 9876,
     colors: true,
     autoWatch: false,
     singleRun: true,
-    concurrency: Infinity,
+    concurrency: 1,
+    captureTimeout: 300000,
+    browserNoActivityTimeout: 300000,
+    browserDisconnectTimeout: 300000,
     browserDisconnectTolerance: 3
   });
 

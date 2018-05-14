@@ -27,6 +27,7 @@ QUnit.module('Playback', {
     video.height = 300;
     document.querySelector('#qunit-fixture').appendChild(video);
     this.player = videojs(video);
+    this.player.muted(true);
     this.player.ready(done);
   }
 });
