@@ -956,6 +956,68 @@ QUnit.test('recognizes domain-relative URLs', function(assert) {
               'resolved segment URI');
 });
 
+QUnit.test('recognizes redirect, when manifest requested', function(assert) {
+  let loader = new PlaylistLoader('manifest/media.m3u8', this.fakeHls, {
+    handleManifestRedirects: true
+  });
+
+  loader.load();
+
+  const manifestRequest = this.requests.shift();
+
+  manifestRequest.responseURL = window.location.protocol + '//' +
+                                'foo-bar.com/manifest/media.m3u8';
+  manifestRequest.respond(200, null,
+                          '#EXTM3U\n' +
+                          '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                          '/media.m3u8\n');
+  assert.equal(loader.master.playlists[0].resolvedUri,
+              window.location.protocol + '//' +
+              'foo-bar.com/media.m3u8',
+              'resolved media URI');
+
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXTINF:10,\n' +
+                                '/00001.ts\n' +
+                                '#EXT-X-ENDLIST\n');
+  assert.equal(loader.media().segments[0].resolvedUri,
+              window.location.protocol + '//' +
+              'foo-bar.com/00001.ts',
+              'resolved segment URI');
+});
+
+QUnit.test('recognizes redirect, when media requested', function(assert) {
+  let loader = new PlaylistLoader('manifest/media.m3u8', this.fakeHls, {
+    handleManifestRedirects: true
+  });
+
+  loader.load();
+
+  this.requests.shift().respond(200, null,
+                                '#EXTM3U\n' +
+                                '#EXT-X-STREAM-INF:BANDWIDTH=1\n' +
+                                '/media.m3u8\n');
+  assert.equal(loader.master.playlists[0].resolvedUri,
+              window.location.protocol + '//' +
+              window.location.host + '/media.m3u8',
+              'resolved media URI');
+
+  const mediaRequest = this.requests.shift();
+
+  mediaRequest.responseURL = window.location.protocol + '//' +
+                             'foo-bar.com/media.m3u8';
+  mediaRequest.respond(200, null,
+                       '#EXTM3U\n' +
+                       '#EXTINF:10,\n' +
+                       '/00001.ts\n' +
+                       '#EXT-X-ENDLIST\n');
+  assert.equal(loader.media().segments[0].resolvedUri,
+              window.location.protocol + '//' +
+              'foo-bar.com/00001.ts',
+              'resolved segment URI');
+});
+
 QUnit.test('recognizes key URLs relative to master and playlist', function(assert) {
   let loader = new PlaylistLoader('/video/media-encrypted.m3u8', this.fakeHls);
 

@@ -1,9 +1,8 @@
 /**
- * @file playlist-loader.js
+ * @module playlist-loader
  *
- * A state machine that manages the loading, caching, and updating of
+ * @file A state machine that manages the loading, caching, and updating of
  * M3U8 playlists.
- *
  */
 import resolveUrl from './resolve-url';
 import { mergeOptions, EventTarget, log } from 'video.js';
@@ -11,20 +10,20 @@ import m3u8 from 'm3u8-parser';
 import window from 'global/window';
 
 /**
-  * Returns a new array of segments that is the result of merging
-  * properties from an older list of segments onto an updated
-  * list. No properties on the updated playlist will be overridden.
-  *
-  * @param {Array} original the outdated list of segments
-  * @param {Array} update the updated list of segments
-  * @param {Number=} offset the index of the first update
-  * segment in the original segment list. For non-live playlists,
-  * this should always be zero and does not need to be
-  * specified. For live playlists, it should be the difference
-  * between the media sequence numbers in the original and updated
-  * playlists.
-  * @return a list of merged segment objects
-  */
+ * Returns a new array of segments that is the result of merging
+ * properties from an older list of segments onto an updated
+ * list. No properties on the updated playlist will be overridden.
+ *
+ * @param {Array} original the outdated list of segments
+ * @param {Array} update the updated list of segments
+ * @param {Number=} offset the index of the first update
+ * segment in the original segment list. For non-live playlists,
+ * this should always be zero and does not need to be
+ * specified. For live playlists, it should be the difference
+ * between the media sequence numbers in the original and updated
+ * playlists.
+ * @return a list of merged segment objects
+ */
 export const updateSegments = (original, update, offset) => {
   const result = update.slice();
 
@@ -172,18 +171,24 @@ export const refreshDelay = (media, update) => {
  * Load a playlist from a remote location
  *
  * @class PlaylistLoader
- * @extends Stream
+ * @extends videojs.EventTarget
  * @param {String} srcUrl the url to start with
- * @param {Boolean} withCredentials the withCredentials xhr option
- * @constructor
+ * @param {Object} hls
+ * @param {Object} [options]
+ * @param {Boolean} [options.withCredentials=false] the withCredentials xhr option
+ * @param {Boolean} [options.handleManifestRedirects=false] whether to follow redirects, when any
+ *        playlist request was redirected
  */
 export default class PlaylistLoader extends EventTarget {
-  constructor(srcUrl, hls, withCredentials) {
+  constructor(srcUrl, hls, options) {
     super();
+
+    options = options || {};
 
     this.srcUrl = srcUrl;
     this.hls_ = hls;
-    this.withCredentials = withCredentials;
+    this.withCredentials = !!options.withCredentials;
+    this.handleManifestRedirects = !!options.handleManifestRedirects;
 
     if (!this.srcUrl) {
       throw new Error('A non-empty playlist URL is required');
@@ -360,7 +365,7 @@ export default class PlaylistLoader extends EventTarget {
 
     // there is already an outstanding playlist request
     if (this.request) {
-      if (resolveUrl(this.master.uri, playlist.uri) === this.request.url) {
+      if (playlist.resolvedUri === this.request.url) {
         // requesting to switch to the same playlist multiple times
         // has no effect after the first
         return;
@@ -376,13 +381,15 @@ export default class PlaylistLoader extends EventTarget {
     }
 
     this.request = this.hls_.xhr({
-      uri: resolveUrl(this.master.uri, playlist.uri),
+      uri: playlist.resolvedUri,
       withCredentials: this.withCredentials
     }, (error, req) => {
       // disposed
       if (!this.request) {
         return;
       }
+
+      playlist.resolvedUri = this.resolveManifestRedirect(playlist.resolvedUri, req);
 
       if (error) {
         return this.playlistRequestError(this.request, playlist.uri, startingState);
@@ -397,6 +404,28 @@ export default class PlaylistLoader extends EventTarget {
         this.trigger('mediachange');
       }
     });
+  }
+
+  /**
+   * Checks whether xhr request was redirected and returns correct url depending
+   * on `handleManifestRedirects` option
+   *
+   * @api private
+   *
+   * @param  {String} url - an url being requested
+   * @param  {XMLHttpRequest} req - xhr request result
+   *
+   * @return {String}
+   */
+  resolveManifestRedirect(url, req) {
+    if (this.handleManifestRedirects &&
+      req.responseURL &&
+      url !== req.responseURL
+    ) {
+      return req.responseURL;
+    }
+
+    return url;
   }
 
   /**
@@ -492,6 +521,8 @@ export default class PlaylistLoader extends EventTarget {
 
       this.state = 'HAVE_MASTER';
 
+      this.srcUrl = this.resolveManifestRedirect(this.srcUrl, req);
+
       parser.manifest.uri = this.srcUrl;
 
       // loaded a master playlist
@@ -521,14 +552,14 @@ export default class PlaylistLoader extends EventTarget {
         },
         uri: window.location.href,
         playlists: [{
-          uri: this.srcUrl
+          uri: this.srcUrl,
+          resolvedUri: this.srcUrl,
+          // m3u8-parser does not attach an attributes property to media playlists so make
+          // sure that the property is attached to avoid undefined reference errors
+          attributes: {}
         }]
       };
       this.master.playlists[this.srcUrl] = this.master.playlists[0];
-      this.master.playlists[0].resolvedUri = this.srcUrl;
-      // m3u8-parser does not attach an attributes property to media playlists so make
-      // sure that the property is attached to avoid undefined reference errors
-      this.master.playlists[0].attributes = this.master.playlists[0].attributes || {};
       this.haveMetadata(req, this.srcUrl);
       return this.trigger('loadedmetadata');
     });

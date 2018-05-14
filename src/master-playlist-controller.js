@@ -223,7 +223,7 @@ export const mimeTypesForPlaylist_ = function(master, media) {
 };
 
 /**
- * the master playlist controller controller all interactons
+ * the master playlist controller controls all interactons
  * between playlists and segmentloaders. At this time this mainly
  * involves a master playlist and a series of audio playlists
  * if they are available
@@ -237,6 +237,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     let {
       url,
+      handleManifestRedirects,
       withCredentials,
       mode,
       tech,
@@ -253,13 +254,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     Hls = externHls;
 
-    this.withCredentials = withCredentials;
     this.tech_ = tech;
     this.hls_ = tech.hls;
     this.mode_ = mode;
     this.useCueTags_ = useCueTags;
     this.blacklistDuration = blacklistDuration;
     this.enableLowInitialPlaylist = enableLowInitialPlaylist;
+
     if (this.useCueTags_) {
       this.cueTagsTrack_ = this.tech_.addTextTrack('metadata',
         'ad-cues');
@@ -267,7 +268,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
 
     this.requestOptions_ = {
-      withCredentials: this.withCredentials,
+      withCredentials,
+      handleManifestRedirects,
       timeout: null
     };
 
@@ -304,7 +306,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     };
 
     // setup playlist loaders
-    this.masterPlaylistLoader_ = new PlaylistLoader(url, this.hls_, this.withCredentials);
+    this.masterPlaylistLoader_ = new PlaylistLoader(url, this.hls_, this.requestOptions_);
     this.setupMasterPlaylistLoaderListeners_();
 
     // setup segment loaders

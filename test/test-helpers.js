@@ -1,5 +1,7 @@
 import document from 'global/document';
 import sinon from 'sinon';
+import window from 'global/window';
+import URLToolkit from 'url-toolkit';
 import videojs from 'video.js';
 /* eslint-disable no-unused-vars */
 // needed so MediaSource can be registered with videojs
@@ -7,7 +9,6 @@ import MediaSource from 'videojs-contrib-media-sources';
 /* eslint-enable */
 import testDataManifests from './test-manifests.js';
 import xhrFactory from '../src/xhr';
-import window from 'global/window';
 
 // a SourceBuffer that tracks updates but otherwise is a noop
 class MockSourceBuffer extends videojs.EventTarget {
@@ -104,6 +105,11 @@ export class MockTextTrack {
   }
 }
 
+// return an absolute version of a page-relative URL
+export const absoluteUrl = function(relativeUrl) {
+  return URLToolkit.buildAbsoluteURL(window.location.href, relativeUrl);
+};
+
 export const useFakeMediaSource = function() {
   let RealMediaSource = videojs.MediaSource;
   let realCreateObjectURL = videojs.URL.createObjectURL;
@@ -193,8 +199,18 @@ export const useFakeEnvironment = function(assert) {
                                                rawEventData.target));
   };
 
+  // add support for xhr.responseURL
+  XMLHttpRequest.prototype.open = (function(origFn) {
+    return function() {
+      this.responseURL = absoluteUrl(arguments[1]);
+
+      return origFn.apply(this, arguments);
+    };
+  }(XMLHttpRequest.prototype.open));
+
   fakeEnvironment.requests.length = 0;
   fakeEnvironment.xhr.onCreate = function(xhr) {
+    xhr.responseURL = xhr.url;
     fakeEnvironment.requests.push(xhr);
   };
   videojs.xhr.XMLHttpRequest = fakeEnvironment.xhr;
@@ -353,18 +369,6 @@ export const standardXHRResponse = function(request, data) {
 
   request.response = new Uint8Array(1024).buffer;
   request.respond(200, {'Content-Type': contentType}, data);
-};
-
-// return an absolute version of a page-relative URL
-export const absoluteUrl = function(relativeUrl) {
-  return window.location.protocol + '//' +
-    window.location.host +
-    (window.location.pathname
-        .split('/')
-        .slice(0, -1)
-        .concat(relativeUrl)
-        .join('/')
-    );
 };
 
 export const playlistWithDuration = function(time, conf) {
