@@ -198,6 +198,51 @@ QUnit.test('updateMaster updates master when new media sequence', function(asser
     'updates master when new media sequence');
 });
 
+QUnit.test('updateMaster updates master when endList changes', function(assert) {
+  const playlist = {
+    endList: false,
+    mediaSequence: 0,
+    attributes: {
+      BANDWIDTH: 9
+    },
+    uri: 'playlist-0-uri',
+    resolvedUri: urlTo('playlist-0-uri'),
+    segments: [{
+      duration: 10,
+      uri: 'segment-0-uri',
+      resolvedUri: urlTo('segment-0-uri')
+    }]
+  };
+
+  const master = {
+    playlists: [playlist]
+  };
+
+  const media = Object.assign({}, playlist, {
+    endList: true
+  });
+
+  assert.deepEqual(
+    updateMaster(master, media),
+    {
+      playlists: [{
+        endList: true,
+        mediaSequence: 0,
+        attributes: {
+          BANDWIDTH: 9
+        },
+        uri: 'playlist-0-uri',
+        resolvedUri: urlTo('playlist-0-uri'),
+        segments: [{
+          duration: 10,
+          uri: 'segment-0-uri',
+          resolvedUri: urlTo('segment-0-uri')
+        }]
+      }]
+    },
+    'updates master when endList changes');
+});
+
 QUnit.test('updateMaster retains top level values in master', function(assert) {
   const master = {
     mediaGroups: {
