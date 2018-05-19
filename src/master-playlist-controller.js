@@ -1062,7 +1062,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       deadline: this.seekDeadline_,
       currentTimeline: this.mainSegmentLoader_.currentTimeline_,
       syncController: this.syncController_,
-      extraRequests: 1
+      extraRequests
     });
 
     // cancel outstanding requests so we begin buffering at the new
