@@ -138,6 +138,7 @@ export default class SegmentLoader extends videojs.EventTarget {
     this.currentTime_ = settings.currentTime;
     this.seekable_ = settings.seekable;
     this.seeking_ = settings.seeking;
+    this.seekStartedAt_ = settings.seekStartedAt;
     this.duration_ = settings.duration;
     this.mediaSource_ = settings.mediaSource;
     this.hls_ = settings.hls;
@@ -632,10 +633,6 @@ export default class SegmentLoader extends videojs.EventTarget {
       segmentInfo.timestampOffset = segmentInfo.startOfSegment;
     }
 
-    if (this.seeking_() && !this.seekStartedAt_) {
-      this.seekStartedAt_ = new Date();
-    }
-
     this.loadSegment_(segmentInfo);
   }
 
@@ -841,8 +838,12 @@ export default class SegmentLoader extends videojs.EventTarget {
 
     let deadline;
 
-    if (this.seeking_() && this.seekStartedAt_) {
-      deadline = this.seekDeadline_ - ((new Date() - this.seekStartedAt_) / 1000);
+    if (this.seeking_()) {
+      if (!this.seekStartedAt_()) {
+        // we need the time at which seeking started to make a decision
+        return;
+      }
+      deadline = this.seekDeadline_ - ((new Date() - this.seekStartedAt_()) / 1000);
     } else {
       // Subtract 1 from the timeUntilRebuffer so we still consider an early abort
       // if we are only left with less than 1 second when the request completes.
@@ -1230,7 +1231,6 @@ export default class SegmentLoader extends videojs.EventTarget {
 
       if ((buffered.end(0) - this.currentTime_()) >= (this.roundTrip / 1000) + 1) {
         this.trigger('buffered');
-        this.seekStartedAt_ = null;
       }
     }
 

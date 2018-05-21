@@ -337,6 +337,11 @@ QUnit.test('sets (then restores) playback rate of player during seeking', functi
   assert.equal(this.masterPlaylistController.lastPlaybackRate_, 0.5,
     'previous playback rate stored');
 
+  this.masterPlaylistController.setCurrentTime(15);
+  assert.equal(playbackRate, 0, 'playbackRate still zero');
+  assert.equal(this.masterPlaylistController.lastPlaybackRate_, 0.5,
+    'seeking again while first seek still active maintains last playback rate');
+
   this.masterPlaylistController.mainSegmentLoader_.trigger('buffered');
   assert.equal(playbackRate, 0.5, 'playbackRate set to 0.5');
   assert.equal(this.masterPlaylistController.lastPlaybackRate_, null,
@@ -344,35 +349,114 @@ QUnit.test('sets (then restores) playback rate of player during seeking', functi
 
 });
 
+QUnit.test('resumes immediately when underlying player tech fires `seeked`', function(assert) {
+  let playbackRate = 0.5;
+
+  this.masterPlaylistController.tech_.playbackRate = () => playbackRate;
+  this.masterPlaylistController.tech_.setPlaybackRate = rate => playbackRate = rate;
+  this.masterPlaylistController.tech_.seeking = () => false;
+
+  // master
+  this.standardXHRResponse(this.requests.shift());
+  // media
+  this.standardXHRResponse(this.requests.shift());
+  this.masterPlaylistController.mediaSource.trigger('sourceopen');
+
+  this.masterPlaylistController.tech_.setPlaybackRate(0.5);
+  assert.equal(playbackRate, 0.5, 'nothing has happened');
+  this.masterPlaylistController.setCurrentTime(5);
+  assert.equal(playbackRate, 0, 'playbackRate set to zero');
+  assert.equal(this.masterPlaylistController.lastPlaybackRate_, 0.5,
+    'previous playback rate stored');
+  assert.equal(this.masterPlaylistController.seeking(), true,
+    'source handler is seeking');
+
+  this.masterPlaylistController.tech_.trigger('seeked');
+  assert.equal(playbackRate, 0.5, 'playbackRate set to 0.5');
+  assert.equal(this.masterPlaylistController.lastPlaybackRate_, null,
+    'previous playback rate erased');
+  assert.equal(this.masterPlaylistController.seeking(), false,
+    'source handler is no longer seeking');
+
+});
+
 QUnit.test('seek deadline enforcement (no switch)', function(assert) {
+  let playlist = null;
+
   // master
   this.standardXHRResponse(this.requests.shift());
   // media
   this.standardXHRResponse(this.requests.shift());
 
+  this.masterPlaylistController.fastQualityChange_ = (pl) => {
+    playlist = pl;
+  };
+
   openMediaSource(this.player, this.clock);
 
+  this.player.tech_.hls.bandwidth = 1000000;
+  this.masterPlaylistController.mainSegmentLoader_.roundTrip = 5000;
+  this.masterPlaylistController.seekDeadline_ = 5;
   this.masterPlaylistController.setCurrentTime(25);
+  assert.equal(playlist, null, 'started loading without playlist switch');
   assert.equal(this.masterPlaylistController.mainSegmentLoader_.paused(), false,
-    'started loading without playlist switch');
-  assert.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
+    'segment loader not paused');
 
 });
 
 QUnit.test('seek deadline enforcement (with switch)', function(assert) {
+  let playlist;
+  let fastQualitySwitch = this.masterPlaylistController.fastQualityChange_.bind(this.masterPlaylistController);
+
+  this.player.tech_.hls.bandwidth = 4194304;
+
   // master
   this.standardXHRResponse(this.requests.shift());
   // media
   this.standardXHRResponse(this.requests.shift());
 
+  this.masterPlaylistController.blacklistCurrentPlaylist = () => {};
+  this.masterPlaylistController.fastQualityChange_ = (pl) => {
+    playlist = pl;
+    fastQualitySwitch(pl);
+  };
+
   openMediaSource(this.player, this.clock);
 
-  assert.equal(this.player.tech_.hls.stats.bandwidth, 4194304, 'default bandwidth');
-  this.player.tech_.hls.bandwidth = 50000;
+  // segment
+  this.standardXHRResponse(this.requests.shift());
+
+  this.masterPlaylistController.mainSegmentLoader_.roundTrip = 5000;
+  this.masterPlaylistController.seekDeadline_ = 5;
+
+  assert.equal(this.masterPlaylistController.media().uri, 'media2.m3u8',
+    'starting playlist');
+
+  playlist = null;
+  this.player.tech_.hls.bandwidth = 500000;
   this.masterPlaylistController.setCurrentTime(25);
+  // this.standardXHRResponse(this.requests.shift());
+  // this.clock.tick(1);
+  assert.equal(playlist.uri, 'media.m3u8',
+    'picks playlist media.m3u8');
   assert.equal(this.masterPlaylistController.mainSegmentLoader_.paused(), true,
-    'paused');
-  assert.equal(this.player.tech_.hls.stats.bandwidth, 50000, 'default bandwidth');
+    'paused until new playlist is finished');
+
+  playlist = null;
+  this.player.tech_.hls.bandwidth = 500000;
+  this.masterPlaylistController.setCurrentTime(28);
+  assert.equal(playlist.uri, 'media1.m3u8',
+    'picks playlist media1.m3u8');
+  assert.equal(this.masterPlaylistController.mainSegmentLoader_.paused(), true,
+    'paused until new playlist is finished');
+
+  playlist = null;
+  this.masterPlaylistController.seekDeadline_ = 10;
+  this.masterPlaylistController.setCurrentTime(25);
+  assert.equal(playlist, null,
+    'playlist not changed');
+  assert.equal(this.masterPlaylistController.mainSegmentLoader_.paused(), false,
+    'not paused since playlist not changed');
 
 });
 
@@ -760,6 +844,11 @@ QUnit.test('Segment loaders are unpaused when seeking after player has ended',
 function(assert) {
   openMediaSource(this.player, this.clock);
 
+  // Need only one playlist so that the setCurrentTime logic doesn't try
+  // to switch to another playlist
+  const master = '#EXTM3U\n' +
+                 '#EXT-X-STREAM-INF:BANDWIDTH=500000\n' +
+                 'media.m3u8';
   const videoMedia = '#EXTM3U\n' +
                      '#EXT-X-VERSION:3\n' +
                      '#EXT-X-PLAYLIST-TYPE:VOD\n' +
@@ -775,10 +864,9 @@ function(assert) {
 
   this.player.tech_.trigger('play');
   this.player.tech_.hls.bandwidth = 500000;
-  console.error(this.masterPlaylistController.mainSegmentLoader_.bandwidth); // eslint-disable-line no-console
 
   // master
-  this.standardXHRResponse(this.requests.shift());
+  this.standardXHRResponse(this.requests.shift(), master);
 
   // media
   this.standardXHRResponse(this.requests.shift(), videoMedia);
@@ -795,21 +883,13 @@ function(assert) {
     'segment loader is paused after ending');
   assert.equal(ended, 1, 'segment loader triggered ended event');
 
+  this.masterPlaylistController.mainSegmentLoader_.roundTrip = 4000;
   this.player.currentTime(5);
-
   this.clock.tick(1);
-
-  // let done = assert.async();
 
   assert.notOk(this.masterPlaylistController.mainSegmentLoader_.paused(),
     'segment loader unpaused after a seek');
   assert.equal(ended, 1, 'segment loader did not trigger ended event again yet');
-  // this.masterPlaylistController.masterPlaylistLoader_.on('mediachange', () => {
-  //   assert.notOk(this.masterPlaylistController.mainSegmentLoader_.paused(),
-  //     'segment loader unpaused after a seek');
-  //   assert.equal(ended, 1, 'segment loader did not trigger ended event again yet');
-  //   done();
-  // });
 });
 
 QUnit.test('detects if the player is stuck at the playlist end', function(assert) {
@@ -2323,6 +2403,10 @@ QUnit.test('subtitle segment loader resets on seeks', function(assert) {
   this.standardXHRResponse(this.requests.shift());
   // media
   this.standardXHRResponse(this.requests.shift());
+  let media = masterPlaylistController.media();
+
+  media.uri = 'media3.m3u8';
+  masterPlaylistController.media = () => media;
 
   const textTracks = this.player.textTracks();
 

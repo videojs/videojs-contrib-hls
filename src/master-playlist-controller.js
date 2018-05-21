@@ -302,6 +302,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       currentTime: this.tech_.currentTime.bind(this.tech_),
       seekable: () => this.seekable(),
       seeking: () => this.seeking(),
+      seekStartedAt: () => this.seekStartedAt_,
       duration: () => this.mediaSource.duration,
       hasPlayed: () => this.hasPlayed_(),
       goalBufferLength: () => this.goalBufferLength(),
@@ -708,6 +709,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     if (!this.seeking_) {
       return;
     }
+    this.seekStartedAt_ = null;
     this.seeking_ = false;
     this.tech_.setPlaybackRate(this.lastPlaybackRate_);
     this.lastPlaybackRate_ = null;
@@ -1027,7 +1029,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
     // If we get here, we're taking control of the seeking process
     this.seeking_ = true;
-    this.lastPlaybackRate_ = this.tech_.playbackRate();
+    // If a seek happens while a previous seek is still ongoing, we need to
+    // make sure we don't accidentally overwrite the lastPlaybackRate_ with 0
+    this.lastPlaybackRate_ = this.tech_.playbackRate() || this.lastPlaybackRate_;
     this.tech_.setPlaybackRate(0);
 
     let media = this.masterPlaylistLoader_.media();
@@ -1078,8 +1082,13 @@ export class MasterPlaylistController extends videojs.EventTarget {
       this.subtitleSegmentLoader_.abort();
     }
 
+    this.seekStartedAt_ = new Date();
+
     if (nextPlaylist && media.uri !== nextPlaylist.playlist.uri) {
       this.fastQualityChange_(nextPlaylist.playlist);
+      // If we need to load a different playlist to meet the seek deadline,
+      // don't start the segment loaders immediately. The playlist switch
+      // process will do it automatically.
       return;
     }
 
