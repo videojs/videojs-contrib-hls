@@ -126,6 +126,8 @@ const handleErrors = (error, request) => {
   return null;
 };
 
+const cachedEncryptionKeys_ = {};
+
 /**
  * Handle responses for key data and convert the key data to the correct format
  * for the decryption step later
@@ -160,6 +162,7 @@ const handleKeyResponse = (segment, finishProcessingFn) => (error, request) => {
     view.getUint32(8),
     view.getUint32(12)
   ]);
+  cachedEncryptionKeys_[segment.key.resolvedUri] = segment.key.bytes.slice(0);
   return finishProcessingFn(null, segment);
 };
 
@@ -401,14 +404,18 @@ export const mediaSegmentRequest = (xhr,
 
   // optionally, request the decryption key
   if (segment.key) {
-    const keyRequestOptions = videojs.mergeOptions(xhrOptions, {
-      uri: segment.key.resolvedUri,
-      responseType: 'arraybuffer'
-    });
-    const keyRequestCallback = handleKeyResponse(segment, finishProcessingFn);
-    const keyXhr = xhr(keyRequestOptions, keyRequestCallback);
+    if (segment.key.resolvedUri in cachedEncryptionKeys_) {
+      segment.key.bytes = cachedEncryptionKeys_[segment.key.resolvedUri].slice(0);
+    } else {
+      const keyRequestOptions = videojs.mergeOptions(xhrOptions, {
+        uri: segment.key.resolvedUri,
+        responseType: 'arraybuffer'
+      });
+      const keyRequestCallback = handleKeyResponse(segment, finishProcessingFn);
+      const keyXhr = xhr(keyRequestOptions, keyRequestCallback);
 
-    activeXhrs.push(keyXhr);
+      activeXhrs.push(keyXhr);
+    }
   }
 
   // optionally, request the associated media init segment
