@@ -18,10 +18,6 @@ before_script:
   - greenkeeper-lockfile-update
   # always install the appropriate version of video.js for the environment
   - npm i "video.js@$VJS";
-  # pulseaudio is needed for dockerized chrome since it has a dummy sink and
-  # the dummy audio ALSA kernel module isn't loaded by Travis
-  # libavcodec54 is needed by firefox for h.264 support
-  - sudo apt-get install --no-install-recommends pulseaudio libavcodec54
   - pulseaudio -D
 after_script: greenkeeper-lockfile-upload
 
@@ -29,5 +25,12 @@ env:
   - VJS=5
   - VJS=6
 addons:
+  apt:
+    # pulseaudio is needed for dockerized chrome since it has a dummy sink and
+    # the dummy audio ALSA kernel module isn't loaded by Travis
+    # libavcodec54 is needed by firefox for h.264 support
+    packages:
+      - pulseaudio
+      - libavcodec54
   chrome: stable
   firefox: latest
