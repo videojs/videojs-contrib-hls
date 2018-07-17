@@ -28,8 +28,10 @@ module.exports = function(config) {
       for (let index in availableBrowsers) {
         let browser = availableBrowsers[index];
 
-        if (/^(Chromium.*|Chrome.*)/.test(browser)) {
+        if (/^(Chromium.*)/.test(browser)) {
           browsers.push(browser + 'WithFlags');
+        } else if (/^(Chrome.*)/.test(browser)) {
+          // do nothing
         } else if (!/Safari/.test(browser)) {
           browsers.push(browser);
         }
