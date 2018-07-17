@@ -92,7 +92,7 @@ module.exports = function(config) {
     },
     customLaunchers,
     detectBrowsers: detectBrowsers,
-    reporters: ['dots'],
+    reporters: ['spec'],
     port: 9876,
     colors: true,
     autoWatch: false,
