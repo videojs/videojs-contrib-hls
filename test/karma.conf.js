@@ -20,7 +20,7 @@ module.exports = function(config) {
   let detectBrowsers = {
     usePhantomJS: false,
     // use headless mode automatically for browsers that support it
-    preferHeadless: false,
+    preferHeadless: true,
     // replace chrome headless with one that is suitable for automatic testing
     postDetection: function(availableBrowsers) {
       let browsers = [];
