@@ -13,14 +13,14 @@ module.exports = function(config) {
     };
     customLaunchers[browser + 'HeadlessWithFlags'] = {
       base: browser + 'Headless',
-      flags: ['--no-sandbox']
+      flags: ['--no-sandbox', '--enable-low-end-device-mode']
     };
   });
 
   let detectBrowsers = {
     usePhantomJS: false,
     // use headless mode automatically for browsers that support it
-    preferHeadless: true,
+    preferHeadless: false,
     // replace chrome headless with one that is suitable for automatic testing
     postDetection: function(availableBrowsers) {
       let browsers = [];
