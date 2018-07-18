@@ -13,7 +13,7 @@ module.exports = function(config) {
     };
     customLaunchers[browser + 'HeadlessWithFlags'] = {
       base: browser + 'Headless',
-      flags: ['--no-sandbox']
+      flags: ['--no-sandbox', '--enable-crash-reporter', '--enable-leak-detection', '--crash-on-failure', '--enable-low-end-device-mode']
     };
   });
 
@@ -28,10 +28,8 @@ module.exports = function(config) {
       for (let index in availableBrowsers) {
         let browser = availableBrowsers[index];
 
-        if (/^(Chromium.*)/.test(browser)) {
+        if (/^(Chromium.*|Chrome.*)/.test(browser)) {
           browsers.push(browser + 'WithFlags');
-        } else if (/^(Chrome.*)/.test(browser)) {
-          // do nothing
         } else if (!/Safari/.test(browser)) {
           browsers.push(browser);
         }
