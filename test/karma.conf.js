@@ -13,7 +13,7 @@ module.exports = function(config) {
     };
     customLaunchers[browser + 'HeadlessWithFlags'] = {
       base: browser + 'Headless',
-      flags: ['--no-sandbox', '--enable-crash-reporter', '--enable-leak-detection', '--crash-on-failure', '--enable-low-end-device-mode']
+      flags: ['--no-sandbox']
     };
   });
 
