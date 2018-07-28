@@ -162,12 +162,9 @@ export const mimeTypesForPlaylist_ = function(master, media) {
     }
   }
 
-  // HLS with multiple-audio tracks must always get an audio codec.
-  // Put another way, there is no way to have a video-only multiple-audio HLS!
-  if (isMaat && !codecInfo.audioProfile) {
-    videojs.log.warn(
-      'Multiple audio tracks present but no audio codec string is specified. ' +
-      'Attempting to use the default audio codec (mp4a.40.2)');
+  // Use default audio profile if none specified by playlist
+  if (!codecInfo.audioProfile) {
+    videojs.log.warn('Attempting to use the default audio codec (mp4a.40.2)');
     codecInfo.audioProfile = defaultCodecs.audioProfile;
   }
 
