@@ -734,8 +734,8 @@ export class MasterPlaylistController extends videojs.EventTarget {
         return false;
       }
 
-      const seekableTime = seekable.end(0);
-      let startTime = seekableTime;
+      const seekableEnd = seekable.end(0);
+      let startTime = seekableEnd;
 
       if (media.start) {
         const offset = media.start.timeOffset;
@@ -746,7 +746,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
           startTime = offset;
         }
         // cap the startTime to within the seekable range:
-        startTime = Math.max(seekable.start(0), Math.min(seekableTime, startTime));
+        startTime = Math.max(seekable.start(0), Math.min(seekableEnd, startTime));
       }
 
       if (videojs.browser.IE_VERSION &&
