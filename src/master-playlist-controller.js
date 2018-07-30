@@ -746,6 +746,9 @@ export class MasterPlaylistController extends videojs.EventTarget {
           startTime = offset;
         }
         // cap the startTime to within the seekable range:
+        // Note:
+        // This technically behaves as if PRECISE == YES which is counter to the
+        // default as outlined in the specification.
         startTime = Math.max(seekable.start(0), Math.min(seekableEnd, startTime));
       }
 
