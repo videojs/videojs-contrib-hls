@@ -765,7 +765,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
 
       // trigger firstplay to inform the source handler to ignore the next seek event
       this.trigger('firstplay');
-      // seek to the live point
+      // seek to the new start time
       this.tech_.setCurrentTime(startTime);
     }
 
