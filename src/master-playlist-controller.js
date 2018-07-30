@@ -234,7 +234,9 @@ export const mimeTypesForPlaylist_ = function(master, media) {
 export const startTimeForMedia_ = function(media, seekable) {
   const seekableEnd = seekable.end(0);
 
-  if (!media.start) { return seekableEnd; }
+  if (!media.start) {
+    return seekableEnd;
+  }
 
   const offset = media.start.timeOffset;
   let startTime = seekableEnd;
