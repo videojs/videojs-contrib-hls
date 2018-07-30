@@ -710,7 +710,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
   }
 
   /**
-   * Seek to the latest media position if this is a live video and the
+   * Seek to the latest/specific media position if this is a live video and the
    * player and video are loaded and initialized.
    */
   setupFirstPlay() {
