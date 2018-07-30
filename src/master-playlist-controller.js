@@ -223,6 +223,37 @@ export const mimeTypesForPlaylist_ = function(master, media) {
 };
 
 /**
+ * Calculates the time playback should begin from should no END-LIST be present
+ *
+ * @param media {Playlist} the current media playlist
+ * @param seekable {Object} the seekable time ranges for the current playlist
+ * @return {Number} the time in the playlist playback should begin from
+ *
+ * @private
+ */
+export const startTimeForMedia_ = function(media, seekable) {
+  const seekableEnd = seekable.end(0);
+
+  if (!media.start) { return seekableEnd; }
+
+  const offset = media.start.timeOffset;
+  let startTime = seekableEnd;
+
+  if (offset < 0) {
+    startTime += offset;
+  } else {
+    startTime = offset;
+  }
+  // cap the startTime to within the seekable range:
+  // Note:
+  // This technically behaves as if PRECISE == YES which is counter to the
+  // default as outlined in the specification.
+  startTime = Math.max(seekable.start(0), Math.min(seekableEnd, startTime));
+
+  return startTime;
+};
+
+/**
  * the master playlist controller controls all interactons
  * between playlists and segmentloaders. At this time this mainly
  * involves a master playlist and a series of audio playlists
@@ -734,23 +765,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
         return false;
       }
 
-      const seekableEnd = seekable.end(0);
-      let startTime = seekableEnd;
-
-      if (media.start) {
-        const offset = media.start.timeOffset;
-
-        if (offset < 0) {
-          startTime += offset;
-        } else {
-          startTime = offset;
-        }
-        // cap the startTime to within the seekable range:
-        // Note:
-        // This technically behaves as if PRECISE == YES which is counter to the
-        // default as outlined in the specification.
-        startTime = Math.max(seekable.start(0), Math.min(seekableEnd, startTime));
-      }
+      const startTime = startTimeForMedia_(media, seekable);
 
       if (videojs.browser.IE_VERSION &&
           this.mode_ === 'html5' &&
