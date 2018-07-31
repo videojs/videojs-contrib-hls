@@ -84,7 +84,7 @@ export const illegalMediaSwitch = (loaderType, startingMedia, newSegmentMedia) =
  * @param {Number} targetDuration
  *        The target duration of the current playlist
  * @param {Number} backBufferLength
- *        The amount of back buffer to preserve
+ *        The amount (in seconds) of back buffer to preserve
  * @return {Number}
  *         Time that is safe to remove from the back buffer without interupting playback
  */
@@ -97,8 +97,9 @@ export const safeBackBufferTrimTime = (seekable, currentTime, targetDuration, ba
     // If we have a seekable range use that as the limit for what can be removed safely
     removeToTime = seekable.start(0);
   } else {
-    // otherwise remove anything older than the back buffer
-    removeToTime = currentTime - backBufferLength;
+    // otherwise remove anything older than the back buffer, clamping to 0
+    // so that we don't have a negative removeToTime
+    removeToTime = Math.max(0, currentTime - backBufferLength);
   }
 
   // Don't allow removing from the buffer within target duration of current time
@@ -385,8 +386,13 @@ export default class SegmentLoader extends videojs.EventTarget {
   init_() {
     this.state = 'READY';
     this.sourceUpdater_ = new SourceUpdater(this.mediaSource_, this.mimeType_);
+    // TODO: Make sure these are properly removed
     this.sourceUpdater_.on('adjustBuffers', () => this.adjustBuffers_(true));
     this.sourceUpdater_.on('bufferMaxed', (event) => this.handleBufferMaxed_(event));
+    // Algo should be:
+    // - adjust maxes (using segment metadata cues, even if they're wrong)
+    // - remove non-buffered segment cues
+    // - handleBufferMaxed
 
     this.resetEverything();
     return this.monitorBuffer_();
@@ -521,7 +527,7 @@ export default class SegmentLoader extends videojs.EventTarget {
   resetEverything() {
     this.ended_ = false;
     this.resetLoader();
-    this.remove(0, this.duration_());
+    this.remove(0, Infinity);
     this.trigger('reseteverything');
   }
 
@@ -688,6 +694,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       return null;
     }
 
+    // Take the worst case for the amount of bytes in the buffer
     let bufferedBytes = this.maxBufferedBytes();
 
     // If the next segment request is too large to fit into the current buffer,
@@ -1230,20 +1237,20 @@ export default class SegmentLoader extends videojs.EventTarget {
    * @param {Boolean=} setByteLimit
    *                   Whether we should set maxBytes or just the buffer sizes
    */
-  adjustBuffers_(setByteLimit) {
+  adjustBuffers_(setByteLimit = false) {
     if (this.mediaRequests === 1) {
-      // we failed on the first request, so don't adjust buffers
+      // the first append caused a QuotaExceededError, so don't adjust buffers
       return;
     }
     this.removeNonBufferedSegmentCues();
     let buffered = this.buffered_();
-    let forwardBuffer = this.maxGoalBufferLength_();
-    let reverseBuffer = this.backBufferLength_();
-    let configTotalBuffer = forwardBuffer + reverseBuffer;
+    let forwardBufferGoal = this.maxGoalBufferLength_();
+    let backBufferGoal = this.backBufferLength_();
+    let totalBufferGoal = forwardBufferGoal + backBufferGoal;
     let bytesInBuffer = 0;
     let secondsInBuffer = 0;
-    let maxForwardBuffer;
-    let maxReverseBuffer;
+    let newForwardBufferGoal;
+    let newBackBufferGoal;
     let i;
     let loggerMsg;
 
@@ -1255,40 +1262,45 @@ export default class SegmentLoader extends videojs.EventTarget {
       // we're downloading a single rate (and don't know what that rate is)
       // so we just use the seconds in the buffer to calculate the new buffer
       // sizes.
-      maxForwardBuffer = Math.max((forwardBuffer / configTotalBuffer) * secondsInBuffer,
+      newForwardBufferGoal = Math.max((forwardBufferGoal / totalBufferGoal) * secondsInBuffer,
         this.playlist_.targetDuration);
-      maxReverseBuffer = secondsInBuffer - maxForwardBuffer;
+      newBackBufferGoal = secondsInBuffer - newForwardBufferGoal;
     } else {
       // since we potentially have more than one rate in the buffer, we use
       // the amount of bytes in the buffer to calculate the upper limit on
       // the equivalent time at the current rate
       let upperTimeLimit = (bytesInBuffer * 8) / this.playlist_.attributes.BANDWIDTH;
 
-      maxForwardBuffer = (forwardBuffer / configTotalBuffer) * upperTimeLimit;
-      maxReverseBuffer = (reverseBuffer / configTotalBuffer) * upperTimeLimit;
+      newForwardBufferGoal = (forwardBufferGoal / totalBufferGoal) * upperTimeLimit;
+      newBackBufferGoal = (backBufferGoal / totalBufferGoal) * upperTimeLimit;
     }
 
-    maxForwardBuffer = Math.min(forwardBuffer, maxForwardBuffer);
-    maxReverseBuffer = Math.min(reverseBuffer, maxReverseBuffer);
+    newForwardBufferGoal = Math.min(forwardBufferGoal, newForwardBufferGoal);
+    newBackBufferGoal = Math.min(backBufferGoal, newBackBufferGoal);
 
-    loggerMsg = '\n\tbytes in buffer: ' + bytesInBuffer +
-      ', seconds in buffer: ' + secondsInBuffer +
-      '\n\tforward buffer: ' + forwardBuffer + ' => ' + maxForwardBuffer +
-      '\n\treverse buffer: ' + reverseBuffer + ' => ' + maxReverseBuffer;
+    loggerMsg =
+      `\n\tbytes in buffer: ${bytesInBuffer}, seconds in buffer: ${secondsInBuffer}` +
+      `\n\tforward buffer: ${forwardBufferGoal} => ${newForwardBufferGoal}` +
+      `\n\treverse buffer: ${backBufferGoal} => ${newBackBufferGoal}`;
 
     if (setByteLimit) {
-      loggerMsg += '\n\tbyte limit: ' + this.maxBytes_ + ' => ' + bytesInBuffer;
+      loggerMsg += `\n\tbyte limit: ${this.maxBytes_} => ${bytesInBuffer}`;
       this.maxBytes_ = Math.min(this.maxBytes_, bytesInBuffer);
     }
     this.logger_('adjustBuffers_', loggerMsg);
 
-    this.goalBufferLength_(maxForwardBuffer);
-    this.backBufferLength_(maxReverseBuffer);
+    this.goalBufferLength_(newForwardBufferGoal);
+    this.backBufferLength_(newBackBufferGoal);
   }
 
   /**
-   * handler to run when a call to appendBuffer fails because the source
-   * buffer can't hold any more information
+   * Handle a call to appendBuffer that failed
+   *
+   * Depending on what caused the QuotaExceededError, one of two things will happen.
+   * If it happened when appending the first segment of a stream, it will be split
+   * into smaller pieces and appended immediately. If it happened in the regular
+   * course of playing a feed, it will wait until there's sufficient room in the
+   * buffer and then re-append.
    *
    * @private
    *
@@ -1301,13 +1313,17 @@ export default class SegmentLoader extends videojs.EventTarget {
   handleBufferMaxed_(event) {
     let bytesTried = event.segment.byteLength;
     let segmentBytes = event.segment;
+    // Note that is a shimmed WrappedSourceBuffer in the case of an mpegts hls feed,
+    // and a native SourceBuffer in the case of an fmp4 hls feed
     let sourceBuffer = event.target;
+    // Whe start time (in seconds) of the currently-playing GOP at the time the
+    // QuotaExceededError was thrown. Will be null for fmp4 hls feeds.
     let safeRemovePoint = event.safeRemovePoint;
     let pendingAppend = true;
     let callback = event.done;
 
-    // if we fail on the first request, it's probably a glitch, and
-    // we should just slice the segment up into small bits and append
+    // if we get a QuotaExceededError on the first request, it's probably a
+    // glitch, and we should just slice the segment into small bits and append
     if (this.mediaRequests === 1) {
       let slices = [];
       let start = 0;
@@ -1322,12 +1338,12 @@ export default class SegmentLoader extends videojs.EventTarget {
       };
 
       while (start < bytesTried) {
-        end += 5000000;
+        end += Config.FIRST_SEGMENT_SLICE_SIZE;
         if (end > bytesTried) {
           end = bytesTried;
         }
         slices.push(segmentBytes.slice(start, end));
-        start += 5000000;
+        start += Config.FIRST_SEGMENT_SLICE_SIZE;
       }
       sourceBuffer.addEventListener('updateend', sliceAppend);
       sourceBuffer.appendBuffer(slices.shift());
@@ -1351,7 +1367,7 @@ export default class SegmentLoader extends videojs.EventTarget {
         callback();
         pendingAppend = false;
       } catch (error) {
-        videojs.error('QuoteExceededError');
+        videojs.error('QuotaExceededError');
       }
     };
 
@@ -1431,6 +1447,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       if (!this.nextSegmentSize_) {
         this.nextSegmentSize_ = segmentInfo.byteLength;
       } else {
+        // Calculate the moving average of the next segment size
         this.nextSegmentSize_ -= this.nextSegmentSize_ /
           this.segmentMetadataTrack_.cues.length;
         this.nextSegmentSize_ += segmentInfo.byteLength /
@@ -1585,7 +1602,7 @@ export default class SegmentLoader extends videojs.EventTarget {
       for (j = 0; j < buffered.length; j++) {
         cmpStart = (start > buffered.start(j)) ? start : buffered.start(j);
         cmpEnd = (end < buffered.end(j)) ? end : buffered.end(j);
-        if (cue.startTime <= cmpEnd && cue.endTime >= cmpStart) {
+        if (cue.startTime <= cmpEnd || cue.endTime >= cmpStart) {
           bytes += cue.value.byteLength;
           // we only want to count the bytes once, so break now
           break;

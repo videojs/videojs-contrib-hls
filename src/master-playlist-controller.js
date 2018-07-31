@@ -261,7 +261,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     this.blacklistDuration = blacklistDuration;
     this.enableLowInitialPlaylist = enableLowInitialPlaylist;
     this.goalBufferLength_ = Config.GOAL_BUFFER_LENGTH;
-    this.maxGoalBufferLength_ = Config.MAX_GOAL_BUFFER_LENGTH;
+    this.maxGoalBufferLength_ = Math.max(Config.GOAL_BUFFER_LENGTH, Config.MAX_GOAL_BUFFER_LENGTH);
     this.backBufferLength_ = Config.BACK_BUFFER_LENGTH;
 
     if (this.useCueTags_) {
@@ -589,8 +589,6 @@ export class MasterPlaylistController extends videojs.EventTarget {
       if (!currentPlaylist.endList ||
           // For the same reason as LIVE, we ignore the low water line when the VOD
           // duration is below the max potential low water line
-        // TODO: This probably needs changing? Not sure what to change it to though.
-        // Maybe just this.bufferLowWaterLine() ?
           this.duration() < Config.MAX_BUFFER_LOW_WATER_LINE ||
           // we want to switch down to lower resolutions quickly to continue playback, but
           nextPlaylist.attributes.BANDWIDTH < currentPlaylist.attributes.BANDWIDTH ||
@@ -1258,6 +1256,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
     }
     this.goalBufferLength_ = Math.min(this.goalBufferLength_, value);
     this.maxGoalBufferLength_ = Math.min(this.maxGoalBufferLength_, value);
+    return this.goalBufferLength;
   }
 
   /**
@@ -1271,6 +1270,7 @@ export class MasterPlaylistController extends videojs.EventTarget {
       return this.backBufferLength_;
     }
     this.backBufferLength_ = Math.min(this.backBufferLength_, value);
+    return this.backBufferLength_;
   }
 
   /**

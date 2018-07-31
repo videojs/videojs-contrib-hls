@@ -86,11 +86,15 @@ export default class SourceUpdater extends videojs.EventTarget {
       try {
         this.sourceBuffer_.appendBuffer(bytes);
       } catch (error) {
-        this.sourceBuffer_.trigger({
-          segment: bytes,
-          target: this.sourceBuffer_,
-          type: 'bufferMaxed'
-        });
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+          this.sourceBuffer_.trigger({
+            segment: bytes,
+            target: this.sourceBuffer_,
+            type: 'bufferMaxed'
+          });
+        } else {
+          throw error;
+        }
       }
     }, done);
   }
