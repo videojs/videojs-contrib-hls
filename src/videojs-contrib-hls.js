@@ -601,6 +601,9 @@ videojs.m3u8 = m3u8;
 videojs.options.hls = videojs.options.hls || {};
 
 if (videojs.registerPlugin) {
+  if (!videojs.getPlugin('reloadSourceOnError') {
+    videojs.deregisterPlugin('reloadSourceOnError');
+  }
   videojs.registerPlugin('reloadSourceOnError', reloadSourceOnError);
 } else {
   videojs.plugin('reloadSourceOnError', reloadSourceOnError);
