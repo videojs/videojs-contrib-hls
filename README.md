@@ -8,8 +8,6 @@
 
 Play back HLS with video.js, even where it's not natively supported.
 
-Lead Maintainer: Jon-Carlos Rivera [@imbcmdth](https://github.com/imbcmdth)
-
 Maintenance Status: Deprecated
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
