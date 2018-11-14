@@ -2931,7 +2931,7 @@ QUnit.test('passes useCueTags hls option to master playlist controller', functio
   videojs.options.hls = origHlsOptions;
 });
 
-QUnit.test('populates quality levels list when available', function(assert) {
+QUnit.skip('populates quality levels list when available', function(assert) {
   this.player.src({
     src: 'manifest/master.m3u8',
     type: 'application/vnd.apple.mpegurl'

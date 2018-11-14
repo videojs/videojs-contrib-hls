@@ -4,30 +4,16 @@ language: node_js
 cache:
   directories:
     - node_modules
-notifications:
-  hipchat:
-    rooms:
-      secure: l5TTd5JuPAW883PtcyaIBcJI9Chr9JpsZPQAEUBKAgIEwzuS6y7t5arlkS1PwH6gi1FADzYDf+OXSIou4GkTSrIetnBcT/SAgF0gBKgIhj+eRkuCfZ4VaC7BPhfZ0hgYRE+5Ejf5BM2MJafRm0pj7OlqG4xKrQZwtuV1te5r3JY=
-  irc:
-    channels:
-      - "chat.freenode.net#videojs"
-    use_notice: true
 before_install:
   - npm install -g greenkeeper-lockfile@1
 before_script:
-  - greenkeeper-lockfile-update
-  # always install the appropriate version of video.js for the environment
-  - npm i "video.js@$VJS";
   # pulseaudio is needed for dockerized chrome since it has a dummy sink and
   # the dummy audio ALSA kernel module isn't loaded by Travis
   # libavcodec54 is needed by firefox for h.264 support
   - sudo apt-get install --no-install-recommends pulseaudio libavcodec54
   - pulseaudio -D
+  - greenkeeper-lockfile-update
 after_script: greenkeeper-lockfile-upload
-
-env:
-  - VJS=5
-  - VJS=6
 addons:
   chrome: stable
   firefox: latest
