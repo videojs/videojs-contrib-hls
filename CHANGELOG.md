@@ -4,6 +4,9 @@ CHANGELOG
 --------------------
 ## HEAD (Unreleased)
 _(none)_
+--------------------
+## 5.15.0 (2018-11-14)
+* Add redirect support for manifest and media requests ([#1213](https://github.com/videojs/videojs-contrib-hls/pull/1213))
 
 --------------------
 ## 5.14.1 (2018-03-21)
